@@ -1,0 +1,14 @@
+﻿using System.Numerics;
+
+namespace SiegeEngine.Definitions
+{
+    public class SoundSource
+    {
+        public int EntityId { get; set; } = -1; // Default to -1 for non-entity sounds
+        public Vector3 Position { get; set; }
+        public string Type { get; set; }
+        public bool IsSensitive { get; set; }
+        public string AudioClip { get; set; }
+        public ulong SteamId { get; set; } = 0;
+    }
+}
