@@ -1,4 +1,4 @@
-﻿// Engine.Core/Managers/ModManager.cs
+﻿// SiegeEngine/Managers/ModManager.cs
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -66,7 +66,6 @@ namespace SiegeEngine.Managers
                     Console.WriteLine($"ModManager: Found solution mods directory at {localModsPath}, loading local mods.");
                 }
             }
-
             if (Directory.Exists(localModsPath))
             {
                 foreach (var dir in Directory.GetDirectories(localModsPath))
@@ -76,7 +75,6 @@ namespace SiegeEngine.Managers
                     ProcessUnityAssets(dir);
                 }
             }
-
             string assetsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
             if (Directory.Exists(assetsPath))
             {
@@ -118,7 +116,6 @@ namespace SiegeEngine.Managers
                 Console.WriteLine($"ModManager: No mod.json found at {modJsonPath}, skipping.");
                 return;
             }
-
             try
             {
                 string json = File.ReadAllText(modJsonPath);
@@ -145,13 +142,11 @@ namespace SiegeEngine.Managers
                 Console.WriteLine($"ModManager: Processed Unity assets in {modPath}");
                 Console.WriteLine($"Found {files.Count} files");
                 Console.WriteLine($"GUID map has {guidMap.Count} entries");
-
                 var modInfo = _loadedMods.Find(m => m.Path == modPath);
                 if (modInfo != null)
                 {
                     modInfo.UnityAssets = new UnityAssetData { Files = files, GuidMap = guidMap };
                 }
-
                 var prefabs = files.Where(f => f.Value == UnityAssetFileType.Prefab).Select(f => f.Key).ToList();
                 var prefabReader = new PrefabFileReader();
                 foreach (var prefab in prefabs)
@@ -176,14 +171,17 @@ namespace SiegeEngine.Managers
         public string ResolvePath(string relativePath)
         {
             if (string.IsNullOrEmpty(relativePath)) return null;
-            if (Path.IsPathRooted(relativePath)) return File.Exists(relativePath) ? relativePath : null;
 
-            relativePath = relativePath.Replace("/", "\\").TrimStart('\\');
+            // Normalize path: trim leading backslashes, replace / with \
+            relativePath = relativePath.TrimStart('\\', '/').Replace("/", "\\");
+
+            if (Path.IsPathRooted(relativePath)) return File.Exists(relativePath) ? relativePath : null;
 
             string[] textureDirs = new[]
             {
                 Path.Combine("Assets", "Characters", "Adventure_Character", "Textures"),
                 Path.Combine("Assets", "Textures"),
+                Path.Combine("Assets", "Static_Images"),
                 "Textures"
             };
 
@@ -226,17 +224,14 @@ namespace SiegeEngine.Managers
                 if (File.Exists(configPath))
                     return configPath;
             }
-
             string solutionPath = Path.Combine(_solutionDirectory, "Assets", "Configs", "MainMenu.json");
             Console.WriteLine($"ModManager: Checking solution config path: {solutionPath}, Exists: {File.Exists(solutionPath)}");
             if (File.Exists(solutionPath))
                 return solutionPath;
-
             string outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Configs", "MainMenu.json");
             Console.WriteLine($"ModManager: Checking output config path: {outputPath}, Exists: {File.Exists(outputPath)}");
             if (File.Exists(outputPath))
                 return outputPath;
-
             Console.WriteLine($"ModManager: Menu config path not found");
             return null;
         }

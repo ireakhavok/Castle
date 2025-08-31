@@ -1,0 +1,645 @@
+{
+  "menus": [
+    {
+      "name": "MainMenu",
+      "background": "C:\\Users\\ireak\\source\\repos\\GrokAIgame\\Assets\\Static_Images\\Main_Background.jpg",
+      "positioningMode": "backgroundPercentage",
+      "tabs": [
+        {
+          "name": "Create",
+          "iconIndex": 0,
+          "action": "SwitchTab_Create",
+          "buttons": [
+            {
+              "text": "New Project",
+              "position": {
+                "x": -0.0521,
+                "y": -0.2235
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "iconIndex": 1,
+              "action": "Create_NewProject",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              },
+              "buttonStyle": {
+                "backgroundColor": {
+                  "r": 0.2,
+                  "g": 0.2,
+                  "b": 0.2,
+                  "a": 0.8
+                },
+                "hoverColor": {
+                  "r": 0.3,
+                  "g": 0.3,
+                  "b": 0.3,
+                  "a": 0.8
+                },
+                "borderColor": {
+                  "r": 0.5,
+                  "g": 0.5,
+                  "b": 0.5,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "text": "Game Type",
+              "position": {
+                "x": -0.0521,
+                "y": -0.1453
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "iconIndex": 3,
+              "action": "Select_GameType",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            }
+          ],
+          "elements": [
+            {
+              "type": "dropdown",
+              "name": "GameType",
+              "position": {
+                "x": -0.0521,
+                "y": -0.0670
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "options": [ "2D", "2D Sidescrolling", "3D FPS", "3D Isometric", "3D Over Shoulder", "3D Third Person", "3D Dynamic" ],
+              "selectedIndex": 0,
+              "action": "Set_GameType",
+              "isOptionsBelow": true,
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              },
+              "buttonStyle": {
+                "backgroundColor": {
+                  "r": 0.2,
+                  "g": 0.2,
+                  "b": 0.2,
+                  "a": 0.8
+                },
+                "hoverColor": {
+                  "r": 0.3,
+                  "g": 0.3,
+                  "b": 0.3,
+                  "a": 0.8
+                },
+                "borderColor": {
+                  "r": 0.5,
+                  "g": 0.5,
+                  "b": 0.5,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "dropdown",
+              "name": "Multiplayer",
+              "position": {
+                "x": -0.0521,
+                "y": 0.0112
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "options": [ "Single Player", "Hosted", "Server" ],
+              "selectedIndex": 0,
+              "action": "Set_Multiplayer",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "toggle",
+              "name": "Allow Mods",
+              "position": {
+                "x": -0.0521,
+                "y": 0.0894
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "state": true,
+              "action": "Toggle_Mods",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "type": "button",
+              "text": "Create",
+              "position": {
+                "x": -0.0521,
+                "y": 0.1676
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "action": "Create_Project",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Play",
+          "iconIndex": 13,
+          "action": "SwitchTab_Play",
+          "buttons": [
+            {
+              "text": "Join Game",
+              "position": {
+                "x": -0.0521,
+                "y": -0.2235
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "action": "Play_Join",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "text": "Browse Lobbies",
+              "position": {
+                "x": -0.0521,
+                "y": -0.1453
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "action": "Play_Browse",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            }
+          ],
+          "elements": [
+            {
+              "type": "label",
+              "text": "Friends Online",
+              "position": {
+                "x": -0.0521,
+                "y": -0.0670
+              },
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit",
+          "iconIndex": 15,
+          "action": "SwitchTab_Edit",
+          "buttons": [
+            {
+              "text": "Open Project",
+              "position": {
+                "x": -0.0521,
+                "y": -0.2235
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "action": "Edit_Open",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            },
+            {
+              "text": "Asset Importer",
+              "position": {
+                "x": -0.0521,
+                "y": -0.1453
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "action": "Edit_Assets",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            }
+          ],
+          "elements": [
+            {
+              "type": "dropdown",
+              "name": "Recent Projects",
+              "position": {
+                "x": -0.0521,
+                "y": -0.0670
+              },
+              "size": {
+                "width": 300,
+                "height": 60
+              },
+              "options": [ "Project1", "Project2" ],
+              "selectedIndex": 0,
+              "action": "Select_Project",
+              "textStyle": {
+                "fontSize": 10.0,
+                "color": {
+                  "r": 1.0,
+                  "g": 1.0,
+                  "b": 1.0,
+                  "a": 1.0
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "buttons": [
+        {
+          "text": "Settings",
+          "position": {
+            "x": -0.0521,
+            "y": 0.3
+          },
+          "size": {
+            "width": 300,
+            "height": 60
+          },
+          "action": "SettingsSelected",
+          "textStyle": {
+            "fontSize": 10.0,
+            "color": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          }
+        },
+        {
+          "text": "Exit",
+          "position": {
+            "x": -0.0521,
+            "y": 0.3782
+          },
+          "size": {
+            "width": 300,
+            "height": 60
+          },
+          "action": "Exit",
+          "textStyle": {
+            "fontSize": 10.0,
+            "color": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "UserSettingsMenu",
+      "background": "Assets\\Static_Images\\Main_Background.jpg",
+      "positioningMode": "backgroundPercentage",
+      "elements": [
+        {
+          "type": "label",
+          "text": "Aspect Ratio:",
+          "position": {
+            "x": -0.2,
+            "y": -0.2235
+          },
+          "textStyle": {
+            "fontSize": 10.0,
+            "color": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          }
+        },
+        {
+          "type": "dropdown",
+          "name": "AspectRatio",
+          "position": {
+            "x": -0.0521,
+            "y": -0.2235
+          },
+          "size": {
+            "width": 300,
+            "height": 60
+          },
+          "options": [ "4:3", "16:9", "16:10", "21:9", "32:9" ],
+          "selectedIndex": 1,
+          "action": "ChangeAspectRatio",
+          "textStyle": {
+            "fontSize": 10.0,
+            "color": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          },
+          "buttonStyle": {
+            "backgroundColor": {
+              "r": 0.0,
+              "g": 0.5,
+              "b": 0.5,
+              "a": 0.8
+            },
+            "hoverColor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 0.8
+            },
+            "borderColor": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          }
+        },
+        {
+          "type": "label",
+          "text": "Resolution:",
+          "position": {
+            "x": -0.2,
+            "y": -0.1453
+          },
+          "textStyle": {
+            "fontSize": 10.0,
+            "color": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          }
+        },
+        {
+          "type": "dropdown",
+          "name": "Resolution",
+          "position": {
+            "x": -0.0521,
+            "y": -0.1453
+          },
+          "size": {
+            "width": 300,
+            "height": 60
+          },
+          "iconIndex": 1,
+          "options": [ "1280x720", "1920x1080", "2560x1440" ],
+          "selectedIndex": 0,
+          "action": "ChangeResolution",
+          "textStyle": {
+            "fontSize": 10.0,
+            "color": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          },
+          "buttonStyle": {
+            "backgroundColor": {
+              "r": 0.0,
+              "g": 0.5,
+              "b": 0.5,
+              "a": 0.8
+            },
+            "hoverColor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 0.8
+            },
+            "borderColor": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          }
+        },
+        {
+          "type": "toggle",
+          "name": "Fullscreen",
+          "position": {
+            "x": -0.0521,
+            "y": -0.0670
+          },
+          "size": {
+            "width": 300,
+            "height": 60
+          },
+          "iconIndex": 3,
+          "state": false,
+          "action": "ToggleFullScreen",
+          "textStyle": {
+            "fontSize": 10.0,
+            "color": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          },
+          "buttonStyle": {
+            "backgroundColor": {
+              "r": 0.0,
+              "g": 0.5,
+              "b": 0.5,
+              "a": 0.8
+            },
+            "hoverColor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 0.8
+            },
+            "borderColor": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          }
+        },
+        {
+          "type": "button",
+          "text": "Apply",
+          "position": {
+            "x": -0.0521,
+            "y": 0.0112
+          },
+          "size": {
+            "width": 300,
+            "height": 60
+          },
+          "iconIndex": 13,
+          "action": "ApplySettings",
+          "textStyle": {
+            "fontSize": 10.0,
+            "color": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          },
+          "buttonStyle": {
+            "backgroundColor": {
+              "r": 0.0,
+              "g": 0.5,
+              "b": 0.5,
+              "a": 0.8
+            },
+            "hoverColor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 0.8
+            },
+            "borderColor": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          }
+        },
+        {
+          "type": "button",
+          "text": "Back to Main Menu",
+          "position": {
+            "x": -0.0521,
+            "y": 0.0894
+          },
+          "size": {
+            "width": 300,
+            "height": 60
+          },
+          "iconIndex": 13,
+          "action": "ShowMainMenu",
+          "textStyle": {
+            "fontSize": 10.0,
+            "color": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 1.0
+            }
+          },
+          "buttonStyle": {
+            "backgroundColor": {
+              "r": 0.0,
+              "g": 0.5,
+              "b": 0.5,
+              "a": 0.8
+            },
+            "hoverColor": {
+              "r": 1.0,
+              "g": 1.0,
+              "b": 1.0,
+              "a": 0.8
+            },
+            "borderColor": {
+              "r": 0.0,
+              "g": 0.0,
+              "b": 0.0,
+              "a": 1.0
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
