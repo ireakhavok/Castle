@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Numerics;
-using Engine.Core.Definitions;
-using Engine.Core.PlayerSystem;
+using SiegeEngine.Definitions;
+using SiegeEngine.PlayerSystem;
 using SiegeEngine.Interfaces;
 
 namespace SiegeEngine.Definitions

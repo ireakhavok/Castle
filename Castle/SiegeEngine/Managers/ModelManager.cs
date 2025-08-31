@@ -1,8 +1,7 @@
 ﻿// Engine.Core.Managers/ModelManager.cs
-using Engine.Core.Definitions;
+using SiegeEngine.Definitions;
 using SiegeEngine.AssetObjects;
 using SiegeEngine.AssetParsing;
-using SiegeEngine.Definitions;
 using SiegeEngine.Interfaces;
 using SiegeEngine.Rendering;
 using SiegeEngine.UnityAssetLoader;

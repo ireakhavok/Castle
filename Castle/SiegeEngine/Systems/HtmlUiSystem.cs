@@ -6,12 +6,11 @@ using System.Numerics;
 using Silk.NET.GLFW;
 using System.Drawing;
 using Silk.NET.OpenGL;
-using Engine.Core.Events;
+using SiegeEngine.Events;
 using SiegeEngine.Rendering.Definitions;
 using SiegeEngine.Networking;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Interfaces;
-using SiegeEngine.Events;
 using SiegeEngine.Rendering;
 using SiegeEngine.Scenes;
 
@@ -525,7 +524,7 @@ namespace SiegeEngine.Systems
                     var dropdown = new Dropdown(new DropdownDefinition
                     {
                         Position = new Position { X = xOffset, Y = 10 },
-                        Size = new Engine.Core.Rendering.Definitions.Size { Width = 150, Height = 40 },
+                        Size = new SiegeEngine.Rendering.Definitions.Size { Width = 150, Height = 40 },
                         Options = options,
                         SelectedIndex = selectedIndex,
                         IsOptionsBelow = true
@@ -541,7 +540,7 @@ namespace SiegeEngine.Systems
                     {
                         Name = id,
                         Position = new Position { X = xOffset, Y = 10 },
-                        Size = new Engine.Core.Rendering.Definitions.Size { Width = 20, Height = 20 },
+                        Size = new SiegeEngine.Rendering.Definitions.Size { Width = 20, Height = 20 },
                         ButtonStyle = new ButtonStyle(),
                         TextStyle = new TextStyle { FontSize = 12.0f },
                         State = _gridSnapState

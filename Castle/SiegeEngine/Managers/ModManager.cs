@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Linq;
-using Engine.Core.UnityAssetLoader;
 using SiegeEngine.Interfaces;
 using SiegeEngine.UnityAssetLoader;
 
