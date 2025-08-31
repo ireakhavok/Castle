@@ -1,4 +1,5 @@
-﻿using System;
+﻿// SiegeEngine/Managers/UISettingsManager.cs
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
@@ -13,6 +14,8 @@ namespace SiegeEngine.Managers
         private bool _isFullscreen;
         private Dictionary<string, int> _iconIndices;
         private bool _allowResize;
+        private string _currentRenderer;
+        private List<string> _availableRenderers;
 
         public int WindowWidth => _windowWidth;
         public int WindowHeight => _windowHeight;
@@ -23,6 +26,16 @@ namespace SiegeEngine.Managers
             get => _allowResize;
             set => _allowResize = value;
         }
+        public string CurrentRenderer
+        {
+            get => _currentRenderer ??= "OpenGL";
+            set => _currentRenderer = value;
+        }
+        public List<string> AvailableRenderers
+        {
+            get => _availableRenderers ??= new List<string> { "OpenGL" };
+            set => _availableRenderers = value;
+        }
 
         public UISettingsManager()
         {
@@ -30,7 +43,6 @@ namespace SiegeEngine.Managers
             string appFolder = Path.Combine(appData, "GrokAIGame");
             Directory.CreateDirectory(appFolder);
             _settingsPath = Path.Combine(appFolder, "settings.json");
-
             _windowWidth = 1280;
             _windowHeight = 720;
             _isFullscreen = false;
@@ -53,13 +65,11 @@ namespace SiegeEngine.Managers
                 Console.WriteLine($"UISettingsManager: Invalid resolution {width}x{height}, ignoring");
                 return;
             }
-
             if (!_allowResize)
             {
                 Console.WriteLine($"UISettingsManager: Resize blocked for {width}x{height}, allowResize is false");
                 return;
             }
-
             _windowWidth = width;
             _windowHeight = height;
             string aspectRatio = GetAspectRatio(width, height);
@@ -74,7 +84,6 @@ namespace SiegeEngine.Managers
         {
             if (width <= 0 || height <= 0)
                 return "16:9";
-
             return (width, height) switch
             {
                 (800, 600) or (1024, 768) or (1280, 960) or (1400, 1050) or (1600, 1200) => "4:3",
@@ -138,7 +147,15 @@ namespace SiegeEngine.Managers
                     {
                         _iconIndices = JsonSerializer.Deserialize<Dictionary<string, int>>(iconIndicesObj.ToString()) ?? _iconIndices;
                     }
-                    Console.WriteLine($"UISettingsManager: Loaded settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}");
+                    if (settings.TryGetValue("CurrentRenderer", out var rendererObj))
+                    {
+                        _currentRenderer = rendererObj.ToString();
+                    }
+                    if (settings.TryGetValue("AvailableRenderers", out var availObj))
+                    {
+                        _availableRenderers = JsonSerializer.Deserialize<List<string>>(availObj.ToString()) ?? _availableRenderers;
+                    }
+                    Console.WriteLine($"UISettingsManager: Loaded settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}");
                 }
                 catch (Exception ex)
                 {
@@ -166,11 +183,13 @@ namespace SiegeEngine.Managers
                     { "WindowWidth", _windowWidth },
                     { "WindowHeight", _windowHeight },
                     { "IsFullscreen", _isFullscreen },
-                    { "IconIndices", _iconIndices }
+                    { "IconIndices", _iconIndices },
+                    { "CurrentRenderer", _currentRenderer },
+                    { "AvailableRenderers", _availableRenderers }
                 };
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);
-                Console.WriteLine($"UISettingsManager: Saved settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}");
+                Console.WriteLine($"UISettingsManager: Saved settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}");
             }
             catch (Exception ex)
             {

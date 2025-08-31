@@ -7,4 +7,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
+    <ProjectReference Include="..\Trebuchet\Trebuchet.csproj" />
+  </ItemGroup>
+
 </Project>
