@@ -1,0 +1,84 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+.title {
+    position: absolute;
+    left: 50px;
+    top: 50px;
+    font-size: 24px;
+    color: #ffd700;
+    text-shadow: 2px 2px 4px #000;
+}
+
+.btn {
+    position: absolute;
+    width: 200px;
+    height: 50px;
+    background: linear-gradient(45deg, #1e90ff, #00b7eb);
+    color: white;
+    border: 2px solid #104e8b;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+    .btn:hover {
+        background: linear-gradient(45deg, #00b7eb, #1e90ff);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+
+#save-level {
+    top: 100px;
+    left: 50px;
+}
+
+#back {
+    top: 300px;
+    left: 50px;
+    background: linear-gradient(45deg, #ff4500, #ff6347);
+}
+
+    #back:hover {
+        background: linear-gradient(45deg, #ff6347, #ff4500);
+    }
+
+.dropdown {
+    position: absolute;
+    top: 160px;
+    left: 50px;
+    width: 200px;
+    height: 50px;
+    background: linear-gradient(45deg, #32cd32, #3cb371);
+    color: white;
+    border: 2px solid #228b22;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.toggle {
+    position: absolute;
+    top: 220px;
+    left: 50px;
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+}
+
+    .toggle + label {
+        position: absolute;
+        top: 225px;
+        left: 80px;
+        font-size: 16px;
+        color: white;
+    }
+
+.hint {
+    position: absolute;
+    left: 300px;
+    top: 50px;
+    font-size: 18px;
+    color: #ccc;
+}

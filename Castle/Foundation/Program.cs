@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using SiegeEngine.Managers;
 using SiegeEngine.Networking;
 using SiegeEngine.Rendering;
+using Trebuchet;
 
 namespace Foundation
 {
@@ -36,7 +37,8 @@ namespace Foundation
 
             try
             {
-                Process.Start("Trebuchet.exe");
+                var launcher = new Launcher();
+                launcher.Start();
             }
             catch (Exception ex)
             {

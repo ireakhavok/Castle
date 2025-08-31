@@ -2,7 +2,7 @@
   "menus": [
     {
       "name": "MainMenu",
-      "background": "C:\\Users\\ireak\\source\\repos\\GrokAIgame\\Assets\\Static_Images\\Main_Background.jpg",
+      "background": "Assets\\Static_Images\\Main_Background.jpg",
       "positioningMode": "backgroundPercentage",
       "tabs": [
         {

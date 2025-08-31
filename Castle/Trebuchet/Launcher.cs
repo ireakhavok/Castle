@@ -1,4 +1,4 @@
-﻿// Trebuchet/Program.cs
+﻿// Trebuchet/Launcher.cs
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -19,22 +19,22 @@ using SiegeEngine.Systems;
 
 namespace Trebuchet
 {
-    unsafe class Program
+    public unsafe class Launcher
     {
-        private static bool _isRunning;
-        private static Glfw _glfw;
-        private static GL _gl;
-        private static WindowHandle* _window;
-        private static UISettingsManager _settingsManager;
-        private static ISteamEngine _steamEngine;
-        private static EventBus _eventBus;
-        private static MenuManager _menuManager;
-        private static IRenderContext _renderContext;
-        private static CustomUIController _uiController;
-        private static InputHandler _inputHandler;
-        private static ModManager _modManager;
+        private bool _isRunning;
+        private Glfw _glfw;
+        private GL _gl;
+        private WindowHandle* _window;
+        private UISettingsManager _settingsManager;
+        private ISteamEngine _steamEngine;
+        private EventBus _eventBus;
+        private MenuManager _menuManager;
+        private IRenderContext _renderContext;
+        private CustomUIController _uiController;
+        private InputHandler _inputHandler;
+        private ModManager _modManager;
 
-        static void Main(string[] args)
+        public void Start()
         {
             try
             {
@@ -99,7 +99,7 @@ namespace Trebuchet
 
                     _menuManager.SwitchMenu("MainMenu");
 
-                    _uiController.SettingsSelected += () =>
+                    _menuManager.OnSettingsSelected += () =>
                     {
                         Console.WriteLine("Launcher: Settings selected, switching to UserSettingsMenu");
                         _menuManager.SwitchMenu("UserSettingsMenu");
