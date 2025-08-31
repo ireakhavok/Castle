@@ -21,6 +21,9 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs
 Found: .
 Found: ..
+Found: EditorMenu.css
+Found: EditorMenu.html
+Found: EditorMenu.json
 Found: MainMenu.json
 Found: Static_Images
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Static_Images
@@ -132,6 +135,36 @@ Found: net8.0
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0
 Found: .
 Found: ..
+Found: Assets
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets
+Found: .
+Found: ..
+Found: Configs
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\Configs
+Found: .
+Found: ..
+Found: MainMenu.json
+Found: mods
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\mods
+Found: .
+Found: ..
+Found: MyMod
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\mods\MyMod
+Found: .
+Found: ..
+Found: menu.json
+Found: Static_Images
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\Static_Images
+Found: .
+Found: ..
+Found: DirtPath2.jpg
+Found: DirtPath2.jpg.meta
+Found: DirtPathTexture.jpg
+Found: DirtPathTexture.jpg.meta
+Found: Main_Background.jpg
+Found: Main_Background.jpg.meta
+Found: main_background_grok_lol.jpg
+Found: main_background_grok_lol.jpg.meta
 Found: Citadel.deps.json
 Found: Citadel.dll
 Found: Citadel.exe
@@ -620,7 +653,18 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Configs
 Found: .
 Found: ..
+Found: EditorMenu.css
+Found: EditorMenu.html
+Found: EditorMenu.json
 Found: MainMenu.json
+Found: mods
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\mods
+Found: .
+Found: ..
+Found: MyMod
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\mods\MyMod
+Found: .
+Found: ..
 Found: Static_Images
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Static_Images
 Found: .
@@ -742,11 +786,8 @@ Found: steam_appid.txt
 Found: System.Drawing.Common.dll
 Found: System.Private.Windows.Core.dll
 Found: System.Windows.Extensions.dll
-Found: Trebuchet.deps.json
 Found: Trebuchet.dll
-Found: Trebuchet.exe
 Found: Trebuchet.pdb
-Found: Trebuchet.runtimeconfig.json
 Found: YamlDotNet.dll
 Found: Foundation.csproj
 Found: obj
@@ -807,9 +848,9 @@ Found: project.nuget.cache
 Found: Program.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
-Read 1426 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
+Read 1476 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
 Namespace: Foundation
-Found 6 dependencies
+Found 7 dependencies
 Class Program: 2 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
 Found: Libraries
@@ -1094,7 +1135,18 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Configs
 Found: .
 Found: ..
+Found: EditorMenu.css
+Found: EditorMenu.html
+Found: EditorMenu.json
 Found: MainMenu.json
+Found: mods
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\mods
+Found: .
+Found: ..
+Found: MyMod
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\mods\MyMod
+Found: .
+Found: ..
 Found: Static_Images
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Static_Images
 Found: .
@@ -2221,7 +2273,18 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Configs
 Found: .
 Found: ..
+Found: EditorMenu.css
+Found: EditorMenu.html
+Found: EditorMenu.json
 Found: MainMenu.json
+Found: mods
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\mods
+Found: .
+Found: ..
+Found: MyMod
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\mods\MyMod
+Found: .
+Found: ..
 Found: Static_Images
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Static_Images
 Found: .
@@ -2234,9 +2297,6 @@ Found: Main_Background.jpg
 Found: Main_Background.jpg.meta
 Found: main_background_grok_lol.jpg
 Found: main_background_grok_lol.jpg.meta
-Found: Microsoft.DotNet.PlatformAbstractions.dll
-Found: Microsoft.Extensions.DependencyModel.dll
-Found: Microsoft.Win32.SystemEvents.dll
 Found: runtimes
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes
 Found: .
@@ -2249,7 +2309,6 @@ Found: native
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\linux-arm\native
 Found: .
 Found: ..
-Found: libglfw.so.3
 Found: linux-arm64
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\linux-arm64
 Found: .
@@ -2258,7 +2317,6 @@ Found: native
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\linux-arm64\native
 Found: .
 Found: ..
-Found: libglfw.so.3
 Found: linux-x64
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\linux-x64
 Found: .
@@ -2267,7 +2325,6 @@ Found: native
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\linux-x64\native
 Found: .
 Found: ..
-Found: libglfw.so.3
 Found: osx-arm64
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\osx-arm64
 Found: .
@@ -2276,7 +2333,6 @@ Found: native
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\osx-arm64\native
 Found: .
 Found: ..
-Found: libglfw.3.dylib
 Found: osx-x64
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\osx-x64
 Found: .
@@ -2285,7 +2341,6 @@ Found: native
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\osx-x64\native
 Found: .
 Found: ..
-Found: libglfw.3.dylib
 Found: win
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\win
 Found: .
@@ -2298,8 +2353,6 @@ Found: net9.0
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\win\lib\net9.0
 Found: .
 Found: ..
-Found: Microsoft.Win32.SystemEvents.dll
-Found: System.Windows.Extensions.dll
 Found: win-arm64
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\win-arm64
 Found: .
@@ -2308,7 +2361,6 @@ Found: native
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\win-arm64\native
 Found: .
 Found: ..
-Found: glfw3.dll
 Found: win-x64
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\win-x64
 Found: .
@@ -2317,7 +2369,6 @@ Found: native
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\win-x64\native
 Found: .
 Found: ..
-Found: glfw3.dll
 Found: win-x86
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\win-x86
 Found: .
@@ -2326,24 +2377,21 @@ Found: native
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\runtimes\win-x86\native
 Found: .
 Found: ..
-Found: glfw3.dll
 Found: SiegeEngine.dll
 Found: SiegeEngine.pdb
-Found: Silk.NET.Core.dll
-Found: Silk.NET.GLFW.dll
-Found: Silk.NET.Maths.dll
-Found: Silk.NET.OpenGL.dll
 Found: steam_api64.dll
 Found: steam_appid.txt
-Found: System.Drawing.Common.dll
-Found: System.Private.Windows.Core.dll
-Found: System.Windows.Extensions.dll
 Found: Trebuchet.deps.json
 Found: Trebuchet.dll
-Found: Trebuchet.exe
 Found: Trebuchet.pdb
-Found: Trebuchet.runtimeconfig.json
-Found: YamlDotNet.dll
+Found: Launcher.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 6266 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Namespace: Trebuchet
+Found 17 dependencies
+Class Launcher: 2 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Found: obj
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj
 Found: .
@@ -2384,7 +2432,6 @@ Found: Trebuchet.csproj.FileListAbsolute.txt
 Found: Trebuchet.csproj.Up2Date
 Found: Trebuchet.dll
 Found: Trebuchet.GeneratedMSBuildEditorConfig.editorconfig
-Found: Trebuchet.genruntimeconfig.cache
 Found: Trebuchet.GlobalUsings.g.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Debug\net9.0\Trebuchet.GlobalUsings.g.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Debug\net9.0\Trebuchet.GlobalUsings.g.cs
@@ -2399,14 +2446,6 @@ Found: project.nuget.cache
 Found: Trebuchet.csproj.nuget.dgspec.json
 Found: Trebuchet.csproj.nuget.g.props
 Found: Trebuchet.csproj.nuget.g.targets
-Found: Program.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Program.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Program.cs
-Read 6352 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Program.cs
-Namespace: Trebuchet
-Found 17 dependencies
-Class Program: 2 methods
-Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Program.cs
 Found: Trebuchet.csproj
 Found: Documentation
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation

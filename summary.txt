@@ -113,7 +113,7 @@ Folder: Castle
  File: Program.cs
  class: Program (Namespace: Foundation)
  Inherits: None
- Dependencies: SiegeEngine.Managers, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.Rendering, System, System.Diagnostics, System.Runtime.InteropServices
+ Dependencies: SiegeEngine.Managers, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.Rendering, System, System.Diagnostics, System.Runtime.InteropServices, Trebuchet
  Methods:
  - int MessageBox(nint hWnd, nint hWnd, string text, string caption, uint type)
  Calls: DetectAvailable, DetectAvailable, Dispose, Initialize, LoadSettings, MessageBox, SaveSettings, Start, SteamEngine, UISettingsManager
@@ -2256,12 +2256,12 @@ Folder: Castle
  Inherits: None
  Dependencies: None
  Methods:
- File: Program.cs
- class: Program (Namespace: Trebuchet)
+ File: Launcher.cs
+ class: Launcher (Namespace: Trebuchet)
  Inherits: None
  Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
  Methods:
- - void Main(string[] args, string[] args)
+ - void Start()
  Calls: CustomUIController, CustomUIController, EventBus, GetMenuConfigPath, Initialize, InputHandler, LoadLibrary, LoadSettings, MenuManager, ModManager, OpenGLRenderContext, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SteamEngine, SwitchMenu, UISettingsManager, Update, UpdateWindowSize
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
