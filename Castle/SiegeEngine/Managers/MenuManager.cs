@@ -1,13 +1,16 @@
-﻿using SiegeEngine.Definitions;
+﻿// SiegeEngine/Managers/MenuManager.cs
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Numerics;
+using System.Text.Json;
+using SiegeEngine.Definitions;
 using SiegeEngine.Interfaces;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Rendering.Definitions;
 using SiegeEngine.Scenes;
 using Silk.NET.GLFW;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text.Json;
 
 namespace SiegeEngine.Managers
 {
@@ -95,6 +98,10 @@ namespace SiegeEngine.Managers
                 var parser = new HtmlMenuParser();
                 _currentMenu = parser.ParseMenu(html, menuName);
                 if (_currentMenu == null) throw new InvalidOperationException("Failed to parse menu HTML.");
+                if (_currentMenu.Tabs != null && _currentMenu.Tabs.Count > 0)
+                {
+                    _currentTab = _currentMenu.Tabs[0].Name;
+                }
                 LoadCurrentMenu();
             }
             catch (Exception ex)
@@ -109,12 +116,31 @@ namespace SiegeEngine.Managers
             Console.WriteLine($"MenuManager: Loading menu {_currentMenu.Name}, current window size: {currentWidth}x{currentHeight}");
             _elements = new List<object>();
 
+            // Add tab selectors if tabs exist
             if (_currentMenu.Tabs != null && _currentMenu.Tabs.Count > 0)
             {
-                _currentTab = _currentMenu.Tabs[0].Name;
+                float tabX = 0f;
+                float tabY = -0.3f; // Position tabs at top, adjust as needed
+                float tabWidth = 0.2f;
+                float tabHeight = 0.05f;
+                int tabIndex = 0;
+                foreach (var tab in _currentMenu.Tabs)
+                {
+                    var tabButtonDef = new ButtonDefinition
+                    {
+                        Text = tab.Name,
+                        Position = new Position { X = tabX + (tabIndex * tabWidth), Y = tabY },
+                        Size = new Size { Width = (int)(currentWidth * tabWidth), Height = (int)(currentHeight * tabHeight) },
+                        IconIndex = tab.IconIndex,
+                        Action = tab.Action
+                    };
+                    Action onClick = GetButtonAction(tabButtonDef.Action);
+                    _elements.Add(new Button(tabButtonDef, onClick));
+                    tabIndex++;
+                }
             }
 
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            // Load common buttons
             foreach (var buttonDef in _currentMenu.Buttons ?? new List<ButtonDefinition>())
             {
                 if (buttonDef == null) continue;
@@ -122,64 +148,118 @@ namespace SiegeEngine.Managers
                 _elements.Add(new Button(buttonDef, onClick));
             }
 
+            // Load common elements
+            var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             foreach (var element in _currentMenu.Elements ?? new List<Dictionary<string, object>>())
             {
-                string type = element.GetValueOrDefault("type")?.ToString();
-                if (string.IsNullOrEmpty(type)) continue;
+                AddElementToList(element, jsonOptions);
+            }
 
-                switch (type.ToLower())
+            // Load tab-specific if _currentTab set
+            if (_currentTab != null)
+            {
+                var tab = _currentMenu.Tabs?.Find(t => t.Name == _currentTab);
+                if (tab != null)
                 {
-                    case "dropdown":
-                        var dropdownDef = JsonSerializer.Deserialize<DropdownDefinition>(JsonSerializer.Serialize(element), options);
-                        if (dropdownDef == null) continue;
-                        Action<int> onSelect = GetDropdownAction(dropdownDef.Action);
-                        var dropdown = new Dropdown(dropdownDef, onSelect);
-                        _elements.Add(dropdown);
-                        break;
-                    case "toggle":
-                        var toggleDef = JsonSerializer.Deserialize<ToggleDefinition>(JsonSerializer.Serialize(element), options);
-                        if (toggleDef == null) continue;
-                        Action<bool> onToggle = GetToggleAction(toggleDef.Action);
-                        _elements.Add(new Toggle(toggleDef, onToggle));
-                        break;
-                    case "label":
-                        var labelDef = JsonSerializer.Deserialize<LabelDefinition>(JsonSerializer.Serialize(element), options);
-                        if (labelDef == null) continue;
-                        _elements.Add(new Label(labelDef));
-                        break;
+                    foreach (var buttonDef in tab.Buttons ?? new List<ButtonDefinition>())
+                    {
+                        if (buttonDef == null) continue;
+                        Action onClick = GetButtonAction(buttonDef.Action);
+                        _elements.Add(new Button(buttonDef, onClick));
+                    }
+
+                    foreach (var element in tab.Elements ?? new List<Dictionary<string, object>>())
+                    {
+                        AddElementToList(element, jsonOptions);
+                    }
                 }
             }
 
-            //if (_currentTab != null)
-            //{
-            //    SwitchTab(_currentTab);
-            //}
-
-            //if (_showInventory && _player != null)
-            //{
-            //    LoadInventoryMenu();
-            //}
+            if (_showInventory && _player != null)
+            {
+                LoadInventoryMenu();
+            }
 
             UpdateIconIndices();
             OnMenuSwitched?.Invoke(_currentMenu.Background ?? "", _settings.IconIndices);
         }
 
-        private void UpdateIconIndices()
+        private void AddElementToList(Dictionary<string, object> element, JsonSerializerOptions options)
         {
-            foreach (var element in _elements)
+            string type = element.GetValueOrDefault("type")?.ToString()?.ToLower();
+            if (string.IsNullOrEmpty(type)) return;
+
+            switch (type)
             {
-                string text = element switch
+                case "dropdown":
+                    var dropdownDef = JsonSerializer.Deserialize<DropdownDefinition>(JsonSerializer.Serialize(element), options);
+                    if (dropdownDef == null) return;
+                    Action<int> onSelect = GetDropdownAction(dropdownDef.Action);
+                    _elements.Add(new Dropdown(dropdownDef, onSelect));
+                    break;
+                case "toggle":
+                    var toggleDef = JsonSerializer.Deserialize<ToggleDefinition>(JsonSerializer.Serialize(element), options);
+                    if (toggleDef == null) return;
+                    Action<bool> onToggle = GetToggleAction(toggleDef.Action);
+                    _elements.Add(new Toggle(toggleDef, onToggle));
+                    break;
+                case "label":
+                    var labelDef = JsonSerializer.Deserialize<LabelDefinition>(JsonSerializer.Serialize(element), options);
+                    if (labelDef == null) return;
+                    _elements.Add(new Label(labelDef));
+                    break;
+            }
+        }
+
+        private void LoadInventoryMenu()
+        {
+            var entity = _server.GetEntityById(_player.EntityId);
+            var inventory = entity?.GetComponent<InventoryComponent>();
+            if (inventory == null) return;
+
+            _elements.Add(new Label(new LabelDefinition
+            {
+                Text = $"Cash: {inventory.Cash}",
+                Position = new Position { X = 10, Y = 10 },
+                TextStyle = new TextStyle { FontSize = 16 }
+            }));
+
+            int yOffset = 40;
+            foreach (var item in inventory.Items.Values)
+            {
+                var rarityColor = item.Rarity switch
                 {
-                    Button button => button.Text,
-                    Dropdown dropdown => dropdown.Name,
-                    Toggle toggle => toggle.Name,
-                    Label label => label.Text,
-                    _ => null
+                    InventoryComponent.Rarity.Common => new Color { R = 1.0f, G = 1.0f, B = 1.0f, A = 1.0f },
+                    InventoryComponent.Rarity.Uncommon => new Color { R = 0.0f, G = 1.0f, B = 0.0f, A = 1.0f },
+                    InventoryComponent.Rarity.Rare => new Color { R = 0.0f, G = 0.0f, B = 1.0f, A = 1.0f },
+                    InventoryComponent.Rarity.Epic => new Color { R = 0.5f, G = 0.0f, B = 0.5f, A = 1.0f },
+                    InventoryComponent.Rarity.Legendary => new Color { R = 1.0f, G = 0.5f, B = 0.0f, A = 1.0f },
+                    _ => new Color { R = 1.0f, G = 1.0f, B = 1.0f, A = 1.0f }
                 };
-                if (text != null && !_settings.IconIndices.ContainsKey(text))
+
+                _elements.Add(new Label(new LabelDefinition
                 {
-                    _settings.IconIndices[text] = 0;
-                }
+                    Text = $"{item.Name} (T{item.Tier} L{item.Level}) [{item.StackSize}]",
+                    Position = new Position { X = 10, Y = yOffset },
+                    TextStyle = new TextStyle { FontSize = 14, Color = rarityColor }
+                }));
+
+                _elements.Add(new Button(new ButtonDefinition
+                {
+                    Text = "Upgrade",
+                    Position = new Position { X = 220, Y = yOffset },
+                    Size = new Size { Width = 80, Height = 20 },
+                    Action = "UpgradeItem"
+                }, () =>
+                {
+                    if (_server.ValidateInventory(_player.EntityId, "UpgradeItem", item.Id))
+                    {
+                        inventory.UpgradeItem(item.Id);
+                        SwitchMenu(_currentMenu.Name);
+                    }
+                }));
+
+                yOffset += 30;
             }
         }
 
@@ -196,12 +276,9 @@ namespace SiegeEngine.Managers
 
         public void SwitchTab(string tabName)
         {
-            var tab = _currentMenu.Tabs?.Find(t => t.Name == tabName);
-            if (tab != null)
+            if (_currentMenu.Tabs?.Any(t => t.Name == tabName) ?? false)
             {
                 _currentTab = tabName;
-                _currentMenu.Buttons = tab.Buttons ?? new List<ButtonDefinition>();
-                _currentMenu.Elements = tab.Elements ?? new List<Dictionary<string, object>>();
                 LoadCurrentMenu();
             }
         }
@@ -211,7 +288,7 @@ namespace SiegeEngine.Managers
             var newIndices = new Dictionary<string, int>(_settings.IconIndices);
             foreach (var element in _elements)
             {
-                string name = element switch
+                string key = element switch
                 {
                     Button btn => btn.Text,
                     Dropdown dd => dd.Name,
@@ -219,11 +296,11 @@ namespace SiegeEngine.Managers
                     Label lb => lb.Text,
                     _ => null
                 };
-                if (name != null)
+                if (key != null)
                 {
-                    int currentIndex = newIndices.GetValueOrDefault(name, 0);
+                    int currentIndex = newIndices.GetValueOrDefault(key, 0);
                     int nextIndex = (Array.IndexOf(new int[] { 0, 1, 3, 13, 15, 23 }, currentIndex) + 1) % 6;
-                    newIndices[name] = new int[] { 0, 1, 3, 13, 15, 23 }[nextIndex];
+                    newIndices[key] = new int[] { 0, 1, 3, 13, 15, 23 }[nextIndex];
                 }
             }
             _settings.UpdateIconIndices(newIndices);
@@ -327,6 +404,25 @@ namespace SiegeEngine.Managers
                 a = temp;
             }
             return a;
+        }
+
+        private void UpdateIconIndices()
+        {
+            foreach (var element in _elements)
+            {
+                string text = element switch
+                {
+                    Button button => button.Text,
+                    Dropdown dropdown => dropdown.Name,
+                    Toggle toggle => toggle.Name,
+                    Label label => label.Text,
+                    _ => null
+                };
+                if (text != null && !_settings.IconIndices.ContainsKey(text))
+                {
+                    _settings.IconIndices[text] = 0;
+                }
+            }
         }
 
         public event Action<string, Dictionary<string, int>> OnMenuSwitched;

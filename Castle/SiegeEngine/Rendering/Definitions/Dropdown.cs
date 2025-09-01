@@ -36,20 +36,20 @@ namespace SiegeEngine.Rendering.Definitions
         {
             IsHovered = mousePos.X >= adjustedPos.X && mousePos.X <= adjustedPos.X + Size.X &&
                         mousePos.Y >= adjustedPos.Y && mousePos.Y <= adjustedPos.Y + Size.Y;
-            Console.WriteLine($"Dropdown: Updating {Name} - AdjustedPos: ({adjustedPos.X}, {adjustedPos.Y}), Size: ({Size.X}, {Size.Y}), MousePos: ({mousePos.X}, {mousePos.Y}), IsHovered: {IsHovered}");
+            //Console.WriteLine($"Dropdown: Updating {Name} - AdjustedPos: ({adjustedPos.X}, {adjustedPos.Y}), Size: ({Size.X}, {Size.Y}), MousePos: ({mousePos.X}, {mousePos.Y}), IsHovered: {IsHovered}");
         }
 
         public void ToggleExpanded()
         {
             IsExpanded = !IsExpanded;
-            Console.WriteLine($"Dropdown: Toggled {Name} expanded state to: {IsExpanded}");
+            //Console.WriteLine($"Dropdown: Toggled {Name} expanded state to: {IsExpanded}");
         }
 
         public int GetOptionIndexAt(Vector2 mousePos, Vector2 adjustedPos)
         {
             if (!IsExpanded)
             {
-                Console.WriteLine($"Dropdown: {Name} is not expanded, cannot select option.");
+                //Console.WriteLine($"Dropdown: {Name} is not expanded, cannot select option.");
                 return -1;
             }
 
@@ -61,7 +61,7 @@ namespace SiegeEngine.Rendering.Definitions
                     float optionY = adjustedPos.Y + Size.Y + i * 30;
                     bool inBounds = mousePos.X >= optionX && mousePos.X <= optionX + Size.X &&
                                     mousePos.Y >= optionY && mousePos.Y <= optionY + 30;
-                    Console.WriteLine($"Dropdown: Checking option {i} ({Options[i]}) at ({optionX}, {optionY}) to ({optionX + Size.X}, {optionY + 30}) - Mouse: ({mousePos.X}, {mousePos.Y}), InBounds: {inBounds}");
+                    //Console.WriteLine($"Dropdown: Checking option {i} ({Options[i]}) at ({optionX}, {optionY}) to ({optionX + Size.X}, {optionY + 30}) - Mouse: ({mousePos.X}, {mousePos.Y}), InBounds: {inBounds}");
                     if (inBounds)
                     {
                         return i;
@@ -73,7 +73,7 @@ namespace SiegeEngine.Rendering.Definitions
                     float optionY = adjustedPos.Y + Size.Y * i;
                     bool inBounds = mousePos.X >= optionX && mousePos.X <= optionX + Size.X &&
                                     mousePos.Y >= optionY && mousePos.Y <= optionY + Size.Y;
-                    Console.WriteLine($"Dropdown: Checking option {i} ({Options[i]}) at ({optionX}, {optionY}) to ({optionX + Size.X}, {optionY + Size.Y}) - Mouse: ({mousePos.X}, {mousePos.Y}), InBounds: {inBounds}");
+                    //Console.WriteLine($"Dropdown: Checking option {i} ({Options[i]}) at ({optionX}, {optionY}) to ({optionX + Size.X}, {optionY + Size.Y}) - Mouse: ({mousePos.X}, {mousePos.Y}), InBounds: {inBounds}");
                     if (inBounds)
                     {
                         return i;
@@ -91,11 +91,11 @@ namespace SiegeEngine.Rendering.Definitions
                 SelectedIndex = index;
                 IsExpanded = false;
                 OnSelect?.Invoke(index);
-                Console.WriteLine($"Dropdown: Selected option {index}: {Options[index]} for {Name}");
+                //Console.WriteLine($"Dropdown: Selected option {index}: {Options[index]} for {Name}");
             }
             else
             {
-                Console.WriteLine($"Dropdown: Invalid option index {index} for {Name}, Options count: {Options.Count}");
+                //Console.WriteLine($"Dropdown: Invalid option index {index} for {Name}, Options count: {Options.Count}");
             }
         }
 
@@ -103,7 +103,7 @@ namespace SiegeEngine.Rendering.Definitions
         {
             Options = newOptions ?? new List<string> { "None" };
             SelectedIndex = 0;
-            Console.WriteLine($"Dropdown: Updated options for {Name}: {string.Join(", ", Options)}");
+            //Console.WriteLine($"Dropdown: Updated options for {Name}: {string.Join(", ", Options)}");
         }
     }
 }

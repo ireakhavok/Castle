@@ -1,7 +1,9 @@
-﻿using SiegeEngine.Rendering.Definitions;
+﻿// SiegeEngine/Managers/HtmlMenuParser.cs
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using SiegeEngine.Rendering.Definitions;
+using System.Numerics;
 
 namespace SiegeEngine.Managers
 {
@@ -9,7 +11,7 @@ namespace SiegeEngine.Managers
     {
         public MenuDefinition ParseMenu(string html, string name)
         {
-            html = Regex.Replace(html, @"\r?\n|\r", " "); // Remove newlines for easier parsing
+            html = Regex.Replace(html, @"\r?\n|\r", " ");
             var bodyRegex = new Regex(@"<body\s+([^>]*)>(.*?)</body>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             Match bodyMatch = bodyRegex.Match(html);
             if (!bodyMatch.Success) return null;
@@ -28,7 +30,6 @@ namespace SiegeEngine.Managers
 
             var menu = new MenuDefinition { Name = name, PositioningMode = positioningMode, Background = background };
 
-            // Parse nav for tab info
             var navRegex = new Regex(@"<nav\s+data-role=""tab-selector""[^>]*>(.*?)</nav>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             Match navMatch = navRegex.Match(content);
             var tabInfos = new Dictionary<string, (int iconIndex, string action)>();
@@ -48,7 +49,6 @@ namespace SiegeEngine.Managers
                 }
             }
 
-            // Parse tab contents
             var divRegex = new Regex(@"<div\s+data-tab-content=""([^""]*)""[^>]*>(.*?)</div>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             menu.Tabs = new List<TabDefinition>();
             foreach (Match dm in divRegex.Matches(content))
@@ -63,7 +63,6 @@ namespace SiegeEngine.Managers
                 }
             }
 
-            // Parse common buttons and elements
             menu.Buttons = GetCommonButtons(content, navMatch, divRegex);
             menu.Elements = GetCommonElements(content, navMatch, divRegex);
 
@@ -75,21 +74,18 @@ namespace SiegeEngine.Managers
             var buttons = new List<ButtonDefinition>();
             var elements = new List<Dictionary<string, object>>();
 
-            // Buttons
             var buttonRegex = new Regex(@"<button\s+([^>]*)>([^<]*)</button>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match m in buttonRegex.Matches(content))
             {
                 buttons.Add(ParseButton(m.Groups[1].Value, m.Groups[2].Value.Trim()));
             }
 
-            // Dropdowns (select)
             var selectRegex = new Regex(@"<select\s+([^>]*)>(.*?)</select>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match m in selectRegex.Matches(content))
             {
                 elements.Add(ParseDropdown(m.Groups[1].Value, m.Groups[2].Value));
             }
 
-            // Toggles (input type=checkbox)
             var inputRegex = new Regex(@"<input\s+([^>]*)/?>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match m in inputRegex.Matches(content))
             {
@@ -97,7 +93,6 @@ namespace SiegeEngine.Managers
                 if (dict != null) elements.Add(dict);
             }
 
-            // Labels
             var labelRegex = new Regex(@"<label\s+([^>]*)>([^<]*)</label>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match m in labelRegex.Matches(content))
             {
@@ -125,7 +120,6 @@ namespace SiegeEngine.Managers
         {
             var elements = new List<Dictionary<string, object>>();
 
-            // Dropdowns
             var selectRegex = new Regex(@"<select\s+([^>]*)>(.*?)</select>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match m in selectRegex.Matches(content))
             {
@@ -135,7 +129,6 @@ namespace SiegeEngine.Managers
                 }
             }
 
-            // Toggles
             var inputRegex = new Regex(@"<input\s+([^>]*)/?>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match m in inputRegex.Matches(content))
             {
@@ -146,7 +139,6 @@ namespace SiegeEngine.Managers
                 }
             }
 
-            // Labels
             var labelRegex = new Regex(@"<label\s+([^>]*)>([^<]*)</label>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match m in labelRegex.Matches(content))
             {
