@@ -18,7 +18,7 @@ namespace SiegeEngine.Managers
     {
         private readonly UISettingsManager _settings;
         private readonly ModManager _modManager;
-        private readonly List<MenuDefinition> _menus;
+        private readonly MenuRegistry _menuRegistry;
         private MenuDefinition _currentMenu;
         private List<object> _elements;
         private readonly (int Width, int Height)[] _resolutions;
@@ -42,7 +42,7 @@ namespace SiegeEngine.Managers
             _window = window;
             _player = player;
             _playerMovement = playerMovement;
-            _menus = new List<MenuDefinition>();
+            _menuRegistry = new MenuRegistry();
             _elements = new List<object>();
             _resolutions = new (int Width, int Height)[]
             {
@@ -54,6 +54,7 @@ namespace SiegeEngine.Managers
             };
             if (_player != null)
                 _player.InitializeCamera(glfw);
+
             string resolvedConfigPath = configPath != null ? _modManager.ResolvePath(configPath) : _modManager.GetMenuConfigPath();
             LoadMenuConfig(resolvedConfigPath);
         }
@@ -87,6 +88,7 @@ namespace SiegeEngine.Managers
                 if (config == null) throw new InvalidOperationException("Deserialized menu configuration is null.");
                 if (config.Menus == null) throw new InvalidOperationException("Menu configuration 'Menus' property is null.");
                 if (config.Menus.Count == 0) throw new InvalidOperationException("Menu configuration 'Menus' list is empty.");
+
                 foreach (var menu in config.Menus)
                 {
                     if (!string.IsNullOrEmpty(menu.Background) && !Path.IsPathRooted(menu.Background))
@@ -94,9 +96,17 @@ namespace SiegeEngine.Managers
                         menu.Background = _modManager.ResolvePath(menu.Background);
                     }
                 }
-                _menus.AddRange(config.Menus);
-                _currentMenu = _menus[0];
-                if (_currentMenu == null) throw new InvalidOperationException("First menu in configuration is null.");
+
+                _menuRegistry.RegisterBaseMenus(config.Menus);
+                var extensions = _modManager.GetAllMenuExtensions();
+                _menuRegistry.RegisterExtensions(extensions);
+
+                var allMenus = _menuRegistry.GetAllMenus();
+                if (allMenus.Count == 0) throw new InvalidOperationException("No menus available after registration.");
+
+                _currentMenu = allMenus[0];
+                if (_currentMenu == null) throw new InvalidOperationException("First menu is null.");
+
                 LoadCurrentMenu();
             }
             catch (Exception ex)
@@ -119,8 +129,10 @@ namespace SiegeEngine.Managers
             _glfw.GetWindowSize(_window, out int currentWidth, out int currentHeight);
             Console.WriteLine($"MenuManager: Loading menu {_currentMenu.Name}, current window size: {currentWidth}x{currentHeight}");
             _elements = new List<object>();
+
             var buttons = _currentMenu.Buttons ?? new List<ButtonDefinition>();
             var elements = _currentMenu.Elements ?? new List<Dictionary<string, object>>();
+
             foreach (var buttonDef in buttons)
             {
                 if (buttonDef == null) continue;
@@ -155,11 +167,13 @@ namespace SiegeEngine.Managers
                 };
                 _elements.Add(new Button(buttonDef, onClick));
             }
+
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             foreach (var element in elements)
             {
                 string type = element.GetValueOrDefault("type")?.ToString();
                 if (string.IsNullOrEmpty(type)) continue;
+
                 switch (type.ToLower())
                 {
                     case "button":
@@ -249,10 +263,12 @@ namespace SiegeEngine.Managers
                         break;
                 }
             }
+
             if (_showInventory && _player != null)
             {
                 LoadInventoryMenu();
             }
+
             foreach (var element in _elements)
             {
                 string text = element switch
@@ -277,12 +293,14 @@ namespace SiegeEngine.Managers
             var entity = _server.GetEntityById(_player.EntityId);
             var inventory = entity?.GetComponent<InventoryComponent>();
             if (inventory == null) return;
+
             _elements.Add(new Label(new LabelDefinition
             {
                 Text = $"Cash: {inventory.Cash}",
                 Position = new Position { X = 10, Y = 10 },
                 TextStyle = new TextStyle { FontSize = 16 }
             }));
+
             int yOffset = 40;
             foreach (var item in inventory.Items.Values)
             {
@@ -295,12 +313,14 @@ namespace SiegeEngine.Managers
                     InventoryComponent.Rarity.Legendary => new Color { R = 1.0f, G = 0.5f, B = 0.0f, A = 1.0f },
                     _ => new Color { R = 1.0f, G = 1.0f, B = 1.0f, A = 1.0f }
                 };
+
                 _elements.Add(new Label(new LabelDefinition
                 {
                     Text = $"{item.Name} (T{item.Tier} L{item.Level}) [{item.StackSize}]",
                     Position = new Position { X = 10, Y = yOffset },
                     TextStyle = new TextStyle { FontSize = 14, Color = rarityColor }
                 }));
+
                 _elements.Add(new Button(new ButtonDefinition
                 {
                     Text = "Upgrade",
@@ -315,13 +335,14 @@ namespace SiegeEngine.Managers
                         SwitchMenu(_currentMenu.Name);
                     }
                 }));
+
                 yOffset += 30;
             }
         }
 
         public void SwitchMenu(string menuName)
         {
-            var newMenu = _menus.Find(m => m.Name == menuName);
+            var newMenu = _menuRegistry.GetMenuByName(menuName);
             if (newMenu != null)
             {
                 _glfw.GetWindowSize(_window, out int width, out int height);

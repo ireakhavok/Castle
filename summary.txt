@@ -120,12 +120,27 @@ Folder: Castle
  - void Main(string[] args, string[] args)
  Calls: MessageBox, MessageBox
  File: Class1.cs
+ class: Class1 (Namespace: GuildTower)
+ Inherits: None
+ Dependencies: None
+ Methods:
+ File: Class1.cs
  class: Class1 (Namespace: MapRoom)
  Inherits: None
  Dependencies: None
  Methods:
  File: Class1.cs
+ class: Class1 (Namespace: QuestHall)
+ Inherits: None
+ Dependencies: None
+ Methods:
+ File: Class1.cs
  class: Class1 (Namespace: ReadingChamber)
+ Inherits: None
+ Dependencies: None
+ Methods:
+ File: Class1.cs
+ class: Class1 (Namespace: ScriptChamber)
  Inherits: None
  Dependencies: None
  Methods:

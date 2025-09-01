@@ -143,6 +143,9 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\Configs
 Found: .
 Found: ..
+Found: EditorMenu.css
+Found: EditorMenu.html
+Found: EditorMenu.json
 Found: MainMenu.json
 Found: mods
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\mods
@@ -152,7 +155,6 @@ Found: MyMod
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\mods\MyMod
 Found: .
 Found: ..
-Found: menu.json
 Found: Static_Images
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\Static_Images
 Found: .
@@ -853,6 +855,84 @@ Namespace: Foundation
 Found 7 dependencies
 Class Program: 2 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
+Found: GuildTower
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower
+Found: .
+Found: ..
+Found: bin
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\bin
+Found: .
+Found: ..
+Found: Debug
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\bin\Debug
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\bin\Debug\net9.0
+Found: .
+Found: ..
+Found: GuildTower.deps.json
+Found: GuildTower.dll
+Found: GuildTower.pdb
+Found: Class1.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\Class1.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\Class1.cs
+Read 65 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\Class1.cs
+Namespace: GuildTower
+Found 0 dependencies
+Class Class1: 0 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\Class1.cs
+Found: GuildTower.csproj
+Found: obj
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj
+Found: .
+Found: ..
+Found: Debug
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: GuildTower.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\GuildTower.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\GuildTower.AssemblyInfo.cs
+Read 1021 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\GuildTower.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\GuildTower.AssemblyInfo.cs
+Found: GuildTower.AssemblyInfoInputs.cache
+Found: GuildTower.assets.cache
+Found: GuildTower.csproj.CoreCompileInputs.cache
+Found: GuildTower.csproj.FileListAbsolute.txt
+Found: GuildTower.dll
+Found: GuildTower.GeneratedMSBuildEditorConfig.editorconfig
+Found: GuildTower.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\GuildTower.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\GuildTower.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\GuildTower.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\GuildTower.GlobalUsings.g.cs
+Found: GuildTower.pdb
+Found: GuildTower.sourcelink.json
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\ref
+Found: .
+Found: ..
+Found: GuildTower.dll
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Debug\net9.0\refint
+Found: .
+Found: ..
+Found: GuildTower.dll
+Found: GuildTower.csproj.nuget.dgspec.json
+Found: GuildTower.csproj.nuget.g.props
+Found: GuildTower.csproj.nuget.g.targets
+Found: project.assets.json
+Found: project.nuget.cache
 Found: Libraries
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Libraries
 Found: .
@@ -937,6 +1017,84 @@ Found: MapRoom.csproj.nuget.g.props
 Found: MapRoom.csproj.nuget.g.targets
 Found: project.assets.json
 Found: project.nuget.cache
+Found: QuestHall
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall
+Found: .
+Found: ..
+Found: bin
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\bin
+Found: .
+Found: ..
+Found: Debug
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\bin\Debug
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\bin\Debug\net9.0
+Found: .
+Found: ..
+Found: QuestHall.deps.json
+Found: QuestHall.dll
+Found: QuestHall.pdb
+Found: Class1.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\Class1.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\Class1.cs
+Read 64 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\Class1.cs
+Namespace: QuestHall
+Found 0 dependencies
+Class Class1: 0 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\Class1.cs
+Found: obj
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj
+Found: .
+Found: ..
+Found: Debug
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: QuestHall.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\QuestHall.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\QuestHall.AssemblyInfo.cs
+Read 1018 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\QuestHall.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\QuestHall.AssemblyInfo.cs
+Found: QuestHall.AssemblyInfoInputs.cache
+Found: QuestHall.assets.cache
+Found: QuestHall.csproj.CoreCompileInputs.cache
+Found: QuestHall.csproj.FileListAbsolute.txt
+Found: QuestHall.dll
+Found: QuestHall.GeneratedMSBuildEditorConfig.editorconfig
+Found: QuestHall.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\QuestHall.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\QuestHall.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\QuestHall.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\QuestHall.GlobalUsings.g.cs
+Found: QuestHall.pdb
+Found: QuestHall.sourcelink.json
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\ref
+Found: .
+Found: ..
+Found: QuestHall.dll
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Debug\net9.0\refint
+Found: .
+Found: ..
+Found: QuestHall.dll
+Found: project.assets.json
+Found: project.nuget.cache
+Found: QuestHall.csproj.nuget.dgspec.json
+Found: QuestHall.csproj.nuget.g.props
+Found: QuestHall.csproj.nuget.g.targets
+Found: QuestHall.csproj
 Found: ReadingChamber
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber
 Found: .
@@ -1015,6 +1173,84 @@ Found: ReadingChamber.csproj.nuget.dgspec.json
 Found: ReadingChamber.csproj.nuget.g.props
 Found: ReadingChamber.csproj.nuget.g.targets
 Found: ReadingChamber.csproj
+Found: ScriptChamber
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber
+Found: .
+Found: ..
+Found: bin
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\bin
+Found: .
+Found: ..
+Found: Debug
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\bin\Debug
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\bin\Debug\net9.0
+Found: .
+Found: ..
+Found: ScriptChamber.deps.json
+Found: ScriptChamber.dll
+Found: ScriptChamber.pdb
+Found: Class1.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\Class1.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\Class1.cs
+Read 68 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\Class1.cs
+Namespace: ScriptChamber
+Found 0 dependencies
+Class Class1: 0 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\Class1.cs
+Found: obj
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj
+Found: .
+Found: ..
+Found: Debug
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\ref
+Found: .
+Found: ..
+Found: ScriptChamber.dll
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\refint
+Found: .
+Found: ..
+Found: ScriptChamber.dll
+Found: ScriptChamber.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\ScriptChamber.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\ScriptChamber.AssemblyInfo.cs
+Read 1030 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\ScriptChamber.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\ScriptChamber.AssemblyInfo.cs
+Found: ScriptChamber.AssemblyInfoInputs.cache
+Found: ScriptChamber.assets.cache
+Found: ScriptChamber.csproj.CoreCompileInputs.cache
+Found: ScriptChamber.csproj.FileListAbsolute.txt
+Found: ScriptChamber.dll
+Found: ScriptChamber.GeneratedMSBuildEditorConfig.editorconfig
+Found: ScriptChamber.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\ScriptChamber.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\ScriptChamber.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\ScriptChamber.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Debug\net9.0\ScriptChamber.GlobalUsings.g.cs
+Found: ScriptChamber.pdb
+Found: ScriptChamber.sourcelink.json
+Found: project.assets.json
+Found: project.nuget.cache
+Found: ScriptChamber.csproj.nuget.dgspec.json
+Found: ScriptChamber.csproj.nuget.g.props
+Found: ScriptChamber.csproj.nuget.g.targets
+Found: ScriptChamber.csproj
 Found: SiegeEngine
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine
 Found: .
@@ -2458,7 +2694,9 @@ Found: Hight-Level Project Structure.svg
 Found: Key Interfaces.svg
 Found: Launcher UX Flow.svg
 Found: Prompt.txt
+Found: ProposedProjectStructure.svg
 Found: README.md
+Found: rendering_detection.svg
 Found: SummarizeRepo
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\SummarizeRepo
 Found: .

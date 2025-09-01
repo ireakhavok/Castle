@@ -85,7 +85,6 @@ namespace Trebuchet
 
                     _modManager = new ModManager(null, _steamEngine);
                     _renderContext = new OpenGLRenderContext(_glfw, _gl);
-
                     _inputHandler = new InputHandler(_glfw, _window, (SteamEngine)_steamEngine);
                     _inputHandler.SetMouseCallback("ui", (button, action) => { });
                     _inputHandler.SetKeyCallback("ui", (key, action) => { });
@@ -119,8 +118,8 @@ namespace Trebuchet
                     });
 
                     _isRunning = true;
-
                     float lastFrameTime = 0f;
+
                     while (_isRunning)
                     {
                         float currentTime = (float)_glfw.GetTime();
@@ -128,8 +127,8 @@ namespace Trebuchet
                         lastFrameTime = currentTime;
 
                         _steamEngine.RunCallbacks();
-
                         _glfw.PollEvents();
+
                         if (_glfw.WindowShouldClose(_window))
                             _isRunning = false;
 

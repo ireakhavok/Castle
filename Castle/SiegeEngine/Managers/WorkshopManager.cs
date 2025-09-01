@@ -31,7 +31,7 @@ namespace SiegeEngine.Managers
             }
 
             string json = File.ReadAllText(modJsonPath);
-            var modInfo = JsonSerializer.Deserialize<ModInfo>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var modInfo = JsonSerializer.Deserialize<Definitions.ModInfo>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (modInfo == null)
             {
                 Console.WriteLine($"WorkshopManager: Failed to deserialize mod info from {modJsonPath}");

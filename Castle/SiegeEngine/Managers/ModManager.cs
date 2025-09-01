@@ -1,11 +1,13 @@
 ﻿// SiegeEngine/Managers/ModManager.cs
+using SiegeEngine.Definitions;
+using SiegeEngine.Interfaces;
+using SiegeEngine.Rendering.Definitions;
+using SiegeEngine.UnityAssetLoader;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 using System.Linq;
-using SiegeEngine.Interfaces;
-using SiegeEngine.UnityAssetLoader;
+using System.Text.Json;
 
 namespace SiegeEngine.Managers
 {
@@ -125,6 +127,10 @@ namespace SiegeEngine.Managers
                     modInfo.Path = Path.GetDirectoryName(modJsonPath);
                     _loadedMods.Add(modInfo);
                     Console.WriteLine($"ModManager: Loaded mod '{modInfo.Name}' (Version: {modInfo.Version}) from {modJsonPath}");
+                    if (modInfo.Menus.Any())
+                    {
+                        Console.WriteLine($"ModManager: Mod '{modInfo.Name}' has {modInfo.Menus.Count} menu extensions.");
+                    }
                 }
             }
             catch (Exception ex)
@@ -171,12 +177,9 @@ namespace SiegeEngine.Managers
         public string ResolvePath(string relativePath)
         {
             if (string.IsNullOrEmpty(relativePath)) return null;
-
             // Normalize path: trim leading backslashes, replace / with \
             relativePath = relativePath.TrimStart('\\', '/').Replace("/", "\\");
-
             if (Path.IsPathRooted(relativePath)) return File.Exists(relativePath) ? relativePath : null;
-
             string[] textureDirs = new[]
             {
                 Path.Combine("Assets", "Characters", "Adventure_Character", "Textures"),
@@ -184,7 +187,6 @@ namespace SiegeEngine.Managers
                 Path.Combine("Assets", "Static_Images"),
                 "Textures"
             };
-
             foreach (var dir in textureDirs)
             {
                 string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dir, Path.GetFileName(relativePath));
@@ -192,7 +194,6 @@ namespace SiegeEngine.Managers
                 if (File.Exists(fullPath))
                     return fullPath;
             }
-
             foreach (var mod in _loadedMods)
             {
                 string modPath = Path.Combine(mod.Path, relativePath);
@@ -200,17 +201,14 @@ namespace SiegeEngine.Managers
                 if (File.Exists(modPath))
                     return modPath;
             }
-
             string solutionPath = Path.Combine(_solutionDirectory, relativePath);
             Console.WriteLine($"ModManager: Checking solution path for {relativePath}: {solutionPath}, Exists: {File.Exists(solutionPath)}");
             if (File.Exists(solutionPath))
                 return solutionPath;
-
             string outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativePath);
             Console.WriteLine($"ModManager: Checking output path for {relativePath}: {outputPath}, Exists: {File.Exists(outputPath)}");
             if (File.Exists(outputPath))
                 return outputPath;
-
             Console.WriteLine($"ModManager: Path not found for {relativePath}");
             return null;
         }
@@ -235,19 +233,15 @@ namespace SiegeEngine.Managers
             Console.WriteLine($"ModManager: Menu config path not found");
             return null;
         }
-    }
 
-    public class ModInfo
-    {
-        public string Name { get; set; }
-        public string Version { get; set; }
-        public string Path { get; set; }
-        public UnityAssetData UnityAssets { get; set; }
-    }
-
-    public class UnityAssetData
-    {
-        public Dictionary<string, UnityAssetFileType> Files { get; set; }
-        public Dictionary<string, string> GuidMap { get; set; }
+        public List<MenuDefinition> GetAllMenuExtensions()
+        {
+            var extensions = new List<MenuDefinition>();
+            foreach (var mod in _loadedMods)
+            {
+                extensions.AddRange(mod.Menus);
+            }
+            return extensions;
+        }
     }
 }
