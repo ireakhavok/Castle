@@ -21,9 +21,6 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs
 Found: .
 Found: ..
-Found: EditorMenu.css
-Found: EditorMenu.html
-Found: EditorMenu.json
 Found: MainMenu.json
 Found: Static_Images
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Static_Images
@@ -647,6 +644,8 @@ Found: net9.0
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0
 Found: .
 Found: ..
+Found: Acornima.dll
+Found: AngleSharp.dll
 Found: Assets
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets
 Found: .
@@ -655,9 +654,6 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Configs
 Found: .
 Found: ..
-Found: EditorMenu.css
-Found: EditorMenu.html
-Found: EditorMenu.json
 Found: MainMenu.json
 Found: mods
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\mods
@@ -684,6 +680,7 @@ Found: Foundation.dll
 Found: Foundation.exe
 Found: Foundation.pdb
 Found: Foundation.runtimeconfig.json
+Found: Jint.dll
 Found: Microsoft.DotNet.PlatformAbstractions.dll
 Found: Microsoft.Extensions.DependencyModel.dll
 Found: Microsoft.Win32.SystemEvents.dll
@@ -1371,9 +1368,6 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Configs
 Found: .
 Found: ..
-Found: EditorMenu.css
-Found: EditorMenu.html
-Found: EditorMenu.json
 Found: MainMenu.json
 Found: mods
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\mods
@@ -1495,6 +1489,15 @@ Namespace: SiegeEngine.Definitions
 Found 2 dependencies
 Class ModelComponent: 0 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModelComponent.cs
+Found: ModInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModInfo.cs
+Read 779 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModInfo.cs
+Namespace: SiegeEngine.Definitions
+Found 8 dependencies
+Class ModInfo: 0 methods
+Class UnityAssetData: 0 methods
+Found 2 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModInfo.cs
 Found: PhysicsComponent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\PhysicsComponent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\PhysicsComponent.cs
@@ -1708,6 +1711,14 @@ Namespace: SiegeEngine.Managers
 Found 2 dependencies
 Class GameModeManager: 2 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\GameModeManager.cs
+Found: HtmlMenuParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\HtmlMenuParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\HtmlMenuParser.cs
+Read 18560 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\HtmlMenuParser.cs
+Namespace: SiegeEngine.Managers
+Found 4 dependencies
+Class HtmlMenuParser: 12 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\HtmlMenuParser.cs
 Found: LevelManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\LevelManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\LevelManager.cs
@@ -1727,11 +1738,19 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\M
 Found: MenuManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
-Read 19088 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
+Read 13868 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
 Namespace: SiegeEngine.Managers
-Found 12 dependencies
-Class MenuManager: 8 methods
+Found 14 dependencies
+Class MenuManager: 15 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
+Found: MenuRegistry.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuRegistry.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuRegistry.cs
+Read 2299 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuRegistry.cs
+Namespace: SiegeEngine.Managers
+Found 4 dependencies
+Class MenuRegistry: 4 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuRegistry.cs
 Found: ModelManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModelManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModelManager.cs
@@ -1745,13 +1764,11 @@ Found 3 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\M
 Found: ModManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
-Read 11320 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
+Read 11482 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
 Namespace: SiegeEngine.Managers
-Found 7 dependencies
-Class ModManager: 8 methods
-Class ModInfo: 0 methods
-Class UnityAssetData: 0 methods
-Found 3 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
+Found 9 dependencies
+Class ModManager: 9 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
 Found: UISettingsManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UISettingsManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UISettingsManager.cs
@@ -1763,7 +1780,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\M
 Found: WorkshopManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\WorkshopManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\WorkshopManager.cs
-Read 2387 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\WorkshopManager.cs
+Read 2399 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\WorkshopManager.cs
 Namespace: SiegeEngine.Managers
 Found 6 dependencies
 Class WorkshopManager: 4 methods
@@ -2509,9 +2526,6 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Configs
 Found: .
 Found: ..
-Found: EditorMenu.css
-Found: EditorMenu.html
-Found: EditorMenu.json
 Found: MainMenu.json
 Found: mods
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\mods
@@ -2623,7 +2637,7 @@ Found: Trebuchet.pdb
 Found: Launcher.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 6266 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 6265 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
 Found 17 dependencies
 Class Launcher: 2 methods
@@ -2693,6 +2707,7 @@ Found: LauncherUXFlow.mmd
 Found: Hight-Level Project Structure.svg
 Found: Key Interfaces.svg
 Found: Launcher UX Flow.svg
+Found: New Text Document.txt
 Found: Prompt.txt
 Found: ProposedProjectStructure.svg
 Found: README.md

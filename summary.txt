@@ -350,6 +350,16 @@ Folder: Castle
     
  Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, System
  Methods:
+ File: ModInfo.cs
+ class: ModInfo (Namespace: SiegeEngine.Definitions)
+ Inherits: None
+ Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.Rendering.Definitions, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
+ Methods:
+ File: ModInfo.cs
+ class: UnityAssetData (Namespace: SiegeEngine.Definitions)
+ Inherits: None
+ Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.Rendering.Definitions, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
+ Methods:
  File: PhysicsComponent.cs
  class: PhysicsComponent (Namespace: SiegeEngine.Definitions)
  Inherits: IComponent
@@ -849,6 +859,35 @@ Folder: Castle
  Calls: None
  - GameMode GetSelectedMode()
  Calls: None
+ File: HtmlMenuParser.cs
+ class: HtmlMenuParser (Namespace: SiegeEngine.Managers)
+ Inherits: None
+ Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Text.RegularExpressions
+ Methods:
+ - MenuDefinition ParseMenu(string html, string html, string name)
+ Calls: None
+ - List<ButtonDefinition> GetCommonButtons(string content, string content, Match navMatch, Regex divRegex)
+ Calls: IsCommon, IsCommon, ParseButton
+ - object>> GetCommonElements(string content, string content, Match navMatch, Regex divRegex)
+ Calls: IsCommon, IsCommon, ParseDropdown
+ - bool IsCommon(Match m, Match m, Match navMatch, Regex divRegex, string content)
+ Calls: None
+ - ButtonDefinition ParseButton(string attrStr, string attrStr, string text)
+ Calls: None
+ - object> ParseDropdown(string attrStr, string attrStr, string inner)
+ Calls: None
+ - object> ParseToggle(string attrStr, string attrStr)
+ Calls: None
+ - object> ParseLabel(string attrStr, string attrStr, string text)
+ Calls: None
+ - string> ParseAttributes(string attrString, string attrString)
+ Calls: None
+ - string> ParseStyle(string style, string style)
+ Calls: None
+ - float ParseValue(string value, string value)
+ Calls: None
+ - Color ParseColor(string value, string value)
+ Calls: None
  File: LevelManager.cs
  class: LevelManager (Namespace: SiegeEngine.Managers)
  Inherits: None
@@ -874,23 +913,50 @@ Folder: Castle
  File: MenuManager.cs
  class: MenuManager (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering.Definitions, SiegeEngine.Scenes, Silk.NET.GLFW, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering.Definitions, SiegeEngine.Scenes, Silk.NET.GLFW, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, System.Text.RegularExpressions
  Methods:
- - constructor MenuManager(UISettingsManager settingsManager, UISettingsManager settingsManager, ModManager modManager, IGameServer server, Glfw glfw, Player player, PlayerMovement playerMovement, string configPath)
+ - constructor MenuManager(UISettingsManager settingsManager, UISettingsManager settingsManager, ModManager modManager, IGameServer server, Glfw glfw, Player player, PlayerMovement playerMovement, string initialMenu)
  Calls: None
  - void SetPlayerAndMovement(Player player, Player player, PlayerMovement playerMovement)
- Calls: GetMenuConfigPath, GetMenuConfigPath, LoadCurrentMenu, LoadMenuConfig, ResolvePath
- - void LoadMenuConfig(string configPath, string configPath)
- Calls: LoadCurrentMenu, LoadCurrentMenu, ResolvePath
+ Calls: LoadCurrentMenu, LoadCurrentMenu, ParseMenu
+ - void LoadMenu(string path, string path)
+ Calls: LoadCurrentMenu, LoadCurrentMenu, ParseMenu
  - void LoadCurrentMenu()
  Calls: None
- - void LoadInventoryMenu()
+ - void UpdateIconIndices()
  Calls: None
  - void SwitchMenu(string menuName, string menuName)
- Calls: LoadCurrentMenu, LoadCurrentMenu
+ Calls: LoadMenu, LoadMenu
  - void SwitchTab(string tabName, string tabName)
  Calls: LoadCurrentMenu, LoadCurrentMenu
  - void CycleIcons()
+ Calls: None
+ - Action GetButtonAction(string action, string action)
+ Calls: None
+ - > SwitchMenu()
+ Calls: SwitchTab, SwitchTab
+ - > SwitchTab()
+ Calls: None
+ - Action<int> GetDropdownAction(string action, string action)
+ Calls: SaveSettings, SaveSettings
+ - Action<bool> GetToggleAction(string action, string action)
+ Calls: ToggleGridSnap, ToggleGridSnap
+ - string GetAspectRatio(int width, int width, int height)
+ Calls: None
+ - int GCD(int a, int a, int b)
+ Calls: None
+ File: MenuRegistry.cs
+ class: MenuRegistry (Namespace: SiegeEngine.Managers)
+ Inherits: None
+ Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Linq
+ Methods:
+ - void RegisterBaseMenus(List<MenuDefinition> baseMenus, List<MenuDefinition> baseMenus)
+ Calls: None
+ - void RegisterExtensions(List<MenuDefinition> extensions, List<MenuDefinition> extensions)
+ Calls: None
+ - List<MenuDefinition> GetAllMenus()
+ Calls: None
+ - MenuDefinition GetMenuByName(string name, string name)
  Calls: None
  File: ModelManager.cs
  class: ModelManager (Namespace: SiegeEngine.Managers)
@@ -940,7 +1006,7 @@ Folder: Castle
  File: ModManager.cs
  class: ModManager (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Rendering.Definitions, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
  Methods:
  - constructor ModManager(string modsDirectory, string modsDirectory, ISteamEngine steamEngine)
  Calls: ScanDirectory, ScanDirectory
@@ -958,16 +1024,8 @@ Folder: Castle
  Calls: None
  - string GetMenuConfigPath()
  Calls: None
- File: ModManager.cs
- class: ModInfo (Namespace: SiegeEngine.Managers)
- Inherits: None
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
- Methods:
- File: ModManager.cs
- class: UnityAssetData (Namespace: SiegeEngine.Managers)
- Inherits: None
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
- Methods:
+ - List<MenuDefinition> GetAllMenuExtensions()
+ Calls: None
  File: UISettingsManager.cs
  class: UISettingsManager (Namespace: SiegeEngine.Managers)
  Inherits: None

@@ -217,16 +217,16 @@ namespace SiegeEngine.Managers
         {
             foreach (var mod in _loadedMods)
             {
-                string configPath = Path.Combine(mod.Path, "MainMenu.json");
+                string configPath = Path.Combine(mod.Path, "MainMenu.html");
                 Console.WriteLine($"ModManager: Checking mod config path: {configPath}, Exists: {File.Exists(configPath)}");
                 if (File.Exists(configPath))
                     return configPath;
             }
-            string solutionPath = Path.Combine(_solutionDirectory, "Assets", "Configs", "MainMenu.json");
+            string solutionPath = Path.Combine(_solutionDirectory, "Assets", "Configs", "MainMenu.html");
             Console.WriteLine($"ModManager: Checking solution config path: {solutionPath}, Exists: {File.Exists(solutionPath)}");
             if (File.Exists(solutionPath))
                 return solutionPath;
-            string outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Configs", "MainMenu.json");
+            string outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Configs", "MainMenu.html");
             Console.WriteLine($"ModManager: Checking output config path: {outputPath}, Exists: {File.Exists(outputPath)}");
             if (File.Exists(outputPath))
                 return outputPath;

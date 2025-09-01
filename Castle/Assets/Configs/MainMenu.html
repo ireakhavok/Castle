@@ -1,0 +1,52 @@
+<html>
+<head>
+</head>
+<body data-positioning-mode="backgroundPercentage" style="background-image: url('Assets\\Static_Images\\Main_Background.jpg')">
+
+    <nav data-role="tab-selector">
+        <button data-tab="Create" data-icon="0">Create</button>
+        <button data-tab="Play" data-icon="13">Play</button>
+        <button data-tab="Edit" data-icon="15">Edit</button>
+    </nav>
+
+    <div data-tab-content="Create">
+        <button style="left: -0.0521; top: -0.2235; width: 300px; height: 60px; background-color: rgba(51,51,51,0.8); border-color: rgba(128,128,128,1.0); color: rgba(255,255,255,1.0); font-size: 10px;" data-hover-background="rgba(77,77,77,0.8)" data-icon="1" data-action="Create_NewProject">New Project</button>
+        <button style="left: -0.0521; top: -0.1453; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-icon="3" data-action="Select_GameType">Game Type</button>
+        <select name="GameType" style="left: -0.0521; top: -0.0670; width: 300px; height: 60px; background-color: rgba(51,51,51,0.8); border-color: rgba(128,128,128,1.0); color: rgba(255,255,255,1.0); font-size: 10px;" data-hover-background="rgba(77,77,77,0.8)" data-action="Set_GameType" data-is-options-below="true">
+            <option>2D</option>
+            <option>2D Sidescrolling</option>
+            <option>3D FPS</option>
+            <option>3D Isometric</option>
+            <option>3D Over Shoulder</option>
+            <option>3D Third Person</option>
+            <option>3D Dynamic</option>
+        </select>
+        <select name="Multiplayer" style="left: -0.0521; top: 0.0112; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="Set_Multiplayer">
+            <option>Single Player</option>
+            <option>Hosted</option>
+            <option>Server</option>
+        </select>
+        <input type="checkbox" name="Allow Mods" style="left: -0.0521; top: 0.0894; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="Toggle_Mods" checked />
+        <button style="left: -0.0521; top: 0.1676; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="Create_Project">Create</button>
+    </div>
+
+    <div data-tab-content="Play">
+        <button style="left: -0.0521; top: -0.2235; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="Play_Join">Join Game</button>
+        <button style="left: -0.0521; top: -0.1453; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="Play_Browse">Browse Lobbies</button>
+        <label style="left: -0.0521; top: -0.0670; color: rgba(255,255,255,1.0); font-size: 10px;">Friends Online</label>
+    </div>
+
+    <div data-tab-content="Edit">
+        <button style="left: -0.0521; top: -0.2235; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="Edit_Open">Open Project</button>
+        <button style="left: -0.0521; top: -0.1453; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="Edit_Assets">Asset Importer</button>
+        <select name="Recent Projects" style="left: -0.0521; top: -0.0670; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="Select_Project">
+            <option>Project1</option>
+            <option>Project2</option>
+        </select>
+    </div>
+
+    <button style="left: -0.0521; top: 0.3; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="SettingsSelected">Settings</button>
+    <button style="left: -0.0521; top: 0.3782; width: 300px; height: 60px; color: rgba(255,255,255,1.0); font-size: 10px;" data-action="Exit">Exit</button>
+
+</body>
+</html>
