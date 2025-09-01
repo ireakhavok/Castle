@@ -130,6 +130,33 @@ namespace SiegeEngine.Managers
             Console.WriteLine($"MenuManager: Loading menu {_currentMenu.Name}, current window size: {currentWidth}x{currentHeight}");
             _elements = new List<object>();
 
+            // Add tab selector buttons if tabs exist
+            if (_currentMenu.Tabs != null && _currentMenu.Tabs.Count > 0)
+            {
+                float tabX = 0f;
+                float tabY = -0.3f; // Position tabs at top, adjust as needed
+                float tabWidth = 0.2f;
+                float tabHeight = 0.05f;
+                int tabIndex = 0;
+
+                foreach (var tab in _currentMenu.Tabs)
+                {
+                    var tabButtonDef = new ButtonDefinition
+                    {
+                        Text = tab.Name,
+                        Position = new Position { X = tabX + (tabIndex * tabWidth), Y = tabY },
+                        Size = new Size { Width = (int)(currentWidth * tabWidth), Height = (int)(currentHeight * tabHeight) },
+                        IconIndex = tab.IconIndex,
+                        Action = $"SwitchTab_{tab.Name}"
+                    };
+
+                    Action onClick = () => SwitchTab(tab.Name);
+
+                    _elements.Add(new Button(tabButtonDef, onClick));
+                    tabIndex++;
+                }
+            }
+
             var buttons = _currentMenu.Buttons ?? new List<ButtonDefinition>();
             var elements = _currentMenu.Elements ?? new List<Dictionary<string, object>>();
 
@@ -162,7 +189,7 @@ namespace SiegeEngine.Managers
                             Console.WriteLine("MenuManager: EditorMode triggered via action");
                         }
                         ,
-                        _ => () => { }
+                        _ => buttonDef.Action.StartsWith("SwitchTab_") ? () => SwitchTab(buttonDef.Action.Substring(10)) : () => { }
                     }
                 };
                 _elements.Add(new Button(buttonDef, onClick));
@@ -205,7 +232,7 @@ namespace SiegeEngine.Managers
                             "SaveLevel" => () => _editorScene?.SaveLevel("level.json"),
                             "SetBrush" => () => _editorScene?.SetBrush(buttonDef.Text ?? "Wall"),
                             "ToggleGridSnap" => () => _editorScene?.ToggleGridSnap(!_editorScene._gridSnap),
-                            _ => () => { }
+                            _ => buttonDef.Action.StartsWith("SwitchTab_") ? () => SwitchTab(buttonDef.Action.Substring(10)) : () => { }
                         };
                         _elements.Add(new Button(buttonDef, onClick));
                         break;
