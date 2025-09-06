@@ -8,6 +8,7 @@ Found: .
 Found: ..
 Found: .git
 Found: .gitignore
+Found: AuthoritativeServerExtensions.txt
 Found: Castle
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle
 Found: .
@@ -21,7 +22,15 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs
 Found: .
 Found: ..
+Found: MainMenu.html
 Found: MainMenu.json
+Found: MainMenu_prospective.html
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
 Found: Static_Images
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Static_Images
 Found: .
@@ -140,10 +149,15 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\Configs
 Found: .
 Found: ..
-Found: EditorMenu.css
-Found: EditorMenu.html
-Found: EditorMenu.json
+Found: MainMenu.html
 Found: MainMenu.json
+Found: MainMenu_prospective.html
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
 Found: mods
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0\Assets\mods
 Found: .
@@ -644,8 +658,6 @@ Found: net9.0
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0
 Found: .
 Found: ..
-Found: Acornima.dll
-Found: AngleSharp.dll
 Found: Assets
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets
 Found: .
@@ -654,7 +666,15 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Configs
 Found: .
 Found: ..
+Found: MainMenu.html
 Found: MainMenu.json
+Found: MainMenu_prospective.html
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
 Found: mods
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\mods
 Found: .
@@ -680,7 +700,6 @@ Found: Foundation.dll
 Found: Foundation.exe
 Found: Foundation.pdb
 Found: Foundation.runtimeconfig.json
-Found: Jint.dll
 Found: Microsoft.DotNet.PlatformAbstractions.dll
 Found: Microsoft.Extensions.DependencyModel.dll
 Found: Microsoft.Win32.SystemEvents.dll
@@ -1368,7 +1387,15 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Configs
 Found: .
 Found: ..
+Found: MainMenu.html
 Found: MainMenu.json
+Found: MainMenu_prospective.html
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
 Found: mods
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\mods
 Found: .
@@ -1655,6 +1682,18 @@ Namespace: SiegeEngine.Events
 Found 5 dependencies
 Class WeatherChangedEvent: 3 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\WeatherChangedEvent.cs
+Found: HtmlParsing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\HtmlParsing
+Found: .
+Found: ..
+Found: HtmlMenuParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\HtmlParsing\HtmlMenuParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\HtmlParsing\HtmlMenuParser.cs
+Read 18275 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\HtmlParsing\HtmlMenuParser.cs
+Namespace: SiegeEngine.HtmlParsing
+Found 5 dependencies
+Class HtmlMenuParser: 12 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\HtmlParsing\HtmlMenuParser.cs
 Found: Interfaces
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces
 Found: .
@@ -1714,9 +1753,9 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\M
 Found: HtmlMenuParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\HtmlMenuParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\HtmlMenuParser.cs
-Read 18560 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\HtmlMenuParser.cs
+Read 18272 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\HtmlMenuParser.cs
 Namespace: SiegeEngine.Managers
-Found 4 dependencies
+Found 5 dependencies
 Class HtmlMenuParser: 12 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\HtmlMenuParser.cs
 Found: LevelManager.cs
@@ -1738,10 +1777,10 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\M
 Found: MenuManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
-Read 13868 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
+Read 17887 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
 Namespace: SiegeEngine.Managers
-Found 14 dependencies
-Class MenuManager: 15 methods
+Found 12 dependencies
+Class MenuManager: 17 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuManager.cs
 Found: MenuRegistry.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\MenuRegistry.cs
@@ -2041,7 +2080,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: Dropdown.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Definitions\Dropdown.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Definitions\Dropdown.cs
-Read 4619 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Definitions\Dropdown.cs
+Read 4635 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Definitions\Dropdown.cs
 Namespace: SiegeEngine.Rendering.Definitions
 Found 3 dependencies
 Class Dropdown: 6 methods
@@ -2526,7 +2565,17 @@ Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Configs
 Found: .
 Found: ..
+Found: MainMenu.html
 Found: MainMenu.json
+Found: MainMenu_old.html
+Found: MainMenu_prospective.html
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
+Found: UserSettingsMenu_old.html
 Found: mods
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\mods
 Found: .
@@ -2702,12 +2751,23 @@ Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation
 Found: .
 Found: ..
 Found: HighLevelStructure.mmd
+Found: Hight-Level Project Structure.svg
+Found: Key Interfaces.svg
 Found: KeyInterfaces.mmd
+Found: Launcher UX Flow.svg
 Found: LauncherUXFlow.mmd
+Found: Modularization.mmd
+Found: Modularization_project_structure.svg
+Found: ProposedProjectStructure.svg
+Found: rendering_detection.svg
+Found: UI_overhaul_flow.mmd
+Found: UI_overhaul_flow.svg
 Found: Hight-Level Project Structure.svg
 Found: Key Interfaces.svg
 Found: Launcher UX Flow.svg
 Found: New Text Document.txt
+Found: NewPrompt.txt
+Found: Panel.txt
 Found: Prompt.txt
 Found: ProposedProjectStructure.svg
 Found: README.md

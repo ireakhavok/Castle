@@ -1,0 +1,55 @@
+To allow custom game modes in Citadel MMORPG Maker while preserving the authoritative server's integrity, we can design an extensible system that lets users add or modify behaviors (like a "dash" ability that alters movement/position) without giving full access to core server code. This balances flexibility for creators with security and fairness in multiplayer. The key is to keep Citadel's core authoritative logic (e.g., frustum culling for visibility optimization, player location synchronization via EntityDeltaTracker.cs and ValidateAndUpdateMovement in GameServer.cs) untouchable, while providing safe hooks for custom extensions.
+
+Extensibility Through Modular Hooks and Interfaces
+Instead of letting users edit Citadel's source directly (which risks malicious changes, as discussed previously), expose abstract interfaces or extension points that mods can implement. This is similar to how Minecraft Forge allows mods to inject custom logic into the "logical server" (which handles game mechanics like AI and physics) without rewriting the core engine. Mods would provide implementations as compiled DLLs or data-driven scripts (e.g., JSON-configured with optional C# assemblies), loaded dynamically by ModManager.cs.
+
+Core Authority Remains Fixed: Citadel's ServerValidationSystem.cs and GameServer.cs always handle essentials like:
+
+Frustum-based visibility (e.g., CheckOcclusion and GetNearbyEntities to limit entity sync and reduce bandwidth).
+Base player locations and movements (via ValidateMovement, which checks positions/rotations against physics and collisions).
+Anti-cheat basics (e.g., rate-limiting inputs, rejecting impossible deltas).
+These can't be overridden—extensions "advise" or "augment" them, not replace.
+
+
+Custom Extensions for Authoritative Logic: For things users deem authoritative (e.g., a dash that temporarily boosts speed or ignores certain collisions), introduce interfaces like:
+
+ICustomMovementHandler: Mods implement methods such as ValidateCustomAction(int entityId, string actionType, object data, ulong steamId) (e.g., for "dash", check cooldowns, energy costs, and apply server-side).
+ICustomEventProcessor: For broader game modes, allowing mods to process events post-core validation (e.g., after base movement, apply dash velocity via PhysicsSystem.cs).
+In GameServer.cs's Update or validation methods, you'd chain-call these: first core logic, then registered extensions. If a mod's handler rejects or modifies, it bubbles up securely.
+
+This mirrors Unity Netcode's approach to custom behaviors, where you can implement server-authoritative actions (e.g., client-predicted dashes reconciled on server) via NetworkBehaviour overrides, without exposing the full netcode stack. For example:
+
+Client predicts the dash locally (via ClientPredictionSystem.cs for responsiveness).
+Server validates via core (position feasible?) + custom handler (dash-specific rules like terrain checks).
+If valid, server applies and broadcasts deltas—keeping sync without hindering new mechanics.
+
+
+Implementation Flow:
+
+During mod loading (ModManager.cs), scan for extension DLLs or JSON hooks (e.g., "custom_handlers": ["MyDashHandler.dll"]).
+Register them in a registry (e.g., new ExtensionRegistry.cs in Engine.Core).
+In ServerValidationSystem.cs, add hooks like: if (extensions.TryGetHandler("movement", out var handler)) { handler.Validate(...); }
+For networking: Use EventBus.cs to dispatch custom events (e.g., DashEvent inheriting IEvent), serialized securely.
+This ensures custom logic runs authoritatively on the server but is sandboxed—e.g., limit extensions to read-only access to game state, or run in a restricted AppDomain for isolation.
+
+This approach doesn't hinder new movement characteristics (e.g., dash could modify velocity in PhysicsComponent.cs via the handler), as long as they pass core spatial/collision checks. It's performant for high player counts, aligning with best practices like reserving updates for visible/nearby state.
+Handling Mods and Locking for Released Games
+For custom games released as mods (via Steam Workshop), extensibility is great for community building, but locking prevents unwanted alterations (e.g., cheats in a competitive mode).
+
+Mod Structure: Mods include the extension DLLs/JSON, installed on both client and server for sync (like Minecraft Forge, where servers verify client mods during handshake via packets). Citadel's NetworkManager.cs could extend handshake (e.g., in Start or SendToAll) to exchange mod lists/hashes, rejecting mismatches.
+Locking Mechanism: Add a "locked" flag in ModInfo.cs (e.g., "isLocked": true). When true:
+
+Server (GameServer.cs) rejects further extensions or sub-mods during load.
+Enforce via digital signing: Mod creator signs the DLL/JSON with a key (stored in project config); server verifies on startup.
+For Workshop uploads, integrate a license check (via SteamEngine.cs)—free mods can be unlocked, but paid/developer-licensed ones auto-lock.
+This is like modding best practices: Test compatibility first, then lock for live deployment to avoid conflicts. Users can toggle this during project creation in the launcher (e.g., via HTML hook in Create tab).
+
+
+
+Potential Trade-Offs and Safeguards
+
+Security: Extensions run on server, so vet them—e.g., require Workshop approval or run in a sandbox (limited APIs). Monitor performance to prevent lag exploits.
+Responsiveness: For fast actions like dash, combine with client prediction (as in Unity Netcode) to avoid authoritative lag.
+Iterative Rollout: Start with simple JSON-based handlers (no DLLs) for safety, then add DLL support with obfuscation.
+
+This keeps Citadel safe (binary-locked core) while empowering creators—custom modes feel seamless, and locking ensures released mods stay intact. If we implement this, we'd add the interfaces/registry iteratively, testing with a sample dash mod.

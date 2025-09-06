@@ -633,6 +633,35 @@ Folder: Castle
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
  Calls: None
+ File: HtmlMenuParser.cs
+ class: HtmlMenuParser (Namespace: SiegeEngine.HtmlParsing)
+ Inherits: None
+ Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Numerics, System.Text.RegularExpressions
+ Methods:
+ - MenuDefinition ParseMenu(string html, string html, string name)
+ Calls: None
+ - List<ButtonDefinition> GetCommonButtons(string content, string content, Match navMatch, Regex divRegex)
+ Calls: IsCommon, IsCommon, ParseButton
+ - object>> GetCommonElements(string content, string content, Match navMatch, Regex divRegex)
+ Calls: IsCommon, IsCommon, ParseDropdown
+ - bool IsCommon(Match m, Match m, Match navMatch, Regex divRegex, string content)
+ Calls: None
+ - ButtonDefinition ParseButton(string attrStr, string attrStr, string text)
+ Calls: None
+ - object> ParseDropdown(string attrStr, string attrStr, string inner)
+ Calls: None
+ - object> ParseToggle(string attrStr, string attrStr)
+ Calls: None
+ - object> ParseLabel(string attrStr, string attrStr, string text)
+ Calls: None
+ - string> ParseAttributes(string attrString, string attrString)
+ Calls: None
+ - string> ParseStyle(string style, string style)
+ Calls: None
+ - float ParseValue(string value, string value)
+ Calls: None
+ - Color ParseColor(string value, string value)
+ Calls: None
  File: IGameServer.cs
  interface: IGameServer (Namespace: SiegeEngine.Interfaces)
  Inherits: None
@@ -862,7 +891,7 @@ Folder: Castle
  File: HtmlMenuParser.cs
  class: HtmlMenuParser (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Text.RegularExpressions
+ Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Numerics, System.Text.RegularExpressions
  Methods:
  - MenuDefinition ParseMenu(string html, string html, string name)
  Calls: None
@@ -913,7 +942,7 @@ Folder: Castle
  File: MenuManager.cs
  class: MenuManager (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering.Definitions, SiegeEngine.Scenes, Silk.NET.GLFW, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, System.Text.RegularExpressions
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering.Definitions, SiegeEngine.Scenes, Silk.NET.GLFW, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
  Methods:
  - constructor MenuManager(UISettingsManager settingsManager, UISettingsManager settingsManager, ModManager modManager, IGameServer server, Glfw glfw, Player player, PlayerMovement playerMovement, string initialMenu)
  Calls: None
@@ -923,7 +952,9 @@ Folder: Castle
  Calls: LoadCurrentMenu, LoadCurrentMenu, ParseMenu
  - void LoadCurrentMenu()
  Calls: None
- - void UpdateIconIndices()
+ - void AddElementToList(object> element, object> element, JsonSerializerOptions options)
+ Calls: Dropdown, Dropdown, GetDropdownAction, GetToggleAction, Label, Serialize, Toggle
+ - void LoadInventoryMenu()
  Calls: None
  - void SwitchMenu(string menuName, string menuName)
  Calls: LoadMenu, LoadMenu
@@ -944,6 +975,8 @@ Folder: Castle
  - string GetAspectRatio(int width, int width, int height)
  Calls: None
  - int GCD(int a, int a, int b)
+ Calls: None
+ - void UpdateIconIndices()
  Calls: None
  File: MenuRegistry.cs
  class: MenuRegistry (Namespace: SiegeEngine.Managers)
