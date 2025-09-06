@@ -14,7 +14,6 @@ using SiegeEngine.PlayerSystem;
 using SiegeEngine.Rendering.Shaders;
 using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Definitions;
-
 namespace SiegeEngine.Scenes
 {
     public unsafe class EditorScene : Scene
@@ -57,7 +56,6 @@ namespace SiegeEngine.Scenes
         private EditorMode _editorMode = EditorMode.Idle;
         private Vector3 _startVertex;
         public event Action<Entity, string> OnBrushPlaced;
-
         public EditorScene(IRenderContext renderContext, Glfw glfw, WindowHandle* window, IGameServer server, EventBus eventBus, ISteamEngine steamEngine, InputHandler input)
             : base(renderContext, glfw, window, server, eventBus)
         {
@@ -69,7 +67,6 @@ namespace SiegeEngine.Scenes
             _callbackId = $"EditorScene_{Guid.NewGuid()}";
             InitializeBrushRegistry();
         }
-
         private void InitializeBrushRegistry()
         {
             _brushRegistry["Floor"] = new BrushDefinition { Type = "Floor", Size = new Vector3(1f, 1f, 0f), TextureId = TextureDefinitions.Dirt };
@@ -88,25 +85,21 @@ namespace SiegeEngine.Scenes
             _brushRegistry["Raise"] = new BrushDefinition { Type = "Raise", Size = Vector3.Zero, TextureId = -1 };
             _brushRegistry["Lower"] = new BrushDefinition { Type = "Lower", Size = Vector3.Zero, TextureId = -1 };
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _entitiesBuffer = new VertexBuffer(_renderContext);
-
             _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrush);
             _eventBus.Subscribe<EntityMovedEvent>(OnEntityMoved);
             _eventBus.Subscribe<EntityPlacedEvent>(OnEntityPlaced);
             _eventBus.Subscribe<BrushRegistryUpdateEvent>(OnBrushRegistryUpdate);
             _eventBus.Subscribe<MouseInputEvent>(OnMouseInput);
-
             _input.SetMouseCallback(_callbackId, (button, action) =>
             {
                 Vector2 mousePos = GetMousePosition();
                 HandleMouseInput(new MouseInputEvent(mousePos, button, action, _steamEngine.GetSteamId()));
             });
-
-            _glfw.SetKeyCallback(_window, (w, key, scancode, action, mods) =>
+            _input.SetKeyCallback(_callbackId, (key, action) =>
             {
                 if (key == Keys.Escape && (int)action == (int)InputAction.Press)
                 {
@@ -132,20 +125,16 @@ namespace SiegeEngine.Scenes
                     }
                 }
             });
-
             UpdatePreview();
         }
-
         protected override ShaderProgram CreateShader()
         {
             return new ShaderProgram(_renderContext, EditorSceneShader.VertexShaderSource, EditorSceneShader.FragmentShaderSource);
         }
-
         protected override void SetupGrid()
         {
             var vertices = new List<Vertex>();
             float step = 1.0f;
-
             for (float x = 0; x <= _gridWidth; x += step)
             {
                 for (float y = 0; y < _gridHeight; y += step * 2)
@@ -156,7 +145,6 @@ namespace SiegeEngine.Scenes
                     vertices.Add(new Vertex(x, Math.Min(y + step, _gridHeight), z2, 0.6f, 0.6f, 0.6f, 1.0f));
                 }
             }
-
             for (float y = 0; y <= _gridHeight; y += step)
             {
                 for (float x = 0; x < _gridWidth; x += step * 2)
@@ -167,19 +155,15 @@ namespace SiegeEngine.Scenes
                     vertices.Add(new Vertex(Math.Min(x + step, _gridWidth), y, z2, 0.6f, 0.6f, 0.6f, 1.0f));
                 }
             }
-
             var indices = new List<uint>();
             for (uint i = 0; i < vertices.Count; i++)
                 indices.Add(i);
-
             _gridBuffer.UpdateCustom(vertices, indices);
         }
-
         public override void Update(float deltaTime)
         {
             _camera.Update(deltaTime, _window, 0f, _mouseCaptured);
             if (!_mouseCaptured) return;
-
             Vector2 mousePos = GetMousePosition();
             Vector3 worldPos = ScreenToWorld(mousePos);
             if (_gridSnap)
@@ -187,7 +171,6 @@ namespace SiegeEngine.Scenes
                 worldPos.X = (float)Math.Round(worldPos.X);
                 worldPos.Y = (float)Math.Round(worldPos.Y);
             }
-
             if (_dragging && (_currentBrush == "Raise" || _currentBrush == "Lower"))
             {
                 AdjustGridHeight(worldPos, _currentBrush == "Raise" ? 1f : -1f, deltaTime);
@@ -212,39 +195,32 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
-
+        protected override Matrix4x4 GetViewMatrix() => _camera.ViewMatrix;
         public override void Render(IReadOnlyList<Entity> entities)
         {
             base.Render(entities);
-
             Matrix4x4 view = _camera.ViewMatrix;
             _shader.SetMatrix4("uView", view);
-
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
             uint index = 0;
-
             foreach (var entity in entities)
             {
                 var physics = entity.GetComponent<PhysicsComponent>();
                 var wall = entity.GetComponent<WallComponent>();
                 var preview = entity.GetComponent<PreviewComponent>();
-
                 if (physics != null && wall == null)
                 {
                     float alpha = preview != null && preview.IsPreview ? 0.35f : 1.0f;
                     Vector3 pos = physics.Position;
                     Vector3 size = physics.Size;
-
                     vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 0.8f, 0.8f, 0.8f, alpha));
                     vertices.Add(new Vertex(pos.X + size.X, pos.Y, pos.Z, 0.8f, 0.8f, 0.8f, alpha));
                     vertices.Add(new Vertex(pos.X, pos.Y + size.Y, pos.Z, 0.8f, 0.8f, 0.8f, alpha));
                     vertices.Add(new Vertex(pos.X + size.X, pos.Y + size.Y, pos.Z, 0.8f, 0.8f, 0.8f, alpha));
-
                     indices.Add(index); indices.Add(index + 1); indices.Add(index + 2);
                     indices.Add(index + 1); indices.Add(index + 2); indices.Add(index + 3);
                     index += 4;
-
                     if (preview != null && preview.IsPreview)
                     {
                         _shader.SetUniform("uOutline", 1.0f);
@@ -259,10 +235,8 @@ namespace SiegeEngine.Scenes
                     float alpha = preview != null && preview.IsPreview ? 0.35f : 1.0f;
                     vertices.Add(new Vertex(wall.StartVertex.X, wall.StartVertex.Y, wall.StartVertex.Z, 0.0f, 1.0f, 0.0f, alpha));
                     vertices.Add(new Vertex(wall.EndVertex.X, wall.EndVertex.Y, wall.EndVertex.Z, 0.0f, 1.0f, 0.0f, alpha));
-
                     indices.Add(index); indices.Add(index + 1);
                     index += 2;
-
                     if (preview != null && preview.IsPreview)
                     {
                         _shader.SetUniform("uOutline", 1.0f);
@@ -273,18 +247,15 @@ namespace SiegeEngine.Scenes
                     }
                 }
             }
-
             _entitiesBuffer.UpdateCustom(vertices, indices);
             _entitiesBuffer.Bind();
             _renderContext.DrawElements(_currentBrush == "Wall" ? PrimitiveType.Lines : PrimitiveType.Triangles, _entitiesBuffer.GetIndexCount(), DrawElementsType.UnsignedInt, null);
         }
-
         private void OnSelectBrush(SelectBrushEvent e)
         {
             if (e.PlayerId == _steamEngine.GetSteamId())
                 SetBrush(e.BrushType);
         }
-
         private void OnEntityMoved(EntityMovedEvent e)
         {
             var entity = _entities.Find(x => x.Id == e.EntityId);
@@ -295,7 +266,6 @@ namespace SiegeEngine.Scenes
                     physics.Position = new Vector3(e.Position.X, e.Position.Y, physics.Position.Z);
             }
         }
-
         private void OnEntityPlaced(EntityPlacedEvent e)
         {
             if (!e.IsPreview)
@@ -328,13 +298,11 @@ namespace SiegeEngine.Scenes
                 _lastSentPos = new Vector2(e.Position.X, e.Position.Y);
             }
         }
-
         private void OnBrushRegistryUpdate(BrushRegistryUpdateEvent e)
         {
             _brushRegistry[e.BrushType] = new BrushDefinition { Type = e.BrushType, Size = e.Size, TextureId = e.TextureId };
             _brushTypes[e.BrushType] = e.TextureId;
         }
-
         private void OnMouseInput(MouseInputEvent e)
         {
             if (e.SteamId == _steamEngine.GetSteamId())
@@ -342,13 +310,11 @@ namespace SiegeEngine.Scenes
                 HandleMouseInput(e);
             }
         }
-
         private void HandleMouseInput(MouseInputEvent e)
         {
             Vector2 mousePos = e.Position;
             MouseButton button = e.Button;
             InputAction action = e.Action;
-
             if (button == MouseButton.Left)
             {
                 if (action == InputAction.Press)
@@ -394,13 +360,11 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
-
         private Vector2 GetMousePosition()
         {
             _glfw.GetCursorPos(_window, out double mx, out double my);
             return new Vector2((float)mx, (float)my);
         }
-
         private Vector3 ScreenToWorld(Vector2 screenPos)
         {
             float x = Math.Clamp(screenPos.X / _width * _gridWidth, 0, _gridWidth);
@@ -408,12 +372,10 @@ namespace SiegeEngine.Scenes
             float z = GetGridHeightAt((int)x, (int)y);
             return new Vector3(x, y, z);
         }
-
         private Vector3 GetSize(string brushType)
         {
             return _brushRegistry.TryGetValue(brushType, out var def) ? def.Size : new Vector3(1f, 1f, 0f);
         }
-
         private void PlaceEntity(Vector3 position)
         {
             if (_previewEntity != null)
@@ -429,7 +391,6 @@ namespace SiegeEngine.Scenes
             _server.Publish(new EntityPlacedEvent(entity.Id, _currentBrush, position));
             OnBrushPlaced?.Invoke(entity, _currentBrush);
         }
-
         private void PlaceWall(Vector3 endVertex)
         {
             if (_previewEntity != null)
@@ -446,13 +407,11 @@ namespace SiegeEngine.Scenes
             OnBrushPlaced?.Invoke(entity, "Wall");
             _editorMode = EditorMode.Preview;
         }
-
         private void AdjustGridHeight(Vector3 center, float delta, float deltaTime)
         {
             int x = (int)center.X;
             int y = (int)center.Y;
             float change = delta * deltaTime * 5f;
-
             for (int i = Math.Max(0, x - (int)_brushSize); i <= Math.Min(_gridWidth, x + (int)_brushSize); i++)
             {
                 for (int j = Math.Max(0, y - (int)_brushSize); j <= Math.Min(_gridHeight, y + (int)_brushSize); j++)
@@ -474,14 +433,12 @@ namespace SiegeEngine.Scenes
                     physics.Position = new Vector3(physics.Position.X, physics.Position.Y, GetGridHeightAt((int)physics.Position.X, (int)physics.Position.Y));
             }
         }
-
         private float GetGridHeightAt(int x, int y)
         {
             x = Math.Clamp(x, 0, _gridWidth);
             y = Math.Clamp(y, 0, _gridHeight);
             return _gridHeights[x, y];
         }
-
         private void UpdatePreview()
         {
             if (_currentBrush != null && _currentBrush != "Raise" && _currentBrush != "Lower")
@@ -494,7 +451,6 @@ namespace SiegeEngine.Scenes
                     worldPos.Y = (float)Math.Round(worldPos.Y);
                 }
                 worldPos.Z = GetGridHeightAt((int)worldPos.X, (int)worldPos.Y);
-
                 if (_previewEntity == null && _steamEngine.GetSteamId() != 0)
                 {
                     _previewEntity = new Entity { Id = -(_entities.Count + 1), Type = _currentBrush };
@@ -560,7 +516,6 @@ namespace SiegeEngine.Scenes
                 _previewEntity = null;
             }
         }
-
         private void UpdateGridSize(Vector3 position)
         {
             int buffer = 10;
@@ -578,7 +533,6 @@ namespace SiegeEngine.Scenes
                 SetupGrid();
             }
         }
-
         public void SaveLevel(string path)
         {
             var level = new LevelData
@@ -595,12 +549,10 @@ namespace SiegeEngine.Scenes
             };
             File.WriteAllText(path, JsonSerializer.Serialize(level, new JsonSerializerOptions { WriteIndented = true }));
         }
-
         public Vector3 GetCameraPosition()
         {
             return _camera.Position;
         }
-
         public void SetBrush(string brushType)
         {
             if (_brushRegistry.ContainsKey(brushType))
@@ -611,13 +563,11 @@ namespace SiegeEngine.Scenes
                 UpdatePreview();
             }
         }
-
         public void ToggleGridSnap(bool state)
         {
             _gridSnap = state;
             UpdatePreview();
         }
-
         public override void Dispose()
         {
             if (!_disposed)
@@ -627,7 +577,6 @@ namespace SiegeEngine.Scenes
             }
         }
     }
-
     public class BrushDefinition
     {
         public string Type { get; set; }

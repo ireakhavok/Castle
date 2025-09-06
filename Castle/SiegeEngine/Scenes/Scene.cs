@@ -10,7 +10,6 @@ using SiegeEngine.Interfaces;
 using SiegeEngine.Events;
 using SiegeEngine.Rendering.Shaders;
 using SiegeEngine.PlayerSystem;
-
 namespace SiegeEngine.Scenes
 {
     public abstract unsafe class Scene : IDisposable
@@ -27,7 +26,6 @@ namespace SiegeEngine.Scenes
         protected bool _disposed;
         protected readonly List<GameSystem> _systems = new List<GameSystem>();
         private Player _player; // Added for listener position
-
         public Scene(IRenderContext renderContext, Glfw glfw, WindowHandle* window, IGameServer server, EventBus eventBus)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
@@ -42,12 +40,10 @@ namespace SiegeEngine.Scenes
                 _systems.Add(lightingSystem);
             }
         }
-
         public void SetPlayer(Player player)
         {
             _player = player;
         }
-
         public virtual void Initialize(int width, int height)
         {
             _width = width;
@@ -55,26 +51,22 @@ namespace SiegeEngine.Scenes
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
             _renderContext.Enable(EnableCap.DepthTest);
             _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
             _shader = CreateShader();
             var shaders = ShaderSetup.InitializeShaders(_renderContext);
             _modelShader = shaders.modelShader;
             _gridBuffer = new VertexBuffer(_renderContext);
             SetupGrid();
         }
-
         protected virtual ShaderProgram CreateShader()
         {
             return new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
         }
-
         protected virtual void SetupGrid()
         {
             var vertices = new List<Vertex>();
             int width = 128;
             int height = 72;
             float size = 5.0f;
-
             for (float x = 0; x <= width; x += size)
             {
                 vertices.Add(new Vertex(x, 0, 0, 0.6f, 0.6f, 0.6f, 1.0f));
@@ -85,21 +77,17 @@ namespace SiegeEngine.Scenes
                 vertices.Add(new Vertex(0, y, 0, 0.6f, 0.6f, 0.6f, 1.0f));
                 vertices.Add(new Vertex(width, y, 0, 0.6f, 0.6f, 0.6f, 1.0f));
             }
-
             var indices = new List<uint>();
             for (uint i = 0; i < vertices.Count; i++)
                 indices.Add(i);
-
             _gridBuffer.UpdateCustom(vertices, indices);
         }
-
         public virtual void Resize(int width, int height)
         {
             _width = width;
             _height = height;
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
         }
-
         public virtual void Update(float deltaTime)
         {
             foreach (var system in _systems)
@@ -111,24 +99,25 @@ namespace SiegeEngine.Scenes
                 system.Update(deltaTime);
             }
         }
-
+        protected virtual Matrix4x4 GetViewMatrix() => _player?.Camera?.ViewMatrix ?? Matrix4x4.Identity;
         public virtual void Render(IReadOnlyList<Entity> entities)
         {
             if (_disposed) return;
-
             _renderContext.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-            _shader.Use();
-
+            Matrix4x4 view = GetViewMatrix();
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, 0.1f, 1000f);
+            // Render grid
+            _shader.Use();
+            _shader.SetMatrix4("uView", view);
             _shader.SetMatrix4("uModel", Matrix4x4.Identity);
             _shader.SetMatrix4("uProjection", projection);
-
             _renderContext.Disable(EnableCap.DepthTest);
             _gridBuffer.Bind();
             _renderContext.DrawArrays(PrimitiveType.Lines, 0, _gridBuffer.GetVertexCount());
             _renderContext.Enable(EnableCap.DepthTest);
-
+            // Render player model
             _modelShader.Use();
+            _modelShader.SetMatrix4("uView", view);
             _modelShader.SetMatrix4("uProjection", projection);
             var lightingSystem = _systems.Find(s => s is LightingSystem) as LightingSystem;
             if (lightingSystem != null)
@@ -146,12 +135,10 @@ namespace SiegeEngine.Scenes
             _modelShader.SetUniform("uSpecularStrength", 0.5f);
             _modelShader.SetUniform("uShininess", 32.0f);
         }
-
         public virtual void AddSystem(GameSystem system)
         {
             _systems.Add(system);
         }
-
         public virtual void Dispose()
         {
             if (!_disposed)
