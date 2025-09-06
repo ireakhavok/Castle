@@ -1,21 +1,22 @@
-﻿using System.Numerics;
-
+﻿using System;
+using System.Numerics;
+using SiegeEngine.Rendering.Definitions;
 namespace SiegeEngine.Rendering.Definitions
 {
     public class Label
     {
-        public string Text { get; }
-        public Vector2 Position { get; }
-        public TextStyle TextStyle { get; }
-
+        private readonly LabelDefinition _def;
         public Label(LabelDefinition def)
         {
-            Text = def.Text;
-            Position = def.GetPositionVector();
-            TextStyle = def.TextStyle ?? new TextStyle { FontSize = 8.0f, Color = new Color { R = 0.0f, G = 0.0f, B = 0.0f, A = 1.0f } };
+            _def = def;
         }
-
-        // Labels are static and don't need update logic
-        public void Update(Vector2 adjustedPos, Vector2 mousePos) { }
+        public LabelDefinition Def => _def;
+        public string Text => _def.Text;
+        public Vector2 Position => _def.GetPositionVector();
+        public TextStyle TextStyle => _def.TextStyle;
+        public void Update(Vector2 adjustedPos, Vector2 mousePos)
+        {
+            // No interaction
+        }
     }
 }

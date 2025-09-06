@@ -1,12 +1,10 @@
 ﻿using System.Numerics;
-
 namespace SiegeEngine.PlayerSystem
 {
     public class PositionCalculator
     {
         private const int BackgroundWidth = 1920;
         private const int BackgroundHeight = 895;
-
         public Vector2 CalculateAdjustedPosition(Vector2 position, string positioningMode, int windowWidth, int windowHeight)
         {
             Vector2 adjustedPos = position;
@@ -21,13 +19,11 @@ namespace SiegeEngine.PlayerSystem
             {
                 float backgroundX = position.X * BackgroundWidth;
                 float backgroundY = position.Y * BackgroundHeight;
-
                 float offsetX = (windowWidth - BackgroundWidth) / 2.0f;
                 float offsetY = (windowHeight - BackgroundHeight) / 2.0f;
-
                 adjustedPos = new Vector2(
-                    offsetX + BackgroundWidth / 2.0f + backgroundX,
-                    offsetY + BackgroundHeight / 2.0f + backgroundY
+                    offsetX + backgroundX,
+                    offsetY + backgroundY
                 );
             }
             return adjustedPos;

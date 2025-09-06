@@ -1,8 +1,6 @@
-﻿// SiegeEngine/Rendering/Definitions/MenuDefinition.cs
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json.Serialization;
-
 namespace SiegeEngine.Rendering.Definitions
 {
     public class MenuDefinition
@@ -11,6 +9,8 @@ namespace SiegeEngine.Rendering.Definitions
         public string Name { get; set; }
         [JsonPropertyName("background")]
         public string Background { get; set; }
+        [JsonPropertyName("backgroundColor")]
+        public Color BackgroundColor { get; set; }
         [JsonPropertyName("positioningMode")]
         public string PositioningMode { get; set; }
         [JsonPropertyName("tabs")]
@@ -20,15 +20,9 @@ namespace SiegeEngine.Rendering.Definitions
         [JsonPropertyName("elements")]
         public List<Dictionary<string, object>> Elements { get; set; }
     }
-
-
-
     public class MenuConfig
     {
         [JsonPropertyName("menus")]
         public List<MenuDefinition> Menus { get; set; }
     }
-
-
-
 }

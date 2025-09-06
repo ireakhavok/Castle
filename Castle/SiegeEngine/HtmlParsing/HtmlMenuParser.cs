@@ -59,6 +59,41 @@ namespace SiegeEngine.HtmlParsing
                 var tab = new TabDefinition { Name = tabText, Action = "SwitchTab_" + tabId };
                 menu.Tabs.Add(tab);
             }
+            // Parse sidebar buttons (a and div)
+            var sidebarRegex = new Regex(@"<div\s+class=""sidebar""[^>]*>(.*?)</div>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            Match sidebarMatch = sidebarRegex.Match(content);
+            if (sidebarMatch.Success)
+            {
+                string sidebarContent = sidebarMatch.Groups[1].Value;
+                var aButtonRegex = new Regex(@"<a\s+href=""([^""]*)""\s+class=""button""[^>]*>([^<]*)</a>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                var divButtonRegex = new Regex(@"<div\s+class=""button""[^>]*>([^<]*)</div>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                List<ButtonDefinition> sidebarButtons = new List<ButtonDefinition>();
+                foreach (Match am in aButtonRegex.Matches(sidebarContent))
+                {
+                    string href = am.Groups[1].Value.Trim('#');
+                    string bText = am.Groups[2].Value.Trim();
+                    sidebarButtons.Add(new ButtonDefinition { Text = bText, Action = "SwitchMenu_" + href });
+                }
+                foreach (Match dm in divButtonRegex.Matches(sidebarContent))
+                {
+                    string bText = dm.Groups[1].Value.Trim();
+                    sidebarButtons.Add(new ButtonDefinition { Text = bText, Action = bText.Replace(" ", "") });
+                }
+                // Assign positions to sidebar buttons
+                float sidebarX = 20f / 1280f;
+                float buttonW = 210f / 1280f;
+                float buttonH = 50f / 720f;
+                float ySpacing = 60f / 720f;
+                float yStart = 40f / 720f + ySpacing * menu.Tabs.Count; // After tabs
+                for (int i = 0; i < sidebarButtons.Count; i++)
+                {
+                    sidebarButtons[i].Position = new Position { X = sidebarX, Y = yStart + ySpacing * i };
+                    sidebarButtons[i].Size = new Size { Width = buttonW, Height = buttonH };
+                    sidebarButtons[i].ButtonStyle = GetDefaultButtonStyle();
+                    sidebarButtons[i].TextStyle = GetDefaultTextStyle();
+                }
+                menu.Buttons.AddRange(sidebarButtons);
+            }
             // Parse content divs
             var contentDivRegex = new Regex(@"<div\s+class=""content\s+([^""]*)""[^>]*>(.*?)</div>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match cm in contentDivRegex.Matches(content))
@@ -69,20 +104,28 @@ namespace SiegeEngine.HtmlParsing
                 if (tab != null)
                 {
                     (tab.Buttons, tab.Elements) = ParseTabElements(tabContent);
+                    // Assign positions to tab elements
+                    AssignTabPositions(tab);
                 }
-            }
-            // Parse standalone buttons like Exit
-            var buttonRegex = new Regex(@"<div\s+class=""button""[^>]*>([^<]*)</div>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
-            foreach (Match bm in buttonRegex.Matches(content))
-            {
-                string bText = bm.Groups[1].Value.Trim();
-                menu.Buttons.Add(new ButtonDefinition { Text = bText, Action = bText == "Exit" ? "Exit" : "" });
             }
         }
         private void ParseSettingsScreen(string content, MenuDefinition menu)
         {
             menu.Elements = new List<Dictionary<string, object>>();
             menu.Buttons = new List<ButtonDefinition>();
+            // Parse h2
+            var h2Regex = new Regex(@"<h2>([^<]*)</h2>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            Match h2Match = h2Regex.Match(content);
+            if (h2Match.Success)
+            {
+                string text = h2Match.Groups[1].Value.Trim();
+                menu.Elements.Add(new Dictionary<string, object>
+                {
+                    { "type", "label" },
+                    { "text", text },
+                    { "textStyle", new TextStyle { FontSize = 32f, Color = new Color { R = 1f, G = 1f, B = 1f, A = 1f } } }
+                });
+            }
             // Parse options
             var optionRegex = new Regex(@"<div\s+class=""option""[^>]*>(.*?)</div>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
             foreach (Match om in optionRegex.Matches(content))
@@ -91,6 +134,12 @@ namespace SiegeEngine.HtmlParsing
                 var labelMatch = Regex.Match(optionContent, @"<label\s+for=""([^""]*)""[^>]*>([^<]*)</label>", RegexOptions.IgnoreCase);
                 string labelId = labelMatch.Groups[1].Value;
                 string labelText = labelMatch.Groups[2].Value.Trim();
+                menu.Elements.Add(new Dictionary<string, object>
+                {
+                    { "type", "label" },
+                    { "text", labelText },
+                    { "textStyle", new TextStyle { FontSize = 16f, Color = new Color { R = 1f, G = 1f, B = 1f, A = 1f } } }
+                });
                 // Select
                 var selectMatch = Regex.Match(optionContent, @"<select\s+id=""([^""]*)""[^>]*>(.*?)</select>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
                 if (selectMatch.Success)
@@ -129,12 +178,13 @@ namespace SiegeEngine.HtmlParsing
                 var aRegex = new Regex(@"<a\s+href=""([^""]*)""\s+class=""button""[^>]*>([^<]*)</a>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
                 foreach (Match am in aRegex.Matches(buttonsContent))
                 {
-                    string href = am.Groups[1].Value;
+                    string href = am.Groups[1].Value.Trim('#');
                     string aText = am.Groups[2].Value.Trim();
-                    string action = href == "#main" ? "SwitchMenu_Main" : "";
+                    string action = "SwitchMenu_" + href;
                     menu.Buttons.Add(new ButtonDefinition { Text = aText, Action = action });
                 }
             }
+            AssignSettingsPositions(menu);
         }
         private (List<ButtonDefinition>, List<Dictionary<string, object>>) ParseTabElements(string content)
         {
@@ -340,6 +390,144 @@ namespace SiegeEngine.HtmlParsing
                 return new Color { R = r, G = g, B = b, A = a };
             }
             return new Color { R = 1, G = 1, B = 1, A = 1 };
+        }
+        private void AssignTabPositions(TabDefinition tab)
+        {
+            float contentX = 540f / 1280f;
+            float labelX = contentX;
+            float yStart = 100f / 720f;
+            float y = yStart;
+            float buttonH = 50f / 720f;
+            float selectH = 30f / 720f;
+            float labelH = 20f / 720f;
+            float spacing = 10f / 720f;
+            var allElements = new List<object>();
+            allElements.AddRange(tab.Buttons ?? new List<ButtonDefinition>());
+            allElements.AddRange(tab.Elements ?? new List<Dictionary<string, object>>());
+            for (int i = 0; i < allElements.Count; i++)
+            {
+                var element = allElements[i];
+                if (element is ButtonDefinition button)
+                {
+                    button.Position = new Position { X = contentX, Y = y };
+                    button.Size = new Size { Width = 200f / 1280f, Height = buttonH };
+                    button.ButtonStyle = GetDefaultButtonStyle();
+                    button.TextStyle = GetDefaultTextStyle();
+                    y += buttonH + spacing;
+                }
+                else if (element is Dictionary<string, object> dict && dict.TryGetValue("type", out object typeObj))
+                {
+                    string type = typeObj.ToString().ToLower();
+                    if (type == "dropdown")
+                    {
+                        dict["position"] = new Position { X = contentX, Y = y };
+                        dict["size"] = new Size { Width = 200f / 1280f, Height = selectH };
+                        dict["buttonStyle"] = GetDefaultButtonStyle();
+                        dict["textStyle"] = GetDefaultTextStyle();
+                        y += selectH + 20f / 720f; // Extra spacing for options
+                    }
+                    else if (type == "toggle")
+                    {
+                        dict["position"] = new Position { X = contentX, Y = y };
+                        dict["size"] = new Size { Width = 200f / 1280f, Height = selectH };
+                        dict["buttonStyle"] = GetDefaultButtonStyle();
+                        dict["textStyle"] = GetDefaultTextStyle();
+                        y += selectH + spacing;
+                    }
+                    else if (type == "label")
+                    {
+                        dict["position"] = new Position { X = labelX, Y = y };
+                        dict["textStyle"] = GetDefaultTextStyle();
+                        y += labelH + spacing;
+                    }
+                }
+            }
+        }
+        private void AssignSettingsPositions(MenuDefinition menu)
+        {
+            float left = 340f / 1280f;
+            float buttonW = 200f / 1280f;
+            float buttonH = 50f / 720f;
+            float selectH = 30f / 720f;
+            float labelH = 20f / 720f;
+            float spacing = 10f / 720f;
+            float y = 50f / 720f;
+            // h2
+            if (menu.Elements.Count > 0 && menu.Elements[0]["type"].ToString() == "label")
+            {
+                menu.Elements[0]["position"] = new Position { X = left, Y = y };
+                menu.Elements[0]["textStyle"] = new TextStyle { FontSize = 32f, Color = new Color { R = 1f, G = 1f, B = 1f, A = 1f } };
+                y += 50f / 720f;
+            }
+            // Options and toggle
+            for (int i = 0; i < menu.Elements.Count; i++)
+            {
+                var element = menu.Elements[i];
+                string type = element["type"].ToString();
+                if (type == "label")
+                {
+                    element["position"] = new Position { X = left, Y = y };
+                    element["textStyle"] = new TextStyle { FontSize = 16f, Color = new Color { R = 1f, G = 1f, B = 1f, A = 1f } };
+                    y += labelH + spacing;
+                }
+                else if (type == "dropdown")
+                {
+                    element["position"] = new Position { X = left, Y = y };
+                    element["size"] = new Size { Width = buttonW, Height = selectH };
+                    element["buttonStyle"] = GetDefaultButtonStyle(true); // Settings style
+                    element["textStyle"] = GetDefaultTextStyle(true);
+                    y += selectH + 20f / 720f; // Extra spacing for options
+                }
+                else if (type == "toggle")
+                {
+                    element["position"] = new Position { X = left, Y = y };
+                    element["size"] = new Size { Width = buttonW, Height = selectH };
+                    element["buttonStyle"] = GetDefaultButtonStyle(true);
+                    element["textStyle"] = GetDefaultTextStyle(true);
+                    y += selectH + spacing;
+                }
+            }
+            // Buttons
+            if (menu.Buttons.Count == 2)
+            {
+                float buttonSpacing = 20f / 1280f;
+                float totalWidth = 2 * buttonW + buttonSpacing;
+                float startX = 0.5f - totalWidth / 2;
+                menu.Buttons[0].Position = new Position { X = startX, Y = y };
+                menu.Buttons[0].Size = new Size { Width = buttonW, Height = buttonH };
+                menu.Buttons[0].ButtonStyle = GetDefaultButtonStyle(true);
+                menu.Buttons[0].TextStyle = GetDefaultTextStyle(true);
+                menu.Buttons[1].Position = new Position { X = startX + buttonW + buttonSpacing, Y = y };
+                menu.Buttons[1].Size = new Size { Width = buttonW, Height = buttonH };
+                menu.Buttons[1].ButtonStyle = GetDefaultButtonStyle(true);
+                menu.Buttons[1].TextStyle = GetDefaultTextStyle(true);
+            }
+        }
+        private ButtonStyle GetDefaultButtonStyle(bool isSettings = false)
+        {
+            if (isSettings)
+            {
+                return new ButtonStyle
+                {
+                    BackgroundColor = new Color { R = 0f, G = 0.5f, B = 0.5f, A = 0.8f },
+                    HoverColor = new Color { R = 1f, G = 1f, B = 1f, A = 0.8f },
+                    BorderColor = new Color { R = 0f, G = 0f, B = 0f, A = 1f }
+                };
+            }
+            return new ButtonStyle
+            {
+                BackgroundColor = new Color { R = 0.2f, G = 0.2f, B = 0.2f, A = 0.8f },
+                HoverColor = new Color { R = 0.3f, G = 0.3f, B = 0.3f, A = 0.8f },
+                BorderColor = new Color { R = 0.5f, G = 0.5f, B = 0.5f, A = 1f }
+            };
+        }
+        private TextStyle GetDefaultTextStyle(bool isSettingsHover = false)
+        {
+            if (isSettingsHover)
+            {
+                return new TextStyle { FontSize = 16f, Color = new Color { R = 0f, G = 0f, B = 0f, A = 1f } };
+            }
+            return new TextStyle { FontSize = 16f, Color = new Color { R = 1f, G = 1f, B = 1f, A = 1f } };
         }
     }
 }

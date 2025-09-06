@@ -1,41 +1,35 @@
 ﻿using System;
 using System.Numerics;
-
+using SiegeEngine.Rendering.Definitions;
 namespace SiegeEngine.Rendering.Definitions
 {
     public class Button
     {
-        public string Text { get; }
-        public Vector2 Position { get; }
-        public Vector2 Size { get; }
-        public TextStyle TextStyle { get; }
-        public Vector4 BackgroundColor { get; }
-        public Vector4 HoverColor { get; }
-        public Vector4 BorderColor { get; }
-        public Action OnClick { get; }
-        public bool IsHovered { get; private set; }
-
+        private readonly ButtonDefinition _def;
+        private readonly Action _onClick;
         public Button(ButtonDefinition def, Action onClick)
         {
-            Text = def.Text ?? "Unnamed Button"; // Should never be null due to ButtonDefinition, but double-checking
-            Position = def.GetPositionVector();
-            Size = def.GetSizeVector();
-            TextStyle = def.TextStyle ?? new TextStyle { FontSize = 8.0f, Color = new Color { R = 0.0f, G = 0.0f, B = 0.0f, A = 1.0f } };
-            BackgroundColor = def.ButtonStyle?.BackgroundColor?.ToVector4() ?? new Vector4(1.0f, 0.0f, 0.0f, 0.8f);
-            HoverColor = def.ButtonStyle?.HoverColor?.ToVector4() ?? new Vector4(1.0f, 1.0f, 1.0f, 0.8f);
-            BorderColor = def.ButtonStyle?.BorderColor?.ToVector4() ?? new Vector4(0.0f, 0.0f, 0.0f, 1.0f);
-            OnClick = onClick;
+            _def = def;
+            _onClick = onClick;
         }
-
+        public ButtonDefinition Def => _def;
+        public Vector2 Position => _def.GetPositionVector();
+        public Vector2 Size => _def.GetSizeVector();
+        public string Text => _def.Text;
+        public int IconIndex => _def.IconIndex;
+        public string Action => _def.Action;
+        public TextStyle TextStyle => _def.TextStyle;
+        public ButtonStyle ButtonStyle => _def.ButtonStyle;
+        public bool IsHovered { get; private set; }
         public void Update(Vector2 adjustedPos, Vector2 mousePos)
         {
-            IsHovered = mousePos.X >= adjustedPos.X && mousePos.X <= adjustedPos.X + Size.X &&
-                        mousePos.Y >= adjustedPos.Y && mousePos.Y <= adjustedPos.Y + Size.Y;
+            float xMax = adjustedPos.X + Size.X;
+            float yMax = adjustedPos.Y + Size.Y;
+            IsHovered = mousePos.X >= adjustedPos.X && mousePos.X <= xMax && mousePos.Y >= adjustedPos.Y && mousePos.Y <= yMax;
         }
-
         public void TriggerClick()
         {
-            OnClick?.Invoke();
+            _onClick?.Invoke();
         }
     }
 }

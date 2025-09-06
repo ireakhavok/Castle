@@ -1,41 +1,37 @@
 ﻿using System;
 using System.Numerics;
-
+using SiegeEngine.Rendering.Definitions;
 namespace SiegeEngine.Rendering.Definitions
 {
     public class Toggle
     {
-        public string Name { get; }
-        public Vector2 Position { get; }
-        public Vector2 Size { get; }
-        public TextStyle TextStyle { get; }
-        public ButtonStyle ButtonStyle { get; }
-        public bool State { get; private set; }
-        public Action<bool> OnToggle { get; }
-        public bool IsHovered { get; private set; }
-
+        private readonly ToggleDefinition _def;
+        private readonly Action<bool> _onToggle;
         public Toggle(ToggleDefinition def, Action<bool> onToggle)
         {
-            Name = def.Name;
-            Position = def.GetPositionVector();
-            Size = def.GetSizeVector();
-            TextStyle = def.TextStyle ?? new TextStyle { FontSize = 8.0f, Color = new Color { R = 0.0f, G = 0.0f, B = 0.0f, A = 1.0f } };
-            ButtonStyle = def.ButtonStyle;
+            _def = def;
+            _onToggle = onToggle;
             State = def.State;
-            OnToggle = onToggle;
         }
-
+        public ToggleDefinition Def => _def;
+        public string Name => _def.Name;
+        public Vector2 Position => _def.GetPositionVector();
+        public Vector2 Size => _def.GetSizeVector();
+        public bool State { get; private set; }
+        public string Action => _def.Action;
+        public TextStyle TextStyle => _def.TextStyle;
+        public ButtonStyle ButtonStyle => _def.ButtonStyle;
+        public bool IsHovered { get; private set; }
         public void Update(Vector2 adjustedPos, Vector2 mousePos)
         {
-            IsHovered = mousePos.X >= adjustedPos.X && mousePos.X <= adjustedPos.X + Size.X &&
-                        mousePos.Y >= adjustedPos.Y && mousePos.Y <= adjustedPos.Y + Size.Y;
+            float xMax = adjustedPos.X + Size.X;
+            float yMax = adjustedPos.Y + Size.Y;
+            IsHovered = mousePos.X >= adjustedPos.X && mousePos.X <= xMax && mousePos.Y >= adjustedPos.Y && mousePos.Y <= yMax;
         }
-
         public void ToggleState()
         {
             State = !State;
-            OnToggle?.Invoke(State);
-            Console.WriteLine($"Toggle: Toggled {Name} to state: {State}");
+            _onToggle?.Invoke(State);
         }
     }
 }

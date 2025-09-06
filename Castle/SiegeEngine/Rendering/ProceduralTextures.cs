@@ -1,6 +1,5 @@
 ﻿using SiegeEngine.Rendering.Definitions;
 using System;
-
 namespace SiegeEngine.Rendering
 {
     public class ProceduralTextures
@@ -10,7 +9,6 @@ namespace SiegeEngine.Rendering
             public byte r, g, b, a;
             public Color(byte r, byte g, byte b, byte a = 255) => (this.r, this.g, this.b, this.a) = (r, g, b, a);
         }
-
         private static readonly int[] Perm = new int[256] {
             151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
             8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,
@@ -25,9 +23,7 @@ namespace SiegeEngine.Rendering
             107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
             138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
         };
-
         private static readonly int[] p = new int[512];
-
         static ProceduralTextures()
         {
             for (int i = 0; i < 512; i++)
@@ -35,34 +31,28 @@ namespace SiegeEngine.Rendering
                 p[i] = Perm[i % 256];
             }
         }
-
         private static float PerlinNoise(float x, float y)
         {
             int xi = (int)x & 255;
             int yi = (int)y & 255;
             float xf = x - (int)x;
             float yf = y - (int)y;
-
             float u = Fade(xf);
             float v = Fade(yf);
-
             int aa = p[xi + yi];
             int ab = p[xi + yi + 1];
             int ba = p[xi + 1 + yi];
             int bb = p[xi + 1 + yi + 1];
-
             float x1 = Lerp(Grad(aa, xf, yf), Grad(ba, xf - 1, yf), u);
             float x2 = Lerp(Grad(ab, xf, yf - 1), Grad(bb, xf - 1, yf - 1), u);
             return (Lerp(x1, x2, v) + 1) * 0.5f;
         }
-
         private static float OctaveNoise(float x, float y, int octaves = 4)
         {
             float total = 0f;
             float frequency = 0.1f;
             float amplitude = 1f;
             float maxValue = 0f;
-
             for (int i = 0; i < octaves; i++)
             {
                 total += PerlinNoise(x * frequency, y * frequency) * amplitude;
@@ -72,7 +62,6 @@ namespace SiegeEngine.Rendering
             }
             return total / maxValue;
         }
-
         private static float Fade(float t) => t * t * t * (t * (t * 6 - 15) + 10);
         private static float Lerp(float a, float b, float t) => a + t * (b - a);
         private static float Grad(int hash, float x, float y)
@@ -82,11 +71,9 @@ namespace SiegeEngine.Rendering
             float v = h < 4 ? y : h == 12 || h == 14 ? x : 0;
             return ((h & 1) == 0 ? u : -u) + ((h & 2) == 0 ? v : -v);
         }
-
         public static Color[] GenerateTexture(int id, int width = 256, int height = 256)
         {
             Color[] pixels = new Color[width * height];
-
             if (id == TextureDefinitions.Grass)
             {
                 for (int y = 0; y < height; y++) for (int x = 0; x < width; x++)

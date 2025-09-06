@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-
 namespace SiegeEngine.Rendering.Definitions
 {
     public class TextStyle
@@ -20,7 +19,7 @@ namespace SiegeEngine.Rendering.Definitions
         [JsonPropertyName("color")]
         public Color Color
         {
-            get => _color ??= new Color { R = 0.0f, G = 0.0f, B = 0.0f, A = 1.0f };
+            get => _color ??= new Color { R = 1.0f, G = 1.0f, B = 1.0f, A = 1.0f };
             set => _color = value;
         }
     }

@@ -5,7 +5,6 @@ using System.Numerics;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-
 namespace SiegeEngine.Rendering.Definitions
 {
     public class Color
