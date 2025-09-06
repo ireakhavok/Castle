@@ -8,7 +8,6 @@ using SiegeEngine.Managers;
 using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Definitions;
 using Silk.NET.GLFW;
-
 namespace SiegeEngine.PlayerSystem
 {
     public unsafe class CustomUIController : IDisposable
@@ -37,7 +36,6 @@ namespace SiegeEngine.PlayerSystem
         private int _pendingResolutionIndex;
         private int _pendingAspectRatioIndex;
         private bool _pendingFullscreenState;
-
         public CustomUIController(Glfw glfw, IRenderContext renderContext, WindowHandle* window, UISettingsManager settingsManager, MenuManager menuManager, IGameServer server, InputHandler inputHandler)
         {
             _glfw = glfw;
@@ -48,7 +46,6 @@ namespace SiegeEngine.PlayerSystem
             _positionCalculator = new PositionCalculator();
             _inputHandler = inputHandler;
             _uiRenderer = new UIRenderer(glfw, renderContext, window);
-
             _resolutions = new (int Width, int Height)[]
             {
                 (800, 600), (1024, 768), (1280, 960), (1400, 1050), (1600, 1200),
@@ -57,7 +54,6 @@ namespace SiegeEngine.PlayerSystem
                 (2560, 1080), (3440, 1440), (5120, 2160),
                 (3840, 1080), (5120, 1440)
             };
-
             Monitor* monitor = _glfw.GetPrimaryMonitor();
             VideoMode* mode = _glfw.GetVideoMode(monitor);
             int maxWidth = mode->Width;
@@ -69,7 +65,6 @@ namespace SiegeEngine.PlayerSystem
             }
             resolutionsList.Sort((a, b) => a.Width == b.Width ? a.Height.CompareTo(b.Height) : a.Width.CompareTo(b.Width));
             _resolutions = resolutionsList.ToArray();
-
             _resolutionsByAspectRatio = new Dictionary<string, List<(int Width, int Height)>>();
             foreach (var res in _resolutions)
             {
@@ -80,13 +75,10 @@ namespace SiegeEngine.PlayerSystem
                 }
                 _resolutionsByAspectRatio[aspectRatio].Add(res);
             }
-
             _filteredResolutions = _resolutionsByAspectRatio["16:9"].ToList();
-
             // Initialize fullscreen state
             _pendingFullscreenState = _glfw.GetWindowMonitor(_window) != null;
             _settingsManager.UpdateFullscreen(_pendingFullscreenState, false);
-
             // Adopt current window size
             _settingsManager.LoadSettings();
             int currentWidth = _settingsManager.WindowWidth;
@@ -114,7 +106,6 @@ namespace SiegeEngine.PlayerSystem
                 //Console.WriteLine($"CustomUIController: Setting fullscreen to native: {currentWidth}x{currentHeight}");
                 _settingsManager.UpdateWindowSize(currentWidth, currentHeight, false);
             }
-
             _currentResolutionIndex = _pendingResolutionIndex = 0;
             _currentAspectRatioIndex = _pendingAspectRatioIndex = 0;
             for (int i = 0; i < _resolutions.Length; i++)
@@ -127,11 +118,9 @@ namespace SiegeEngine.PlayerSystem
                     break;
                 }
             }
-
             _glfw.GetWindowPos(_window, out _windowedPosX, out _windowedPosY);
             _windowedWidth = currentWidth;
             _windowedHeight = currentHeight;
-
             _menuManager.OnMenuSwitched += (background, indices) =>
             {
                 _glfw.GetWindowSize(_window, out int width, out int height);
@@ -198,15 +187,12 @@ namespace SiegeEngine.PlayerSystem
                 }
                 _settingsManager.AllowResize = false;
             };
-
             Initialize();
         }
-
         private string GetAspectRatio(int width, int height)
         {
             if (width <= 0 || height <= 0)
                 return "16:9";
-
             return (width, height) switch
             {
                 (800, 600) or (1024, 768) or (1280, 960) or (1400, 1050) or (1600, 1200) => "4:3",
@@ -217,7 +203,6 @@ namespace SiegeEngine.PlayerSystem
                 _ => "16:9"
             };
         }
-
         private int GCD(int a, int b)
         {
             while (b != 0)
@@ -228,13 +213,11 @@ namespace SiegeEngine.PlayerSystem
             }
             return a;
         }
-
         private void UpdateResolutionOptions()
         {
             string selectedAspectRatio = _resolutionsByAspectRatio.Keys.ToArray()[_pendingAspectRatioIndex];
             _filteredResolutions = _resolutionsByAspectRatio[selectedAspectRatio].OrderBy(r => r.Width).ToList();
             var newOptions = _filteredResolutions.Select(r => $"{r.Width}x{r.Height}").ToList();
-
             foreach (var element in _menuManager.Elements)
             {
                 if (element is Dropdown dropdown && dropdown.Name == "Resolution")
@@ -251,15 +234,18 @@ namespace SiegeEngine.PlayerSystem
                 }
             }
         }
-
         public void Initialize()
         {
             _glfw.SetInputMode(_window, CursorStateAttribute.Cursor, CursorModeValue.CursorNormal);
             _glfw.GetWindowSize(_window, out int width, out int height);
             //Console.WriteLine($"CustomUIController: Initialize called, current window size: {width}x{height}");
+            if (_menuManager.CurrentMenu == null)
+            {
+                Console.WriteLine("CustomUIController: Menu not loaded, skipping UI initialization");
+                return;
+            }
             _uiRenderer.Initialize(_menuManager.CurrentMenu.Background ?? "", _settingsManager.IconIndices);
         }
-
         public void Update(float deltaTime)
         {
             // Skip input processing in EditorMode
@@ -268,26 +254,20 @@ namespace SiegeEngine.PlayerSystem
                 //Console.WriteLine("CustomUIController: Skipping Update in EditorMode");
                 return;
             }
-
             //Console.WriteLine("CustomUIController: Update called");
-
             int windowWidth, windowHeight;
             _glfw.GetWindowSize(_window, out windowWidth, out windowHeight);
-
             _glfw.SetInputMode(_window, CursorStateAttribute.Cursor, CursorModeValue.CursorNormal);
             _glfw.GetCursorPos(_window, out double mouseX, out double mouseY);
             Vector2 mousePos = new Vector2((float)mouseX, (float)mouseY);
             //Console.WriteLine($"CustomUIController: Mouse at ({mousePos.X}, {mousePos.Y}), Cursor mode: {_glfw.GetInputMode(_window, CursorStateAttribute.Cursor)}");
-
             if (_inputHandler.MouseDown)
             {
                 Console.WriteLine($"CustomUIController: Mouse down at ({mousePos.X}, {mousePos.Y})");
             }
-
             foreach (var element in _menuManager.Elements)
             {
                 if (element == null) continue;
-
                 Vector2 adjustedPos = _positionCalculator.CalculateAdjustedPosition(
                     element switch
                     {
@@ -298,7 +278,6 @@ namespace SiegeEngine.PlayerSystem
                         _ => Vector2.Zero
                     },
                     _menuManager.CurrentMenu.PositioningMode, windowWidth, windowHeight);
-
                 switch (element)
                 {
                     case Button button:
@@ -313,7 +292,6 @@ namespace SiegeEngine.PlayerSystem
                             //Console.WriteLine($"CustomUIController: Mouse down on '{button.Text}'");
                         }
                         break;
-
                     case Dropdown dropdown:
                         dropdown.Update(adjustedPos, mousePos);
                         if (_inputHandler.MouseDown && dropdown.IsHovered)
@@ -329,7 +307,6 @@ namespace SiegeEngine.PlayerSystem
                             }
                         }
                         break;
-
                     case Toggle toggle:
                         toggle.Update(adjustedPos, mousePos);
                         if (_inputHandler.MouseDown && toggle.IsHovered)
@@ -337,19 +314,17 @@ namespace SiegeEngine.PlayerSystem
                             _hoveredToggleOnMouseDown = toggle;
                         }
                         break;
-
                     case Label label:
                         label.Update(adjustedPos, mousePos);
                         break;
                 }
             }
-
             if (_inputHandler.MouseReleased)
             {
                 //Console.WriteLine($"CustomUIController: Mouse released at ({mousePos.X}, {mousePos.Y})");
                 if (_hoveredButtonOnMouseDown != null && _hoveredButtonOnMouseDown.IsHovered)
                 {
-                   Console.WriteLine($"CustomUIController: Triggering click on '{_hoveredButtonOnMouseDown.Text}'");
+                    Console.WriteLine($"CustomUIController: Triggering click on '{_hoveredButtonOnMouseDown.Text}'");
                     _hoveredButtonOnMouseDown.TriggerClick();
                     _hoveredButtonOnMouseDown = null;
                 }
@@ -381,10 +356,8 @@ namespace SiegeEngine.PlayerSystem
                     _hoveredToggleOnMouseDown = null;
                 }
             }
-
             _inputHandler.ResetMouseReleased();
         }
-
         public void Render()
         {
             if (_menuManager.EditorMode)
@@ -392,14 +365,12 @@ namespace SiegeEngine.PlayerSystem
                 //Console.WriteLine("CustomUIController: Skipping Render in EditorMode");
                 return;
             }
-
             _glfw.GetWindowSize(_window, out int width, out int height);
             //Console.WriteLine($"CustomUIController: Window size: {width}x{height}");
             //Console.WriteLine("CustomUIController: Entering Render");
             _uiRenderer.Render(_menuManager.Elements, _menuManager.CurrentMenu.PositioningMode, _positionCalculator);
             //Console.WriteLine("CustomUIController: Exiting Render");
         }
-
         public void Dispose()
         {
             if (!_disposed)
@@ -408,7 +379,6 @@ namespace SiegeEngine.PlayerSystem
                 _disposed = true;
             }
         }
-
         private void ToggleFullScreen()
         {
             _settingsManager.AllowResize = true;
@@ -431,7 +401,6 @@ namespace SiegeEngine.PlayerSystem
             _settingsManager.SaveSettings();
             _settingsManager.AllowResize = false;
         }
-
         public event Action<GameMode> ModeSelected;
         public event Action SettingsSelected;
         public event Action InviteSelected;

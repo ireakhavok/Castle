@@ -1,5 +1,4 @@
-﻿// SiegeEngine/Managers/MenuManager.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,7 +10,8 @@ using SiegeEngine.PlayerSystem;
 using SiegeEngine.Rendering.Definitions;
 using SiegeEngine.Scenes;
 using Silk.NET.GLFW;
-
+using System.Reflection;
+using SiegeEngine.HtmlParsing;
 namespace SiegeEngine.Managers
 {
     public unsafe class MenuManager
@@ -33,7 +33,6 @@ namespace SiegeEngine.Managers
         private string _menuDir;
         private MenuDefinition _currentMenu;
         private List<object> _elements;
-
         public MenuManager(UISettingsManager settingsManager, ModManager modManager, IGameServer server, Glfw glfw, WindowHandle* window, Player player, PlayerMovement playerMovement, string initialMenu = "MainMenu.html")
         {
             _settings = settingsManager;
@@ -64,12 +63,10 @@ namespace SiegeEngine.Managers
             }
             if (_player != null)
                 _player.InitializeCamera(_glfw);
-
             string resolvedPath = _modManager.ResolvePath(initialMenu);
             _menuDir = Path.GetDirectoryName(resolvedPath);
             LoadMenu(resolvedPath);
         }
-
         public CameraController Camera => _player?.Camera;
         public bool GameStarted => _gameStarted;
         public MenuDefinition CurrentMenu => _currentMenu;
@@ -77,14 +74,12 @@ namespace SiegeEngine.Managers
         public bool ShowInventory => _showInventory;
         public bool EditorMode => _editorMode;
         public EditorScene EditorScene => _editorScene;
-
         public void SetPlayerAndMovement(Player player, PlayerMovement playerMovement)
         {
             _player = player ?? throw new ArgumentNullException(nameof(player));
             _playerMovement = playerMovement ?? throw new ArgumentNullException(nameof(playerMovement));
             _player.InitializeCamera(_glfw);
         }
-
         private void LoadMenu(string path)
         {
             try
@@ -109,13 +104,11 @@ namespace SiegeEngine.Managers
                 Console.WriteLine($"MenuManager: Failed to load menu HTML: {ex.Message}");
             }
         }
-
         public void LoadCurrentMenu()
         {
             _glfw.GetWindowSize(_window, out int currentWidth, out int currentHeight);
             Console.WriteLine($"MenuManager: Loading menu {_currentMenu.Name}, current window size: {currentWidth}x{currentHeight}");
             _elements = new List<object>();
-
             // Add tab selectors if tabs exist
             if (_currentMenu.Tabs != null && _currentMenu.Tabs.Count > 0)
             {
@@ -139,7 +132,6 @@ namespace SiegeEngine.Managers
                     tabIndex++;
                 }
             }
-
             // Load common buttons
             foreach (var buttonDef in _currentMenu.Buttons ?? new List<ButtonDefinition>())
             {
@@ -147,14 +139,12 @@ namespace SiegeEngine.Managers
                 Action onClick = GetButtonAction(buttonDef.Action);
                 _elements.Add(new Button(buttonDef, onClick));
             }
-
             // Load common elements
             var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             foreach (var element in _currentMenu.Elements ?? new List<Dictionary<string, object>>())
             {
                 AddElementToList(element, jsonOptions);
             }
-
             // Load tab-specific if _currentTab set
             if (_currentTab != null)
             {
@@ -167,28 +157,23 @@ namespace SiegeEngine.Managers
                         Action onClick = GetButtonAction(buttonDef.Action);
                         _elements.Add(new Button(buttonDef, onClick));
                     }
-
                     foreach (var element in tab.Elements ?? new List<Dictionary<string, object>>())
                     {
                         AddElementToList(element, jsonOptions);
                     }
                 }
             }
-
             if (_showInventory && _player != null)
             {
                 LoadInventoryMenu();
             }
-
             UpdateIconIndices();
             OnMenuSwitched?.Invoke(_currentMenu.Background ?? "", _settings.IconIndices);
         }
-
         private void AddElementToList(Dictionary<string, object> element, JsonSerializerOptions options)
         {
             string type = element.GetValueOrDefault("type")?.ToString()?.ToLower();
             if (string.IsNullOrEmpty(type)) return;
-
             switch (type)
             {
                 case "dropdown":
@@ -210,20 +195,17 @@ namespace SiegeEngine.Managers
                     break;
             }
         }
-
         private void LoadInventoryMenu()
         {
             var entity = _server.GetEntityById(_player.EntityId);
             var inventory = entity?.GetComponent<InventoryComponent>();
             if (inventory == null) return;
-
             _elements.Add(new Label(new LabelDefinition
             {
                 Text = $"Cash: {inventory.Cash}",
                 Position = new Position { X = 10, Y = 10 },
                 TextStyle = new TextStyle { FontSize = 16 }
             }));
-
             int yOffset = 40;
             foreach (var item in inventory.Items.Values)
             {
@@ -236,14 +218,12 @@ namespace SiegeEngine.Managers
                     InventoryComponent.Rarity.Legendary => new Color { R = 1.0f, G = 0.5f, B = 0.0f, A = 1.0f },
                     _ => new Color { R = 1.0f, G = 1.0f, B = 1.0f, A = 1.0f }
                 };
-
                 _elements.Add(new Label(new LabelDefinition
                 {
                     Text = $"{item.Name} (T{item.Tier} L{item.Level}) [{item.StackSize}]",
                     Position = new Position { X = 10, Y = yOffset },
                     TextStyle = new TextStyle { FontSize = 14, Color = rarityColor }
                 }));
-
                 _elements.Add(new Button(new ButtonDefinition
                 {
                     Text = "Upgrade",
@@ -258,11 +238,9 @@ namespace SiegeEngine.Managers
                         SwitchMenu(_currentMenu.Name);
                     }
                 }));
-
                 yOffset += 30;
             }
         }
-
         public void SwitchMenu(string menuName)
         {
             string path = Path.Combine(_menuDir, menuName + ".html");
@@ -273,7 +251,6 @@ namespace SiegeEngine.Managers
                 LoadMenu(path);
             }
         }
-
         public void SwitchTab(string tabName)
         {
             if (_currentMenu.Tabs?.Any(t => t.Name == tabName) ?? false)
@@ -282,7 +259,6 @@ namespace SiegeEngine.Managers
                 LoadCurrentMenu();
             }
         }
-
         public void CycleIcons()
         {
             var newIndices = new Dictionary<string, int>(_settings.IconIndices);
@@ -305,7 +281,6 @@ namespace SiegeEngine.Managers
             }
             _settings.UpdateIconIndices(newIndices);
         }
-
         private Action GetButtonAction(string action)
         {
             if (string.IsNullOrEmpty(action)) return () => { };
@@ -331,6 +306,30 @@ namespace SiegeEngine.Managers
                 string brush = action.Substring(9);
                 return () => _editorScene?.SetBrush(brush);
             }
+            if (action.Contains("."))
+            {
+                // Hook: Namespace.Class.Method
+                try
+                {
+                    var parts = action.Split('.');
+                    string typeName = string.Join(".", parts, 0, parts.Length - 1);
+                    string methodName = parts[^1];
+                    Type type = Type.GetType(typeName);
+                    if (type != null)
+                    {
+                        MethodInfo method = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                        if (method != null && method.GetParameters().Length == 0 && method.ReturnType == typeof(void))
+                        {
+                            return (Action)Delegate.CreateDelegate(typeof(Action), method);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"MenuManager: Failed to create hook for {action}: {ex.Message}");
+                }
+                return () => { };
+            }
             switch (action)
             {
                 case "SettingsSelected":
@@ -355,7 +354,6 @@ namespace SiegeEngine.Managers
                     return () => { };
             }
         }
-
         private Action<int> GetDropdownAction(string action)
         {
             switch (action)
@@ -372,7 +370,6 @@ namespace SiegeEngine.Managers
                     return index => { };
             }
         }
-
         private Action<bool> GetToggleAction(string action)
         {
             switch (action)
@@ -385,7 +382,6 @@ namespace SiegeEngine.Managers
                     return state => { };
             }
         }
-
         private string GetAspectRatio(int width, int height)
         {
             if (width <= 0 || height <= 0) return "16:9";
@@ -394,7 +390,6 @@ namespace SiegeEngine.Managers
             int ratioH = height / gcd;
             return $"{ratioW}:{ratioH}";
         }
-
         private int GCD(int a, int b)
         {
             while (b != 0)
@@ -405,7 +400,6 @@ namespace SiegeEngine.Managers
             }
             return a;
         }
-
         private void UpdateIconIndices()
         {
             foreach (var element in _elements)
@@ -424,7 +418,6 @@ namespace SiegeEngine.Managers
                 }
             }
         }
-
         public event Action<string, Dictionary<string, int>> OnMenuSwitched;
         public event Action<GameMode> OnModeSelected;
         public event Action OnSettingsSelected;
