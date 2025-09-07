@@ -16,7 +16,7 @@ namespace SiegeEngine.PlayerSystem
     {
         private readonly Glfw _glfw;
         private readonly Player _player;
-        private readonly MenuManager _menuManager; // Added to check EditorMode
+        //private readonly MenuManager _menuManager; // Added to check EditorMode
         private Perspective _perspective = Perspective.ThirdPerson;
         private float _yaw = 0f;
         private float _pitch = 0f;
@@ -46,11 +46,11 @@ namespace SiegeEngine.PlayerSystem
         public float Pitch => _pitch;
         public Vector2 MousePosition { get; private set; }
 
-        public CameraController(Glfw glfw, Player player = null, MenuManager menuManager = null)
+        public CameraController(Glfw glfw, Player player = null) //, MenuManager menuManager = null)
         {
             _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
             _player = player;
-            _menuManager = menuManager; // Inject MenuManager
+            //_menuManager = menuManager; // Inject MenuManager
             _position = _player?.Position + new Vector3(0, 0, _playerHeight) ?? new Vector3(64, 36, 5);
             UpdateCamera();
         }
@@ -58,11 +58,11 @@ namespace SiegeEngine.PlayerSystem
         public unsafe void Update(float deltaTime, WindowHandle* window, float scrollDelta, bool isGameActive)
         {
             // Skip update in EditorMode to prevent Menu mouse position logs
-            if (_menuManager?.EditorMode == true)
-            {
-                Console.WriteLine("CameraController: Skipping Update in EditorMode");
-                return;
-            }
+            //if (_menuManager?.EditorMode == true)
+            //{
+            //    Console.WriteLine("CameraController: Skipping Update in EditorMode");
+            //    return;
+            //}
 
             bool focused = _glfw.GetWindowAttrib(window, WindowAttributeGetter.Focused);
             if (!focused)

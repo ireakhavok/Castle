@@ -350,42 +350,5 @@ namespace SiegeEngine.Rendering
                 return (0, 0);
             }
         }
-
-        public static unsafe uint LoadProceduralTexture(IRenderContext renderContext, int id, int width, int height)
-        {
-            Console.WriteLine($"Generating procedural texture ID {id}: {width}x{height}");
-            var pixels = ProceduralTextures.GenerateTexture(id, width, height);
-            uint texture;
-            renderContext.GenTextures(1, out texture);
-            renderContext.BindTexture(TextureTarget.Texture2D, texture);
-            byte[] pixelData = new byte[pixels.Length * 4];
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixelData[i * 4] = pixels[i].r;
-                pixelData[i * 4 + 1] = pixels[i].g;
-                pixelData[i * 4 + 2] = pixels[i].b;
-                pixelData[i * 4 + 3] = pixels[i].a;
-            }
-            fixed (byte* ptr = pixelData)
-            {
-                renderContext.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba, (uint)width, (uint)height, 0, GLEnum.Rgba, GLEnum.UnsignedByte, ptr);
-            }
-            renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
-            renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
-            renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
-            renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
-            renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureLodBias, -1);
-            renderContext.GenerateMipmap(TextureTarget.Texture2D);
-            if (renderContext.IsExtensionPresent("EXT_texture_filter_anisotropic"))
-            {
-                const int GL_TEXTURE_MAX_ANISOTROPY_EXT = 0x84FE;
-                const int GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT = 0x84FF;
-                renderContext.GetFloat((GetPName)GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, out float maxAniso);
-                renderContext.TexParameterf(TextureTarget.Texture2D, (TextureParameterName)GL_TEXTURE_MAX_ANISOTROPY_EXT, Math.Min(16.0f, maxAniso));
-            }
-            renderContext.BindTexture(TextureTarget.Texture2D, 0);
-            Console.WriteLine($"Procedural texture loaded: {texture}");
-            return texture;
-        }
     }
 }

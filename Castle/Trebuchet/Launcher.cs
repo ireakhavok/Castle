@@ -28,9 +28,9 @@ namespace Trebuchet
         private UISettingsManager _settingsManager;
         private ISteamEngine _steamEngine;
         private EventBus _eventBus;
-        private MenuManager _menuManager;
+        //private MenuManager _menuManager;
         private IRenderContext _renderContext;
-        private CustomUIController _uiController;
+        //private CustomUIController _uiController;
         private InputHandler _inputHandler;
         private ModManager _modManager;
 
@@ -92,17 +92,17 @@ namespace Trebuchet
                     string configPath = _modManager.GetMenuConfigPath();
                     Console.WriteLine($"Launcher: Resolved MainMenu.json path: {configPath}, Exists: {File.Exists(configPath)}");
 
-                    _menuManager = new MenuManager(_settingsManager, _modManager, null, _glfw, _window, null, null, configPath);
-                    _uiController = new CustomUIController(_glfw, _renderContext, _window, _settingsManager, _menuManager, null, _inputHandler);
-                    _uiController.Initialize();
+                    //_menuManager = new MenuManager(_settingsManager, _modManager, null, _glfw, _window, null, null, configPath);
+                    //_uiController = new CustomUIController(_glfw, _renderContext, _window, _settingsManager, _menuManager, null, _inputHandler);
+                    //_uiController.Initialize();
 
-                    _menuManager.SwitchMenu("MainMenu");
+                    //_menuManager.SwitchMenu("MainMenu");
 
-                    _menuManager.OnSettingsSelected += () =>
-                    {
-                        Console.WriteLine("Launcher: Settings selected, switching to UserSettingsMenu");
-                        _menuManager.SwitchMenu("UserSettingsMenu");
-                    };
+                    //_menuManager.OnSettingsSelected += () =>
+                    //{
+                    //    Console.WriteLine("Launcher: Settings selected, switching to UserSettingsMenu");
+                    //    _menuManager.SwitchMenu("UserSettingsMenu");
+                    //};
 
                     _glfw.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
@@ -132,8 +132,8 @@ namespace Trebuchet
                         if (_glfw.WindowShouldClose(_window))
                             _isRunning = false;
 
-                        _uiController.Update(deltaTime);
-                        _uiController.Render();
+                        //_uiController.Update(deltaTime);
+                        //_uiController.Render();
 
                         _glfw.SwapBuffers(_window);
                     }
@@ -146,7 +146,7 @@ namespace Trebuchet
             finally
             {
                 _settingsManager?.SaveSettings();
-                _uiController?.Dispose();
+                //_uiController?.Dispose();
                 _glfw?.Terminate();
             }
         }

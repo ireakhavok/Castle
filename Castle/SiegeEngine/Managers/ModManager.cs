@@ -1,7 +1,6 @@
 ﻿// SiegeEngine/Managers/ModManager.cs
 using SiegeEngine.Definitions;
 using SiegeEngine.Interfaces;
-using SiegeEngine.Rendering.Definitions;
 using SiegeEngine.UnityAssetLoader;
 using System;
 using System.Collections.Generic;
@@ -127,10 +126,6 @@ namespace SiegeEngine.Managers
                     modInfo.Path = Path.GetDirectoryName(modJsonPath);
                     _loadedMods.Add(modInfo);
                     Console.WriteLine($"ModManager: Loaded mod '{modInfo.Name}' (Version: {modInfo.Version}) from {modJsonPath}");
-                    if (modInfo.Menus.Any())
-                    {
-                        Console.WriteLine($"ModManager: Mod '{modInfo.Name}' has {modInfo.Menus.Count} menu extensions.");
-                    }
                 }
             }
             catch (Exception ex)
@@ -234,14 +229,14 @@ namespace SiegeEngine.Managers
             return null;
         }
 
-        public List<MenuDefinition> GetAllMenuExtensions()
-        {
-            var extensions = new List<MenuDefinition>();
-            foreach (var mod in _loadedMods)
-            {
-                extensions.AddRange(mod.Menus);
-            }
-            return extensions;
-        }
+        //public List<MenuDefinition> GetAllMenuExtensions()
+        //{
+        //    var extensions = new List<MenuDefinition>();
+        //    foreach (var mod in _loadedMods)
+        //    {
+        //        extensions.AddRange(mod.Menus);
+        //    }
+        //    return extensions;
+        //}
     }
 }

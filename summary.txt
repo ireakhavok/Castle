@@ -353,12 +353,12 @@ Folder: Castle
  File: ModInfo.cs
  class: ModInfo (Namespace: SiegeEngine.Definitions)
  Inherits: None
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.Rendering.Definitions, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
+ Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
  Methods:
  File: ModInfo.cs
  class: UnityAssetData (Namespace: SiegeEngine.Definitions)
  Inherits: None
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.Rendering.Definitions, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
+ Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
  Methods:
  File: PhysicsComponent.cs
  class: PhysicsComponent (Namespace: SiegeEngine.Definitions)
@@ -633,43 +633,6 @@ Folder: Castle
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
  Calls: None
- File: HtmlMenuParser.cs
- class: HtmlMenuParser (Namespace: SiegeEngine.HtmlParsing)
- Inherits: None
- Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Numerics, System.Text.RegularExpressions
- Methods:
- - MenuDefinition ParseMenu(string html, string html, string name)
- Calls: None
- - void ParseMainScreen(string content, string content, MenuDefinition menu)
- Calls: None
- - elements AssignTabPositions()
- Calls: AssignSettingsPositions, AssignSettingsPositions, ParseDropdown, ParseToggleContent
- - void ParseSettingsScreen(string content, string content, MenuDefinition menu)
- Calls: None
- - object> ParseToggleContent(string inner, string inner)
- Calls: None
- - bool IsCommon(Match m, Match m, Match navMatch, Regex divRegex, string content)
- Calls: None
- - ButtonDefinition ParseButton(string attrStr, string attrStr, string text)
- Calls: None
- - object> ParseDropdown(string attrStr, string attrStr, string inner)
- Calls: None
- - string> ParseAttributes(string attrString, string attrString)
- Calls: None
- - string> ParseStyle(string style, string style)
- Calls: None
- - float ParseValue(string value, string value)
- Calls: None
- - Color ParseColor(string value, string value)
- Calls: None
- - void AssignTabPositions(TabDefinition tab, TabDefinition tab)
- Calls: GetDefaultButtonStyle, GetDefaultButtonStyle, GetDefaultTextStyle
- - void AssignSettingsPositions(MenuDefinition menu, MenuDefinition menu)
- Calls: None
- - ButtonStyle GetDefaultButtonStyle(bool isSettings, bool isSettings)
- Calls: None
- - TextStyle GetDefaultTextStyle(bool isSettingsHover, bool isSettingsHover)
- Calls: None
  File: IGameServer.cs
  interface: IGameServer (Namespace: SiegeEngine.Interfaces)
  Inherits: None
@@ -918,58 +881,6 @@ Folder: Castle
  Calls: IsLobbyJoined, IsLobbyJoined
  - bool IsLobbyJoined()
  Calls: None
- File: MenuManager.cs
- class: MenuManager (Namespace: SiegeEngine.Managers)
- Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.HtmlParsing, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering.Definitions, SiegeEngine.Scenes, Silk.NET.GLFW, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text.Json
- Methods:
- - constructor MenuManager(UISettingsManager settingsManager, UISettingsManager settingsManager, ModManager modManager, IGameServer server, Glfw glfw, Player player, PlayerMovement playerMovement, string initialMenu)
- Calls: None
- - void SetPlayerAndMovement(Player player, Player player, PlayerMovement playerMovement)
- Calls: LoadCurrentMenu, LoadCurrentMenu, ParseMenu
- - void LoadMenu(string path, string path)
- Calls: LoadCurrentMenu, LoadCurrentMenu, ParseMenu
- - void LoadCurrentMenu()
- Calls: None
- - void AddElementToList(object> element, object> element, JsonSerializerOptions options)
- Calls: Dropdown, Dropdown, GetDropdownAction, GetToggleAction, Label, Serialize, Toggle
- - void LoadInventoryMenu()
- Calls: None
- - void SwitchMenu(string menuName, string menuName)
- Calls: LoadMenu, LoadMenu
- - void SwitchTab(string tabName, string tabName)
- Calls: LoadCurrentMenu, LoadCurrentMenu
- - void CycleIcons()
- Calls: None
- - Action GetButtonAction(string action, string action)
- Calls: None
- - > SwitchMenu()
- Calls: SwitchTab, SwitchTab
- - > SwitchTab()
- Calls: None
- - Action<int> GetDropdownAction(string action, string action)
- Calls: SaveSettings, SaveSettings
- - Action<bool> GetToggleAction(string action, string action)
- Calls: ToggleGridSnap, ToggleGridSnap
- - string GetAspectRatio(int width, int width, int height)
- Calls: None
- - int GCD(int a, int a, int b)
- Calls: None
- - void UpdateIconIndices()
- Calls: None
- File: MenuRegistry.cs
- class: MenuRegistry (Namespace: SiegeEngine.Managers)
- Inherits: None
- Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Linq
- Methods:
- - void RegisterBaseMenus(List<MenuDefinition> baseMenus, List<MenuDefinition> baseMenus)
- Calls: None
- - void RegisterExtensions(List<MenuDefinition> extensions, List<MenuDefinition> extensions)
- Calls: None
- - List<MenuDefinition> GetAllMenus()
- Calls: None
- - MenuDefinition GetMenuByName(string name, string name)
- Calls: None
  File: ModelManager.cs
  class: ModelManager (Namespace: SiegeEngine.Managers)
  Inherits: None
@@ -1018,7 +929,7 @@ Folder: Castle
  File: ModManager.cs
  class: ModManager (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Rendering.Definitions, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
  Methods:
  - constructor ModManager(string modsDirectory, string modsDirectory, ISteamEngine steamEngine)
  Calls: ScanDirectory, ScanDirectory
@@ -1035,8 +946,6 @@ Folder: Castle
  - string ResolvePath(string relativePath, string relativePath)
  Calls: None
  - string GetMenuConfigPath()
- Calls: None
- - List<MenuDefinition> GetAllMenuExtensions()
  Calls: None
  File: UISettingsManager.cs
  class: UISettingsManager (Namespace: SiegeEngine.Managers)
@@ -1220,8 +1129,6 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.Events, SiegeEngine.Events, SiegeEngine.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic
  Methods:
- - constructor ActionConfig(EventBus eventBus, EventBus eventBus, EditorScene editorScene, HtmlUiSystem uiSystem, SteamEngine steamEngine)
- Calls: ToggleGridSnap, ToggleGridSnap
  - > TriggerSelectBrush()
  Calls: None
  - void Trigger(string actionName, string actionName)
@@ -1267,38 +1174,12 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.Managers, SiegeEngine.Managers, Silk.NET.GLFW, System, System.Numerics
  Methods:
- - constructor CameraController(Glfw glfw, Glfw glfw, Player player, MenuManager menuManager)
- Calls: ChangePerspective, ChangePerspective, UpdateCamera
  - void Update(float deltaTime, float deltaTime, float scrollDelta, bool isGameActive)
  Calls: None
  - void ChangePerspective()
  Calls: None
  - void UpdateCamera()
  Calls: None
- File: CustomUIController.cs
- class: CustomUIController (Namespace: SiegeEngine.PlayerSystem)
- Inherits: IDisposable
-    
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Definitions, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics
- Methods:
- - constructor CustomUIController(Glfw glfw, Glfw glfw, IRenderContext renderContext, UISettingsManager settingsManager, MenuManager menuManager, IGameServer server, InputHandler inputHandler)
- Calls: None
- - string GetAspectRatio(int width, int width, int height)
- Calls: None
- - int GCD(int a, int a, int b)
- Calls: None
- - void UpdateResolutionOptions()
- Calls: None
- - void Initialize()
- Calls: None
- - void Update(float deltaTime, float deltaTime)
- Calls: None
- - void Render()
- Calls: None
- - void Dispose()
- Calls: Dispose, Dispose
- - void ToggleFullScreen()
- Calls: UpdateFullscreen, UpdateFullscreen, UpdateWindowSize
  File: InputHandler.cs
  class: InputHandler (Namespace: SiegeEngine.PlayerSystem)
  Inherits: None
@@ -1552,126 +1433,6 @@ Folder: Castle
  Calls: None
  - nint GetAdapterLuid()
  Calls: None
- File: Button.cs
- class: Button (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Numerics
- Methods:
- - constructor Button(ButtonDefinition def, ButtonDefinition def, Action onClick)
- Calls: None
- - void Update(Vector2 adjustedPos, Vector2 adjustedPos, Vector2 mousePos)
- Calls: None
- - void TriggerClick()
- Calls: None
- File: ButtonDefinition.cs
- class: ButtonDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
- File: ButtonStyle.cs
- class: ButtonStyle (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
- File: Color.cs
- class: Color (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
- File: Dropdown.cs
- class: Dropdown (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Numerics
- Methods:
- - constructor Dropdown(DropdownDefinition def, DropdownDefinition def, Action<int> onSelect)
- Calls: None
- - void Update(Vector2 adjustedPos, Vector2 adjustedPos, Vector2 mousePos)
- Calls: None
- - void ToggleExpanded()
- Calls: None
- - int GetOptionIndexAt(Vector2 mousePos, Vector2 mousePos, Vector2 adjustedPos)
- Calls: None
- - void SelectOption(int index, int index)
- Calls: Clear, Clear
- - void UpdateOptions(List<string> newOptions, List<string> newOptions)
- Calls: None
- File: DropDownDefinition.cs
- class: DropdownDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
- File: FontDefinition.cs
- class: FontDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: None
- Methods:
- - ] GetBitmapFontCharPattern(char c, char c)
- Calls: None
- File: Label.cs
- class: Label (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Numerics
- Methods:
- - constructor Label(LabelDefinition def, LabelDefinition def)
- Calls: None
- - void Update(Vector2 adjustedPos, Vector2 adjustedPos, Vector2 mousePos)
- Calls: None
- File: LabelDefinition.cs
- class: LabelDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
- File: MenuDefinition.cs
- class: MenuDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
- Methods:
- File: MenuDefinition.cs
- class: MenuConfig (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
- Methods:
- File: Position.cs
- class: Position (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
- File: Size.cs
- class: Size (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
- File: TabDefinition.cs
- class: TabDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
- File: TextStyle.cs
- class: TextStyle (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
- File: TextureDefinitions.cs
- class: TextureDefinitions (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: None
- Methods:
- File: Toggle.cs
- class: Toggle (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Numerics
- Methods:
- - constructor Toggle(ToggleDefinition def, ToggleDefinition def, Action<bool> onToggle)
- Calls: None
- - void Update(Vector2 adjustedPos, Vector2 adjustedPos, Vector2 mousePos)
- Calls: None
- - void ToggleState()
- Calls: None
- File: ToggleDefinition.cs
- class: ToggleDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
- Methods:
  File: EditorTextRenderer.cs
  class: EditorTextRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
@@ -1706,30 +1467,6 @@ Folder: Castle
  Calls: DeleteBuffer, DeleteBuffer, DeleteVertexArray, Dispose
  - void Dispose()
  Calls: None
- File: MenuRenderer.cs
- class: MenuRenderer (Namespace: SiegeEngine.Rendering)
- Inherits: IDisposable
-    
- Dependencies: Silk.NET.GLFW, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Numerics
- Methods:
- - constructor MenuRenderer(Glfw glfw, Glfw glfw, GL gl)
- Calls: AttachShader, AttachShader, BindBuffer, BindVertexArray, BufferData, CheckProgramLink, CheckShaderCompile, CompileShader, CreateProgram, CreateShader, DeleteShader, EnableVertexAttribArray, GenBuffers, GenVertexArrays, LinkProgram, ShaderSource, VertexAttribPointer, main
- - void Initialize()
- Calls: None
- - void main()
- Calls: None
- - void main()
- Calls: None
- - void Render()
- Calls: BindBuffer, BindBuffer, BufferData, DrawArrays, GetUniformLocation, Uniform4
- - int HandleInput()
- Calls: None
- - void CheckShaderCompile(uint shader, uint shader)
- Calls: GetShaderInfoLog, GetShaderInfoLog
- - void CheckProgramLink(uint program, uint program)
- Calls: GetProgramInfoLog, GetProgramInfoLog
- - void Dispose()
- Calls: None
  File: OpenGLRenderContext.cs
  class: OpenGLRenderContext (Namespace: SiegeEngine.Rendering)
  Inherits: IRenderContext
@@ -1742,21 +1479,6 @@ Folder: Castle
  Calls: GenBuffers, GenBuffers
  - uint GenBuffer()
  Calls: None
- File: ProceduralTextures.cs
- class: ProceduralTextures (Namespace: SiegeEngine.Rendering)
- Inherits: None
- Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System
- Methods:
- - constructor ProceduralTextures()
- Calls: None
- - float PerlinNoise(float x, float x, float y)
- Calls: PerlinNoise, PerlinNoise
- - float OctaveNoise(float x, float x, float y, int octaves)
- Calls: PerlinNoise, PerlinNoise
- - float Grad(int hash, int hash, float x, float y)
- Calls: OctaveNoise, OctaveNoise, PerlinNoise
- - Color[] GenerateTexture(int id, int id, int width, int height)
- Calls: OctaveNoise, OctaveNoise
  File: Renderer.cs
  class: Renderer (Namespace: SiegeEngine.Rendering)
  Inherits: IRenderer
@@ -1899,66 +1621,11 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Linq
  Methods:
- - uint LoadProceduralTexture(IRenderContext renderContext, IRenderContext renderContext, int id, int width, int height)
- Calls: None
  File: UiElement.cs
  class: UiElement (Namespace: SiegeEngine.Rendering)
  Inherits: None
  Dependencies: System.Drawing, System.Drawing, System.Numerics
  Methods:
- File: UIRenderer.cs
- class: UIRenderer (Namespace: SiegeEngine.Rendering)
- Inherits: None
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering.Definitions, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
- Methods:
- - constructor UIRenderer(Glfw glfw, Glfw glfw, IRenderContext renderContext)
- Calls: Initialize, Initialize
- - void Initialize(string backgroundPath, string backgroundPath, int> iconIndices)
- Calls: BeginRender, BeginRender
- - void BeginRender()
- Calls: BeginRender, BeginRender, CalculateAdjustedPosition, EndRender, RenderElement
- - void Render(List<object> elements, List<object> elements, string positioningMode, PositionCalculator positionCalculator)
- Calls: None
- - void RenderElement(object element, object element, Vector2 adjustedPos, int windowWidth, int windowHeight)
- Calls: EndRender, EndRender
- - void EndRender()
- Calls: Dispose, Dispose
- - void Dispose()
- Calls: None
- File: UIRenderingLayer.cs
- class: UIRenderingLayer (Namespace: SiegeEngine.Rendering)
- Inherits: IDisposable
-    
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.Rendering.Definitions, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Numerics, System.Runtime.InteropServices
- Methods:
- - constructor UIRenderingLayer(Glfw glfw, Glfw glfw, IRenderContext renderContext)
- Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, EnableVertexAttribArray, GenBuffers, GenVertexArrays, Initialize, LoadIcons, ShaderProgram, VertexAttribPointer, main
- - void Initialize(string backgroundPath, string backgroundPath, int> iconIndices)
- Calls: ShaderProgram, ShaderProgram, main
- - void main()
- Calls: None
- - void main()
- Calls: None
- - uint ExtractIconEx(string lpszFile, string lpszFile, int nIconIndex, out nint, out nint, uint nIcons)
- Calls: BindTexture, BindTexture, DestroyIcon, ExtractIconEx, GenTextures, PixelStore, TexImage2D, TexParameter
- - bool DestroyIcon(nint handle, nint handle)
- Calls: BindTexture, BindTexture, DestroyIcon, ExtractIconEx, GenTextures, PixelStore, TexImage2D, TexParameter
- - void LoadIcons(int> iconIndices, int> iconIndices)
- Calls: BindTexture, BindTexture, DestroyIcon, ExtractIconEx, GenTextures, PixelStore, TexImage2D, TexParameter
- - void BeginRender()
- Calls: None
- - void RenderBackgroundPane(int width, int width, int height)
- Calls: None
- - void RenderElement(object element, object element, Vector2 pos, int width, int height)
- Calls: None
- - void RenderButton(Vector2 pos, Vector2 pos, Vector2 size, bool isHovered, int width, int height, Vector4 backgroundColor, Vector4 hoverColor, Vector4 borderColor)
- Calls: None
- - void RenderText(string text, string text, float startX, float startY, int width, int height, float fontSize)
- Calls: BindVertexArray, BindVertexArray, UseProgram
- - void EndRender()
- Calls: DeleteBuffer, DeleteBuffer, DeleteTexture, DeleteVertexArray, Dispose
- - void Dispose()
- Calls: DeleteBuffer, DeleteBuffer, DeleteTexture, DeleteVertexArray, Dispose
  File: VertexBuffer.cs
  class: VertexBuffer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
@@ -2079,74 +1746,6 @@ Folder: Castle
  Inherits: None
  Dependencies: System, System, System.Runtime.InteropServices
  Methods:
- File: EditorScene.cs
- class: EditorScene (Namespace: SiegeEngine.Scenes)
- Inherits: Scene
-    
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Shaders, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
- Methods:
- - void InitializeBrushRegistry()
- Calls: None
- - void Initialize(int width, int width, int height)
- Calls: GetMousePosition, GetMousePosition, GetSteamId, HandleMouseInput, MouseInputEvent
- - ShaderProgram CreateShader()
- Calls: GetGridHeightAt, GetGridHeightAt, UpdateCustom
- - void SetupGrid()
- Calls: GetGridHeightAt, GetGridHeightAt
- - void Update(float deltaTime, float deltaTime)
- Calls: None
- - void Render(IReadOnlyList<Entity> entities, IReadOnlyList<Entity> entities)
- Calls: Bind, Bind, DrawElements, SetUniform, UpdateCustom
- - void OnSelectBrush(SelectBrushEvent e, SelectBrushEvent e)
- Calls: None
- - void OnEntityMoved(EntityMovedEvent e, EntityMovedEvent e)
- Calls: None
- - void OnEntityPlaced(EntityPlacedEvent e, EntityPlacedEvent e)
- Calls: GetSize, GetSize
- - void OnBrushRegistryUpdate(BrushRegistryUpdateEvent e, BrushRegistryUpdateEvent e)
- Calls: None
- - void OnMouseInput(MouseInputEvent e, MouseInputEvent e)
- Calls: HandleMouseInput, HandleMouseInput
- - void HandleMouseInput(MouseInputEvent e, MouseInputEvent e)
- Calls: PlaceEntity, PlaceEntity, PlaceWall, ScreenToWorld
- - Vector2 GetMousePosition()
- Calls: GetGridHeightAt, GetGridHeightAt
- - Vector3 ScreenToWorld(Vector2 screenPos, Vector2 screenPos)
- Calls: None
- - Vector3 GetSize(string brushType, string brushType)
- Calls: AddEntity, AddEntity, EntityPlacedEvent, GetSize, RemoveEntity
- - void PlaceEntity(Vector3 position, Vector3 position)
- Calls: RemoveEntity, RemoveEntity
- - void PlaceWall(Vector3 endVertex, Vector3 endVertex)
- Calls: RemoveEntity, RemoveEntity
- - void AdjustGridHeight(Vector3 center, Vector3 center, float delta, float deltaTime)
- Calls: None
- - float GetGridHeightAt(int x, int x, int y)
- Calls: AddEntity, AddEntity, GetGridHeightAt, GetMousePosition, GetSize, GetSteamId, PreviewComponent, RemoveEntity, ScreenToWorld, UpdateGridSize
- - void UpdatePreview()
- Calls: AddEntity, AddEntity, GetGridHeightAt, GetMousePosition, GetSize, GetSteamId, PreviewComponent, ScreenToWorld, UpdateGridSize
- - void UpdateGridSize(Vector3 position, Vector3 position)
- Calls: SetupGrid, SetupGrid
- - void SaveLevel(string path, string path)
- Calls: None
- - Vector3 GetCameraPosition()
- Calls: UpdatePreview, UpdatePreview
- - void SetBrush(string brushType, string brushType)
- Calls: UpdatePreview, UpdatePreview
- - void ToggleGridSnap(bool state, bool state)
- Calls: Dispose, Dispose
- - void Dispose()
- Calls: Dispose, Dispose
- File: EditorScene.cs
- enum: EditorMode (Namespace: SiegeEngine.Scenes)
- Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Shaders, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
- Methods:
- File: EditorScene.cs
- class: BrushDefinition (Namespace: SiegeEngine.Scenes)
- Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Shaders, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
- Methods:
  File: SandBoxScene.cs
  class: SandboxScene (Namespace: SiegeEngine.Scenes)
  Inherits: Scene
@@ -2258,36 +1857,6 @@ Folder: Castle
  Calls: None
  - void Update(float deltaTime, float deltaTime)
  Calls: None
- File: HtmlUiSystem.cs
- class: HtmlUiSystem (Namespace: SiegeEngine.Systems)
- Inherits: GameSystem
-    
- Dependencies: SiegeEngine.Events, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Definitions, SiegeEngine.Scenes, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.IO, System.Linq, System.Numerics
- Methods:
- - void main()
- Calls: None
- - void main()
- Calls: None
- - void OnMouseButton(MouseButton button, MouseButton button, InputAction action)
- Calls: None
- - void OnNetworkMouseButton(MouseInputEvent e, MouseInputEvent e)
- Calls: None
- - void OnToggleGridSnap(ToggleGridSnapEvent e, ToggleGridSnapEvent e)
- Calls: ToggleGridSnap, ToggleGridSnap, ToggleState
- - void HandleMouseInput(MouseInputEvent e, MouseInputEvent e)
- Calls: None
- - void Update(float deltaTime, float deltaTime)
- Calls: ActiveTexture, ActiveTexture, Bind, BindFramebuffer, BindTexture, BindVertexArray, BlendFunc, CheckFramebufferStatus, Clear, ColorMask, DepthFunc, DepthMask, Disable, DisableVertexAttribArray, DrawBuffer, DrawElements, Enable, GetError, ReadBuffer, RenderText, SetMatrix4, SetUniform, UpdateCustom, Use, UseProgram, Viewport
- - void Render()
- Calls: ActiveTexture, ActiveTexture, BindTexture
- - void LoadUi()
- Calls: Dropdown, Dropdown, ExtractAttribute, Toggle, Trigger
- - string ExtractAttribute(string line, string line, string attribute)
- Calls: SelectOption, SelectOption
- - void SetSelectedBrush(string brush, string brush)
- Calls: SelectOption, SelectOption
- - void Dispose()
- Calls: None
  File: LightingSystem.cs
  class: LightingSystem (Namespace: SiegeEngine.Systems)
  Inherits: GameSystem
@@ -2347,7 +1916,7 @@ Folder: Castle
  Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
  Methods:
  - void Start()
- Calls: CustomUIController, CustomUIController, EventBus, GetMenuConfigPath, Initialize, InputHandler, LoadLibrary, LoadSettings, MenuManager, ModManager, OpenGLRenderContext, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SteamEngine, SwitchMenu, UISettingsManager, Update, UpdateWindowSize
+ Calls: EventBus, EventBus, GetMenuConfigPath, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, OpenGLRenderContext, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SteamEngine, UISettingsManager, Update, UpdateWindowSize
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
 
