@@ -640,19 +640,19 @@ Folder: Castle
  Methods:
  - MenuDefinition ParseMenu(string html, string html, string name)
  Calls: None
- - List<ButtonDefinition> GetCommonButtons(string content, string content, Match navMatch, Regex divRegex)
- Calls: IsCommon, IsCommon, ParseButton
- - object>> GetCommonElements(string content, string content, Match navMatch, Regex divRegex)
- Calls: IsCommon, IsCommon, ParseDropdown
+ - void ParseMainScreen(string content, string content, MenuDefinition menu)
+ Calls: None
+ - elements AssignTabPositions()
+ Calls: AssignSettingsPositions, AssignSettingsPositions, ParseDropdown, ParseToggleContent
+ - void ParseSettingsScreen(string content, string content, MenuDefinition menu)
+ Calls: None
+ - object> ParseToggleContent(string inner, string inner)
+ Calls: None
  - bool IsCommon(Match m, Match m, Match navMatch, Regex divRegex, string content)
  Calls: None
  - ButtonDefinition ParseButton(string attrStr, string attrStr, string text)
  Calls: None
  - object> ParseDropdown(string attrStr, string attrStr, string inner)
- Calls: None
- - object> ParseToggle(string attrStr, string attrStr)
- Calls: None
- - object> ParseLabel(string attrStr, string attrStr, string text)
  Calls: None
  - string> ParseAttributes(string attrString, string attrString)
  Calls: None
@@ -661,6 +661,14 @@ Folder: Castle
  - float ParseValue(string value, string value)
  Calls: None
  - Color ParseColor(string value, string value)
+ Calls: None
+ - void AssignTabPositions(TabDefinition tab, TabDefinition tab)
+ Calls: GetDefaultButtonStyle, GetDefaultButtonStyle, GetDefaultTextStyle
+ - void AssignSettingsPositions(MenuDefinition menu, MenuDefinition menu)
+ Calls: None
+ - ButtonStyle GetDefaultButtonStyle(bool isSettings, bool isSettings)
+ Calls: None
+ - TextStyle GetDefaultTextStyle(bool isSettingsHover, bool isSettingsHover)
  Calls: None
  File: IGameServer.cs
  interface: IGameServer (Namespace: SiegeEngine.Interfaces)
@@ -888,35 +896,6 @@ Folder: Castle
  Calls: None
  - GameMode GetSelectedMode()
  Calls: None
- File: HtmlMenuParser.cs
- class: HtmlMenuParser (Namespace: SiegeEngine.Managers)
- Inherits: None
- Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Numerics, System.Text.RegularExpressions
- Methods:
- - MenuDefinition ParseMenu(string html, string html, string name)
- Calls: None
- - List<ButtonDefinition> GetCommonButtons(string content, string content, Match navMatch, Regex divRegex)
- Calls: IsCommon, IsCommon, ParseButton
- - object>> GetCommonElements(string content, string content, Match navMatch, Regex divRegex)
- Calls: IsCommon, IsCommon, ParseDropdown
- - bool IsCommon(Match m, Match m, Match navMatch, Regex divRegex, string content)
- Calls: None
- - ButtonDefinition ParseButton(string attrStr, string attrStr, string text)
- Calls: None
- - object> ParseDropdown(string attrStr, string attrStr, string inner)
- Calls: None
- - object> ParseToggle(string attrStr, string attrStr)
- Calls: None
- - object> ParseLabel(string attrStr, string attrStr, string text)
- Calls: None
- - string> ParseAttributes(string attrString, string attrString)
- Calls: None
- - string> ParseStyle(string style, string style)
- Calls: None
- - float ParseValue(string value, string value)
- Calls: None
- - Color ParseColor(string value, string value)
- Calls: None
  File: LevelManager.cs
  class: LevelManager (Namespace: SiegeEngine.Managers)
  Inherits: None
@@ -942,7 +921,7 @@ Folder: Castle
  File: MenuManager.cs
  class: MenuManager (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering.Definitions, SiegeEngine.Scenes, Silk.NET.GLFW, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.HtmlParsing, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering.Definitions, SiegeEngine.Scenes, Silk.NET.GLFW, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text.Json
  Methods:
  - constructor MenuManager(UISettingsManager settingsManager, UISettingsManager settingsManager, ModManager modManager, IGameServer server, Glfw glfw, Player player, PlayerMovement playerMovement, string initialMenu)
  Calls: None
@@ -1576,7 +1555,7 @@ Folder: Castle
  File: Button.cs
  class: Button (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
- Dependencies: System, System, System.Numerics
+ Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Numerics
  Methods:
  - constructor Button(ButtonDefinition def, ButtonDefinition def, Action onClick)
  Calls: None
@@ -1584,10 +1563,25 @@ Folder: Castle
  Calls: None
  - void TriggerClick()
  Calls: None
+ File: ButtonDefinition.cs
+ class: ButtonDefinition (Namespace: SiegeEngine.Rendering.Definitions)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
+ Methods:
+ File: ButtonStyle.cs
+ class: ButtonStyle (Namespace: SiegeEngine.Rendering.Definitions)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
+ Methods:
+ File: Color.cs
+ class: Color (Namespace: SiegeEngine.Rendering.Definitions)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
+ Methods:
  File: Dropdown.cs
  class: Dropdown (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor Dropdown(DropdownDefinition def, DropdownDefinition def, Action<int> onSelect)
  Calls: None
@@ -1598,9 +1592,14 @@ Folder: Castle
  - int GetOptionIndexAt(Vector2 mousePos, Vector2 mousePos, Vector2 adjustedPos)
  Calls: None
  - void SelectOption(int index, int index)
- Calls: None
+ Calls: Clear, Clear
  - void UpdateOptions(List<string> newOptions, List<string> newOptions)
  Calls: None
+ File: DropDownDefinition.cs
+ class: DropdownDefinition (Namespace: SiegeEngine.Rendering.Definitions)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
+ Methods:
  File: FontDefinition.cs
  class: FontDefinition (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
@@ -1611,19 +1610,19 @@ Folder: Castle
  File: Label.cs
  class: Label (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
- Dependencies: System.Numerics, System.Numerics
+ Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Numerics
  Methods:
  - constructor Label(LabelDefinition def, LabelDefinition def)
  Calls: None
  - void Update(Vector2 adjustedPos, Vector2 adjustedPos, Vector2 mousePos)
  Calls: None
- File: MenuDefinition.cs
- class: MenuDefinition (Namespace: SiegeEngine.Rendering.Definitions)
+ File: LabelDefinition.cs
+ class: LabelDefinition (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
  Methods:
  File: MenuDefinition.cs
- class: TabDefinition (Namespace: SiegeEngine.Rendering.Definitions)
+ class: MenuDefinition (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
  Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
  Methods:
@@ -1632,50 +1631,25 @@ Folder: Castle
  Inherits: None
  Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
  Methods:
- File: MenuDefinition.cs
+ File: Position.cs
  class: Position (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
  Methods:
- File: MenuDefinition.cs
+ File: Size.cs
  class: Size (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
  Methods:
- File: MenuDefinition.cs
- class: Color (Namespace: SiegeEngine.Rendering.Definitions)
+ File: TabDefinition.cs
+ class: TabDefinition (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
  Methods:
- File: MenuDefinition.cs
+ File: TextStyle.cs
  class: TextStyle (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
- Methods:
- File: MenuDefinition.cs
- class: ButtonStyle (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
- Methods:
- File: MenuDefinition.cs
- class: ButtonDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
- Methods:
- File: MenuDefinition.cs
- class: DropdownDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
- Methods:
- File: MenuDefinition.cs
- class: ToggleDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
- Methods:
- File: MenuDefinition.cs
- class: LabelDefinition (Namespace: SiegeEngine.Rendering.Definitions)
- Inherits: None
- Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
  Methods:
  File: TextureDefinitions.cs
  class: TextureDefinitions (Namespace: SiegeEngine.Rendering.Definitions)
@@ -1685,7 +1659,7 @@ Folder: Castle
  File: Toggle.cs
  class: Toggle (Namespace: SiegeEngine.Rendering.Definitions)
  Inherits: None
- Dependencies: System, System, System.Numerics
+ Dependencies: SiegeEngine.Rendering.Definitions, SiegeEngine.Rendering.Definitions, System, System.Numerics
  Methods:
  - constructor Toggle(ToggleDefinition def, ToggleDefinition def, Action<bool> onToggle)
  Calls: None
@@ -1693,6 +1667,11 @@ Folder: Castle
  Calls: None
  - void ToggleState()
  Calls: None
+ File: ToggleDefinition.cs
+ class: ToggleDefinition (Namespace: SiegeEngine.Rendering.Definitions)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json.Serialization, System.Threading.Tasks
+ Methods:
  File: EditorTextRenderer.cs
  class: EditorTextRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
