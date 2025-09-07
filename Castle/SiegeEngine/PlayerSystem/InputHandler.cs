@@ -1,8 +1,9 @@
-﻿using SiegeEngine.Networking;
+﻿// SiegeEngine.PlayerSystem/InputHandler.cs
+using SiegeEngine.Interfaces;
+using SiegeEngine.Networking;
 using Silk.NET.GLFW;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 using System.Text;
 
@@ -10,7 +11,7 @@ namespace SiegeEngine.PlayerSystem
 {
     public unsafe class InputHandler
     {
-        private readonly Glfw _glfw;
+        private readonly IControlContext _controlContext;
         private readonly WindowHandle* _window;
         private readonly SteamEngine _steamEngine;
         private Vector2 _mousePos;
@@ -19,14 +20,16 @@ namespace SiegeEngine.PlayerSystem
         private readonly List<(string Id, Action<MouseButton, InputAction> Callback)> _mouseCallbacks = new();
         private readonly List<(string Id, Action<Keys, InputAction> Callback)> _keyCallbacks = new();
 
-        public InputHandler(Glfw glfw, WindowHandle* window, SteamEngine steamEngine)
+        public InputHandler(IControlContext controlContext, WindowHandle* window, SteamEngine steamEngine)
         {
-            if (glfw == null) throw new ArgumentNullException(nameof(glfw));
+            if (controlContext == null) throw new ArgumentNullException(nameof(controlContext));
             if (window == null) throw new ArgumentNullException(nameof(window));
             if (steamEngine == null) throw new ArgumentNullException(nameof(steamEngine));
-            _glfw = glfw;
+
+            _controlContext = controlContext;
             _window = window;
             _steamEngine = steamEngine;
+
             SetupInputCallbacks();
         }
 
@@ -41,7 +44,7 @@ namespace SiegeEngine.PlayerSystem
 
         public void SetMouseCallback(string id, Action<MouseButton, InputAction> callback)
         {
-            if (callback != null && !_mouseCallbacks.Any(c => c.Id == id))
+            if (callback != null && !_mouseCallbacks.Exists(c => c.Id == id))
             {
                 _mouseCallbacks.Add((id, callback));
                 Console.WriteLine($"InputHandler: Added mouse callback with ID: {id}");
@@ -54,7 +57,7 @@ namespace SiegeEngine.PlayerSystem
 
         public void SetKeyCallback(string id, Action<Keys, InputAction> callback)
         {
-            if (callback != null && !_keyCallbacks.Any(c => c.Id == id))
+            if (callback != null && !_keyCallbacks.Exists(c => c.Id == id))
             {
                 _keyCallbacks.Add((id, callback));
                 Console.WriteLine($"InputHandler: Added key callback with ID: {id}");
@@ -67,13 +70,13 @@ namespace SiegeEngine.PlayerSystem
 
         private void SetupInputCallbacks()
         {
-            _glfw.SetCursorPosCallback(_window, (w, x, y) =>
+            _controlContext.SetCursorPosCallback(_window, (w, x, y) =>
             {
                 _mousePos = new Vector2((float)x, (float)y);
                 SendMousePosition();
             });
 
-            _glfw.SetMouseButtonCallback(_window, (w, button, action, mods) =>
+            _controlContext.SetMouseButtonCallback(_window, (w, button, action, mods) =>
             {
                 Console.WriteLine($"InputHandler: Mouse callback - Button: {button}, Action: {action}, Pos: {_mousePos}, Callbacks: {_mouseCallbacks.Count}");
                 if (button == MouseButton.Left)
@@ -104,7 +107,7 @@ namespace SiegeEngine.PlayerSystem
                 }
             });
 
-            _glfw.SetKeyCallback(_window, (w, key, scancode, action, mods) =>
+            _controlContext.SetKeyCallback(_window, (w, key, scancode, action, mods) =>
             {
                 Console.WriteLine($"InputHandler: Key callback - Key: {key}, Action: {action}, Callbacks: {_keyCallbacks.Count}");
                 SendKeyInput(key, action);
@@ -121,6 +124,7 @@ namespace SiegeEngine.PlayerSystem
                     }
                 }
             });
+
             Console.WriteLine("InputHandler: Registered mouse and key callbacks");
         }
 

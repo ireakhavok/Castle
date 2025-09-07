@@ -1,21 +1,21 @@
 ﻿// Trebuchet/Launcher.cs
+using SiegeEngine.Definitions;
+using SiegeEngine.Events;
+using SiegeEngine.Interfaces;
+using SiegeEngine.Managers;
+using SiegeEngine.Networking;
+using SiegeEngine.PlayerSystem;
+using SiegeEngine.Rendering;
+using SiegeEngine.Scenes;
+using SiegeEngine.Systems;
+using Silk.NET.GLFW;
+using Silk.NET.OpenGL;
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using Silk.NET.GLFW;
-using Silk.NET.OpenGL;
-using SiegeEngine.Managers;
-using SiegeEngine.Networking;
-using SiegeEngine.Rendering;
-using SiegeEngine.Events;
-using SiegeEngine.Interfaces;
-using SiegeEngine.Scenes;
-using SiegeEngine.Definitions;
-using SiegeEngine.PlayerSystem;
-using SiegeEngine.Systems;
+using System.Runtime.InteropServices;
 
 namespace Trebuchet
 {
@@ -28,8 +28,9 @@ namespace Trebuchet
         private UISettingsManager _settingsManager;
         private ISteamEngine _steamEngine;
         private EventBus _eventBus;
-        //private MenuManager _menuManager;
+        //private MenuSystem _menuSystem;
         private IRenderContext _renderContext;
+        private IControlContext _controlContext;
         //private CustomUIController _uiController;
         private InputHandler _inputHandler;
         private ModManager _modManager;
@@ -84,27 +85,28 @@ namespace Trebuchet
                     _gl = GL.GetApi(_glfw.GetProcAddress);
 
                     _modManager = new ModManager(null, _steamEngine);
+
                     _renderContext = new OpenGLRenderContext(_glfw, _gl);
-                    _inputHandler = new InputHandler(_glfw, _window, (SteamEngine)_steamEngine);
+                    _controlContext = new GlfwControlContext(_glfw);
+
+                    _inputHandler = new InputHandler(_controlContext, _window, (SteamEngine)_steamEngine);
                     _inputHandler.SetMouseCallback("ui", (button, action) => { });
                     _inputHandler.SetKeyCallback("ui", (key, action) => { });
 
                     string configPath = _modManager.GetMenuConfigPath();
                     Console.WriteLine($"Launcher: Resolved MainMenu.json path: {configPath}, Exists: {File.Exists(configPath)}");
 
-                    //_menuManager = new MenuManager(_settingsManager, _modManager, null, _glfw, _window, null, null, configPath);
-                    //_uiController = new CustomUIController(_glfw, _renderContext, _window, _settingsManager, _menuManager, null, _inputHandler);
+                    //_menuSystem = new MenuSystem(_settingsManager, _modManager, null, _glfw, _window, null, null, configPath);
+                    //_uiController = new CustomUIController(_glfw, _renderContext, _window, _settingsManager, _menuSystem, null, _inputHandler);
                     //_uiController.Initialize();
-
-                    //_menuManager.SwitchMenu("MainMenu");
-
-                    //_menuManager.OnSettingsSelected += () =>
+                    //_menuSystem.SwitchMenu("MainMenu");
+                    //_menuSystem.OnSettingsSelected += () =>
                     //{
                     //    Console.WriteLine("Launcher: Settings selected, switching to UserSettingsMenu");
-                    //    _menuManager.SwitchMenu("UserSettingsMenu");
+                    //    _menuSystem.SwitchMenu("UserSettingsMenu");
                     //};
 
-                    _glfw.SetWindowSizeCallback(_window, (w, width, height) =>
+                    _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
                         if (_settingsManager.AllowResize)
                         {
@@ -127,15 +129,15 @@ namespace Trebuchet
                         lastFrameTime = currentTime;
 
                         _steamEngine.RunCallbacks();
-                        _glfw.PollEvents();
+                        _controlContext.PollEvents();
 
-                        if (_glfw.WindowShouldClose(_window))
+                        if (_controlContext.WindowShouldClose(_window))
                             _isRunning = false;
 
                         //_uiController.Update(deltaTime);
                         //_uiController.Render();
 
-                        _glfw.SwapBuffers(_window);
+                        _controlContext.SwapBuffers(_window);
                     }
                 }
             }
