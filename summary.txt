@@ -286,6 +286,190 @@ Folder: Castle
  Calls: None
  - void Terminate()
  Calls: None
+ File: D3D12Native.cs
+ class: D3D12Native (Namespace: SiegeEngine.ContextManagement)
+ Inherits: None
+ Dependencies: System, System, System.Runtime.InteropServices
+ Methods:
+ - int D3D12CreateDevice(nint pAdapter, nint pAdapter, int minimumFeatureLevel, ref Guid, out nint)
+ Calls: None
+ - int CreateDXGIFactory1(ref Guid, ref Guid, out nint)
+ Calls: None
+ - int CreateSwapChain(nint pFactory, nint pFactory, nint pDevice, ref DXGI_SWAP_CHAIN_DESC, out nint)
+ Calls: None
+ - int IDXGISwapChain_Present(nint swapChain, nint swapChain, int syncInterval, int flags)
+ Calls: None
+ - int GetBuffer(nint pSwapChain, nint pSwapChain, uint buffer, ref Guid, out nint)
+ Calls: None
+ - int D3DCompile(string pSrcData, string pSrcData, ulong srcDataSize, string pSourceName, nint pDefines, nint pInclude, string pEntryPoint, string pTarget, uint flags1, uint flags2, out nint, out nint)
+ Calls: None
+ - void QueryInterface(ref Guid, ref Guid, out nint)
+ Calls: None
+ - uint AddRef()
+ Calls: None
+ - uint Release()
+ Calls: None
+ - nint GetPrivateData(ref Guid, ref Guid, ref uint, nint pData)
+ Calls: None
+ - nint SetPrivateData(ref Guid, ref Guid, uint dataSize, nint pData)
+ Calls: None
+ - nint SetPrivateDataInterface(ref Guid, ref Guid, nint pData)
+ Calls: None
+ - uint GetNodeCount()
+ Calls: None
+ - int CreateCommandQueue(ref D3D12_COMMAND_QUEUE_DESC, ref D3D12_COMMAND_QUEUE_DESC, ref Guid, out nint)
+ Calls: None
+ - int CreateCommandAllocator(int type, int type, ref Guid, out nint)
+ Calls: None
+ - int CreateGraphicsCommandList(int nodeMask, int nodeMask, int type, nint pCommandAllocator, nint pInitialState, ref Guid, out nint)
+ Calls: None
+ - int CheckFeatureSupport(int feature, int feature, nint pFeatureSupportData, uint featureSupportDataSize)
+ Calls: None
+ - int CreateDescriptorHeap(ref D3D12_DESCRIPTOR_HEAP_DESC, ref D3D12_DESCRIPTOR_HEAP_DESC, ref Guid, out nint)
+ Calls: None
+ - uint GetDescriptorHandleIncrementSize(int descriptorHeapType, int descriptorHeapType)
+ Calls: None
+ - int CreateRootSignature(uint nodeMask, uint nodeMask, nint pBlob, ulong blobLength, ref Guid, out nint)
+ Calls: None
+ - void CreateConstantBufferView(nint pDesc, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateShaderResourceView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateUnorderedAccessView(nint pResource, nint pResource, nint pCounterResource, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateRenderTargetView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateDepthStencilView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateSampler(nint pDesc, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CopyDescriptors(uint numDestDescriptorRanges, uint numDestDescriptorRanges, nint pDestDescriptorRangeStarts, nint pDestDescriptorRangeSizes, uint numSrcDescriptorRanges, nint pSrcDescriptorRangeStarts, nint pSrcDescriptorRangeSizes, int descriptorHeapsType)
+ Calls: None
+ - void CopyDescriptorsSimple(uint numDescriptors, uint numDescriptors, nint destDescriptorRangeStart, nint srcDescriptorRangeStart, int descriptorHeapsType)
+ Calls: None
+ - nint GetResourceAllocationInfo(uint visibleMask, uint visibleMask, uint numResourceDescs, nint pResourceDescs)
+ Calls: None
+ - nint GetCustomHeapProperties(uint nodeMask, uint nodeMask, int heapType)
+ Calls: None
+ - int CreateCommittedResource(ref D3D12_HEAP_PROPERTIES, ref D3D12_HEAP_PROPERTIES, int heapFlags, ref D3D12_RESOURCE_DESC, int initialResourceState, nint pOptimizedClearValue, ref Guid, out nint)
+ Calls: None
+ - int CreateHeap(ref D3D12_HEAP_DESC, ref D3D12_HEAP_DESC, ref Guid, out nint)
+ Calls: None
+ - int CreatePlacedResource(nint pHeap, nint pHeap, ulong heapOffset, ref D3D12_RESOURCE_DESC, int initialState, nint pOptimizedClearValue, ref Guid, out nint)
+ Calls: None
+ - int CreateReservedResource(ref D3D12_RESOURCE_DESC, ref D3D12_RESOURCE_DESC, int initialState, nint pOptimizedClearValue, ref Guid, out nint)
+ Calls: None
+ - int OpenSharedHandle(nint ntHandle, nint ntHandle, ref Guid, out nint)
+ Calls: None
+ - int MakeResident(uint numObjects, uint numObjects, nint ppObjects)
+ Calls: None
+ - int Evict(uint numObjects, uint numObjects, nint ppObjects)
+ Calls: None
+ - int CreateFence(ulong initialValue, ulong initialValue, int flags, ref Guid, out nint)
+ Calls: None
+ - int GetDeviceRemovedReason()
+ Calls: None
+ - void GetCopyableFootprints(ref D3D12_RESOURCE_DESC, ref D3D12_RESOURCE_DESC, uint firstSubresource, uint numSubresources, ulong baseOffset, nint pLayouts, nint pNumRows, nint pRowSizeInBytes, out ulong)
+ Calls: None
+ - int CreateQueryHeap(ref D3D12_QUERY_HEAP_DESC, ref D3D12_QUERY_HEAP_DESC, ref Guid, out nint)
+ Calls: None
+ - int SetStablePowerState(int enable, int enable)
+ Calls: None
+ - int CreateCommandSignature(ref D3D12_COMMAND_SIGNATURE_DESC, ref D3D12_COMMAND_SIGNATURE_DESC, nint pRootSignature, ref Guid, out nint)
+ Calls: None
+ - void GetResourceTiling(nint pTiledResource, nint pTiledResource, out uint, out D3D12_PACKED_MIP_INFO, out D3D12_TILE_SHAPE, ref uint, uint firstSubresourceTilingToGet, nint pSubresourceTilingsForNonPackedMips)
+ Calls: None
+ - nint GetAdapterLuid()
+ Calls: None
+ File: D3D12Native.cs
+ enum: D3D12_FEATURE_LEVEL (Namespace: SiegeEngine.ContextManagement)
+ Inherits: int
+        
+ Dependencies: System, System, System.Runtime.InteropServices
+ Methods:
+ File: D3D12Native.cs
+ interface: ID3D12Device (Namespace: SiegeEngine.ContextManagement)
+ Inherits: None
+ Dependencies: System, System, System.Runtime.InteropServices
+ Methods:
+ - void QueryInterface(ref Guid, ref Guid, out nint)
+ Calls: None
+ - uint AddRef()
+ Calls: None
+ - uint Release()
+ Calls: None
+ - nint GetPrivateData(ref Guid, ref Guid, ref uint, nint pData)
+ Calls: None
+ - nint SetPrivateData(ref Guid, ref Guid, uint dataSize, nint pData)
+ Calls: None
+ - nint SetPrivateDataInterface(ref Guid, ref Guid, nint pData)
+ Calls: None
+ - uint GetNodeCount()
+ Calls: None
+ - int CreateCommandQueue(ref D3D12_COMMAND_QUEUE_DESC, ref D3D12_COMMAND_QUEUE_DESC, ref Guid, out nint)
+ Calls: None
+ - int CreateCommandAllocator(int type, int type, ref Guid, out nint)
+ Calls: None
+ - int CreateGraphicsCommandList(int nodeMask, int nodeMask, int type, nint pCommandAllocator, nint pInitialState, ref Guid, out nint)
+ Calls: None
+ - int CheckFeatureSupport(int feature, int feature, nint pFeatureSupportData, uint featureSupportDataSize)
+ Calls: None
+ - int CreateDescriptorHeap(ref D3D12_DESCRIPTOR_HEAP_DESC, ref D3D12_DESCRIPTOR_HEAP_DESC, ref Guid, out nint)
+ Calls: None
+ - uint GetDescriptorHandleIncrementSize(int descriptorHeapType, int descriptorHeapType)
+ Calls: None
+ - int CreateRootSignature(uint nodeMask, uint nodeMask, nint pBlob, ulong blobLength, ref Guid, out nint)
+ Calls: None
+ - void CreateConstantBufferView(nint pDesc, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateShaderResourceView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateUnorderedAccessView(nint pResource, nint pResource, nint pCounterResource, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateRenderTargetView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateDepthStencilView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CreateSampler(nint pDesc, nint pDesc, nint destDescriptor)
+ Calls: None
+ - void CopyDescriptors(uint numDestDescriptorRanges, uint numDestDescriptorRanges, nint pDestDescriptorRangeStarts, nint pDestDescriptorRangeSizes, uint numSrcDescriptorRanges, nint pSrcDescriptorRangeStarts, nint pSrcDescriptorRangeSizes, int descriptorHeapsType)
+ Calls: None
+ - void CopyDescriptorsSimple(uint numDescriptors, uint numDescriptors, nint destDescriptorRangeStart, nint srcDescriptorRangeStart, int descriptorHeapsType)
+ Calls: None
+ - nint GetResourceAllocationInfo(uint visibleMask, uint visibleMask, uint numResourceDescs, nint pResourceDescs)
+ Calls: None
+ - nint GetCustomHeapProperties(uint nodeMask, uint nodeMask, int heapType)
+ Calls: None
+ - int CreateCommittedResource(ref D3D12_HEAP_PROPERTIES, ref D3D12_HEAP_PROPERTIES, int heapFlags, ref D3D12_RESOURCE_DESC, int initialResourceState, nint pOptimizedClearValue, ref Guid, out nint)
+ Calls: None
+ - int CreateHeap(ref D3D12_HEAP_DESC, ref D3D12_HEAP_DESC, ref Guid, out nint)
+ Calls: None
+ - int CreatePlacedResource(nint pHeap, nint pHeap, ulong heapOffset, ref D3D12_RESOURCE_DESC, int initialState, nint pOptimizedClearValue, ref Guid, out nint)
+ Calls: None
+ - int CreateReservedResource(ref D3D12_RESOURCE_DESC, ref D3D12_RESOURCE_DESC, int initialState, nint pOptimizedClearValue, ref Guid, out nint)
+ Calls: None
+ - int OpenSharedHandle(nint ntHandle, nint ntHandle, ref Guid, out nint)
+ Calls: None
+ - int MakeResident(uint numObjects, uint numObjects, nint ppObjects)
+ Calls: None
+ - int Evict(uint numObjects, uint numObjects, nint ppObjects)
+ Calls: None
+ - int CreateFence(ulong initialValue, ulong initialValue, int flags, ref Guid, out nint)
+ Calls: None
+ - int GetDeviceRemovedReason()
+ Calls: None
+ - void GetCopyableFootprints(ref D3D12_RESOURCE_DESC, ref D3D12_RESOURCE_DESC, uint firstSubresource, uint numSubresources, ulong baseOffset, nint pLayouts, nint pNumRows, nint pRowSizeInBytes, out ulong)
+ Calls: None
+ - int CreateQueryHeap(ref D3D12_QUERY_HEAP_DESC, ref D3D12_QUERY_HEAP_DESC, ref Guid, out nint)
+ Calls: None
+ - int SetStablePowerState(int enable, int enable)
+ Calls: None
+ - int CreateCommandSignature(ref D3D12_COMMAND_SIGNATURE_DESC, ref D3D12_COMMAND_SIGNATURE_DESC, nint pRootSignature, ref Guid, out nint)
+ Calls: None
+ - void GetResourceTiling(nint pTiledResource, nint pTiledResource, out uint, out D3D12_PACKED_MIP_INFO, out D3D12_TILE_SHAPE, ref uint, uint firstSubresourceTilingToGet, nint pSubresourceTilingsForNonPackedMips)
+ Calls: None
+ - nint GetAdapterLuid()
+ Calls: None
  File: GlfwControlContext.cs
  class: GlfwControlContext (Namespace: SiegeEngine.ContextManagement)
  Inherits: IControlContext
@@ -319,6 +503,10 @@ Folder: Castle
  - void PollEvents()
  Calls: SwapBuffers, SwapBuffers
  - void SwapBuffers(IntPtr window, IntPtr window)
+ Calls: GetWindowSize, GetWindowSize
+ - void GetWindowSize(IntPtr window, IntPtr window, out int, out int)
+ Calls: GetTime, GetTime
+ - double GetTime()
  Calls: None
  - Key MapGlfwKey(Keys glfwKey, Keys glfwKey)
  Calls: None
@@ -372,6 +560,10 @@ Folder: Castle
  - void PollEvents()
  Calls: None
  - void SwapBuffers(IntPtr window, IntPtr window)
+ Calls: None
+ - void GetWindowSize(IntPtr window, IntPtr window, out int, out int)
+ Calls: None
+ - double GetTime()
  Calls: None
  File: IRenderContext.cs
  interface: IRenderContext (Namespace: SiegeEngine.ContextManagement)
@@ -1437,9 +1629,9 @@ Folder: Castle
  class: BackgroundRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Drawing, System.Drawing.Imaging, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.OpenGL, System, System.Drawing, System.Drawing.Imaging, System.Numerics
  Methods:
- - constructor BackgroundRenderer(Glfw glfw, Glfw glfw, IRenderContext renderContext)
+ - constructor BackgroundRenderer(IControlContext controlContext, IControlContext controlContext, IntPtr window, IRenderContext renderContext)
  Calls: BindBuffer, BindBuffer, BindTexture, BindVertexArray, BufferData, EnableVertexAttribArray, GenBuffers, GenTextures, GenVertexArrays, GetError, PixelStore, TexImage2D, TexParameter, VertexAttribPointer
  - void Initialize(string backgroundPath, string backgroundPath, ShaderProgram shaderProgram)
  Calls: None
@@ -1447,197 +1639,13 @@ Folder: Castle
  Calls: None
  - void Dispose()
  Calls: None
- File: D3D12Native.cs
- class: D3D12Native (Namespace: SiegeEngine.Rendering)
- Inherits: None
- Dependencies: System, System, System.Runtime.InteropServices
- Methods:
- - int D3D12CreateDevice(nint pAdapter, nint pAdapter, int minimumFeatureLevel, ref Guid, out nint)
- Calls: None
- - int CreateDXGIFactory1(ref Guid, ref Guid, out nint)
- Calls: None
- - int CreateSwapChain(nint pFactory, nint pFactory, nint pDevice, ref DXGI_SWAP_CHAIN_DESC, out nint)
- Calls: None
- - int IDXGISwapChain_Present(nint swapChain, nint swapChain, int syncInterval, int flags)
- Calls: None
- - int GetBuffer(nint pSwapChain, nint pSwapChain, uint buffer, ref Guid, out nint)
- Calls: None
- - int D3DCompile(string pSrcData, string pSrcData, ulong srcDataSize, string pSourceName, nint pDefines, nint pInclude, string pEntryPoint, string pTarget, uint flags1, uint flags2, out nint, out nint)
- Calls: None
- - void QueryInterface(ref Guid, ref Guid, out nint)
- Calls: None
- - uint AddRef()
- Calls: None
- - uint Release()
- Calls: None
- - nint GetPrivateData(ref Guid, ref Guid, ref uint, nint pData)
- Calls: None
- - nint SetPrivateData(ref Guid, ref Guid, uint dataSize, nint pData)
- Calls: None
- - nint SetPrivateDataInterface(ref Guid, ref Guid, nint pData)
- Calls: None
- - uint GetNodeCount()
- Calls: None
- - int CreateCommandQueue(ref D3D12_COMMAND_QUEUE_DESC, ref D3D12_COMMAND_QUEUE_DESC, ref Guid, out nint)
- Calls: None
- - int CreateCommandAllocator(int type, int type, ref Guid, out nint)
- Calls: None
- - int CreateGraphicsCommandList(int nodeMask, int nodeMask, int type, nint pCommandAllocator, nint pInitialState, ref Guid, out nint)
- Calls: None
- - int CheckFeatureSupport(int feature, int feature, nint pFeatureSupportData, uint featureSupportDataSize)
- Calls: None
- - int CreateDescriptorHeap(ref D3D12_DESCRIPTOR_HEAP_DESC, ref D3D12_DESCRIPTOR_HEAP_DESC, ref Guid, out nint)
- Calls: None
- - uint GetDescriptorHandleIncrementSize(int descriptorHeapType, int descriptorHeapType)
- Calls: None
- - int CreateRootSignature(uint nodeMask, uint nodeMask, nint pBlob, ulong blobLength, ref Guid, out nint)
- Calls: None
- - void CreateConstantBufferView(nint pDesc, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateShaderResourceView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateUnorderedAccessView(nint pResource, nint pResource, nint pCounterResource, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateRenderTargetView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateDepthStencilView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateSampler(nint pDesc, nint pDesc, nint destDescriptor)
- Calls: None
- - void CopyDescriptors(uint numDestDescriptorRanges, uint numDestDescriptorRanges, nint pDestDescriptorRangeStarts, nint pDestDescriptorRangeSizes, uint numSrcDescriptorRanges, nint pSrcDescriptorRangeStarts, nint pSrcDescriptorRangeSizes, int descriptorHeapsType)
- Calls: None
- - void CopyDescriptorsSimple(uint numDescriptors, uint numDescriptors, nint destDescriptorRangeStart, nint srcDescriptorRangeStart, int descriptorHeapsType)
- Calls: None
- - nint GetResourceAllocationInfo(uint visibleMask, uint visibleMask, uint numResourceDescs, nint pResourceDescs)
- Calls: None
- - nint GetCustomHeapProperties(uint nodeMask, uint nodeMask, int heapType)
- Calls: None
- - int CreateCommittedResource(ref D3D12_HEAP_PROPERTIES, ref D3D12_HEAP_PROPERTIES, int heapFlags, ref D3D12_RESOURCE_DESC, int initialResourceState, nint pOptimizedClearValue, ref Guid, out nint)
- Calls: None
- - int CreateHeap(ref D3D12_HEAP_DESC, ref D3D12_HEAP_DESC, ref Guid, out nint)
- Calls: None
- - int CreatePlacedResource(nint pHeap, nint pHeap, ulong heapOffset, ref D3D12_RESOURCE_DESC, int initialState, nint pOptimizedClearValue, ref Guid, out nint)
- Calls: None
- - int CreateReservedResource(ref D3D12_RESOURCE_DESC, ref D3D12_RESOURCE_DESC, int initialState, nint pOptimizedClearValue, ref Guid, out nint)
- Calls: None
- - int OpenSharedHandle(nint ntHandle, nint ntHandle, ref Guid, out nint)
- Calls: None
- - int MakeResident(uint numObjects, uint numObjects, nint ppObjects)
- Calls: None
- - int Evict(uint numObjects, uint numObjects, nint ppObjects)
- Calls: None
- - int CreateFence(ulong initialValue, ulong initialValue, int flags, ref Guid, out nint)
- Calls: None
- - int GetDeviceRemovedReason()
- Calls: None
- - void GetCopyableFootprints(ref D3D12_RESOURCE_DESC, ref D3D12_RESOURCE_DESC, uint firstSubresource, uint numSubresources, ulong baseOffset, nint pLayouts, nint pNumRows, nint pRowSizeInBytes, out ulong)
- Calls: None
- - int CreateQueryHeap(ref D3D12_QUERY_HEAP_DESC, ref D3D12_QUERY_HEAP_DESC, ref Guid, out nint)
- Calls: None
- - int SetStablePowerState(int enable, int enable)
- Calls: None
- - int CreateCommandSignature(ref D3D12_COMMAND_SIGNATURE_DESC, ref D3D12_COMMAND_SIGNATURE_DESC, nint pRootSignature, ref Guid, out nint)
- Calls: None
- - void GetResourceTiling(nint pTiledResource, nint pTiledResource, out uint, out D3D12_PACKED_MIP_INFO, out D3D12_TILE_SHAPE, ref uint, uint firstSubresourceTilingToGet, nint pSubresourceTilingsForNonPackedMips)
- Calls: None
- - nint GetAdapterLuid()
- Calls: None
- File: D3D12Native.cs
- enum: D3D12_FEATURE_LEVEL (Namespace: SiegeEngine.Rendering)
- Inherits: int
-        
- Dependencies: System, System, System.Runtime.InteropServices
- Methods:
- File: D3D12Native.cs
- interface: ID3D12Device (Namespace: SiegeEngine.Rendering)
- Inherits: None
- Dependencies: System, System, System.Runtime.InteropServices
- Methods:
- - void QueryInterface(ref Guid, ref Guid, out nint)
- Calls: None
- - uint AddRef()
- Calls: None
- - uint Release()
- Calls: None
- - nint GetPrivateData(ref Guid, ref Guid, ref uint, nint pData)
- Calls: None
- - nint SetPrivateData(ref Guid, ref Guid, uint dataSize, nint pData)
- Calls: None
- - nint SetPrivateDataInterface(ref Guid, ref Guid, nint pData)
- Calls: None
- - uint GetNodeCount()
- Calls: None
- - int CreateCommandQueue(ref D3D12_COMMAND_QUEUE_DESC, ref D3D12_COMMAND_QUEUE_DESC, ref Guid, out nint)
- Calls: None
- - int CreateCommandAllocator(int type, int type, ref Guid, out nint)
- Calls: None
- - int CreateGraphicsCommandList(int nodeMask, int nodeMask, int type, nint pCommandAllocator, nint pInitialState, ref Guid, out nint)
- Calls: None
- - int CheckFeatureSupport(int feature, int feature, nint pFeatureSupportData, uint featureSupportDataSize)
- Calls: None
- - int CreateDescriptorHeap(ref D3D12_DESCRIPTOR_HEAP_DESC, ref D3D12_DESCRIPTOR_HEAP_DESC, ref Guid, out nint)
- Calls: None
- - uint GetDescriptorHandleIncrementSize(int descriptorHeapType, int descriptorHeapType)
- Calls: None
- - int CreateRootSignature(uint nodeMask, uint nodeMask, nint pBlob, ulong blobLength, ref Guid, out nint)
- Calls: None
- - void CreateConstantBufferView(nint pDesc, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateShaderResourceView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateUnorderedAccessView(nint pResource, nint pResource, nint pCounterResource, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateRenderTargetView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateDepthStencilView(nint pResource, nint pResource, nint pDesc, nint destDescriptor)
- Calls: None
- - void CreateSampler(nint pDesc, nint pDesc, nint destDescriptor)
- Calls: None
- - void CopyDescriptors(uint numDestDescriptorRanges, uint numDestDescriptorRanges, nint pDestDescriptorRangeStarts, nint pDestDescriptorRangeSizes, uint numSrcDescriptorRanges, nint pSrcDescriptorRangeStarts, nint pSrcDescriptorRangeSizes, int descriptorHeapsType)
- Calls: None
- - void CopyDescriptorsSimple(uint numDescriptors, uint numDescriptors, nint destDescriptorRangeStart, nint srcDescriptorRangeStart, int descriptorHeapsType)
- Calls: None
- - nint GetResourceAllocationInfo(uint visibleMask, uint visibleMask, uint numResourceDescs, nint pResourceDescs)
- Calls: None
- - nint GetCustomHeapProperties(uint nodeMask, uint nodeMask, int heapType)
- Calls: None
- - int CreateCommittedResource(ref D3D12_HEAP_PROPERTIES, ref D3D12_HEAP_PROPERTIES, int heapFlags, ref D3D12_RESOURCE_DESC, int initialResourceState, nint pOptimizedClearValue, ref Guid, out nint)
- Calls: None
- - int CreateHeap(ref D3D12_HEAP_DESC, ref D3D12_HEAP_DESC, ref Guid, out nint)
- Calls: None
- - int CreatePlacedResource(nint pHeap, nint pHeap, ulong heapOffset, ref D3D12_RESOURCE_DESC, int initialState, nint pOptimizedClearValue, ref Guid, out nint)
- Calls: None
- - int CreateReservedResource(ref D3D12_RESOURCE_DESC, ref D3D12_RESOURCE_DESC, int initialState, nint pOptimizedClearValue, ref Guid, out nint)
- Calls: None
- - int OpenSharedHandle(nint ntHandle, nint ntHandle, ref Guid, out nint)
- Calls: None
- - int MakeResident(uint numObjects, uint numObjects, nint ppObjects)
- Calls: None
- - int Evict(uint numObjects, uint numObjects, nint ppObjects)
- Calls: None
- - int CreateFence(ulong initialValue, ulong initialValue, int flags, ref Guid, out nint)
- Calls: None
- - int GetDeviceRemovedReason()
- Calls: None
- - void GetCopyableFootprints(ref D3D12_RESOURCE_DESC, ref D3D12_RESOURCE_DESC, uint firstSubresource, uint numSubresources, ulong baseOffset, nint pLayouts, nint pNumRows, nint pRowSizeInBytes, out ulong)
- Calls: None
- - int CreateQueryHeap(ref D3D12_QUERY_HEAP_DESC, ref D3D12_QUERY_HEAP_DESC, ref Guid, out nint)
- Calls: None
- - int SetStablePowerState(int enable, int enable)
- Calls: None
- - int CreateCommandSignature(ref D3D12_COMMAND_SIGNATURE_DESC, ref D3D12_COMMAND_SIGNATURE_DESC, nint pRootSignature, ref Guid, out nint)
- Calls: None
- - void GetResourceTiling(nint pTiledResource, nint pTiledResource, out uint, out D3D12_PACKED_MIP_INFO, out D3D12_TILE_SHAPE, ref uint, uint firstSubresourceTilingToGet, nint pSubresourceTilingsForNonPackedMips)
- Calls: None
- - nint GetAdapterLuid()
- Calls: None
  File: EditorTextRenderer.cs
  class: EditorTextRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
  Methods:
- - constructor EditorTextRenderer(Glfw glfw, Glfw glfw, IRenderContext renderContext)
+ - constructor EditorTextRenderer(Glfw glfw, Glfw glfw, IRenderContext renderContext, IntPtr window)
  Calls: BindBuffer, BindBuffer, BindTexture, BindVertexArray, BlendFunc, BufferData, Enable, EnableVertexAttribArray, GenBuffers, GenTextures, GenVertexArrays, GetCharacterData, GetError, PixelStore, TexImage2D, TexParameter, VertexAttribPointer
  - void Initialize(ShaderProgram shaderProgram, ShaderProgram shaderProgram)
  Calls: None
@@ -1651,7 +1659,7 @@ Folder: Castle
  class: GameRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: Renderer
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, Silk.NET.OpenGL, System, System.Collections.Generic, System.Linq, System.Numerics
  Methods:
  - void Initialize(nint windowHandle, nint windowHandle, int width, int height, Player player)
  Calls: None
@@ -1790,9 +1798,9 @@ Folder: Castle
  class: TextRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
  Methods:
- - constructor TextRenderer(Glfw glfw, Glfw glfw, IRenderContext renderContext)
+ - constructor TextRenderer(IRenderContext renderContext, IRenderContext renderContext, IntPtr window)
  Calls: BindBuffer, BindBuffer, BindTexture, BindVertexArray, BlendFunc, BufferData, Enable, EnableVertexAttribArray, GenBuffers, GenTextures, GenVertexArrays, GetCharacterData, GetError, PixelStore, TexImage2D, TexParameter, VertexAttribPointer
  - void Initialize(ShaderProgram shaderProgram, ShaderProgram shaderProgram)
  Calls: None
@@ -2044,10 +2052,10 @@ Folder: Castle
  File: Launcher.cs
  class: Launcher (Namespace: Trebuchet)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, Silk.NET.GLFW, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
  Methods:
  - void Start()
- Calls: EventBus, EventBus, GetMenuConfigPath, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PollEvents, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
+ Calls: EventBus, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PollEvents, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
 
