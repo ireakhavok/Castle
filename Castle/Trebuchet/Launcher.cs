@@ -9,7 +9,6 @@ using SiegeEngine.PlayerSystem;
 using SiegeEngine.Rendering;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
-using Silk.NET.GLFW;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -93,7 +92,7 @@ namespace Trebuchet
                     float lastFrameTime = 0f;
                     while (_isRunning)
                     {
-                        float currentTime = (float)_glfw.GetTime();
+                        float currentTime = (float)_controlContext.GetTime();
                         float deltaTime = currentTime - lastFrameTime;
                         lastFrameTime = currentTime;
                         _steamEngine.RunCallbacks();

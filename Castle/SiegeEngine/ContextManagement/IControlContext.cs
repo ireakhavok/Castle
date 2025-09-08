@@ -11,6 +11,7 @@ namespace SiegeEngine.ContextManagement
         public delegate void KeyCallback(IntPtr window, Key key, int scancode, InputAction action, KeyModifiers mods);
         public delegate void ScrollCallback(IntPtr window, double xoffset, double yoffset);
         public delegate void WindowSizeCallback(IntPtr window, int width, int height);
+
         void SetCursorPosCallback(IntPtr window, CursorPosCallback callback);
         void SetMouseButtonCallback(IntPtr window, MouseButtonCallback callback);
         void SetKeyCallback(IntPtr window, KeyCallback callback);
@@ -24,5 +25,7 @@ namespace SiegeEngine.ContextManagement
         bool GetWindowAttrib(IntPtr window, WindowAttribute attrib);
         void PollEvents();
         void SwapBuffers(IntPtr window);
+        void GetWindowSize(IntPtr window, out int width, out int height);
+        double GetTime();
     }
 }

@@ -4,7 +4,6 @@ using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
 using SiegeEngine.Managers;
 using SiegeEngine.PlayerSystem;
-using Silk.NET.GLFW;
 using Silk.NET.OpenGL;
 using System;
 using System.Collections.Generic;
@@ -16,9 +15,9 @@ namespace SiegeEngine.Rendering
 {
     public unsafe class GameRenderer : Renderer
     {
-        private readonly Glfw _glfw;
+        //private readonly Glfw _glfw;
         private readonly IRenderContext _renderContext;
-        private readonly WindowHandle* _window;
+        private readonly IntPtr _window;
         private readonly InputHandler _inputHandler;
         private readonly IGameServer _server;
         private readonly EventBus _eventBus;
@@ -28,9 +27,10 @@ namespace SiegeEngine.Rendering
         private ShaderProgram _pointShader, _waterShader, _gridShader, _modelShader;
         private int _width, _height;
 
-        public GameRenderer(Glfw glfw, IRenderContext renderContext, WindowHandle* window, InputHandler inputHandler, Player player, ModelManager modelManager, IGameServer server = null, EventBus eventBus = null) : base(player)
+        public GameRenderer(//Glfw glfw, 
+            IRenderContext renderContext, IntPtr window, InputHandler inputHandler, Player player, ModelManager modelManager, IGameServer server = null, EventBus eventBus = null) : base(player)
         {
-            _glfw = glfw;
+            //_glfw = glfw;
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _window = window;
             _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));

@@ -1,25 +1,26 @@
-﻿using System;
-using Silk.NET.GLFW;
-using System.Numerics;
+﻿// SiegeEngine.Rendering/BackgroundRenderer.cs
+using SiegeEngine.ContextManagement;
+using Silk.NET.OpenGL;
+using System;
 using System.Drawing;
 using System.Drawing.Imaging;
-using Silk.NET.OpenGL;
-using SiegeEngine.ContextManagement;
+using System.Numerics;
+
 namespace SiegeEngine.Rendering
 {
     public unsafe class BackgroundRenderer : IDisposable
     {
         private readonly IRenderContext _renderContext;
-        private readonly Glfw _glfw;
-        private readonly WindowHandle* _window;
+        private readonly IControlContext _controlContext;
+        private readonly IntPtr _window;
         private uint _bgVao, _bgVbo, _bgTexture;
         private ShaderProgram _shaderProgram;
         private const int TextureWidth = 1920;
         private const int TextureHeight = 895;
-        public BackgroundRenderer(Glfw glfw, IRenderContext renderContext, WindowHandle* window)
+        public BackgroundRenderer(IControlContext controlContext, IntPtr window, IRenderContext renderContext)
         {
             _renderContext = renderContext;
-            _glfw = glfw;
+            _controlContext = controlContext;
             _window = window;
         }
         public void Initialize(string backgroundPath, ShaderProgram shaderProgram)
@@ -105,8 +106,7 @@ namespace SiegeEngine.Rendering
         {
             if (_bgTexture == 0) return;
             _renderContext.BindVertexArray(_bgVao);
-            int windowWidth, windowHeight;
-            _glfw.GetWindowSize(_window, out windowWidth, out windowHeight);
+            _controlContext.GetWindowSize(_window, out int windowWidth, out int windowHeight);
             // Render the background at its exact resolution (1920x895), centered in the window
             float offsetX = (windowWidth - TextureWidth) / 2.0f;
             float offsetY = (windowHeight - TextureHeight) / 2.0f;
