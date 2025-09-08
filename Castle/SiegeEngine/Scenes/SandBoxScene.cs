@@ -1,5 +1,4 @@
-﻿// SiegeEngine.Scenes/SandBoxScene.cs
-using SiegeEngine.ContextManagement;
+﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
@@ -8,7 +7,6 @@ using SiegeEngine.PlayerSystem;
 using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Shaders;
 using SiegeEngine.Systems;
-using Silk.NET.OpenGL;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -66,7 +64,7 @@ namespace SiegeEngine.Scenes
         }
         public override void Render(IReadOnlyList<Entity> entities)
         {
-            _renderContext.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             Matrix4x4 view = _player.Camera?.ViewMatrix ?? Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, 0.1f, 1000f);
             // Render grid
@@ -74,10 +72,10 @@ namespace SiegeEngine.Scenes
             _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
             _gridShader.SetMatrix4("uView", view);
             _gridShader.SetMatrix4("uProjection", projection);
-            _renderContext.Disable(EnableCap.DepthTest);
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
             _gridBuffer.Bind();
-            _renderContext.DrawArrays(PrimitiveType.Lines, 0, _gridBuffer.GetVertexCount());
-            _renderContext.Enable(EnableCap.DepthTest);
+            _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
             // Render player model
             _modelShader.Use();
             _modelShader.SetMatrix4("uView", view);
@@ -121,8 +119,8 @@ namespace SiegeEngine.Scenes
                         // Bind albedo textures (up to 4)
                         for (int i = 0; i < Math.Min(mmr.AlbedoTextures.Length, 4); i++)
                         {
-                            _renderContext.ActiveTexture(TextureUnit.Texture0 + i);
-                            _renderContext.BindTexture(TextureTarget.Texture2D, mmr.AlbedoTextures[i]);
+                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + i);
+                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[i]);
                             _modelShader.SetUniform($"uAlbedoMap[{i}]", i);
                             total_albedo_count++;
                             //Console.WriteLine($"SandboxScene: Bound albedo texture {i} with ID {mmr.AlbedoTextures[i]}");
@@ -130,8 +128,8 @@ namespace SiegeEngine.Scenes
                         // Bind normal textures (up to 4)
                         for (int i = 0; i < Math.Min(mmr.NormalTextures.Length, 4); i++)
                         {
-                            _renderContext.ActiveTexture(TextureUnit.Texture0 + 4 + i);
-                            _renderContext.BindTexture(TextureTarget.Texture2D, mmr.NormalTextures[i]);
+                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + i);
+                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[i]);
                             _modelShader.SetUniform($"uNormalMap[{i}]", 4 + i);
                             total_normal_count++;
                             //Console.WriteLine($"SandboxScene: Bound normal texture {i} with ID {mmr.NormalTextures[i]}");
@@ -139,8 +137,8 @@ namespace SiegeEngine.Scenes
                         // Bind metallic textures (up to 4)
                         for (int i = 0; i < Math.Min(mmr.MetallicTextures.Length, 4); i++)
                         {
-                            _renderContext.ActiveTexture(TextureUnit.Texture0 + 8 + i);
-                            _renderContext.BindTexture(TextureTarget.Texture2D, mmr.MetallicTextures[i]);
+                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + i);
+                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[i]);
                             _modelShader.SetUniform($"uMetallicMap[{i}]", 8 + i);
                             total_metallic_count++;
                             //Console.WriteLine($"SandboxScene: Bound metallic texture {i} with ID {mmr.MetallicTextures[i]}");
@@ -151,8 +149,8 @@ namespace SiegeEngine.Scenes
                         Console.WriteLine($"SandboxScene: Texture binding error: {ex.Message}. Falling back to first albedo texture.");
                         if (mmr.AlbedoTextures.Length > 0)
                         {
-                            _renderContext.ActiveTexture(TextureUnit.Texture0);
-                            _renderContext.BindTexture(TextureTarget.Texture2D, mmr.AlbedoTextures[0]);
+                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
+                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[0]);
                             _modelShader.SetUniform("uAlbedoMap[0]", 0);
                         }
                     }
@@ -161,7 +159,7 @@ namespace SiegeEngine.Scenes
                     {
                         _modelShader.SetUniform("uDebugMaterialIndex", 0);
                         _renderContext.BindVertexArray(mmr.Vao);
-                        _renderContext.DrawElements(PrimitiveType.Triangles, mmr.IndexCount, DrawElementsType.UnsignedInt, null);
+                        _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                     }
                     catch (ArgumentException ex)
                     {
@@ -172,7 +170,7 @@ namespace SiegeEngine.Scenes
                     {
                         _modelShader.SetUniform("uDebugTextureOnly", 1);
                         _renderContext.BindVertexArray(mmr.Vao);
-                        _renderContext.DrawElements(PrimitiveType.Triangles, mmr.IndexCount, DrawElementsType.UnsignedInt, null);
+                        _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                         _modelShader.SetUniform("uDebugTextureOnly", 0);
                     }
                     catch (ArgumentException ex)
@@ -181,7 +179,7 @@ namespace SiegeEngine.Scenes
                     }
                     // Normal rendering pass
                     _renderContext.BindVertexArray(mmr.Vao);
-                    _renderContext.DrawElements(PrimitiveType.Triangles, mmr.IndexCount, DrawElementsType.UnsignedInt, null);
+                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                     _renderContext.BindVertexArray(0);
                 }
                 Console.WriteLine($"SandboxScene: Rendered {total_meshes} player with {total_albedo_count} total albedo textures, {total_normal_count} normal textures, {total_metallic_count} metallic textures");//, VAO {mmr.Vao}, indices {mmr.IndexCount}");
@@ -192,7 +190,7 @@ namespace SiegeEngine.Scenes
             }
             // Log OpenGL errors
             var error = _renderContext.GetError();
-            if (error != GLEnum.NoError)
+            if (error != _renderContext.Enums.NoError)
                 Console.WriteLine($"SandboxScene: OpenGL Error: {error}");
         }
         public override void Dispose()

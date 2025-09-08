@@ -1,58 +1,58 @@
-﻿using Silk.NET.OpenGL;
-using System;
+﻿using System;
 
 namespace SiegeEngine.ContextManagement
 {
     public unsafe interface IRenderContext
     {
+        AbstractRenderEnums Enums { get; }
         uint GenVertexArray();
         void GenVertexArrays(uint n, out uint arrays);
         uint GenBuffer();
         void GenBuffers(uint n, out uint buffers);
         void BindVertexArray(uint array);
-        void BindBuffer(BufferTargetARB target, uint buffer);
-        void BufferData(BufferTargetARB target, uint size, void* data, BufferUsageARB usage);
-        void BufferSubData(BufferTargetARB target, int offset, uint size, void* data);
+        void BindBuffer(int target, uint buffer);
+        void BufferData(int target, uint size, void* data, int usage);
+        void BufferSubData(int target, int offset, uint size, void* data);
         void EnableVertexAttribArray(uint index);
         void DisableVertexAttribArray(uint index);
-        void VertexAttribPointer(uint index, int size, VertexAttribPointerType type, bool normalized, uint stride, void* pointer);
+        void VertexAttribPointer(uint index, int size, int type, bool normalized, uint stride, void* pointer);
         void DeleteVertexArray(uint array);
         void DeleteBuffer(uint buffer);
         void DeleteBuffers(uint n, uint* buffers);
-        void DrawArrays(PrimitiveType mode, int first, uint count);
-        void DrawElements(PrimitiveType mode, uint count, DrawElementsType type, void* indices);
-        void Clear(ClearBufferMask mask);
+        void DrawArrays(int mode, int first, uint count);
+        void DrawElements(int mode, uint count, int type, void* indices);
+        void Clear(int mask);
         void ClearColor(float red, float green, float blue, float alpha);
         void Viewport(int x, int y, uint width, uint height);
-        void Enable(EnableCap cap);
-        void Disable(EnableCap cap);
-        void BlendFunc(BlendingFactor src, BlendingFactor dst);
+        void Enable(int cap);
+        void Disable(int cap);
+        void BlendFunc(int src, int dst);
         void DepthMask(bool mask);
-        void DepthFunc(DepthFunction func);
+        void DepthFunc(int func);
         void ColorMask(bool r, bool g, bool b, bool a);
-        void ActiveTexture(TextureUnit unit);
-        void BindFramebuffer(FramebufferTarget target, uint framebuffer);
-        GLEnum CheckFramebufferStatus(FramebufferTarget target);
-        void DrawBuffer(DrawBufferMode mode);
-        void ReadBuffer(ReadBufferMode mode);
+        void ActiveTexture(int unit);
+        void BindFramebuffer(int target, uint framebuffer);
+        int CheckFramebufferStatus(int target);
+        void DrawBuffer(int mode);
+        void ReadBuffer(int mode);
         void GenTextures(uint n, out uint textures);
-        void BindTexture(TextureTarget target, uint texture);
-        void TexImage2D(TextureTarget target, int level, InternalFormat internalformat, uint width, uint height, int border, GLEnum format, GLEnum type, void* pixels);
-        void TexParameter(TextureTarget target, TextureParameterName pname, int param);
-        void TexParameterf(TextureTarget target, TextureParameterName pname, float param);
-        void PixelStore(PixelStoreParameter pname, int param);
+        void BindTexture(int target, uint texture);
+        void TexImage2D(int target, int level, int internalformat, uint width, uint height, int border, int format, int type, void* pixels);
+        void TexParameter(int target, int pname, int param);
+        void TexParameterf(int target, int pname, float param);
+        void PixelStore(int pname, int param);
         void DeleteTexture(uint texture);
         void DeleteTextures(uint n, uint* textures);
         uint CreateProgram();
-        uint CreateShader(ShaderType type);
+        uint CreateShader(int type);
         void ShaderSource(uint shader, string source);
         void CompileShader(uint shader);
-        void GetShader(uint shader, ShaderParameterName param, out int value);
+        void GetShader(uint shader, int param, out int value);
         string GetShaderInfoLog(uint shader);
         void AttachShader(uint program, uint shader);
         void DetachShader(uint program, uint shader);
         void LinkProgram(uint program);
-        void GetProgram(uint program, ProgramPropertyARB prop, out int value);
+        void GetProgram(uint program, int prop, out int value);
         string GetProgramInfoLog(uint program);
         void DeleteShader(uint shader);
         void DeleteProgram(uint program);
@@ -62,12 +62,12 @@ namespace SiegeEngine.ContextManagement
         void Uniform1(int location, int value);
         void Uniform4(int location, float x, float y, float z, float w);
         void UniformMatrix4(int location, uint count, bool transpose, float* value);
-        GLEnum GetError();
+        int GetError();
         bool IsVertexArray(uint array);
         bool IsBuffer(uint buffer);
         bool IsTexture(uint texture);
-        void GenerateMipmap(TextureTarget target);
+        void GenerateMipmap(int target);
         bool IsExtensionPresent(string extension);
-        void GetFloat(GetPName pname, out float param);
+        void GetFloat(int pname, out float param);
     }
 }

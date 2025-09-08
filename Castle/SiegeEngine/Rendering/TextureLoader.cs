@@ -13,7 +13,6 @@ namespace SiegeEngine.Rendering
     {
         private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
         private static readonly HashSet<byte> ValidTgaTypes = new HashSet<byte> { 1, 2, 3, 9, 10, 11, 32, 33 };
-
         public static (uint, byte) LoadTexture(IRenderContext renderContext, string path, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -45,7 +44,6 @@ namespace SiegeEngine.Rendering
                 return (0, 0);
             }
         }
-
         public static (uint, byte) LoadEmbeddedTexture(IRenderContext renderContext, byte[] textureData, string textureName, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -93,7 +91,6 @@ namespace SiegeEngine.Rendering
                 return (0, 0);
             }
         }
-
         public static (uint, byte) LoadTgaTexture(IRenderContext renderContext, string path, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -124,19 +121,19 @@ namespace SiegeEngine.Rendering
                     }
                     if (idLength > 0)
                         reader.ReadBytes(idLength);
-                    InternalFormat internalFormat;
-                    GLEnum pixelFormat;
+                    int internalFormat;
+                    int pixelFormat;
                     int bytesPerPixel;
                     if (pixelDepth == 24)
                     {
-                        internalFormat = InternalFormat.Rgb;
-                        pixelFormat = GLEnum.Bgr;
+                        internalFormat = renderContext.Enums.InternalRgb;
+                        pixelFormat = renderContext.Enums.PixelBgr;
                         bytesPerPixel = 3;
                     }
                     else if (pixelDepth == 32)
                     {
-                        internalFormat = InternalFormat.Rgba;
-                        pixelFormat = GLEnum.Bgra;
+                        internalFormat = renderContext.Enums.InternalRgba;
+                        pixelFormat = renderContext.Enums.PixelBgra;
                         bytesPerPixel = 4;
                     }
                     else
@@ -180,7 +177,6 @@ namespace SiegeEngine.Rendering
                         Console.WriteLine($"TextureLoader: Limited support for TGA type {imageType}, treating as uncompressed");
                         pixelData = reader.ReadBytes(width * height * bytesPerPixel);
                     }
-
                     // Handle flipping based on image descriptor (bit 5: 0x20 for top-left origin)
                     int rowSize = width * bytesPerPixel;
                     if ((imageDescriptor & 0x20) == 0) // Bottom-left origin (bottom-up data), flip to top-down for consistency
@@ -197,33 +193,29 @@ namespace SiegeEngine.Rendering
                     {
                         Console.WriteLine("TextureLoader: TGA is already top-down, no flip needed");
                     }
-
                     uint texture;
                     renderContext.GenTextures(1, out texture);
-                    renderContext.BindTexture(TextureTarget.Texture2D, texture);
-                    renderContext.PixelStore(PixelStoreParameter.UnpackAlignment, 1);
-
+                    renderContext.BindTexture(renderContext.Enums.Texture2D, texture);
+                    renderContext.PixelStore(renderContext.Enums.UnpackAlignment, 1);
                     unsafe
                     {
                         fixed (byte* ptr = pixelData)
                         {
-                            renderContext.TexImage2D(TextureTarget.Texture2D, 0, internalFormat, width, height, 0, pixelFormat, GLEnum.UnsignedByte, ptr);
+                            renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, width, height, 0, pixelFormat, renderContext.Enums.UnsignedByte, ptr);
                         }
                     }
-                    renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
-                    renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
-                    renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
-                    renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
-                    renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureLodBias, 0);
-                    renderContext.GenerateMipmap(TextureTarget.Texture2D);
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMinFilter, renderContext.Enums.LinearMipmapLinear);
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMagFilter, renderContext.Enums.Linear);
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapS, renderContext.Enums.ClampToEdge);
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapT, renderContext.Enums.ClampToEdge);
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureLodBias, 0);
+                    renderContext.GenerateMipmap(renderContext.Enums.Texture2D);
                     if (renderContext.IsExtensionPresent("EXT_texture_filter_anisotropic"))
                     {
-                        const int GL_TEXTURE_MAX_ANISOTROPY_EXT = 0x84FE;
-                        const int GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT = 0x84FF;
-                        renderContext.GetFloat((GetPName)GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, out float maxAniso);
-                        renderContext.TexParameterf(TextureTarget.Texture2D, (TextureParameterName)GL_TEXTURE_MAX_ANISOTROPY_EXT, Math.Min(16.0f, maxAniso));
+                        renderContext.GetFloat(renderContext.Enums.MaxTextureMaxAnisotropyExt, out float maxAniso);
+                        renderContext.TexParameterf(renderContext.Enums.Texture2D, renderContext.Enums.TextureMaxAnisotropyExt, Math.Min(16.0f, maxAniso));
                     }
-                    renderContext.BindTexture(TextureTarget.Texture2D, 0);
+                    renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
                     Console.WriteLine($"TGA texture loaded: {texture}");
                     return (texture, pixelDepth);
                 }
@@ -234,26 +226,25 @@ namespace SiegeEngine.Rendering
                 return (0, 0);
             }
         }
-
         private static (uint, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
             {
                 byte pixelDepth;
                 Console.WriteLine($"TextureLoader: Processing bitmap {bitmap.Width}x{bitmap.Height}, PixelFormat: {bitmap.PixelFormat}");
-                InternalFormat internalFormat;
-                GLEnum pixelFormat;
+                int internalFormat;
+                int pixelFormat;
                 switch (bitmap.PixelFormat)
                 {
                     case System.Drawing.Imaging.PixelFormat.Format32bppArgb:
                     case System.Drawing.Imaging.PixelFormat.Format32bppPArgb:
-                        internalFormat = InternalFormat.Rgba;
-                        pixelFormat = GLEnum.Bgra;
+                        internalFormat = renderContext.Enums.InternalRgba;
+                        pixelFormat = renderContext.Enums.PixelBgra;
                         pixelDepth = 32;
                         break;
                     case System.Drawing.Imaging.PixelFormat.Format24bppRgb:
-                        internalFormat = InternalFormat.Rgb;
-                        pixelFormat = GLEnum.Bgr;
+                        internalFormat = renderContext.Enums.InternalRgb;
+                        pixelFormat = renderContext.Enums.PixelBgr;
                         pixelDepth = 32;
                         break;
                     default:
@@ -287,9 +278,9 @@ namespace SiegeEngine.Rendering
                     }
                     try
                     {
-                        renderContext.BindTexture(TextureTarget.Texture2D, texture);
-                        GLEnum error = renderContext.GetError();
-                        if (error != GLEnum.NoError)
+                        renderContext.BindTexture(renderContext.Enums.Texture2D, texture);
+                        int error = renderContext.GetError();
+                        if (error != renderContext.Enums.NoError)
                         {
                             Console.WriteLine($"TextureLoader: OpenGL error before TexImage2D: {error}");
                             renderContext.DeleteTexture(texture);
@@ -304,31 +295,29 @@ namespace SiegeEngine.Rendering
                         {
                             fixed (byte* ptr = pixelData)
                             {
-                                renderContext.TexImage2D(TextureTarget.Texture2D, 0, internalFormat, (uint)bitmap.Width, (uint)bitmap.Height, 0, pixelFormat, GLEnum.UnsignedByte, ptr);
+                                renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)bitmap.Width, (uint)bitmap.Height, 0, pixelFormat, renderContext.Enums.UnsignedByte, ptr);
                             }
                         }
                         Console.WriteLine("TexImage2D called successfully");
                         error = renderContext.GetError();
-                        if (error != GLEnum.NoError)
+                        if (error != renderContext.Enums.NoError)
                         {
                             Console.WriteLine($"TextureLoader: OpenGL error after TexImage2D: {error}");
                             renderContext.DeleteTexture(texture);
                             return (0, 0);
                         }
-                        renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.LinearMipmapLinear);
-                        renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
-                        renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
-                        renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
-                        renderContext.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureLodBias, -1);
-                        renderContext.GenerateMipmap(TextureTarget.Texture2D);
+                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMinFilter, renderContext.Enums.LinearMipmapLinear);
+                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMagFilter, renderContext.Enums.Linear);
+                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapS, renderContext.Enums.ClampToEdge);
+                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapT, renderContext.Enums.ClampToEdge);
+                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureLodBias, -1);
+                        renderContext.GenerateMipmap(renderContext.Enums.Texture2D);
                         if (renderContext.IsExtensionPresent("EXT_texture_filter_anisotropic"))
                         {
-                            const int GL_TEXTURE_MAX_ANISOTROPY_EXT = 0x84FE;
-                            const int GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT = 0x84FF;
-                            renderContext.GetFloat((GetPName)GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, out float maxAniso);
-                            renderContext.TexParameterf(TextureTarget.Texture2D, (TextureParameterName)GL_TEXTURE_MAX_ANISOTROPY_EXT, Math.Min(16.0f, maxAniso));
+                            renderContext.GetFloat(renderContext.Enums.MaxTextureMaxAnisotropyExt, out float maxAniso);
+                            renderContext.TexParameterf(renderContext.Enums.Texture2D, renderContext.Enums.TextureMaxAnisotropyExt, Math.Min(16.0f, maxAniso));
                         }
-                        renderContext.BindTexture(TextureTarget.Texture2D, 0);
+                        renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
                         Console.WriteLine($"Texture loaded: {texture}");
                         return (texture, pixelDepth);
                     }

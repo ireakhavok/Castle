@@ -1,5 +1,4 @@
-﻿// Trebuchet/Launcher.cs
-using SiegeEngine.ContextManagement;
+﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
@@ -15,7 +14,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
-
 namespace Trebuchet
 {
     public class Launcher
@@ -32,8 +30,7 @@ namespace Trebuchet
         private InputHandler _inputHandler;
         private ModManager _modManager;
         private ContextManager _contextManager;
-
-        public void Start()
+        public void Start(string context)
         {
             try
             {
@@ -56,7 +53,12 @@ namespace Trebuchet
                     _settingsManager.LoadSettings();
                     if (_settingsManager.WindowWidth == 0 || _settingsManager.WindowHeight == 0)
                         _settingsManager.UpdateWindowSize(1280, 720, false);
-                    _contextManager = new ContextManager();
+                    if (context == "OpenGL")
+                    {
+                        _contextManager = new OpenGLContextManager();
+                    }
+
+                    
                     _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, "Citadel Launcher");
                     _window = _contextManager.Window;
                     _renderContext = _contextManager.RenderContext;

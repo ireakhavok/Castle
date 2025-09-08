@@ -1,16 +1,15 @@
-﻿// Engine.Core.Managers/ModelManager.cs
-using SiegeEngine.Definitions;
+﻿using SiegeEngine.Definitions;
 using SiegeEngine.AssetObjects;
 using SiegeEngine.AssetParsing;
 using SiegeEngine.Rendering;
 using SiegeEngine.UnityAssetLoader;
-using Silk.NET.OpenGL;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.ContextManagement;
+
 namespace SiegeEngine.Managers
 {
     public class ModelManager
@@ -238,8 +237,8 @@ namespace SiegeEngine.Managers
                         byte depth;
                         if (albedoInfo != null)
                         {
-                            int glWrapU = albedoInfo.WrapU == 0 ? (int)GLEnum.Repeat : (int)GLEnum.ClampToEdge;
-                            int glWrapV = albedoInfo.WrapV == 0 ? (int)GLEnum.Repeat : (int)GLEnum.ClampToEdge;
+                            int glWrapU = albedoInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
+                            int glWrapV = albedoInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
                             if (albedoInfo.Path?.StartsWith("embedded_") == true)
                             {
                                 string embName = albedoInfo.Path.Substring(9);
@@ -259,8 +258,8 @@ namespace SiegeEngine.Managers
                         uint normalTex = 0;
                         if (normalInfo != null)
                         {
-                            int glNormalWrapU = normalInfo.WrapU == 0 ? (int)GLEnum.Repeat : (int)GLEnum.ClampToEdge;
-                            int glNormalWrapV = normalInfo.WrapV == 0 ? (int)GLEnum.Repeat : (int)GLEnum.ClampToEdge;
+                            int glNormalWrapU = normalInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
+                            int glNormalWrapV = normalInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
                             if (normalInfo.Path?.StartsWith("embedded_") == true)
                             {
                                 string embName = normalInfo.Path.Substring(9);
@@ -280,8 +279,8 @@ namespace SiegeEngine.Managers
                         uint metallicTex = 0;
                         if (metallicInfo != null)
                         {
-                            int glMetallicWrapU = metallicInfo.WrapU == 0 ? (int)GLEnum.Repeat : (int)GLEnum.ClampToEdge;
-                            int glMetallicWrapV = metallicInfo.WrapV == 0 ? (int)GLEnum.Repeat : (int)GLEnum.ClampToEdge;
+                            int glMetallicWrapU = metallicInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
+                            int glMetallicWrapV = metallicInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
                             if (metallicInfo.Path?.StartsWith("embedded_") == true)
                             {
                                 string embName = metallicInfo.Path.Substring(9);
@@ -353,25 +352,25 @@ namespace SiegeEngine.Managers
                     _renderContext.BindVertexArray(vao);
                     fixed (float* ptr = vertexData)
                     {
-                        _renderContext.BindBuffer(BufferTargetARB.ArrayBuffer, vbo);
-                        _renderContext.BufferData(BufferTargetARB.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), ptr, BufferUsageARB.StaticDraw);
+                        _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, vbo);
+                        _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
                     }
                     fixed (uint* ptr = mesh.Indices.ToArray())
                     {
-                        _renderContext.BindBuffer(BufferTargetARB.ElementArrayBuffer, ebo);
-                        _renderContext.BufferData(BufferTargetARB.ElementArrayBuffer, (uint)(mesh.Indices.Count * sizeof(uint)), ptr, BufferUsageARB.StaticDraw);
+                        _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, ebo);
+                        _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(mesh.Indices.Count * sizeof(uint)), ptr, _renderContext.Enums.StaticDraw);
                     }
                     uint stride = 12 * sizeof(float);
                     _renderContext.EnableVertexAttribArray(0); // Position
-                    _renderContext.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, (void*)0);
+                    _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
                     _renderContext.EnableVertexAttribArray(3); // Normal
-                    _renderContext.VertexAttribPointer(3, 3, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
+                    _renderContext.VertexAttribPointer(3, 3, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
                     _renderContext.EnableVertexAttribArray(2); // UV
-                    _renderContext.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, stride, (void*)(6 * sizeof(float)));
+                    _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(6 * sizeof(float)));
                     _renderContext.EnableVertexAttribArray(4); // MaterialIndex
-                    _renderContext.VertexAttribPointer(4, 1, VertexAttribPointerType.Float, false, stride, (void*)(8 * sizeof(float)));
+                    _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
                     _renderContext.EnableVertexAttribArray(5); // Tangent
-                    _renderContext.VertexAttribPointer(5, 3, VertexAttribPointerType.Float, false, stride, (void*)(9 * sizeof(float)));
+                    _renderContext.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
                     _renderContext.BindVertexArray(0);
                     mmr.Vao = vao;
                     mmr.Vbo = vbo;

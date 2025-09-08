@@ -1,6 +1,5 @@
 ﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
-using Silk.NET.OpenGL;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -16,7 +15,6 @@ namespace SiegeEngine.Rendering
         private uint _vertexCount;
         private uint _indexCount;
         private bool _disposed;
-
         public VertexBuffer(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
@@ -24,7 +22,6 @@ namespace SiegeEngine.Rendering
             _vbo = _renderContext.GenBuffer();
             _ebo = _renderContext.GenBuffer();
         }
-
         public void Update(List<Entity> entities)
         {
             var vertices = new List<float>();
@@ -38,43 +35,34 @@ namespace SiegeEngine.Rendering
                     vertices.Add(0.0f); vertices.Add(0.5f); vertices.Add(1.0f); vertices.Add(1.0f);
                 }
             }
-
             var indices = new List<uint>();
             for (uint i = 0; i < vertices.Count / 7; i++)
                 indices.Add(i);
-
             _vertexCount = (uint)(vertices.Count / 7);
             _indexCount = (uint)indices.Count;
-
             _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
+            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             fixed (float* vertexPtr = vertices.ToArray())
             {
-                _renderContext.BufferData(BufferTargetARB.ArrayBuffer, (uint)(vertices.Count * sizeof(float)), vertexPtr, BufferUsageARB.DynamicDraw);
+                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Count * sizeof(float)), vertexPtr, _renderContext.Enums.DynamicDraw);
             }
-
-            _renderContext.BindBuffer(BufferTargetARB.ElementArrayBuffer, _ebo);
+            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
             fixed (uint* indexPtr = indices.ToArray())
             {
-                _renderContext.BufferData(BufferTargetARB.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, BufferUsageARB.DynamicDraw);
+                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
             }
-
             uint stride = 7 * sizeof(float);
             _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, (void*)0);
+            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
             _renderContext.EnableVertexAttribArray(1);
-            _renderContext.VertexAttribPointer(1, 4, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
+            _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
         }
-
         public void Bind()
         {
             _renderContext.BindVertexArray(_vao);
         }
-
         public uint GetVertexCount() => _vertexCount;
-
         public uint GetIndexCount() => _indexCount;
-
         public void Dispose()
         {
             if (!_disposed)
@@ -85,12 +73,10 @@ namespace SiegeEngine.Rendering
                 _disposed = true;
             }
         }
-
         public void UpdateCustom(List<Vertex> vertices, List<uint> indices)
         {
             _vertexCount = (uint)vertices.Count;
             _indexCount = (uint)indices.Count;
-
             var vertexData = new float[vertices.Count * 7];
             for (int i = 0; i < vertices.Count; i++)
             {
@@ -102,81 +88,70 @@ namespace SiegeEngine.Rendering
                 vertexData[i * 7 + 5] = vertices[i].B;
                 vertexData[i * 7 + 6] = vertices[i].A;
             }
-
             _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
+            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             fixed (float* vertexPtr = vertexData)
             {
-                _renderContext.BufferData(BufferTargetARB.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), vertexPtr, BufferUsageARB.DynamicDraw);
+                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), vertexPtr, _renderContext.Enums.DynamicDraw);
             }
-
-            _renderContext.BindBuffer(BufferTargetARB.ElementArrayBuffer, _ebo);
+            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
             fixed (uint* indexPtr = indices.ToArray())
             {
-                _renderContext.BufferData(BufferTargetARB.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, BufferUsageARB.DynamicDraw);
+                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
             }
-
             uint stride = 7 * sizeof(float);
             _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, (void*)0);
+            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
             _renderContext.EnableVertexAttribArray(1);
-            _renderContext.VertexAttribPointer(1, 4, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
+            _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
         }
-
         public void UpdateCustomWithUV(List<float> vertices, List<uint> indices)
         {
             _vertexCount = (uint)(vertices.Count / 9);
             _indexCount = (uint)indices.Count;
-
             _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
+            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             fixed (float* vertexPtr = vertices.ToArray())
             {
-                _renderContext.BufferData(BufferTargetARB.ArrayBuffer, (uint)(vertices.Count * sizeof(float)), vertexPtr, BufferUsageARB.DynamicDraw);
+                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Count * sizeof(float)), vertexPtr, _renderContext.Enums.DynamicDraw);
             }
-
-            _renderContext.BindBuffer(BufferTargetARB.ElementArrayBuffer, _ebo);
+            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
             fixed (uint* indexPtr = indices.ToArray())
             {
-                _renderContext.BufferData(BufferTargetARB.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, BufferUsageARB.DynamicDraw);
+                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
             }
-
             uint stride = 9 * sizeof(float);
             _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, (void*)0);
+            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
             _renderContext.EnableVertexAttribArray(1);
-            _renderContext.VertexAttribPointer(1, 4, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
+            _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
             _renderContext.EnableVertexAttribArray(2);
-            _renderContext.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, stride, (void*)(7 * sizeof(float)));
+            _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(7 * sizeof(float)));
         }
-
         public void UpdateWithPositionNormalUV(List<float> vertices, List<uint> indices)
         {
             _vertexCount = (uint)(vertices.Count / 9); // Updated for material index
             _indexCount = (uint)indices.Count;
-
             _renderContext.BindVertexArray(_vao);
-            _renderContext.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
+            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             fixed (float* vertexPtr = vertices.ToArray())
             {
-                _renderContext.BufferData(BufferTargetARB.ArrayBuffer, (uint)(vertices.Count * sizeof(float)), vertexPtr, BufferUsageARB.DynamicDraw);
+                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Count * sizeof(float)), vertexPtr, _renderContext.Enums.DynamicDraw);
             }
-
-            _renderContext.BindBuffer(BufferTargetARB.ElementArrayBuffer, _ebo);
+            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
             fixed (uint* indexPtr = indices.ToArray())
             {
-                _renderContext.BufferData(BufferTargetARB.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, BufferUsageARB.DynamicDraw);
+                _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(indices.Count * sizeof(uint)), indexPtr, _renderContext.Enums.DynamicDraw);
             }
-
             uint stride = 9 * sizeof(float);
             _renderContext.EnableVertexAttribArray(0); // Position
-            _renderContext.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, stride, (void*)0);
+            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
             _renderContext.EnableVertexAttribArray(3); // Normals
-            _renderContext.VertexAttribPointer(3, 3, VertexAttribPointerType.Float, false, stride, (void*)(3 * sizeof(float)));
+            _renderContext.VertexAttribPointer(3, 3, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
             _renderContext.EnableVertexAttribArray(2); // UVs
-            _renderContext.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, stride, (void*)(6 * sizeof(float)));
+            _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(6 * sizeof(float)));
             _renderContext.EnableVertexAttribArray(4); // MaterialIndex
-            _renderContext.VertexAttribPointer(4, 1, VertexAttribPointerType.Float, false, stride, (void*)(8 * sizeof(float)));
+            _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
         }
     }
 }

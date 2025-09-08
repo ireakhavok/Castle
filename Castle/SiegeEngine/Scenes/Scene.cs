@@ -1,5 +1,4 @@
-﻿// SiegeEngine.Scenes/Scene.cs
-using SiegeEngine.ContextManagement;
+﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
@@ -7,7 +6,6 @@ using SiegeEngine.PlayerSystem;
 using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Shaders;
 using SiegeEngine.Systems;
-using Silk.NET.OpenGL;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -51,7 +49,7 @@ namespace SiegeEngine.Scenes
             _width = width;
             _height = height;
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
-            _renderContext.Enable(EnableCap.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             _shader = CreateShader();
             var shaders = ShaderSetup.InitializeShaders(_renderContext);
@@ -105,7 +103,7 @@ namespace SiegeEngine.Scenes
         public virtual void Render(IReadOnlyList<Entity> entities)
         {
             if (_disposed) return;
-            _renderContext.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             Matrix4x4 view = GetViewMatrix();
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, 0.1f, 1000f);
             // Render grid
@@ -113,10 +111,10 @@ namespace SiegeEngine.Scenes
             _shader.SetMatrix4("uView", view);
             _shader.SetMatrix4("uModel", Matrix4x4.Identity);
             _shader.SetMatrix4("uProjection", projection);
-            _renderContext.Disable(EnableCap.DepthTest);
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
             _gridBuffer.Bind();
-            _renderContext.DrawArrays(PrimitiveType.Lines, 0, _gridBuffer.GetVertexCount());
-            _renderContext.Enable(EnableCap.DepthTest);
+            _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
             // Render player model
             _modelShader.Use();
             _modelShader.SetMatrix4("uView", view);

@@ -1,5 +1,4 @@
-﻿// SiegeEngine.Definitions/InputEnums.cs
-using System;
+﻿using System;
 
 namespace SiegeEngine.Definitions
 {
@@ -17,21 +16,18 @@ namespace SiegeEngine.Definitions
         LeftControl,
         LeftShift
     }
-
     public enum MouseButton
     {
         Left,
         Right,
         Middle
     }
-
     public enum InputAction
     {
         Release,
         Press,
         Repeat
     }
-
     [Flags]
     public enum KeyModifiers
     {
@@ -41,18 +37,15 @@ namespace SiegeEngine.Definitions
         Alt = 4,
         Super = 8
     }
-
     public enum CursorAttribute
     {
         Cursor
     }
-
     public enum CursorMode
     {
         Normal,
         Disabled
     }
-
     public enum WindowAttribute
     {
         Focused
