@@ -1,5 +1,4 @@
 ﻿using System;
-using Silk.NET.GLFW;
 using System.Numerics;
 using System.Collections.Generic;
 using Silk.NET.OpenGL;
@@ -10,17 +9,16 @@ namespace SiegeEngine.Rendering
     public unsafe class TextRenderer : IDisposable
     {
         private readonly IRenderContext _renderContext;
-        private readonly Glfw _glfw;
-        private readonly WindowHandle* _window;
+        private readonly IntPtr _window;
         private uint _textVao, _textVbo;
         private ShaderProgram _shaderProgram;
         private Dictionary<char, uint> _charTextures;
         private SystemFontRenderer _fontRenderer;
 
-        public TextRenderer(Glfw glfw, IRenderContext renderContext, WindowHandle* window)
+        public TextRenderer(
+            IRenderContext renderContext, IntPtr window)
         {
             _renderContext = renderContext;
-            _glfw = glfw;
             _window = window;
             _charTextures = new Dictionary<char, uint>();
             _fontRenderer = new SystemFontRenderer("Arial");
