@@ -1,7 +1,7 @@
 ﻿using Silk.NET.OpenGL;
 using System;
 
-namespace SiegeEngine.Interfaces
+namespace SiegeEngine.ContextManagement
 {
     public unsafe interface IRenderContext
     {

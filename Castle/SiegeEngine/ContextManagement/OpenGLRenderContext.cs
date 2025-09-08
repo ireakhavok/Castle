@@ -1,9 +1,8 @@
 ﻿using Silk.NET.OpenGL;
 using Silk.NET.GLFW;
 using System;
-using SiegeEngine.Interfaces;
 
-namespace SiegeEngine.Rendering
+namespace SiegeEngine.ContextManagement
 {
     public unsafe class OpenGLRenderContext : IRenderContext
     {

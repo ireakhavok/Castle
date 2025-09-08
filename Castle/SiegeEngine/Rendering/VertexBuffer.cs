@@ -1,5 +1,5 @@
-﻿using SiegeEngine.Definitions;
-using SiegeEngine.Interfaces;
+﻿using SiegeEngine.ContextManagement;
+using SiegeEngine.Definitions;
 using Silk.NET.OpenGL;
 using System;
 using System.Collections.Generic;

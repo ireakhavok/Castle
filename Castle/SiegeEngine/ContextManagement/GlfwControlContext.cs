@@ -2,9 +2,9 @@
 using Silk.NET.GLFW;
 using System;
 
-namespace SiegeEngine.PlayerSystem
+namespace SiegeEngine.ContextManagement
 {
-    public unsafe class GlfwControlContext : Interfaces.IControlContext
+    public unsafe class GlfwControlContext : IControlContext
     {
         private readonly Glfw _glfw;
 
@@ -13,33 +13,33 @@ namespace SiegeEngine.PlayerSystem
             _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
         }
 
-        public void SetCursorPosCallback(WindowHandle* window, Interfaces.IControlContext.CursorPosCallback callback)
+        public void SetCursorPosCallback(WindowHandle* window, IControlContext.CursorPosCallback callback)
         {
             _glfw.SetCursorPosCallback(window, (w, x, y) => callback(w, x, y));
         }
 
-        public void SetMouseButtonCallback(WindowHandle* window, Interfaces.IControlContext.MouseButtonCallback callback)
+        public void SetMouseButtonCallback(WindowHandle* window, IControlContext.MouseButtonCallback callback)
         {
             _glfw.SetMouseButtonCallback(window, (w, rawButton, rawAction, rawMods) =>
             {
-                callback(w, (MouseButton)rawButton, (InputAction)rawAction, (KeyModifiers)rawMods);
+                callback(w, rawButton, rawAction, rawMods);
             });
         }
 
-        public void SetKeyCallback(WindowHandle* window, Interfaces.IControlContext.KeyCallback callback)
+        public void SetKeyCallback(WindowHandle* window, IControlContext.KeyCallback callback)
         {
             _glfw.SetKeyCallback(window, (w, rawKey, scancode, rawAction, rawMods) =>
             {
-                callback(w, (Keys)rawKey, scancode, (InputAction)rawAction, (KeyModifiers)rawMods);
+                callback(w, rawKey, scancode, rawAction, rawMods);
             });
         }
 
-        public void SetScrollCallback(WindowHandle* window, Interfaces.IControlContext.ScrollCallback callback)
+        public void SetScrollCallback(WindowHandle* window, IControlContext.ScrollCallback callback)
         {
             _glfw.SetScrollCallback(window, (w, x, y) => callback(w, x, y));
         }
 
-        public void SetWindowSizeCallback(WindowHandle* window, Interfaces.IControlContext.WindowSizeCallback callback)
+        public void SetWindowSizeCallback(WindowHandle* window, IControlContext.WindowSizeCallback callback)
         {
             _glfw.SetWindowSizeCallback(window, (w, width, height) => callback(w, width, height));
         }

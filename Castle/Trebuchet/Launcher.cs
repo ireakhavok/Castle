@@ -1,4 +1,5 @@
 ﻿// Trebuchet/Launcher.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Interfaces;

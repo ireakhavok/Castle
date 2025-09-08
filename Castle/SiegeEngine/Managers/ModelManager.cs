@@ -2,7 +2,6 @@
 using SiegeEngine.Definitions;
 using SiegeEngine.AssetObjects;
 using SiegeEngine.AssetParsing;
-using SiegeEngine.Interfaces;
 using SiegeEngine.Rendering;
 using SiegeEngine.UnityAssetLoader;
 using Silk.NET.OpenGL;
@@ -11,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using SiegeEngine.ContextManagement;
 namespace SiegeEngine.Managers
 {
     public class ModelManager

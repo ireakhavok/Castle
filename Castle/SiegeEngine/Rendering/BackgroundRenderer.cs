@@ -4,7 +4,7 @@ using System.Numerics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using Silk.NET.OpenGL;
-using SiegeEngine.Interfaces;
+using SiegeEngine.ContextManagement;
 namespace SiegeEngine.Rendering
 {
     public unsafe class BackgroundRenderer : IDisposable

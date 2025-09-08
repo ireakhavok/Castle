@@ -1,6 +1,6 @@
 ﻿using Silk.NET.OpenGL;
 using SiegeEngine.Rendering.Shaders;
-using SiegeEngine.Interfaces;
+using SiegeEngine.ContextManagement;
 
 namespace SiegeEngine.Rendering
 {

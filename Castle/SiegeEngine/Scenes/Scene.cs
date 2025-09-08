@@ -10,6 +10,7 @@ using SiegeEngine.Interfaces;
 using SiegeEngine.Events;
 using SiegeEngine.Rendering.Shaders;
 using SiegeEngine.PlayerSystem;
+using SiegeEngine.ContextManagement;
 namespace SiegeEngine.Scenes
 {
     public abstract unsafe class Scene : IDisposable

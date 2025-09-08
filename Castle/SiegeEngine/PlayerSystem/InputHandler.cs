@@ -1,5 +1,5 @@
 ﻿// SiegeEngine.PlayerSystem/InputHandler.cs
-using SiegeEngine.Interfaces;
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Networking;
 using Silk.NET.GLFW;
 using System;

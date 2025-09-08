@@ -2,7 +2,7 @@
 using Silk.NET.GLFW;
 using System;
 
-namespace SiegeEngine.Interfaces
+namespace SiegeEngine.ContextManagement
 {
     public unsafe interface IControlContext
     {

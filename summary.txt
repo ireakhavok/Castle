@@ -277,6 +277,281 @@ Folder: Castle
  Calls: Log, Log
  - object ConvertRawToArray(byte[] rawData, byte[] rawData, char typeCode, uint arrayLen)
  Calls: None
+ File: GlfwControlContext.cs
+ class: GlfwControlContext (Namespace: SiegeEngine.ContextManagement)
+ Inherits: IControlContext
+    
+ Dependencies: Silk.NET.GLFW, Silk.NET.GLFW, System
+ Methods:
+ - constructor GlfwControlContext(Glfw glfw, Glfw glfw)
+ Calls: SetCursorPosCallback, SetCursorPosCallback
+ - void SetCursorPosCallback(CursorPosCallback callback, CursorPosCallback callback)
+ Calls: SetMouseButtonCallback, SetMouseButtonCallback
+ - void SetMouseButtonCallback(MouseButtonCallback callback, MouseButtonCallback callback)
+ Calls: None
+ - void SetKeyCallback(KeyCallback callback, KeyCallback callback)
+ Calls: None
+ - void SetScrollCallback(ScrollCallback callback, ScrollCallback callback)
+ Calls: SetWindowSizeCallback, SetWindowSizeCallback
+ - void SetWindowSizeCallback(WindowSizeCallback callback, WindowSizeCallback callback)
+ Calls: GetCursorPos, GetCursorPos
+ - void GetCursorPos(out double, out double, out double)
+ Calls: SetInputMode, SetInputMode
+ - void SetInputMode(CursorStateAttribute attrib, CursorStateAttribute attrib, CursorModeValue value)
+ Calls: GetKey, GetKey
+ - InputAction GetKey(Keys key, Keys key)
+ Calls: GetMouseButton, GetMouseButton
+ - InputAction GetMouseButton(MouseButton button, MouseButton button)
+ Calls: WindowShouldClose, WindowShouldClose
+ - bool WindowShouldClose()
+ Calls: GetWindowAttrib, GetWindowAttrib
+ - bool GetWindowAttrib(WindowAttributeGetter attrib, WindowAttributeGetter attrib)
+ Calls: PollEvents, PollEvents
+ - void PollEvents()
+ Calls: SwapBuffers, SwapBuffers
+ - void SwapBuffers()
+ Calls: None
+ File: IControlContext.cs
+ interface: IControlContext (Namespace: SiegeEngine.ContextManagement)
+ Inherits: None
+ Dependencies: Silk.NET.GLFW, Silk.NET.GLFW, System
+ Methods:
+ - void CursorPosCallback(double xpos, double xpos, double ypos)
+ Calls: None
+ - void MouseButtonCallback(MouseButton button, MouseButton button, InputAction action, KeyModifiers mods)
+ Calls: None
+ - void KeyCallback(Keys key, Keys key, int scancode, InputAction action, KeyModifiers mods)
+ Calls: None
+ - void ScrollCallback(double xoffset, double xoffset, double yoffset)
+ Calls: None
+ - void WindowSizeCallback(int width, int width, int height)
+ Calls: None
+ - void SetCursorPosCallback(CursorPosCallback callback, CursorPosCallback callback)
+ Calls: None
+ - void SetMouseButtonCallback(MouseButtonCallback callback, MouseButtonCallback callback)
+ Calls: None
+ - void SetKeyCallback(KeyCallback callback, KeyCallback callback)
+ Calls: None
+ - void SetScrollCallback(ScrollCallback callback, ScrollCallback callback)
+ Calls: None
+ - void SetWindowSizeCallback(WindowSizeCallback callback, WindowSizeCallback callback)
+ Calls: None
+ - void GetCursorPos(out double, out double, out double)
+ Calls: None
+ - void SetInputMode(CursorStateAttribute attrib, CursorStateAttribute attrib, CursorModeValue value)
+ Calls: None
+ - InputAction GetKey(Keys key, Keys key)
+ Calls: None
+ - InputAction GetMouseButton(MouseButton button, MouseButton button)
+ Calls: None
+ - bool WindowShouldClose()
+ Calls: None
+ - bool GetWindowAttrib(WindowAttributeGetter attrib, WindowAttributeGetter attrib)
+ Calls: None
+ - void PollEvents()
+ Calls: None
+ - void SwapBuffers()
+ Calls: None
+ File: IRenderContext.cs
+ interface: IRenderContext (Namespace: SiegeEngine.ContextManagement)
+ Inherits: None
+ Dependencies: Silk.NET.OpenGL, Silk.NET.OpenGL, System
+ Methods:
+ - uint GenVertexArray()
+ Calls: None
+ - void GenVertexArrays(uint n, uint n, out uint)
+ Calls: None
+ - uint GenBuffer()
+ Calls: None
+ - void GenBuffers(uint n, uint n, out uint)
+ Calls: None
+ - void BindVertexArray(uint array, uint array)
+ Calls: None
+ - void BindBuffer(BufferTargetARB target, BufferTargetARB target, uint buffer)
+ Calls: None
+ - void BufferData(BufferTargetARB target, BufferTargetARB target, uint size, BufferUsageARB usage)
+ Calls: None
+ - void BufferSubData(BufferTargetARB target, BufferTargetARB target, int offset, uint size)
+ Calls: None
+ - void EnableVertexAttribArray(uint index, uint index)
+ Calls: None
+ - void DisableVertexAttribArray(uint index, uint index)
+ Calls: None
+ - void VertexAttribPointer(uint index, uint index, int size, VertexAttribPointerType type, bool normalized, uint stride)
+ Calls: None
+ - void DeleteVertexArray(uint array, uint array)
+ Calls: None
+ - void DeleteBuffer(uint buffer, uint buffer)
+ Calls: None
+ - void DeleteBuffers(uint n, uint n)
+ Calls: None
+ - void DrawArrays(PrimitiveType mode, PrimitiveType mode, int first, uint count)
+ Calls: None
+ - void DrawElements(PrimitiveType mode, PrimitiveType mode, uint count, DrawElementsType type)
+ Calls: None
+ - void Clear(ClearBufferMask mask, ClearBufferMask mask)
+ Calls: None
+ - void ClearColor(float red, float red, float green, float blue, float alpha)
+ Calls: None
+ - void Viewport(int x, int x, int y, uint width, uint height)
+ Calls: None
+ - void Enable(EnableCap cap, EnableCap cap)
+ Calls: None
+ - void Disable(EnableCap cap, EnableCap cap)
+ Calls: None
+ - void BlendFunc(BlendingFactor src, BlendingFactor src, BlendingFactor dst)
+ Calls: None
+ - void DepthMask(bool mask, bool mask)
+ Calls: None
+ - void DepthFunc(DepthFunction func, DepthFunction func)
+ Calls: None
+ - void ColorMask(bool r, bool r, bool g, bool b, bool a)
+ Calls: None
+ - void ActiveTexture(TextureUnit unit, TextureUnit unit)
+ Calls: None
+ - void BindFramebuffer(FramebufferTarget target, FramebufferTarget target, uint framebuffer)
+ Calls: None
+ - GLEnum CheckFramebufferStatus(FramebufferTarget target, FramebufferTarget target)
+ Calls: None
+ - void DrawBuffer(DrawBufferMode mode, DrawBufferMode mode)
+ Calls: None
+ - void ReadBuffer(ReadBufferMode mode, ReadBufferMode mode)
+ Calls: None
+ - void GenTextures(uint n, uint n, out uint)
+ Calls: None
+ - void BindTexture(TextureTarget target, TextureTarget target, uint texture)
+ Calls: None
+ - void TexImage2D(TextureTarget target, TextureTarget target, int level, InternalFormat internalformat, uint width, uint height, int border, GLEnum format, GLEnum type)
+ Calls: None
+ - void TexParameter(TextureTarget target, TextureTarget target, TextureParameterName pname, int param)
+ Calls: None
+ - void TexParameterf(TextureTarget target, TextureTarget target, TextureParameterName pname, float param)
+ Calls: None
+ - void PixelStore(PixelStoreParameter pname, PixelStoreParameter pname, int param)
+ Calls: None
+ - void DeleteTexture(uint texture, uint texture)
+ Calls: None
+ - void DeleteTextures(uint n, uint n)
+ Calls: None
+ - uint CreateProgram()
+ Calls: None
+ - uint CreateShader(ShaderType type, ShaderType type)
+ Calls: None
+ - void ShaderSource(uint shader, uint shader, string source)
+ Calls: None
+ - void CompileShader(uint shader, uint shader)
+ Calls: None
+ - void GetShader(uint shader, uint shader, ShaderParameterName param, out int)
+ Calls: None
+ - string GetShaderInfoLog(uint shader, uint shader)
+ Calls: None
+ - void AttachShader(uint program, uint program, uint shader)
+ Calls: None
+ - void DetachShader(uint program, uint program, uint shader)
+ Calls: None
+ - void LinkProgram(uint program, uint program)
+ Calls: None
+ - void GetProgram(uint program, uint program, ProgramPropertyARB prop, out int)
+ Calls: None
+ - string GetProgramInfoLog(uint program, uint program)
+ Calls: None
+ - void DeleteShader(uint shader, uint shader)
+ Calls: None
+ - void DeleteProgram(uint program, uint program)
+ Calls: None
+ - void UseProgram(uint program, uint program)
+ Calls: None
+ - int GetUniformLocation(uint program, uint program, string name)
+ Calls: None
+ - void Uniform1(int location, int location, float value)
+ Calls: None
+ - void Uniform1(int location, int location, int value)
+ Calls: None
+ - void Uniform4(int location, int location, float x, float y, float z, float w)
+ Calls: None
+ - void UniformMatrix4(int location, int location, uint count, bool transpose)
+ Calls: None
+ - GLEnum GetError()
+ Calls: None
+ - bool IsVertexArray(uint array, uint array)
+ Calls: None
+ - bool IsBuffer(uint buffer, uint buffer)
+ Calls: None
+ - bool IsTexture(uint texture, uint texture)
+ Calls: None
+ - void GenerateMipmap(TextureTarget target, TextureTarget target)
+ Calls: None
+ - bool IsExtensionPresent(string extension, string extension)
+ Calls: None
+ - void GetFloat(GetPName pname, GetPName pname, out float)
+ Calls: None
+ File: OpenGLRenderContext.cs
+ class: OpenGLRenderContext (Namespace: SiegeEngine.ContextManagement)
+ Inherits: IRenderContext
+    
+ Dependencies: Silk.NET.GLFW, Silk.NET.GLFW, Silk.NET.OpenGL, System
+ Methods:
+ - constructor OpenGLRenderContext(Glfw glfw, Glfw glfw, GL gl)
+ Calls: GenVertexArrays, GenVertexArrays
+ - uint GenVertexArray()
+ Calls: GenBuffers, GenBuffers
+ - uint GenBuffer()
+ Calls: None
+ File: VulkanNative.cs
+ class: VulkanNative (Namespace: SiegeEngine.ContextManagement)
+ Inherits: None
+ Dependencies: System, System, System.Runtime.InteropServices
+ Methods:
+ - nint vkCreateInstance(ref VkInstanceCreateInfo, ref VkInstanceCreateInfo, nint pAllocator, out nint)
+ Calls: vkDestroyInstanceLinux, vkDestroyInstanceLinux, vkDestroyInstanceWindows
+ - return vkCreateInstanceWindows(ref pCreateInfo, ref pCreateInfo, out pInstance)
+ Calls: vkDestroyInstanceLinux, vkDestroyInstanceLinux, vkDestroyInstanceWindows
+ - return vkCreateInstanceLinux(ref pCreateInfo, ref pCreateInfo, out pInstance)
+ Calls: vkDestroyInstanceLinux, vkDestroyInstanceLinux, vkDestroyInstanceWindows
+ - void vkDestroyInstance(nint instance, nint instance, nint pAllocator)
+ Calls: vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesWindows
+ - Windows vkDestroyInstanceWindows()
+ Calls: vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesWindows
+ - Linux vkDestroyInstanceLinux()
+ Calls: vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesWindows
+ - nint vkEnumeratePhysicalDevices(nint instance, nint instance, out uint, nint[] pPhysicalDevices)
+ Calls: vkCreateDeviceLinux, vkCreateDeviceLinux, vkCreateDeviceWindows
+ - return vkEnumeratePhysicalDevicesWindows(out pPhysicalDeviceCount, out pPhysicalDeviceCount)
+ Calls: vkCreateDeviceLinux, vkCreateDeviceLinux, vkCreateDeviceWindows
+ - return vkEnumeratePhysicalDevicesLinux(out pPhysicalDeviceCount, out pPhysicalDeviceCount)
+ Calls: vkCreateDeviceLinux, vkCreateDeviceLinux, vkCreateDeviceWindows
+ - nint vkCreateDevice(nint physicalDevice, nint physicalDevice, ref VkDeviceCreateInfo, nint pAllocator, out nint)
+ Calls: vkDestroyDeviceLinux, vkDestroyDeviceLinux, vkDestroyDeviceWindows
+ - return vkCreateDeviceWindows(ref pCreateInfo, ref pCreateInfo, out pDevice)
+ Calls: vkDestroyDeviceLinux, vkDestroyDeviceLinux, vkDestroyDeviceWindows
+ - return vkCreateDeviceLinux(ref pCreateInfo, ref pCreateInfo, out pDevice)
+ Calls: vkDestroyDeviceLinux, vkDestroyDeviceLinux, vkDestroyDeviceWindows
+ - void vkDestroyDevice(nint device, nint device, nint pAllocator)
+ Calls: None
+ - Windows vkDestroyDeviceWindows()
+ Calls: None
+ - Linux vkDestroyDeviceLinux()
+ Calls: None
+ - IntPtr vkCreateInstanceWindows(ref VkInstanceCreateInfo, ref VkInstanceCreateInfo, IntPtr pAllocator, out IntPtr)
+ Calls: None
+ - void vkDestroyInstanceWindows(IntPtr instance, IntPtr instance, IntPtr pAllocator)
+ Calls: None
+ - IntPtr vkEnumeratePhysicalDevicesWindows(IntPtr instance, IntPtr instance, out uint, IntPtr[] pPhysicalDevices)
+ Calls: None
+ - IntPtr vkCreateDeviceWindows(IntPtr physicalDevice, IntPtr physicalDevice, ref VkDeviceCreateInfo, IntPtr pAllocator, out IntPtr)
+ Calls: None
+ - void vkDestroyDeviceWindows(IntPtr device, IntPtr device, IntPtr pAllocator)
+ Calls: None
+ - IntPtr vkCreateInstanceLinux(ref VkInstanceCreateInfo, ref VkInstanceCreateInfo, IntPtr pAllocator, out IntPtr)
+ Calls: None
+ - void vkDestroyInstanceLinux(IntPtr instance, IntPtr instance, IntPtr pAllocator)
+ Calls: None
+ - IntPtr vkEnumeratePhysicalDevicesLinux(IntPtr instance, IntPtr instance, out uint, IntPtr[] pPhysicalDevices)
+ Calls: None
+ - IntPtr vkCreateDeviceLinux(IntPtr physicalDevice, IntPtr physicalDevice, ref VkDeviceCreateInfo, IntPtr pAllocator, out IntPtr)
+ Calls: None
+ - void vkDestroyDeviceLinux(IntPtr device, IntPtr device, IntPtr pAllocator)
+ Calls: None
  File: Entity.cs
  interface: IComponent (Namespace: SiegeEngine.Definitions)
  Inherits: None
@@ -656,139 +931,6 @@ Folder: Castle
  Calls: None
  - RayTraceResult RequestRayTrace(Vector3 start, Vector3 start, Vector3 direction, float maxDistance)
  Calls: None
- File: IRenderContext.cs
- interface: IRenderContext (Namespace: SiegeEngine.Interfaces)
- Inherits: None
- Dependencies: Silk.NET.OpenGL, Silk.NET.OpenGL, System
- Methods:
- - uint GenVertexArray()
- Calls: None
- - void GenVertexArrays(uint n, uint n, out uint)
- Calls: None
- - uint GenBuffer()
- Calls: None
- - void GenBuffers(uint n, uint n, out uint)
- Calls: None
- - void BindVertexArray(uint array, uint array)
- Calls: None
- - void BindBuffer(BufferTargetARB target, BufferTargetARB target, uint buffer)
- Calls: None
- - void BufferData(BufferTargetARB target, BufferTargetARB target, uint size, BufferUsageARB usage)
- Calls: None
- - void BufferSubData(BufferTargetARB target, BufferTargetARB target, int offset, uint size)
- Calls: None
- - void EnableVertexAttribArray(uint index, uint index)
- Calls: None
- - void DisableVertexAttribArray(uint index, uint index)
- Calls: None
- - void VertexAttribPointer(uint index, uint index, int size, VertexAttribPointerType type, bool normalized, uint stride)
- Calls: None
- - void DeleteVertexArray(uint array, uint array)
- Calls: None
- - void DeleteBuffer(uint buffer, uint buffer)
- Calls: None
- - void DeleteBuffers(uint n, uint n)
- Calls: None
- - void DrawArrays(PrimitiveType mode, PrimitiveType mode, int first, uint count)
- Calls: None
- - void DrawElements(PrimitiveType mode, PrimitiveType mode, uint count, DrawElementsType type)
- Calls: None
- - void Clear(ClearBufferMask mask, ClearBufferMask mask)
- Calls: None
- - void ClearColor(float red, float red, float green, float blue, float alpha)
- Calls: None
- - void Viewport(int x, int x, int y, uint width, uint height)
- Calls: None
- - void Enable(EnableCap cap, EnableCap cap)
- Calls: None
- - void Disable(EnableCap cap, EnableCap cap)
- Calls: None
- - void BlendFunc(BlendingFactor src, BlendingFactor src, BlendingFactor dst)
- Calls: None
- - void DepthMask(bool mask, bool mask)
- Calls: None
- - void DepthFunc(DepthFunction func, DepthFunction func)
- Calls: None
- - void ColorMask(bool r, bool r, bool g, bool b, bool a)
- Calls: None
- - void ActiveTexture(TextureUnit unit, TextureUnit unit)
- Calls: None
- - void BindFramebuffer(FramebufferTarget target, FramebufferTarget target, uint framebuffer)
- Calls: None
- - GLEnum CheckFramebufferStatus(FramebufferTarget target, FramebufferTarget target)
- Calls: None
- - void DrawBuffer(DrawBufferMode mode, DrawBufferMode mode)
- Calls: None
- - void ReadBuffer(ReadBufferMode mode, ReadBufferMode mode)
- Calls: None
- - void GenTextures(uint n, uint n, out uint)
- Calls: None
- - void BindTexture(TextureTarget target, TextureTarget target, uint texture)
- Calls: None
- - void TexImage2D(TextureTarget target, TextureTarget target, int level, InternalFormat internalformat, uint width, uint height, int border, GLEnum format, GLEnum type)
- Calls: None
- - void TexParameter(TextureTarget target, TextureTarget target, TextureParameterName pname, int param)
- Calls: None
- - void TexParameterf(TextureTarget target, TextureTarget target, TextureParameterName pname, float param)
- Calls: None
- - void PixelStore(PixelStoreParameter pname, PixelStoreParameter pname, int param)
- Calls: None
- - void DeleteTexture(uint texture, uint texture)
- Calls: None
- - void DeleteTextures(uint n, uint n)
- Calls: None
- - uint CreateProgram()
- Calls: None
- - uint CreateShader(ShaderType type, ShaderType type)
- Calls: None
- - void ShaderSource(uint shader, uint shader, string source)
- Calls: None
- - void CompileShader(uint shader, uint shader)
- Calls: None
- - void GetShader(uint shader, uint shader, ShaderParameterName param, out int)
- Calls: None
- - string GetShaderInfoLog(uint shader, uint shader)
- Calls: None
- - void AttachShader(uint program, uint program, uint shader)
- Calls: None
- - void DetachShader(uint program, uint program, uint shader)
- Calls: None
- - void LinkProgram(uint program, uint program)
- Calls: None
- - void GetProgram(uint program, uint program, ProgramPropertyARB prop, out int)
- Calls: None
- - string GetProgramInfoLog(uint program, uint program)
- Calls: None
- - void DeleteShader(uint shader, uint shader)
- Calls: None
- - void DeleteProgram(uint program, uint program)
- Calls: None
- - void UseProgram(uint program, uint program)
- Calls: None
- - int GetUniformLocation(uint program, uint program, string name)
- Calls: None
- - void Uniform1(int location, int location, float value)
- Calls: None
- - void Uniform1(int location, int location, int value)
- Calls: None
- - void Uniform4(int location, int location, float x, float y, float z, float w)
- Calls: None
- - void UniformMatrix4(int location, int location, uint count, bool transpose)
- Calls: None
- - GLEnum GetError()
- Calls: None
- - bool IsVertexArray(uint array, uint array)
- Calls: None
- - bool IsBuffer(uint buffer, uint buffer)
- Calls: None
- - bool IsTexture(uint texture, uint texture)
- Calls: None
- - void GenerateMipmap(TextureTarget target, TextureTarget target)
- Calls: None
- - bool IsExtensionPresent(string extension, string extension)
- Calls: None
- - void GetFloat(GetPName pname, GetPName pname, out float)
- Calls: None
  File: IRenderer.cs
  interface: IRenderer (Namespace: SiegeEngine.Interfaces)
  Inherits: IDisposable
@@ -884,7 +1026,7 @@ Folder: Castle
  File: ModelManager.cs
  class: ModelManager (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.AssetParsing, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.UnityAssetLoader, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Rendering, SiegeEngine.UnityAssetLoader, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
  Methods:
  - constructor ModelManager(string primaryPath, string primaryPath, string fallbackPath, ModManager modManager, IRenderContext renderContext)
  Calls: LoadModel, LoadModel
@@ -919,12 +1061,12 @@ Folder: Castle
  File: ModelManager.cs
  class: ModelData (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.AssetParsing, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.UnityAssetLoader, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Rendering, SiegeEngine.UnityAssetLoader, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
  Methods:
  File: ModelManager.cs
  class: ModelMeshRender (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.AssetParsing, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.UnityAssetLoader, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Rendering, SiegeEngine.UnityAssetLoader, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
  Methods:
  File: ModManager.cs
  class: ModManager (Namespace: SiegeEngine.Managers)
@@ -1183,9 +1325,9 @@ Folder: Castle
  File: InputHandler.cs
  class: InputHandler (Namespace: SiegeEngine.PlayerSystem)
  Inherits: None
- Dependencies: SiegeEngine.Networking, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Numerics, System.Text
  Methods:
- - constructor InputHandler(Glfw glfw, Glfw glfw, SteamEngine steamEngine)
+ - constructor InputHandler(IControlContext controlContext, IControlContext controlContext, SteamEngine steamEngine)
  Calls: None
  - void ResetMouseReleased()
  Calls: None
@@ -1239,7 +1381,7 @@ Folder: Castle
  class: BackgroundRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Drawing, System.Drawing.Imaging, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Drawing, System.Drawing.Imaging, System.Numerics
  Methods:
  - constructor BackgroundRenderer(Glfw glfw, Glfw glfw, IRenderContext renderContext)
  Calls: BindBuffer, BindBuffer, BindTexture, BindVertexArray, BufferData, EnableVertexAttribArray, GenBuffers, GenTextures, GenVertexArrays, GetError, PixelStore, TexImage2D, TexParameter, VertexAttribPointer
@@ -1437,7 +1579,7 @@ Folder: Castle
  class: EditorTextRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor EditorTextRenderer(Glfw glfw, Glfw glfw, IRenderContext renderContext)
  Calls: BindBuffer, BindBuffer, BindTexture, BindVertexArray, BlendFunc, BufferData, Enable, EnableVertexAttribArray, GenBuffers, GenTextures, GenVertexArrays, GetCharacterData, GetError, PixelStore, TexImage2D, TexParameter, VertexAttribPointer
@@ -1453,7 +1595,7 @@ Folder: Castle
  class: GameRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: Renderer
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Linq, System.Numerics
  Methods:
  - void Initialize(nint windowHandle, nint windowHandle, int width, int height, Player player)
  Calls: None
@@ -1466,18 +1608,6 @@ Folder: Castle
  - void Resize(int width, int width, int height)
  Calls: DeleteBuffer, DeleteBuffer, DeleteVertexArray, Dispose
  - void Dispose()
- Calls: None
- File: OpenGLRenderContext.cs
- class: OpenGLRenderContext (Namespace: SiegeEngine.Rendering)
- Inherits: IRenderContext
-    
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, Silk.NET.GLFW, Silk.NET.OpenGL, System
- Methods:
- - constructor OpenGLRenderContext(Glfw glfw, Glfw glfw, GL gl)
- Calls: GenVertexArrays, GenVertexArrays
- - uint GenVertexArray()
- Calls: GenBuffers, GenBuffers
- - uint GenBuffer()
  Calls: None
  File: Renderer.cs
  class: Renderer (Namespace: SiegeEngine.Rendering)
@@ -1498,7 +1628,7 @@ Folder: Castle
  File: RendererDetector.cs
  class: RendererDetector (Namespace: SiegeEngine.Rendering)
  Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Runtime.InteropServices
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, System, System.Collections.Generic, System.Runtime.InteropServices
  Methods:
  - nint LoadLibraryWindows(string lpFileName, string lpFileName)
  Calls: D3D11CreateDevice, D3D11CreateDevice, D3D12CreateDevice, IsOpenGLSupported, Release, vkCreateInstance, vkDestroyInstance
@@ -1518,7 +1648,7 @@ Folder: Castle
  class: ShaderProgram (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, Silk.NET.OpenGL, System, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.OpenGL, System, System.Numerics
  Methods:
  - constructor ShaderProgram(IRenderContext renderContext, IRenderContext renderContext, string vertexShaderSource, string fragmentShaderSource)
  Calls: DeleteShader, DeleteShader, GetShaderInfoLog
@@ -1582,7 +1712,7 @@ Folder: Castle
  File: ShaderSetup.cs
  class: ShaderSetup (Namespace: SiegeEngine.Rendering)
  Inherits: None
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, SiegeEngine.Rendering.Shaders, Silk.NET.OpenGL
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering.Shaders, Silk.NET.OpenGL
  Methods:
  File: SystemFontRenderer.cs
  class: SystemFontRenderer (Namespace: SiegeEngine.Rendering)
@@ -1604,7 +1734,7 @@ Folder: Castle
  class: TextRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor TextRenderer(Glfw glfw, Glfw glfw, IRenderContext renderContext)
  Calls: BindBuffer, BindBuffer, BindTexture, BindVertexArray, BlendFunc, BufferData, Enable, EnableVertexAttribArray, GenBuffers, GenTextures, GenVertexArrays, GetCharacterData, GetError, PixelStore, TexImage2D, TexParameter, VertexAttribPointer
@@ -1619,7 +1749,7 @@ Folder: Castle
  File: TextureLoader.cs
  class: TextureLoader (Namespace: SiegeEngine.Rendering)
  Inherits: None
- Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Linq
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Linq
  Methods:
  File: UiElement.cs
  class: UiElement (Namespace: SiegeEngine.Rendering)
@@ -1630,7 +1760,7 @@ Folder: Castle
  class: VertexBuffer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor VertexBuffer(IRenderContext renderContext, IRenderContext renderContext)
  Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, EnableVertexAttribArray, VertexAttribPointer
@@ -1646,61 +1776,6 @@ Folder: Castle
  Calls: BufferData, BufferData
  - void UpdateWithPositionNormalUV(List<float> vertices, List<float> vertices, List<uint> indices)
  Calls: BufferData, BufferData
- File: VulkanNative.cs
- class: VulkanNative (Namespace: SiegeEngine.Rendering)
- Inherits: None
- Dependencies: System, System, System.Runtime.InteropServices
- Methods:
- - nint vkCreateInstance(ref VkInstanceCreateInfo, ref VkInstanceCreateInfo, nint pAllocator, out nint)
- Calls: vkDestroyInstanceLinux, vkDestroyInstanceLinux, vkDestroyInstanceWindows
- - return vkCreateInstanceWindows(ref pCreateInfo, ref pCreateInfo, out pInstance)
- Calls: vkDestroyInstanceLinux, vkDestroyInstanceLinux, vkDestroyInstanceWindows
- - return vkCreateInstanceLinux(ref pCreateInfo, ref pCreateInfo, out pInstance)
- Calls: vkDestroyInstanceLinux, vkDestroyInstanceLinux, vkDestroyInstanceWindows
- - void vkDestroyInstance(nint instance, nint instance, nint pAllocator)
- Calls: vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesWindows
- - Windows vkDestroyInstanceWindows()
- Calls: vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesWindows
- - Linux vkDestroyInstanceLinux()
- Calls: vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesLinux, vkEnumeratePhysicalDevicesWindows
- - nint vkEnumeratePhysicalDevices(nint instance, nint instance, out uint, nint[] pPhysicalDevices)
- Calls: vkCreateDeviceLinux, vkCreateDeviceLinux, vkCreateDeviceWindows
- - return vkEnumeratePhysicalDevicesWindows(out pPhysicalDeviceCount, out pPhysicalDeviceCount)
- Calls: vkCreateDeviceLinux, vkCreateDeviceLinux, vkCreateDeviceWindows
- - return vkEnumeratePhysicalDevicesLinux(out pPhysicalDeviceCount, out pPhysicalDeviceCount)
- Calls: vkCreateDeviceLinux, vkCreateDeviceLinux, vkCreateDeviceWindows
- - nint vkCreateDevice(nint physicalDevice, nint physicalDevice, ref VkDeviceCreateInfo, nint pAllocator, out nint)
- Calls: vkDestroyDeviceLinux, vkDestroyDeviceLinux, vkDestroyDeviceWindows
- - return vkCreateDeviceWindows(ref pCreateInfo, ref pCreateInfo, out pDevice)
- Calls: vkDestroyDeviceLinux, vkDestroyDeviceLinux, vkDestroyDeviceWindows
- - return vkCreateDeviceLinux(ref pCreateInfo, ref pCreateInfo, out pDevice)
- Calls: vkDestroyDeviceLinux, vkDestroyDeviceLinux, vkDestroyDeviceWindows
- - void vkDestroyDevice(nint device, nint device, nint pAllocator)
- Calls: None
- - Windows vkDestroyDeviceWindows()
- Calls: None
- - Linux vkDestroyDeviceLinux()
- Calls: None
- - IntPtr vkCreateInstanceWindows(ref VkInstanceCreateInfo, ref VkInstanceCreateInfo, IntPtr pAllocator, out IntPtr)
- Calls: None
- - void vkDestroyInstanceWindows(IntPtr instance, IntPtr instance, IntPtr pAllocator)
- Calls: None
- - IntPtr vkEnumeratePhysicalDevicesWindows(IntPtr instance, IntPtr instance, out uint, IntPtr[] pPhysicalDevices)
- Calls: None
- - IntPtr vkCreateDeviceWindows(IntPtr physicalDevice, IntPtr physicalDevice, ref VkDeviceCreateInfo, IntPtr pAllocator, out IntPtr)
- Calls: None
- - void vkDestroyDeviceWindows(IntPtr device, IntPtr device, IntPtr pAllocator)
- Calls: None
- - IntPtr vkCreateInstanceLinux(ref VkInstanceCreateInfo, ref VkInstanceCreateInfo, IntPtr pAllocator, out IntPtr)
- Calls: None
- - void vkDestroyInstanceLinux(IntPtr instance, IntPtr instance, IntPtr pAllocator)
- Calls: None
- - IntPtr vkEnumeratePhysicalDevicesLinux(IntPtr instance, IntPtr instance, out uint, IntPtr[] pPhysicalDevices)
- Calls: None
- - IntPtr vkCreateDeviceLinux(IntPtr physicalDevice, IntPtr physicalDevice, ref VkDeviceCreateInfo, IntPtr pAllocator, out IntPtr)
- Calls: None
- - void vkDestroyDeviceLinux(IntPtr device, IntPtr device, IntPtr pAllocator)
- Calls: None
  File: WindowNative.cs
  class: WindowNative (Namespace: SiegeEngine.Rendering)
  Inherits: None
@@ -1750,7 +1825,7 @@ Folder: Castle
  class: SandboxScene (Namespace: SiegeEngine.Scenes)
  Inherits: Scene
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Linq, System.Numerics
  Methods:
  - void Initialize(int width, int width, int height)
  Calls: Viewport, Viewport
@@ -1764,7 +1839,7 @@ Folder: Castle
  class: Scene (Namespace: SiegeEngine.Scenes)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor Scene(IRenderContext renderContext, IRenderContext renderContext, Glfw glfw, IGameServer server, EventBus eventBus)
  Calls: None
@@ -1876,7 +1951,7 @@ Folder: Castle
  Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, Silk.NET.GLFW, System, System.Numerics
  Methods:
  - void Update(float deltaTime, float deltaTime)
- Calls: EntityMovedEvent, EntityMovedEvent
+ Calls: EntityMovedEvent, EntityMovedEvent, GetKey
  File: MetaFileParser.cs
  class: MetaFileParser (Namespace: SiegeEngine.UnityAssetLoader)
  Inherits: None
@@ -1913,10 +1988,10 @@ Folder: Castle
  File: Launcher.cs
  class: Launcher (Namespace: Trebuchet)
  Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
  Methods:
  - void Start()
- Calls: EventBus, EventBus, GetMenuConfigPath, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, OpenGLRenderContext, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SteamEngine, UISettingsManager, Update, UpdateWindowSize
+ Calls: EventBus, EventBus, GetMenuConfigPath, GlfwControlContext, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, OpenGLRenderContext, PollEvents, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
 

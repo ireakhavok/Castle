@@ -3,7 +3,7 @@ using Silk.NET.GLFW;
 using System.Numerics;
 using System.Collections.Generic;
 using Silk.NET.OpenGL;
-using SiegeEngine.Interfaces;
+using SiegeEngine.ContextManagement;
 
 namespace SiegeEngine.Rendering
 {
