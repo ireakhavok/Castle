@@ -38,7 +38,7 @@ namespace Foundation
             try
             {
                 var launcher = new Launcher();
-                launcher.Start();
+                launcher.Start(settings.CurrentRenderer);
             }
             catch (Exception ex)
             {

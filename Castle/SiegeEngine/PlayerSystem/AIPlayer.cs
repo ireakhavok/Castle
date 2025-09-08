@@ -1,6 +1,7 @@
-﻿using System;
+﻿// SiegeEngine.PlayerSystem/AIPlayer.cs
+using System;
 using System.Numerics;
-using Silk.NET.GLFW;
+using SiegeEngine.Definitions;
 
 namespace SiegeEngine.PlayerSystem
 {
@@ -9,8 +10,7 @@ namespace SiegeEngine.PlayerSystem
         private readonly Random _random = new();
         private float _moveTimer;
         private const float MoveInterval = 0.5f; // Move every 0.5s
-
-        public AIPlayer(int entityId, Vector3 position, Glfw glfw = null) : base(entityId, position, glfw)
+        public AIPlayer(int entityId, Vector3 position) : base(entityId, position)
         {
             // Initialize with random yaw for testing
             if (Camera != null)
@@ -18,7 +18,6 @@ namespace SiegeEngine.PlayerSystem
                 Camera.SetYaw(_random.Next(0, 360)); // Random facing direction
             }
         }
-
         public void UpdateAI(float deltaTime, Action<int, Vector2> sendMovementRequest)
         {
             _moveTimer += deltaTime;
@@ -35,18 +34,15 @@ namespace SiegeEngine.PlayerSystem
                 sendMovementRequest(EntityId, newPos);
                 Position = new Vector3(newPos.X, newPos.Y, Position.Z);
                 Physics.Position = Position;
-
                 // Random yaw update
                 if (Camera != null)
                 {
                     Camera.SetYaw(Camera.Yaw + _random.Next(-10, 11)); // Small yaw change
                 }
-
                 _moveTimer = 0;
                 Console.WriteLine($"AIPlayer {EntityId} moved to {newPos}");
             }
         }
-
         // Helper to set yaw directly for testing
         public void SetYaw(float yaw)
         {
@@ -56,7 +52,6 @@ namespace SiegeEngine.PlayerSystem
             }
         }
     }
-
     // Extension to allow yaw setting (minimal impact)
     public static class CameraControllerExtensions
     {
@@ -64,7 +59,6 @@ namespace SiegeEngine.PlayerSystem
         {
             camera.SetYawInternal(yaw);
         }
-
         internal static void SetYawInternal(this CameraController camera, float yaw)
         {
             typeof(CameraController).GetField("_yaw", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(camera, yaw);

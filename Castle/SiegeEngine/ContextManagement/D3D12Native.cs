@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace SiegeEngine.Rendering
+namespace SiegeEngine.ContextManagement
 {
     public static class D3D12Native
     {

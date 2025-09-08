@@ -1,8 +1,9 @@
 ﻿// SiegeEngine/Rendering/RendererDetector.cs
+using SiegeEngine.ContextManagement;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using static SiegeEngine.Rendering.VulkanNative;
+using static SiegeEngine.ContextManagement.VulkanNative;
 
 namespace SiegeEngine.Rendering
 {

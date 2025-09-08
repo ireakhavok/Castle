@@ -1,0 +1,12 @@
+Step-by-Step Process for Implementation
+
+Documentation: Create detailed docs outlining the menu system. This includes system overview, key components (e.g., DOM tree, event hooks), integration with EventBus, rendering via IRenderContext, and control abstraction via IControlContext. Docs will be in a new file (e.g., docs/MenuSystem.md) and referenced in code comments.
+Object Classes: Define core classes for HTML-like structure (HtmlElement as base, with subclasses like ButtonElement, TextElement), attributes (Dictionary<string, string>), children (List<htmlelement>), styles (CssStyle class with properties like Position, Color). Also, JsHandler for simple JS parsing (e.g., evaluate basic expressions/hooks). Add MenuConfig for loading HTML/JS files.</htmlelement>
+DOM Parser: Implement HtmlParser class that reads HTML string, builds tree using stack-based parsing (handle tags, attributes, text nodes). Support includes via . Parse hierarchy by nesting elements.
+CSS Parser: Implement CssParser class that reads CSS string, applies rules to DOM elements (selector matching via simple string compare, no advanced selectors initially). Store styles in CssStyle on each HtmlElement.
+Action Hooks: In HtmlParser, detect data-hook="Namespace.Class.Method", register dynamic delegates on EventBus (use reflection to find/invoke methods). For user interactions (e.g., click), link to IControlContext events, publish to EventBus.
+MenuSystem: Create MenuSystem class inheriting GameSystem, manages DOM tree, updates/renders via IRenderContext (quads for elements, TextRenderer for text). Use EventBus for hooks (subscribe to input events, trigger JS/methods). Load menus from JSON/HTML files, support non-dynamic preview by rendering static DOM.
+Control Abstraction: Define IControlContext interface with methods like SetMouseCallback, SetKeyCallback, GetMousePosition. Implement GlfwControlContext wrapping GLFW. Refactor InputHandler, Launcher to use IControlContext.
+Integration and Iteration: Add to Launcher (init MenuSystem), update scenes to overlay menus. Test iteratively: static HTML render, then interactions, then hooks.
+
+Iterative changes: Start with IControlContext (request unclear files if needed), then classes, parsers, system. Each step: modify/output full files.

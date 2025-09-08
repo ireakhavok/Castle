@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Events;
-using Silk.NET.GLFW;
 using SiegeEngine.Interfaces;
 using SiegeEngine.Definitions;
 using SiegeEngine.Systems;
@@ -139,7 +138,7 @@ namespace Citadel.Server
             return true;
         }
 
-        public bool ValidateKeyInput(ulong steamId, Keys key, InputAction action)
+        public bool ValidateKeyInput(ulong steamId, Key key, InputAction action)
         {
             if ((int)key < 0 || (int)key > 512)
             {

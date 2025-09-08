@@ -1,22 +1,22 @@
-﻿using System;
-using System.Numerics;
-using Silk.NET.GLFW;
-using Silk.NET.OpenGL;
-using System.Collections.Generic;
-using SiegeEngine.Systems;
-using SiegeEngine.Rendering;
+﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
-using SiegeEngine.Interfaces;
 using SiegeEngine.Events;
-using SiegeEngine.Rendering.Shaders;
+using SiegeEngine.Interfaces;
 using SiegeEngine.PlayerSystem;
+using SiegeEngine.Rendering;
+using SiegeEngine.Rendering.Shaders;
+using SiegeEngine.Systems;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
 namespace SiegeEngine.Scenes
 {
-    public abstract unsafe class Scene : IDisposable
+    public abstract class Scene : IDisposable
     {
         protected readonly IRenderContext _renderContext;
-        protected readonly Glfw _glfw;
-        protected readonly WindowHandle* _window;
+        protected readonly IControlContext _controlContext;
+        protected readonly IntPtr _window;
         protected readonly IGameServer _server;
         protected ShaderProgram _shader;
         protected ShaderProgram _modelShader;
@@ -26,10 +26,10 @@ namespace SiegeEngine.Scenes
         protected bool _disposed;
         protected readonly List<GameSystem> _systems = new List<GameSystem>();
         private Player _player; // Added for listener position
-        public Scene(IRenderContext renderContext, Glfw glfw, WindowHandle* window, IGameServer server, EventBus eventBus)
+        public Scene(IRenderContext renderContext, IControlContext controlContext, IntPtr window, IGameServer server, EventBus eventBus)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
-            _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
+            _controlContext = controlContext ?? throw new ArgumentNullException(nameof(controlContext));
             _window = window;
             _server = server ?? throw new ArgumentNullException(nameof(server));
             if (eventBus != null)
@@ -49,7 +49,7 @@ namespace SiegeEngine.Scenes
             _width = width;
             _height = height;
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
-            _renderContext.Enable(EnableCap.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             _shader = CreateShader();
             var shaders = ShaderSetup.InitializeShaders(_renderContext);
@@ -103,7 +103,7 @@ namespace SiegeEngine.Scenes
         public virtual void Render(IReadOnlyList<Entity> entities)
         {
             if (_disposed) return;
-            _renderContext.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             Matrix4x4 view = GetViewMatrix();
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, 0.1f, 1000f);
             // Render grid
@@ -111,10 +111,10 @@ namespace SiegeEngine.Scenes
             _shader.SetMatrix4("uView", view);
             _shader.SetMatrix4("uModel", Matrix4x4.Identity);
             _shader.SetMatrix4("uProjection", projection);
-            _renderContext.Disable(EnableCap.DepthTest);
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
             _gridBuffer.Bind();
-            _renderContext.DrawArrays(PrimitiveType.Lines, 0, _gridBuffer.GetVertexCount());
-            _renderContext.Enable(EnableCap.DepthTest);
+            _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
             // Render player model
             _modelShader.Use();
             _modelShader.SetMatrix4("uView", view);
