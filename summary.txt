@@ -25,7 +25,7 @@ Folder: Castle
  class: GameServer (Namespace: Citadel.Server)
  Inherits: IGameServer
     
- Dependencies: Citadel.Network, Citadel.Network, Citadel.Systems, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Systems, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
+ Dependencies: Citadel.Network, Citadel.Network, Citadel.Systems, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
  Methods:
  - constructor GameServer(EventBus eventBus, EventBus eventBus, NetworkManager networkManager)
  Calls: UpdateSpatialGrid, UpdateSpatialGrid
@@ -77,7 +77,7 @@ Folder: Castle
  class: ServerValidationSystem (Namespace: Citadel.Server)
  Inherits: GameSystem, ISoundValidator
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Systems, Silk.NET.GLFW, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
  Methods:
  - bool IsAuthoritativeMode()
  Calls: None
@@ -91,7 +91,7 @@ Folder: Castle
  Calls: None
  - bool ValidateMouseInput(ulong steamId, ulong steamId, Vector2 position, MouseButton button, InputAction action)
  Calls: None
- - bool ValidateKeyInput(ulong steamId, ulong steamId, Keys key, InputAction action)
+ - bool ValidateKeyInput(ulong steamId, ulong steamId, Key key, InputAction action)
  Calls: None
  - bool ValidateSoundSource(SoundSource source, SoundSource source)
  Calls: None
@@ -277,80 +277,101 @@ Folder: Castle
  Calls: Log, Log
  - object ConvertRawToArray(byte[] rawData, byte[] rawData, char typeCode, uint arrayLen)
  Calls: None
+ File: ContextManager.cs
+ class: ContextManager (Namespace: SiegeEngine.ContextManagement)
+ Inherits: None
+ Dependencies: Silk.NET.GLFW, Silk.NET.GLFW, Silk.NET.OpenGL, System
+ Methods:
+ - void Initialize(int width, int width, int height, string title)
+ Calls: None
+ - void Terminate()
+ Calls: None
  File: GlfwControlContext.cs
  class: GlfwControlContext (Namespace: SiegeEngine.ContextManagement)
  Inherits: IControlContext
     
- Dependencies: Silk.NET.GLFW, Silk.NET.GLFW, System
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, Silk.NET.GLFW, System
  Methods:
  - constructor GlfwControlContext(Glfw glfw, Glfw glfw)
  Calls: SetCursorPosCallback, SetCursorPosCallback
- - void SetCursorPosCallback(CursorPosCallback callback, CursorPosCallback callback)
- Calls: SetMouseButtonCallback, SetMouseButtonCallback
- - void SetMouseButtonCallback(MouseButtonCallback callback, MouseButtonCallback callback)
- Calls: None
- - void SetKeyCallback(KeyCallback callback, KeyCallback callback)
- Calls: None
- - void SetScrollCallback(ScrollCallback callback, ScrollCallback callback)
+ - void SetCursorPosCallback(IntPtr window, IntPtr window, CursorPosCallback callback)
+ Calls: MapGlfwInputAction, MapGlfwInputAction, MapGlfwMods, MapGlfwMouseButton, SetMouseButtonCallback
+ - void SetMouseButtonCallback(IntPtr window, IntPtr window, MouseButtonCallback callback)
+ Calls: MapGlfwInputAction, MapGlfwInputAction, MapGlfwMods, MapGlfwMouseButton
+ - void SetKeyCallback(IntPtr window, IntPtr window, KeyCallback callback)
+ Calls: MapGlfwInputAction, MapGlfwInputAction, MapGlfwKey, MapGlfwMods
+ - void SetScrollCallback(IntPtr window, IntPtr window, ScrollCallback callback)
  Calls: SetWindowSizeCallback, SetWindowSizeCallback
- - void SetWindowSizeCallback(WindowSizeCallback callback, WindowSizeCallback callback)
+ - void SetWindowSizeCallback(IntPtr window, IntPtr window, WindowSizeCallback callback)
  Calls: GetCursorPos, GetCursorPos
- - void GetCursorPos(out double, out double, out double)
+ - void GetCursorPos(IntPtr window, IntPtr window, out double, out double)
  Calls: SetInputMode, SetInputMode
- - void SetInputMode(CursorStateAttribute attrib, CursorStateAttribute attrib, CursorModeValue value)
- Calls: GetKey, GetKey
- - InputAction GetKey(Keys key, Keys key)
- Calls: GetMouseButton, GetMouseButton
- - InputAction GetMouseButton(MouseButton button, MouseButton button)
+ - void SetInputMode(IntPtr window, IntPtr window, CursorAttribute attrib, CursorMode value)
+ Calls: None
+ - InputAction GetKey(IntPtr window, IntPtr window, Key key)
+ Calls: GetMouseButton, GetMouseButton, MapEngineMouseButton, MapGlfwInputAction
+ - InputAction GetMouseButton(IntPtr window, IntPtr window, MouseButton button)
  Calls: WindowShouldClose, WindowShouldClose
- - bool WindowShouldClose()
+ - bool WindowShouldClose(IntPtr window, IntPtr window)
  Calls: GetWindowAttrib, GetWindowAttrib
- - bool GetWindowAttrib(WindowAttributeGetter attrib, WindowAttributeGetter attrib)
- Calls: PollEvents, PollEvents
+ - bool GetWindowAttrib(IntPtr window, IntPtr window, WindowAttribute attrib)
+ Calls: None
  - void PollEvents()
  Calls: SwapBuffers, SwapBuffers
- - void SwapBuffers()
+ - void SwapBuffers(IntPtr window, IntPtr window)
+ Calls: None
+ - Key MapGlfwKey(Keys glfwKey, Keys glfwKey)
+ Calls: None
+ - Keys MapEngineKey(Key engineKey, Key engineKey)
+ Calls: None
+ - MouseButton MapGlfwMouseButton(MouseButton glfwButton, MouseButton glfwButton)
+ Calls: None
+ - MouseButton MapEngineMouseButton(MouseButton engineButton, MouseButton engineButton)
+ Calls: None
+ - KeyModifiers MapGlfwMods(KeyModifiers glfwMods, KeyModifiers glfwMods)
+ Calls: None
+ - InputAction MapGlfwInputAction(InputAction glfwAction, InputAction glfwAction)
  Calls: None
  File: IControlContext.cs
  interface: IControlContext (Namespace: SiegeEngine.ContextManagement)
  Inherits: None
- Dependencies: Silk.NET.GLFW, Silk.NET.GLFW, System
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, System
  Methods:
- - void CursorPosCallback(double xpos, double xpos, double ypos)
+ - void CursorPosCallback(IntPtr window, IntPtr window, double xpos, double ypos)
  Calls: None
- - void MouseButtonCallback(MouseButton button, MouseButton button, InputAction action, KeyModifiers mods)
+ - void MouseButtonCallback(IntPtr window, IntPtr window, MouseButton button, InputAction action, KeyModifiers mods)
  Calls: None
- - void KeyCallback(Keys key, Keys key, int scancode, InputAction action, KeyModifiers mods)
+ - void KeyCallback(IntPtr window, IntPtr window, Key key, int scancode, InputAction action, KeyModifiers mods)
  Calls: None
- - void ScrollCallback(double xoffset, double xoffset, double yoffset)
+ - void ScrollCallback(IntPtr window, IntPtr window, double xoffset, double yoffset)
  Calls: None
- - void WindowSizeCallback(int width, int width, int height)
+ - void WindowSizeCallback(IntPtr window, IntPtr window, int width, int height)
  Calls: None
- - void SetCursorPosCallback(CursorPosCallback callback, CursorPosCallback callback)
+ - void SetCursorPosCallback(IntPtr window, IntPtr window, CursorPosCallback callback)
  Calls: None
- - void SetMouseButtonCallback(MouseButtonCallback callback, MouseButtonCallback callback)
+ - void SetMouseButtonCallback(IntPtr window, IntPtr window, MouseButtonCallback callback)
  Calls: None
- - void SetKeyCallback(KeyCallback callback, KeyCallback callback)
+ - void SetKeyCallback(IntPtr window, IntPtr window, KeyCallback callback)
  Calls: None
- - void SetScrollCallback(ScrollCallback callback, ScrollCallback callback)
+ - void SetScrollCallback(IntPtr window, IntPtr window, ScrollCallback callback)
  Calls: None
- - void SetWindowSizeCallback(WindowSizeCallback callback, WindowSizeCallback callback)
+ - void SetWindowSizeCallback(IntPtr window, IntPtr window, WindowSizeCallback callback)
  Calls: None
- - void GetCursorPos(out double, out double, out double)
+ - void GetCursorPos(IntPtr window, IntPtr window, out double, out double)
  Calls: None
- - void SetInputMode(CursorStateAttribute attrib, CursorStateAttribute attrib, CursorModeValue value)
+ - void SetInputMode(IntPtr window, IntPtr window, CursorAttribute attrib, CursorMode value)
  Calls: None
- - InputAction GetKey(Keys key, Keys key)
+ - InputAction GetKey(IntPtr window, IntPtr window, Key key)
  Calls: None
- - InputAction GetMouseButton(MouseButton button, MouseButton button)
+ - InputAction GetMouseButton(IntPtr window, IntPtr window, MouseButton button)
  Calls: None
- - bool WindowShouldClose()
+ - bool WindowShouldClose(IntPtr window, IntPtr window)
  Calls: None
- - bool GetWindowAttrib(WindowAttributeGetter attrib, WindowAttributeGetter attrib)
+ - bool GetWindowAttrib(IntPtr window, IntPtr window, WindowAttribute attrib)
  Calls: None
  - void PollEvents()
  Calls: None
- - void SwapBuffers()
+ - void SwapBuffers(IntPtr window, IntPtr window)
  Calls: None
  File: IRenderContext.cs
  interface: IRenderContext (Namespace: SiegeEngine.ContextManagement)
@@ -567,6 +588,41 @@ Folder: Castle
  Inherits: None
  Dependencies: None
  Methods:
+ File: InputEnums.cs
+ enum: Key (Namespace: SiegeEngine.Definitions)
+ Inherits: None
+ Dependencies: System, System
+ Methods:
+ File: InputEnums.cs
+ enum: MouseButton (Namespace: SiegeEngine.Definitions)
+ Inherits: None
+ Dependencies: System, System
+ Methods:
+ File: InputEnums.cs
+ enum: InputAction (Namespace: SiegeEngine.Definitions)
+ Inherits: None
+ Dependencies: System, System
+ Methods:
+ File: InputEnums.cs
+ enum: KeyModifiers (Namespace: SiegeEngine.Definitions)
+ Inherits: None
+ Dependencies: System, System
+ Methods:
+ File: InputEnums.cs
+ enum: CursorAttribute (Namespace: SiegeEngine.Definitions)
+ Inherits: None
+ Dependencies: System, System
+ Methods:
+ File: InputEnums.cs
+ enum: CursorMode (Namespace: SiegeEngine.Definitions)
+ Inherits: None
+ Dependencies: System, System
+ Methods:
+ File: InputEnums.cs
+ enum: WindowAttribute (Namespace: SiegeEngine.Definitions)
+ Inherits: None
+ Dependencies: System, System
+ Methods:
  File: InventoryComponent.cs
  class: InventoryComponent (Namespace: SiegeEngine.Definitions)
  Inherits: IComponent
@@ -721,7 +777,7 @@ Folder: Castle
  File: EventBus.cs
  interface: IEvent (Namespace: SiegeEngine.Events)
  Inherits: None
- Dependencies: SiegeEngine.Networking, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
  Methods:
  - byte[] Serialize()
  Calls: None
@@ -730,7 +786,7 @@ Folder: Castle
  File: EventBus.cs
  class: EventBus (Namespace: SiegeEngine.Events)
  Inherits: None
- Dependencies: SiegeEngine.Networking, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
  Methods:
  - constructor EventBus(SteamEngine steamEngine, SteamEngine steamEngine)
  Calls: None
@@ -740,7 +796,7 @@ Folder: Castle
  class: LobbyCreatedEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Networking, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
  Methods:
  - byte[] Serialize()
  Calls: None
@@ -750,7 +806,7 @@ Folder: Castle
  class: LobbyJoinedEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Networking, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
  Methods:
  - byte[] Serialize()
  Calls: None
@@ -760,7 +816,7 @@ Folder: Castle
  class: MouseInputEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Networking, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
  Methods:
  - constructor MouseInputEvent(Vector2 position, Vector2 position, MouseButton button, InputAction action, ulong steamId)
  Calls: Serialize, Serialize
@@ -772,9 +828,9 @@ Folder: Castle
  class: KeyInputEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Networking, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
  Methods:
- - constructor KeyInputEvent(Keys key, Keys key, InputAction action, ulong steamId)
+ - constructor KeyInputEvent(Key key, Key key, InputAction action, ulong steamId)
  Calls: Serialize, Serialize
  - byte[] Serialize()
  Calls: None
@@ -784,7 +840,7 @@ Folder: Castle
  class: ToggleGridSnapEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Networking, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
  Methods:
  - constructor ToggleGridSnapEvent(ulong playerId, ulong playerId, bool state)
  Calls: Serialize, Serialize
@@ -1291,7 +1347,7 @@ Folder: Castle
  class: AIPlayer (Namespace: SiegeEngine.PlayerSystem)
  Inherits: Player
     
- Dependencies: Silk.NET.GLFW, Silk.NET.GLFW, System, System.Numerics
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, System, System.Numerics
  Methods:
  - void UpdateAI(float deltaTime, float deltaTime, Vector2> sendMovementRequest)
  Calls: SetYaw, SetYaw
@@ -1300,7 +1356,7 @@ Folder: Castle
  File: AIPlayer.cs
  class: CameraControllerExtensions (Namespace: SiegeEngine.PlayerSystem)
  Inherits: None
- Dependencies: Silk.NET.GLFW, Silk.NET.GLFW, System, System.Numerics
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, System, System.Numerics
  Methods:
  - void SetYaw(this CameraController, this CameraController, float yaw)
  Calls: None
@@ -1309,12 +1365,12 @@ Folder: Castle
  File: CameraController.cs
  enum: Perspective (Namespace: SiegeEngine.PlayerSystem)
  Inherits: None
- Dependencies: SiegeEngine.Managers, SiegeEngine.Managers, Silk.NET.GLFW, System, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Managers, System, System.Numerics
  Methods:
  File: CameraController.cs
  class: CameraController (Namespace: SiegeEngine.PlayerSystem)
  Inherits: None
- Dependencies: SiegeEngine.Managers, SiegeEngine.Managers, Silk.NET.GLFW, System, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Managers, System, System.Numerics
  Methods:
  - void Update(float deltaTime, float deltaTime, float scrollDelta, bool isGameActive)
  Calls: None
@@ -1325,9 +1381,9 @@ Folder: Castle
  File: InputHandler.cs
  class: InputHandler (Namespace: SiegeEngine.PlayerSystem)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Networking, Silk.NET.GLFW, System, System.Collections.Generic, System.Numerics, System.Text
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Numerics, System.Text
  Methods:
- - constructor InputHandler(IControlContext controlContext, IControlContext controlContext, SteamEngine steamEngine)
+ - constructor InputHandler(IControlContext controlContext, IControlContext controlContext, IntPtr window, SteamEngine steamEngine)
  Calls: None
  - void ResetMouseReleased()
  Calls: None
@@ -1341,28 +1397,28 @@ Folder: Castle
  Calls: None
  - void SendMouseButton(MouseButton button, MouseButton button, InputAction action)
  Calls: None
- - void SendKeyInput(Keys key, Keys key, InputAction action)
+ - void SendKeyInput(Key key, Key key, InputAction action)
  Calls: None
  File: Player.cs
  class: Player (Namespace: SiegeEngine.PlayerSystem)
  Inherits: IComponent
     
- Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.Definitions, SiegeEngine.Managers, Silk.NET.GLFW, System, System.Numerics
+ Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Managers, System, System.Numerics
  Methods:
- - constructor Player(int entityId, int entityId, Vector3 position, Glfw glfw, ulong steamId, ModelManager modelLoader)
+ - constructor Player(int entityId, int entityId, Vector3 position, ulong steamId, ModelManager modelLoader)
  Calls: None
- - void InitializeCamera(Glfw glfw, Glfw glfw)
+ - void InitializeCamera(IControlContext controlContext, IControlContext controlContext, IntPtr window)
  Calls: Update, Update
- - void Update(float deltaTime, float deltaTime, float scrollDelta, PlayerMovement movement, bool isGameActive)
+ - void Update(float deltaTime, float deltaTime, IntPtr window, float scrollDelta, PlayerMovement movement, bool isGameActive)
  Calls: Update, Update
  File: PlayerMovement.cs
  class: PlayerMovement (Namespace: SiegeEngine.PlayerSystem)
  Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Systems, Silk.NET.GLFW, System, System.Collections.Generic, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
  Methods:
  - constructor PlayerMovement(InputHandler inputHandler, InputHandler inputHandler, ClientPredictionSystem predictionSystem, EventBus eventBus)
  Calls: None
- - void OnKeyInput(Keys key, Keys key, InputAction action)
+ - void OnKeyInput(Key key, Key key, InputAction action)
  Calls: None
  - void OnNetworkKeyInput(KeyInputEvent e, KeyInputEvent e)
  Calls: None
@@ -1825,7 +1881,7 @@ Folder: Castle
  class: SandboxScene (Namespace: SiegeEngine.Scenes)
  Inherits: Scene
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, Silk.NET.OpenGL, System, System.Collections.Generic, System.Linq, System.Numerics
  Methods:
  - void Initialize(int width, int width, int height)
  Calls: Viewport, Viewport
@@ -1839,9 +1895,9 @@ Folder: Castle
  class: Scene (Namespace: SiegeEngine.Scenes)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, Silk.NET.OpenGL, System, System.Collections.Generic, System.Numerics
  Methods:
- - constructor Scene(IRenderContext renderContext, IRenderContext renderContext, Glfw glfw, IGameServer server, EventBus eventBus)
+ - constructor Scene(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, IGameServer server, EventBus eventBus)
  Calls: None
  - void SetPlayer(Player player, Player player)
  Calls: ClearColor, ClearColor, CreateShader, Enable, SetupGrid, VertexBuffer, Viewport
@@ -1948,7 +2004,7 @@ Folder: Castle
  class: PlayerControllerSystem (Namespace: SiegeEngine.Systems)
  Inherits: GameSystem
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, Silk.NET.GLFW, System, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.PlayerSystem, System, System.Numerics
  Methods:
  - void Update(float deltaTime, float deltaTime)
  Calls: EntityMovedEvent, EntityMovedEvent, GetKey
@@ -1988,10 +2044,10 @@ Folder: Castle
  File: Launcher.cs
  class: Launcher (Namespace: Trebuchet)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, Silk.NET.GLFW, Silk.NET.OpenGL, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, Silk.NET.GLFW, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
  Methods:
  - void Start()
- Calls: EventBus, EventBus, GetMenuConfigPath, GlfwControlContext, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, OpenGLRenderContext, PollEvents, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
+ Calls: EventBus, EventBus, GetMenuConfigPath, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PollEvents, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
 

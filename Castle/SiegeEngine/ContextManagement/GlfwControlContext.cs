@@ -1,77 +1,97 @@
-﻿// SiegeEngine.PlayerSystem/GlfwControlContext.cs
-using Silk.NET.GLFW;
+﻿// SiegeEngine.ContextManagement/GlfwControlContext.cs
 using System;
+using SiegeEngine.Definitions;
+using Silk.NET.GLFW;
 
 namespace SiegeEngine.ContextManagement
 {
     public unsafe class GlfwControlContext : IControlContext
     {
         private readonly Glfw _glfw;
-
         public GlfwControlContext(Glfw glfw)
         {
             _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
         }
 
-        public void SetCursorPosCallback(WindowHandle* window, IControlContext.CursorPosCallback callback)
+        public void SetCursorPosCallback(IntPtr window, IControlContext.CursorPosCallback callback)
         {
-            _glfw.SetCursorPosCallback(window, (w, x, y) => callback(w, x, y));
+            _glfw.SetCursorPosCallback((WindowHandle*)window, (w, x, y) => callback((IntPtr)w, x, y));
         }
 
-        public void SetMouseButtonCallback(WindowHandle* window, IControlContext.MouseButtonCallback callback)
+        public void SetMouseButtonCallback(IntPtr window, IControlContext.MouseButtonCallback callback)
         {
-            _glfw.SetMouseButtonCallback(window, (w, rawButton, rawAction, rawMods) =>
+            _glfw.SetMouseButtonCallback((WindowHandle*)window, (w, rawButton, rawAction, rawMods) =>
             {
-                callback(w, rawButton, rawAction, rawMods);
+                Definitions.MouseButton engineButton = MapGlfwMouseButton(rawButton);
+                Definitions.InputAction engineAction = MapGlfwInputAction(rawAction);
+                Definitions.KeyModifiers engineMods = MapGlfwMods(rawMods);
+                callback((IntPtr)w, engineButton, engineAction, engineMods);
             });
         }
 
-        public void SetKeyCallback(WindowHandle* window, IControlContext.KeyCallback callback)
+        public void SetKeyCallback(IntPtr window, IControlContext.KeyCallback callback)
         {
-            _glfw.SetKeyCallback(window, (w, rawKey, scancode, rawAction, rawMods) =>
+            _glfw.SetKeyCallback((WindowHandle*)window, (w, rawKey, scancode, rawAction, rawMods) =>
             {
-                callback(w, rawKey, scancode, rawAction, rawMods);
+                Key engineKey = MapGlfwKey(rawKey);
+                Definitions.InputAction engineAction = MapGlfwInputAction(rawAction);
+                Definitions.KeyModifiers engineMods = MapGlfwMods(rawMods);
+                callback((IntPtr)w, engineKey, scancode, engineAction, engineMods);
             });
         }
 
-        public void SetScrollCallback(WindowHandle* window, IControlContext.ScrollCallback callback)
+        public void SetScrollCallback(IntPtr window, IControlContext.ScrollCallback callback)
         {
-            _glfw.SetScrollCallback(window, (w, x, y) => callback(w, x, y));
+            _glfw.SetScrollCallback((WindowHandle*)window, (w, x, y) => callback((IntPtr)w, x, y));
         }
 
-        public void SetWindowSizeCallback(WindowHandle* window, IControlContext.WindowSizeCallback callback)
+        public void SetWindowSizeCallback(IntPtr window, IControlContext.WindowSizeCallback callback)
         {
-            _glfw.SetWindowSizeCallback(window, (w, width, height) => callback(w, width, height));
+            _glfw.SetWindowSizeCallback((WindowHandle*)window, (w, width, height) => callback((IntPtr)w, width, height));
         }
 
-        public void GetCursorPos(WindowHandle* window, out double xpos, out double ypos)
+        public void GetCursorPos(IntPtr window, out double xpos, out double ypos)
         {
-            _glfw.GetCursorPos(window, out xpos, out ypos);
+            _glfw.GetCursorPos((WindowHandle*)window, out xpos, out ypos);
         }
 
-        public void SetInputMode(WindowHandle* window, CursorStateAttribute attrib, CursorModeValue value)
+        public void SetInputMode(IntPtr window, CursorAttribute attrib, CursorMode value)
         {
-            _glfw.SetInputMode(window, attrib, value);
+            CursorStateAttribute glfwAttrib = CursorStateAttribute.Cursor;
+            CursorModeValue glfwValue = value switch
+            {
+                CursorMode.Normal => CursorModeValue.CursorNormal,
+                CursorMode.Disabled => CursorModeValue.CursorDisabled,
+                _ => CursorModeValue.CursorNormal
+            };
+            _glfw.SetInputMode((WindowHandle*)window, glfwAttrib, glfwValue);
         }
 
-        public InputAction GetKey(WindowHandle* window, Keys key)
+        public Definitions.InputAction GetKey(IntPtr window, Key key)
         {
-            return (InputAction)_glfw.GetKey(window, key);
+            Keys glfwKey = MapEngineKey(key);
+            return MapGlfwInputAction(_glfw.GetKey((WindowHandle*)window, glfwKey));
         }
 
-        public InputAction GetMouseButton(WindowHandle* window, MouseButton button)
+        public Definitions.InputAction GetMouseButton(IntPtr window, Definitions.MouseButton button)
         {
-            return (InputAction)_glfw.GetMouseButton(window, (int)button);
+            Silk.NET.GLFW.MouseButton glfwButton = MapEngineMouseButton(button);
+            return MapGlfwInputAction(_glfw.GetMouseButton((WindowHandle*)window, glfwButton));
         }
 
-        public bool WindowShouldClose(WindowHandle* window)
+        public bool WindowShouldClose(IntPtr window)
         {
-            return _glfw.WindowShouldClose(window);
+            return _glfw.WindowShouldClose((WindowHandle*)window);
         }
 
-        public bool GetWindowAttrib(WindowHandle* window, WindowAttributeGetter attrib)
+        public bool GetWindowAttrib(IntPtr window, WindowAttribute attrib)
         {
-            return _glfw.GetWindowAttrib(window, attrib);
+            WindowAttributeGetter glfwAttrib = attrib switch
+            {
+                WindowAttribute.Focused => WindowAttributeGetter.Focused,
+                _ => WindowAttributeGetter.Focused
+            };
+            return _glfw.GetWindowAttrib((WindowHandle*)window, glfwAttrib);
         }
 
         public void PollEvents()
@@ -79,9 +99,82 @@ namespace SiegeEngine.ContextManagement
             _glfw.PollEvents();
         }
 
-        public void SwapBuffers(WindowHandle* window)
+        public void SwapBuffers(IntPtr window)
         {
-            _glfw.SwapBuffers(window);
+            _glfw.SwapBuffers((WindowHandle*)window);
+        }
+
+        private static Key MapGlfwKey(Keys glfwKey)
+        {
+            return glfwKey switch
+            {
+                Keys.A => Key.A,
+                Keys.D => Key.D,
+                Keys.G => Key.G,
+                Keys.P => Key.P,
+                Keys.S => Key.S,
+                Keys.W => Key.W,
+                Keys.Tab => Key.Tab,
+                Keys.Space => Key.Space,
+                Keys.ControlLeft => Key.LeftControl,
+                Keys.ShiftLeft => Key.LeftShift,
+                _ => Key.Unknown
+            };
+        }
+
+        private static Keys MapEngineKey(Key engineKey)
+        {
+            return engineKey switch
+            {
+                Key.A => Keys.A,
+                Key.D => Keys.D,
+                Key.G => Keys.G,
+                Key.P => Keys.P,
+                Key.S => Keys.S,
+                Key.W => Keys.W,
+                Key.Tab => Keys.Tab,
+                Key.Space => Keys.Space,
+                Key.LeftControl => Keys.ControlLeft,
+                Key.LeftShift => Keys.ShiftLeft,
+                _ => Keys.Unknown
+            };
+        }
+
+        private static Definitions.MouseButton MapGlfwMouseButton(Silk.NET.GLFW.MouseButton glfwButton)
+        {
+            return glfwButton switch
+            {
+                Silk.NET.GLFW.MouseButton.Left => Definitions.MouseButton.Left,
+                Silk.NET.GLFW.MouseButton.Right => Definitions.MouseButton.Right,
+                Silk.NET.GLFW.MouseButton.Middle => Definitions.MouseButton.Middle,
+                _ => Definitions.MouseButton.Left
+            };
+        }
+
+        private static Silk.NET.GLFW.MouseButton MapEngineMouseButton(Definitions.MouseButton engineButton)
+        {
+            return engineButton switch
+            {
+                Definitions.MouseButton.Left => Silk.NET.GLFW.MouseButton.Left,
+                Definitions.MouseButton.Right => Silk.NET.GLFW.MouseButton.Right,
+                Definitions.MouseButton.Middle => Silk.NET.GLFW.MouseButton.Middle,
+                _ => Silk.NET.GLFW.MouseButton.Left
+            };
+        }
+
+        private static Definitions.KeyModifiers MapGlfwMods(Silk.NET.GLFW.KeyModifiers glfwMods)
+        {
+            Definitions.KeyModifiers engineMods = Definitions.KeyModifiers.None;
+            if ((glfwMods & Silk.NET.GLFW.KeyModifiers.Shift) != 0) engineMods |= Definitions.KeyModifiers.Shift;
+            if ((glfwMods & Silk.NET.GLFW.KeyModifiers.Control) != 0) engineMods |= Definitions.KeyModifiers.Control;
+            if ((glfwMods & Silk.NET.GLFW.KeyModifiers.Alt) != 0) engineMods |= Definitions.KeyModifiers.Alt;
+            if ((glfwMods & Silk.NET.GLFW.KeyModifiers.Super) != 0) engineMods |= Definitions.KeyModifiers.Super;
+            return engineMods;
+        }
+
+        private static Definitions.InputAction MapGlfwInputAction(Silk.NET.GLFW.InputAction glfwAction)
+        {
+            return (Definitions.InputAction)(int)glfwAction;
         }
     }
 }

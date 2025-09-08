@@ -1,23 +1,24 @@
-﻿using System;
-using System.Numerics;
-using Silk.NET.GLFW;
-using Silk.NET.OpenGL;
-using System.Collections.Generic;
-using SiegeEngine.Systems;
-using SiegeEngine.Rendering;
-using SiegeEngine.Definitions;
-using SiegeEngine.Interfaces;
-using SiegeEngine.Events;
-using SiegeEngine.Rendering.Shaders;
-using SiegeEngine.PlayerSystem;
+﻿// SiegeEngine.Scenes/Scene.cs
 using SiegeEngine.ContextManagement;
+using SiegeEngine.Definitions;
+using SiegeEngine.Events;
+using SiegeEngine.Interfaces;
+using SiegeEngine.PlayerSystem;
+using SiegeEngine.Rendering;
+using SiegeEngine.Rendering.Shaders;
+using SiegeEngine.Systems;
+using Silk.NET.OpenGL;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
+
 namespace SiegeEngine.Scenes
 {
-    public abstract unsafe class Scene : IDisposable
+    public abstract class Scene : IDisposable
     {
         protected readonly IRenderContext _renderContext;
-        protected readonly Glfw _glfw;
-        protected readonly WindowHandle* _window;
+        protected readonly IControlContext _controlContext;
+        protected readonly IntPtr _window;
         protected readonly IGameServer _server;
         protected ShaderProgram _shader;
         protected ShaderProgram _modelShader;
@@ -27,10 +28,10 @@ namespace SiegeEngine.Scenes
         protected bool _disposed;
         protected readonly List<GameSystem> _systems = new List<GameSystem>();
         private Player _player; // Added for listener position
-        public Scene(IRenderContext renderContext, Glfw glfw, WindowHandle* window, IGameServer server, EventBus eventBus)
+        public Scene(IRenderContext renderContext, IControlContext controlContext, IntPtr window, IGameServer server, EventBus eventBus)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
-            _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
+            _controlContext = controlContext ?? throw new ArgumentNullException(nameof(controlContext));
             _window = window;
             _server = server ?? throw new ArgumentNullException(nameof(server));
             if (eventBus != null)

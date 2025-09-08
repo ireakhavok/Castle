@@ -1,5 +1,6 @@
-﻿using SiegeEngine.Networking;
-using Silk.NET.GLFW;
+﻿// SiegeEngine.Events/EventBus.cs
+using SiegeEngine.Networking;
+using SiegeEngine.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,17 +16,14 @@ namespace SiegeEngine.Events
         byte[] Serialize();
         void Deserialize(byte[] data);
     }
-
     public class EventBus
     {
         private readonly Dictionary<Type, List<object>> _subscribers = new Dictionary<Type, List<object>>();
         private readonly SteamEngine _steamEngine;
-
         public EventBus(SteamEngine steamEngine = null)
         {
             _steamEngine = steamEngine;
         }
-
         public void Subscribe<T>(Action<T> handler) where T : class
         {
             if (!_subscribers.ContainsKey(typeof(T)))
@@ -35,7 +33,6 @@ namespace SiegeEngine.Events
             _subscribers[typeof(T)].Add(handler);
             Console.WriteLine($"EventBus: Subscribed to {typeof(T).Name}");
         }
-
         public void Publish<T>(T eventData, bool networkSync = false) where T : class
         {
             if (_subscribers.ContainsKey(typeof(T)))
@@ -53,7 +50,6 @@ namespace SiegeEngine.Events
                 Console.WriteLine($"EventBus: Sent networked event {typeof(T).Name}");
             }
         }
-
         public void ProcessNetworkMessage(byte[] data)
         {
             string message = Encoding.UTF8.GetString(data);
@@ -87,7 +83,7 @@ namespace SiegeEngine.Events
                             int key = int.Parse(parts[2]);
                             int action = int.Parse(parts[3]);
                             ulong steamId = ulong.Parse(parts[4]);
-                            var keyEvent = new KeyInputEvent((Keys)key, (InputAction)action, steamId);
+                            var keyEvent = new KeyInputEvent((Key)key, (InputAction)action, steamId);
                             Publish(keyEvent, false);
                             Console.WriteLine($"EventBus: Processed Key event: Key={key}, Action={action}, SteamID={steamId}");
                         }
@@ -99,12 +95,11 @@ namespace SiegeEngine.Events
                 }
                 return;
             }
-
             try
             {
                 var msg = JsonSerializer.Deserialize<Dictionary<string, object>>(message);
                 string typeName = msg["Type"]?.ToString();
-                Type type = Type.GetType($"Engine.Core.Events.{typeName}");
+                Type type = Type.GetType($"SiegeEngine.Events.{typeName}");
                 if (type != null && _subscribers.ContainsKey(type))
                 {
                     var eventData = JsonSerializer.Deserialize(message, type);
@@ -121,20 +116,16 @@ namespace SiegeEngine.Events
             }
         }
     }
-
     public class LobbyCreatedEvent : IEvent
     {
         public string Type => "LobbyCreated";
         public ulong LobbyId { get; private set; }
-
         public LobbyCreatedEvent(ulong lobbyId) => LobbyId = lobbyId;
-
         public byte[] Serialize()
         {
             var json = JsonSerializer.Serialize(new { Type, LobbyId });
             return Encoding.UTF8.GetBytes(json);
         }
-
         public void Deserialize(byte[] data)
         {
             var json = Encoding.UTF8.GetString(data);
@@ -142,20 +133,16 @@ namespace SiegeEngine.Events
             LobbyId = obj.LobbyId;
         }
     }
-
     public class LobbyJoinedEvent : IEvent
     {
         public string Type => "LobbyJoined";
         public ulong LobbyId { get; private set; }
-
         public LobbyJoinedEvent(ulong lobbyId) => LobbyId = lobbyId;
-
         public byte[] Serialize()
         {
             var json = JsonSerializer.Serialize(new { Type, LobbyId });
             return Encoding.UTF8.GetBytes(json);
         }
-
         public void Deserialize(byte[] data)
         {
             var json = Encoding.UTF8.GetString(data);
@@ -163,7 +150,6 @@ namespace SiegeEngine.Events
             LobbyId = obj.LobbyId;
         }
     }
-
     public class MouseInputEvent : IEvent
     {
         public string Type => "MouseInput";
@@ -171,7 +157,6 @@ namespace SiegeEngine.Events
         public MouseButton Button { get; private set; }
         public InputAction Action { get; private set; }
         public ulong SteamId { get; private set; }
-
         public MouseInputEvent(Vector2 position, MouseButton button, InputAction action, ulong steamId)
         {
             Position = position;
@@ -179,7 +164,6 @@ namespace SiegeEngine.Events
             Action = action;
             SteamId = steamId;
         }
-
         public byte[] Serialize()
         {
             var json = JsonSerializer.Serialize(new
@@ -193,7 +177,6 @@ namespace SiegeEngine.Events
             });
             return Encoding.UTF8.GetBytes(json);
         }
-
         public void Deserialize(byte[] data)
         {
             var json = Encoding.UTF8.GetString(data);
@@ -204,21 +187,18 @@ namespace SiegeEngine.Events
             SteamId = ulong.Parse(obj["SteamId"].ToString());
         }
     }
-
     public class KeyInputEvent : IEvent
     {
         public string Type => "KeyInput";
-        public Keys Key { get; private set; }
+        public Key Key { get; private set; }
         public InputAction Action { get; private set; }
         public ulong SteamId { get; private set; }
-
-        public KeyInputEvent(Keys key, InputAction action, ulong steamId)
+        public KeyInputEvent(Key key, InputAction action, ulong steamId)
         {
             Key = key;
             Action = action;
             SteamId = steamId;
         }
-
         public byte[] Serialize()
         {
             var json = JsonSerializer.Serialize(new
@@ -230,35 +210,30 @@ namespace SiegeEngine.Events
             });
             return Encoding.UTF8.GetBytes(json);
         }
-
         public void Deserialize(byte[] data)
         {
             var json = Encoding.UTF8.GetString(data);
             var obj = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
-            Key = (Keys)int.Parse(obj["Key"].ToString());
+            Key = (Key)int.Parse(obj["Key"].ToString());
             Action = (InputAction)int.Parse(obj["Action"].ToString());
             SteamId = ulong.Parse(obj["SteamId"].ToString());
         }
     }
-
     public class ToggleGridSnapEvent : IEvent
     {
         public string Type => "ToggleGridSnap";
         public ulong PlayerId { get; private set; }
         public bool State { get; private set; }
-
         public ToggleGridSnapEvent(ulong playerId, bool state)
         {
             PlayerId = playerId;
             State = state;
         }
-
         public byte[] Serialize()
         {
             var json = JsonSerializer.Serialize(new { Type, PlayerId, State });
             return Encoding.UTF8.GetBytes(json);
         }
-
         public void Deserialize(byte[] data)
         {
             var json = Encoding.UTF8.GetString(data);

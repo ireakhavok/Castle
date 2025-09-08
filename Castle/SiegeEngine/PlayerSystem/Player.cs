@@ -1,7 +1,8 @@
-﻿using SiegeEngine.AssetParsing;
+﻿// SiegeEngine.PlayerSystem/Player.cs
+using SiegeEngine.AssetParsing;
 using SiegeEngine.Definitions;
 using SiegeEngine.Managers;
-using Silk.NET.GLFW;
+using SiegeEngine.ContextManagement;
 using System;
 using System.Numerics;
 
@@ -15,15 +16,13 @@ namespace SiegeEngine.PlayerSystem
         private readonly PhysicsComponent _physics;
         public ulong SteamId { get; set; }
         public FBXModel Model { get; private set; }
-
-        public Player(int entityId, Vector3 position, Glfw glfw = null, ulong steamId = 0, ModelManager modelLoader = null)
+        public Player(int entityId, Vector3 position, ulong steamId = 0, ModelManager modelLoader = null)
         {
             EntityId = entityId;
             Position = position;
             _physics = new PhysicsComponent();
             _physics.Position = position;
             _physics.Size = new Vector3(10f, 10f, 10f);
-            _camera = glfw != null ? new CameraController(glfw, this) : null;
             SteamId = steamId;
             if (modelLoader != null && modelLoader.TryGetModel("man_mesh", out var model))
             {
@@ -35,24 +34,21 @@ namespace SiegeEngine.PlayerSystem
                 Model = FBXParserBase.CreateDefaultCubeModel();
             }
         }
-
         public CameraController Camera => _camera;
         public PhysicsComponent Physics => _physics;
-
-        public void InitializeCamera(Glfw glfw)
+        public void InitializeCamera(IControlContext controlContext, IntPtr window)
         {
             if (_camera == null)
-                _camera = new CameraController(glfw, this);
+                _camera = new CameraController(controlContext, window, this);
         }
-
-        public unsafe void Update(float deltaTime, WindowHandle* window, float scrollDelta, PlayerMovement movement, bool isGameActive)
+        public void Update(float deltaTime, IntPtr window, float scrollDelta, PlayerMovement movement, bool isGameActive)
         {
             if (_camera != null)
             {
-                _camera.Update(deltaTime, window, scrollDelta, isGameActive);
+                _camera.Update(deltaTime, scrollDelta, isGameActive);
                 if (isGameActive)
                 {
-                    movement.Update(this, deltaTime, (id, pos, rotation) => { }, window, _camera);
+                    movement.Update(this, deltaTime, (id, pos, rotation) => { }, _camera);
                     Position = _physics.Position;
                     Console.WriteLine($"Player: Updated, Position={Position}, Perspective={_camera.CurrentPerspective}");
                 }
