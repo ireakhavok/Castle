@@ -1,4 +1,5 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// SiegeEngine.Systems/MenuSystem.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Managers;
@@ -29,7 +30,6 @@ namespace SiegeEngine.Systems
         private HtmlElement _currentMenu;
         private List<ButtonElement> _buttons = new List<ButtonElement>();
         private bool _initialized;
-
         public MenuSystem(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath) : base(null)
         {
             _settingsManager = settingsManager;
@@ -40,7 +40,6 @@ namespace SiegeEngine.Systems
             _renderContext = renderContext;
             _configPath = configPath;
         }
-
         public void SwitchMenu(string menuName)
         {
             string configDir = Path.GetDirectoryName(_configPath);
@@ -50,7 +49,6 @@ namespace SiegeEngine.Systems
                 string html = File.ReadAllText(htmlPath);
                 HtmlParser parser = new HtmlParser();
                 _currentMenu = parser.Parse(html);
-
                 List<string> cssBlocks = new List<string>();
                 Queue<HtmlElement> q = new Queue<HtmlElement>();
                 q.Enqueue(_currentMenu);
@@ -69,19 +67,45 @@ namespace SiegeEngine.Systems
                     }
                     foreach (var c in e.Children) q.Enqueue(c);
                 }
-
                 CssParser cssParser = new CssParser();
                 foreach (var css in cssBlocks)
                 {
                     cssParser.Apply(css, _currentMenu);
                 }
-
+                // Manually set displays since no pseudo-selector support
+                var settings = FindElementById(_currentMenu, "settings");
+                if (settings != null) settings.Style.Display = "none";
+                var contents = FindElementsByClass(_currentMenu, "content");
+                if (contents.Count > 0) contents[0].Style.Display = "block";
                 // Collect buttons
                 _buttons.Clear();
                 CollectButtons(_currentMenu);
             }
         }
-
+        private HtmlElement FindElementById(HtmlElement root, string id)
+        {
+            if (root.Attributes.GetValueOrDefault("id", "") == id) return root;
+            foreach (var child in root.Children)
+            {
+                var found = FindElementById(child, id);
+                if (found != null) return found;
+            }
+            return null;
+        }
+        private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
+        {
+            List<HtmlElement> list = new List<HtmlElement>();
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                string classes = elem.Attributes.GetValueOrDefault("class", "");
+                if (classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(className)) list.Add(elem);
+                foreach (var child in elem.Children) queue.Enqueue(child);
+            }
+            return list;
+        }
         private void CollectButtons(HtmlElement elem)
         {
             if (elem is ButtonElement btn)
@@ -89,7 +113,6 @@ namespace SiegeEngine.Systems
             foreach (var child in elem.Children)
                 CollectButtons(child);
         }
-
         public void Initialize()
         {
             _textRenderer = new TextRenderer(_renderContext, _window);
@@ -98,16 +121,13 @@ namespace SiegeEngine.Systems
             SwitchMenu("MainMenu");
             _initialized = true;
         }
-
         public override void Update(float deltaTime)
         {
             if (!_initialized) return;
-
             // Handle inputs
             Vector2 mousePos = new Vector2();
             _controlContext.GetCursorPos(_window, out double x, out double y);
             mousePos = new Vector2((float)x, (float)y);
-
             if (_controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press)
             {
                 foreach (var btn in _buttons)
@@ -117,14 +137,13 @@ namespace SiegeEngine.Systems
                 }
             }
         }
-
         public void Render()
         {
             if (!_initialized || _currentMenu == null) return;
-
             float vw = _settingsManager.WindowWidth;
             float vh = _settingsManager.WindowHeight;
-            _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, Vector2.Zero, vw, vh, vw, vh);
+            _currentMenu.ComputeLayout(0, 0, vw, vh, vw, vh);
+            _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, vw, vh);
         }
     }
 }

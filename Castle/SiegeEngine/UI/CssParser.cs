@@ -103,14 +103,6 @@ namespace SiegeEngine.UI
             if (props.TryGetValue("background", out string bg) || props.TryGetValue("background-color", out bg))
             {
                 style.Background = bg;
-                if (bg.Contains("linear-gradient"))
-                {
-                    int hashIndex = bg.IndexOf('#');
-                    if (hashIndex != -1)
-                    {
-                        bg = bg.Substring(hashIndex, 7);
-                    }
-                }
                 style.BackgroundColor = ParseColor(bg);
             }
             if (props.TryGetValue("color", out string color))
@@ -135,12 +127,42 @@ namespace SiegeEngine.UI
             {
                 style.PaddingStr = pad;
             }
+            if (props.TryGetValue("text-align", out string ta))
+                style.TextAlign = ta;
             // Ignore overflow, etc.
         }
         private Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
             color = color.Trim();
+            if (color.Contains("gradient"))
+            {
+                // Extract first color
+                int hashIndex = color.IndexOf('#');
+                string firstColor = "";
+                if (hashIndex != -1)
+                {
+                    firstColor = color.Substring(hashIndex, Math.Min(7, color.Length - hashIndex));
+                }
+                else
+                {
+                    int rgbIndex = color.IndexOf("rgb", StringComparison.OrdinalIgnoreCase);
+                    if (rgbIndex != -1)
+                    {
+                        string sub = color.Substring(rgbIndex);
+                        int end = sub.IndexOf(')');
+                        if (end != -1)
+                        {
+                            firstColor = sub.Substring(0, end + 1);
+                        }
+                    }
+                }
+                if (!string.IsNullOrEmpty(firstColor))
+                {
+                    return ParseColor(firstColor);
+                }
+                return Vector4.Zero;
+            }
             if (color.StartsWith("#"))
             {
                 color = color.Substring(1);
@@ -181,7 +203,7 @@ namespace SiegeEngine.UI
         }
         private float ParseSize(string s, float parent)
         {
-            if (string.IsNullOrEmpty(s) || s == "auto") return parent;
+            if (string.IsNullOrEmpty(s) || s == "auto") return float.NaN;
             s = s.Trim();
             if (s.EndsWith("%"))
             {

@@ -1,4 +1,5 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// SiegeEngine.UI/TextElement.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering;
 using System.Numerics;
 
@@ -11,11 +12,22 @@ namespace SiegeEngine.UI
         {
             Tag = "text";
         }
-
-        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, Vector2 parentPosition, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
+        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
         {
-            // No background for text
-            textRenderer.RenderText(Content, parentPosition.X, parentPosition.Y, (int)parentWidth, (int)parentHeight, Style.FontSize, Style.TextColor);
+            float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
+            float approxWidth = Content.Length * fs * 0.6f;
+            float textX = ComputedPosition.X;
+            if (Style.TextAlign == "center")
+            {
+                textX += (ComputedWidth - approxWidth) / 2;
+            }
+            else if (Style.TextAlign == "right")
+            {
+                textX += ComputedWidth - approxWidth;
+            }
+            float textY = ComputedPosition.Y + (ComputedHeight - fs) / 2;
+            Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
+            textRenderer.RenderText(Content, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color);
         }
     }
 }

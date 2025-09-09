@@ -1,10 +1,13 @@
-﻿using System;
+﻿// SiegeEngine.ContextManagement/IRenderContext.cs
+using System;
 
 namespace SiegeEngine.ContextManagement
 {
     public unsafe interface IRenderContext
     {
         AbstractRenderEnums Enums { get; }
+        int ViewportWidth { get; }
+        int ViewportHeight { get; }
         uint GenVertexArray();
         void GenVertexArrays(uint n, out uint arrays);
         uint GenBuffer();
