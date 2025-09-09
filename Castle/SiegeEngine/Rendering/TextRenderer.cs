@@ -2,7 +2,6 @@
 using System.Numerics;
 using System.Collections.Generic;
 using SiegeEngine.ContextManagement;
-
 namespace SiegeEngine.Rendering
 {
     public unsafe class TextRenderer : IDisposable
@@ -48,7 +47,7 @@ namespace SiegeEngine.Rendering
             //Console.WriteLine("TextRenderer: Text VAO and VBO initialized.");
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-            string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :.,!?-+()[]{}x";
+            string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :.,!?-+()[]{}x;#%~*=\"'&/\\|<>@$^`-";
             foreach (char c in characters)
             {
                 var charData = _fontRenderer.GetCharacterData(c);
@@ -84,6 +83,7 @@ namespace SiegeEngine.Rendering
         {
             if (string.IsNullOrEmpty(text))
                 return;
+            text = text.Replace("\n", " ").Replace("\r", " "); // Avoid non-printable
             if (width <= 0 || height <= 0)
             {
                 width = 1280;
@@ -111,6 +111,7 @@ namespace SiegeEngine.Rendering
             for (int i = 0; i < text.Length; i++)
             {
                 char c = text[i];
+                if (c == '\n' || c == '\r') continue; // Skip non-printable
                 if (!_charTextures.ContainsKey(c))
                 {
                     Console.WriteLine($"TextRenderer: Character '{c}' not found, using space as fallback.");

@@ -23,10 +23,9 @@ namespace Trebuchet
         private UISettingsManager _settingsManager;
         private ISteamEngine _steamEngine;
         private EventBus _eventBus;
-        //private MenuSystem _menuSystem;
+        private MenuSystem _menuSystem;
         private IRenderContext _renderContext;
         private IControlContext _controlContext;
-        //private CustomUIController _uiController;
         private InputHandler _inputHandler;
         private ModManager _modManager;
         private ContextManager _contextManager;
@@ -58,7 +57,6 @@ namespace Trebuchet
                         _contextManager = new OpenGLContextManager();
                     }
 
-                    
                     _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, "Citadel Launcher");
                     _window = _contextManager.Window;
                     _renderContext = _contextManager.RenderContext;
@@ -69,15 +67,8 @@ namespace Trebuchet
                     _inputHandler.SetKeyCallback("ui", (key, action) => { });
                     string configPath = _modManager.GetMenuConfigPath();
                     Console.WriteLine($"Launcher: Resolved MainMenu.json path: {configPath}, Exists: {File.Exists(configPath)}");
-                    //_menuSystem = new MenuSystem(_settingsManager, _modManager, null, _glfw, _window, null, null, configPath);
-                    //_uiController = new CustomUIController(_glfw, _renderContext, _window, _settingsManager, _menuSystem, null, _inputHandler);
-                    //_uiController.Initialize();
-                    //_menuSystem.SwitchMenu("MainMenu");
-                    //_menuSystem.OnSettingsSelected += () =>
-                    //{
-                    // Console.WriteLine("Launcher: Settings selected, switching to UserSettingsMenu");
-                    // _menuSystem.SwitchMenu("UserSettingsMenu");
-                    //};
+                    _menuSystem = new MenuSystem(_settingsManager, _modManager, _eventBus, _controlContext, _window, _renderContext, configPath);
+                    _menuSystem.Initialize();
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
                         if (_settingsManager.AllowResize)
@@ -101,8 +92,12 @@ namespace Trebuchet
                         _controlContext.PollEvents();
                         if (_controlContext.WindowShouldClose(_window))
                             _isRunning = false;
-                        //_uiController.Update(deltaTime);
-                        //_uiController.Render();
+                        _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+                        _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+                        _renderContext.Disable(_renderContext.Enums.DepthTest);
+                        _menuSystem.Update(deltaTime);
+                        _menuSystem.Render();
+                        _renderContext.Enable(_renderContext.Enums.DepthTest);
                         _controlContext.SwapBuffers(_window);
                     }
                 }
@@ -114,7 +109,6 @@ namespace Trebuchet
             finally
             {
                 _settingsManager?.SaveSettings();
-                //_uiController?.Dispose();
                 _contextManager?.Terminate();
             }
         }

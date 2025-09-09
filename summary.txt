@@ -1785,6 +1785,15 @@ Folder: Castle
  Calls: None
  - void main()
  Calls: None
+ File: UiShader.cs
+ class: UiShader (Namespace: SiegeEngine.Rendering.Shaders)
+ Inherits: None
+ Dependencies: None
+ Methods:
+ - void main()
+ Calls: None
+ - void main()
+ Calls: None
  File: WaterShader.cs
  class: WaterShader (Namespace: SiegeEngine.Rendering.Shaders)
  Inherits: None
@@ -2029,6 +2038,22 @@ Folder: Castle
  Calls: None
  - void Update(float deltaTime, float deltaTime)
  Calls: None
+ File: MenuSystem.cs
+ class: MenuSystem (Namespace: SiegeEngine.Systems)
+ Inherits: GameSystem
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+ Methods:
+ - void SwitchMenu(string menuName, string menuName)
+ Calls: None
+ - void CollectButtons(HtmlElement elem, HtmlElement elem)
+ Calls: Initialize, Initialize, ShaderProgram, SwitchMenu, TextRenderer, UIQuadRenderer
+ - void Initialize()
+ Calls: GetCursorPos, GetCursorPos, GetMouseButton, HandleClick
+ - void Update(float deltaTime, float deltaTime)
+ Calls: HandleClick, HandleClick
+ - void Render()
+ Calls: None
  File: PlayerControllerSystem.cs
  class: PlayerControllerSystem (Namespace: SiegeEngine.Systems)
  Inherits: GameSystem
@@ -2037,6 +2062,86 @@ Folder: Castle
  Methods:
  - void Update(float deltaTime, float deltaTime)
  Calls: EntityMovedEvent, EntityMovedEvent, GetKey
+ File: ButtonElement.cs
+ class: ButtonElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Numerics, System.Reflection
+ Methods:
+ - constructor ButtonElement()
+ Calls: Render, Render, RenderText
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, Vector2 parentPosition, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
+ Calls: RenderText, RenderText
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
+ Calls: None
+ - void AttachHook(string hookStr, string hookStr)
+ Calls: None
+ File: CssParser.cs
+ class: CssParser (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics
+ Methods:
+ - void Apply(string css, string css, HtmlElement root)
+ Calls: None
+ - void SkipWhitespace(string css, string css, ref int)
+ Calls: None
+ - string ReadUntil(string css, string css, ref int, char stop)
+ Calls: None
+ - string> ParseProperties(string block, string block)
+ Calls: ReadUntil, ReadUntil, SkipWhitespace
+ - void ApplyToElements(HtmlElement root, HtmlElement root, string selector, string> props)
+ Calls: ApplyProperties, ApplyProperties
+ - void ApplyProperties(CssStyle style, CssStyle style, string> props)
+ Calls: ParseColor, ParseColor
+ - Vector4 ParseColor(string color, string color)
+ Calls: None
+ - float ParseSize(string s, string s, float parent)
+ Calls: None
+ File: CssStyle.cs
+ class: CssStyle (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: System.Numerics, System.Numerics
+ Methods:
+ File: DivElement.cs
+ class: DivElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: None
+ Methods:
+ - constructor DivElement()
+ Calls: None
+ File: HtmlElement.cs
+ class: HtmlElement (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+ Methods:
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, Vector2 parentPosition, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
+ Calls: None
+ - float ParseSize(string s, string s, float parent, float vw, float vh)
+ Calls: None
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
+ Calls: None
+ File: TextElement.cs
+ class: TextElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Numerics
+ Methods:
+ - constructor TextElement()
+ Calls: RenderText, RenderText
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, Vector2 parentPosition, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
+ Calls: None
+ File: UIQuadRenderer.cs
+ class: UIQuadRenderer (Namespace: SiegeEngine.Rendering)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering.Shaders, System.Numerics
+ Methods:
+ - constructor UIQuadRenderer(IRenderContext renderContext, IRenderContext renderContext)
+ Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, EnableVertexAttribArray, GenBuffers, GenVertexArrays, ShaderProgram, VertexAttribPointer
+ - void Initialize()
+ Calls: None
+ - void DrawQuad(Vector2 position, Vector2 position, Vector2 size, Vector4 color, Matrix4x4 ortho)
+ Calls: None
  File: MetaFileParser.cs
  class: MetaFileParser (Namespace: SiegeEngine.UnityAssetLoader)
  Inherits: None
@@ -2076,7 +2181,7 @@ Folder: Castle
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
  Methods:
  - void Start(string context, string context)
- Calls: EventBus, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PollEvents, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
+ Calls: Clear, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PollEvents, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
 
