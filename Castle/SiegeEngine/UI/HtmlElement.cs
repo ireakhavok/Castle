@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text.RegularExpressions;
 
 namespace SiegeEngine.UI
 {
@@ -21,6 +22,7 @@ namespace SiegeEngine.UI
         public bool IsHover { get; set; }
         public bool IsActive { get; set; }
         public bool Checked { get; set; }
+        public bool IsTarget { get; set; }
 
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
         {
@@ -39,21 +41,11 @@ namespace SiegeEngine.UI
             if (float.IsNaN(left)) left = 0;
             float top = ParseSize(Style.TopStr, parentHeight, viewportWidth, viewportHeight);
             if (float.IsNaN(top)) top = 0;
-            float maxW = ParseSize(Style.MaxWidthStr, parentWidth, viewportWidth, viewportHeight);
             float w = ParseSize(Style.WidthStr, parentWidth, viewportWidth, viewportHeight);
             float h = ParseSize(Style.HeightStr, parentHeight, viewportWidth, viewportHeight);
             Vector4 pad = ParsePadding(Style.PaddingStr, parentWidth, viewportWidth, viewportHeight);
-            Vector4 margin = ParsePadding(Style.MarginStr, parentWidth, viewportWidth, viewportHeight);
-            float borderW = Style.BorderWidth;
-            float innerParentWidth = parentWidth - pad.W - pad.Y - margin.W - margin.Y - borderW * 2;
-            float innerParentHeight = parentHeight - pad.X - pad.Z - margin.X - margin.Z - borderW * 2;
-            float outerW = w;
-            float outerH = h;
-            if (Style.BoxSizing == "border-box")
-            {
-                if (!float.IsNaN(w)) innerParentWidth = w - pad.W - pad.Y - borderW * 2;
-                if (!float.IsNaN(h)) innerParentHeight = h - pad.X - pad.Z - borderW * 2;
-            }
+            float innerParentWidth = parentWidth - pad.W - pad.Y;
+            float innerParentHeight = parentHeight - pad.X - pad.Z;
             if (float.IsNaN(w) || w < 0)
             {
                 w = GetAutoWidth(innerParentWidth, viewportWidth, viewportHeight, textRenderer);
@@ -62,16 +54,15 @@ namespace SiegeEngine.UI
             {
                 h = GetAutoHeight(innerParentHeight, viewportWidth, viewportHeight, textRenderer);
             }
-            if (!float.IsNaN(maxW)) w = Math.Min(w, maxW);
-            ComputedWidth = Style.BoxSizing == "border-box" ? outerW : w + pad.W + pad.Y + borderW * 2 + margin.W + margin.Y;
-            ComputedHeight = Style.BoxSizing == "border-box" ? outerH : h + pad.X + pad.Z + borderW * 2 + margin.X + margin.Z;
+            ComputedWidth = w;
+            ComputedHeight = h;
             if (Style.Position == "absolute")
             {
-                ComputedPosition = new Vector2(left + margin.W, top + margin.X);
+                ComputedPosition = new Vector2(left, top);
             }
             else
             {
-                ComputedPosition = new Vector2(parentPositionX + left + margin.W, parentPositionY + top + margin.X);
+                ComputedPosition = new Vector2(parentPositionX + left + pad.W, parentPositionY + top + pad.X);
             }
             // Layout children
             if (Children.Count > 0)
@@ -90,8 +81,6 @@ namespace SiegeEngine.UI
         private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             bool isRow = Style.FlexDirection == "row";
-            float gap = ParseSize(Style.GapStr, 0, viewportWidth, viewportHeight);
-            if (float.IsNaN(gap)) gap = 0;
             float availableMain = isRow ? ComputedWidth : ComputedHeight;
             float availableCross = isRow ? ComputedHeight : ComputedWidth;
             // Calculate base sizes
@@ -104,7 +93,6 @@ namespace SiegeEngine.UI
                 childBaseMain.Add(baseMain);
                 totalBaseMain += baseMain;
             }
-            totalBaseMain += gap * (Children.Count - 1);
             // Simple distribution for now, no grow/shrink
             float scale = 1.0f;
             if (totalBaseMain > availableMain)
@@ -112,8 +100,8 @@ namespace SiegeEngine.UI
                 scale = availableMain / totalBaseMain;
             }
             float childPosMain = 0;
-            float totalMain = (childBaseMain.Sum() + gap * (Children.Count - 1)) * scale;
-            float spacing = gap * scale;
+            float totalMain = childBaseMain.Sum() * scale;
+            float spacing = 0;
             if (Style.JustifyContent == "center")
             {
                 childPosMain = (availableMain - totalMain) / 2;
@@ -122,7 +110,7 @@ namespace SiegeEngine.UI
             {
                 if (Children.Count > 1)
                 {
-                    spacing = (availableMain - childBaseMain.Sum() * scale) / (Children.Count - 1);
+                    spacing = (availableMain - totalMain) / (Children.Count - 1);
                 }
             } // add more
             for (int j = 0; j < Children.Count; j++)
@@ -176,8 +164,6 @@ namespace SiegeEngine.UI
             float width = 0;
             float height = 0;
             Vector4 pad = ParsePadding(Style.PaddingStr, 0, viewportWidth, viewportHeight);
-            Vector4 margin = ParsePadding(Style.MarginStr, 0, viewportWidth, viewportHeight);
-            float borderW = Style.BorderWidth;
             if (Children.Count == 0)
             {
                 if (this is TextElement text)
@@ -190,8 +176,6 @@ namespace SiegeEngine.UI
             else
             {
                 bool isRow = Style.FlexDirection == "row";
-                float gap = ParseSize(Style.GapStr, 0, viewportWidth, viewportHeight);
-                if (float.IsNaN(gap)) gap = 0;
                 foreach (var child in Children)
                 {
                     var childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
@@ -214,20 +198,9 @@ namespace SiegeEngine.UI
                         width = Math.Max(width, childSize.X);
                     }
                 }
-                if (Style.Display == "flex")
-                {
-                    if (isRow)
-                    {
-                        width += gap * (Children.Count - 1);
-                    }
-                    else
-                    {
-                        height += gap * (Children.Count - 1);
-                    }
-                }
             }
-            width += pad.W + pad.Y + borderW * 2 + margin.W + margin.Y;
-            height += pad.X + pad.Z + borderW * 2 + margin.X + margin.Z;
+            width += pad.W + pad.Y;
+            height += pad.X + pad.Z;
             return new Vector2(width, height);
         }
 
@@ -235,13 +208,13 @@ namespace SiegeEngine.UI
         {
             if (Style.Display == "none") return;
             CssStyle effectiveStyle = Style;
-            if (IsHover && PseudoStyles.TryGetValue("hover", out var hoverStyle))
+            if (IsHover && PseudoStyles.TryGetValue("hover", out CssStyle hover))
             {
-                effectiveStyle = MergeStyles(Style, hoverStyle);
+                effectiveStyle = hover;
             }
-            if (IsActive && PseudoStyles.TryGetValue("active", out var activeStyle))
+            if (IsActive && PseudoStyles.TryGetValue("active", out CssStyle active))
             {
-                effectiveStyle = MergeStyles(effectiveStyle, activeStyle);
+                effectiveStyle = active;
             }
             if (effectiveStyle.BackgroundColor != Vector4.Zero)
             {
@@ -266,68 +239,6 @@ namespace SiegeEngine.UI
             {
                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
             }
-        }
-
-        private CssStyle MergeStyles(CssStyle baseStyle, CssStyle overrideStyle)
-        {
-            CssStyle merged = new CssStyle();
-            // Copy base
-            merged.Position = baseStyle.Position;
-            merged.LeftStr = baseStyle.LeftStr;
-            merged.TopStr = baseStyle.TopStr;
-            merged.WidthStr = baseStyle.WidthStr;
-            merged.HeightStr = baseStyle.HeightStr;
-            merged.Background = baseStyle.Background;
-            merged.BackgroundColor = baseStyle.BackgroundColor;
-            merged.Color = baseStyle.Color;
-            merged.TextColor = baseStyle.TextColor;
-            merged.FontSizeStr = baseStyle.FontSizeStr;
-            merged.FontSize = baseStyle.FontSize;
-            merged.Display = baseStyle.Display;
-            merged.FlexDirection = baseStyle.FlexDirection;
-            merged.AlignItems = baseStyle.AlignItems;
-            merged.JustifyContent = baseStyle.JustifyContent;
-            merged.PaddingStr = baseStyle.PaddingStr;
-            merged.MarginStr = baseStyle.MarginStr;
-            merged.GapStr = baseStyle.GapStr;
-            merged.TextAlign = baseStyle.TextAlign;
-            merged.WhiteSpace = baseStyle.WhiteSpace;
-            merged.TextTransform = baseStyle.TextTransform;
-            merged.BorderWidthStr = baseStyle.BorderWidthStr;
-            merged.BorderWidth = baseStyle.BorderWidth;
-            merged.BorderStyle = baseStyle.BorderStyle;
-            merged.BorderColor = baseStyle.BorderColor;
-            merged.BoxSizing = baseStyle.BoxSizing;
-            merged.MaxWidthStr = baseStyle.MaxWidthStr;
-
-            // Override with overrideStyle if set
-            if (!string.IsNullOrEmpty(overrideStyle.Position)) merged.Position = overrideStyle.Position;
-            if (!string.IsNullOrEmpty(overrideStyle.LeftStr)) merged.LeftStr = overrideStyle.LeftStr;
-            if (!string.IsNullOrEmpty(overrideStyle.TopStr)) merged.TopStr = overrideStyle.TopStr;
-            if (!string.IsNullOrEmpty(overrideStyle.WidthStr)) merged.WidthStr = overrideStyle.WidthStr;
-            if (!string.IsNullOrEmpty(overrideStyle.HeightStr)) merged.HeightStr = overrideStyle.HeightStr;
-            if (!string.IsNullOrEmpty(overrideStyle.Background)) merged.Background = overrideStyle.Background;
-            if (overrideStyle.BackgroundColor != Vector4.Zero) merged.BackgroundColor = overrideStyle.BackgroundColor;
-            if (!string.IsNullOrEmpty(overrideStyle.Color)) merged.Color = overrideStyle.Color;
-            if (overrideStyle.TextColor != Vector4.Zero) merged.TextColor = overrideStyle.TextColor;
-            if (!string.IsNullOrEmpty(overrideStyle.FontSizeStr)) merged.FontSizeStr = overrideStyle.FontSizeStr;
-            if (!string.IsNullOrEmpty(overrideStyle.Display)) merged.Display = overrideStyle.Display;
-            if (!string.IsNullOrEmpty(overrideStyle.FlexDirection)) merged.FlexDirection = overrideStyle.FlexDirection;
-            if (!string.IsNullOrEmpty(overrideStyle.AlignItems)) merged.AlignItems = overrideStyle.AlignItems;
-            if (!string.IsNullOrEmpty(overrideStyle.JustifyContent)) merged.JustifyContent = overrideStyle.JustifyContent;
-            if (!string.IsNullOrEmpty(overrideStyle.PaddingStr)) merged.PaddingStr = overrideStyle.PaddingStr;
-            if (!string.IsNullOrEmpty(overrideStyle.MarginStr)) merged.MarginStr = overrideStyle.MarginStr;
-            if (!string.IsNullOrEmpty(overrideStyle.GapStr)) merged.GapStr = overrideStyle.GapStr;
-            if (!string.IsNullOrEmpty(overrideStyle.TextAlign)) merged.TextAlign = overrideStyle.TextAlign;
-            if (!string.IsNullOrEmpty(overrideStyle.WhiteSpace)) merged.WhiteSpace = overrideStyle.WhiteSpace;
-            if (!string.IsNullOrEmpty(overrideStyle.TextTransform)) merged.TextTransform = overrideStyle.TextTransform;
-            if (!string.IsNullOrEmpty(overrideStyle.BorderWidthStr)) merged.BorderWidthStr = overrideStyle.BorderWidthStr;
-            if (!string.IsNullOrEmpty(overrideStyle.BorderStyle)) merged.BorderStyle = overrideStyle.BorderStyle;
-            if (overrideStyle.BorderColor != Vector4.Zero) merged.BorderColor = overrideStyle.BorderColor;
-            if (!string.IsNullOrEmpty(overrideStyle.BoxSizing)) merged.BoxSizing = overrideStyle.BoxSizing;
-            if (!string.IsNullOrEmpty(overrideStyle.MaxWidthStr)) merged.MaxWidthStr = overrideStyle.MaxWidthStr;
-
-            return merged;
         }
 
         public float ParseSize(string s, float parent, float vw, float vh)
@@ -355,11 +266,6 @@ namespace SiegeEngine.UI
             {
                 value = float.Parse(s.Replace("px", ""));
                 return value;
-            }
-            else if (s.EndsWith("em"))
-            {
-                value = float.Parse(s.Replace("em", ""));
-                return value * parent;
             }
             return float.NaN;
         }
