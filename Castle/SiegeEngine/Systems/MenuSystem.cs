@@ -158,20 +158,6 @@ namespace SiegeEngine.Systems
             return list;
         }
 
-        private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
-        {
-            List<HtmlElement> list = new List<HtmlElement>();
-            Queue<HtmlElement> queue = new Queue<HtmlElement>();
-            queue.Enqueue(root);
-            while (queue.Count > 0)
-            {
-                var elem = queue.Dequeue();
-                if (elem.Tag.ToLower() == tag.ToLower()) list.Add(elem);
-                foreach (var child in elem.Children) queue.Enqueue(child);
-            }
-            return list;
-        }
-
         private void CollectClickables(HtmlElement elem)
         {
             string classes = elem.Attributes.GetValueOrDefault("class", "");
@@ -181,6 +167,7 @@ namespace SiegeEngine.Systems
             }
             foreach (var child in elem.Children)
                 CollectClickables(child);
+        
         }
 
         public void Initialize()
@@ -195,6 +182,7 @@ namespace SiegeEngine.Systems
         public override void Update(float deltaTime)
         {
             if (!_initialized) return;
+            // Handle inputs
             Vector2 mousePos = new Vector2();
             _controlContext.GetCursorPos(_window, out double x, out double y);
             mousePos = new Vector2((float)x, (float)y);
@@ -230,10 +218,8 @@ namespace SiegeEngine.Systems
                     string targetId = href.Substring(1);
                     var target = FindElementById(_currentMenu, targetId);
                     if (target != null) target.Style.Display = "flex";
-                    var main = FindElementById(_currentMenu, "main");
-                    if (main != null) main.Style.Display = "none";
-                    var settings = FindElementById(_currentMenu, "settings");
-                    if (settings != null) settings.Style.Display = "flex";
+                    var currentScreen = FindElementsByClass(_currentMenu, "screen").FirstOrDefault(s => s.Style.Display != "none");
+                    if (currentScreen != null) currentScreen.Style.Display = "none";
                 }
             }
             else if (elem.Tag == "label")
@@ -254,7 +240,7 @@ namespace SiegeEngine.Systems
                             var contents = FindElementsByClass(_currentMenu, "content");
                             foreach (var c in contents) c.Style.Display = "none";
                             var contentClass = input.Attributes.GetValueOrDefault("id", "");
-                            var content = contents.FirstOrDefault(c => c.Attributes.GetValueOrDefault("class", "").Contains(contentClass));
+                            var content = contents.FirstOrDefault(c => c.Attributes["class"].Contains(contentClass));
                             if (content != null) content.Style.Display = "block";
                         }
                         else if (type == "checkbox")
@@ -273,6 +259,20 @@ namespace SiegeEngine.Systems
                 }
             }
             // Add for select if needed
+        }
+
+        private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
+        {
+            List<HtmlElement> list = new List<HtmlElement>();
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                if (elem.Tag.ToLower() == tag.ToLower()) list.Add(elem);
+                foreach (var child in elem.Children) queue.Enqueue(child);
+            }
+            return list;
         }
 
         public void Render()

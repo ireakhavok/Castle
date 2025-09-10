@@ -169,9 +169,15 @@ namespace SiegeEngine.UI
                     style.BorderColor = ParseColor(parts[2]);
                 }
             }
-            if (props.TryGetValue("box-sizing", out string bs))
-                style.BoxSizing = bs;
-            // Ignore transition, cursor, appearance, etc.
+            if (props.TryGetValue("border-width", out string bw))
+                style.BorderWidthStr = bw;
+            if (props.TryGetValue("border-style", out string bs))
+                style.BorderStyle = bs;
+            if (props.TryGetValue("border-color", out string bc))
+                style.BorderColor = ParseColor(bc);
+            if (props.TryGetValue("box-sizing", out string boxs))
+                style.BoxSizing = boxs;
+            // Ignore overflow, etc.
         }
 
         private Vector4 ParseColor(string color)
@@ -214,13 +220,6 @@ namespace SiegeEngine.UI
                     int r = int.Parse(color.Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
                     int g = int.Parse(color.Substring(2, 2), System.Globalization.NumberStyles.HexNumber);
                     int b = int.Parse(color.Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
-                    return new Vector4(r / 255f, g / 255f, b / 255f, 1f);
-                }
-                else if (color.Length == 3)
-                {
-                    int r = int.Parse(color.Substring(0, 1) + color.Substring(0, 1), System.Globalization.NumberStyles.HexNumber);
-                    int g = int.Parse(color.Substring(1, 1) + color.Substring(1, 1), System.Globalization.NumberStyles.HexNumber);
-                    int b = int.Parse(color.Substring(2, 1) + color.Substring(2, 1), System.Globalization.NumberStyles.HexNumber);
                     return new Vector4(r / 255f, g / 255f, b / 255f, 1f);
                 }
             }
