@@ -2,6 +2,7 @@
 using System.Numerics;
 using System.Collections.Generic;
 using SiegeEngine.ContextManagement;
+
 namespace SiegeEngine.Rendering
 {
     public unsafe class TextRenderer : IDisposable
@@ -11,14 +12,18 @@ namespace SiegeEngine.Rendering
         private uint _textVao, _textVbo;
         private ShaderProgram _shaderProgram;
         private Dictionary<char, uint> _charTextures;
+        private Dictionary<char, CharacterData> _charData;
         private SystemFontRenderer _fontRenderer;
+
         public TextRenderer(IRenderContext renderContext, IntPtr window)
         {
             _renderContext = renderContext;
             _window = window;
             _charTextures = new Dictionary<char, uint>();
+            _charData = new Dictionary<char, CharacterData>();
             _fontRenderer = new SystemFontRenderer("Arial");
         }
+
         public void Initialize(ShaderProgram shaderProgram)
         {
             //Console.WriteLine("TextRenderer: Initializing with font 'Arial', size 12.0f");
@@ -75,10 +80,28 @@ namespace SiegeEngine.Rendering
                 _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
                 _charTextures[c] = texture;
+                _charData[c] = charData;
                 //Console.WriteLine($"TextRenderer: Loaded texture for character '{c}': {texture}");
             }
             //Console.WriteLine($"TextRenderer: Initialization complete. Loaded {_charTextures.Count} characters.");
         }
+
+        public Vector2 GetTextSize(string text, float fontSize)
+        {
+            float scale = fontSize / 12.0f;
+            float width = 0;
+            float height = 0;
+            foreach (char c in text)
+            {
+                if (_charData.TryGetValue(c, out var data))
+                {
+                    width += data.Width * scale;
+                    height = Math.Max(height, data.Height * scale);
+                }
+            }
+            return new Vector2(width, height);
+        }
+
         public void RenderText(string text, float startX, float startY, int width, int height, float fontSize = 12.0f, Vector4? textColor = null)
         {
             if (string.IsNullOrEmpty(text))
@@ -103,6 +126,7 @@ namespace SiegeEngine.Rendering
             // Render white text
             RenderTextPass(text, startX, startY, width, height, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
         }
+
         private void RenderTextPass(string text, float startX, float startY, int width, int height, float fontSize, Vector4 color)
         {
             float currentX = startX;
@@ -159,6 +183,7 @@ namespace SiegeEngine.Rendering
                 //Console.WriteLine($"TextRenderer: Rendered char '{c}' at ({charLeft:F3}, {charTop:F3}) to ({charRight:F3}, {charBottom:F3}), Texture: {_charTextures[c]}, Unit: Texture0");
             }
         }
+
         public void Dispose()
         {
             _renderContext.DeleteVertexArray(_textVao);

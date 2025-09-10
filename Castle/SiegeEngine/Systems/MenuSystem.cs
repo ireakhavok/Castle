@@ -1,5 +1,4 @@
-﻿// SiegeEngine.Systems/MenuSystem.cs
-using SiegeEngine.ContextManagement;
+﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Managers;
@@ -30,6 +29,7 @@ namespace SiegeEngine.Systems
         private HtmlElement _currentMenu;
         private List<ButtonElement> _buttons = new List<ButtonElement>();
         private bool _initialized;
+
         public MenuSystem(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath) : base(null)
         {
             _settingsManager = settingsManager;
@@ -40,6 +40,7 @@ namespace SiegeEngine.Systems
             _renderContext = renderContext;
             _configPath = configPath;
         }
+
         public void SwitchMenu(string menuName)
         {
             string configDir = Path.GetDirectoryName(_configPath);
@@ -82,6 +83,7 @@ namespace SiegeEngine.Systems
                 CollectButtons(_currentMenu);
             }
         }
+
         private HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root.Attributes.GetValueOrDefault("id", "") == id) return root;
@@ -92,6 +94,7 @@ namespace SiegeEngine.Systems
             }
             return null;
         }
+
         private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             List<HtmlElement> list = new List<HtmlElement>();
@@ -106,6 +109,7 @@ namespace SiegeEngine.Systems
             }
             return list;
         }
+
         private void CollectButtons(HtmlElement elem)
         {
             if (elem is ButtonElement btn)
@@ -113,6 +117,7 @@ namespace SiegeEngine.Systems
             foreach (var child in elem.Children)
                 CollectButtons(child);
         }
+
         public void Initialize()
         {
             _textRenderer = new TextRenderer(_renderContext, _window);
@@ -121,6 +126,7 @@ namespace SiegeEngine.Systems
             SwitchMenu("MainMenu");
             _initialized = true;
         }
+
         public override void Update(float deltaTime)
         {
             if (!_initialized) return;
@@ -137,12 +143,13 @@ namespace SiegeEngine.Systems
                 }
             }
         }
+
         public void Render()
         {
             if (!_initialized || _currentMenu == null) return;
             float vw = _settingsManager.WindowWidth;
             float vh = _settingsManager.WindowHeight;
-            _currentMenu.ComputeLayout(0, 0, vw, vh, vw, vh);
+            _currentMenu.ComputeLayout(0, 0, vw, vh, vw, vh, _textRenderer);
             _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, vw, vh);
         }
     }

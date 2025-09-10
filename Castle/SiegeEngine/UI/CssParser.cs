@@ -1,5 +1,4 @@
-﻿// SiegeEngine.UI/CssParser.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -23,11 +22,13 @@ namespace SiegeEngine.UI
                 ApplyToElements(root, selector, props);
             }
         }
+
         private void SkipWhitespace(string css, ref int i)
         {
             while (i < css.Length && char.IsWhiteSpace(css[i]))
                 i++;
         }
+
         private string ReadUntil(string css, ref int i, char stop)
         {
             string result = "";
@@ -38,6 +39,7 @@ namespace SiegeEngine.UI
             }
             return result;
         }
+
         private Dictionary<string, string> ParseProperties(string block)
         {
             Dictionary<string, string> props = new Dictionary<string, string>();
@@ -54,6 +56,7 @@ namespace SiegeEngine.UI
             }
             return props;
         }
+
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props)
         {
             bool isId = selector.StartsWith('#');
@@ -88,6 +91,7 @@ namespace SiegeEngine.UI
                 }
             }
         }
+
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
             if (props.TryGetValue("position", out string pos))
@@ -113,7 +117,6 @@ namespace SiegeEngine.UI
             if (props.TryGetValue("font-size", out string fs))
             {
                 style.FontSizeStr = fs;
-                style.FontSize = ParseSize(fs, 0); // For font, no parent
             }
             if (props.TryGetValue("display", out string disp))
                 style.Display = disp;
@@ -129,8 +132,11 @@ namespace SiegeEngine.UI
             }
             if (props.TryGetValue("text-align", out string ta))
                 style.TextAlign = ta;
+            if (props.TryGetValue("white-space", out string ws))
+                style.WhiteSpace = ws;
             // Ignore overflow, etc.
         }
+
         private Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
@@ -200,32 +206,6 @@ namespace SiegeEngine.UI
                 }
             }
             return Vector4.Zero;
-        }
-        private float ParseSize(string s, float parent)
-        {
-            if (string.IsNullOrEmpty(s) || s == "auto") return float.NaN;
-            s = s.Trim();
-            if (s.EndsWith("%"))
-            {
-                return float.Parse(s.Replace("%", "")) / 100 * parent;
-            }
-            else if (s.EndsWith("vh"))
-            {
-                // vh relative to viewport height
-                return float.Parse(s.Replace("vh", "")) / 100 * 1080; // Assume height, replace with actual
-            }
-            else if (s.EndsWith("vw"))
-            {
-                return float.Parse(s.Replace("vw", "")) / 100 * 1920; // Assume width
-            }
-            else if (s.EndsWith("px"))
-            {
-                return float.Parse(s.Replace("px", ""));
-            }
-            else
-            {
-                return float.Parse(s);
-            }
         }
     }
 }

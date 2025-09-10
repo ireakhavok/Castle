@@ -1,5 +1,4 @@
-﻿// SiegeEngine.UI/HtmlElement.cs
-using SiegeEngine.ContextManagement;
+﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering;
 using System;
 using System.Collections.Generic;
@@ -18,7 +17,8 @@ namespace SiegeEngine.UI
         public Vector2 ComputedPosition { get; set; }
         public float ComputedWidth { get; set; }
         public float ComputedHeight { get; set; }
-        public void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
+
+        public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
         {
             if (Style.Display == "none")
             {
@@ -26,6 +26,13 @@ namespace SiegeEngine.UI
                 ComputedHeight = 0;
                 return;
             }
+
+            float parentFs = 16f;
+            if (Parent != null) parentFs = Parent.Style.FontSize;
+            float fs = ParseSize(Style.FontSizeStr, parentFs, viewportWidth, viewportHeight);
+            if (float.IsNaN(fs)) fs = parentFs;
+            Style.FontSize = fs;
+
             float left = ParseSize(Style.LeftStr, parentWidth, viewportWidth, viewportHeight);
             if (float.IsNaN(left)) left = 0;
             float top = ParseSize(Style.TopStr, parentHeight, viewportWidth, viewportHeight);
@@ -37,11 +44,11 @@ namespace SiegeEngine.UI
             float innerParentHeight = parentHeight - pad.X - pad.Z;
             if (float.IsNaN(w) || w < 0)
             {
-                w = GetAutoWidth(innerParentWidth, viewportWidth, viewportHeight);
+                w = GetAutoWidth(innerParentWidth, viewportWidth, viewportHeight, textRenderer);
             }
             if (float.IsNaN(h) || h < 0)
             {
-                h = GetAutoHeight(innerParentHeight, viewportWidth, viewportHeight);
+                h = GetAutoHeight(innerParentHeight, viewportWidth, viewportHeight, textRenderer);
             }
             ComputedWidth = w;
             ComputedHeight = h;
@@ -58,15 +65,16 @@ namespace SiegeEngine.UI
             {
                 if (Style.Display == "flex")
                 {
-                    LayoutFlexChildren(viewportWidth, viewportHeight);
+                    LayoutFlexChildren(viewportWidth, viewportHeight, textRenderer);
                 }
                 else // block
                 {
-                    LayoutBlockChildren(viewportWidth, viewportHeight);
+                    LayoutBlockChildren(viewportWidth, viewportHeight, textRenderer);
                 }
             }
         }
-        private void LayoutFlexChildren(float viewportWidth, float viewportHeight)
+
+        private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer)
         {
             bool isRow = Style.FlexDirection == "row";
             float availableMain = isRow ? ComputedWidth : ComputedHeight;
@@ -77,7 +85,7 @@ namespace SiegeEngine.UI
             foreach (var child in Children)
             {
                 float childW = ParseSize(isRow ? child.Style.WidthStr : child.Style.HeightStr, availableMain, viewportWidth, viewportHeight);
-                float baseMain = float.IsNaN(childW) ? (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight).Y) : childW;
+                float baseMain = float.IsNaN(childW) ? (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).Y) : childW;
                 childBaseMain.Add(baseMain);
                 totalBaseMain += baseMain;
             }
@@ -110,7 +118,7 @@ namespace SiegeEngine.UI
                 var child = Children[j];
                 float childMain = childBaseMain[j] * scale;
                 float childCross = ParseSize(isRow ? child.Style.HeightStr : child.Style.WidthStr, availableCross, viewportWidth, viewportHeight);
-                if (float.IsNaN(childCross)) childCross = isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight).Y : child.ComputeIntrinsicSize(viewportWidth, viewportHeight).X;
+                if (float.IsNaN(childCross)) childCross = isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).Y : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).X;
                 float offsetCross = 0;
                 if (Style.AlignItems == "center")
                 {
@@ -118,36 +126,40 @@ namespace SiegeEngine.UI
                 }
                 float childPosX = ComputedPosition.X + (isRow ? childPosMain : offsetCross);
                 float childPosY = ComputedPosition.Y + (isRow ? offsetCross : childPosMain);
-                child.ComputeLayout(childPosX, childPosY, isRow ? childMain : childCross, isRow ? childCross : childMain, viewportWidth, viewportHeight);
+                child.ComputeLayout(childPosX, childPosY, isRow ? childMain : childCross, isRow ? childCross : childMain, viewportWidth, viewportHeight, textRenderer);
                 childPosMain += childMain + spacing;
             }
         }
-        private void LayoutBlockChildren(float viewportWidth, float viewportHeight)
+
+        private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer)
         {
             float currentY = 0;
             foreach (var child in Children)
             {
                 float childW = ParseSize(child.Style.WidthStr, ComputedWidth, viewportWidth, viewportHeight);
-                if (float.IsNaN(childW)) childW = GetAutoWidth(ComputedWidth, viewportWidth, viewportHeight);
+                if (float.IsNaN(childW)) childW = GetAutoWidth(ComputedWidth, viewportWidth, viewportHeight, textRenderer);
                 float childH = ParseSize(child.Style.HeightStr, ComputedHeight - currentY, viewportWidth, viewportHeight);
-                if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight).Y;
-                child.ComputeLayout(ComputedPosition.X, ComputedPosition.Y + currentY, childW, childH, viewportWidth, viewportHeight);
+                if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).Y;
+                child.ComputeLayout(ComputedPosition.X, ComputedPosition.Y + currentY, childW, childH, viewportWidth, viewportHeight, textRenderer);
                 currentY += child.ComputedHeight;
             }
         }
-        private float GetAutoWidth(float parentWidth, float viewportWidth, float viewportHeight)
+
+        private float GetAutoWidth(float parentWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
         {
             if (Style.Display == "block" || Style.Display == "flex")
             {
                 return parentWidth;
             }
-            return ComputeIntrinsicSize(viewportWidth, viewportHeight).X;
+            return ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).X;
         }
-        private float GetAutoHeight(float parentHeight, float viewportWidth, float viewportHeight)
+
+        private float GetAutoHeight(float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
         {
-            return ComputeIntrinsicSize(viewportWidth, viewportHeight).Y;
+            return ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).Y;
         }
-        private Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight)
+
+        protected Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer)
         {
             float width = 0;
             float height = 0;
@@ -157,8 +169,9 @@ namespace SiegeEngine.UI
                 if (this is TextElement text)
                 {
                     float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
-                    width = (text.Content?.Length ?? 0) * fs * 0.6f;
-                    height = fs * 1.2f;
+                    var size = textRenderer.GetTextSize(text.Content, fs);
+                    width = size.X;
+                    height = size.Y;
                 }
             }
             else
@@ -166,7 +179,7 @@ namespace SiegeEngine.UI
                 bool isRow = Style.FlexDirection == "row";
                 foreach (var child in Children)
                 {
-                    var childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight);
+                    var childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer);
                     if (Style.Display == "flex")
                     {
                         if (isRow)
@@ -191,6 +204,7 @@ namespace SiegeEngine.UI
             height += pad.X + pad.Z;
             return new Vector2(width, height);
         }
+
         public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return;
@@ -204,6 +218,7 @@ namespace SiegeEngine.UI
                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
             }
         }
+
         protected float ParseSize(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s) || s == "auto") return float.NaN;
@@ -230,8 +245,14 @@ namespace SiegeEngine.UI
                 value = float.Parse(s.Replace("px", ""));
                 return value;
             }
+            else if (s.EndsWith("em"))
+            {
+                value = float.Parse(s.Replace("em", ""));
+                return value * parent;
+            }
             return float.NaN;
         }
+
         protected Vector4 ParsePadding(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s)) return Vector4.Zero;
@@ -252,6 +273,7 @@ namespace SiegeEngine.UI
             float left = GetVal(3, right);
             return new Vector4(top, right, bottom, left);
         }
+
         public virtual bool HandleClick(Vector2 mousePos)
         {
             if (Style.Display == "none") return false;

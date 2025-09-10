@@ -730,6 +730,8 @@ Folder: Castle
  - uint GenVertexArray()
  Calls: GenBuffers, GenBuffers
  - uint GenBuffer()
+ Calls: Viewport, Viewport
+ - void Viewport(int x, int x, int y, uint width, uint height)
  Calls: None
  File: VulkanNative.cs
  class: VulkanNative (Namespace: SiegeEngine.ContextManagement)
@@ -1004,7 +1006,7 @@ Folder: Castle
  - constructor EventBus(SteamEngine steamEngine, SteamEngine steamEngine)
  Calls: None
  - void ProcessNetworkMessage(byte[] data, byte[] data)
- Calls: KeyInputEvent, KeyInputEvent, MouseInputEvent
+ Calls: KeyInputEvent, KeyInputEvent, MouseInputEvent, Parse
  File: EventBus.cs
  class: LobbyCreatedEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
@@ -2046,6 +2048,10 @@ Folder: Castle
  Methods:
  - void SwitchMenu(string menuName, string menuName)
  Calls: None
+ - HtmlElement FindElementById(HtmlElement root, HtmlElement root, string id)
+ Calls: FindElementById, FindElementById
+ - List<HtmlElement> FindElementsByClass(HtmlElement root, HtmlElement root, string className)
+ Calls: None
  - void CollectButtons(HtmlElement elem, HtmlElement elem)
  Calls: Initialize, Initialize, ShaderProgram, SwitchMenu, TextRenderer, UIQuadRenderer
  - void Initialize()
@@ -2070,7 +2076,7 @@ Folder: Castle
  Methods:
  - constructor ButtonElement()
  Calls: Render, Render, RenderText
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, Vector2 parentPosition, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: RenderText, RenderText
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
  Calls: None
@@ -2094,9 +2100,11 @@ Folder: Castle
  - void ApplyProperties(CssStyle style, CssStyle style, string> props)
  Calls: ParseColor, ParseColor
  - Vector4 ParseColor(string color, string color)
- Calls: None
+ Calls: ParseColor, ParseColor
+ - return ParseColor()
+ Calls: Parse, Parse
  - float ParseSize(string s, string s, float parent)
- Calls: None
+ Calls: Parse, Parse
  File: CssStyle.cs
  class: CssStyle (Namespace: SiegeEngine.UI)
  Inherits: None
@@ -2115,11 +2123,34 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
  Methods:
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, Vector2 parentPosition, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
  Calls: None
+ - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight)
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseSize
+ - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight)
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, GetAutoWidth, ParseSize
+ - float GetAutoWidth(float parentWidth, float parentWidth, float viewportWidth, float viewportHeight)
+ Calls: None
+ - float GetAutoHeight(float parentHeight, float parentHeight, float viewportWidth, float viewportHeight)
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParsePadding
+ - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight)
+ Calls: None
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ Calls: DrawQuad, DrawQuad
  - float ParseSize(string s, string s, float parent, float vw, float vh)
+ Calls: Parse, Parse
+ - Vector4 ParsePadding(string s, string s, float parent, float vw, float vh)
  Calls: None
+ - float GetVal(int index, int index, float defaultVal)
+ Calls: ParseSize, ParseSize
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
+ Calls: HandleClick, HandleClick
+ File: HtmlParser.cs
+ class: HtmlParser (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.IO
+ Methods:
+ - HtmlElement Parse(string html, string html)
  Calls: None
  File: TextElement.cs
  class: TextElement (Namespace: SiegeEngine.UI)
@@ -2129,7 +2160,7 @@ Folder: Castle
  Methods:
  - constructor TextElement()
  Calls: RenderText, RenderText
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, Vector2 parentPosition, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: None
  File: UIQuadRenderer.cs
  class: UIQuadRenderer (Namespace: SiegeEngine.Rendering)
