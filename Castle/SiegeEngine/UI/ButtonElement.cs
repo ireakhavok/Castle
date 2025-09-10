@@ -1,5 +1,4 @@
-﻿// SiegeEngine.UI/ButtonElement.cs
-using SiegeEngine.ContextManagement;
+﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering;
 using System;
 using System.Numerics;
@@ -10,10 +9,17 @@ namespace SiegeEngine.UI
     public class ButtonElement : HtmlElement
     {
         public Action OnClick { get; set; }
+
         public ButtonElement()
         {
             Tag = "button";
         }
+
+        public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+        {
+            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs);
+        }
+
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
@@ -21,12 +27,13 @@ namespace SiegeEngine.UI
             if (textChild != null)
             {
                 float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
-                float approxTextWidth = textChild.Content.Length * fs * 0.6f;
+                float approxTextWidth = textRenderer.GetTextSize(textChild.Content, fs).X;
                 float textX = ComputedPosition.X + (ComputedWidth - approxTextWidth) / 2;
                 float textY = ComputedPosition.Y + (ComputedHeight - fs) / 2;
                 textRenderer.RenderText(textChild.Content, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, Style.TextColor);
             }
         }
+
         public override bool HandleClick(Vector2 mousePos)
         {
             if (mousePos.X >= ComputedPosition.X && mousePos.X <= ComputedPosition.X + ComputedWidth &&
@@ -37,6 +44,7 @@ namespace SiegeEngine.UI
             }
             return false;
         }
+
         public void AttachHook(string hookStr)
         {
             var parts = hookStr.Split('.');

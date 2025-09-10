@@ -1,5 +1,4 @@
-﻿// SiegeEngine.UI/HtmlParser.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -60,6 +59,10 @@ namespace SiegeEngine.UI
                         else if (lowerTag == "div")
                         {
                             elem = new DivElement();
+                        }
+                        else if (lowerTag == "select")
+                        {
+                            elem = new SelectElement();
                         }
                         else
                         {

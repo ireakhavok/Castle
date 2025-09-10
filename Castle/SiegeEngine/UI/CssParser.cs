@@ -9,7 +9,6 @@ namespace SiegeEngine.UI
     {
         public void Apply(string css, HtmlElement root)
         {
-            // Simple parser: split by { }
             int i = 0;
             while (i < css.Length)
             {
@@ -59,6 +58,13 @@ namespace SiegeEngine.UI
 
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props)
         {
+            string pseudo = null;
+            if (selector.Contains(":"))
+            {
+                var parts = selector.Split(':');
+                selector = parts[0].Trim();
+                pseudo = parts[1].Trim();
+            }
             bool isId = selector.StartsWith('#');
             bool isClass = selector.StartsWith('.');
             string name = isId ? selector.Substring(1) : isClass ? selector.Substring(1) : selector;
@@ -83,7 +89,16 @@ namespace SiegeEngine.UI
                 }
                 if (match)
                 {
-                    ApplyProperties(elem.Style, props);
+                    if (pseudo != null)
+                    {
+                        if (!elem.PseudoStyles.ContainsKey(pseudo))
+                            elem.PseudoStyles[pseudo] = new CssStyle();
+                        ApplyProperties(elem.PseudoStyles[pseudo], props);
+                    }
+                    else
+                    {
+                        ApplyProperties(elem.Style, props);
+                    }
                 }
                 foreach (var child in elem.Children)
                 {
@@ -104,6 +119,8 @@ namespace SiegeEngine.UI
                 style.WidthStr = width;
             if (props.TryGetValue("height", out string height))
                 style.HeightStr = height;
+            if (props.TryGetValue("max-width", out string maxw))
+                style.MaxWidthStr = maxw;
             if (props.TryGetValue("background", out string bg) || props.TryGetValue("background-color", out bg))
             {
                 style.Background = bg;
@@ -130,11 +147,31 @@ namespace SiegeEngine.UI
             {
                 style.PaddingStr = pad;
             }
+            if (props.TryGetValue("margin", out string margin))
+            {
+                style.MarginStr = margin;
+            }
+            if (props.TryGetValue("gap", out string gap))
+                style.GapStr = gap;
             if (props.TryGetValue("text-align", out string ta))
                 style.TextAlign = ta;
             if (props.TryGetValue("white-space", out string ws))
                 style.WhiteSpace = ws;
-            // Ignore overflow, etc.
+            if (props.TryGetValue("text-transform", out string tt))
+                style.TextTransform = tt;
+            if (props.TryGetValue("border", out string border))
+            {
+                var parts = border.Split(' ');
+                if (parts.Length >= 3)
+                {
+                    style.BorderWidthStr = parts[0];
+                    style.BorderStyle = parts[1];
+                    style.BorderColor = ParseColor(parts[2]);
+                }
+            }
+            if (props.TryGetValue("box-sizing", out string bs))
+                style.BoxSizing = bs;
+            // Ignore transition, cursor, appearance, etc.
         }
 
         private Vector4 ParseColor(string color)
@@ -177,6 +214,13 @@ namespace SiegeEngine.UI
                     int r = int.Parse(color.Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
                     int g = int.Parse(color.Substring(2, 2), System.Globalization.NumberStyles.HexNumber);
                     int b = int.Parse(color.Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
+                    return new Vector4(r / 255f, g / 255f, b / 255f, 1f);
+                }
+                else if (color.Length == 3)
+                {
+                    int r = int.Parse(color.Substring(0, 1) + color.Substring(0, 1), System.Globalization.NumberStyles.HexNumber);
+                    int g = int.Parse(color.Substring(1, 1) + color.Substring(1, 1), System.Globalization.NumberStyles.HexNumber);
+                    int b = int.Parse(color.Substring(2, 1) + color.Substring(2, 1), System.Globalization.NumberStyles.HexNumber);
                     return new Vector4(r / 255f, g / 255f, b / 255f, 1f);
                 }
             }

@@ -27,7 +27,7 @@ namespace SiegeEngine.Systems
         private ShaderProgram _uiShader;
         private readonly string _configPath;
         private HtmlElement _currentMenu;
-        private List<ButtonElement> _buttons = new List<ButtonElement>();
+        private List<HtmlElement> _clickables = new List<HtmlElement>();
         private bool _initialized;
 
         public MenuSystem(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath) : base(null)
@@ -73,15 +73,63 @@ namespace SiegeEngine.Systems
                 {
                     cssParser.Apply(css, _currentMenu);
                 }
+                InheritProperties(_currentMenu, null);
+                ProcessSelects(_currentMenu);
                 // Manually set displays since no pseudo-selector support
                 var settings = FindElementById(_currentMenu, "settings");
                 if (settings != null) settings.Style.Display = "none";
+                var main = FindElementById(_currentMenu, "main");
+                if (main != null) main.Style.Display = "flex";
                 var contents = FindElementsByClass(_currentMenu, "content");
-                if (contents.Count > 0) contents[0].Style.Display = "block";
-                // Collect buttons
-                _buttons.Clear();
-                CollectButtons(_currentMenu);
+                foreach (var c in contents) c.Style.Display = "none";
+                var createContent = contents.FirstOrDefault(c => c.Attributes["class"].Contains("create"));
+                if (createContent != null) createContent.Style.Display = "block";
+                // Collect clickables
+                _clickables.Clear();
+                CollectClickables(_currentMenu);
             }
+        }
+
+        private void InheritProperties(HtmlElement elem, HtmlElement parent)
+        {
+            if (parent != null)
+            {
+                if (string.IsNullOrEmpty(elem.Style.Color))
+                {
+                    elem.Style.Color = parent.Style.Color;
+                    elem.Style.TextColor = parent.Style.TextColor;
+                }
+                if (string.IsNullOrEmpty(elem.Style.FontSizeStr))
+                    elem.Style.FontSizeStr = parent.Style.FontSizeStr;
+                if (elem.Style.TextAlign == "left")
+                    elem.Style.TextAlign = parent.Style.TextAlign;
+                // add more like font-family, etc.
+            }
+            foreach (var child in elem.Children)
+                InheritProperties(child, elem);
+        }
+
+        private void ProcessSelects(HtmlElement elem)
+        {
+            if (elem is SelectElement select)
+            {
+                foreach (var child in elem.Children.ToList())
+                {
+                    if (child.Tag.ToLower() == "option")
+                    {
+                        string value = child.Attributes.GetValueOrDefault("value", "");
+                        string text = string.Join("", child.Children.OfType<TextElement>().Select(t => t.Content));
+                        select.Options.Add(text);
+                        if (child.Attributes.ContainsKey("selected"))
+                            select.Selected = text;
+                        elem.Children.Remove(child);
+                    }
+                }
+                if (string.IsNullOrEmpty(select.Selected) && select.Options.Count > 0)
+                    select.Selected = select.Options[0];
+            }
+            foreach (var child in elem.Children.ToList())
+                ProcessSelects(child);
         }
 
         private HtmlElement FindElementById(HtmlElement root, string id)
@@ -110,12 +158,29 @@ namespace SiegeEngine.Systems
             return list;
         }
 
-        private void CollectButtons(HtmlElement elem)
+        private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
-            if (elem is ButtonElement btn)
-                _buttons.Add(btn);
+            List<HtmlElement> list = new List<HtmlElement>();
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                if (elem.Tag.ToLower() == tag.ToLower()) list.Add(elem);
+                foreach (var child in elem.Children) queue.Enqueue(child);
+            }
+            return list;
+        }
+
+        private void CollectClickables(HtmlElement elem)
+        {
+            string classes = elem.Attributes.GetValueOrDefault("class", "");
+            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick"))
+            {
+                _clickables.Add(elem);
+            }
             foreach (var child in elem.Children)
-                CollectButtons(child);
+                CollectClickables(child);
         }
 
         public void Initialize()
@@ -130,18 +195,84 @@ namespace SiegeEngine.Systems
         public override void Update(float deltaTime)
         {
             if (!_initialized) return;
-            // Handle inputs
             Vector2 mousePos = new Vector2();
             _controlContext.GetCursorPos(_window, out double x, out double y);
             mousePos = new Vector2((float)x, (float)y);
-            if (_controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press)
+            bool mouseDown = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press;
+            bool mouseUp = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Release;
+            foreach (var clickable in _clickables)
             {
-                foreach (var btn in _buttons)
+                bool over = mousePos.X >= clickable.ComputedPosition.X && mousePos.X <= clickable.ComputedPosition.X + clickable.ComputedWidth &&
+                            mousePos.Y >= clickable.ComputedPosition.Y && mousePos.Y <= clickable.ComputedPosition.Y + clickable.ComputedHeight;
+                clickable.IsHover = over;
+                if (over && mouseDown)
                 {
-                    if (btn.HandleClick(mousePos))
-                        break;
+                    clickable.IsActive = true;
+                }
+                if (mouseUp)
+                {
+                    clickable.IsActive = false;
+                }
+                if (over && mouseDown)
+                {
+                    HandleClickableClick(clickable);
                 }
             }
+        }
+
+        private void HandleClickableClick(HtmlElement elem)
+        {
+            if (elem.Tag == "a")
+            {
+                string href = elem.Attributes.GetValueOrDefault("href", "");
+                if (href.StartsWith("#"))
+                {
+                    string targetId = href.Substring(1);
+                    var target = FindElementById(_currentMenu, targetId);
+                    if (target != null) target.Style.Display = "flex";
+                    var main = FindElementById(_currentMenu, "main");
+                    if (main != null) main.Style.Display = "none";
+                    var settings = FindElementById(_currentMenu, "settings");
+                    if (settings != null) settings.Style.Display = "flex";
+                }
+            }
+            else if (elem.Tag == "label")
+            {
+                string forId = elem.Attributes.GetValueOrDefault("for", "");
+                if (!string.IsNullOrEmpty(forId))
+                {
+                    var input = FindElementById(_currentMenu, forId);
+                    if (input != null && input.Tag == "input")
+                    {
+                        string type = input.Attributes.GetValueOrDefault("type", "");
+                        if (type == "radio")
+                        {
+                            string name = input.Attributes.GetValueOrDefault("name", "");
+                            var radios = FindElementsByTag(_currentMenu, "input").Where(i => i.Attributes.GetValueOrDefault("type", "") == "radio" && i.Attributes.GetValueOrDefault("name", "") == name).ToList();
+                            foreach (var r in radios) r.Checked = false;
+                            input.Checked = true;
+                            var contents = FindElementsByClass(_currentMenu, "content");
+                            foreach (var c in contents) c.Style.Display = "none";
+                            var contentClass = input.Attributes.GetValueOrDefault("id", "");
+                            var content = contents.FirstOrDefault(c => c.Attributes.GetValueOrDefault("class", "").Contains(contentClass));
+                            if (content != null) content.Style.Display = "block";
+                        }
+                        else if (type == "checkbox")
+                        {
+                            input.Checked = !input.Checked;
+                        }
+                    }
+                }
+            }
+            else if (elem.Attributes.GetValueOrDefault("class", "").Contains("toggle"))
+            {
+                var input = elem.Children.FirstOrDefault(c => c.Tag == "input" && c.Attributes.GetValueOrDefault("type", "") == "checkbox");
+                if (input != null)
+                {
+                    input.Checked = !input.Checked;
+                }
+            }
+            // Add for select if needed
         }
 
         public void Render()
@@ -149,7 +280,7 @@ namespace SiegeEngine.Systems
             if (!_initialized || _currentMenu == null) return;
             float vw = _settingsManager.WindowWidth;
             float vh = _settingsManager.WindowHeight;
-            _currentMenu.ComputeLayout(0, 0, vw, vh, vw, vh, _textRenderer);
+            _currentMenu.ComputeLayout(0, 0, vw, vh, vw, vh, _textRenderer, 16f);
             _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, vw, vh);
         }
     }

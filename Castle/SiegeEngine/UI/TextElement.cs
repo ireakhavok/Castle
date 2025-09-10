@@ -18,9 +18,9 @@ namespace SiegeEngine.UI
             Style.Display = "inline";
         }
 
-        public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
+        public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
         {
-            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer);
+            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs);
             float fs = Style.FontSize;
             _lineHeight = fs * 1.2f;
             if (Style.WhiteSpace == "normal" && !float.IsNaN(ComputedWidth) && ComputedWidth > 0)
@@ -66,9 +66,13 @@ namespace SiegeEngine.UI
             float fs = Style.FontSize;
             float y = ComputedPosition.Y;
             Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
+            string renderContent = Content;
+            if (Style.TextTransform == "uppercase") renderContent = Content.ToUpper();
             foreach (string line in _lines)
             {
-                float lineWidth = textRenderer.GetTextSize(line, fs).X;
+                string renderLine = line;
+                if (Style.TextTransform == "uppercase") renderLine = line.ToUpper();
+                float lineWidth = textRenderer.GetTextSize(renderLine, fs).X;
                 float x = ComputedPosition.X;
                 if (Style.TextAlign == "center")
                 {
@@ -78,7 +82,7 @@ namespace SiegeEngine.UI
                 {
                     x += ComputedWidth - lineWidth;
                 }
-                textRenderer.RenderText(line, x, y, (int)viewportWidth, (int)viewportHeight, fs, color);
+                textRenderer.RenderText(renderLine, x, y, (int)viewportWidth, (int)viewportHeight, fs, color);
                 y += _lineHeight;
             }
         }

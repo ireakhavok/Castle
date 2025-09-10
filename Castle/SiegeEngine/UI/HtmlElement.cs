@@ -13,12 +13,16 @@ namespace SiegeEngine.UI
         public Dictionary<string, string> Attributes { get; set; } = new Dictionary<string, string>();
         public List<HtmlElement> Children { get; set; } = new List<HtmlElement>();
         public CssStyle Style { get; set; } = new CssStyle();
+        public Dictionary<string, CssStyle> PseudoStyles { get; set; } = new Dictionary<string, CssStyle>();
         public HtmlElement Parent { get; set; }
         public Vector2 ComputedPosition { get; set; }
         public float ComputedWidth { get; set; }
         public float ComputedHeight { get; set; }
+        public bool IsHover { get; set; }
+        public bool IsActive { get; set; }
+        public bool Checked { get; set; }
 
-        public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
+        public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
         {
             if (Style.Display == "none")
             {
@@ -27,8 +31,6 @@ namespace SiegeEngine.UI
                 return;
             }
 
-            float parentFs = 16f;
-            if (Parent != null) parentFs = Parent.Style.FontSize;
             float fs = ParseSize(Style.FontSizeStr, parentFs, viewportWidth, viewportHeight);
             if (float.IsNaN(fs)) fs = parentFs;
             Style.FontSize = fs;
@@ -65,16 +67,16 @@ namespace SiegeEngine.UI
             {
                 if (Style.Display == "flex")
                 {
-                    LayoutFlexChildren(viewportWidth, viewportHeight, textRenderer);
+                    LayoutFlexChildren(viewportWidth, viewportHeight, textRenderer, fs);
                 }
                 else // block
                 {
-                    LayoutBlockChildren(viewportWidth, viewportHeight, textRenderer);
+                    LayoutBlockChildren(viewportWidth, viewportHeight, textRenderer, fs);
                 }
             }
         }
 
-        private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer)
+        private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             bool isRow = Style.FlexDirection == "row";
             float availableMain = isRow ? ComputedWidth : ComputedHeight;
@@ -85,7 +87,7 @@ namespace SiegeEngine.UI
             foreach (var child in Children)
             {
                 float childW = ParseSize(isRow ? child.Style.WidthStr : child.Style.HeightStr, availableMain, viewportWidth, viewportHeight);
-                float baseMain = float.IsNaN(childW) ? (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).Y) : childW;
+                float baseMain = float.IsNaN(childW) ? (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y) : childW;
                 childBaseMain.Add(baseMain);
                 totalBaseMain += baseMain;
             }
@@ -96,7 +98,8 @@ namespace SiegeEngine.UI
                 scale = availableMain / totalBaseMain;
             }
             float childPosMain = 0;
-            float totalMain = childBaseMain.Sum();
+            float totalMain = childBaseMain.Sum() * scale;
+            float spacing = 0;
             if (Style.JustifyContent == "center")
             {
                 childPosMain = (availableMain - totalMain) / 2;
@@ -105,20 +108,15 @@ namespace SiegeEngine.UI
             {
                 if (Children.Count > 1)
                 {
-                    childPosMain = (availableMain - totalMain) / (Children.Count - 1);
+                    spacing = (availableMain - totalMain) / (Children.Count - 1);
                 }
             } // add more
-            float spacing = 0;
-            if (Style.JustifyContent == "space-between" && Children.Count > 1)
-            {
-                spacing = (availableMain - totalMain) / (Children.Count - 1);
-            }
             for (int j = 0; j < Children.Count; j++)
             {
                 var child = Children[j];
                 float childMain = childBaseMain[j] * scale;
                 float childCross = ParseSize(isRow ? child.Style.HeightStr : child.Style.WidthStr, availableCross, viewportWidth, viewportHeight);
-                if (float.IsNaN(childCross)) childCross = isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).Y : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).X;
+                if (float.IsNaN(childCross)) childCross = isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X;
                 float offsetCross = 0;
                 if (Style.AlignItems == "center")
                 {
@@ -126,12 +124,12 @@ namespace SiegeEngine.UI
                 }
                 float childPosX = ComputedPosition.X + (isRow ? childPosMain : offsetCross);
                 float childPosY = ComputedPosition.Y + (isRow ? offsetCross : childPosMain);
-                child.ComputeLayout(childPosX, childPosY, isRow ? childMain : childCross, isRow ? childCross : childMain, viewportWidth, viewportHeight, textRenderer);
+                child.ComputeLayout(childPosX, childPosY, isRow ? childMain : childCross, isRow ? childCross : childMain, viewportWidth, viewportHeight, textRenderer, fs);
                 childPosMain += childMain + spacing;
             }
         }
 
-        private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer)
+        private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             float currentY = 0;
             foreach (var child in Children)
@@ -139,8 +137,8 @@ namespace SiegeEngine.UI
                 float childW = ParseSize(child.Style.WidthStr, ComputedWidth, viewportWidth, viewportHeight);
                 if (float.IsNaN(childW)) childW = GetAutoWidth(ComputedWidth, viewportWidth, viewportHeight, textRenderer);
                 float childH = ParseSize(child.Style.HeightStr, ComputedHeight - currentY, viewportWidth, viewportHeight);
-                if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).Y;
-                child.ComputeLayout(ComputedPosition.X, ComputedPosition.Y + currentY, childW, childH, viewportWidth, viewportHeight, textRenderer);
+                if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
+                child.ComputeLayout(ComputedPosition.X, ComputedPosition.Y + currentY, childW, childH, viewportWidth, viewportHeight, textRenderer, fs);
                 currentY += child.ComputedHeight;
             }
         }
@@ -151,15 +149,15 @@ namespace SiegeEngine.UI
             {
                 return parentWidth;
             }
-            return ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).X;
+            return ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, Style.FontSize).X;
         }
 
         private float GetAutoHeight(float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
         {
-            return ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer).Y;
+            return ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, Style.FontSize).Y;
         }
 
-        protected Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer)
+        protected Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             float width = 0;
             float height = 0;
@@ -168,7 +166,6 @@ namespace SiegeEngine.UI
             {
                 if (this is TextElement text)
                 {
-                    float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
                     var size = textRenderer.GetTextSize(text.Content, fs);
                     width = size.X;
                     height = size.Y;
@@ -179,7 +176,7 @@ namespace SiegeEngine.UI
                 bool isRow = Style.FlexDirection == "row";
                 foreach (var child in Children)
                 {
-                    var childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer);
+                    var childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
                     if (Style.Display == "flex")
                     {
                         if (isRow)
@@ -219,7 +216,7 @@ namespace SiegeEngine.UI
             }
         }
 
-        protected float ParseSize(string s, float parent, float vw, float vh)
+        public float ParseSize(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s) || s == "auto") return float.NaN;
             s = s.Trim();
