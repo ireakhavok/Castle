@@ -1,4 +1,6 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.Rendering
+// File: ShaderProgram.cs
+using SiegeEngine.ContextManagement;
 using System;
 using System.Numerics;
 
@@ -114,7 +116,7 @@ namespace SiegeEngine.Rendering
             };
             fixed (float* matrixPtr = matrixArray)
             {
-                _renderContext.UniformMatrix4(location, 1, false, matrixPtr);
+                _renderContext.UniformMatrix4(location, 1, true, matrixPtr);
             }
         }
         public void Dispose()

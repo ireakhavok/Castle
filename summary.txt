@@ -1836,6 +1836,8 @@ Folder: Castle
  Calls: BindBuffer, BindBuffer, BindTexture, BindVertexArray, BlendFunc, BufferData, Enable, EnableVertexAttribArray, GenBuffers, GenTextures, GenVertexArrays, GetCharacterData, GetError, PixelStore, TexImage2D, TexParameter, VertexAttribPointer
  - void Initialize(ShaderProgram shaderProgram, ShaderProgram shaderProgram)
  Calls: None
+ - Vector2 GetTextSize(string text, string text, float fontSize)
+ Calls: None
  - void RenderText(string text, string text, float startX, float startY, int width, int height, float fontSize)
  Calls: None
  - void RenderTextPass(string text, string text, float startX, float startY, int width, int height, float fontSize, Vector4 color)
@@ -2048,16 +2050,24 @@ Folder: Castle
  Methods:
  - void SwitchMenu(string menuName, string menuName)
  Calls: None
+ - void InheritProperties(HtmlElement elem, HtmlElement elem, HtmlElement parent)
+ Calls: None
+ - void ProcessSelects(HtmlElement elem, HtmlElement elem)
+ Calls: None
  - HtmlElement FindElementById(HtmlElement root, HtmlElement root, string id)
  Calls: FindElementById, FindElementById
  - List<HtmlElement> FindElementsByClass(HtmlElement root, HtmlElement root, string className)
  Calls: None
- - void CollectButtons(HtmlElement elem, HtmlElement elem)
- Calls: Initialize, Initialize, ShaderProgram, SwitchMenu, TextRenderer, UIQuadRenderer
+ - void CollectClickables(HtmlElement elem, HtmlElement elem)
+ Calls: None
  - void Initialize()
- Calls: GetCursorPos, GetCursorPos, GetMouseButton, HandleClick
+ Calls: GetCursorPos, GetCursorPos, GetMouseButton, HandleClickableClick
  - void Update(float deltaTime, float deltaTime)
- Calls: HandleClick, HandleClick
+ Calls: HandleClickableClick, HandleClickableClick
+ - void HandleClickableClick(HtmlElement elem, HtmlElement elem)
+ Calls: FindElementById, FindElementById, FindElementsByClass
+ - List<HtmlElement> FindElementsByTag(HtmlElement root, HtmlElement root, string tag)
+ Calls: None
  - void Render()
  Calls: None
  File: PlayerControllerSystem.cs
@@ -2075,9 +2085,11 @@ Folder: Castle
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Numerics, System.Reflection
  Methods:
  - constructor ButtonElement()
- Calls: Render, Render, RenderText
+ Calls: ComputeLayout, ComputeLayout
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+ Calls: GetTextSize, GetTextSize, Render, RenderText
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
- Calls: RenderText, RenderText
+ Calls: GetTextSize, GetTextSize, RenderText
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
  Calls: None
  - void AttachHook(string hookStr, string hookStr)
@@ -2088,7 +2100,7 @@ Folder: Castle
  Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics
  Methods:
  - void Apply(string css, string css, HtmlElement root)
- Calls: None
+ Calls: ApplyToElements, ApplyToElements, ParseProperties, ReadUntil, SkipWhitespace
  - void SkipWhitespace(string css, string css, ref int)
  Calls: None
  - string ReadUntil(string css, string css, ref int, char stop)
@@ -2096,14 +2108,12 @@ Folder: Castle
  - string> ParseProperties(string block, string block)
  Calls: ReadUntil, ReadUntil, SkipWhitespace
  - void ApplyToElements(HtmlElement root, HtmlElement root, string selector, string> props)
- Calls: ApplyProperties, ApplyProperties
+ Calls: None
  - void ApplyProperties(CssStyle style, CssStyle style, string> props)
  Calls: ParseColor, ParseColor
  - Vector4 ParseColor(string color, string color)
  Calls: ParseColor, ParseColor
  - return ParseColor()
- Calls: Parse, Parse
- - float ParseSize(string s, string s, float parent)
  Calls: Parse, Parse
  File: CssStyle.cs
  class: CssStyle (Namespace: SiegeEngine.UI)
@@ -2121,22 +2131,22 @@ Folder: Castle
  File: HtmlElement.cs
  class: HtmlElement (Namespace: SiegeEngine.UI)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
- - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight)
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
  Calls: None
- - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight)
+ - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseSize
- - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight)
+ - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, GetAutoWidth, ParseSize
- - float GetAutoWidth(float parentWidth, float parentWidth, float viewportWidth, float viewportHeight)
+ - float GetAutoWidth(float parentWidth, float parentWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
  Calls: None
- - float GetAutoHeight(float parentHeight, float parentHeight, float viewportWidth, float viewportHeight)
- Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParsePadding
- - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight)
- Calls: None
+ - float GetAutoHeight(float parentHeight, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, GetTextSize, ParsePadding
+ - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+ Calls: GetTextSize, GetTextSize
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
- Calls: DrawQuad, DrawQuad
+ Calls: None
  - float ParseSize(string s, string s, float parent, float vw, float vh)
  Calls: Parse, Parse
  - Vector4 ParsePadding(string s, string s, float parent, float vw, float vh)
@@ -2152,16 +2162,32 @@ Folder: Castle
  Methods:
  - HtmlElement Parse(string html, string html)
  Calls: None
+ File: SelectElement.cs
+ class: SelectElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Collections.Generic, System.Numerics
+ Methods:
+ - constructor SelectElement()
+ Calls: ComputeLayout, ComputeLayout
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+ Calls: GetTextSize, GetTextSize, Render, RenderText
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ Calls: GetTextSize, GetTextSize, RenderText
  File: TextElement.cs
  class: TextElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor TextElement()
- Calls: RenderText, RenderText
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ Calls: ComputeLayout, ComputeLayout, GetWrappedLines
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+ Calls: GetWrappedLines, GetWrappedLines
+ - List<string> GetWrappedLines(float maxWidth, float maxWidth, float fs, TextRenderer textRenderer)
  Calls: None
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ Calls: GetTextSize, GetTextSize, RenderText
  File: UIQuadRenderer.cs
  class: UIQuadRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: None
