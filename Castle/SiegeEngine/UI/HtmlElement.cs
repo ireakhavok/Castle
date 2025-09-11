@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -23,7 +22,6 @@ namespace SiegeEngine.UI
         public bool IsActive { get; set; }
         public bool Checked { get; set; }
         public bool IsTarget { get; set; }
-
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
         {
             if (Style.Display == "none")
@@ -32,11 +30,9 @@ namespace SiegeEngine.UI
                 ComputedHeight = 0;
                 return;
             }
-
             float fs = ParseSize(Style.FontSizeStr, parentFs, viewportWidth, viewportHeight);
             if (float.IsNaN(fs)) fs = parentFs;
             Style.FontSize = fs;
-
             float left = ParseSize(Style.LeftStr, parentWidth, viewportWidth, viewportHeight);
             if (float.IsNaN(left)) left = 0;
             float top = ParseSize(Style.TopStr, parentHeight, viewportWidth, viewportHeight);
@@ -77,7 +73,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             bool isRow = Style.FlexDirection == "row";
@@ -130,7 +125,6 @@ namespace SiegeEngine.UI
                 childPosMain += childMain + spacing;
             }
         }
-
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             float currentY = 0;
@@ -144,7 +138,6 @@ namespace SiegeEngine.UI
                 currentY += child.ComputedHeight;
             }
         }
-
         private float GetAutoWidth(float parentWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
         {
             if (Style.Display == "block" || Style.Display == "flex")
@@ -153,14 +146,13 @@ namespace SiegeEngine.UI
             }
             return ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, Style.FontSize).X;
         }
-
         private float GetAutoHeight(float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
         {
             return ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, Style.FontSize).Y;
         }
-
         protected Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
+            if (Style.Display == "none") return new Vector2(0, 0);
             float width = 0;
             float height = 0;
             Vector4 pad = ParsePadding(Style.PaddingStr, 0, viewportWidth, viewportHeight);
@@ -203,7 +195,6 @@ namespace SiegeEngine.UI
             height += pad.X + pad.Z;
             return new Vector2(width, height);
         }
-
         public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return;
@@ -240,7 +231,6 @@ namespace SiegeEngine.UI
                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
             }
         }
-
         public float ParseSize(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s) || s == "auto") return float.NaN;
@@ -269,7 +259,6 @@ namespace SiegeEngine.UI
             }
             return float.NaN;
         }
-
         protected Vector4 ParsePadding(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s)) return Vector4.Zero;
@@ -290,7 +279,6 @@ namespace SiegeEngine.UI
             float left = GetVal(3, right);
             return new Vector4(top, right, bottom, left);
         }
-
         public virtual bool HandleClick(Vector2 mousePos)
         {
             if (Style.Display == "none") return false;

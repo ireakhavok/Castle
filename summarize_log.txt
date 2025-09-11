@@ -1620,7 +1620,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: ShaderProgram.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
-Read 6593 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
+Read 6651 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
 Namespace: SiegeEngine.Rendering
 Found 3 dependencies
 Class ShaderProgram: 7 methods
@@ -1664,7 +1664,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: UiShader.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
-Read 982 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
+Read 1581 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
 Namespace: SiegeEngine.Rendering.Shaders
 Found 0 dependencies
 Class UiShader: 2 methods
