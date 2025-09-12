@@ -3,7 +3,6 @@ using SiegeEngine.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.UI
 {
     public class TextElement : HtmlElement
@@ -11,30 +10,27 @@ namespace SiegeEngine.UI
         public string Content { get; set; }
         private List<string> _lines;
         private float _lineHeight;
-
         public TextElement()
         {
             Tag = "text";
             Style.Display = "inline";
         }
-
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
         {
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs);
             float fs = Style.FontSize;
             _lineHeight = fs * 1.2f;
-            if (Style.WhiteSpace == "normal" && !float.IsNaN(ComputedWidth) && ComputedWidth > 0)
+            if (Style.WhiteSpace == "normal" && !float.IsNaN(ComputedContentWidth) && ComputedContentWidth > 0)
             {
-                _lines = GetWrappedLines(ComputedWidth, fs, textRenderer);
-                ComputedHeight = _lines.Count * _lineHeight;
+                _lines = GetWrappedLines(ComputedContentWidth, fs, textRenderer);
+                ComputedContentHeight = _lines.Count * _lineHeight;
             }
             else
             {
                 _lines = new List<string> { Content };
-                ComputedHeight = _lineHeight;
+                ComputedContentHeight = _lineHeight;
             }
         }
-
         private List<string> GetWrappedLines(float maxWidth, float fs, TextRenderer textRenderer)
         {
             List<string> lines = new List<string>();
@@ -60,11 +56,10 @@ namespace SiegeEngine.UI
             if (!string.IsNullOrEmpty(line)) lines.Add(line);
             return lines;
         }
-
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
         {
             float fs = Style.FontSize;
-            float y = ComputedPosition.Y;
+            float y = ComputedContentY;
             Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
             string renderContent = Content;
             if (Style.TextTransform == "uppercase") renderContent = Content.ToUpper();
@@ -73,14 +68,14 @@ namespace SiegeEngine.UI
                 string renderLine = line;
                 if (Style.TextTransform == "uppercase") renderLine = line.ToUpper();
                 float lineWidth = textRenderer.GetTextSize(renderLine, fs).X;
-                float x = ComputedPosition.X;
+                float x = ComputedContentX;
                 if (Style.TextAlign == "center")
                 {
-                    x += (ComputedWidth - lineWidth) / 2;
+                    x += (ComputedContentWidth - lineWidth) / 2;
                 }
                 else if (Style.TextAlign == "right")
                 {
-                    x += ComputedWidth - lineWidth;
+                    x += ComputedContentWidth - lineWidth;
                 }
                 textRenderer.RenderText(renderLine, x, y, (int)viewportWidth, (int)viewportHeight, fs, color);
                 y += _lineHeight;
