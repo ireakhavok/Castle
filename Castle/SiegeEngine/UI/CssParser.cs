@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.UI
 {
     public class CssParser
@@ -21,13 +20,11 @@ namespace SiegeEngine.UI
                 ApplyToElements(root, selector, props);
             }
         }
-
         private void SkipWhitespace(string css, ref int i)
         {
             while (i < css.Length && char.IsWhiteSpace(css[i]))
                 i++;
         }
-
         private string ReadUntil(string css, ref int i, char stop)
         {
             string result = "";
@@ -38,7 +35,6 @@ namespace SiegeEngine.UI
             }
             return result;
         }
-
         private Dictionary<string, string> ParseProperties(string block)
         {
             Dictionary<string, string> props = new Dictionary<string, string>();
@@ -55,7 +51,6 @@ namespace SiegeEngine.UI
             }
             return props;
         }
-
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props)
         {
             string pseudo = null;
@@ -106,7 +101,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
             if (props.TryGetValue("position", out string pos))
@@ -177,16 +171,13 @@ namespace SiegeEngine.UI
                 style.BorderColor = ParseColor(bc);
             if (props.TryGetValue("box-sizing", out string boxs))
                 style.BoxSizing = boxs;
-            // Ignore overflow, etc.
         }
-
         private Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
             color = color.Trim();
             if (color.Contains("gradient"))
             {
-                // Extract first color
                 int hashIndex = color.IndexOf('#');
                 string firstColor = "";
                 if (hashIndex != -1)

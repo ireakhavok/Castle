@@ -1,5 +1,4 @@
 ﻿using System.Numerics;
-
 namespace SiegeEngine.UI
 {
     public class CssStyle
@@ -22,6 +21,7 @@ namespace SiegeEngine.UI
         public string JustifyContent { get; set; }
         public string PaddingStr { get; set; }
         public string MarginStr { get; set; }
+        public Vector4 Margin { get; set; }
         public string GapStr { get; set; }
         public string TextAlign { get; set; } = "left";
         public string WhiteSpace { get; set; } = "normal";

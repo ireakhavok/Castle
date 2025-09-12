@@ -53,6 +53,8 @@ namespace SiegeEngine.UI
             if (float.IsNaN(borderW)) borderW = 0;
             BorderWidth = borderW;
             Vector4 pad = ParsePadding(Style.PaddingStr, parentWidth, viewportWidth, viewportHeight);
+            Vector4 margin = ParsePadding(Style.MarginStr, parentWidth, viewportWidth, viewportHeight);
+            Style.Margin = margin;
             float contentW, contentH, boxW, boxH;
             if (float.IsNaN(w) || float.IsNaN(h))
             {
@@ -79,8 +81,8 @@ namespace SiegeEngine.UI
             ComputedHeight = boxH;
             ComputedContentWidth = contentW;
             ComputedContentHeight = contentH;
-            float boxX = parentPositionX + left;
-            float boxY = parentPositionY + top;
+            float boxX = parentPositionX + left + margin.W;
+            float boxY = parentPositionY + top + margin.X;
             ComputedPosition = new Vector2(boxX, boxY);
             ComputedContentX = boxX + borderW + pad.W;
             ComputedContentY = boxY + borderW + pad.X;
@@ -105,6 +107,8 @@ namespace SiegeEngine.UI
             bool isRow = Style.FlexDirection == "row";
             float availableMain = isRow ? ComputedContentWidth : ComputedContentHeight;
             float availableCross = isRow ? ComputedContentHeight : ComputedContentWidth;
+            float gap = ParseSize(Style.GapStr, availableMain, viewportWidth, viewportHeight);
+            if (float.IsNaN(gap)) gap = 0;
             List<float> childBaseMain = new List<float>();
             float totalBaseMain = 0;
             foreach (var child in Children)
@@ -114,23 +118,25 @@ namespace SiegeEngine.UI
                 childBaseMain.Add(baseMain);
                 totalBaseMain += baseMain;
             }
+            float totalGap = gap * (Children.Count - 1);
             float scale = 1.0f;
-            if (totalBaseMain > availableMain)
+            if (totalBaseMain + totalGap > availableMain)
             {
-                scale = availableMain / totalBaseMain;
+                scale = (availableMain - totalGap) / totalBaseMain;
             }
             float childPosMain = 0;
-            float totalMain = childBaseMain.Sum() * scale;
-            float spacing = 0;
+            float totalMain = childBaseMain.Sum() * scale + totalGap;
+            float spacing = gap;
             if (Style.JustifyContent == "center")
             {
                 childPosMain = (availableMain - totalMain) / 2;
+                spacing = gap;
             }
             else if (Style.JustifyContent == "space-between")
             {
                 if (Children.Count > 1)
                 {
-                    spacing = (availableMain - totalMain) / (Children.Count - 1);
+                    spacing = (availableMain - childBaseMain.Sum() * scale) / (Children.Count - 1);
                 }
             }
             for (int j = 0; j < Children.Count; j++)
@@ -193,6 +199,9 @@ namespace SiegeEngine.UI
             else
             {
                 bool isRow = Style.FlexDirection == "row";
+                float gap = ParseSize(Style.GapStr, 0, viewportWidth, viewportHeight);
+                if (float.IsNaN(gap)) gap = 0;
+                float totalGap = gap * (Children.Count - 1);
                 foreach (var child in Children)
                 {
                     var childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
@@ -213,6 +222,17 @@ namespace SiegeEngine.UI
                     {
                         height += childSize.Y;
                         width = Math.Max(width, childSize.X);
+                    }
+                }
+                if (Style.Display == "flex")
+                {
+                    if (isRow)
+                    {
+                        width += totalGap;
+                    }
+                    else
+                    {
+                        height += totalGap;
                     }
                 }
             }
