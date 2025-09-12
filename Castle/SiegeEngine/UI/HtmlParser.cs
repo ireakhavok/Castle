@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine.UI
+// File: HtmlParser.cs
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -6,50 +8,50 @@ namespace SiegeEngine.UI
 {
     public class HtmlParser
     {
+        private string _html;
+        private int _index;
+
         public HtmlElement Parse(string html)
         {
-            Stack<HtmlElement> stack = new Stack<HtmlElement>();
+            _html = html;
+            _index = 0;
             HtmlElement root = new HtmlElement { Tag = "root" };
-            stack.Push(root);
-            int i = 0;
-            while (i < html.Length)
+            ParseChildren(root);
+            return root.Children.Count == 1 ? root.Children[0] : root;
+        }
+
+        private void ParseChildren(HtmlElement parent)
+        {
+            while (_index < _html.Length)
             {
-                if (html[i] == '<')
+                SkipWhitespace();
+                if (_index >= _html.Length) break;
+
+                if (_html[_index] == '<')
                 {
-                    i++;
-                    if (i < html.Length && html[i] == '/')
+                    _index++;
+                    if (_index < _html.Length && _html[_index] == '/')
                     {
-                        i++;
-                        string closingTag = "";
-                        while (i < html.Length && html[i] != '>')
-                        {
-                            closingTag += html[i];
-                            i++;
-                        }
-                        i++; // >
-                        closingTag = closingTag.Trim();
-                        if (stack.Count > 1 && stack.Peek().Tag.ToLower() == closingTag.ToLower())
-                        {
-                            stack.Pop();
-                        }
+                        // Closing tag, end of children
+                        _index++; // skip '/'
+                        string closingTag = ReadUntil(c => c == '>');
+                        _index++; // skip '>'
+                        return;
                     }
-                    else if (i + 2 < html.Length && html.Substring(i, 3) == "!--")
+                    else if (_index + 2 < _html.Length && _html.Substring(_index, 3) == "!--")
                     {
-                        i += 3;
-                        while (i + 2 < html.Length && html.Substring(i, 3) != "-->")
+                        // Comment
+                        _index += 3;
+                        while (_index + 2 < _html.Length && _html.Substring(_index, 3) != "-->")
                         {
-                            i++;
+                            _index++;
                         }
-                        i += 3;
+                        _index += 3;
                     }
                     else
                     {
-                        string tag = "";
-                        while (i < html.Length && !char.IsWhiteSpace(html[i]) && html[i] != '>')
-                        {
-                            tag += html[i];
-                            i++;
-                        }
+                        // Opening tag
+                        string tag = ReadUntil(c => char.IsWhiteSpace(c) || c == '>');
                         string lowerTag = tag.ToLower();
                         HtmlElement elem;
                         if (lowerTag == "button")
@@ -68,35 +70,29 @@ namespace SiegeEngine.UI
                         {
                             elem = new HtmlElement { Tag = tag };
                         }
-                        while (i < html.Length && html[i] != '>')
+                        elem.Parent = parent;
+
+                        // Parse attributes
+                        while (_index < _html.Length && _html[_index] != '>')
                         {
-                            while (i < html.Length && char.IsWhiteSpace(html[i])) i++;
-                            if (i >= html.Length || html[i] == '>') break;
-                            string key = "";
-                            while (i < html.Length && html[i] != '=' && !char.IsWhiteSpace(html[i]) && html[i] != '>')
-                            {
-                                key += html[i];
-                                i++;
-                            }
+                            SkipWhitespace();
+                            if (_index >= _html.Length || _html[_index] == '>') break;
+                            string key = ReadUntil(c => c == '=' || char.IsWhiteSpace(c) || c == '>');
                             key = key.Trim();
                             if (string.IsNullOrEmpty(key)) continue;
                             string value = "";
-                            if (i < html.Length && html[i] == '=')
+                            if (_index < _html.Length && _html[_index] == '=')
                             {
-                                i++;
-                                while (i < html.Length && char.IsWhiteSpace(html[i])) i++;
+                                _index++;
+                                SkipWhitespace();
                                 char quote = '\0';
-                                if (i < html.Length && (html[i] == '"' || html[i] == '\''))
+                                if (_index < _html.Length && (_html[_index] == '"' || _html[_index] == '\''))
                                 {
-                                    quote = html[i];
-                                    i++;
+                                    quote = _html[_index];
+                                    _index++;
                                 }
-                                while (i < html.Length && (quote != '\0' ? html[i] != quote : !char.IsWhiteSpace(html[i]) && html[i] != '>'))
-                                {
-                                    value += html[i];
-                                    i++;
-                                }
-                                if (quote != '\0' && i < html.Length) i++; // close quote
+                                value = ReadUntil(c => quote != '\0' ? c == quote : char.IsWhiteSpace(c) || c == '>');
+                                if (quote != '\0' && _index < _html.Length) _index++; // close quote
                             }
                             elem.Attributes[key] = value;
                             if (key == "data-hook" && elem is ButtonElement btn)
@@ -104,48 +100,65 @@ namespace SiegeEngine.UI
                                 btn.AttachHook(value);
                             }
                         }
-                        i++; // >
+                        _index++; // skip '>'
+
+                        bool isSelfClosing = tag.EndsWith("/") || Array.Exists(new string[] { "br", "hr", "img", "input", "meta", "link" }, t => t == lowerTag);
+
                         if (lowerTag == "include" && elem.Attributes.TryGetValue("src", out string src))
                         {
                             // Handle include
                             string incHtml = File.ReadAllText(src);
-                            HtmlElement incRoot = Parse(incHtml);
+                            HtmlParser incParser = new HtmlParser();
+                            HtmlElement incRoot = incParser.Parse(incHtml);
                             foreach (var child in incRoot.Children)
                             {
-                                stack.Peek().Children.Add(child);
-                                child.Parent = stack.Peek();
+                                parent.Children.Add(child);
+                                child.Parent = parent;
                             }
                         }
                         else
                         {
-                            stack.Peek().Children.Add(elem);
-                            elem.Parent = stack.Peek();
-                            string[] selfClosingTags = { "br", "hr", "img", "input", "meta", "link" };
-                            if (!Array.Exists(selfClosingTags, t => t == lowerTag) && !tag.EndsWith("/"))
+                            parent.Children.Add(elem);
+                            if (!isSelfClosing)
                             {
-                                stack.Push(elem);
+                                // Parse children recursively
+                                ParseChildren(elem);
                             }
                         }
                     }
                 }
                 else
                 {
-                    string text = "";
-                    while (i < html.Length && html[i] != '<')
-                    {
-                        text += html[i];
-                        i++;
-                    }
+                    // Text node
+                    string text = ReadUntil(c => c == '<');
                     text = text.Trim();
                     if (!string.IsNullOrEmpty(text))
                     {
                         TextElement textElem = new TextElement { Content = text };
-                        stack.Peek().Children.Add(textElem);
-                        textElem.Parent = stack.Peek();
+                        textElem.Parent = parent;
+                        parent.Children.Add(textElem);
                     }
                 }
             }
-            return root.Children.Count == 1 ? root.Children[0] : root;
+        }
+
+        private void SkipWhitespace()
+        {
+            while (_index < _html.Length && char.IsWhiteSpace(_html[_index]))
+            {
+                _index++;
+            }
+        }
+
+        private string ReadUntil(Func<char, bool> condition)
+        {
+            string result = "";
+            while (_index < _html.Length && !condition(_html[_index]))
+            {
+                result += _html[_index];
+                _index++;
+            }
+            return result;
         }
     }
 }
