@@ -17,7 +17,7 @@ namespace SiegeEngine.UI
         public float FontSize { get; set; }
         public string Display { get; set; } = "block";
         public string FlexDirection { get; set; } = "row";
-        public string AlignItems { get; set; }
+        public string AlignItems { get; set; } = "stretch";
         public string JustifyContent { get; set; }
         public string PaddingStr { get; set; }
         public string MarginStr { get; set; }
@@ -31,5 +31,42 @@ namespace SiegeEngine.UI
         public string BorderStyle { get; set; } = "none";
         public Vector4 BorderColor { get; set; }
         public string BoxSizing { get; set; } = "content-box";
+        public string Flex { get; set; }
+
+        public CssStyle Clone()
+        {
+            return new CssStyle
+            {
+                Position = Position,
+                LeftStr = LeftStr,
+                TopStr = TopStr,
+                WidthStr = WidthStr,
+                HeightStr = HeightStr,
+                MaxWidthStr = MaxWidthStr,
+                Background = Background,
+                BackgroundColor = BackgroundColor,
+                Color = Color,
+                TextColor = TextColor,
+                FontSizeStr = FontSizeStr,
+                FontSize = FontSize,
+                Display = Display,
+                FlexDirection = FlexDirection,
+                AlignItems = AlignItems,
+                JustifyContent = JustifyContent,
+                PaddingStr = PaddingStr,
+                MarginStr = MarginStr,
+                Margin = Margin,
+                GapStr = GapStr,
+                TextAlign = TextAlign,
+                WhiteSpace = WhiteSpace,
+                TextTransform = TextTransform,
+                BorderWidthStr = BorderWidthStr,
+                BorderWidth = BorderWidth,
+                BorderStyle = BorderStyle,
+                BorderColor = BorderColor,
+                BoxSizing = BoxSizing,
+                Flex = Flex
+            };
+        }
     }
 }

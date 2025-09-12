@@ -110,22 +110,36 @@ namespace SiegeEngine.UI
             float gap = ParseSize(Style.GapStr, availableMain, viewportWidth, viewportHeight);
             if (float.IsNaN(gap)) gap = 0;
             List<float> childBaseMain = new List<float>();
+            List<float> childGrows = new List<float>();
             float totalBaseMain = 0;
+            float totalGrow = 0;
             foreach (var child in Children)
             {
-                float childW = ParseSize(isRow ? child.Style.WidthStr : child.Style.HeightStr, availableMain, viewportWidth, viewportHeight);
-                float baseMain = float.IsNaN(childW) ? (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y) : childW;
+                float grow = 0;
+                if (!string.IsNullOrEmpty(child.Style.Flex))
+                {
+                    var flexParts = child.Style.Flex.Split(' ');
+                    if (flexParts.Length > 0) float.TryParse(flexParts[0], out grow);
+                }
+                childGrows.Add(grow);
+                totalGrow += grow;
+                float childSizeStr = ParseSize(isRow ? child.Style.WidthStr : child.Style.HeightStr, availableMain, viewportWidth, viewportHeight);
+                float baseMain = float.IsNaN(childSizeStr) ? (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y) : childSizeStr;
                 childBaseMain.Add(baseMain);
                 totalBaseMain += baseMain;
             }
             float totalGap = gap * (Children.Count - 1);
-            float scale = 1.0f;
-            if (totalBaseMain + totalGap > availableMain)
+            float extraMain = availableMain - totalBaseMain - totalGap;
+            if (extraMain < 0) extraMain = 0;
+            if (totalGrow > 0)
             {
-                scale = (availableMain - totalGap) / totalBaseMain;
+                for (int j = 0; j < Children.Count; j++)
+                {
+                    childBaseMain[j] += (extraMain / totalGrow) * childGrows[j];
+                }
             }
             float childPosMain = 0;
-            float totalMain = childBaseMain.Sum() * scale + totalGap;
+            float totalMain = childBaseMain.Sum() + totalGap;
             float spacing = gap;
             if (Style.JustifyContent == "center")
             {
@@ -136,19 +150,27 @@ namespace SiegeEngine.UI
             {
                 if (Children.Count > 1)
                 {
-                    spacing = (availableMain - childBaseMain.Sum() * scale) / (Children.Count - 1);
+                    spacing = (availableMain - childBaseMain.Sum()) / (Children.Count - 1);
                 }
             }
             for (int j = 0; j < Children.Count; j++)
             {
                 var child = Children[j];
-                float childMain = childBaseMain[j] * scale;
-                float childCross = ParseSize(isRow ? child.Style.HeightStr : child.Style.WidthStr, availableCross, viewportWidth, viewportHeight);
-                if (float.IsNaN(childCross)) childCross = isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X;
+                float childMain = childBaseMain[j];
+                float childCrossStr = ParseSize(isRow ? child.Style.HeightStr : child.Style.WidthStr, availableCross, viewportWidth, viewportHeight);
+                float childCross = float.IsNaN(childCrossStr) ? (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X) : childCrossStr;
+                if (Style.AlignItems == "stretch" && float.IsNaN(childCrossStr))
+                {
+                    childCross = availableCross;
+                }
                 float offsetCross = 0;
                 if (Style.AlignItems == "center")
                 {
                     offsetCross = (availableCross - childCross) / 2;
+                }
+                else if (Style.AlignItems == "stretch")
+                {
+                    offsetCross = 0;
                 }
                 float childPosX = ComputedContentX + (isRow ? childPosMain : offsetCross);
                 float childPosY = ComputedContentY + (isRow ? offsetCross : childPosMain);

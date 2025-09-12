@@ -17,7 +17,14 @@ namespace SiegeEngine.UI
                 string block = ReadUntil(css, ref i, '}').Trim();
                 i++; // skip }
                 Dictionary<string, string> props = ParseProperties(block);
-                ApplyToElements(root, selector, props);
+                string pseudo = null;
+                if (selector.Contains(":"))
+                {
+                    var parts = selector.Split(':');
+                    selector = parts[0].Trim();
+                    pseudo = parts[1].Trim();
+                }
+                ApplyToElements(root, selector, props, pseudo);
             }
         }
         private void SkipWhitespace(string css, ref int i)
@@ -51,55 +58,72 @@ namespace SiegeEngine.UI
             }
             return props;
         }
-        private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props)
+        private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props, string pseudo)
         {
-            string pseudo = null;
-            if (selector.Contains(":"))
-            {
-                var parts = selector.Split(':');
-                selector = parts[0].Trim();
-                pseudo = parts[1].Trim();
-            }
-            bool isId = selector.StartsWith('#');
-            bool isClass = selector.StartsWith('.');
-            string name = isId ? selector.Substring(1) : isClass ? selector.Substring(1) : selector;
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
             queue.Enqueue(root);
             while (queue.Count > 0)
             {
                 HtmlElement elem = queue.Dequeue();
-                bool match = false;
-                if (isId)
+                if (Matches(elem, selector))
                 {
-                    match = elem.Attributes.GetValueOrDefault("id", "") == name;
-                }
-                else if (isClass)
-                {
-                    string classes = elem.Attributes.GetValueOrDefault("class", "");
-                    match = classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(name);
-                }
-                else
-                {
-                    match = elem.Tag.ToLower() == name.ToLower();
-                }
-                if (match)
-                {
+                    CssStyle targetStyle;
                     if (pseudo != null)
                     {
                         if (!elem.PseudoStyles.ContainsKey(pseudo))
-                            elem.PseudoStyles[pseudo] = new CssStyle();
-                        ApplyProperties(elem.PseudoStyles[pseudo], props);
+                            elem.PseudoStyles[pseudo] = elem.Style.Clone();
+                        targetStyle = elem.PseudoStyles[pseudo];
                     }
                     else
                     {
-                        ApplyProperties(elem.Style, props);
+                        targetStyle = elem.Style;
                     }
+                    ApplyProperties(targetStyle, props);
                 }
                 foreach (var child in elem.Children)
                 {
                     queue.Enqueue(child);
                 }
             }
+        }
+        private bool Matches(HtmlElement elem, string selector)
+        {
+            if (string.IsNullOrEmpty(selector)) return true;
+            var parts = selector.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            HtmlElement current = elem;
+            for (int k = parts.Length - 1; k >= 0; k--)
+            {
+                string part = parts[k];
+                if (string.IsNullOrEmpty(part)) continue;
+                bool match = false;
+                if (part == "*")
+                {
+                    match = true;
+                }
+                else
+                {
+                    bool isId = part.StartsWith('#');
+                    bool isClass = part.StartsWith('.');
+                    string name = isId ? part.Substring(1) : isClass ? part.Substring(1) : part;
+                    if (isId)
+                    {
+                        match = elem.Attributes.GetValueOrDefault("id", "") == name;
+                    }
+                    else if (isClass)
+                    {
+                        string classes = current.Attributes.GetValueOrDefault("class", "");
+                        match = classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(name);
+                    }
+                    else
+                    {
+                        match = string.Equals(current.Tag, name, StringComparison.OrdinalIgnoreCase);
+                    }
+                }
+                if (!match) return false;
+                current = current.Parent;
+                if (current == null && k > 0) return false;
+            }
+            return true;
         }
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
@@ -137,6 +161,8 @@ namespace SiegeEngine.UI
                 style.AlignItems = ai;
             if (props.TryGetValue("justify-content", out string jc))
                 style.JustifyContent = jc;
+            if (props.TryGetValue("flex", out string flex))
+                style.Flex = flex;
             if (props.TryGetValue("padding", out string pad))
             {
                 style.PaddingStr = pad;
