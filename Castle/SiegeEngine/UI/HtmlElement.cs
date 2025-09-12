@@ -234,18 +234,16 @@ namespace SiegeEngine.UI
             }
             if (effectiveStyle.BackgroundColor != Vector4.Zero)
             {
-                Matrix4x4 ortho = Matrix4x4.CreateOrthographicOffCenter(0, viewportWidth, viewportHeight, 0, -1, 1);
-                quadRenderer.DrawQuad(new Vector2(ComputedBackgroundX, ComputedBackgroundY), new Vector2(ComputedBackgroundWidth, ComputedBackgroundHeight), effectiveStyle.BackgroundColor, ortho);
+                quadRenderer.DrawQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, effectiveStyle.BackgroundColor, viewportWidth, viewportHeight);
             }
             float borderW = BorderWidth;
             Vector4 borderC = effectiveStyle.BorderColor;
             if (borderW > 0 && borderC != Vector4.Zero && effectiveStyle.BorderStyle != "none")
             {
-                Matrix4x4 ortho = Matrix4x4.CreateOrthographicOffCenter(0, viewportWidth, viewportHeight, 0, -1, 1);
-                quadRenderer.DrawQuad(new Vector2(ComputedPosition.X, ComputedPosition.Y), new Vector2(ComputedWidth, borderW), borderC, ortho);
-                quadRenderer.DrawQuad(new Vector2(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW), new Vector2(ComputedWidth, borderW), borderC, ortho);
-                quadRenderer.DrawQuad(new Vector2(ComputedPosition.X, ComputedPosition.Y), new Vector2(borderW, ComputedHeight), borderC, ortho);
-                quadRenderer.DrawQuad(new Vector2(ComputedPosition.X + ComputedWidth - borderW, ComputedPosition.Y), new Vector2(borderW, ComputedHeight), borderC, ortho);
+                quadRenderer.DrawQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW, borderC, viewportWidth, viewportHeight);
+                quadRenderer.DrawQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW, ComputedWidth, borderW, borderC, viewportWidth, viewportHeight);
+                quadRenderer.DrawQuad(ComputedPosition.X, ComputedPosition.Y, borderW, ComputedHeight, borderC, viewportWidth, viewportHeight);
+                quadRenderer.DrawQuad(ComputedPosition.X + ComputedWidth - borderW, ComputedPosition.Y, borderW, ComputedHeight, borderC, viewportWidth, viewportHeight);
             }
             foreach (var child in Children)
             {
