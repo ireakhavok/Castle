@@ -65,17 +65,18 @@ namespace SiegeEngine.UI
             Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
             string renderContent = Content;
             if (Style.TextTransform == "uppercase") renderContent = Content.ToUpper();
+            string textAlign = string.IsNullOrEmpty(Style.TextAlign) ? "left" : Style.TextAlign;
             foreach (string line in _lines)
             {
                 string renderLine = line;
                 if (Style.TextTransform == "uppercase") renderLine = line.ToUpper();
                 float lineWidth = textRenderer.GetTextSize(renderLine, fs, Style.FontFamily ?? "Arial").X;
                 float x = ComputedContentX;
-                if (Style.TextAlign == "center")
+                if (textAlign == "center")
                 {
                     x += (ComputedContentWidth - lineWidth) / 2;
                 }
-                else if (Style.TextAlign == "right")
+                else if (textAlign == "right")
                 {
                     x += ComputedContentWidth - lineWidth;
                 }

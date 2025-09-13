@@ -83,6 +83,8 @@ namespace SiegeEngine.Systems
                 }
                 InheritProperties(_currentMenu, null);
                 ProcessSelects(_currentMenu);
+                _currentMenu.Style.WidthStr = "100%";
+                _currentMenu.Style.HeightStr = "100%";
                 var settings = FindElementById(_currentMenu, "settings");
                 if (settings != null) settings.Style.Display = "none";
                 var main = FindElementById(_currentMenu, "main");

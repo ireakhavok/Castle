@@ -17,27 +17,23 @@ namespace SiegeEngine.UI
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
-        }
-        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
-        {
-            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
             var textChild = Children.Find(c => c is TextElement) as TextElement;
             if (textChild != null)
             {
                 float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
-                float approxTextWidth = textRenderer.GetTextSize(textChild.Content, fs, Style.FontFamily ?? "Arial").X;
-                float textX = ComputedContentX;
-                if (Style.TextAlign == "center")
-                {
-                    textX += (ComputedContentWidth - approxTextWidth) / 2;
-                }
-                else if (Style.TextAlign == "right")
-                {
-                    textX += ComputedContentWidth - approxTextWidth;
-                }
-                float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
-                textRenderer.RenderText(textChild.Content, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, Style.TextColor, Style.FontFamily ?? "Arial");
+                Vector2 textSize = textRenderer.GetTextSize(textChild.Content, fs, Style.FontFamily ?? "Arial");
+                textChild.ComputedContentWidth = this.ComputedContentWidth;
+                textChild.ComputedWidth = this.ComputedContentWidth;
+                textChild.ComputedContentHeight = textSize.Y;
+                textChild.ComputedHeight = textSize.Y;
+                textChild.ComputedContentX = this.ComputedContentX;
+                textChild.ComputedPosition = new Vector2(textChild.ComputedContentX, this.ComputedContentY + (this.ComputedContentHeight - textSize.Y) / 2);
+                textChild.ComputedContentY = textChild.ComputedPosition.Y;
             }
+        }
+        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+        {
+            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
         }
         public override bool HandleClick(Vector2 mousePos)
         {
