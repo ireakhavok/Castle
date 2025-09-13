@@ -142,6 +142,8 @@ namespace SiegeEngine.UI
                 style.HeightStr = height;
             if (props.TryGetValue("max-width", out string maxw))
                 style.MaxWidthStr = maxw;
+            if (props.TryGetValue("max-height", out string maxh))
+                style.MaxHeightStr = maxh;
             if (props.TryGetValue("background", out string bg) || props.TryGetValue("background-color", out bg))
             {
                 style.Background = bg;

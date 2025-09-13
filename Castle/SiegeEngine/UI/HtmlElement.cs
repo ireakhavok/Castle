@@ -98,6 +98,7 @@ namespace SiegeEngine.UI
             float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
             float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
             float maxW = ParseSize(effectiveStyle.MaxWidthStr, refWidth, viewportWidth, viewportHeight);
+            float maxH = ParseSize(effectiveStyle.MaxHeightStr, refHeight, viewportWidth, viewportHeight);
             Vector4 pad = ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight);
             Vector4 margin = ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight, isMargin: true);
             Vector4 borderW = ParseBorderWidths(effectiveStyle, refWidth, viewportWidth, viewportHeight);
@@ -110,6 +111,8 @@ namespace SiegeEngine.UI
             }
             if (!float.IsNaN(forcedWidth)) w = forcedWidth;
             if (!float.IsNaN(forcedHeight)) h = forcedHeight;
+            if (!float.IsNaN(maxW)) w = Math.Min(w, maxW);
+            if (!float.IsNaN(maxH)) h = Math.Min(h, maxH);
             if (effectiveStyle.BoxSizing == "border-box")
             {
                 boxW = w;
@@ -124,7 +127,6 @@ namespace SiegeEngine.UI
                 boxW = w + pad.W + pad.Y + borderW.W + borderW.Y;
                 boxH = h + pad.X + pad.Z + borderW.X + borderW.Z;
             }
-            if (!float.IsNaN(maxW)) boxW = Math.Min(boxW, maxW);
             ComputedWidth = boxW;
             ComputedHeight = boxH;
             ComputedContentWidth = contentW;
@@ -337,12 +339,21 @@ namespace SiegeEngine.UI
                 float child_pos_y = ComputedContentY + (isRow ? child_pos_cross : item_start);
                 float child_w = isRow ? child_main : child_cross;
                 float child_h = isRow ? child_cross : child_main;
-                float forced_cross = float.NaN;
+                float forced_width = float.NaN;
+                float forced_height = float.NaN;
                 if (Style.AlignItems == "stretch" && float.IsNaN(child_cross_str))
                 {
-                    forced_cross = availableCross - c_m_cross_start - c_m_cross_end;
+                    float forced_cross = availableCross - c_m_cross_start - c_m_cross_end;
+                    if (isRow)
+                    {
+                        forced_height = forced_cross;
+                    }
+                    else
+                    {
+                        forced_width = forced_cross;
+                    }
                 }
-                child.ComputeLayout(child_pos_x, child_pos_y, child_w, child_h, viewportWidth, viewportHeight, textRenderer, fs, isRow ? float.NaN : forced_cross, isRow ? forced_cross : float.NaN);
+                child.ComputeLayout(child_pos_x, child_pos_y, child_w, child_h, viewportWidth, viewportHeight, textRenderer, fs, forced_width, forced_height);
                 current_main += child_main + childMarginEnd[i];
                 float computed_cross = isRow ? child.ComputedHeight : child.ComputedWidth;
                 float allocated_cross = child_cross + c_m_cross_start + c_m_cross_end;

@@ -1,7 +1,6 @@
 ﻿// Folder: SiegeEngine.UI
 // File: CssStyle.cs
 using System.Numerics;
-
 namespace SiegeEngine.UI
 {
     public class CssStyle
@@ -12,6 +11,7 @@ namespace SiegeEngine.UI
         public string WidthStr { get; set; }
         public string HeightStr { get; set; }
         public string MaxWidthStr { get; set; }
+        public string MaxHeightStr { get; set; }
         public string Background { get; set; }
         public Vector4 BackgroundColor { get; set; }
         public string Color { get; set; }
@@ -61,6 +61,7 @@ namespace SiegeEngine.UI
                 WidthStr = WidthStr,
                 HeightStr = HeightStr,
                 MaxWidthStr = MaxWidthStr,
+                MaxHeightStr = MaxHeightStr,
                 Background = Background,
                 BackgroundColor = BackgroundColor,
                 Color = Color,
