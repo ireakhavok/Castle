@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class CssParser
@@ -197,12 +196,13 @@ namespace SiegeEngine.UI
                 style.TextTransform = tt;
             if (props.TryGetValue("border", out string border))
             {
-                var parts = border.Split(' ');
+                var parts = border.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 3)
                 {
                     style.BorderWidthStr = parts[0];
                     style.BorderStyle = parts[1];
-                    style.BorderColor = ParseColor(parts[2]);
+                    string colorStr = string.Join(" ", parts.Skip(2));
+                    style.BorderColor = ParseColor(colorStr);
                 }
             }
             if (props.TryGetValue("border-width", out string bw))
@@ -213,42 +213,46 @@ namespace SiegeEngine.UI
                 style.BorderColor = ParseColor(bc);
             if (props.TryGetValue("border-top", out string btop))
             {
-                var parts = btop.Split(' ');
+                var parts = btop.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 3)
                 {
                     style.BorderTopWidthStr = parts[0];
                     style.BorderTopStyle = parts[1];
-                    style.BorderTopColor = ParseColor(parts[2]);
+                    string colorStr = string.Join(" ", parts.Skip(2));
+                    style.BorderTopColor = ParseColor(colorStr);
                 }
             }
             if (props.TryGetValue("border-right", out string bright))
             {
-                var parts = bright.Split(' ');
+                var parts = bright.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 3)
                 {
                     style.BorderRightWidthStr = parts[0];
                     style.BorderRightStyle = parts[1];
-                    style.BorderRightColor = ParseColor(parts[2]);
+                    string colorStr = string.Join(" ", parts.Skip(2));
+                    style.BorderRightColor = ParseColor(colorStr);
                 }
             }
             if (props.TryGetValue("border-bottom", out string bbottom))
             {
-                var parts = bbottom.Split(' ');
+                var parts = bbottom.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 3)
                 {
                     style.BorderBottomWidthStr = parts[0];
                     style.BorderBottomStyle = parts[1];
-                    style.BorderBottomColor = ParseColor(parts[2]);
+                    string colorStr = string.Join(" ", parts.Skip(2));
+                    style.BorderBottomColor = ParseColor(colorStr);
                 }
             }
             if (props.TryGetValue("border-left", out string bleft))
             {
-                var parts = bleft.Split(' ');
+                var parts = bleft.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length >= 3)
                 {
                     style.BorderLeftWidthStr = parts[0];
                     style.BorderLeftStyle = parts[1];
-                    style.BorderLeftColor = ParseColor(parts[2]);
+                    string colorStr = string.Join(" ", parts.Skip(2));
+                    style.BorderLeftColor = ParseColor(colorStr);
                 }
             }
             if (props.TryGetValue("box-sizing", out string boxs))
@@ -261,7 +265,7 @@ namespace SiegeEngine.UI
             if (color.Contains("gradient"))
             {
                 List<Vector4> colors = new List<Vector4>();
-                var matches = Regex.Matches(color, @"#[0-9a-fA-F]{3,6}|rgb[a]?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(,\s*[0-1](\.\d+)?\s*)?\)");
+                var matches = Regex.Matches(color, @"#[0-9a-fA-F]{3,6}|rgb[a]?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(,\s*[0-1](\.\d+)?\s*)?\)?");
                 foreach (Match m in matches)
                 {
                     var c = ParseSingleColor(m.Value);
