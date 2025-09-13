@@ -257,7 +257,7 @@ namespace SiegeEngine.UI
             if (color.Contains("gradient"))
             {
                 List<Vector4> colors = new List<Vector4>();
-                var matches = Regex.Matches(color, @"#[0-9a-fA-F]{6}|rgb[a]?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(,\s*[0-1](\.\d+)?\s*)?\)");
+                var matches = Regex.Matches(color, @"#[0-9a-fA-F]{3,6}|rgb[a]?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(,\s*[0-1](\.\d+)?\s*)?\)");
                 foreach (Match m in matches)
                 {
                     var c = ParseSingleColor(m.Value);
@@ -280,6 +280,10 @@ namespace SiegeEngine.UI
             if (color.StartsWith("#"))
             {
                 color = color.Substring(1);
+                if (color.Length == 3)
+                {
+                    color = "" + color[0] + color[0] + color[1] + color[1] + color[2] + color[2];
+                }
                 if (color.Length == 6)
                 {
                     int r = int.Parse(color.Substring(0, 2), System.Globalization.NumberStyles.HexNumber);

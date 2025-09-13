@@ -6,7 +6,7 @@ namespace SiegeEngine.UI
 {
     public class CssStyle
     {
-        public string Position { get; set; } = "relative";
+        public string Position { get; set; } = "static";
         public string LeftStr { get; set; }
         public string TopStr { get; set; }
         public string WidthStr { get; set; }

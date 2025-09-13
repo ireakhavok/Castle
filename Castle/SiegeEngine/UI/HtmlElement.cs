@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -33,6 +34,15 @@ namespace SiegeEngine.UI
         public bool IsActive { get; set; }
         public bool Checked { get; set; }
         public bool IsTarget { get; set; }
+        private HtmlElement FindContainingBlock()
+        {
+            HtmlElement current = Parent;
+            while (current != null && current.Style.Position == "static")
+            {
+                current = current.Parent;
+            }
+            return current;
+        }
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
         {
             CssStyle effectiveStyle = Style;
@@ -46,19 +56,52 @@ namespace SiegeEngine.UI
                 ComputedHeight = 0;
                 return;
             }
+            float baseX = parentPositionX;
+            float baseY = parentPositionY;
+            float refWidth = parentWidth;
+            float refHeight = parentHeight;
+            if (effectiveStyle.Position == "absolute")
+            {
+                HtmlElement cb = FindContainingBlock();
+                baseX = cb == null ? 0 : cb.ComputedContentX;
+                baseY = cb == null ? 0 : cb.ComputedContentY;
+                refWidth = cb == null ? viewportWidth : cb.ComputedContentWidth;
+                refHeight = cb == null ? viewportHeight : cb.ComputedContentHeight;
+            }
+            else if (effectiveStyle.Position == "fixed")
+            {
+                baseX = 0;
+                baseY = 0;
+                refWidth = viewportWidth;
+                refHeight = viewportHeight;
+            }
+            else
+            {
+                baseX = parentPositionX;
+                baseY = parentPositionY;
+                refWidth = parentWidth;
+                refHeight = parentHeight;
+            }
             float fs = ParseSize(effectiveStyle.FontSizeStr, parentFs, viewportWidth, viewportHeight);
             if (float.IsNaN(fs)) fs = parentFs;
             Style.FontSize = fs;
-            float left = ParseSize(effectiveStyle.LeftStr, parentWidth, viewportWidth, viewportHeight);
+            float left = ParseSize(effectiveStyle.LeftStr, refWidth, viewportWidth, viewportHeight);
             if (float.IsNaN(left)) left = 0;
-            float top = ParseSize(effectiveStyle.TopStr, parentHeight, viewportWidth, viewportHeight);
+            float top = ParseSize(effectiveStyle.TopStr, refHeight, viewportWidth, viewportHeight);
             if (float.IsNaN(top)) top = 0;
-            float w = ParseSize(effectiveStyle.WidthStr, parentWidth, viewportWidth, viewportHeight);
-            float h = ParseSize(effectiveStyle.HeightStr, parentHeight, viewportWidth, viewportHeight);
-            float maxW = ParseSize(effectiveStyle.MaxWidthStr, parentWidth, viewportWidth, viewportHeight);
-            Vector4 pad = ParsePaddings(effectiveStyle, parentWidth, viewportWidth, viewportHeight);
-            Vector4 margin = ParsePaddings(effectiveStyle, parentWidth, viewportWidth, viewportHeight, isMargin: true);
-            Vector4 borderW = ParseBorderWidths(effectiveStyle, parentWidth, viewportWidth, viewportHeight);
+            if (effectiveStyle.Position == "static")
+            {
+                left = 0;
+                top = 0;
+            }
+            float boxX = baseX + left;
+            float boxY = baseY + top;
+            float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
+            float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
+            float maxW = ParseSize(effectiveStyle.MaxWidthStr, refWidth, viewportWidth, viewportHeight);
+            Vector4 pad = ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight);
+            Vector4 margin = ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight, isMargin: true);
+            Vector4 borderW = ParseBorderWidths(effectiveStyle, refWidth, viewportWidth, viewportHeight);
             float boxW, boxH, contentW, contentH;
             if (float.IsNaN(w) || float.IsNaN(h))
             {
@@ -85,17 +128,10 @@ namespace SiegeEngine.UI
             ComputedHeight = boxH;
             ComputedContentWidth = contentW;
             ComputedContentHeight = contentH;
-            float boxX = parentPositionX + left;
-            float boxY = parentPositionY + top;
             if (effectiveStyle.Position != "absolute" && effectiveStyle.Position != "fixed")
             {
                 boxX += margin.W;
                 boxY += margin.X;
-            }
-            if (effectiveStyle.Position == "fixed")
-            {
-                boxX = left;
-                boxY = top;
             }
             ComputedPosition = new Vector2(boxX, boxY);
             ComputedBackgroundX = boxX + borderW.W;
@@ -300,7 +336,40 @@ namespace SiegeEngine.UI
                 float child_w = isRow ? child_main : child_cross;
                 float child_h = isRow ? child_cross : child_main;
                 child.ComputeLayout(child_pos_x, child_pos_y, child_w, child_h, viewportWidth, viewportHeight, textRenderer, fs);
-                current_main += child_main + childMarginEnd[i];
+                float computed_main = isRow ? child.ComputedWidth : child.ComputedHeight;
+                if (computed_main < child_main)
+                {
+                    current_main += computed_main + childMarginEnd[i] - child_main;
+                }
+                else
+                {
+                    current_main += child_main + childMarginEnd[i];
+                }
+                float computed_cross = isRow ? child.ComputedHeight : child.ComputedWidth;
+                float allocated_cross = child_cross + c_m_cross_start + c_m_cross_end;
+                if (computed_cross < allocated_cross - c_m_cross_start - c_m_cross_end)
+                {
+                    float diff = allocated_cross - computed_cross - c_m_cross_start - c_m_cross_end;
+                    float adjust = 0;
+                    if (Style.AlignItems == "center")
+                    {
+                        adjust = diff / 2;
+                    }
+                    else if (Style.AlignItems == "flex-end")
+                    {
+                        adjust = diff;
+                    }
+                    var pos = child.ComputedPosition;
+                    if (isRow)
+                    {
+                        pos.Y += adjust;
+                    }
+                    else
+                    {
+                        pos.X += adjust;
+                    }
+                    child.ComputedPosition = pos;
+                }
             }
             foreach (var child in positionedChildren)
             {
@@ -562,7 +631,7 @@ namespace SiegeEngine.UI
         {
             if (Style.Display == "none") return false;
             if (mousePos.X >= ComputedPosition.X && mousePos.X <= ComputedPosition.X + ComputedWidth &&
-            mousePos.Y >= ComputedPosition.Y && mousePos.Y <= ComputedPosition.Y + ComputedHeight)
+                mousePos.Y >= ComputedPosition.Y && mousePos.Y <= ComputedPosition.Y + ComputedHeight)
             {
                 foreach (var child in Children)
                 {
