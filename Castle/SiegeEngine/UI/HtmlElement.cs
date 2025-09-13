@@ -144,6 +144,7 @@ namespace SiegeEngine.UI
             ComputedContentX = ComputedBackgroundX + pad.W;
             ComputedContentY = ComputedBackgroundY + pad.X;
             this.BorderWidth = borderW;
+            Style.Margin = margin;
             if (Children.Count > 0)
             {
                 if (effectiveStyle.Display == "flex")
