@@ -5,7 +5,6 @@ using SiegeEngine.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.UI
 {
     public class TextElement : HtmlElement
@@ -18,9 +17,9 @@ namespace SiegeEngine.UI
             Tag = "text";
             Style.Display = "inline";
         }
-        public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+        public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
-            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs);
+            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
             float fs = Style.FontSize;
             _lineHeight = fs * 1.2f;
             if (Style.WhiteSpace == "normal" && !float.IsNaN(ComputedContentWidth) && ComputedContentWidth > 0)

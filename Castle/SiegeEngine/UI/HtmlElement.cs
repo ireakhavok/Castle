@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -43,7 +42,7 @@ namespace SiegeEngine.UI
             }
             return current;
         }
-        public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+        public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             CssStyle effectiveStyle = Style;
             if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle ts))
@@ -109,6 +108,8 @@ namespace SiegeEngine.UI
                 if (float.IsNaN(w)) w = intrinsic.X;
                 if (float.IsNaN(h)) h = intrinsic.Y;
             }
+            if (!float.IsNaN(forcedWidth)) w = forcedWidth;
+            if (!float.IsNaN(forcedHeight)) h = forcedHeight;
             if (effectiveStyle.BoxSizing == "border-box")
             {
                 boxW = w;
@@ -336,7 +337,12 @@ namespace SiegeEngine.UI
                 float child_pos_y = ComputedContentY + (isRow ? child_pos_cross : item_start);
                 float child_w = isRow ? child_main : child_cross;
                 float child_h = isRow ? child_cross : child_main;
-                child.ComputeLayout(child_pos_x, child_pos_y, child_w, child_h, viewportWidth, viewportHeight, textRenderer, fs);
+                float forced_cross = float.NaN;
+                if (Style.AlignItems == "stretch" && float.IsNaN(child_cross_str))
+                {
+                    forced_cross = availableCross - c_m_cross_start - c_m_cross_end;
+                }
+                child.ComputeLayout(child_pos_x, child_pos_y, child_w, child_h, viewportWidth, viewportHeight, textRenderer, fs, isRow ? float.NaN : forced_cross, isRow ? forced_cross : float.NaN);
                 current_main += child_main + childMarginEnd[i];
                 float computed_cross = isRow ? child.ComputedHeight : child.ComputedWidth;
                 float allocated_cross = child_cross + c_m_cross_start + c_m_cross_end;

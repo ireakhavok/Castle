@@ -14,9 +14,14 @@ namespace SiegeEngine.Rendering
         private readonly Dictionary<char, CharacterData> _characterData;
         private readonly Dictionary<char, uint> _charTextures;
         private readonly IRenderContext _renderContext;
+        private readonly string _fontName;
+        private readonly float _baseSize;
+        public float BaseSize => _baseSize;
         public SystemFontRenderer(IRenderContext renderContext, string fontName, float fontSize = 12.0f)
         {
             _renderContext = renderContext;
+            _fontName = fontName;
+            _baseSize = fontSize;
             _characterData = new Dictionary<char, CharacterData>();
             _charTextures = new Dictionary<char, uint>();
             LoadFontData(fontName, fontSize);
@@ -110,6 +115,21 @@ namespace SiegeEngine.Rendering
             catch (Exception ex)
             {
                 //Console.WriteLine($"SystemFontRenderer: Failed to load font '{fontName}': {ex.Message}");
+            }
+        }
+        public float GetStringWidth(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return 0f;
+            using (var font = new Font(_fontName, _baseSize, FontStyle.Bold))
+            using (var bitmap = new Bitmap(1, 1))
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
+                using (StringFormat format = StringFormat.GenericTypographic)
+                {
+                    format.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
+                    return graphics.MeasureString(text, font, 0, format).Width;
+                }
             }
         }
         public CharacterData GetCharacterData(char c)
