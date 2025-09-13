@@ -1,8 +1,11 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.UI
+// File: TextElement.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.UI
 {
     public class TextElement : HtmlElement
@@ -22,7 +25,7 @@ namespace SiegeEngine.UI
             _lineHeight = fs * 1.2f;
             if (Style.WhiteSpace == "normal" && !float.IsNaN(ComputedContentWidth) && ComputedContentWidth > 0)
             {
-                _lines = GetWrappedLines(ComputedContentWidth, fs, textRenderer);
+                _lines = GetWrappedLines(ComputedContentWidth, fs, textRenderer, Style.FontFamily ?? "Arial");
                 ComputedContentHeight = _lines.Count * _lineHeight;
             }
             else
@@ -31,7 +34,7 @@ namespace SiegeEngine.UI
                 ComputedContentHeight = _lineHeight;
             }
         }
-        private List<string> GetWrappedLines(float maxWidth, float fs, TextRenderer textRenderer)
+        private List<string> GetWrappedLines(float maxWidth, float fs, TextRenderer textRenderer, string fontFamily)
         {
             List<string> lines = new List<string>();
             string[] words = Content.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -39,7 +42,7 @@ namespace SiegeEngine.UI
             foreach (string word in words)
             {
                 string test = line + (string.IsNullOrEmpty(line) ? "" : " ") + word;
-                float testWidth = textRenderer.GetTextSize(test, fs).X;
+                float testWidth = textRenderer.GetTextSize(test, fs, fontFamily).X;
                 if (testWidth > maxWidth)
                 {
                     if (!string.IsNullOrEmpty(line))
@@ -67,7 +70,7 @@ namespace SiegeEngine.UI
             {
                 string renderLine = line;
                 if (Style.TextTransform == "uppercase") renderLine = line.ToUpper();
-                float lineWidth = textRenderer.GetTextSize(renderLine, fs).X;
+                float lineWidth = textRenderer.GetTextSize(renderLine, fs, Style.FontFamily ?? "Arial").X;
                 float x = ComputedContentX;
                 if (Style.TextAlign == "center")
                 {
@@ -77,7 +80,7 @@ namespace SiegeEngine.UI
                 {
                     x += ComputedContentWidth - lineWidth;
                 }
-                textRenderer.RenderText(renderLine, x, y, (int)viewportWidth, (int)viewportHeight, fs, color);
+                textRenderer.RenderText(renderLine, x, y, (int)viewportWidth, (int)viewportHeight, fs, color, Style.FontFamily ?? "Arial");
                 y += _lineHeight;
             }
         }

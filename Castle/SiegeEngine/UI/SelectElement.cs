@@ -1,7 +1,10 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.UI
+// File: SelectElement.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.UI
 {
     public class SelectElement : HtmlElement
@@ -22,7 +25,7 @@ namespace SiegeEngine.UI
             if (!string.IsNullOrEmpty(Selected))
             {
                 float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
-                float lineWidth = textRenderer.GetTextSize(Selected, fs).X;
+                float lineWidth = textRenderer.GetTextSize(Selected, fs, Style.FontFamily ?? "Arial").X;
                 float textX = ComputedContentX;
                 if (Style.TextAlign == "center")
                 {
@@ -34,7 +37,7 @@ namespace SiegeEngine.UI
                 }
                 float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
                 Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
-                textRenderer.RenderText(Selected, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color);
+                textRenderer.RenderText(Selected, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color, Style.FontFamily ?? "Arial");
             }
         }
     }

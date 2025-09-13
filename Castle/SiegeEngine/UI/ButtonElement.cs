@@ -1,8 +1,11 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.UI
+// File: ButtonElement.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering;
 using System;
 using System.Numerics;
 using System.Reflection;
+
 namespace SiegeEngine.UI
 {
     public class ButtonElement : HtmlElement
@@ -23,7 +26,7 @@ namespace SiegeEngine.UI
             if (textChild != null)
             {
                 float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
-                float approxTextWidth = textRenderer.GetTextSize(textChild.Content, fs).X;
+                float approxTextWidth = textRenderer.GetTextSize(textChild.Content, fs, Style.FontFamily ?? "Arial").X;
                 float textX = ComputedContentX;
                 if (Style.TextAlign == "center")
                 {
@@ -34,7 +37,7 @@ namespace SiegeEngine.UI
                     textX += ComputedContentWidth - approxTextWidth;
                 }
                 float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
-                textRenderer.RenderText(textChild.Content, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, Style.TextColor);
+                textRenderer.RenderText(textChild.Content, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, Style.TextColor, Style.FontFamily ?? "Arial");
             }
         }
         public override bool HandleClick(Vector2 mousePos)

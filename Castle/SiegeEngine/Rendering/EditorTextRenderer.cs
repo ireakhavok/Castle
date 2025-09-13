@@ -18,7 +18,7 @@ namespace SiegeEngine.Rendering
             _renderContext = renderContext;
             _window = window;
             _charTextures = new Dictionary<char, uint>();
-            _fontRenderer = new SystemFontRenderer("Arial");
+            _fontRenderer = new SystemFontRenderer(_renderContext, "Arial");
         }
         public void Initialize(ShaderProgram shaderProgram)
         {

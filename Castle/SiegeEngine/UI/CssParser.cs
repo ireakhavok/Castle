@@ -157,6 +157,10 @@ namespace SiegeEngine.UI
             {
                 style.FontSizeStr = fs;
             }
+            if (props.TryGetValue("font-family", out string ff))
+            {
+                style.FontFamily = ff.Trim('\'', '"');
+            }
             if (props.TryGetValue("display", out string disp))
                 style.Display = disp;
             if (props.TryGetValue("flex-direction", out string fd))

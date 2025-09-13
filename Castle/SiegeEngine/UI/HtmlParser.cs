@@ -134,7 +134,6 @@ namespace SiegeEngine.UI
                 {
                     // Text node
                     string text = ReadUntil(c => c == '<');
-                    text = text.Trim();
                     if (!string.IsNullOrEmpty(text))
                     {
                         TextElement textElem = new TextElement { Content = text };

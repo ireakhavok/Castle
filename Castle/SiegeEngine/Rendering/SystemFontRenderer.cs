@@ -1,23 +1,30 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Rendering
+// File: SystemFontRenderer.cs
+using System;
 using System.Drawing;
 using System.Drawing.Text;
 using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.Linq;
+using SiegeEngine.ContextManagement;
 
 namespace SiegeEngine.Rendering
 {
     public class SystemFontRenderer
     {
         private readonly Dictionary<char, CharacterData> _characterData;
+        private readonly Dictionary<char, uint> _charTextures;
+        private readonly IRenderContext _renderContext;
 
-        public SystemFontRenderer(string fontName, float fontSize = 12.0f)
+        public SystemFontRenderer(IRenderContext renderContext, string fontName, float fontSize = 12.0f)
         {
+            _renderContext = renderContext;
             _characterData = new Dictionary<char, CharacterData>();
+            _charTextures = new Dictionary<char, uint>();
             LoadFontData(fontName, fontSize);
         }
 
-        private void LoadFontData(string fontName, float fontSize)
+        private unsafe void LoadFontData(string fontName, float fontSize)
         {
             //Console.WriteLine($"SystemFontRenderer: Loading font '{fontName}', size {fontSize}");
             try
@@ -75,6 +82,26 @@ namespace SiegeEngine.Rendering
                             long pixelSum = pixelData.Sum(b => (long)b);
                             //Console.WriteLine($"SystemFontRenderer: Loaded character '{c}': {width}x{height}, Sample pixels (BGRA): {sample}, Pixel sum: {pixelSum}");
 
+                            uint texture;
+                            _renderContext.GenTextures(1, out texture);
+                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, texture);
+                            _renderContext.PixelStore(_renderContext.Enums.UnpackAlignment, 1);
+                            fixed (byte* pixelPtr = pixelData)
+                            {
+                                _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgba, (uint)width, (uint)height, 0, _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, pixelPtr);
+                            }
+                            int error = _renderContext.GetError();
+                            if (error != _renderContext.Enums.NoError)
+                            {
+                                Console.WriteLine($"SystemFontRenderer: OpenGL error after loading texture for '{c}': {error}");
+                            }
+                            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
+                            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
+                            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
+                            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
+                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+
+                            _charTextures[c] = texture;
                             _characterData[c] = new CharacterData
                             {
                                 Width = width,
@@ -100,6 +127,15 @@ namespace SiegeEngine.Rendering
                 return _characterData[' '];
             }
             return _characterData[c];
+        }
+
+        public uint GetCharacterTexture(char c)
+        {
+            if (!_charTextures.ContainsKey(c))
+            {
+                return _charTextures[' '];
+            }
+            return _charTextures[c];
         }
     }
 

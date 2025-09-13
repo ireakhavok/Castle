@@ -18,6 +18,7 @@ namespace SiegeEngine.UI
         public Vector4 TextColor { get; set; }
         public string FontSizeStr { get; set; }
         public float FontSize { get; set; }
+        public string FontFamily { get; set; }
         public string Display { get; set; } = "block";
         public string FlexDirection { get; set; } = "row";
         public string AlignItems { get; set; } = "stretch";
@@ -66,6 +67,7 @@ namespace SiegeEngine.UI
                 TextColor = TextColor,
                 FontSizeStr = FontSizeStr,
                 FontSize = FontSize,
+                FontFamily = FontFamily,
                 Display = Display,
                 FlexDirection = FlexDirection,
                 AlignItems = AlignItems,
