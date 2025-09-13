@@ -2099,7 +2099,7 @@ Folder: Castle
  File: CssParser.cs
  class: CssParser (Namespace: SiegeEngine.UI)
  Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
  - void Apply(string css, string css, HtmlElement root)
  Calls: ApplyToElements, ApplyToElements, ParseProperties, ReadUntil, SkipWhitespace
@@ -2109,19 +2109,25 @@ Folder: Castle
  Calls: None
  - string> ParseProperties(string block, string block)
  Calls: ReadUntil, ReadUntil, SkipWhitespace
- - void ApplyToElements(HtmlElement root, HtmlElement root, string selector, string> props)
+ - void ApplyToElements(HtmlElement root, HtmlElement root, string selector, string> props, string pseudo)
+ Calls: ApplyProperties, ApplyProperties, Clone, Matches
+ - bool Matches(HtmlElement elem, HtmlElement elem, string selector)
  Calls: None
  - void ApplyProperties(CssStyle style, CssStyle style, string> props)
  Calls: ParseColor, ParseColor
  - Vector4 ParseColor(string color, string color)
- Calls: ParseColor, ParseColor
- - return ParseColor()
+ Calls: Matches, Matches, ParseSingleColor
+ - return ParseSingleColor()
+ Calls: Parse, Parse
+ - Vector4 ParseSingleColor(string color, string color)
  Calls: Parse, Parse
  File: CssStyle.cs
  class: CssStyle (Namespace: SiegeEngine.UI)
  Inherits: None
  Dependencies: System.Numerics, System.Numerics
  Methods:
+ - CssStyle Clone()
+ Calls: None
  File: DivElement.cs
  class: DivElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2135,23 +2141,25 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
+ - HtmlElement FindContainingBlock()
+ Calls: None
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
  Calls: None
  - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseSize
  - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
- Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, GetAutoWidth, ParseSize
- - float GetAutoWidth(float parentWidth, float parentWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
- Calls: None
- - float GetAutoHeight(float parentHeight, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer)
- Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, GetTextSize, ParsePadding, ParseSize
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, ParseSize
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: GetTextSize, GetTextSize
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: None
  - float ParseSize(string s, string s, float parent, float vw, float vh)
  Calls: Parse, Parse
- - Vector4 ParsePadding(string s, string s, float parent, float vw, float vh)
+ - Vector4 ParsePaddings(CssStyle style, CssStyle style, float parent, float vw, float vh, bool isMargin)
+ Calls: ParseSides, ParseSides, ParseSize
+ - Vector4 ParseBorderWidths(CssStyle style, CssStyle style, float parent, float vw, float vh)
+ Calls: GetVal, GetVal, ParseSize
+ - Vector4 ParseSides(string s, string s, float parent, float vw, float vh)
  Calls: None
  - float GetVal(int index, int index, float defaultVal)
  Calls: ParseSize, ParseSize
@@ -2164,6 +2172,28 @@ Folder: Castle
  Methods:
  - HtmlElement Parse(string html, string html)
  Calls: None
+ - void ParseChildren(HtmlElement parent, HtmlElement parent)
+ Calls: AttachHook, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace
+ - constructor HtmlParser()
+ Calls: None
+ - recursively ParseChildren()
+ Calls: ReadUntil, ReadUntil
+ - void SkipWhitespace()
+ Calls: None
+ - string ReadUntil(bool> condition, bool> condition)
+ Calls: None
+ File: InputElement.cs
+ class: InputElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Collections.Generic, System.Numerics
+ Methods:
+ - constructor InputElement()
+ Calls: ComputeLayout, ComputeLayout
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+ Calls: None
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ Calls: RenderText, RenderText
  File: SelectElement.cs
  class: SelectElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
