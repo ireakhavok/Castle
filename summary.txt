@@ -1819,6 +1819,8 @@ Folder: Castle
  Calls: BindTexture, BindTexture, Clear, GenTextures, GetError, PixelStore, TexImage2D, TexParameter
  - void LoadFontData(string fontName, string fontName, float fontSize)
  Calls: None
+ - float GetStringWidth(string text, string text)
+ Calls: None
  - CharacterData GetCharacterData(char c, char c)
  Calls: None
  - uint GetCharacterTexture(char c, char c)
@@ -1843,7 +1845,7 @@ Folder: Castle
  - void RenderText(string text, string text, float startX, float startY, int width, int height, float fontSize, string fontFamily)
  Calls: None
  - void RenderTextPass(string text, string text, float startX, float startY, int width, int height, float fontSize, Vector4 color, string fontFamily)
- Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, SetMatrix4, SetUniform, VertexAttribPointer
+ Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, GetStringWidth, SetMatrix4, SetUniform, VertexAttribPointer
  - SystemFontRenderer GetFontRenderer(string fontFamily, string fontFamily)
  Calls: None
  - void Dispose()
@@ -2092,7 +2094,7 @@ Folder: Castle
  Methods:
  - constructor ButtonElement()
  Calls: ComputeLayout, ComputeLayout
- - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: GetTextSize, GetTextSize, Render, RenderText
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: GetTextSize, GetTextSize, RenderText
@@ -2147,7 +2149,7 @@ Folder: Castle
  Methods:
  - HtmlElement FindContainingBlock()
  Calls: None
- - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
  - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseSize
@@ -2194,7 +2196,7 @@ Folder: Castle
  Methods:
  - constructor InputElement()
  Calls: ComputeLayout, ComputeLayout
- - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: RenderText, RenderText
@@ -2206,7 +2208,7 @@ Folder: Castle
  Methods:
  - constructor SelectElement()
  Calls: ComputeLayout, ComputeLayout
- - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: GetTextSize, GetTextSize, Render, RenderText
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: GetTextSize, GetTextSize, RenderText
@@ -2218,7 +2220,7 @@ Folder: Castle
  Methods:
  - constructor TextElement()
  Calls: ComputeLayout, ComputeLayout, GetWrappedLines
- - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: GetWrappedLines, GetWrappedLines
  - List<string> GetWrappedLines(float maxWidth, float maxWidth, float fs, TextRenderer textRenderer, string fontFamily)
  Calls: None
