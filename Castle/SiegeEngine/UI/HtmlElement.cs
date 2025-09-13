@@ -97,6 +97,8 @@ namespace SiegeEngine.UI
             float boxY = baseY + top;
             float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
             float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
+            float minW = ParseSize(effectiveStyle.MinWidthStr, refWidth, viewportWidth, viewportHeight);
+            float minH = ParseSize(effectiveStyle.MinHeightStr, refHeight, viewportWidth, viewportHeight);
             float maxW = ParseSize(effectiveStyle.MaxWidthStr, refWidth, viewportWidth, viewportHeight);
             float maxH = ParseSize(effectiveStyle.MaxHeightStr, refHeight, viewportWidth, viewportHeight);
             Vector4 pad = ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight);
@@ -111,6 +113,8 @@ namespace SiegeEngine.UI
             }
             if (!float.IsNaN(forcedWidth)) w = forcedWidth;
             if (!float.IsNaN(forcedHeight)) h = forcedHeight;
+            if (!float.IsNaN(minW)) w = Math.Max(w, minW);
+            if (!float.IsNaN(minH)) h = Math.Max(h, minH);
             if (!float.IsNaN(maxW)) w = Math.Min(w, maxW);
             if (!float.IsNaN(maxH)) h = Math.Min(h, maxH);
             if (effectiveStyle.BoxSizing == "border-box")
@@ -163,7 +167,7 @@ namespace SiegeEngine.UI
             if (visibleChildren.Count == 0) return;
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
             List<HtmlElement> positionedChildren = visibleChildren.Where(c => c.Style.Position == "absolute" || c.Style.Position == "fixed").ToList();
-            bool isRow = Style.FlexDirection == "row";
+            bool isRow = string.IsNullOrEmpty(Style.FlexDirection) || Style.FlexDirection == "row";
             float availableMain = isRow ? ComputedContentWidth : ComputedContentHeight;
             float availableCross = isRow ? ComputedContentHeight : ComputedContentWidth;
             float gap = ParseSize(Style.GapStr, availableMain, viewportWidth, viewportHeight);
@@ -217,6 +221,14 @@ namespace SiegeEngine.UI
                         childBaseMain[i] = Math.Max(0, childBaseMain[i] - reduce);
                     }
                 }
+            }
+            for (int i = 0; i < normalChildren.Count; i++)
+            {
+                HtmlElement child = normalChildren[i];
+                float max_main = ParseSize(isRow ? child.Style.MaxWidthStr : child.Style.MaxHeightStr, availableMain, viewportWidth, viewportHeight);
+                if (!float.IsNaN(max_main)) childBaseMain[i] = Math.Min(childBaseMain[i], max_main);
+                float min_main = ParseSize(isRow ? child.Style.MinWidthStr : child.Style.MinHeightStr, availableMain, viewportWidth, viewportHeight);
+                if (!float.IsNaN(min_main)) childBaseMain[i] = Math.Max(childBaseMain[i], min_main);
             }
             float sum_border_boxes = 0;
             float sum_fixed_margins = 0;
@@ -272,6 +284,16 @@ namespace SiegeEngine.UI
                     }
                     else spacing = 0;
                 }
+                else if (Style.JustifyContent == "space-around")
+                {
+                    spacing = (availableMain - sum_outer) / normalChildren.Count;
+                    start_main = spacing / 2;
+                }
+                else if (Style.JustifyContent == "space-evenly")
+                {
+                    spacing = (availableMain - sum_outer) / (normalChildren.Count + 1);
+                    start_main = spacing;
+                }
                 else if (Style.JustifyContent == "center")
                 {
                     start_main = (availableMain - total_used) / 2;
@@ -293,7 +315,12 @@ namespace SiegeEngine.UI
                 float item_start = current_main + childMarginStart[i];
                 float child_main = childBaseMain[i];
                 float child_cross_str = ParseSize(isRow ? child.Style.HeightStr : child.Style.WidthStr, availableCross, viewportWidth, viewportHeight);
-                float child_cross = float.IsNaN(child_cross_str) ? (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X) : child_cross_str;
+                Vector2 intrinsic = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                float child_cross = float.IsNaN(child_cross_str) ? (isRow ? intrinsic.Y : intrinsic.X) : child_cross_str;
+                float max_cross = ParseSize(isRow ? child.Style.MaxHeightStr : child.Style.MaxWidthStr, availableCross, viewportWidth, viewportHeight);
+                if (!float.IsNaN(max_cross)) child_cross = Math.Min(child_cross, max_cross);
+                float min_cross = ParseSize(isRow ? child.Style.MinHeightStr : child.Style.MinWidthStr, availableCross, viewportWidth, viewportHeight);
+                if (!float.IsNaN(min_cross)) child_cross = Math.Max(child_cross, min_cross);
                 float m_cross_start = isRow ? child.Style.Margin.X : child.Style.Margin.W;
                 float m_cross_end = isRow ? child.Style.Margin.Z : child.Style.Margin.Y;
                 float c_m_cross_start = float.IsNaN(m_cross_start) ? 0 : m_cross_start;
@@ -314,15 +341,16 @@ namespace SiegeEngine.UI
                 }
                 else
                 {
-                    if (Style.AlignItems == "center")
+                    string alignItems = string.IsNullOrEmpty(Style.AlignItems) ? "stretch" : Style.AlignItems;
+                    if (alignItems == "center")
                     {
                         offset_margin_box = (availableCross - child_cross_for_align) / 2;
                     }
-                    else if (Style.AlignItems == "flex-end")
+                    else if (alignItems == "flex-end")
                     {
                         offset_margin_box = availableCross - child_cross_for_align;
                     }
-                    else if (Style.AlignItems == "stretch")
+                    else if (alignItems == "stretch")
                     {
                         if (float.IsNaN(child_cross_str))
                         {
@@ -342,7 +370,7 @@ namespace SiegeEngine.UI
                 float child_h = isRow ? child_cross : child_main;
                 float forced_width = float.NaN;
                 float forced_height = float.NaN;
-                if (Style.AlignItems == "stretch" && float.IsNaN(child_cross_str))
+                if (string.IsNullOrEmpty(Style.AlignItems) || Style.AlignItems == "stretch" && float.IsNaN(child_cross_str))
                 {
                     float forced_cross = availableCross - c_m_cross_start - c_m_cross_end;
                     if (isRow)
@@ -362,11 +390,12 @@ namespace SiegeEngine.UI
                 {
                     float diff = allocated_cross - computed_cross - c_m_cross_start - c_m_cross_end;
                     float adjust = 0;
-                    if (Style.AlignItems == "center")
+                    string alignItems = string.IsNullOrEmpty(Style.AlignItems) ? "stretch" : Style.AlignItems;
+                    if (alignItems == "center")
                     {
                         adjust = diff / 2;
                     }
-                    else if (Style.AlignItems == "flex-end")
+                    else if (alignItems == "flex-end")
                     {
                         adjust = diff;
                     }
@@ -459,7 +488,7 @@ namespace SiegeEngine.UI
             {
                 if (Style.Display == "flex")
                 {
-                    bool isRow = Style.FlexDirection == "row";
+                    bool isRow = string.IsNullOrEmpty(Style.FlexDirection) || Style.FlexDirection == "row";
                     float gap = ParseSize(Style.GapStr, 0, viewportWidth, viewportHeight);
                     if (float.IsNaN(gap)) gap = 0;
                     int count = visibleChildren.Count;

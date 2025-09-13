@@ -10,6 +10,8 @@ namespace SiegeEngine.UI
         public string TopStr { get; set; }
         public string WidthStr { get; set; }
         public string HeightStr { get; set; }
+        public string MinWidthStr { get; set; }
+        public string MinHeightStr { get; set; }
         public string MaxWidthStr { get; set; }
         public string MaxHeightStr { get; set; }
         public string Background { get; set; }
@@ -20,8 +22,8 @@ namespace SiegeEngine.UI
         public float FontSize { get; set; }
         public string FontFamily { get; set; }
         public string Display { get; set; } = "block";
-        public string FlexDirection { get; set; } = "row";
-        public string AlignItems { get; set; } = "stretch";
+        public string FlexDirection { get; set; }
+        public string AlignItems { get; set; }
         public string JustifyContent { get; set; }
         public string Flex { get; set; }
         public string PaddingStr { get; set; }
@@ -32,25 +34,25 @@ namespace SiegeEngine.UI
         public string MarginStr { get; set; }
         public Vector4 Margin { get; set; }
         public string GapStr { get; set; }
-        public string TextAlign { get; set; } = "left";
-        public string WhiteSpace { get; set; } = "normal";
+        public string TextAlign { get; set; }
+        public string WhiteSpace { get; set; }
         public string TextTransform { get; set; }
         public string BorderWidthStr { get; set; }
-        public string BorderTopWidthStr { get; set; }
-        public string BorderRightWidthStr { get; set; }
-        public string BorderBottomWidthStr { get; set; }
-        public string BorderLeftWidthStr { get; set; }
-        public string BorderStyle { get; set; } = "none";
-        public string BorderTopStyle { get; set; }
-        public string BorderRightStyle { get; set; }
-        public string BorderBottomStyle { get; set; }
-        public string BorderLeftStyle { get; set; }
+        public string BorderStyle { get; set; }
         public Vector4 BorderColor { get; set; }
+        public string BorderTopWidthStr { get; set; }
+        public string BorderTopStyle { get; set; }
         public Vector4 BorderTopColor { get; set; }
+        public string BorderRightWidthStr { get; set; }
+        public string BorderRightStyle { get; set; }
         public Vector4 BorderRightColor { get; set; }
+        public string BorderBottomWidthStr { get; set; }
+        public string BorderBottomStyle { get; set; }
         public Vector4 BorderBottomColor { get; set; }
+        public string BorderLeftWidthStr { get; set; }
+        public string BorderLeftStyle { get; set; }
         public Vector4 BorderLeftColor { get; set; }
-        public string BoxSizing { get; set; } = "content-box";
+        public string BoxSizing { get; set; }
         public CssStyle Clone()
         {
             return new CssStyle
@@ -60,6 +62,8 @@ namespace SiegeEngine.UI
                 TopStr = TopStr,
                 WidthStr = WidthStr,
                 HeightStr = HeightStr,
+                MinWidthStr = MinWidthStr,
+                MinHeightStr = MinHeightStr,
                 MaxWidthStr = MaxWidthStr,
                 MaxHeightStr = MaxHeightStr,
                 Background = Background,
@@ -86,19 +90,19 @@ namespace SiegeEngine.UI
                 WhiteSpace = WhiteSpace,
                 TextTransform = TextTransform,
                 BorderWidthStr = BorderWidthStr,
-                BorderTopWidthStr = BorderTopWidthStr,
-                BorderRightWidthStr = BorderRightWidthStr,
-                BorderBottomWidthStr = BorderBottomWidthStr,
-                BorderLeftWidthStr = BorderLeftWidthStr,
                 BorderStyle = BorderStyle,
-                BorderTopStyle = BorderTopStyle,
-                BorderRightStyle = BorderRightStyle,
-                BorderBottomStyle = BorderBottomStyle,
-                BorderLeftStyle = BorderLeftStyle,
                 BorderColor = BorderColor,
+                BorderTopWidthStr = BorderTopWidthStr,
+                BorderTopStyle = BorderTopStyle,
                 BorderTopColor = BorderTopColor,
+                BorderRightWidthStr = BorderRightWidthStr,
+                BorderRightStyle = BorderRightStyle,
                 BorderRightColor = BorderRightColor,
+                BorderBottomWidthStr = BorderBottomWidthStr,
+                BorderBottomStyle = BorderBottomStyle,
                 BorderBottomColor = BorderBottomColor,
+                BorderLeftWidthStr = BorderLeftWidthStr,
+                BorderLeftStyle = BorderLeftStyle,
                 BorderLeftColor = BorderLeftColor,
                 BoxSizing = BoxSizing
             };

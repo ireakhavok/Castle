@@ -140,6 +140,10 @@ namespace SiegeEngine.UI
                 style.WidthStr = width;
             if (props.TryGetValue("height", out string height))
                 style.HeightStr = height;
+            if (props.TryGetValue("min-width", out string minw))
+                style.MinWidthStr = minw;
+            if (props.TryGetValue("min-height", out string minh))
+                style.MinHeightStr = minh;
             if (props.TryGetValue("max-width", out string maxw))
                 style.MaxWidthStr = maxw;
             if (props.TryGetValue("max-height", out string maxh))
@@ -149,10 +153,10 @@ namespace SiegeEngine.UI
                 style.Background = bg;
                 style.BackgroundColor = ParseColor(bg);
             }
-            if (props.TryGetValue("color", out string color))
+            if (props.TryGetValue("color", out string textColorStr))
             {
-                style.Color = color;
-                style.TextColor = ParseColor(color);
+                style.Color = textColorStr;
+                style.TextColor = ParseColor(textColorStr);
             }
             if (props.TryGetValue("font-size", out string fs))
             {

@@ -106,7 +106,7 @@ namespace SiegeEngine.Systems
                 }
                 if (string.IsNullOrEmpty(elem.Style.FontSizeStr))
                     elem.Style.FontSizeStr = parent.Style.FontSizeStr;
-                if (elem.Style.TextAlign == "left")
+                if (string.IsNullOrEmpty(elem.Style.TextAlign))
                     elem.Style.TextAlign = parent.Style.TextAlign;
             }
             foreach (var child in elem.Children)
@@ -270,8 +270,10 @@ namespace SiegeEngine.Systems
         public void Render()
         {
             if (!_initialized || _currentMenu == null) return;
-            float vw = _settingsManager.WindowWidth;
-            float vh = _settingsManager.WindowHeight;
+            int w, h;
+            _controlContext.GetWindowSize(_window, out w, out h);
+            float vw = w;
+            float vh = h;
             _currentMenu.ComputeLayout(0, 0, vw, vh, vw, vh, _textRenderer, 16f);
             _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, vw, vh);
         }
