@@ -1813,18 +1813,20 @@ Folder: Castle
  File: SystemFontRenderer.cs
  class: SystemFontRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
  Methods:
- - constructor SystemFontRenderer(string fontName, string fontName, float fontSize)
- Calls: Clear, Clear
+ - constructor SystemFontRenderer(IRenderContext renderContext, IRenderContext renderContext, string fontName, float fontSize)
+ Calls: BindTexture, BindTexture, Clear, GenTextures, GetError, PixelStore, TexImage2D, TexParameter
  - void LoadFontData(string fontName, string fontName, float fontSize)
  Calls: None
  - CharacterData GetCharacterData(char c, char c)
  Calls: None
+ - uint GetCharacterTexture(char c, char c)
+ Calls: None
  File: SystemFontRenderer.cs
  class: CharacterData (Namespace: SiegeEngine.Rendering)
  Inherits: None
- Dependencies: System, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
  Methods:
  File: TextRenderer.cs
  class: TextRenderer (Namespace: SiegeEngine.Rendering)
@@ -1833,17 +1835,19 @@ Folder: Castle
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor TextRenderer(IRenderContext renderContext, IRenderContext renderContext, IntPtr window)
- Calls: BindBuffer, BindBuffer, BindTexture, BindVertexArray, BlendFunc, BufferData, Enable, EnableVertexAttribArray, GenBuffers, GenTextures, GenVertexArrays, GetCharacterData, GetError, PixelStore, TexImage2D, TexParameter, VertexAttribPointer
+ Calls: BindBuffer, BindBuffer, BindVertexArray, BlendFunc, BufferData, Enable, EnableVertexAttribArray, GenBuffers, GenVertexArrays, VertexAttribPointer
  - void Initialize(ShaderProgram shaderProgram, ShaderProgram shaderProgram)
  Calls: None
- - Vector2 GetTextSize(string text, string text, float fontSize)
+ - Vector2 GetTextSize(string text, string text, float fontSize, string fontFamily)
+ Calls: GetCharacterData, GetCharacterData
+ - void RenderText(string text, string text, float startX, float startY, int width, int height, float fontSize, string fontFamily)
  Calls: None
- - void RenderText(string text, string text, float startX, float startY, int width, int height, float fontSize)
+ - void RenderTextPass(string text, string text, float startX, float startY, int width, int height, float fontSize, Vector4 color, string fontFamily)
+ Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, SetMatrix4, SetUniform, VertexAttribPointer
+ - SystemFontRenderer GetFontRenderer(string fontFamily, string fontFamily)
  Calls: None
- - void RenderTextPass(string text, string text, float startX, float startY, int width, int height, float fontSize, Vector4 color)
- Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, SetMatrix4, SetUniform, VertexAttribPointer
  - void Dispose()
- Calls: DeleteTexture, DeleteTexture
+ Calls: None
  File: TextureLoader.cs
  class: TextureLoader (Namespace: SiegeEngine.Rendering)
  Inherits: None
@@ -2216,7 +2220,7 @@ Folder: Castle
  Calls: ComputeLayout, ComputeLayout, GetWrappedLines
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs)
  Calls: GetWrappedLines, GetWrappedLines
- - List<string> GetWrappedLines(float maxWidth, float maxWidth, float fs, TextRenderer textRenderer)
+ - List<string> GetWrappedLines(float maxWidth, float maxWidth, float fs, TextRenderer textRenderer, string fontFamily)
  Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: GetTextSize, GetTextSize, RenderText

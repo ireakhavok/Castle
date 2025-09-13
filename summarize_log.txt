@@ -1588,7 +1588,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: EditorTextRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\EditorTextRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\EditorTextRenderer.cs
-Read 13407 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\EditorTextRenderer.cs
+Read 13423 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\EditorTextRenderer.cs
 Namespace: SiegeEngine.Rendering
 Found 4 dependencies
 Class EditorTextRenderer: 5 methods
@@ -1688,19 +1688,19 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: SystemFontRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
-Read 5026 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
+Read 7380 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
 Namespace: SiegeEngine.Rendering
-Found 6 dependencies
-Class SystemFontRenderer: 3 methods
+Found 7 dependencies
+Class SystemFontRenderer: 4 methods
 Class CharacterData: 0 methods
 Found 2 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
 Found: TextRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
-Read 10243 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
+Read 8281 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
 Namespace: SiegeEngine.Rendering
 Found 4 dependencies
-Class TextRenderer: 6 methods
+Class TextRenderer: 7 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
 Found: TextureLoader.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextureLoader.cs
@@ -1833,7 +1833,7 @@ Found: ..
 Found: ButtonElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
-Read 2834 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
+Read 2945 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
 Namespace: SiegeEngine.UI
 Found 5 dependencies
 Class ButtonElement: 5 methods
@@ -1841,7 +1841,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: CssParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
-Read 13216 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
+Read 13364 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
 Namespace: SiegeEngine.UI
 Found 5 dependencies
 Class CssParser: 10 methods
@@ -1849,7 +1849,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: CssStyle.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssStyle.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssStyle.cs
-Read 4462 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssStyle.cs
+Read 4550 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssStyle.cs
 Namespace: SiegeEngine.UI
 Found 1 dependencies
 Class CssStyle: 1 methods
@@ -1865,7 +1865,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: HtmlElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
-Read 33424 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
+Read 33150 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
 Namespace: SiegeEngine.UI
 Found 7 dependencies
 Class HtmlElement: 12 methods
@@ -1873,7 +1873,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: HtmlParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlParser.cs
-Read 6607 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlParser.cs
+Read 6567 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlParser.cs
 Namespace: SiegeEngine.UI
 Found 3 dependencies
 Class HtmlParser: 6 methods
@@ -1881,7 +1881,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: InputElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
-Read 2040 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
+Read 2038 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
 Namespace: SiegeEngine.UI
 Found 4 dependencies
 Class InputElement: 3 methods
@@ -1889,7 +1889,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: SelectElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\SelectElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\SelectElement.cs
-Read 1953 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\SelectElement.cs
+Read 2064 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\SelectElement.cs
 Namespace: SiegeEngine.UI
 Found 4 dependencies
 Class SelectElement: 3 methods
@@ -1897,7 +1897,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: TextElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TextElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TextElement.cs
-Read 3564 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TextElement.cs
+Read 3733 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TextElement.cs
 Namespace: SiegeEngine.UI
 Found 5 dependencies
 Class TextElement: 4 methods
@@ -2076,7 +2076,7 @@ Found: Trebuchet.pdb
 Found: Launcher.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 5483 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 5484 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
 Found 16 dependencies
 Class Launcher: 2 methods

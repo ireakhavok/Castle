@@ -51,7 +51,7 @@ namespace Trebuchet
                     _settingsManager = new UISettingsManager();
                     _settingsManager.LoadSettings();
                     if (_settingsManager.WindowWidth == 0 || _settingsManager.WindowHeight == 0)
-                        _settingsManager.UpdateWindowSize(1280, 720, false);
+                        _settingsManager.UpdateWindowSize(1920, 1080, false);
                     if (context == "OpenGL")
                     {
                         _contextManager = new OpenGLContextManager();
