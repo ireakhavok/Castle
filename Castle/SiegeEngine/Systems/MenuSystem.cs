@@ -1,4 +1,6 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.Systems
+// File: MenuSystem.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Managers;
@@ -11,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Systems
 {
     public class MenuSystem : GameSystem
@@ -87,7 +90,7 @@ namespace SiegeEngine.Systems
                 if (main != null) main.Style.Display = "flex";
                 var contents = FindElementsByClass(_currentMenu, "content");
                 foreach (var c in contents) c.Style.Display = "none";
-                var createContent = contents.FirstOrDefault(c => c.Attributes["class"].Contains("create"));
+                var createContent = contents.FirstOrDefault(c => c.Attributes.GetValueOrDefault("class", "").Contains("create"));
                 if (createContent != null) createContent.Style.Display = "block";
                 _clickables.Clear();
                 CollectClickables(_currentMenu);
@@ -165,7 +168,6 @@ namespace SiegeEngine.Systems
             }
             foreach (var child in elem.Children)
                 CollectClickables(child);
-
         }
         public void Initialize()
         {
@@ -234,7 +236,7 @@ namespace SiegeEngine.Systems
                             var contents = FindElementsByClass(_currentMenu, "content");
                             foreach (var c in contents) c.Style.Display = "none";
                             var contentClass = input.Attributes.GetValueOrDefault("id", "");
-                            var content = contents.FirstOrDefault(c => c.Attributes["class"].Contains(contentClass));
+                            var content = contents.FirstOrDefault(c => c.Attributes.GetValueOrDefault("class", "").Contains(contentClass));
                             if (content != null) content.Style.Display = "block";
                         }
                         else if (type == "checkbox")

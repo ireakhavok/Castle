@@ -1,4 +1,7 @@
-﻿using System.Numerics;
+﻿// Folder: SiegeEngine.UI
+// File: CssStyle.cs
+using System.Numerics;
+
 namespace SiegeEngine.UI
 {
     public class CssStyle
@@ -19,7 +22,12 @@ namespace SiegeEngine.UI
         public string FlexDirection { get; set; } = "row";
         public string AlignItems { get; set; } = "stretch";
         public string JustifyContent { get; set; }
+        public string Flex { get; set; }
         public string PaddingStr { get; set; }
+        public string PaddingTopStr { get; set; }
+        public string PaddingRightStr { get; set; }
+        public string PaddingBottomStr { get; set; }
+        public string PaddingLeftStr { get; set; }
         public string MarginStr { get; set; }
         public Vector4 Margin { get; set; }
         public string GapStr { get; set; }
@@ -27,12 +35,21 @@ namespace SiegeEngine.UI
         public string WhiteSpace { get; set; } = "normal";
         public string TextTransform { get; set; }
         public string BorderWidthStr { get; set; }
-        public float BorderWidth { get; set; }
+        public string BorderTopWidthStr { get; set; }
+        public string BorderRightWidthStr { get; set; }
+        public string BorderBottomWidthStr { get; set; }
+        public string BorderLeftWidthStr { get; set; }
         public string BorderStyle { get; set; } = "none";
+        public string BorderTopStyle { get; set; }
+        public string BorderRightStyle { get; set; }
+        public string BorderBottomStyle { get; set; }
+        public string BorderLeftStyle { get; set; }
         public Vector4 BorderColor { get; set; }
+        public Vector4 BorderTopColor { get; set; }
+        public Vector4 BorderRightColor { get; set; }
+        public Vector4 BorderBottomColor { get; set; }
+        public Vector4 BorderLeftColor { get; set; }
         public string BoxSizing { get; set; } = "content-box";
-        public string Flex { get; set; }
-
         public CssStyle Clone()
         {
             return new CssStyle
@@ -53,7 +70,12 @@ namespace SiegeEngine.UI
                 FlexDirection = FlexDirection,
                 AlignItems = AlignItems,
                 JustifyContent = JustifyContent,
+                Flex = Flex,
                 PaddingStr = PaddingStr,
+                PaddingTopStr = PaddingTopStr,
+                PaddingRightStr = PaddingRightStr,
+                PaddingBottomStr = PaddingBottomStr,
+                PaddingLeftStr = PaddingLeftStr,
                 MarginStr = MarginStr,
                 Margin = Margin,
                 GapStr = GapStr,
@@ -61,11 +83,21 @@ namespace SiegeEngine.UI
                 WhiteSpace = WhiteSpace,
                 TextTransform = TextTransform,
                 BorderWidthStr = BorderWidthStr,
-                BorderWidth = BorderWidth,
+                BorderTopWidthStr = BorderTopWidthStr,
+                BorderRightWidthStr = BorderRightWidthStr,
+                BorderBottomWidthStr = BorderBottomWidthStr,
+                BorderLeftWidthStr = BorderLeftWidthStr,
                 BorderStyle = BorderStyle,
+                BorderTopStyle = BorderTopStyle,
+                BorderRightStyle = BorderRightStyle,
+                BorderBottomStyle = BorderBottomStyle,
+                BorderLeftStyle = BorderLeftStyle,
                 BorderColor = BorderColor,
-                BoxSizing = BoxSizing,
-                Flex = Flex
+                BorderTopColor = BorderTopColor,
+                BorderRightColor = BorderRightColor,
+                BorderBottomColor = BorderBottomColor,
+                BorderLeftColor = BorderLeftColor,
+                BoxSizing = BoxSizing
             };
         }
     }

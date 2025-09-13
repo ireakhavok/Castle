@@ -66,6 +66,10 @@ namespace SiegeEngine.UI
                         {
                             elem = new SelectElement();
                         }
+                        else if (lowerTag == "input")
+                        {
+                            elem = new InputElement();
+                        }
                         else
                         {
                             elem = new HtmlElement { Tag = tag };
@@ -101,7 +105,6 @@ namespace SiegeEngine.UI
                             }
                         }
                         _index++; // skip '>'
-
                         bool isSelfClosing = tag.EndsWith("/") || Array.Exists(new string[] { "br", "hr", "img", "input", "meta", "link" }, t => t == lowerTag);
 
                         if (lowerTag == "include" && elem.Attributes.TryGetValue("src", out string src))

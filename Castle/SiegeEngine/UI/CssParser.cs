@@ -1,7 +1,11 @@
-﻿using System;
+﻿// Folder: SiegeEngine.UI
+// File: CssParser.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class CssParser
@@ -167,6 +171,14 @@ namespace SiegeEngine.UI
             {
                 style.PaddingStr = pad;
             }
+            if (props.TryGetValue("padding-top", out string ptop))
+                style.PaddingTopStr = ptop;
+            if (props.TryGetValue("padding-right", out string pright))
+                style.PaddingRightStr = pright;
+            if (props.TryGetValue("padding-bottom", out string pbottom))
+                style.PaddingBottomStr = pbottom;
+            if (props.TryGetValue("padding-left", out string pleft))
+                style.PaddingLeftStr = pleft;
             if (props.TryGetValue("margin", out string margin))
             {
                 style.MarginStr = margin;
@@ -195,6 +207,46 @@ namespace SiegeEngine.UI
                 style.BorderStyle = bs;
             if (props.TryGetValue("border-color", out string bc))
                 style.BorderColor = ParseColor(bc);
+            if (props.TryGetValue("border-top", out string btop))
+            {
+                var parts = btop.Split(' ');
+                if (parts.Length >= 3)
+                {
+                    style.BorderTopWidthStr = parts[0];
+                    style.BorderTopStyle = parts[1];
+                    style.BorderTopColor = ParseColor(parts[2]);
+                }
+            }
+            if (props.TryGetValue("border-right", out string bright))
+            {
+                var parts = bright.Split(' ');
+                if (parts.Length >= 3)
+                {
+                    style.BorderRightWidthStr = parts[0];
+                    style.BorderRightStyle = parts[1];
+                    style.BorderRightColor = ParseColor(parts[2]);
+                }
+            }
+            if (props.TryGetValue("border-bottom", out string bbottom))
+            {
+                var parts = bbottom.Split(' ');
+                if (parts.Length >= 3)
+                {
+                    style.BorderBottomWidthStr = parts[0];
+                    style.BorderBottomStyle = parts[1];
+                    style.BorderBottomColor = ParseColor(parts[2]);
+                }
+            }
+            if (props.TryGetValue("border-left", out string bleft))
+            {
+                var parts = bleft.Split(' ');
+                if (parts.Length >= 3)
+                {
+                    style.BorderLeftWidthStr = parts[0];
+                    style.BorderLeftStyle = parts[1];
+                    style.BorderLeftColor = ParseColor(parts[2]);
+                }
+            }
             if (props.TryGetValue("box-sizing", out string boxs))
                 style.BoxSizing = boxs;
         }
@@ -204,31 +256,27 @@ namespace SiegeEngine.UI
             color = color.Trim();
             if (color.Contains("gradient"))
             {
-                int hashIndex = color.IndexOf('#');
-                string firstColor = "";
-                if (hashIndex != -1)
+                List<Vector4> colors = new List<Vector4>();
+                var matches = Regex.Matches(color, @"#[0-9a-fA-F]{6}|rgb[a]?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(,\s*[0-1](\.\d+)?\s*)?\)");
+                foreach (Match m in matches)
                 {
-                    firstColor = color.Substring(hashIndex, Math.Min(7, color.Length - hashIndex));
+                    var c = ParseSingleColor(m.Value);
+                    if (c != Vector4.Zero) colors.Add(c);
                 }
-                else
+                if (colors.Count > 0)
                 {
-                    int rgbIndex = color.IndexOf("rgb", StringComparison.OrdinalIgnoreCase);
-                    if (rgbIndex != -1)
-                    {
-                        string sub = color.Substring(rgbIndex);
-                        int end = sub.IndexOf(')');
-                        if (end != -1)
-                        {
-                            firstColor = sub.Substring(0, end + 1);
-                        }
-                    }
-                }
-                if (!string.IsNullOrEmpty(firstColor))
-                {
-                    return ParseColor(firstColor);
+                    Vector4 avg = Vector4.Zero;
+                    foreach (var c in colors) avg += c;
+                    avg /= colors.Count;
+                    return avg;
                 }
                 return Vector4.Zero;
             }
+            return ParseSingleColor(color);
+        }
+        private Vector4 ParseSingleColor(string color)
+        {
+            color = color.Trim();
             if (color.StartsWith("#"))
             {
                 color = color.Substring(1);
