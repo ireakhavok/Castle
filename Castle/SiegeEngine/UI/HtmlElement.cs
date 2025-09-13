@@ -140,6 +140,7 @@ namespace SiegeEngine.UI
             ComputedBackgroundHeight = boxH - borderW.X - borderW.Z;
             ComputedContentX = ComputedBackgroundX + pad.W;
             ComputedContentY = ComputedBackgroundY + pad.X;
+            this.BorderWidth = borderW;
             if (Children.Count > 0)
             {
                 if (effectiveStyle.Display == "flex")
@@ -336,15 +337,7 @@ namespace SiegeEngine.UI
                 float child_w = isRow ? child_main : child_cross;
                 float child_h = isRow ? child_cross : child_main;
                 child.ComputeLayout(child_pos_x, child_pos_y, child_w, child_h, viewportWidth, viewportHeight, textRenderer, fs);
-                float computed_main = isRow ? child.ComputedWidth : child.ComputedHeight;
-                if (computed_main < child_main)
-                {
-                    current_main += computed_main + childMarginEnd[i] - child_main;
-                }
-                else
-                {
-                    current_main += child_main + childMarginEnd[i];
-                }
+                current_main += child_main + childMarginEnd[i];
                 float computed_cross = isRow ? child.ComputedHeight : child.ComputedWidth;
                 float allocated_cross = child_cross + c_m_cross_start + c_m_cross_end;
                 if (computed_cross < allocated_cross - c_m_cross_start - c_m_cross_end)
@@ -534,7 +527,7 @@ namespace SiegeEngine.UI
             string borderRightS = string.IsNullOrEmpty(effectiveStyle.BorderRightStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderRightStyle;
             string borderBottomS = string.IsNullOrEmpty(effectiveStyle.BorderBottomStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderBottomStyle;
             string borderLeftS = string.IsNullOrEmpty(effectiveStyle.BorderLeftStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderLeftStyle;
-            Vector4 borderW = BorderWidth;
+            Vector4 borderW = this.BorderWidth;
             if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
             {
                 quadRenderer.DrawQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, borderTopC, viewportWidth, viewportHeight);
