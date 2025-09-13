@@ -45,7 +45,7 @@ namespace SiegeEngine.UI
 
             if (Type == "checkbox")
             {
-                string symbol = Checked ? "✓" : "";
+                string symbol = Checked ? "x" : "";
 
                 float fs = Style.FontSize;
 
