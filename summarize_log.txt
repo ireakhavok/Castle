@@ -9,7 +9,6 @@ Found: ..
 Found: .git
 Found: .gitignore
 Found: AuthoritativeServerExtensions.txt
-Found: bash.exe.stackdump
 Found: Castle
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle
 Found: .
@@ -1813,7 +1812,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\S
 Found: MenuSystem.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
-Read 13816 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
+Read 14612 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
 Namespace: SiegeEngine.Systems
 Found 13 dependencies
 Class MenuSystem: 14 methods

@@ -2083,7 +2083,7 @@ Folder: Castle
  - List<HtmlElement> FindElementsByTag(HtmlElement root, HtmlElement root, string tag)
  Calls: None
  - void Render()
- Calls: None
+ Calls: OnResize, OnResize
  File: PlayerControllerSystem.cs
  class: PlayerControllerSystem (Namespace: SiegeEngine.Systems)
  Inherits: GameSystem
