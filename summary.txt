@@ -2058,6 +2058,10 @@ Folder: Castle
  Calls: ComputeLayout, ComputeLayout
  - void SwitchMenu(string menuName, string menuName)
  Calls: None
+ - void ApplyUserAgentDefaults(CssParser cssParser, CssParser cssParser)
+ Calls: rgba, rgba
+ - solid rgba()
+ Calls: None
  - void InheritProperties(HtmlElement elem, HtmlElement elem, HtmlElement parent)
  Calls: None
  - void ProcessSelects(HtmlElement elem, HtmlElement elem)
@@ -2164,7 +2168,7 @@ Folder: Castle
  - float ParseSize(string s, string s, float parent, float vw, float vh)
  Calls: Parse, Parse
  - Vector4 ParsePaddings(CssStyle style, CssStyle style, float parent, float vw, float vh, bool isMargin)
- Calls: ParseSides, ParseSides, ParseSize
+ Calls: None
  - Vector4 ParseBorderWidths(CssStyle style, CssStyle style, float parent, float vw, float vh)
  Calls: GetVal, GetVal, ParseSize
  - Vector4 ParseSides(string s, string s, float parent, float vw, float vh)
@@ -2201,7 +2205,9 @@ Folder: Castle
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
- Calls: RenderText, RenderText
+ Calls: GetTextSize, GetTextSize, RenderText
+ - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+ Calls: ParseBorderWidths, ParseBorderWidths, ParsePaddings
  File: SelectElement.cs
  class: SelectElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2214,6 +2220,8 @@ Folder: Castle
  Calls: GetTextSize, GetTextSize, Render, RenderText
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: GetTextSize, GetTextSize, RenderText
+ - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+ Calls: GetTextSize, GetTextSize
  File: TextElement.cs
  class: TextElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
