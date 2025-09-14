@@ -130,34 +130,11 @@ namespace SiegeEngine.UI
 
             float boxW, boxH, contentW, contentH;
 
-            Vector2 intrinsic = new Vector2(0, 0);
             if (float.IsNaN(w) || float.IsNaN(h))
             {
-                intrinsic = ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-            }
-
-            if (float.IsNaN(w))
-            {
-                if (effectiveStyle.BoxSizing == "border-box")
-                {
-                    w = intrinsic.X;
-                }
-                else
-                {
-                    w = intrinsic.X - pad.W - pad.Y - borderW.W - borderW.Y;
-                }
-            }
-
-            if (float.IsNaN(h))
-            {
-                if (effectiveStyle.BoxSizing == "border-box")
-                {
-                    h = intrinsic.Y;
-                }
-                else
-                {
-                    h = intrinsic.Y - pad.X - pad.Z - borderW.X - borderW.Z;
-                }
+                Vector2 intrinsic = ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                if (float.IsNaN(w)) w = intrinsic.X;
+                if (float.IsNaN(h)) h = intrinsic.Y;
             }
 
             if (!float.IsNaN(forcedWidth)) w = forcedWidth;
@@ -584,26 +561,7 @@ namespace SiegeEngine.UI
                 HtmlElement child = normalChildren[i];
 
                 float childW = ParseSize(child.Style.WidthStr, ComputedContentWidth, viewportWidth, viewportHeight);
-
-                Vector4 child_pad = ParsePaddings(child.Style, ComputedContentWidth, viewportWidth, viewportHeight);
-                Vector4 child_border = ParseBorderWidths(child.Style, ComputedContentWidth, viewportWidth, viewportHeight);
-
-                float child_outer_w;
-                if (float.IsNaN(childW))
-                {
-                    child_outer_w = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X;
-                }
-                else
-                {
-                    if (child.Style.BoxSizing == "border-box")
-                    {
-                        child_outer_w = childW;
-                    }
-                    else
-                    {
-                        child_outer_w = childW + child_pad.W + child_pad.Y + child_border.W + child_border.Y;
-                    }
-                }
+                if (float.IsNaN(childW)) childW = ComputedContentWidth; // for block
 
                 float childH = ParseSize(child.Style.HeightStr, ComputedContentHeight, viewportWidth, viewportHeight);
                 if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
@@ -622,7 +580,7 @@ namespace SiegeEngine.UI
                 float child_pos_y = currentY + eff;
 
                 float child_pos_x = 0;
-                float free_side = ComputedContentWidth - child_outer_w - c_m_left - c_m_right;
+                float free_side = ComputedContentWidth - childW - c_m_left - c_m_right;
 
                 if (float.IsNaN(free_side)) free_side = 0;
 
@@ -672,10 +630,7 @@ namespace SiegeEngine.UI
 
             if (normalChildren.Count == 0 && visibleChildren.Count > 0)
             {
-                // If all children are positioned, intrinsic size is 0 + pads + borders
-                iw += pad.W + pad.Y + borderW.W + borderW.Y;
-                ih += pad.X + pad.Z + borderW.X + borderW.Z;
-                return new Vector2(iw, ih);
+                // If all children are positioned, intrinsic size is 0 + pads
             }
             else if (visibleChildren.Count == 0)
             {
@@ -941,10 +896,13 @@ namespace SiegeEngine.UI
             if (!string.IsNullOrEmpty(bottomStr)) values.Z = ParseSize(bottomStr, parent, vw, vh);
             if (!string.IsNullOrEmpty(leftStr)) values.W = ParseSize(leftStr, parent, vw, vh);
 
-            if (float.IsNaN(values.X)) values.X = 0;
-            if (float.IsNaN(values.Y)) values.Y = 0;
-            if (float.IsNaN(values.Z)) values.Z = 0;
-            if (float.IsNaN(values.W)) values.W = 0;
+            if (!isMargin)
+            {
+                if (float.IsNaN(values.X)) values.X = 0;
+                if (float.IsNaN(values.Y)) values.Y = 0;
+                if (float.IsNaN(values.Z)) values.Z = 0;
+                if (float.IsNaN(values.W)) values.W = 0;
+            }
 
             return values;
         }

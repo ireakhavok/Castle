@@ -43,7 +43,16 @@ namespace SiegeEngine.UI
                 {
                     float fs = Style.FontSize;
                     float symbolWidth = textRenderer.GetTextSize(symbol, fs).X;
-                    float textX = ComputedContentX + (ComputedContentWidth - symbolWidth) / 2;
+                    float textX = ComputedContentX;
+                    string textAlign = string.IsNullOrEmpty(Style.TextAlign) ? "left" : Style.TextAlign;
+                    if (textAlign == "center")
+                    {
+                        textX += (ComputedContentWidth - symbolWidth) / 2;
+                    }
+                    else if (textAlign == "right")
+                    {
+                        textX += ComputedContentWidth - symbolWidth;
+                    }
                     float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
                     Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
                     textRenderer.RenderText(symbol, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color);

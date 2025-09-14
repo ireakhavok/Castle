@@ -30,7 +30,16 @@ namespace SiegeEngine.UI
             {
                 float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
                 float lineWidth = textRenderer.GetTextSize(Selected, fs, Style.FontFamily ?? "Arial").X;
-                float textX = ComputedContentX + (ComputedContentWidth - lineWidth) / 2;
+                float textX = ComputedContentX;
+                string textAlign = string.IsNullOrEmpty(Style.TextAlign) ? "left" : Style.TextAlign;
+                if (textAlign == "center")
+                {
+                    textX += (ComputedContentWidth - lineWidth) / 2;
+                }
+                else if (textAlign == "right")
+                {
+                    textX += ComputedContentWidth - lineWidth;
+                }
                 float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
                 Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
                 textRenderer.RenderText(Selected, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color, Style.FontFamily ?? "Arial");
