@@ -65,16 +65,11 @@ namespace SiegeEngine.Rendering
             }
             return new Vector2(width, height);
         }
-        public void RenderText(string text, float startX, float startY, int width, int height, float fontSize = 12.0f, Vector4? textColor = null, string fontFamily = "Arial")
+        public void RenderText(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize = 12.0f, Vector4? textColor = null, string fontFamily = "Arial")
         {
             if (string.IsNullOrEmpty(text))
                 return;
             text = text.Replace("\n", " ").Replace("\r", " "); // Avoid non-printable
-            if (width <= 0 || height <= 0)
-            {
-                width = 1280;
-                height = 720;
-            }
             // Render black outline (2px)
             float[] offsets = { -1f, 1f };
             for (int i = 0; i < offsets.Length; i++)
@@ -83,13 +78,13 @@ namespace SiegeEngine.Rendering
                 {
                     float offsetX = offsets[i];
                     float offsetY = offsets[j];
-                    RenderTextPass(text, startX + offsetX, startY + offsetY, width, height, fontSize, new Vector4(0.0f, 0.0f, 0.0f, 1.0f), fontFamily);
+                    RenderTextPass(text, startX + offsetX, startY + offsetY, viewportWidth, viewportHeight, fontSize, new Vector4(0.0f, 0.0f, 0.0f, 1.0f), fontFamily);
                 }
             }
             // Render white text
-            RenderTextPass(text, startX, startY, width, height, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f), fontFamily);
+            RenderTextPass(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f), fontFamily);
         }
-        private void RenderTextPass(string text, float startX, float startY, int width, int height, float fontSize, Vector4 color, string fontFamily)
+        private void RenderTextPass(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily)
         {
             var renderer = GetFontRenderer(fontFamily);
             float scale = fontSize / renderer.BaseSize;
@@ -109,10 +104,10 @@ namespace SiegeEngine.Rendering
                 float charHeight = data.Height * scale;
                 if (!char.IsWhiteSpace(c))
                 {
-                    float charLeft = 2.0f * currentX / width - 1.0f;
-                    float charRight = 2.0f * (currentX + charWidth) / width - 1.0f;
-                    float charTop = 1.0f - 2.0f * startY / height;
-                    float charBottom = 1.0f - 2.0f * (startY + charHeight) / height;
+                    float charLeft = 2.0f * currentX / viewportWidth - 1.0f;
+                    float charRight = 2.0f * (currentX + charWidth) / viewportWidth - 1.0f;
+                    float charTop = 1.0f - 2.0f * startY / viewportHeight;
+                    float charBottom = 1.0f - 2.0f * (startY + charHeight) / viewportHeight;
                     float[] textVertices = new float[]
                     {
                         charLeft, charBottom, 0.0f, 1.0f,

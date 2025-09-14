@@ -703,6 +703,8 @@ Folder: Castle
  Calls: None
  - void GetFloat(int pname, int pname, out float)
  Calls: None
+ - void Scissor(int x, int x, int y, uint width, uint height)
+ Calls: None
  File: OpenGLContextManager.cs
  class: OpenGLContextManager (Namespace: SiegeEngine.ContextManagement)
  Inherits: ContextManager
@@ -1658,7 +1660,7 @@ Folder: Castle
  Calls: BindBuffer, BindBuffer, BindTexture, BindVertexArray, BufferData, EnableVertexAttribArray, GenBuffers, GenTextures, GenVertexArrays, GetError, PixelStore, TexImage2D, TexParameter, VertexAttribPointer
  - void Initialize(string backgroundPath, string backgroundPath, ShaderProgram shaderProgram)
  Calls: None
- - void Render()
+ - void Render(float posX, float posX, float posY, float width, float height, float viewportWidth, float viewportHeight)
  Calls: None
  - void Dispose()
  Calls: None
@@ -1842,9 +1844,9 @@ Folder: Castle
  Calls: None
  - Vector2 GetTextSize(string text, string text, float fontSize, string fontFamily)
  Calls: GetCharacterData, GetCharacterData
- - void RenderText(string text, string text, float startX, float startY, int width, int height, float fontSize, string fontFamily)
+ - void RenderText(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, string fontFamily)
  Calls: None
- - void RenderTextPass(string text, string text, float startX, float startY, int width, int height, float fontSize, Vector4 color, string fontFamily)
+ - void RenderTextPass(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily)
  Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, GetStringWidth, SetMatrix4, SetUniform, VertexAttribPointer
  - SystemFontRenderer GetFontRenderer(string fontFamily, string fontFamily)
  Calls: None
@@ -2112,13 +2114,13 @@ Folder: Castle
  Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
  - void Apply(string css, string css, HtmlElement root)
- Calls: ApplyToElements, ApplyToElements, ParseProperties, ReadUntil, SkipWhitespace
- - void SkipWhitespace(string css, string css, ref int)
+ Calls: ApplyToElements, ApplyToElements, ParseProperties, ReadUntil, SkipWhitespaceAndComments
+ - void SkipWhitespaceAndComments(string css, string css, ref int)
  Calls: None
  - string ReadUntil(string css, string css, ref int, char stop)
  Calls: None
  - string> ParseProperties(string block, string block)
- Calls: ReadUntil, ReadUntil, SkipWhitespace
+ Calls: ReadUntil, ReadUntil, SkipWhitespaceAndComments
  - void ApplyInline(string inline, string inline, CssStyle style)
  Calls: ApplyProperties, ApplyProperties, Clone, Matches
  - void ApplyToElements(HtmlElement root, HtmlElement root, string selector, string> props, string pseudo)
@@ -2151,12 +2153,14 @@ Folder: Castle
  File: HtmlElement.cs
  class: HtmlElement (Namespace: SiegeEngine.UI)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
  - HtmlElement FindContainingBlock()
  Calls: None
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
+ - void PrepareResources(string baseDir, string baseDir, IControlContext controlContext, IntPtr window, IRenderContext renderContext, ShaderProgram shader)
+ Calls: BackgroundRenderer, BackgroundRenderer, Initialize
  - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseBorderWidths, ParsePaddings, ParseSize
  - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
