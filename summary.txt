@@ -2206,7 +2206,7 @@ Folder: Castle
  class: SelectElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor SelectElement()
  Calls: ComputeLayout, ComputeLayout
