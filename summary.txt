@@ -2093,11 +2093,11 @@ Folder: Castle
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Numerics, System.Reflection
  Methods:
  - constructor ButtonElement()
- Calls: ComputeLayout, ComputeLayout
+ Calls: ComputeLayout, ComputeLayout, GetTextSize
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
- Calls: GetTextSize, GetTextSize, Render, RenderText
+ Calls: GetTextSize, GetTextSize
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
- Calls: GetTextSize, GetTextSize, RenderText
+ Calls: None
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
  Calls: None
  - void AttachHook(string hookStr, string hookStr)
@@ -2156,7 +2156,7 @@ Folder: Castle
  - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, ParseSize
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
- Calls: GetTextSize, GetTextSize
+ Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: None
  - float ParseSize(string s, string s, float parent, float vw, float vh)
