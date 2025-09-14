@@ -97,6 +97,10 @@ namespace SiegeEngine.UI
             float boxY = baseY + top;
             float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
             float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
+            if ((string.IsNullOrEmpty(effectiveStyle.Display) || effectiveStyle.Display == "block" || effectiveStyle.Display == "flex") && float.IsNaN(w))
+            {
+                w = refWidth;
+            }
             float minW = ParseSize(effectiveStyle.MinWidthStr, refWidth, viewportWidth, viewportHeight);
             float minH = ParseSize(effectiveStyle.MinHeightStr, refHeight, viewportWidth, viewportHeight);
             float maxW = ParseSize(effectiveStyle.MaxWidthStr, refWidth, viewportWidth, viewportHeight);
@@ -197,11 +201,31 @@ namespace SiegeEngine.UI
                 childGrow.Add(grow);
                 childShrink.Add(shrink);
                 totalGrow += grow;
-                totalShrink += shrink;
-                float mainStr = ParseSize(isRow ? child.Style.WidthStr : child.Style.HeightStr, availableMain, viewportWidth, viewportHeight);
-                float baseMain = float.IsNaN(mainStr) ? (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y) : mainStr;
+                string main_str_raw = isRow ? child.Style.WidthStr : child.Style.HeightStr;
+                float mainStr = ParseSize(main_str_raw, availableMain, viewportWidth, viewportHeight);
+                Vector4 pad = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
+                Vector4 border_w = ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
+                float pad_start = isRow ? pad.W : pad.X;
+                float pad_end = isRow ? pad.Y : pad.Z;
+                float border_start = isRow ? border_w.W : border_w.X;
+                float border_end = isRow ? border_w.Y : border_w.Z;
+                float baseMain;
+                if (float.IsNaN(mainStr))
+                {
+                    baseMain = isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
+                }
+                else
+                {
+                    float specified = mainStr;
+                    if (child.Style.BoxSizing != "border-box")
+                    {
+                        specified += pad_start + pad_end + border_start + border_end;
+                    }
+                    baseMain = specified;
+                }
                 childBaseMain.Add(baseMain);
                 totalBaseMain += baseMain;
+                totalShrink += shrink * baseMain;
             }
             float totalGap = gap * (normalChildren.Count - 1);
             float free = availableMain - totalBaseMain - totalGap;
@@ -222,7 +246,7 @@ namespace SiegeEngine.UI
                 {
                     for (int i = 0; i < normalChildren.Count; i++)
                     {
-                        float reduce = (Math.Abs(free) / totalShrink) * childShrink[i];
+                        float reduce = (Math.Abs(free) / totalShrink) * (childShrink[i] * childBaseMain[i]);
                         childBaseMain[i] = Math.Max(0, childBaseMain[i] - reduce);
                     }
                 }
@@ -320,9 +344,28 @@ namespace SiegeEngine.UI
                 if (i > 0) current_main += spacing;
                 float item_start = current_main + childMarginStart[i];
                 float child_main = childBaseMain[i];
-                float child_cross_str = ParseSize(isRow ? child.Style.HeightStr : child.Style.WidthStr, availableCross, viewportWidth, viewportHeight);
+                string cross_str_raw = isRow ? child.Style.HeightStr : child.Style.WidthStr;
+                float child_cross_str = ParseSize(cross_str_raw, availableCross, viewportWidth, viewportHeight);
+                Vector4 pad_child = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
+                Vector4 border_child = ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
+                float pad_cross_start = isRow ? pad_child.X : pad_child.W;
+                float pad_cross_end = isRow ? pad_child.Z : pad_child.Y;
+                float border_cross_start = isRow ? border_child.X : border_child.W;
+                float border_cross_end = isRow ? border_child.Z : border_child.Y;
                 Vector2 intrinsic = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                float child_cross = float.IsNaN(child_cross_str) ? (isRow ? intrinsic.Y : intrinsic.X) : child_cross_str;
+                float child_cross;
+                if (float.IsNaN(child_cross_str))
+                {
+                    child_cross = isRow ? intrinsic.Y : intrinsic.X;
+                }
+                else
+                {
+                    child_cross = child_cross_str;
+                    if (child.Style.BoxSizing != "border-box")
+                    {
+                        child_cross += pad_cross_start + pad_cross_end + border_cross_start + border_cross_end;
+                    }
+                }
                 float max_cross = ParseSize(isRow ? child.Style.MaxHeightStr : child.Style.MaxWidthStr, availableCross, viewportWidth, viewportHeight);
                 if (!float.IsNaN(max_cross)) child_cross = Math.Min(child_cross, max_cross);
                 float min_cross = ParseSize(isRow ? child.Style.MinHeightStr : child.Style.MinWidthStr, availableCross, viewportWidth, viewportHeight);
@@ -666,7 +709,6 @@ namespace SiegeEngine.UI
                 if (index < parts.Length)
                 {
                     float val = ParseSize(parts[index], parent, vw, vh);
-                    if (float.IsNaN(val)) val = defaultVal;
                     return val;
                 }
                 return defaultVal;

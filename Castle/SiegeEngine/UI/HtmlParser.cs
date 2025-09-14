@@ -3,14 +3,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-
 namespace SiegeEngine.UI
 {
     public class HtmlParser
     {
         private string _html;
         private int _index;
-
         public HtmlElement Parse(string html)
         {
             _html = html;
@@ -19,14 +17,12 @@ namespace SiegeEngine.UI
             ParseChildren(root);
             return root.Children.Count == 1 ? root.Children[0] : root;
         }
-
         private void ParseChildren(HtmlElement parent)
         {
             while (_index < _html.Length)
             {
                 SkipWhitespace();
                 if (_index >= _html.Length) break;
-
                 if (_html[_index] == '<')
                 {
                     _index++;
@@ -75,7 +71,6 @@ namespace SiegeEngine.UI
                             elem = new HtmlElement { Tag = tag };
                         }
                         elem.Parent = parent;
-
                         // Parse attributes
                         while (_index < _html.Length && _html[_index] != '>')
                         {
@@ -106,7 +101,11 @@ namespace SiegeEngine.UI
                         }
                         _index++; // skip '>'
                         bool isSelfClosing = tag.EndsWith("/") || Array.Exists(new string[] { "br", "hr", "img", "input", "meta", "link" }, t => t == lowerTag);
-
+                        if (elem.Attributes.TryGetValue("style", out string inlineStyle))
+                        {
+                            CssParser cssParser = new CssParser();
+                            cssParser.ApplyInline(inlineStyle, elem.Style);
+                        }
                         if (lowerTag == "include" && elem.Attributes.TryGetValue("src", out string src))
                         {
                             // Handle include
@@ -143,7 +142,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         private void SkipWhitespace()
         {
             while (_index < _html.Length && char.IsWhiteSpace(_html[_index]))
@@ -151,7 +149,6 @@ namespace SiegeEngine.UI
                 _index++;
             }
         }
-
         private string ReadUntil(Func<char, bool> condition)
         {
             string result = "";

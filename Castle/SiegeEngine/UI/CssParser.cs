@@ -61,6 +61,11 @@ namespace SiegeEngine.UI
             }
             return props;
         }
+        public void ApplyInline(string inline, CssStyle style)
+        {
+            var props = ParseProperties(inline);
+            ApplyProperties(style, props);
+        }
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props, string pseudo)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
