@@ -2115,6 +2115,8 @@ Folder: Castle
  Calls: None
  - string> ParseProperties(string block, string block)
  Calls: ReadUntil, ReadUntil, SkipWhitespace
+ - void ApplyInline(string inline, string inline, CssStyle style)
+ Calls: ApplyProperties, ApplyProperties, Clone, Matches
  - void ApplyToElements(HtmlElement root, HtmlElement root, string selector, string> props, string pseudo)
  Calls: ApplyProperties, ApplyProperties, Clone, Matches
  - bool Matches(HtmlElement elem, HtmlElement elem, string selector)
@@ -2152,7 +2154,7 @@ Folder: Castle
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
  - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
- Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseSize
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseBorderWidths, ParsePaddings, ParseSize
  - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, ParseSize
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
@@ -2179,7 +2181,7 @@ Folder: Castle
  - HtmlElement Parse(string html, string html)
  Calls: None
  - void ParseChildren(HtmlElement parent, HtmlElement parent)
- Calls: AttachHook, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace
+ Calls: ApplyInline, ApplyInline, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace
  - constructor HtmlParser()
  Calls: None
  - recursively ParseChildren()
