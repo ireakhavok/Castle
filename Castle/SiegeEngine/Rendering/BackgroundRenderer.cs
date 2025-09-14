@@ -72,7 +72,7 @@ namespace SiegeEngine.Rendering
                     Console.WriteLine("Texture bound");
                     fixed (byte* pixelPtr = pixelData)
                     {
-                        _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgb, (uint)bitmap.Width, (uint)bitmap.Height, 0, _renderContext.Enums.PixelBgr, _renderContext.Enums.UnsignedByte, pixelPtr);
+                        _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgb, (uint)bitmap.Width, (uint)bitmap.Height, 0, _renderContext.Enums.PixelRgb, _renderContext.Enums.UnsignedByte, pixelPtr);
                         Console.WriteLine("TexImage2D called");
                     }
                     int error = _renderContext.GetError();

@@ -47,7 +47,13 @@ namespace SiegeEngine.Systems
         private void OnResize(IntPtr win, int w, int h)
         {
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
-            _layoutDirty = true;
+            _vw = w;
+            _vh = h;
+            if (_currentMenu != null)
+            {
+                _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
+            }
+            _layoutDirty = false;
         }
         public void SwitchMenu(string menuName)
         {
@@ -199,10 +205,7 @@ input[type=""checkbox""] {
             _quadRenderer = new UIQuadRenderer(_renderContext);
             SwitchMenu("MainMenu");
             _controlContext.GetWindowSize(_window, out int w, out int h);
-            _vw = w;
-            _vh = h;
-            _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
-            _layoutDirty = false;
+            OnResize(_window, w, h);
             _initialized = true;
         }
         public override void Update(float deltaTime)
@@ -241,9 +244,17 @@ input[type=""checkbox""] {
                 {
                     string targetId = href.Substring(1);
                     var target = FindElementById(_currentMenu, targetId);
-                    if (target != null) target.Style.Display = "flex";
+                    if (target != null)
+                    {
+                        target.Style.Display = "flex";
+                        target.IsTarget = true;
+                    }
                     var currentScreen = FindElementsByClass(_currentMenu, "screen").FirstOrDefault(s => s.Style.Display != "none");
-                    if (currentScreen != null) currentScreen.Style.Display = "none";
+                    if (currentScreen != null)
+                    {
+                        currentScreen.Style.Display = "none";
+                        currentScreen.IsTarget = false;
+                    }
                     _layoutDirty = true;
                 }
             }
@@ -307,10 +318,7 @@ input[type=""checkbox""] {
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
             if (_layoutDirty || w != _vw || h != _vh)
             {
-                _vw = w;
-                _vh = h;
-                _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
-                _layoutDirty = false;
+                OnResize(_window, w, h);
             }
             _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, _vw, _vh);
         }
