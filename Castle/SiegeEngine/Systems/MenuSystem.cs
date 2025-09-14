@@ -30,6 +30,8 @@ namespace SiegeEngine.Systems
         private HtmlElement _currentMenu;
         private List<HtmlElement> _clickables = new List<HtmlElement>();
         private bool _initialized;
+        private float _vw = 0f;
+        private float _vh = 0f;
         public MenuSystem(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath) : base(null)
         {
             _settingsManager = settingsManager;
@@ -44,9 +46,11 @@ namespace SiegeEngine.Systems
         private void OnResize(IntPtr win, int w, int h)
         {
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
+            _vw = w;
+            _vh = h;
             if (_currentMenu != null)
             {
-                _currentMenu.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f);
+                _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
             }
         }
         public void SwitchMenu(string menuName)
@@ -197,6 +201,10 @@ input[type=""checkbox""] {
             _textRenderer.Initialize(_uiShader);
             _quadRenderer = new UIQuadRenderer(_renderContext);
             SwitchMenu("MainMenu");
+            _controlContext.GetWindowSize(_window, out int w, out int h);
+            _vw = w;
+            _vh = h;
+            _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
             _initialized = true;
         }
         public override void Update(float deltaTime)
@@ -293,12 +301,15 @@ input[type=""checkbox""] {
         public void Render()
         {
             if (!_initialized || _currentMenu == null) return;
-            int w, h;
-            _controlContext.GetWindowSize(_window, out w, out h);
-            float vw = w;
-            float vh = h;
-            _currentMenu.ComputeLayout(0, 0, vw, vh, vw, vh, _textRenderer, 16f);
-            _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, vw, vh);
+            _controlContext.GetWindowSize(_window, out int w, out int h);
+            _renderContext.Viewport(0, 0, (uint)w, (uint)h);
+            if (w != _vw || h != _vh)
+            {
+                _vw = w;
+                _vh = h;
+                _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
+            }
+            _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, _vw, _vh);
         }
     }
 }
