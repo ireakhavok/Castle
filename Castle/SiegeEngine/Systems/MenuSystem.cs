@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Systems
 {
     public class MenuSystem : GameSystem
@@ -30,6 +31,7 @@ namespace SiegeEngine.Systems
         private HtmlElement _currentMenu;
         private List<HtmlElement> _clickables = new List<HtmlElement>();
         private bool _initialized;
+
         public MenuSystem(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath) : base(null)
         {
             _settingsManager = settingsManager;
@@ -41,6 +43,7 @@ namespace SiegeEngine.Systems
             _configPath = configPath;
             _controlContext.SetWindowSizeCallback(_window, OnResize);
         }
+
         private void OnResize(IntPtr win, int w, int h)
         {
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
@@ -49,6 +52,7 @@ namespace SiegeEngine.Systems
                 _currentMenu.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f);
             }
         }
+
         public void SwitchMenu(string menuName)
         {
             string configDir = Path.GetDirectoryName(_configPath);
@@ -81,6 +85,7 @@ namespace SiegeEngine.Systems
                 {
                     cssParser.Apply(css, _currentMenu);
                 }
+                ApplyUserAgentDefaults(cssParser);
                 InheritProperties(_currentMenu, null);
                 ProcessSelects(_currentMenu);
                 _currentMenu.Style.WidthStr = "100%";
@@ -97,6 +102,25 @@ namespace SiegeEngine.Systems
                 CollectClickables(_currentMenu);
             }
         }
+
+        private void ApplyUserAgentDefaults(CssParser cssParser)
+        {
+            string defaultCss = @"
+select {
+    padding: 2px 10px;
+    min-height: 30px;
+    border: 1px solid rgba(128, 128, 128, 1);
+    border-radius: 5px;
+}
+input[type=""checkbox""] {
+    width: 16px;
+    height: 16px;
+    margin: 0 5px 0 0;
+}
+";
+            cssParser.Apply(defaultCss, _currentMenu);
+        }
+
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -114,6 +138,7 @@ namespace SiegeEngine.Systems
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
+
         private void ProcessSelects(HtmlElement elem)
         {
             if (elem is SelectElement select)
@@ -136,6 +161,7 @@ namespace SiegeEngine.Systems
             foreach (var child in elem.Children.ToList())
                 ProcessSelects(child);
         }
+
         private HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root.Attributes.GetValueOrDefault("id", "") == id) return root;
@@ -146,6 +172,7 @@ namespace SiegeEngine.Systems
             }
             return null;
         }
+
         private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             List<HtmlElement> list = new List<HtmlElement>();
@@ -160,6 +187,7 @@ namespace SiegeEngine.Systems
             }
             return list;
         }
+
         private void CollectClickables(HtmlElement elem)
         {
             string classes = elem.Attributes.GetValueOrDefault("class", "");
@@ -170,6 +198,7 @@ namespace SiegeEngine.Systems
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
+
         public void Initialize()
         {
             _textRenderer = new TextRenderer(_renderContext, _window);
@@ -178,6 +207,7 @@ namespace SiegeEngine.Systems
             SwitchMenu("MainMenu");
             _initialized = true;
         }
+
         public override void Update(float deltaTime)
         {
             if (!_initialized) return;
@@ -205,6 +235,7 @@ namespace SiegeEngine.Systems
                 }
             }
         }
+
         private void HandleClickableClick(HtmlElement elem)
         {
             if (elem.Tag == "a")
@@ -256,6 +287,7 @@ namespace SiegeEngine.Systems
                 }
             }
         }
+
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             List<HtmlElement> list = new List<HtmlElement>();
@@ -269,6 +301,7 @@ namespace SiegeEngine.Systems
             }
             return list;
         }
+
         public void Render()
         {
             if (!_initialized || _currentMenu == null) return;

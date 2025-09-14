@@ -39,12 +39,29 @@ namespace SiegeEngine.UI
             if (Type == "checkbox")
             {
                 string symbol = Checked ? "x" : "";
-                float fs = Style.FontSize;
-                float textX = ComputedContentX;
-                float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
-                Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
-                textRenderer.RenderText(symbol, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color);
+                if (!string.IsNullOrEmpty(symbol))
+                {
+                    float fs = Style.FontSize;
+                    float symbolWidth = textRenderer.GetTextSize(symbol, fs).X;
+                    float textX = ComputedContentX + (ComputedContentWidth - symbolWidth) / 2;
+                    float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
+                    Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
+                    textRenderer.RenderText(symbol, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color);
+                }
             }
+        }
+
+        protected override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+        {
+            if (Type == "checkbox")
+            {
+                Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+                Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+                float iw = fs + pad.W + pad.Y + borderW.W + borderW.Y;
+                float ih = fs + pad.X + pad.Z + borderW.X + borderW.Z;
+                return new Vector2(iw, ih);
+            }
+            return base.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
         }
     }
 }

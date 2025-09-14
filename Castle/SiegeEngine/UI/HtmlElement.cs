@@ -173,12 +173,6 @@ namespace SiegeEngine.UI
             ComputedContentWidth = contentW;
             ComputedContentHeight = contentH;
 
-            if (effectiveStyle.Position != "absolute" && effectiveStyle.Position != "fixed")
-            {
-                boxX += margin.W;
-                boxY += margin.X;
-            }
-
             ComputedPosition = new Vector2(boxX, boxY);
             ComputedBackgroundX = boxX + borderW.W;
             ComputedBackgroundY = boxY + borderW.X;
@@ -339,6 +333,8 @@ namespace SiegeEngine.UI
                 float end = isRow ? child.Style.Margin.Y : child.Style.Margin.Z;
                 if (float.IsNaN(start)) childMarginStart[i] = auto_size;
                 if (float.IsNaN(end)) childMarginEnd[i] = auto_size;
+                if (float.IsNaN(childMarginStart[i])) childMarginStart[i] = 0;
+                if (float.IsNaN(childMarginEnd[i])) childMarginEnd[i] = 0;
             }
 
             float sum_outer = 0;
@@ -613,7 +609,7 @@ namespace SiegeEngine.UI
             }
         }
 
-        protected Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+        protected virtual Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             if (Style.Display == "none") return new Vector2(0, 0);
 

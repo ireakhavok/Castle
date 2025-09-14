@@ -30,19 +30,30 @@ namespace SiegeEngine.UI
             {
                 float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
                 float lineWidth = textRenderer.GetTextSize(Selected, fs, Style.FontFamily ?? "Arial").X;
-                float textX = ComputedContentX;
-                if (Style.TextAlign == "center")
-                {
-                    textX += (ComputedContentWidth - lineWidth) / 2;
-                }
-                else if (Style.TextAlign == "right")
-                {
-                    textX += ComputedContentWidth - lineWidth;
-                }
+                float textX = ComputedContentX + (ComputedContentWidth - lineWidth) / 2;
                 float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
                 Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
                 textRenderer.RenderText(Selected, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color, Style.FontFamily ?? "Arial");
             }
+        }
+
+        protected override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+        {
+            string fontFamily = Style.FontFamily ?? "Arial";
+            float maxW = 0;
+            float textH = textRenderer.GetTextSize("A", fs, fontFamily).Y;
+            foreach (string opt in Options)
+            {
+                Vector2 size = textRenderer.GetTextSize(opt, fs, fontFamily);
+                maxW = Math.Max(maxW, size.X);
+                textH = Math.Max(textH, size.Y);
+            }
+            if (maxW == 0) maxW = 100; // Default width if no options
+            Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+            float iw = maxW + pad.W + pad.Y + borderW.W + borderW.Y;
+            float ih = textH + pad.X + pad.Z + borderW.X + borderW.Z;
+            return new Vector2(iw, ih);
         }
     }
 }
