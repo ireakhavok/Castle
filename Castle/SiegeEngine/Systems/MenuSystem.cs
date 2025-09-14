@@ -32,6 +32,7 @@ namespace SiegeEngine.Systems
         private bool _initialized;
         private float _vw = 0f;
         private float _vh = 0f;
+        private bool _layoutDirty = true;
         public MenuSystem(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath) : base(null)
         {
             _settingsManager = settingsManager;
@@ -46,12 +47,7 @@ namespace SiegeEngine.Systems
         private void OnResize(IntPtr win, int w, int h)
         {
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
-            _vw = w;
-            _vh = h;
-            if (_currentMenu != null)
-            {
-                _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
-            }
+            _layoutDirty = true;
         }
         public void SwitchMenu(string menuName)
         {
@@ -102,6 +98,7 @@ namespace SiegeEngine.Systems
                 CollectClickables(_currentMenu);
                 string htmlDir = Path.GetDirectoryName(htmlPath);
                 _currentMenu.PrepareResources(htmlDir, _controlContext, _window, _renderContext, _uiShader);
+                _layoutDirty = true;
             }
         }
         private void ApplyUserAgentDefaults(CssParser cssParser)
@@ -205,6 +202,7 @@ input[type=""checkbox""] {
             _vw = w;
             _vh = h;
             _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
+            _layoutDirty = false;
             _initialized = true;
         }
         public override void Update(float deltaTime)
@@ -246,6 +244,7 @@ input[type=""checkbox""] {
                     if (target != null) target.Style.Display = "flex";
                     var currentScreen = FindElementsByClass(_currentMenu, "screen").FirstOrDefault(s => s.Style.Display != "none");
                     if (currentScreen != null) currentScreen.Style.Display = "none";
+                    _layoutDirty = true;
                 }
             }
             else if (elem.Tag == "label")
@@ -268,10 +267,12 @@ input[type=""checkbox""] {
                             var contentClass = input.Attributes.GetValueOrDefault("id", "");
                             var content = contents.FirstOrDefault(c => c.Attributes.GetValueOrDefault("class", "").Contains(contentClass));
                             if (content != null) content.Style.Display = "block";
+                            _layoutDirty = true;
                         }
                         else if (type == "checkbox")
                         {
                             input.Checked = !input.Checked;
+                            _layoutDirty = true;
                         }
                     }
                 }
@@ -282,6 +283,7 @@ input[type=""checkbox""] {
                 if (input != null)
                 {
                     input.Checked = !input.Checked;
+                    _layoutDirty = true;
                 }
             }
         }
@@ -303,11 +305,12 @@ input[type=""checkbox""] {
             if (!_initialized || _currentMenu == null) return;
             _controlContext.GetWindowSize(_window, out int w, out int h);
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
-            if (w != _vw || h != _vh)
+            if (_layoutDirty || w != _vw || h != _vh)
             {
                 _vw = w;
                 _vh = h;
                 _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
+                _layoutDirty = false;
             }
             _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, _vw, _vh);
         }
