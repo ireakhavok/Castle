@@ -4,15 +4,18 @@ using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.UI
 {
     public class InputElement : HtmlElement
     {
         public string Type { get; set; }
+
         public InputElement()
         {
             Tag = "input";
         }
+
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             Type = Attributes.GetValueOrDefault("type", "text");
@@ -29,6 +32,7 @@ namespace SiegeEngine.UI
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = fs;
             }
         }
+
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
