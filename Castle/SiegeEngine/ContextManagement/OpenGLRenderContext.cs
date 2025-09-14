@@ -1,8 +1,8 @@
-﻿// SiegeEngine.ContextManagement/OpenGLRenderContext.cs
+﻿// Folder: SiegeEngine.ContextManagement
+// File: OpenGLRenderContext.cs
 using Silk.NET.OpenGL;
 using Silk.NET.GLFW;
 using System;
-
 namespace SiegeEngine.ContextManagement
 {
     public unsafe class OpenGLRenderContext : IRenderContext
@@ -12,11 +12,9 @@ namespace SiegeEngine.ContextManagement
         private readonly AbstractRenderEnums _enums = new OpenGLEnums();
         private int _viewportWidth;
         private int _viewportHeight;
-
         public AbstractRenderEnums Enums => _enums;
         public int ViewportWidth => _viewportWidth;
         public int ViewportHeight => _viewportHeight;
-
         public OpenGLRenderContext(Glfw glfw, GL gl)
         {
             _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
@@ -101,5 +99,6 @@ namespace SiegeEngine.ContextManagement
         public void GenerateMipmap(int target) => _gl.GenerateMipmap((TextureTarget)target);
         public bool IsExtensionPresent(string extension) => _gl.IsExtensionPresent(extension);
         public void GetFloat(int pname, out float param) => _gl.GetFloat((GetPName)pname, out param);
+        public void Scissor(int x, int y, uint width, uint height) => _gl.Scissor(x, y, width, height);
     }
 }

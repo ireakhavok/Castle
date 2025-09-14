@@ -16,6 +16,7 @@ namespace SiegeEngine.UI
         public string MaxHeightStr { get; set; }
         public string Background { get; set; }
         public Vector4 BackgroundColor { get; set; }
+        public string BackgroundImage { get; set; }
         public string Color { get; set; }
         public Vector4 TextColor { get; set; }
         public string FontSizeStr { get; set; }
@@ -68,6 +69,7 @@ namespace SiegeEngine.UI
                 MaxHeightStr = MaxHeightStr,
                 Background = Background,
                 BackgroundColor = BackgroundColor,
+                BackgroundImage = BackgroundImage,
                 Color = Color,
                 TextColor = TextColor,
                 FontSizeStr = FontSizeStr,

@@ -26,7 +26,10 @@
             height: 100vh;
             padding: 40px;
             box-sizing: border-box;
-            background: linear-gradient(to bottom, #1e1e1e, #121212);
+            background-image: url('../Static_Images/Main_Background.jpg');
+            background-repeat: no-repeat;
+            background-position: center center;
+            /*            background: linear-gradient(to bottom, #1e1e1e, #121212);*/
         }
 
         #main {

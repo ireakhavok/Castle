@@ -13,7 +13,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Systems
 {
     public class MenuSystem : GameSystem
@@ -31,7 +30,6 @@ namespace SiegeEngine.Systems
         private HtmlElement _currentMenu;
         private List<HtmlElement> _clickables = new List<HtmlElement>();
         private bool _initialized;
-
         public MenuSystem(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath) : base(null)
         {
             _settingsManager = settingsManager;
@@ -43,7 +41,6 @@ namespace SiegeEngine.Systems
             _configPath = configPath;
             _controlContext.SetWindowSizeCallback(_window, OnResize);
         }
-
         private void OnResize(IntPtr win, int w, int h)
         {
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
@@ -52,7 +49,6 @@ namespace SiegeEngine.Systems
                 _currentMenu.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f);
             }
         }
-
         public void SwitchMenu(string menuName)
         {
             string configDir = Path.GetDirectoryName(_configPath);
@@ -100,9 +96,10 @@ namespace SiegeEngine.Systems
                 if (createContent != null) createContent.Style.Display = "block";
                 _clickables.Clear();
                 CollectClickables(_currentMenu);
+                string htmlDir = Path.GetDirectoryName(htmlPath);
+                _currentMenu.PrepareResources(htmlDir, _controlContext, _window, _renderContext, _uiShader);
             }
         }
-
         private void ApplyUserAgentDefaults(CssParser cssParser)
         {
             string defaultCss = @"
@@ -120,7 +117,6 @@ input[type=""checkbox""] {
 ";
             cssParser.Apply(defaultCss, _currentMenu);
         }
-
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -138,7 +134,6 @@ input[type=""checkbox""] {
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
-
         private void ProcessSelects(HtmlElement elem)
         {
             if (elem is SelectElement select)
@@ -161,7 +156,6 @@ input[type=""checkbox""] {
             foreach (var child in elem.Children.ToList())
                 ProcessSelects(child);
         }
-
         private HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root.Attributes.GetValueOrDefault("id", "") == id) return root;
@@ -172,7 +166,6 @@ input[type=""checkbox""] {
             }
             return null;
         }
-
         private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             List<HtmlElement> list = new List<HtmlElement>();
@@ -187,7 +180,6 @@ input[type=""checkbox""] {
             }
             return list;
         }
-
         private void CollectClickables(HtmlElement elem)
         {
             string classes = elem.Attributes.GetValueOrDefault("class", "");
@@ -198,16 +190,15 @@ input[type=""checkbox""] {
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
-
         public void Initialize()
         {
+            _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
             _textRenderer = new TextRenderer(_renderContext, _window);
-            _textRenderer.Initialize(new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource));
+            _textRenderer.Initialize(_uiShader);
             _quadRenderer = new UIQuadRenderer(_renderContext);
             SwitchMenu("MainMenu");
             _initialized = true;
         }
-
         public override void Update(float deltaTime)
         {
             if (!_initialized) return;
@@ -235,7 +226,6 @@ input[type=""checkbox""] {
                 }
             }
         }
-
         private void HandleClickableClick(HtmlElement elem)
         {
             if (elem.Tag == "a")
@@ -287,7 +277,6 @@ input[type=""checkbox""] {
                 }
             }
         }
-
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             List<HtmlElement> list = new List<HtmlElement>();
@@ -301,7 +290,6 @@ input[type=""checkbox""] {
             }
             return list;
         }
-
         public void Render()
         {
             if (!_initialized || _currentMenu == null) return;

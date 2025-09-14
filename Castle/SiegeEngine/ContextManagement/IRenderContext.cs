@@ -1,6 +1,6 @@
-﻿// SiegeEngine.ContextManagement/IRenderContext.cs
+﻿// Folder: SiegeEngine.ContextManagement
+// File: IRenderContext.cs
 using System;
-
 namespace SiegeEngine.ContextManagement
 {
     public unsafe interface IRenderContext
@@ -72,5 +72,6 @@ namespace SiegeEngine.ContextManagement
         void GenerateMipmap(int target);
         bool IsExtensionPresent(string extension);
         void GetFloat(int pname, out float param);
+        void Scissor(int x, int y, uint width, uint height);
     }
 }

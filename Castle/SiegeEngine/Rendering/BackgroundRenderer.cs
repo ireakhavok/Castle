@@ -1,25 +1,22 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.Rendering
+// File: BackgroundRenderer.cs
+using SiegeEngine.ContextManagement;
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Numerics;
-
 namespace SiegeEngine.Rendering
 {
     public unsafe class BackgroundRenderer : IDisposable
     {
         private readonly IRenderContext _renderContext;
-        private readonly IControlContext _controlContext;
-        private readonly IntPtr _window;
         private uint _bgVao, _bgVbo, _bgTexture;
         private ShaderProgram _shaderProgram;
-        private const int TextureWidth = 1920;
-        private const int TextureHeight = 895;
+        private int _textureWidth;
+        private int _textureHeight;
         public BackgroundRenderer(IControlContext controlContext, IntPtr window, IRenderContext renderContext)
         {
             _renderContext = renderContext;
-            _controlContext = controlContext;
-            _window = window;
         }
         public void Initialize(string backgroundPath, ShaderProgram shaderProgram)
         {
@@ -54,10 +51,8 @@ namespace SiegeEngine.Rendering
                 using (var bitmap = new Bitmap(backgroundPath))
                 {
                     Console.WriteLine($"Bitmap loaded: {bitmap.Width}x{bitmap.Height}, PixelFormat: {bitmap.PixelFormat}");
-                    if (bitmap.Width != TextureWidth || bitmap.Height != TextureHeight)
-                    {
-                        throw new Exception($"Image dimensions must be {TextureWidth}x{TextureHeight}");
-                    }
+                    _textureWidth = bitmap.Width;
+                    _textureHeight = bitmap.Height;
                     BitmapData data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
                     Console.WriteLine($"Bitmap locked, Stride: {data.Stride}");
                     int bytesPerPixel = 3;
@@ -100,24 +95,22 @@ namespace SiegeEngine.Rendering
                 _bgTexture = 0;
             }
         }
-        public void Render()
+        public void Render(float posX, float posY, float width, float height, float viewportWidth, float viewportHeight)
         {
             if (_bgTexture == 0) return;
             _renderContext.BindVertexArray(_bgVao);
-            _controlContext.GetWindowSize(_window, out int windowWidth, out int windowHeight);
-            // Render the background at its exact resolution (1920x895), centered in the window
-            float offsetX = (windowWidth - TextureWidth) / 2.0f;
-            float offsetY = (windowHeight - TextureHeight) / 2.0f;
-            // Map the texture directly to window coordinates (1:1 pixel mapping)
-            float left = offsetX;
-            float right = offsetX + TextureWidth;
-            float top = offsetY;
-            float bottom = offsetY + TextureHeight;
-            // Convert to normalized device coordinates (NDC)
-            float leftNDC = left / windowWidth * 2.0f - 1.0f;
-            float rightNDC = right / windowWidth * 2.0f - 1.0f;
-            float topNDC = 1.0f - top / windowHeight * 2.0f;
-            float bottomNDC = 1.0f - bottom / windowHeight * 2.0f;
+            float drawWidth = _textureWidth;
+            float drawHeight = _textureHeight;
+            float drawX = posX + (width - drawWidth) / 2f;
+            float drawY = posY + (height - drawHeight) / 2f;
+            float left = drawX;
+            float right = drawX + drawWidth;
+            float top = drawY;
+            float bottom = drawY + drawHeight;
+            float leftNDC = (left / viewportWidth) * 2f - 1f;
+            float rightNDC = (right / viewportWidth) * 2f - 1f;
+            float topNDC = 1f - (top / viewportHeight) * 2f;
+            float bottomNDC = 1f - (bottom / viewportHeight) * 2f;
             float[] bgVertices = new float[]
             {
                 leftNDC, bottomNDC, 0.0f, 1.0f,
@@ -130,7 +123,9 @@ namespace SiegeEngine.Rendering
             {
                 _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(bgVertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
             }
+            _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, _bgTexture);
+            _shaderProgram.Use();
             _shaderProgram.SetUniform("uUseTexture", 1.0f);
             _shaderProgram.SetMatrix4("uTransform", Matrix4x4.Identity);
             _shaderProgram.SetUniform("uColor", 1.0f, 1.0f, 1.0f, 1.0f);

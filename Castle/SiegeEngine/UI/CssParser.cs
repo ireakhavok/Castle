@@ -14,7 +14,7 @@ namespace SiegeEngine.UI
             int i = 0;
             while (i < css.Length)
             {
-                SkipWhitespace(css, ref i);
+                SkipWhitespaceAndComments(css, ref i);
                 string selector = ReadUntil(css, ref i, '{').Trim();
                 i++; // skip {
                 string block = ReadUntil(css, ref i, '}').Trim();
@@ -30,10 +30,27 @@ namespace SiegeEngine.UI
                 ApplyToElements(root, selector, props, pseudo);
             }
         }
-        private void SkipWhitespace(string css, ref int i)
+        private void SkipWhitespaceAndComments(string css, ref int i)
         {
-            while (i < css.Length && char.IsWhiteSpace(css[i]))
-                i++;
+            while (i < css.Length)
+            {
+                if (char.IsWhiteSpace(css[i]))
+                {
+                    i++;
+                    continue;
+                }
+                if (i + 1 < css.Length && css[i] == '/' && css[i + 1] == '*')
+                {
+                    i += 2;
+                    while (i + 1 < css.Length && !(css[i] == '*' && css[i + 1] == '/'))
+                    {
+                        i++;
+                    }
+                    if (i + 1 < css.Length) i += 2;
+                    continue;
+                }
+                break;
+            }
         }
         private string ReadUntil(string css, ref int i, char stop)
         {
@@ -51,10 +68,10 @@ namespace SiegeEngine.UI
             int j = 0;
             while (j < block.Length)
             {
-                SkipWhitespace(block, ref j);
+                SkipWhitespaceAndComments(block, ref j);
                 string key = ReadUntil(block, ref j, ':').Trim();
                 j++; // skip :
-                SkipWhitespace(block, ref j);
+                SkipWhitespaceAndComments(block, ref j);
                 string value = ReadUntil(block, ref j, ';').Trim();
                 if (j < block.Length && block[j] == ';') j++;
                 props[key] = value;
@@ -157,6 +174,14 @@ namespace SiegeEngine.UI
             {
                 style.Background = bg;
                 style.BackgroundColor = ParseColor(bg);
+            }
+            if (props.TryGetValue("background-image", out string bgImg))
+            {
+                var urlMatch = Regex.Match(bgImg, @"url\(['""]?(.*?)['""]?\)");
+                if (urlMatch.Success)
+                {
+                    style.BackgroundImage = urlMatch.Groups[1].Value;
+                }
             }
             if (props.TryGetValue("color", out string textColorStr))
             {
