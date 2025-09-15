@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Systems
-// File: MenuSystem.cs
-using SiegeEngine.ContextManagement;
+﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Managers;
@@ -206,6 +204,7 @@ input[type=""checkbox""] {
             SwitchMenu("MainMenu");
             _controlContext.GetWindowSize(_window, out int w, out int h);
             OnResize(_window, w, h);
+            _layoutDirty = true;
             _initialized = true;
         }
         public override void Update(float deltaTime)
@@ -231,12 +230,14 @@ input[type=""checkbox""] {
                 }
                 if (over && mouseDown)
                 {
+                    Console.WriteLine($"MenuSystem: Detected click on element at Pos=({clickable.ComputedPosition.X}, {clickable.ComputedPosition.Y}), Size=({clickable.ComputedWidth}, {clickable.ComputedHeight}), Tag={clickable.Tag}, Class={clickable.Attributes.GetValueOrDefault("class", "")}");
                     HandleClickableClick(clickable);
                 }
             }
         }
         private void HandleClickableClick(HtmlElement elem)
         {
+            Console.WriteLine($"MenuSystem: Handling click for element Tag={elem.Tag}, Class={elem.Attributes.GetValueOrDefault("class", "")}, ID={elem.Attributes.GetValueOrDefault("id", "")}");
             if (elem.Tag == "a")
             {
                 string href = elem.Attributes.GetValueOrDefault("href", "");
@@ -256,6 +257,7 @@ input[type=""checkbox""] {
                         currentScreen.IsTarget = false;
                     }
                     _layoutDirty = true;
+                    Console.WriteLine($"MenuSystem: Handled anchor click to #{targetId}");
                 }
             }
             else if (elem.Tag == "label")
@@ -279,11 +281,13 @@ input[type=""checkbox""] {
                             var content = contents.FirstOrDefault(c => c.Attributes.GetValueOrDefault("class", "").Contains(contentClass));
                             if (content != null) content.Style.Display = "block";
                             _layoutDirty = true;
+                            Console.WriteLine($"MenuSystem: Handled radio label click for {forId}");
                         }
                         else if (type == "checkbox")
                         {
                             input.Checked = !input.Checked;
                             _layoutDirty = true;
+                            Console.WriteLine($"MenuSystem: Handled checkbox label click for {forId}");
                         }
                     }
                 }
@@ -295,7 +299,30 @@ input[type=""checkbox""] {
                 {
                     input.Checked = !input.Checked;
                     _layoutDirty = true;
+                    Console.WriteLine($"MenuSystem: Handled toggle click");
                 }
+            }
+            else if (elem.Attributes.ContainsKey("data-hook"))
+            {
+                string hook = elem.Attributes["data-hook"];
+                Console.WriteLine($"MenuSystem: Processing data-hook: {hook}");
+                //if (hook.StartsWith("SiegeEngine.Scenes.") || _modManager.IsWhitelistedHook(hook))
+                //{
+                if (hook.Contains("Scene"))
+                {
+                    //_eventBus.Publish(new SwitchSceneEvent { Hook = hook });
+                    Console.WriteLine($"MenuSystem: Published SwitchSceneEvent with hook {hook}");
+                }
+                else
+                {
+                    //_eventBus.Publish(new GenericEvent { Hook = hook });
+                    Console.WriteLine($"MenuSystem: Published GenericEvent with hook {hook}");
+                }
+                //}
+                //else
+                //{
+                //    Console.WriteLine($"MenuSystem: Rejected unsafe hook: {hook}");
+                //}
             }
         }
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
