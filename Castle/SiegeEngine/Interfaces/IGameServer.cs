@@ -18,5 +18,6 @@ namespace SiegeEngine.Interfaces
         bool ValidateInventory(int entityId, string action, object data);
         void Publish<T>(T eventData, bool networkSync = false) where T : class;
         RayTraceResult RequestRayTrace(Vector3 start, Vector3 direction, float maxDistance);
+        void QueueNetworkEvent(IEvent e);
     }
 }

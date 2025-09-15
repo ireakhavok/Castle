@@ -3,6 +3,8 @@ using Citadel.Server;
 using SiegeEngine.Events;
 using SiegeEngine.Networking;
 using System;
+using System.Diagnostics;
+using System.Linq;
 
 namespace Citadel
 {
@@ -12,7 +14,6 @@ namespace Citadel
         private static GameServer _gameServer;
         private static EventBus _eventBus;
         private static NetworkManager _networkManager;
-
         static void Main(string[] args)
         {
             try
@@ -24,19 +25,22 @@ namespace Citadel
                     Console.WriteLine("Citadel: SteamEngine init failed.");
                     return;
                 }
-
                 if (!_steamEngine.InitializeServer(0, 27015, "Citadel Server"))
                 {
                     Console.WriteLine("Citadel: Server init failed.");
                     return;
                 }
-
                 _gameServer = new GameServer(_eventBus);
                 _networkManager = new NetworkManager(_steamEngine, _eventBus);
                 _networkManager.Start();
-
                 Console.WriteLine("Citadel: Server running...");
-                while (true)
+                bool isLocal = args.Contains("--local");
+                if (isLocal)
+                {
+                    Console.WriteLine("ServerProgram: Running in local mode");
+                }
+                bool running = true;
+                while (running)
                 {
                     _steamEngine.RunCallbacks();
                     _gameServer.Update(1f / 60f); // 60 FPS tick

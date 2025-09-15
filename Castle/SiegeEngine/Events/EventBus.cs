@@ -1,13 +1,13 @@
-﻿// SiegeEngine.Events/EventBus.cs
-using SiegeEngine.Networking;
+﻿using SiegeEngine.Networking;
 using SiegeEngine.Definitions;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
-
 namespace SiegeEngine.Events
 {
     public interface IEvent
@@ -26,28 +26,42 @@ namespace SiegeEngine.Events
         }
         public void Subscribe<T>(Action<T> handler) where T : class
         {
-            if (!_subscribers.ContainsKey(typeof(T)))
+            Type type = typeof(T);
+            if (!_subscribers.ContainsKey(type))
             {
-                _subscribers[typeof(T)] = new List<object>();
+                _subscribers[type] = new List<object>();
             }
-            _subscribers[typeof(T)].Add(handler);
-            Console.WriteLine($"EventBus: Subscribed to {typeof(T).Name}");
+            _subscribers[type].Add(handler);
+            Console.WriteLine($"EventBus: Subscribed to {type.Name}");
         }
         public void Publish<T>(T eventData, bool networkSync = false) where T : class
         {
-            if (_subscribers.ContainsKey(typeof(T)))
+            Type type = typeof(T);
+            bool isProtected = type.GetCustomAttribute<ProtectedEventAttribute>() != null;
+            if (isProtected)
             {
-                foreach (var handler in _subscribers[typeof(T)])
+                StackTrace stackTrace = new StackTrace();
+                bool isInternalCaller = stackTrace.GetFrames()?.Any(frame =>
+                    frame.GetMethod()?.DeclaringType?.Namespace?.StartsWith("Citadel") == true) ?? false;
+                if (!isInternalCaller)
+                {
+                    Console.WriteLine($"EventBus: Rejected publish of protected event {type.Name} from unauthorized caller");
+                    return;
+                }
+            }
+            if (_subscribers.ContainsKey(type))
+            {
+                foreach (var handler in _subscribers[type])
                 {
                     ((Action<T>)handler)(eventData);
                 }
-                Console.WriteLine($"EventBus: Published {typeof(T).Name}");
+                Console.WriteLine($"EventBus: Published {type.Name}");
             }
-            if (networkSync && _steamEngine != null)
+            if (networkSync && _steamEngine != null && !isProtected)
             {
                 byte[] data = eventData is IEvent ievent ? ievent.Serialize() : Encoding.UTF8.GetBytes(JsonSerializer.Serialize(eventData));
                 _steamEngine.SendP2PMessage(data);
-                Console.WriteLine($"EventBus: Sent networked event {typeof(T).Name}");
+                Console.WriteLine($"EventBus: Sent networked event {type.Name}");
             }
         }
         public void ProcessNetworkMessage(byte[] data)
@@ -102,6 +116,12 @@ namespace SiegeEngine.Events
                 Type type = Type.GetType($"SiegeEngine.Events.{typeName}");
                 if (type != null && _subscribers.ContainsKey(type))
                 {
+                    bool isProtected = type.GetCustomAttribute<ProtectedEventAttribute>() != null;
+                    if (isProtected)
+                    {
+                        Console.WriteLine($"EventBus: Rejected processing of protected networked event {typeName}");
+                        return;
+                    }
                     var eventData = JsonSerializer.Deserialize(message, type);
                     foreach (var handler in _subscribers[type])
                     {

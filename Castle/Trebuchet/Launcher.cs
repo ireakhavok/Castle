@@ -10,10 +10,12 @@ using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Reflection;
 namespace Trebuchet
 {
     public class Launcher
@@ -29,6 +31,7 @@ namespace Trebuchet
         private InputHandler _inputHandler;
         private ModManager _modManager;
         private ContextManager _contextManager;
+        private Process _serverProcess;
         public void Start(string context)
         {
             try
@@ -40,6 +43,7 @@ namespace Trebuchet
                     Console.WriteLine($"Failed to load steam_api64.dll. Error code: {Marshal.GetLastWin32Error()}");
                     return;
                 }
+                _serverProcess = Process.Start("Citadel.exe", "--local");
                 using (_steamEngine = new SteamEngine())
                 {
                     _eventBus = new EventBus((SteamEngine)_steamEngine);
@@ -56,7 +60,6 @@ namespace Trebuchet
                     {
                         _contextManager = new OpenGLContextManager();
                     }
-
                     _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, "Citadel Launcher");
                     _window = _contextManager.Window;
                     _renderContext = _contextManager.RenderContext;
@@ -108,6 +111,7 @@ namespace Trebuchet
             }
             finally
             {
+                _serverProcess?.Kill();
                 _settingsManager?.SaveSettings();
                 _contextManager?.Terminate();
             }
