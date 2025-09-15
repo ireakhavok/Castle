@@ -1,4 +1,6 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.Systems
+// File: MenuSystem.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Managers;
@@ -204,7 +206,6 @@ input[type=""checkbox""] {
             SwitchMenu("MainMenu");
             _controlContext.GetWindowSize(_window, out int w, out int h);
             OnResize(_window, w, h);
-            _layoutDirty = true;
             _initialized = true;
         }
         public override void Update(float deltaTime)
@@ -295,11 +296,6 @@ input[type=""checkbox""] {
                     input.Checked = !input.Checked;
                     _layoutDirty = true;
                 }
-            }
-            else if (elem.Attributes.ContainsKey("data-hook"))
-            {
-                string hook = elem.Attributes["data-hook"];
-                _eventBus.Publish(new SwitchSceneEvent { Hook = hook });
             }
         }
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
