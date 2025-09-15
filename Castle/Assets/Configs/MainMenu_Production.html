@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Menu</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #121212;
+
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            padding: 40px;
+            box-sizing: border-box;
+            background-image: url('../Static_Images/Main_Background.jpg');
+            background-repeat: no-repeat;
+            background-position: center center;
+            /*            background: linear-gradient(to bottom, #1e1e1e, #121212);*/
+        }
+
+        #main {
+            display: flex;
+        }
+
+        #settings:target {
+            display: flex;
+        }
+
+        #settings:target ~ #main {
+            display: none;
+        }
+
+        .menu-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+            padding-right: 20px;
+            border-right: 1px solid #333;
+        }
+
+        .content-area {
+            flex: 1;
+            padding-left: 0px;
+            padding-right: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .button {
+            background: rgba(51, 51, 51, 0.8);
+            padding: 10px 15px;
+            margin: 10px auto;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.1s;
+            font-size: 16px;
+            font-weight: bold;
+            width: 250px;
+            border: 1px solid rgba(128, 128, 128, 1);
+        }
+
+        .sidebar .button {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .button:hover {
+            background: rgba(77, 77, 77, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .content {
+            display: none;
+            max-width: 400px;
+            width: 100%;
+            text-align: center;
+        }
+
+        #create:checked ~ .create,
+        #play:checked ~ .play,
+        #edit:checked ~ .edit {
+            display: block;
+        }
+
+        input[type="radio"] {
+            display: none;
+        }
+
+        h2, h3, h4 {
+            margin: 0 0 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        h3 {
+            font-size: 24px;
+        }
+
+        h4 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        select {
+            display: block;
+            background: rgba(51, 51, 51, 0.8);
+            color: #fff;
+            border: 1px solid rgba(128, 128, 128, 1);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+            margin: 0 auto 20px;
+            width: 250px;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        select:hover {
+            background: rgba(77, 77, 77, 0.8);
+        }
+
+        .option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .option label {
+            font-size: 16px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .project-list {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(51, 51, 51, 0.8);
+            border: 1px solid rgba(128, 128, 128, 1);
+            padding: 10px;
+            margin: 10px auto;
+            border-radius: 8px;
+            width: 250px;
+            cursor: pointer;
+        }
+
+        .toggle input {
+            margin-right: 10px;
+        }
+
+        .toggle:hover {
+            background: rgba(77, 77, 77, 0.8);
+        }
+
+        #settings .button, #settings select, #settings .toggle {
+            background: rgba(0, 128, 128, 0.8);
+            border: 1px solid rgba(0, 0, 0, 1);
+        }
+
+        #settings .button:hover, #settings select:hover, #settings .toggle:hover {
+            background: rgba(255, 255, 255, 0.8);
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="settings" class="screen">
+        <div style="width: 100%; max-width: 600px; margin: 0 auto; text-align: center;">
+            <h2>Settings</h2>
+            <div class="option">
+                <label for="aspect-ratio">Aspect Ratio:</label>
+                <select id="aspect-ratio" onchange="updateResolutions()">
+                    <option>4:3</option>
+                    <option selected>16:9</option>
+                    <option>16:10</option>
+                    <option>21:9</option>
+                    <option>32:9</option>
+                </select>
+            </div>
+            <div class="option">
+                <label for="resolution">Resolution:</label>
+                <select id="resolution">
+                    <option>1280x720</option>
+                    <option>1920x1080</option>
+                    <option>2560x1440</option>
+                </select>
+            </div>
+            <div class="toggle">
+                <label for="fullscreen">Fullscreen</label>
+                <input type="checkbox" id="fullscreen">
+            </div>
+            <div class="buttons">
+                <div class="button" onclick="applySettings()">Apply</div>
+                <a href="#main" class="button">Back to Main Menu</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="main" class="screen">
+        <div class="menu-container">
+            <div class="sidebar">
+                <label for="create" class="button">Create</label>
+                <label for="play" class="button">Play</label>
+                <label for="edit" class="button">Edit</label>
+                <a href="#settings" class="button">Settings</a>
+                <div class="button">Exit</div>
+            </div>
+            <div class="content-area">
+                <input type="radio" id="create" name="menu-section" checked>
+                <input type="radio" id="play" name="menu-section">
+                <input type="radio" id="edit" name="menu-section">
+                <div class="content create">
+                    <div class="button">New Project</div>
+                    <div class="button">Game Type</div>
+                    <select>
+                        <option>2D</option>
+                        <option>2D Sidescrolling</option>
+                        <option>3D FPS</option>
+                        <option>3D Isometric</option>
+                        <option>3D Over Shoulder</option>
+                        <option>3D Third Person</option>
+                        <option>3D Dynamic</option>
+                    </select>
+                    <select>
+                        <option>Single Player</option>
+                        <option>Hosted</option>
+                        <option>Server</option>
+                    </select>
+                    <div class="toggle">
+                        <label for="allow-mods">Allow Mods</label>
+                        <input type="checkbox" id="allow-mods" checked>
+                    </div>
+                    <div class="button">Create</div>
+                </div>
+                <div class="content play">
+                    <div class="button">Join Game</div>
+                    <div class="button">Browse Lobbies</div>
+                    <h4>Friends Online</h4>
+                </div>
+                <div class="content edit">
+                    <div class="button">Open Project</div>
+                    <div class="button">Asset Importer</div>
+                    <select>
+                        <option>Project1</option>
+                        <option>Project2</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const resolutions = {
+            '4:3': ['1024x768', '1280x960', '1600x1200'],
+            '16:9': ['1280x720', '1920x1080', '2560x1440', '3840x2160'],
+            '16:10': ['1280x800', '1920x1200', '2560x1600'],
+            '21:9': ['2560x1080', '3440x1440', '5120x2160'],
+            '32:9': ['3840x1080', '5120x1440', '7680x2160']
+        };
+
+        function updateResolutions() {
+            const aspect = document.getElementById('aspect-ratio').value;
+            const resSelect = document.getElementById('resolution');
+            resSelect.innerHTML = '';
+            resolutions[aspect].forEach(res => {
+                const option = document.createElement('option');
+                option.value = res;
+                option.textContent = res;
+                resSelect.appendChild(option);
+            });
+        }
+
+        // Initial update
+        updateResolutions();
+
+        function applySettings() {
+            // Placeholder for apply logic
+            alert('Settings applied!');
+        }
+    </script>
+</body>
+</html>
