@@ -33,7 +33,6 @@ namespace SiegeEngine.UI
 
         public void ApplyAll(HtmlElement root)
         {
-            ResetStyles(root);
             ApplyInlineStyles(root);
             foreach (var rule in _allRules)
             {
@@ -53,16 +52,6 @@ namespace SiegeEngine.UI
                 {
                     ApplyToElements(root, selector, rule.Props, null);
                 }
-            }
-        }
-
-        private void ResetStyles(HtmlElement elem)
-        {
-            elem.Style = new CssStyle();
-            elem.PseudoStyles.Clear();
-            foreach (var child in elem.Children)
-            {
-                ResetStyles(child);
             }
         }
 
