@@ -5,11 +5,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class CssParser
     {
-        public void Apply(string css, HtmlElement root)
+        private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
+
+        public void Apply(string css)
         {
             int i = 0;
             while (i < css.Length)
@@ -20,16 +23,33 @@ namespace SiegeEngine.UI
                 string block = ReadUntil(css, ref i, '}').Trim();
                 i++; // skip }
                 Dictionary<string, string> props = ParseProperties(block);
+                _allRules.Add((selector, props));
+            }
+        }
+
+        public void ApplyAll(HtmlElement root)
+        {
+            foreach (var rule in _allRules)
+            {
+                string selector = rule.Selector;
                 string pseudo = null;
-                if (selector.Contains(":"))
+                if (!selector.Contains(" ") && !selector.Contains("~") && selector.Contains(":"))
                 {
-                    var parts = selector.Split(':');
+                    var parts = selector.Split(new char[] { ':' }, 2);
                     selector = parts[0].Trim();
                     pseudo = parts[1].Trim();
                 }
-                ApplyToElements(root, selector, props, pseudo);
+                if (pseudo != null && (pseudo == "hover" || pseudo == "active"))
+                {
+                    ApplyToElements(root, selector, rule.Props, pseudo);
+                }
+                else
+                {
+                    ApplyToElements(root, selector, rule.Props, null);
+                }
             }
         }
+
         private void SkipWhitespaceAndComments(string css, ref int i)
         {
             while (i < css.Length)
@@ -52,6 +72,7 @@ namespace SiegeEngine.UI
                 break;
             }
         }
+
         private string ReadUntil(string css, ref int i, char stop)
         {
             string result = "";
@@ -62,6 +83,7 @@ namespace SiegeEngine.UI
             }
             return result;
         }
+
         private Dictionary<string, string> ParseProperties(string block)
         {
             Dictionary<string, string> props = new Dictionary<string, string>();
@@ -78,11 +100,13 @@ namespace SiegeEngine.UI
             }
             return props;
         }
+
         public void ApplyInline(string inline, CssStyle style)
         {
             var props = ParseProperties(inline);
             ApplyProperties(style, props);
         }
+
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props, string pseudo)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -111,45 +135,97 @@ namespace SiegeEngine.UI
                 }
             }
         }
+
         private bool Matches(HtmlElement elem, string selector)
         {
             if (string.IsNullOrEmpty(selector)) return true;
-            var parts = selector.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            HtmlElement current = elem;
-            for (int k = parts.Length - 1; k >= 0; k--)
+            selector = selector.Trim();
+            if (selector.Contains("~"))
             {
-                string part = parts[k];
-                if (string.IsNullOrEmpty(part)) continue;
-                bool match = false;
-                if (part == "*")
+                var parts = selector.Split(new[] { '~' }, StringSplitOptions.TrimEntries);
+                if (parts.Length != 2) return false;
+                string leftSelector = parts[0].Trim();
+                string rightSelector = parts[1].Trim();
+                if (!SimpleMatches(elem, rightSelector)) return false;
+                if (elem.Parent == null) return false;
+                var siblings = elem.Parent.Children;
+                int idx = siblings.IndexOf(elem);
+                for (int k = idx - 1; k >= 0; k--)
                 {
-                    match = true;
-                }
-                else
-                {
-                    bool isId = part.StartsWith('#');
-                    bool isClass = part.StartsWith('.');
-                    string name = isId ? part.Substring(1) : isClass ? part.Substring(1) : part;
-                    if (isId)
+                    if (SimpleMatches(siblings[k], leftSelector))
                     {
-                        match = elem.Attributes.GetValueOrDefault("id", "") == name;
-                    }
-                    else if (isClass)
-                    {
-                        string classes = current.Attributes.GetValueOrDefault("class", "");
-                        match = classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(name);
-                    }
-                    else
-                    {
-                        match = string.Equals(current.Tag, name, StringComparison.OrdinalIgnoreCase);
+                        return true;
                     }
                 }
-                if (!match) return false;
-                current = current.Parent;
-                if (current == null && k > 0) return false;
+                return false;
             }
-            return true;
+            else
+            {
+                var parts = selector.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                HtmlElement current = elem;
+                for (int k = parts.Length - 1; k >= 0; k--)
+                {
+                    string part = parts[k];
+                    if (!SimpleMatches(current, part)) return false;
+                    current = current.Parent;
+                    if (current == null && k > 0) return false;
+                }
+                return true;
+            }
         }
+
+        private bool SimpleMatches(HtmlElement elem, string simple)
+        {
+            if (string.IsNullOrEmpty(simple)) return true;
+            string pseudo = null;
+            if (simple.Contains(":"))
+            {
+                var p = simple.Split(new[] { ':' }, 2);
+                simple = p[0];
+                pseudo = p[1];
+            }
+            bool match = false;
+            if (simple == "*")
+            {
+                match = true;
+            }
+            else if (simple.StartsWith("#"))
+            {
+                string id = simple.Substring(1);
+                match = elem.Attributes.GetValueOrDefault("id", "") == id;
+            }
+            else if (simple.StartsWith("."))
+            {
+                string cls = simple.Substring(1);
+                string classes = elem.Attributes.GetValueOrDefault("class", "");
+                match = classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(cls);
+            }
+            else
+            {
+                match = string.Equals(elem.Tag, simple, StringComparison.OrdinalIgnoreCase);
+            }
+            if (match && pseudo != null)
+            {
+                if (pseudo == "target")
+                {
+                    match = elem.IsTarget;
+                }
+                else if (pseudo == "checked")
+                {
+                    match = elem.Checked;
+                }
+                else if (pseudo == "hover")
+                {
+                    match = elem.IsHover;
+                }
+                else if (pseudo == "active")
+                {
+                    match = elem.IsActive;
+                }
+            }
+            return match;
+        }
+
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
             if (props.TryGetValue("position", out string pos))
@@ -294,6 +370,7 @@ namespace SiegeEngine.UI
             if (props.TryGetValue("box-sizing", out string boxs))
                 style.BoxSizing = boxs;
         }
+
         private Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
@@ -318,6 +395,7 @@ namespace SiegeEngine.UI
             }
             return ParseSingleColor(color);
         }
+
         private Vector4 ParseSingleColor(string color)
         {
             color = color.Trim();

@@ -1,4 +1,6 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.Systems
+// File: MenuSystem.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Managers;
@@ -11,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Systems
 {
     public class MenuSystem : GameSystem
@@ -31,6 +34,10 @@ namespace SiegeEngine.Systems
         private float _vw = 0f;
         private float _vh = 0f;
         private bool _layoutDirty = true;
+        private CssParser _cssParser;
+        private string _currentTargetId;
+        private string _baseDir;
+
         public MenuSystem(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath) : base(null)
         {
             _settingsManager = settingsManager;
@@ -42,6 +49,7 @@ namespace SiegeEngine.Systems
             _configPath = configPath;
             _controlContext.SetWindowSizeCallback(_window, OnResize);
         }
+
         private void OnResize(IntPtr win, int w, int h)
         {
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
@@ -53,10 +61,9 @@ namespace SiegeEngine.Systems
             }
             _layoutDirty = false;
         }
-        public void SwitchMenu(string menuName)
+
+        private void LoadHtml(string htmlPath)
         {
-            string configDir = Path.GetDirectoryName(_configPath);
-            string htmlPath = Path.Combine(configDir, $"{menuName}.html");
             if (File.Exists(htmlPath))
             {
                 string html = File.ReadAllText(htmlPath);
@@ -80,31 +87,31 @@ namespace SiegeEngine.Systems
                     }
                     foreach (var c in e.Children) q.Enqueue(c);
                 }
-                CssParser cssParser = new CssParser();
+                _cssParser = new CssParser();
                 foreach (var css in cssBlocks)
                 {
-                    cssParser.Apply(css, _currentMenu);
+                    _cssParser.Apply(css);
                 }
-                ApplyUserAgentDefaults(cssParser);
+                ApplyUserAgentDefaults(_cssParser);
+                _cssParser.ApplyAll(_currentMenu);
                 InheritProperties(_currentMenu, null);
                 ProcessSelects(_currentMenu);
-                _currentMenu.Style.WidthStr = "100%";
-                _currentMenu.Style.HeightStr = "100%";
-                var settings = FindElementById(_currentMenu, "settings");
-                if (settings != null) settings.Style.Display = "none";
-                var main = FindElementById(_currentMenu, "main");
-                if (main != null) main.Style.Display = "flex";
-                var contents = FindElementsByClass(_currentMenu, "content");
-                foreach (var c in contents) c.Style.Display = "none";
-                var createContent = contents.FirstOrDefault(c => c.Attributes.GetValueOrDefault("class", "").Contains("create"));
-                if (createContent != null) createContent.Style.Display = "block";
                 _clickables.Clear();
                 CollectClickables(_currentMenu);
                 string htmlDir = Path.GetDirectoryName(htmlPath);
                 _currentMenu.PrepareResources(htmlDir, _controlContext, _window, _renderContext, _uiShader);
                 _layoutDirty = true;
+                _baseDir = htmlDir;
             }
         }
+
+        public void SwitchMenu(string menuName)
+        {
+            string configDir = Path.GetDirectoryName(_configPath);
+            string htmlPath = Path.Combine(configDir, $"{menuName}.html");
+            LoadHtml(htmlPath);
+        }
+
         private void ApplyUserAgentDefaults(CssParser cssParser)
         {
             string defaultCss = @"
@@ -120,8 +127,9 @@ input[type=""checkbox""] {
     margin: 0 5px 0 0;
 }
 ";
-            cssParser.Apply(defaultCss, _currentMenu);
+            cssParser.Apply(defaultCss);
         }
+
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -139,6 +147,7 @@ input[type=""checkbox""] {
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
+
         private void ProcessSelects(HtmlElement elem)
         {
             if (elem is SelectElement select)
@@ -161,6 +170,7 @@ input[type=""checkbox""] {
             foreach (var child in elem.Children.ToList())
                 ProcessSelects(child);
         }
+
         private HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root.Attributes.GetValueOrDefault("id", "") == id) return root;
@@ -171,6 +181,7 @@ input[type=""checkbox""] {
             }
             return null;
         }
+
         private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             List<HtmlElement> list = new List<HtmlElement>();
@@ -185,6 +196,7 @@ input[type=""checkbox""] {
             }
             return list;
         }
+
         private void CollectClickables(HtmlElement elem)
         {
             string classes = elem.Attributes.GetValueOrDefault("class", "");
@@ -195,6 +207,7 @@ input[type=""checkbox""] {
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
+
         public void Initialize()
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -207,6 +220,7 @@ input[type=""checkbox""] {
             _layoutDirty = true;
             _initialized = true;
         }
+
         public override void Update(float deltaTime)
         {
             if (!_initialized) return;
@@ -235,6 +249,7 @@ input[type=""checkbox""] {
                 }
             }
         }
+
         private void HandleClickableClick(HtmlElement elem)
         {
             Console.WriteLine($"MenuSystem: Handling click for element Tag={elem.Tag}, Class={elem.Attributes.GetValueOrDefault("class", "")}, ID={elem.Attributes.GetValueOrDefault("id", "")}");
@@ -247,17 +262,31 @@ input[type=""checkbox""] {
                     var target = FindElementById(_currentMenu, targetId);
                     if (target != null)
                     {
-                        target.Style.Display = "flex";
+                        if (!string.IsNullOrEmpty(_currentTargetId))
+                        {
+                            var oldTarget = FindElementById(_currentMenu, _currentTargetId);
+                            if (oldTarget != null) oldTarget.IsTarget = false;
+                        }
                         target.IsTarget = true;
+                        _currentTargetId = targetId;
+                        _cssParser.ApplyAll(_currentMenu);
+                        InheritProperties(_currentMenu, null);
+                        _layoutDirty = true;
+                        Console.WriteLine($"MenuSystem: Handled anchor click to #{targetId}");
                     }
-                    var currentScreen = FindElementsByClass(_currentMenu, "screen").FirstOrDefault(s => s.Style.Display != "none");
-                    if (currentScreen != null)
+                }
+                else
+                {
+                    string newPath = href;
+                    if (!Path.IsPathRooted(href))
                     {
-                        currentScreen.Style.Display = "none";
-                        currentScreen.IsTarget = false;
+                        newPath = Path.Combine(_baseDir, href);
+                        newPath = Path.GetFullPath(newPath);
                     }
-                    _layoutDirty = true;
-                    Console.WriteLine($"MenuSystem: Handled anchor click to #{targetId}");
+                    if (File.Exists(newPath))
+                    {
+                        LoadHtml(newPath);
+                    }
                 }
             }
             else if (elem.Tag == "label")
@@ -275,17 +304,16 @@ input[type=""checkbox""] {
                             var radios = FindElementsByTag(_currentMenu, "input").Where(i => i.Attributes.GetValueOrDefault("type", "") == "radio" && i.Attributes.GetValueOrDefault("name", "") == name).ToList();
                             foreach (var r in radios) r.Checked = false;
                             input.Checked = true;
-                            var contents = FindElementsByClass(_currentMenu, "content");
-                            foreach (var c in contents) c.Style.Display = "none";
-                            var contentClass = input.Attributes.GetValueOrDefault("id", "");
-                            var content = contents.FirstOrDefault(c => c.Attributes.GetValueOrDefault("class", "").Contains(contentClass));
-                            if (content != null) content.Style.Display = "block";
+                            _cssParser.ApplyAll(_currentMenu);
+                            InheritProperties(_currentMenu, null);
                             _layoutDirty = true;
                             Console.WriteLine($"MenuSystem: Handled radio label click for {forId}");
                         }
                         else if (type == "checkbox")
                         {
                             input.Checked = !input.Checked;
+                            _cssParser.ApplyAll(_currentMenu);
+                            InheritProperties(_currentMenu, null);
                             _layoutDirty = true;
                             Console.WriteLine($"MenuSystem: Handled checkbox label click for {forId}");
                         }
@@ -298,6 +326,8 @@ input[type=""checkbox""] {
                 if (input != null)
                 {
                     input.Checked = !input.Checked;
+                    _cssParser.ApplyAll(_currentMenu);
+                    InheritProperties(_currentMenu, null);
                     _layoutDirty = true;
                     Console.WriteLine($"MenuSystem: Handled toggle click");
                 }
@@ -321,10 +351,11 @@ input[type=""checkbox""] {
                 //}
                 //else
                 //{
-                //    Console.WriteLine($"MenuSystem: Rejected unsafe hook: {hook}");
+                // Console.WriteLine($"MenuSystem: Rejected unsafe hook: {hook}");
                 //}
             }
         }
+
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             List<HtmlElement> list = new List<HtmlElement>();
@@ -338,6 +369,7 @@ input[type=""checkbox""] {
             }
             return list;
         }
+
         public void Render()
         {
             if (!_initialized || _currentMenu == null) return;
