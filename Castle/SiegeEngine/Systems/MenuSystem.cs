@@ -93,6 +93,7 @@ namespace SiegeEngine.Systems
                     _cssParser.Apply(css);
                 }
                 ApplyUserAgentDefaults(_cssParser);
+                InitializeElementProperties(_currentMenu);
                 _cssParser.ApplyAll(_currentMenu);
                 InheritProperties(_currentMenu, null);
                 ProcessSelects(_currentMenu);
@@ -102,6 +103,25 @@ namespace SiegeEngine.Systems
                 _currentMenu.PrepareResources(htmlDir, _controlContext, _window, _renderContext, _uiShader);
                 _layoutDirty = true;
                 _baseDir = htmlDir;
+            }
+        }
+
+        private void InitializeElementProperties(HtmlElement root)
+        {
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                if (elem is InputElement input)
+                {
+                    input.Type = elem.Attributes.GetValueOrDefault("type", "text");
+                    input.Checked = elem.Attributes.ContainsKey("checked");
+                }
+                foreach (var child in elem.Children)
+                {
+                    queue.Enqueue(child);
+                }
             }
         }
 

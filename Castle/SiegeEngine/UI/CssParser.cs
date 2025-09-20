@@ -23,12 +23,18 @@ namespace SiegeEngine.UI
                 string block = ReadUntil(css, ref i, '}').Trim();
                 i++; // skip }
                 Dictionary<string, string> props = ParseProperties(block);
-                _allRules.Add((selector, props));
+                var selectors = selector.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).ToList();
+                foreach (var s in selectors)
+                {
+                    _allRules.Add((s, props));
+                }
             }
         }
 
         public void ApplyAll(HtmlElement root)
         {
+            ResetStyles(root);
+            ApplyInlineStyles(root);
             foreach (var rule in _allRules)
             {
                 string selector = rule.Selector;
@@ -46,6 +52,34 @@ namespace SiegeEngine.UI
                 else
                 {
                     ApplyToElements(root, selector, rule.Props, null);
+                }
+            }
+        }
+
+        private void ResetStyles(HtmlElement elem)
+        {
+            elem.Style = new CssStyle();
+            elem.PseudoStyles.Clear();
+            foreach (var child in elem.Children)
+            {
+                ResetStyles(child);
+            }
+        }
+
+        private void ApplyInlineStyles(HtmlElement root)
+        {
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                if (elem.Attributes.TryGetValue("style", out string inline) && !string.IsNullOrEmpty(inline))
+                {
+                    ApplyInline(inline, elem.Style);
+                }
+                foreach (var child in elem.Children)
+                {
+                    queue.Enqueue(child);
                 }
             }
         }

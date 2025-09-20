@@ -10,7 +10,6 @@ namespace SiegeEngine.UI
     public class InputElement : HtmlElement
     {
         public string Type { get; set; }
-
         public InputElement()
         {
             Tag = "input";
@@ -18,8 +17,6 @@ namespace SiegeEngine.UI
 
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
-            Type = Attributes.GetValueOrDefault("type", "text");
-            Checked = Attributes.ContainsKey("checked");
             if (Type == "radio")
             {
                 Style.Display = "none";
