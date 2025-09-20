@@ -25,7 +25,9 @@ Found: ..
 Found: MainMenu.html
 Found: MainMenu.json
 Found: MainMenu.txt
+Found: MainMenu_new.html
 Found: MainMenu_old.html
+Found: MainMenu_production.txt
 Found: testing
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs\testing
 Found: .
@@ -57,11 +59,14 @@ Found: net9.0
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\bin\Debug\net9.0
 Found: .
 Found: ..
-Found: CastleBuilder.deps.json
-Found: CastleBuilder.dll
-Found: CastleBuilder.exe
-Found: CastleBuilder.pdb
-Found: CastleBuilder.runtimeconfig.json
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\bin\Release\net9.0
+Found: .
+Found: ..
 Found: CastleBuilder.csproj
 Found: obj
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj
@@ -115,6 +120,40 @@ Found: ..
 Found: CastleBuilder.dll
 Found: project.assets.json
 Found: project.nuget.cache
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: CastleBuilder.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\CastleBuilder.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\CastleBuilder.AssemblyInfo.cs
+Read 1032 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\CastleBuilder.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\CastleBuilder.AssemblyInfo.cs
+Found: CastleBuilder.AssemblyInfoInputs.cache
+Found: CastleBuilder.assets.cache
+Found: CastleBuilder.GeneratedMSBuildEditorConfig.editorconfig
+Found: CastleBuilder.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\CastleBuilder.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\CastleBuilder.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\CastleBuilder.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\CastleBuilder.GlobalUsings.g.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj\Release\net9.0\refint
+Found: .
+Found: ..
 Found: Program.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Program.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Program.cs
@@ -134,11 +173,418 @@ Found: Debug
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug
 Found: .
 Found: ..
-Found: net8.0
-Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0
 Found: .
 Found: ..
+Found: win-x64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64
+Found: .
+Found: ..
+Found: Assets
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets
+Found: .
+Found: ..
+Found: Configs
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets\Configs
+Found: .
+Found: ..
+Found: MainMenu.html
+Found: MainMenu.json
+Found: MainMenu.txt
+Found: MainMenu_old.html
+Found: MainMenu_Production.html
+Found: MainMenu_production.txt
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
+Found: Static_Images
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets\Static_Images
+Found: .
+Found: ..
+Found: DirtPath2.jpg
+Found: DirtPathTexture.jpg
+Found: Main_Background.jpg
+Found: main_background_grok_lol.jpg
+Found: Citadel.deps.json
+Found: Citadel.dll
+Found: Citadel.exe
+Found: Citadel.pdb
+Found: Citadel.runtimeconfig.json
+Found: clretwrc.dll
+Found: clrgc.dll
+Found: clrgcexp.dll
+Found: clrjit.dll
+Found: coreclr.dll
+Found: createdump.exe
+Found: glfw3.dll
+Found: hostfxr.dll
+Found: hostpolicy.dll
+Found: Microsoft.CSharp.dll
+Found: Microsoft.DiaSymReader.Native.amd64.dll
+Found: Microsoft.DotNet.PlatformAbstractions.dll
+Found: Microsoft.Extensions.DependencyModel.dll
+Found: Microsoft.VisualBasic.Core.dll
+Found: Microsoft.VisualBasic.dll
+Found: Microsoft.Win32.Primitives.dll
+Found: Microsoft.Win32.Registry.dll
+Found: Microsoft.Win32.SystemEvents.dll
+Found: mscordaccore.dll
+Found: mscordaccore_amd64_amd64_9.0.825.36511.dll
+Found: mscordbi.dll
+Found: mscorlib.dll
+Found: mscorrc.dll
+Found: msquic.dll
+Found: netstandard.dll
+Found: SiegeEngine.dll
+Found: SiegeEngine.pdb
+Found: Silk.NET.Core.dll
+Found: Silk.NET.GLFW.dll
+Found: Silk.NET.Maths.dll
+Found: Silk.NET.OpenGL.dll
+Found: steam_api64.dll
+Found: steam_appid.txt
+Found: System.AppContext.dll
+Found: System.Buffers.dll
+Found: System.Collections.Concurrent.dll
+Found: System.Collections.dll
+Found: System.Collections.Immutable.dll
+Found: System.Collections.NonGeneric.dll
+Found: System.Collections.Specialized.dll
+Found: System.ComponentModel.Annotations.dll
+Found: System.ComponentModel.DataAnnotations.dll
+Found: System.ComponentModel.dll
+Found: System.ComponentModel.EventBasedAsync.dll
+Found: System.ComponentModel.Primitives.dll
+Found: System.ComponentModel.TypeConverter.dll
+Found: System.Configuration.dll
+Found: System.Console.dll
+Found: System.Core.dll
+Found: System.Data.Common.dll
+Found: System.Data.DataSetExtensions.dll
+Found: System.Data.dll
+Found: System.Diagnostics.Contracts.dll
+Found: System.Diagnostics.Debug.dll
+Found: System.Diagnostics.DiagnosticSource.dll
+Found: System.Diagnostics.FileVersionInfo.dll
+Found: System.Diagnostics.Process.dll
+Found: System.Diagnostics.StackTrace.dll
+Found: System.Diagnostics.TextWriterTraceListener.dll
+Found: System.Diagnostics.Tools.dll
+Found: System.Diagnostics.TraceSource.dll
+Found: System.Diagnostics.Tracing.dll
+Found: System.dll
+Found: System.Drawing.Common.dll
+Found: System.Drawing.dll
+Found: System.Drawing.Primitives.dll
+Found: System.Dynamic.Runtime.dll
+Found: System.Formats.Asn1.dll
+Found: System.Formats.Tar.dll
+Found: System.Globalization.Calendars.dll
+Found: System.Globalization.dll
+Found: System.Globalization.Extensions.dll
+Found: System.IO.Compression.Brotli.dll
+Found: System.IO.Compression.dll
+Found: System.IO.Compression.FileSystem.dll
+Found: System.IO.Compression.Native.dll
+Found: System.IO.Compression.ZipFile.dll
+Found: System.IO.dll
+Found: System.IO.FileSystem.AccessControl.dll
+Found: System.IO.FileSystem.dll
+Found: System.IO.FileSystem.DriveInfo.dll
+Found: System.IO.FileSystem.Primitives.dll
+Found: System.IO.FileSystem.Watcher.dll
+Found: System.IO.IsolatedStorage.dll
+Found: System.IO.MemoryMappedFiles.dll
+Found: System.IO.Pipelines.dll
+Found: System.IO.Pipes.AccessControl.dll
+Found: System.IO.Pipes.dll
+Found: System.IO.UnmanagedMemoryStream.dll
+Found: System.Linq.dll
+Found: System.Linq.Expressions.dll
+Found: System.Linq.Parallel.dll
+Found: System.Linq.Queryable.dll
+Found: System.Memory.dll
+Found: System.Net.dll
+Found: System.Net.Http.dll
+Found: System.Net.Http.Json.dll
+Found: System.Net.HttpListener.dll
+Found: System.Net.Mail.dll
+Found: System.Net.NameResolution.dll
+Found: System.Net.NetworkInformation.dll
+Found: System.Net.Ping.dll
+Found: System.Net.Primitives.dll
+Found: System.Net.Quic.dll
+Found: System.Net.Requests.dll
+Found: System.Net.Security.dll
+Found: System.Net.ServicePoint.dll
+Found: System.Net.Sockets.dll
+Found: System.Net.WebClient.dll
+Found: System.Net.WebHeaderCollection.dll
+Found: System.Net.WebProxy.dll
+Found: System.Net.WebSockets.Client.dll
+Found: System.Net.WebSockets.dll
+Found: System.Numerics.dll
+Found: System.Numerics.Vectors.dll
+Found: System.ObjectModel.dll
+Found: System.Private.CoreLib.dll
+Found: System.Private.DataContractSerialization.dll
+Found: System.Private.Uri.dll
+Found: System.Private.Windows.Core.dll
+Found: System.Private.Xml.dll
+Found: System.Private.Xml.Linq.dll
+Found: System.Reflection.DispatchProxy.dll
+Found: System.Reflection.dll
+Found: System.Reflection.Emit.dll
+Found: System.Reflection.Emit.ILGeneration.dll
+Found: System.Reflection.Emit.Lightweight.dll
+Found: System.Reflection.Extensions.dll
+Found: System.Reflection.Metadata.dll
+Found: System.Reflection.Primitives.dll
+Found: System.Reflection.TypeExtensions.dll
+Found: System.Resources.Reader.dll
+Found: System.Resources.ResourceManager.dll
+Found: System.Resources.Writer.dll
+Found: System.Runtime.CompilerServices.Unsafe.dll
+Found: System.Runtime.CompilerServices.VisualC.dll
+Found: System.Runtime.dll
+Found: System.Runtime.Extensions.dll
+Found: System.Runtime.Handles.dll
+Found: System.Runtime.InteropServices.dll
+Found: System.Runtime.InteropServices.JavaScript.dll
+Found: System.Runtime.InteropServices.RuntimeInformation.dll
+Found: System.Runtime.Intrinsics.dll
+Found: System.Runtime.Loader.dll
+Found: System.Runtime.Numerics.dll
+Found: System.Runtime.Serialization.dll
+Found: System.Runtime.Serialization.Formatters.dll
+Found: System.Runtime.Serialization.Json.dll
+Found: System.Runtime.Serialization.Primitives.dll
+Found: System.Runtime.Serialization.Xml.dll
+Found: System.Security.AccessControl.dll
+Found: System.Security.Claims.dll
+Found: System.Security.Cryptography.Algorithms.dll
+Found: System.Security.Cryptography.Cng.dll
+Found: System.Security.Cryptography.Csp.dll
+Found: System.Security.Cryptography.dll
+Found: System.Security.Cryptography.Encoding.dll
+Found: System.Security.Cryptography.OpenSsl.dll
+Found: System.Security.Cryptography.Primitives.dll
+Found: System.Security.Cryptography.X509Certificates.dll
+Found: System.Security.dll
+Found: System.Security.Principal.dll
+Found: System.Security.Principal.Windows.dll
+Found: System.Security.SecureString.dll
+Found: System.ServiceModel.Web.dll
+Found: System.ServiceProcess.dll
+Found: System.Text.Encoding.CodePages.dll
+Found: System.Text.Encoding.dll
+Found: System.Text.Encoding.Extensions.dll
+Found: System.Text.Encodings.Web.dll
+Found: System.Text.Json.dll
+Found: System.Text.RegularExpressions.dll
+Found: System.Threading.Channels.dll
+Found: System.Threading.dll
+Found: System.Threading.Overlapped.dll
+Found: System.Threading.Tasks.Dataflow.dll
+Found: System.Threading.Tasks.dll
+Found: System.Threading.Tasks.Extensions.dll
+Found: System.Threading.Tasks.Parallel.dll
+Found: System.Threading.Thread.dll
+Found: System.Threading.ThreadPool.dll
+Found: System.Threading.Timer.dll
+Found: System.Transactions.dll
+Found: System.Transactions.Local.dll
+Found: System.ValueTuple.dll
+Found: System.Web.dll
+Found: System.Web.HttpUtility.dll
+Found: System.Windows.dll
+Found: System.Windows.Extensions.dll
+Found: System.Xml.dll
+Found: System.Xml.Linq.dll
+Found: System.Xml.ReaderWriter.dll
+Found: System.Xml.Serialization.dll
+Found: System.Xml.XDocument.dll
+Found: System.Xml.XmlDocument.dll
+Found: System.Xml.XmlSerializer.dll
+Found: System.Xml.XPath.dll
+Found: System.Xml.XPath.XDocument.dll
+Found: WindowsBase.dll
+Found: YamlDotNet.dll
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0
+Found: .
+Found: ..
+Found: Assets
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\Assets
+Found: .
+Found: ..
+Found: Configs
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\Assets\Configs
+Found: .
+Found: ..
+Found: MainMenu.html
+Found: MainMenu.json
+Found: MainMenu.txt
+Found: MainMenu_old.html
+Found: MainMenu_Production.html
+Found: MainMenu_production.txt
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
+Found: Static_Images
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\Assets\Static_Images
+Found: .
+Found: ..
+Found: DirtPath2.jpg
+Found: DirtPathTexture.jpg
+Found: Main_Background.jpg
+Found: main_background_grok_lol.jpg
+Found: Citadel.deps.json
+Found: Citadel.dll
+Found: Citadel.exe
+Found: Citadel.pdb
+Found: Citadel.runtimeconfig.json
+Found: Microsoft.DotNet.PlatformAbstractions.dll
+Found: Microsoft.Extensions.DependencyModel.dll
+Found: Microsoft.Win32.SystemEvents.dll
+Found: runtimes
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes
+Found: .
+Found: ..
+Found: linux-arm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\linux-arm
+Found: .
+Found: ..
+Found: native
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\linux-arm\native
+Found: .
+Found: ..
+Found: libglfw.so.3
+Found: linux-arm64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\linux-arm64
+Found: .
+Found: ..
+Found: native
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\linux-arm64\native
+Found: .
+Found: ..
+Found: libglfw.so.3
+Found: linux-x64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\linux-x64
+Found: .
+Found: ..
+Found: native
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\linux-x64\native
+Found: .
+Found: ..
+Found: libglfw.so.3
+Found: osx-arm64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\osx-arm64
+Found: .
+Found: ..
+Found: native
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\osx-arm64\native
+Found: .
+Found: ..
+Found: libglfw.3.dylib
+Found: osx-x64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\osx-x64
+Found: .
+Found: ..
+Found: native
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\osx-x64\native
+Found: .
+Found: ..
+Found: libglfw.3.dylib
+Found: win
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\win
+Found: .
+Found: ..
+Found: lib
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\win\lib
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\win\lib\net9.0
+Found: .
+Found: ..
+Found: Microsoft.Win32.SystemEvents.dll
+Found: System.Windows.Extensions.dll
+Found: win-arm64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\win-arm64
+Found: .
+Found: ..
+Found: native
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\win-arm64\native
+Found: .
+Found: ..
+Found: glfw3.dll
+Found: win-x64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\win-x64
+Found: .
+Found: ..
+Found: native
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\win-x64\native
+Found: .
+Found: ..
+Found: glfw3.dll
+Found: win-x86
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\win-x86
+Found: .
+Found: ..
+Found: native
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\runtimes\win-x86\native
+Found: .
+Found: ..
+Found: glfw3.dll
+Found: SiegeEngine.dll
+Found: SiegeEngine.pdb
+Found: Silk.NET.Core.dll
+Found: Silk.NET.GLFW.dll
+Found: Silk.NET.Maths.dll
+Found: Silk.NET.OpenGL.dll
+Found: steam_api64.dll
+Found: steam_appid.txt
+Found: System.Drawing.Common.dll
+Found: System.Private.Windows.Core.dll
+Found: System.Windows.Extensions.dll
+Found: win-x64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release\net9.0\win-x64
+Found: .
+Found: ..
+Found: Citadel.deps.json
+Found: Citadel.dll
+Found: Citadel.exe
+Found: Citadel.pdb
+Found: Citadel.runtimeconfig.json
+Found: glfw3.dll
+Found: Microsoft.DotNet.PlatformAbstractions.dll
+Found: Microsoft.Extensions.DependencyModel.dll
+Found: Microsoft.Win32.SystemEvents.dll
+Found: SiegeEngine.dll
+Found: SiegeEngine.pdb
+Found: Silk.NET.Core.dll
+Found: Silk.NET.GLFW.dll
+Found: Silk.NET.Maths.dll
+Found: Silk.NET.OpenGL.dll
+Found: System.Drawing.Common.dll
+Found: System.Private.Windows.Core.dll
+Found: System.Windows.Extensions.dll
+Found: YamlDotNet.dll
+Found: YamlDotNet.dll
 Found: Citadel.csproj
+Found: Citadel.csproj.user
 Found: Network
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Network
 Found: .
@@ -196,8 +642,187 @@ Found: refint
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net8.0\refint
 Found: .
 Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: apphost.exe
+Found: Citadel.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\Citadel.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\Citadel.AssemblyInfo.cs
+Read 1012 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\Citadel.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\Citadel.AssemblyInfo.cs
+Found: Citadel.AssemblyInfoInputs.cache
+Found: Citadel.assets.cache
+Found: Citadel.csproj.AssemblyReference.cache
+Found: Citadel.csproj.CoreCompileInputs.cache
+Found: Citadel.csproj.FileListAbsolute.txt
+Found: Citadel.csproj.Up2Date
+Found: Citadel.dll
+Found: Citadel.GeneratedMSBuildEditorConfig.editorconfig
+Found: Citadel.genruntimeconfig.cache
+Found: Citadel.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\Citadel.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\Citadel.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\Citadel.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\Citadel.GlobalUsings.g.cs
+Found: Citadel.pdb
+Found: Citadel.sourcelink.json
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\ref
+Found: .
+Found: ..
+Found: Citadel.dll
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\refint
+Found: .
+Found: ..
+Found: Citadel.dll
+Found: win-x64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: apphost.exe
+Found: Citadel.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.AssemblyInfo.cs
+Read 1012 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.AssemblyInfo.cs
+Found: Citadel.AssemblyInfoInputs.cache
+Found: Citadel.assets.cache
+Found: Citadel.csproj.AssemblyReference.cache
+Found: Citadel.csproj.CoreCompileInputs.cache
+Found: Citadel.csproj.FileListAbsolute.txt
+Found: Citadel.csproj.Up2Date
+Found: Citadel.dll
+Found: Citadel.GeneratedMSBuildEditorConfig.editorconfig
+Found: Citadel.genruntimeconfig.cache
+Found: Citadel.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.GlobalUsings.g.cs
+Found: Citadel.pdb
+Found: Citadel.sourcelink.json
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\ref
+Found: .
+Found: ..
+Found: Citadel.dll
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\refint
+Found: .
+Found: ..
+Found: Citadel.dll
 Found: project.assets.json
 Found: project.nuget.cache
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: apphost.exe
+Found: Citadel.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\Citadel.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\Citadel.AssemblyInfo.cs
+Read 1014 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\Citadel.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\Citadel.AssemblyInfo.cs
+Found: Citadel.AssemblyInfoInputs.cache
+Found: Citadel.assets.cache
+Found: Citadel.csproj.AssemblyReference.cache
+Found: Citadel.csproj.CoreCompileInputs.cache
+Found: Citadel.csproj.FileListAbsolute.txt
+Found: Citadel.csproj.Up2Date
+Found: Citadel.dll
+Found: Citadel.GeneratedMSBuildEditorConfig.editorconfig
+Found: Citadel.genruntimeconfig.cache
+Found: Citadel.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\Citadel.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\Citadel.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\Citadel.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\Citadel.GlobalUsings.g.cs
+Found: Citadel.pdb
+Found: Citadel.sourcelink.json
+Found: PublishOutputs.c0b5cbfbbe.txt
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: Citadel.dll
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\refint
+Found: .
+Found: ..
+Found: Citadel.dll
+Found: win-x64
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: apphost.exe
+Found: Citadel.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\Citadel.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\Citadel.AssemblyInfo.cs
+Read 975 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\Citadel.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\Citadel.AssemblyInfo.cs
+Found: Citadel.AssemblyInfoInputs.cache
+Found: Citadel.assets.cache
+Found: Citadel.csproj.AssemblyReference.cache
+Found: Citadel.csproj.CoreCompileInputs.cache
+Found: Citadel.csproj.FileListAbsolute.txt
+Found: Citadel.csproj.Up2Date
+Found: Citadel.dll
+Found: Citadel.GeneratedMSBuildEditorConfig.editorconfig
+Found: Citadel.genruntimeconfig.cache
+Found: Citadel.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\Citadel.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\Citadel.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\Citadel.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\Citadel.GlobalUsings.g.cs
+Found: Citadel.pdb
+Found: Citadel.sourcelink.json
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\ref
+Found: .
+Found: ..
+Found: Citadel.dll
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Release\net9.0\win-x64\refint
+Found: .
+Found: ..
+Found: Citadel.dll
+Found: Properties
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Properties
+Found: .
+Found: ..
+Found: PublishProfiles
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Properties\PublishProfiles
+Found: .
+Found: ..
+Found: FolderProfile.pubxml
+Found: FolderProfile.pubxml.user
 Found: Server
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server
 Found: .
@@ -213,10 +838,10 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Serve
 Found: GameServer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
-Read 18287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
+Read 18623 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
 Namespace: Citadel.Server
 Found 13 dependencies
-Class GameServer: 23 methods
+Class GameServer: 24 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
 Found: ServerValidationSystem.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\ServerValidationSystem.cs
@@ -229,9 +854,9 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Serve
 Found: ServerProgram.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
-Read 1682 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
+Read 1964 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
 Namespace: Citadel
-Found 5 dependencies
+Found 7 dependencies
 Class ServerProgram: 1 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
 Found: Systems
@@ -273,7 +898,9 @@ Found: ..
 Found: MainMenu.html
 Found: MainMenu.json
 Found: MainMenu.txt
+Found: MainMenu_new.html
 Found: MainMenu_old.html
+Found: MainMenu_production.txt
 Found: testing
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Configs\testing
 Found: .
@@ -288,6 +915,7 @@ Found: DirtPath2.jpg
 Found: DirtPathTexture.jpg
 Found: Main_Background.jpg
 Found: main_background_grok_lol.jpg
+Found: Citadel.exe
 Found: Foundation.deps.json
 Found: Foundation.dll
 Found: Foundation.exe
@@ -400,6 +1028,14 @@ Found: System.Windows.Extensions.dll
 Found: Trebuchet.dll
 Found: Trebuchet.pdb
 Found: YamlDotNet.dll
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Release\net9.0
+Found: .
+Found: ..
 Found: Foundation.csproj
 Found: obj
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj
@@ -456,6 +1092,41 @@ Found: Foundation.csproj.nuget.g.props
 Found: Foundation.csproj.nuget.g.targets
 Found: project.assets.json
 Found: project.nuget.cache
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: Foundation.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\Foundation.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\Foundation.AssemblyInfo.cs
+Read 1023 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\Foundation.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\Foundation.AssemblyInfo.cs
+Found: Foundation.AssemblyInfoInputs.cache
+Found: Foundation.assets.cache
+Found: Foundation.csproj.AssemblyReference.cache
+Found: Foundation.GeneratedMSBuildEditorConfig.editorconfig
+Found: Foundation.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\Foundation.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\Foundation.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\Foundation.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\Foundation.GlobalUsings.g.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj\Release\net9.0\refint
+Found: .
+Found: ..
 Found: Program.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
@@ -483,6 +1154,14 @@ Found: ..
 Found: GuildTower.deps.json
 Found: GuildTower.dll
 Found: GuildTower.pdb
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\bin\Release\net9.0
+Found: .
+Found: ..
 Found: Class1.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\Class1.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\Class1.cs
@@ -542,10 +1221,45 @@ Found: GuildTower.csproj.nuget.g.props
 Found: GuildTower.csproj.nuget.g.targets
 Found: project.assets.json
 Found: project.nuget.cache
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: GuildTower.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\GuildTower.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\GuildTower.AssemblyInfo.cs
+Read 1023 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\GuildTower.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\GuildTower.AssemblyInfo.cs
+Found: GuildTower.AssemblyInfoInputs.cache
+Found: GuildTower.assets.cache
+Found: GuildTower.GeneratedMSBuildEditorConfig.editorconfig
+Found: GuildTower.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\GuildTower.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\GuildTower.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\GuildTower.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\GuildTower.GlobalUsings.g.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj\Release\net9.0\refint
+Found: .
+Found: ..
 Found: Libraries
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Libraries
 Found: .
 Found: ..
+Found: Citadel.exe
 Found: steam_api64.dll
 Found: steam_appid.txt
 Found: MapRoom
@@ -567,6 +1281,14 @@ Found: ..
 Found: MapRoom.deps.json
 Found: MapRoom.dll
 Found: MapRoom.pdb
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\bin\Release\net9.0
+Found: .
+Found: ..
 Found: Class1.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\Class1.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\Class1.cs
@@ -626,6 +1348,40 @@ Found: MapRoom.csproj.nuget.g.props
 Found: MapRoom.csproj.nuget.g.targets
 Found: project.assets.json
 Found: project.nuget.cache
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: MapRoom.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\MapRoom.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\MapRoom.AssemblyInfo.cs
+Read 1014 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\MapRoom.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\MapRoom.AssemblyInfo.cs
+Found: MapRoom.AssemblyInfoInputs.cache
+Found: MapRoom.assets.cache
+Found: MapRoom.GeneratedMSBuildEditorConfig.editorconfig
+Found: MapRoom.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\MapRoom.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\MapRoom.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\MapRoom.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\MapRoom.GlobalUsings.g.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj\Release\net9.0\refint
+Found: .
+Found: ..
 Found: QuestHall
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall
 Found: .
@@ -645,6 +1401,14 @@ Found: ..
 Found: QuestHall.deps.json
 Found: QuestHall.dll
 Found: QuestHall.pdb
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\bin\Release\net9.0
+Found: .
+Found: ..
 Found: Class1.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\Class1.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\Class1.cs
@@ -703,6 +1467,40 @@ Found: project.nuget.cache
 Found: QuestHall.csproj.nuget.dgspec.json
 Found: QuestHall.csproj.nuget.g.props
 Found: QuestHall.csproj.nuget.g.targets
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: QuestHall.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\QuestHall.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\QuestHall.AssemblyInfo.cs
+Read 1020 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\QuestHall.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\QuestHall.AssemblyInfo.cs
+Found: QuestHall.AssemblyInfoInputs.cache
+Found: QuestHall.assets.cache
+Found: QuestHall.GeneratedMSBuildEditorConfig.editorconfig
+Found: QuestHall.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\QuestHall.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\QuestHall.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\QuestHall.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\QuestHall.GlobalUsings.g.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj\Release\net9.0\refint
+Found: .
+Found: ..
 Found: QuestHall.csproj
 Found: ReadingChamber
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber
@@ -723,6 +1521,14 @@ Found: ..
 Found: ReadingChamber.deps.json
 Found: ReadingChamber.dll
 Found: ReadingChamber.pdb
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Release\net9.0
+Found: .
+Found: ..
 Found: Class1.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\Class1.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\Class1.cs
@@ -781,6 +1587,40 @@ Found: project.nuget.cache
 Found: ReadingChamber.csproj.nuget.dgspec.json
 Found: ReadingChamber.csproj.nuget.g.props
 Found: ReadingChamber.csproj.nuget.g.targets
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: ReadingChamber.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\ReadingChamber.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\ReadingChamber.AssemblyInfo.cs
+Read 1035 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\ReadingChamber.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\ReadingChamber.AssemblyInfo.cs
+Found: ReadingChamber.AssemblyInfoInputs.cache
+Found: ReadingChamber.assets.cache
+Found: ReadingChamber.GeneratedMSBuildEditorConfig.editorconfig
+Found: ReadingChamber.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\ReadingChamber.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\ReadingChamber.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\ReadingChamber.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\ReadingChamber.GlobalUsings.g.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Release\net9.0\refint
+Found: .
+Found: ..
 Found: ReadingChamber.csproj
 Found: ScriptChamber
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber
@@ -801,6 +1641,14 @@ Found: ..
 Found: ScriptChamber.deps.json
 Found: ScriptChamber.dll
 Found: ScriptChamber.pdb
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\bin\Release\net9.0
+Found: .
+Found: ..
 Found: Class1.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\Class1.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\Class1.cs
@@ -856,6 +1704,40 @@ Found: ScriptChamber.pdb
 Found: ScriptChamber.sourcelink.json
 Found: project.assets.json
 Found: project.nuget.cache
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\refint
+Found: .
+Found: ..
+Found: ScriptChamber.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\ScriptChamber.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\ScriptChamber.AssemblyInfo.cs
+Read 1032 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\ScriptChamber.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\ScriptChamber.AssemblyInfo.cs
+Found: ScriptChamber.AssemblyInfoInputs.cache
+Found: ScriptChamber.assets.cache
+Found: ScriptChamber.GeneratedMSBuildEditorConfig.editorconfig
+Found: ScriptChamber.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\ScriptChamber.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\ScriptChamber.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\ScriptChamber.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj\Release\net9.0\ScriptChamber.GlobalUsings.g.cs
 Found: ScriptChamber.csproj.nuget.dgspec.json
 Found: ScriptChamber.csproj.nuget.g.props
 Found: ScriptChamber.csproj.nuget.g.targets
@@ -983,7 +1865,9 @@ Found: ..
 Found: MainMenu.html
 Found: MainMenu.json
 Found: MainMenu.txt
+Found: MainMenu_new.html
 Found: MainMenu_old.html
+Found: MainMenu_production.txt
 Found: testing
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Configs\testing
 Found: .
@@ -998,6 +1882,49 @@ Found: DirtPath2.jpg
 Found: DirtPathTexture.jpg
 Found: Main_Background.jpg
 Found: main_background_grok_lol.jpg
+Found: Citadel.exe
+Found: SiegeEngine.deps.json
+Found: SiegeEngine.dll
+Found: SiegeEngine.pdb
+Found: steam_api64.dll
+Found: steam_appid.txt
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Release
+Found: .
+Found: ..
+Found: net8.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Release\net8.0
+Found: .
+Found: ..
+Found: Assets
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Release\net8.0\Assets
+Found: .
+Found: ..
+Found: Configs
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Release\net8.0\Assets\Configs
+Found: .
+Found: ..
+Found: MainMenu.html
+Found: MainMenu.json
+Found: MainMenu.txt
+Found: MainMenu_old.html
+Found: MainMenu_Production.html
+Found: MainMenu_production.txt
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Release\net8.0\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
+Found: Static_Images
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Release\net8.0\Assets\Static_Images
+Found: .
+Found: ..
+Found: DirtPath2.jpg
+Found: DirtPathTexture.jpg
+Found: Main_Background.jpg
+Found: main_background_grok_lol.jpg
+Found: Citadel.dll
 Found: SiegeEngine.deps.json
 Found: SiegeEngine.dll
 Found: SiegeEngine.pdb
@@ -1244,6 +2171,14 @@ Namespace: SiegeEngine.Events
 Found 3 dependencies
 Class BrushRegistryUpdateEvent: 3 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\BrushRegistryUpdateEvent.cs
+Found: CustomEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\CustomEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\CustomEvent.cs
+Read 566 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\CustomEvent.cs
+Namespace: SiegeEngine.Events
+Found 3 dependencies
+Class CustomEvent: 2 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\CustomEvent.cs
 Found: EntityMovedEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityMovedEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityMovedEvent.cs
@@ -1263,9 +2198,9 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\E
 Found: EventBus.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
-Read 9799 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
+Read 10808 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
 Namespace: SiegeEngine.Events
-Found 8 dependencies
+Found 10 dependencies
 Class IEvent: 2 methods
 Class EventBus: 2 methods
 Class LobbyCreatedEvent: 2 methods
@@ -1306,6 +2241,14 @@ Namespace: SiegeEngine.Events
 Found 2 dependencies
 Class PlayerExitedEditorEvent: 3 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\PlayerExitedEditorEvent.cs
+Found: ProtectedEventAttribute.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ProtectedEventAttribute.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ProtectedEventAttribute.cs
+Read 178 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ProtectedEventAttribute.cs
+Namespace: SiegeEngine.Events
+Found 1 dependencies
+Class ProtectedEventAttribute: 0 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ProtectedEventAttribute.cs
 Found: SelectBrushEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SelectBrushEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SelectBrushEvent.cs
@@ -1348,10 +2291,10 @@ Found: ..
 Found: IGameServer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
-Read 837 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
+Read 879 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
 Namespace: SiegeEngine.Interfaces
 Found 5 dependencies
-Class IGameServer: 9 methods
+Class IGameServer: 10 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
 Found: IRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IRenderer.cs
@@ -1418,7 +2361,7 @@ Found 3 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\M
 Found: ModManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
-Read 11247 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
+Read 11063 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
 Namespace: SiegeEngine.Managers
 Found 8 dependencies
 Class ModManager: 8 methods
@@ -1505,6 +2448,41 @@ Found: SiegeEngine.pdb
 Found: SiegeEngine.sourcelink.json
 Found: project.assets.json
 Found: project.nuget.cache
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj\Release
+Found: .
+Found: ..
+Found: net8.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj\Release\net8.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v8.0.AssemblyAttributes.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj\Release\net8.0\ref
+Found: .
+Found: ..
+Found: SiegeEngine.dll
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj\Release\net8.0\refint
+Found: .
+Found: ..
+Found: SiegeEngine.dll
+Found: SiegeEngine.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj\Release\net8.0\SiegeEngine.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj\Release\net8.0\SiegeEngine.AssemblyInfo.cs
+Read 987 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj\Release\net8.0\SiegeEngine.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj\Release\net8.0\SiegeEngine.AssemblyInfo.cs
+Found: SiegeEngine.AssemblyInfoInputs.cache
+Found: SiegeEngine.assets.cache
+Found: SiegeEngine.csproj.AssemblyReference.cache
+Found: SiegeEngine.csproj.CoreCompileInputs.cache
+Found: SiegeEngine.csproj.FileListAbsolute.txt
+Found: SiegeEngine.dll
+Found: SiegeEngine.GeneratedMSBuildEditorConfig.editorconfig
+Found: SiegeEngine.pdb
+Found: SiegeEngine.sourcelink.json
 Found: SiegeEngine.csproj.nuget.dgspec.json
 Found: SiegeEngine.csproj.nuget.g.props
 Found: SiegeEngine.csproj.nuget.g.targets
@@ -1812,7 +2790,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\S
 Found: MenuSystem.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
-Read 14660 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
+Read 16461 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
 Namespace: SiegeEngine.Systems
 Found 13 dependencies
 Class MenuSystem: 14 methods
@@ -1964,6 +2942,14 @@ Found: ..
 Found: ThroneRoom.deps.json
 Found: ThroneRoom.dll
 Found: ThroneRoom.pdb
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\bin\Release\net9.0
+Found: .
+Found: ..
 Found: Class1.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\Class1.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\Class1.cs
@@ -2019,6 +3005,40 @@ Found: ThroneRoom.pdb
 Found: ThroneRoom.sourcelink.json
 Found: project.assets.json
 Found: project.nuget.cache
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\refint
+Found: .
+Found: ..
+Found: ThroneRoom.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\ThroneRoom.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\ThroneRoom.AssemblyInfo.cs
+Read 1023 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\ThroneRoom.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\ThroneRoom.AssemblyInfo.cs
+Found: ThroneRoom.AssemblyInfoInputs.cache
+Found: ThroneRoom.assets.cache
+Found: ThroneRoom.GeneratedMSBuildEditorConfig.editorconfig
+Found: ThroneRoom.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\ThroneRoom.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\ThroneRoom.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\ThroneRoom.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj\Release\net9.0\ThroneRoom.GlobalUsings.g.cs
 Found: ThroneRoom.csproj.nuget.dgspec.json
 Found: ThroneRoom.csproj.nuget.g.props
 Found: ThroneRoom.csproj.nuget.g.targets
@@ -2050,7 +3070,9 @@ Found: ..
 Found: MainMenu.html
 Found: MainMenu.json
 Found: MainMenu.txt
+Found: MainMenu_new.html
 Found: MainMenu_old.html
+Found: MainMenu_production.txt
 Found: testing
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Configs\testing
 Found: .
@@ -2065,6 +3087,7 @@ Found: DirtPath2.jpg
 Found: DirtPathTexture.jpg
 Found: Main_Background.jpg
 Found: main_background_grok_lol.jpg
+Found: Citadel.exe
 Found: SiegeEngine.dll
 Found: SiegeEngine.pdb
 Found: steam_api64.dll
@@ -2072,12 +3095,20 @@ Found: steam_appid.txt
 Found: Trebuchet.deps.json
 Found: Trebuchet.dll
 Found: Trebuchet.pdb
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Release\net9.0
+Found: .
+Found: ..
 Found: Launcher.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 5484 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 5688 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
-Found 16 dependencies
+Found 18 dependencies
 Class Launcher: 2 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Found: obj
@@ -2130,6 +3161,41 @@ Found: Trebuchet.pdb
 Found: Trebuchet.sourcelink.json
 Found: project.assets.json
 Found: project.nuget.cache
+Found: Release
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release
+Found: .
+Found: ..
+Found: net9.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0
+Found: .
+Found: ..
+Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: ref
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\ref
+Found: .
+Found: ..
+Found: refint
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\refint
+Found: .
+Found: ..
+Found: Trebuchet.AssemblyInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\Trebuchet.AssemblyInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\Trebuchet.AssemblyInfo.cs
+Read 1020 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\Trebuchet.AssemblyInfo.cs
+Namespace: None
+Found 2 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\Trebuchet.AssemblyInfo.cs
+Found: Trebuchet.AssemblyInfoInputs.cache
+Found: Trebuchet.assets.cache
+Found: Trebuchet.csproj.AssemblyReference.cache
+Found: Trebuchet.GeneratedMSBuildEditorConfig.editorconfig
+Found: Trebuchet.GlobalUsings.g.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\Trebuchet.GlobalUsings.g.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\Trebuchet.GlobalUsings.g.cs
+Read 287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\Trebuchet.GlobalUsings.g.cs
+Namespace: None
+Found 0 dependencies
+Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj\Release\net9.0\Trebuchet.GlobalUsings.g.cs
 Found: Trebuchet.csproj.nuget.dgspec.json
 Found: Trebuchet.csproj.nuget.g.props
 Found: Trebuchet.csproj.nuget.g.targets
@@ -2138,6 +3204,7 @@ Found: Documentation
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation
 Found: .
 Found: ..
+Found: Event_Design.md
 Found: HighLevelStructure.mmd
 Found: Hight-Level Project Structure.svg
 Found: Key Interfaces.svg
@@ -2163,6 +3230,12 @@ Found: ProposedProjectStructure.svg
 Found: rendering_detection.svg
 Found: UI_overhaul_flow.mmd
 Found: UI_overhaul_flow.svg
+Found: Libraries
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Libraries
+Found: .
+Found: ..
+Found: steam_api64.dll
+Found: steam_appid.txt
 Found: New Text Document.txt
 Found: NewPrompt.txt
 Found: openglremoval.txt

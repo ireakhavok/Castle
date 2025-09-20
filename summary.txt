@@ -36,7 +36,7 @@ Folder: Castle
  - void AddSystem(GameSystem system, GameSystem system)
  Calls: None
  - void Update(float deltaTime, float deltaTime)
- Calls: Update, Update
+ Calls: None
  - bool ValidateAndUpdateMovement(int entityId, int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
  Calls: None
  - bool ValidateInventory(int entityId, int entityId, string action, object data)
@@ -73,6 +73,8 @@ Folder: Castle
  Calls: None
  - IEnumerable<Entity> GetNearbyEntities(Vector3 position, Vector3 position)
  Calls: None
+ - void QueueNetworkEvent(IEvent e, IEvent e)
+ Calls: None
  File: ServerValidationSystem.cs
  class: ServerValidationSystem (Namespace: Citadel.Server)
  Inherits: GameSystem, ISoundValidator
@@ -98,7 +100,7 @@ Folder: Castle
  File: ServerProgram.cs
  class: ServerProgram (Namespace: Citadel)
  Inherits: None
- Dependencies: Citadel.Network, Citadel.Network, Citadel.Server, SiegeEngine.Events, SiegeEngine.Networking, System
+ Dependencies: Citadel.Network, Citadel.Network, Citadel.Server, SiegeEngine.Events, SiegeEngine.Networking, System, System.Diagnostics, System.Linq
  Methods:
  - void Main(string[] args, string[] args)
  Calls: EventBus, EventBus, GameServer, Initialize, InitializeServer, NetworkManager, RunCallbacks, Start, SteamEngine, Update
@@ -967,6 +969,16 @@ Folder: Castle
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
  Calls: None
+ File: CustomEvent.cs
+ class: CustomEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: SiegeEngine.Events, SiegeEngine.Events, System, System.Collections.Generic
+ Methods:
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
  File: EntityMovedEvent.cs
  class: EntityMovedEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
@@ -994,7 +1006,7 @@ Folder: Castle
  File: EventBus.cs
  interface: IEvent (Namespace: SiegeEngine.Events)
  Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Diagnostics, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
  Methods:
  - byte[] Serialize()
  Calls: None
@@ -1003,7 +1015,7 @@ Folder: Castle
  File: EventBus.cs
  class: EventBus (Namespace: SiegeEngine.Events)
  Inherits: None
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Diagnostics, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
  Methods:
  - constructor EventBus(SteamEngine steamEngine, SteamEngine steamEngine)
  Calls: None
@@ -1013,7 +1025,7 @@ Folder: Castle
  class: LobbyCreatedEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Diagnostics, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
  Methods:
  - byte[] Serialize()
  Calls: None
@@ -1023,7 +1035,7 @@ Folder: Castle
  class: LobbyJoinedEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Diagnostics, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
  Methods:
  - byte[] Serialize()
  Calls: None
@@ -1033,7 +1045,7 @@ Folder: Castle
  class: MouseInputEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Diagnostics, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
  Methods:
  - constructor MouseInputEvent(Vector2 position, Vector2 position, MouseButton button, InputAction action, ulong steamId)
  Calls: Serialize, Serialize
@@ -1045,7 +1057,7 @@ Folder: Castle
  class: KeyInputEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Diagnostics, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
  Methods:
  - constructor KeyInputEvent(Key key, Key key, InputAction action, ulong steamId)
  Calls: Serialize, Serialize
@@ -1057,7 +1069,7 @@ Folder: Castle
  class: ToggleGridSnapEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
     
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Text.Json
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Diagnostics, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
  Methods:
  - constructor ToggleGridSnapEvent(ulong playerId, ulong playerId, bool state)
  Calls: Serialize, Serialize
@@ -1111,6 +1123,12 @@ Folder: Castle
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
  Calls: None
+ File: ProtectedEventAttribute.cs
+ class: ProtectedEventAttribute (Namespace: SiegeEngine.Events)
+ Inherits: Attribute
+    
+ Dependencies: System, System
+ Methods:
  File: SelectBrushEvent.cs
  class: SelectBrushEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
@@ -1203,6 +1221,8 @@ Folder: Castle
  - bool ValidateInventory(int entityId, int entityId, string action, object data)
  Calls: None
  - RayTraceResult RequestRayTrace(Vector3 start, Vector3 start, Vector3 direction, float maxDistance)
+ Calls: None
+ - void QueueNetworkEvent(IEvent e, IEvent e)
  Calls: None
  File: IRenderer.cs
  interface: IRenderer (Namespace: SiegeEngine.Interfaces)
@@ -1357,7 +1377,7 @@ Folder: Castle
  - void LoadMod(string modJsonPath, string modJsonPath)
  Calls: None
  - void ProcessUnityAssets(string modPath, string modPath)
- Calls: CountGameObjects, CountGameObjects
+ Calls: CountGameObjects, CountGameObjects, ScanDirectory
  - string ResolvePath(string relativePath, string relativePath)
  Calls: None
  - string GetMenuConfigPath()
@@ -2079,7 +2099,7 @@ Folder: Castle
  - void Update(float deltaTime, float deltaTime)
  Calls: HandleClickableClick, HandleClickableClick
  - void HandleClickableClick(HtmlElement elem, HtmlElement elem)
- Calls: FindElementById, FindElementById, FindElementsByClass
+ Calls: None
  - List<HtmlElement> FindElementsByTag(HtmlElement root, HtmlElement root, string tag)
  Calls: None
  - void Render()
@@ -2287,10 +2307,10 @@ Folder: Castle
  File: Launcher.cs
  class: Launcher (Namespace: Trebuchet)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Runtime.InteropServices
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
  Methods:
  - void Start(string context, string context)
- Calls: Clear, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PollEvents, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
+ Calls: Clear, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PollEvents, Render, RunCallbacks, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
 
