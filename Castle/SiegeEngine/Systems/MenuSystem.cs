@@ -94,6 +94,7 @@ namespace SiegeEngine.Systems
                 }
                 ApplyUserAgentDefaults(_cssParser);
                 InitializeElementProperties(_currentMenu);
+                _cssParser.ApplyInlineStyles(_currentMenu);
                 _cssParser.ApplyAll(_currentMenu);
                 InheritProperties(_currentMenu, null);
                 ProcessSelects(_currentMenu);
@@ -360,7 +361,7 @@ input[type=""checkbox""] {
                 //{
                 if (hook.Contains("Scene"))
                 {
-                    //_eventBus.Publish(new SwitchSceneEvent { Hook = hook });
+                    //_eventBus.Publish(new Switch SceneEvent { Hook = hook });
                     Console.WriteLine($"MenuSystem: Published SwitchSceneEvent with hook {hook}");
                 }
                 else

@@ -55,7 +55,7 @@ namespace SiegeEngine.UI
             }
         }
 
-        private void ApplyInlineStyles(HtmlElement root)
+        public void ApplyInlineStyles(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
             queue.Enqueue(root);
