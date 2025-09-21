@@ -81,7 +81,7 @@ While currently client-side focused, the engine is designed for P2P expansion: G
 * Next: Dev menu template, DLL stubs (IPanel), dynamic loading, project modules, P2P IDE sync.
 * Dependencies: Silk.NET, Steam SDK; no internet/pip.
 ## Folder Structure
-```
+```mermaid
 graph LR
     A[Castle Repository] --> B[Citadel]
     A --> C[SiegeEngine]
