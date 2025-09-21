@@ -130,7 +130,7 @@ graph LR
     G --> G2[Textures]
     G --> G3[Configs/MainMenu.html]
 
-    H --> H1[mod.json (Example Mods)]
+    H --> H1[mod.json - Example Mods]
 ```
 ## Core Class Diagram
 
