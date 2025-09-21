@@ -144,7 +144,7 @@ classDiagram
         +Update(float deltaTime)
         +ValidateAndUpdateMovement(int entityId, Vector2 pos, Quaternion rot, ulong steamId) bool
         +Publish~T~(T eventData, bool networkSync)
-        +RequestRayTrace(Vector3 start, Vector3 dir, float maxDist) RayTraceResult
+        +RequestRayTrace - Vector3 start, Vector3 dir, float maxDist -  RayTraceResult
     }
 
     class GameServer {
