@@ -87,7 +87,7 @@ graph LR
     A --> C[SiegeEngine]
     A --> D[Foundation]
     A --> E[Trebuchet]
-    A --> F[Specialized Modules<br>(Stubs)]
+    A --> F[Specialized Modules(Stubs)]
     A --> G[Assets]
     A --> H[Mods]
 
