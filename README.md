@@ -277,5 +277,39 @@ sequenceDiagram
         SandboxScene->>SandboxScene: Render(entities)
     end
 ```
-
-
+## Component Diagram for Modularity
+```mermaid
+%%{init: {'theme':'dark'}}%%
+graph LR
+    subgraph CoreEngineSiegeEngine
+        EB[EventBus] --> IE[IEvent]
+        MM[ModManager] --> UAS[UnityAssetScanner]
+        MS[MenuSystem] --> HP[HtmlParser]
+        MS --> CP[CssParser]
+        SS[SandboxScene] --> SP[ShaderProgram]
+        SS --> VB[VertexBuffer]
+        LS[LightingSystem] --> SS
+    end
+    subgraph ServerCitadel
+        GS[GameServer] --> EB
+        GS --> SVS[ServerValidationSystem]
+        GS --> EDT[EntityDeltaTracker]
+        NM[NetworkManager] --> SE[SteamEngine]
+    end
+    subgraph LauncherTrebuchet
+        L[Launcher] --> SE
+        L --> EB
+        L --> MM
+        L --> CM[ContextManager]
+        L --> MS
+    end
+    subgraph StubsDLLs
+        MR[MapRoomStub]
+        QH[QuestHallStub]
+        SC[ScriptChamberStub]
+    end
+    L -. "Launches on Event" .-> SS
+    MS -. "Publishes Hooks" .-> EB
+    MM -. "Scans Loads" .-> AM[AssetsMods]
+    GS -. "Networks Events" .-> NM
+```
