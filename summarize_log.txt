@@ -18,13 +18,48 @@ Found: Assets
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets
 Found: .
 Found: ..
+Found: Characters
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters
+Found: .
+Found: ..
+Found: arrow_player.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\arrow_player.fbm
+Found: .
+Found: ..
+Found: arrow_player_texture.png
+Found: arrow_player_UV.png
+Found: Man_Mesh.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\Man_Mesh.fbm
+Found: .
+Found: ..
+Found: cube_test.png
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Ao.tga
+Found: Man_Body_Metallic.tga
+Found: Man_Body_Normals.tga
+Found: Man_Cloth_Down_Albedo_01.tga
+Found: Man_Cloth_Down_Albedo_02.tga
+Found: Man_Cloth_Down_Albedo_03.tga
+Found: Man_Cloth_Down_Ao.tga
+Found: Man_Cloth_Down_Metallic.tga
+Found: Man_Cloth_Down_Normals.tga
+Found: Man_Cloth_Up_Albedo_01.tga
+Found: Man_Cloth_Up_Albedo_02.tga
+Found: Man_Cloth_Up_Albedo_03.tga
+Found: Man_Cloth_Up_Ao.tga
+Found: Man_Cloth_Up_Metallic.tga
+Found: Man_Cloth_Up_Normals.tga
+Found: man_mesh.fbx
+Found: man_mesh_arrow.fbx
+Found: man_mesh_arrow_old.fbx
 Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs
 Found: .
 Found: ..
+Found: DevMenu.html
 Found: MainMenu.html
-Found: MainMenu.json
 Found: MainMenu.txt
+Found: MainMenu_archive.html
 Found: MainMenu_new.html
 Found: MainMenu_old.html
 Found: MainMenu_production.txt
@@ -891,13 +926,49 @@ Found: Assets
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets
 Found: .
 Found: ..
+Found: Characters
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Characters
+Found: .
+Found: ..
+Found: arrow_player.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Characters\arrow_player.fbm
+Found: .
+Found: ..
+Found: arrow_player_texture.png
+Found: arrow_player_UV.png
+Found: Man_Mesh.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Characters\Man_Mesh.fbm
+Found: .
+Found: ..
+Found: cube_test.png
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Ao.tga
+Found: Man_Body_Metallic.tga
+Found: Man_Body_Normals.tga
+Found: Man_Cloth_Down_Albedo_01.tga
+Found: Man_Cloth_Down_Albedo_02.tga
+Found: Man_Cloth_Down_Albedo_03.tga
+Found: Man_Cloth_Down_Ao.tga
+Found: Man_Cloth_Down_Metallic.tga
+Found: Man_Cloth_Down_Normals.tga
+Found: Man_Cloth_Up_Albedo_01.tga
+Found: Man_Cloth_Up_Albedo_02.tga
+Found: Man_Cloth_Up_Albedo_03.tga
+Found: Man_Cloth_Up_Ao.tga
+Found: Man_Cloth_Up_Metallic.tga
+Found: Man_Cloth_Up_Normals.tga
+Found: man_mesh.fbx
+Found: Man_Mesh.fbx._metadata.json
+Found: man_mesh_arrow.fbx
+Found: man_mesh_arrow_old.fbx
 Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Configs
 Found: .
 Found: ..
+Found: DevMenu.html
 Found: MainMenu.html
-Found: MainMenu.json
 Found: MainMenu.txt
+Found: MainMenu_archive.html
 Found: MainMenu_new.html
 Found: MainMenu_old.html
 Found: MainMenu_production.txt
@@ -907,6 +978,10 @@ Found: .
 Found: ..
 Found: test.html
 Found: UserSettingsMenu.html
+Found: Models
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Models
+Found: .
+Found: ..
 Found: Static_Images
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Assets\Static_Images
 Found: .
@@ -924,6 +999,14 @@ Found: Foundation.runtimeconfig.json
 Found: Microsoft.DotNet.PlatformAbstractions.dll
 Found: Microsoft.Extensions.DependencyModel.dll
 Found: Microsoft.Win32.SystemEvents.dll
+Found: Mods
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Mods
+Found: .
+Found: ..
+Found: Models
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Mods\Models
+Found: .
+Found: ..
 Found: runtimes
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\runtimes
 Found: .
@@ -1858,13 +1941,48 @@ Found: Assets
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets
 Found: .
 Found: ..
+Found: Characters
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Characters
+Found: .
+Found: ..
+Found: arrow_player.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Characters\arrow_player.fbm
+Found: .
+Found: ..
+Found: arrow_player_texture.png
+Found: arrow_player_UV.png
+Found: Man_Mesh.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Characters\Man_Mesh.fbm
+Found: .
+Found: ..
+Found: cube_test.png
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Ao.tga
+Found: Man_Body_Metallic.tga
+Found: Man_Body_Normals.tga
+Found: Man_Cloth_Down_Albedo_01.tga
+Found: Man_Cloth_Down_Albedo_02.tga
+Found: Man_Cloth_Down_Albedo_03.tga
+Found: Man_Cloth_Down_Ao.tga
+Found: Man_Cloth_Down_Metallic.tga
+Found: Man_Cloth_Down_Normals.tga
+Found: Man_Cloth_Up_Albedo_01.tga
+Found: Man_Cloth_Up_Albedo_02.tga
+Found: Man_Cloth_Up_Albedo_03.tga
+Found: Man_Cloth_Up_Ao.tga
+Found: Man_Cloth_Up_Metallic.tga
+Found: Man_Cloth_Up_Normals.tga
+Found: man_mesh.fbx
+Found: man_mesh_arrow.fbx
+Found: man_mesh_arrow_old.fbx
 Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\Debug\net8.0\Assets\Configs
 Found: .
 Found: ..
+Found: DevMenu.html
 Found: MainMenu.html
-Found: MainMenu.json
 Found: MainMenu.txt
+Found: MainMenu_archive.html
 Found: MainMenu_new.html
 Found: MainMenu_old.html
 Found: MainMenu_production.txt
@@ -2198,7 +2316,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\E
 Found: EventBus.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
-Read 10808 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
+Read 11476 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
 Namespace: SiegeEngine.Events
 Found 10 dependencies
 Class IEvent: 2 methods
@@ -2208,7 +2326,8 @@ Class LobbyJoinedEvent: 2 methods
 Class MouseInputEvent: 3 methods
 Class KeyInputEvent: 3 methods
 Class ToggleGridSnapEvent: 3 methods
-Found 7 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
+Class SwitchSceneEvent: 3 methods
+Found 8 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
 Found: ExitEditorEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ExitEditorEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ExitEditorEvent.cs
@@ -2288,6 +2407,14 @@ Found: Interfaces
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces
 Found: .
 Found: ..
+Found: ClientGameServerProxy.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ClientGameServerProxy.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ClientGameServerProxy.cs
+Read 4010 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ClientGameServerProxy.cs
+Namespace: SiegeEngine.Interfaces
+Found 8 dependencies
+Class ClientGameServerProxy: 11 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ClientGameServerProxy.cs
 Found: IGameServer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
@@ -2366,6 +2493,14 @@ Namespace: SiegeEngine.Managers
 Found 8 dependencies
 Class ModManager: 8 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
+Found: SceneManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
+Read 4473 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
+Namespace: SiegeEngine.Managers
+Found 12 dependencies
+Class SceneManager: 6 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
 Found: UISettingsManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UISettingsManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UISettingsManager.cs
@@ -2798,7 +2933,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\S
 Found: MenuSystem.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
-Read 17393 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
+Read 17771 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
 Namespace: SiegeEngine.Systems
 Found 13 dependencies
 Class MenuSystem: 16 methods
@@ -3063,13 +3198,48 @@ Found: Assets
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets
 Found: .
 Found: ..
+Found: Characters
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Characters
+Found: .
+Found: ..
+Found: arrow_player.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Characters\arrow_player.fbm
+Found: .
+Found: ..
+Found: arrow_player_texture.png
+Found: arrow_player_UV.png
+Found: Man_Mesh.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Characters\Man_Mesh.fbm
+Found: .
+Found: ..
+Found: cube_test.png
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Ao.tga
+Found: Man_Body_Metallic.tga
+Found: Man_Body_Normals.tga
+Found: Man_Cloth_Down_Albedo_01.tga
+Found: Man_Cloth_Down_Albedo_02.tga
+Found: Man_Cloth_Down_Albedo_03.tga
+Found: Man_Cloth_Down_Ao.tga
+Found: Man_Cloth_Down_Metallic.tga
+Found: Man_Cloth_Down_Normals.tga
+Found: Man_Cloth_Up_Albedo_01.tga
+Found: Man_Cloth_Up_Albedo_02.tga
+Found: Man_Cloth_Up_Albedo_03.tga
+Found: Man_Cloth_Up_Ao.tga
+Found: Man_Cloth_Up_Metallic.tga
+Found: Man_Cloth_Up_Normals.tga
+Found: man_mesh.fbx
+Found: man_mesh_arrow.fbx
+Found: man_mesh_arrow_old.fbx
 Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\Debug\net9.0\Assets\Configs
 Found: .
 Found: ..
+Found: DevMenu.html
 Found: MainMenu.html
-Found: MainMenu.json
 Found: MainMenu.txt
+Found: MainMenu_archive.html
 Found: MainMenu_new.html
 Found: MainMenu_old.html
 Found: MainMenu_production.txt
@@ -3106,7 +3276,7 @@ Found: ..
 Found: Launcher.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 5688 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 6229 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
 Found 18 dependencies
 Class Launcher: 2 methods
@@ -3204,6 +3374,10 @@ Found: Documentation
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation
 Found: .
 Found: ..
+Found: Archive
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation\Archive
+Found: .
+Found: ..
 Found: Event_Design.md
 Found: HighLevelStructure.mmd
 Found: Hight-Level Project Structure.svg
@@ -3212,7 +3386,7 @@ Found: KeyInterfaces.mmd
 Found: Launcher UX Flow.svg
 Found: LauncherUXFlow.mmd
 Found: MainMenuSystem
-Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation\MainMenuSystem
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation\Archive\MainMenuSystem
 Found: .
 Found: ..
 Found: Architecture_diagram.mmd
@@ -3230,14 +3404,29 @@ Found: ProposedProjectStructure.svg
 Found: rendering_detection.svg
 Found: UI_overhaul_flow.mmd
 Found: UI_overhaul_flow.svg
+Found: Current
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation\Current
+Found: .
+Found: ..
+Found: CoreClassDiagram.mmd
+Found: CoreClassDiagram.svg
+Found: FolderStructure.mmd
+Found: FolderStructure.svg
+Found: modularitycomponentdiagram.svg
+Found: StartupSequenceDiagram.mmd
+Found: StartupSequenceDiagram.svg
+Found: Prospective
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation\Prospective
+Found: .
+Found: ..
 Found: Libraries
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Libraries
 Found: .
 Found: ..
 Found: steam_api64.dll
 Found: steam_appid.txt
-Found: New Text Document.txt
 Found: NewPrompt.txt
+Found: Next_steps_first_IDE.txt
 Found: Panel.txt
 Found: Prompt.txt
 Found: README.md
