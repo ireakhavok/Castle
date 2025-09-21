@@ -116,7 +116,7 @@ namespace SiegeEngine.Rendering
             };
             fixed (float* matrixPtr = matrixArray)
             {
-                _renderContext.UniformMatrix4(location, 1, true, matrixPtr);
+                _renderContext.UniformMatrix4(location, 1, false, matrixPtr);
             }
         }
         public void Dispose()
