@@ -83,8 +83,7 @@ While currently client-side focused, the engine is designed for P2P expansion: G
 
 ## Core Class Diagram
 
-```
-mermaid
+```mermaid
 classDiagram
     class IGameServer {
         <<interface>>
