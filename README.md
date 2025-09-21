@@ -85,7 +85,6 @@ While currently client-side focused, the engine is designed for P2P expansion: G
 
 ```
 mermaid
-%%{init: {'theme':'dark'}}%%
 classDiagram
     class IGameServer {
         <<interface>>
