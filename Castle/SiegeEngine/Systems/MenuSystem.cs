@@ -33,6 +33,12 @@ namespace SiegeEngine.Systems
         private CssParser _cssParser;
         private string _currentTargetId;
         private string _baseDir;
+        private bool _visible = true; // New flag for visibility
+        public bool Visible
+        {
+            get => _visible;
+            set => _visible = value;
+        }
         public MenuSystem(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath) : base(null)
         {
             _settingsManager = settingsManager;
@@ -229,7 +235,7 @@ input[type=""checkbox""] {
         }
         public override void Update(float deltaTime)
         {
-            if (!_initialized) return;
+            if (!_initialized || !_visible) return;
             Vector2 mousePos = new Vector2();
             _controlContext.GetCursorPos(_window, out double x, out double y);
             mousePos = new Vector2((float)x, (float)y);
@@ -377,7 +383,7 @@ input[type=""checkbox""] {
         }
         public void Render()
         {
-            if (!_initialized || _currentMenu == null) return;
+            if (!_initialized || _currentMenu == null || !_visible) return;
             _controlContext.GetWindowSize(_window, out int w, out int h);
             if (w != _vw || h != _vh)
             {

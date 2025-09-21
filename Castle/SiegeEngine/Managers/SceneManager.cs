@@ -22,12 +22,13 @@ namespace SiegeEngine.Managers
         private readonly UISettingsManager _settingsManager;
         private readonly ISteamEngine _steamEngine;
         private readonly InputHandler _inputHandler;
+        private readonly MenuSystem _menuSystem;
         private Scene _currentScene;
         private Player _player;
         private PlayerMovement _playerMovement;
         private ModelManager _modelManager;
         private IGameServer _server;
-        public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, IntPtr window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler)
+        public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, IntPtr window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuSystem menuSystem)
         {
             _eventBus = eventBus;
             _renderContext = renderContext;
@@ -37,6 +38,7 @@ namespace SiegeEngine.Managers
             _settingsManager = settingsManager;
             _steamEngine = steamEngine;
             _inputHandler = inputHandler;
+            _menuSystem = menuSystem;
             _eventBus.Subscribe<SwitchSceneEvent>(OnSwitchScene);
         }
         public void Update(float deltaTime)
@@ -72,6 +74,7 @@ namespace SiegeEngine.Managers
         {
             Console.WriteLine($"SceneManager: SwitchSceneEvent received for {e.SceneName}");
             Dispose(); // Clean up previous scene
+            _menuSystem.Visible = false; // Hide menu on scene switch
             _server = new ClientGameServerProxy(_eventBus); // Secure proxy
             var predictionSystem = new ClientPredictionSystem(_server, _eventBus);
             _server.AddSystem(predictionSystem);

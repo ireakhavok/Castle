@@ -33,7 +33,6 @@ namespace Trebuchet
         private ContextManager _contextManager;
         private Process _serverProcess;
         private SceneManager _sceneManager;
-        private bool _inScene;
         public void Start(string context)
         {
             try
@@ -74,7 +73,7 @@ namespace Trebuchet
                     Console.WriteLine($"Launcher: Resolved MainMenu.json path: {configPath}, Exists: {File.Exists(configPath)}");
                     _menuSystem = new MenuSystem(_settingsManager, _modManager, _eventBus, _controlContext, _window, _renderContext, configPath);
                     _menuSystem.Initialize();
-                    _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler);
+                    _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuSystem);
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
                         if (_settingsManager.AllowResize)
@@ -102,12 +101,9 @@ namespace Trebuchet
                         _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
                         _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
                         _renderContext.Disable(_renderContext.Enums.DepthTest);
-                        if (_inScene)
-                        {
-                            _sceneManager.Update(deltaTime);
-                            _sceneManager.Render();
-                        }
-                        else
+                        _sceneManager.Update(deltaTime);
+                        _sceneManager.Render();
+                        if (_menuSystem.Visible)
                         {
                             _menuSystem.Update(deltaTime);
                             _menuSystem.Render();
