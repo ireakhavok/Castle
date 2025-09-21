@@ -126,7 +126,7 @@ graph LR
     F --> F6[ReadingChamber/Class1.cs - Stub]
     end
 
-    G --> G1[Models (FBX files)]
+    G --> G1[Models - FBX files]
     G --> G2[Textures]
     G --> G3[Configs/MainMenu.html]
 
