@@ -485,10 +485,10 @@ flowchart TD
 %%{init: {'theme':'dark'}}%%
 flowchart TD
     A[SoundEmissionEvent] --> B[AudioSystem.OnSoundEmission]
-    B --> C[ValidateSoundSource (via ISoundValidator)]
-    C -->|Valid| D[RayTraceSound (RequestRayTrace from GameServer)]
+    B --> C[ValidateSoundSource - via ISoundValidator]
+    C -->|Valid| D[RayTraceSound - RequestRayTrace from GameServer]
     D --> E[RandomScatterDirection / Simulate Rays]
-    E --> F[PlaySound with Filter (e.g., LowPass for Occlusion)]
+    E --> F[PlaySound with Filter - e.g., LowPass for Occlusion]
     C -->|Invalid| G[Discard/Log]
     subgraph AudioSystem
     B
@@ -555,10 +555,10 @@ classDiagram
 %%{init: {'theme':'dark'}}%%
 flowchart TD
     A[SandboxScene Init] --> B[Create LightingSystem]
-    B --> C[AddLight (Directional Sun)]
-    D[Update] --> E[LightingSystem.Update (Process Lights)]
+    B --> C[AddLight - Directional Sun]
+    D[Update] --> E[LightingSystem.Update - Process Lights]
     F[Render] --> G[GetShaderUniforms]
-    G --> H[SetUniforms in ModelShader (Dir/Color/Intensity)]
+    G --> H[SetUniforms in ModelShader - Dir/Color/Intensity]
     H --> I[Render Model with Lighting]
 ```
 ## Event Subsystem (Class + Flow)
@@ -578,7 +578,7 @@ classDiagram
 flowchart TD
     A[Caller Publishes Event<T>] --> B[Check ProtectedAttribute]
     B -->|Protected & Unauthorized| C[Reject/Log]
-    B -->|Allowed| D[Invoke Subscribers (Handlers)]
+    B -->|Allowed| D[Invoke Subscribers - Handlers]
     D --> E[If NetworkSync & Not Protected: Serialize]
     E --> F[Send via SteamEngine P2P]
     G[Receive Network Message] --> H[Deserialize to Type]
@@ -603,11 +603,11 @@ classDiagram
 flowchart TD
     A[SandboxScene.Render] --> B[Clear Buffers]
     B --> C[Set View/Projection Matrices]
-    C --> D[Render Grid (Lines, No Depth)]
+    C --> D[Render Grid - Lines, No Depth]
     D --> E[Enable Depth Test]
-    E --> F[Use Model Shader, Set Uniforms (Light/ViewPos)]
-    F --> G[For Each Mesh: Bind Textures (Albedo/Normal/Metallic)]
-    G --> H[Bind VAO, DrawElements (Triangles)]
-    H --> I[Debug Passes (Material/Texture-Only)]
+    E --> F[Use Model Shader, Set Uniforms - Light/ViewPos]
+    F --> G[For Each Mesh: Bind Textures - Albedo/Normal/Metallic]
+    G --> H[Bind VAO, DrawElements - Triangles]
+    H --> I[Debug Passes - Material/Texture-Only]
     I --> J[Log Errors, End Render]
 ```
