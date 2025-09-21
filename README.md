@@ -80,7 +80,59 @@ While currently client-side focused, the engine is designed for P2P expansion: G
 * Stable vertical slice: 3D sandbox, HTML menu, server validation.
 * Next: Dev menu template, DLL stubs (IPanel), dynamic loading, project modules, P2P IDE sync.
 * Dependencies: Silk.NET, Steam SDK; no internet/pip.
+## Folder Structure
+```
+%%{init: {'theme':'dark'}}%%
+graph LR
+    A[Castle Repository] --> B[Citadel]
+    A --> C[SiegeEngine]
+    A --> D[Foundation]
+    A --> E[Trebuchet]
+    A --> F[Specialized Modules<br>(Stubs)]
+    A --> G[Assets]
+    A --> H[Mods]
 
+    subgraph Citadel Files
+    B --> B1[Network/NetworkManager.cs]
+    B --> B2[Server/GameServer.cs]
+    B --> B3[Server/ServerValidationSystem.cs]
+    B --> B4[Server/EntityDeltaTracker.cs]
+    B --> B5[Server/ServerProgram.cs]
+    end
+
+    subgraph SiegeEngine Files
+    C --> C1[Scenes/SandboxScene.cs]
+    C --> C2[Systems/MenuSystem.cs]
+    C --> C3[Events/EventBus.cs]
+    C --> C4[Managers/ModManager.cs]
+    C --> C5[ContextManagement/IRenderContext]
+    C --> C6[AssetParsing/FBXParser.cs]
+    C --> C7[Rendering/ShaderProgram.cs]
+    C --> C8[Rendering/VertexBuffer.cs]
+    C --> C9[Systems/LightingSystem.cs]
+    C --> C10[Systems/AudioSystem.cs]
+    C --> C11[UI/HtmlElement.cs]
+    end
+
+    D --> D1[Program.cs]
+
+    E --> E1[Launcher.cs]
+
+    subgraph Stubs
+    F --> F1[MapRoom/Class1.cs (Stub)]
+    F --> F2[QuestHall/Class1.cs (Stub)]
+    F --> F3[ScriptChamber/Class1.cs (Stub)]
+    F --> F4[ThroneRoom/Class1.cs (Stub)]
+    F --> F5[GuildTower/Class1.cs (Stub)]
+    F --> F6[ReadingChamber/Class1.cs (Stub)]
+    end
+
+    G --> G1[Models (FBX files)]
+    G --> G2[Textures]
+    G --> G3[Configs/MainMenu.html]
+
+    H --> H1[mod.json (Example Mods)]
+```
 ## Core Class Diagram
 
 ```mermaid
@@ -187,4 +239,44 @@ classDiagram
     SandboxScene --> LightingSystem : adds
 
 ```
+## Startup Sequence
+```mermaid
+%%{init: {'theme':'dark'}}%%
+sequenceDiagram
+    participant User
+    participant Launcher
+    participant SteamEngine
+    participant EventBus
+    participant ModManager
+    participant ContextManager
+    participant MenuSystem
+    participant SandboxScene
+    participant GameServer
+
+    User->>Launcher: Start("OpenGL")
+    Launcher->>SteamEngine: Initialize()
+    Launcher->>EventBus: new EventBus(SteamEngine)
+    Launcher->>ModManager: new ModManager(..)
+    ModManager->>ModManager: LoadLocalMods() / LoadWorkshopMods()
+    Launcher->>ContextManager: Initialize(width, height, title)
+    Launcher->>MenuSystem: new MenuSystem(..)
+    MenuSystem->>MenuSystem: Initialize() / LoadHtml("MainMenu.html")
+    loop Main Loop
+        Launcher->>SteamEngine: RunCallbacks()
+        Launcher->>ContextManager: PollEvents()
+        Launcher->>MenuSystem: Update(deltaTime)
+        Launcher->>MenuSystem: Render()
+        Launcher->>ContextManager: SwapBuffers()
+    end
+    Note over MenuSystem: User clicks "Test Sandbox" (data-hook)
+    MenuSystem->>EventBus: Publish(LaunchSandboxEvent)
+    EventBus->>Launcher: Handler instantiates SandboxScene
+    Launcher->>SandboxScene: Initialize()
+    SandboxScene->>GameServer: GetEntities() / Interactions
+    loop Sandbox Loop (if transitioned)
+        SandboxScene->>SandboxScene: Update(deltaTime)
+        SandboxScene->>SandboxScene: Render(entities)
+    end
+```
+
 
