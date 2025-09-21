@@ -498,7 +498,7 @@ flowchart TD
     F
     end
     subgraph GameServer
-    D --> H[RequestRayTrace (AABB Intersect)]
+    D --> H[RequestRayTrace - AABB Intersect]
     end
 ```
 ## Entity Management subsystem
