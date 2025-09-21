@@ -1,0 +1,36 @@
+%%{init: {'theme':'dark'}}%%
+sequenceDiagram
+    participant User
+    participant Launcher
+    participant SteamEngine
+    participant EventBus
+    participant ModManager
+    participant ContextManager
+    participant MenuSystem
+    participant SandboxScene
+    participant GameServer
+
+    User->>Launcher: Start("OpenGL")
+    Launcher->>SteamEngine: Initialize()
+    Launcher->>EventBus: new EventBus(SteamEngine)
+    Launcher->>ModManager: new ModManager(..)
+    ModManager->>ModManager: LoadLocalMods() / LoadWorkshopMods()
+    Launcher->>ContextManager: Initialize(width, height, title)
+    Launcher->>MenuSystem: new MenuSystem(..)
+    MenuSystem->>MenuSystem: Initialize() / LoadHtml("MainMenu.html")
+    loop Main Loop
+        Launcher->>SteamEngine: RunCallbacks()
+        Launcher->>ContextManager: PollEvents()
+        Launcher->>MenuSystem: Update(deltaTime)
+        Launcher->>MenuSystem: Render()
+        Launcher->>ContextManager: SwapBuffers()
+    end
+    Note over MenuSystem: User clicks "Test Sandbox" (data-hook)
+    MenuSystem->>EventBus: Publish(LaunchSandboxEvent)
+    EventBus->>Launcher: Handler instantiates SandboxScene
+    Launcher->>SandboxScene: Initialize()
+    SandboxScene->>GameServer: GetEntities() / Interactions
+    loop Sandbox Loop (if transitioned)
+        SandboxScene->>SandboxScene: Update(deltaTime)
+        SandboxScene->>SandboxScene: Render(entities)
+    end

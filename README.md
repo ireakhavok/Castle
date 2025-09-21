@@ -81,5 +81,111 @@ While currently client-side focused, the engine is designed for P2P expansion: G
 * Next: Dev menu template, DLL stubs (IPanel), dynamic loading, project modules, P2P IDE sync.
 * Dependencies: Silk.NET, Steam SDK; no internet/pip.
 
-For contributions, see \[CONTRIBUTING.md]. Licensed under MIT.
+## Core Class Diagram
+
+```
+%%{init: {'theme':'dark'}}%%
+classDiagram
+    class IGameServer {
+        <<interface>>
+        +AddEntity(Entity entity)
+        +RemoveEntity(int id)
+        +GetEntities() IReadOnlyList~Entity~
+        +Update(float deltaTime)
+        +ValidateAndUpdateMovement(int entityId, Vector2 pos, Quaternion rot, ulong steamId) bool
+        +Publish~T~(T eventData, bool networkSync)
+        +RequestRayTrace(Vector3 start, Vector3 dir, float maxDist) RayTraceResult
+    }
+
+    class GameServer {
+        -List~Entity~ _entities
+        -List~GameSystem~ _systems
+        -EventBus _eventBus
+        -NetworkManager _networkManager
+        -EntityDeltaTracker _deltaTracker
+        -Dictionary~(int,int), List~Entity~~ _spatialGrid
+        +GameServer(EventBus eventBus, NetworkManager networkManager)
+        +AddEntity(Entity entity)
+        +RemoveEntity(int id)
+        +Update(float deltaTime)
+        +ValidateAndUpdateMovement(..) bool
+        +Publish~T~(T eventData, bool networkSync)
+        +RequestRayTrace(..) RayTraceResult
+    }
+    GameServer ..|> IGameServer
+    GameServer --> Entity : manages
+    GameServer --> GameSystem : adds
+    GameServer --> EventBus : subscribes/publishes
+    GameServer --> ServerValidationSystem : uses
+
+    class GameSystem {
+        <<abstract>>
+        +GameSystem(IGameServer server)
+        +Update(float deltaTime)
+    }
+    GameSystem <|-- ServerValidationSystem
+    GameSystem <|-- LightingSystem
+    GameSystem <|-- AudioSystem
+    GameSystem <|-- MenuSystem
+    GameSystem <|-- PhysicsSystem
+
+    class EventBus {
+        -Dictionary~Type, List~object~~ _subscribers
+        -SteamEngine _steamEngine
+        +EventBus(SteamEngine steamEngine)
+        +Subscribe~T~(Action~T~ handler)
+        +Publish~T~(T eventData, bool networkSync)
+        +ProcessNetworkMessage(byte[] data)
+    }
+    EventBus --> IEvent : publishes
+    EventBus --> SteamEngine : networks
+
+    class IEvent {
+        <<interface>>
+        +string Type
+        +byte[] Serialize()
+        +void Deserialize(byte[] data)
+    }
+    IEvent <|-- MouseInputEvent
+    IEvent <|-- KeyInputEvent
+    IEvent <|-- EntityPlacedEvent
+
+    class ModManager {
+        -string _modsDirectory
+        -List~ModInfo~ _loadedMods
+        +ModManager(string modsDirectory, ISteamEngine steamEngine)
+        +LoadModels(ModelManager loader)
+        +ResolvePath(string relativePath) string
+        +GetMenuConfigPath() string
+    }
+    ModManager --> UnityAssetScanner : uses for prefabs
+
+    class Scene {
+        <<abstract>>
+        -IRenderContext _renderContext
+        -IControlContext _controlContext
+        -IGameServer _server
+        -EventBus _eventBus
+        +Scene(..)
+        +Initialize(int width, int height)
+        +Update(float deltaTime)
+        +Render(IReadOnlyList~Entity~ entities)
+        +Dispose()
+    }
+    Scene <|-- SandboxScene
+
+    class SandboxScene {
+        -Player _player
+        -ShaderProgram _modelShader
+        -ShaderProgram _gridShader
+        +SandboxScene(..)
+        +Initialize(int width, int height)
+        +Update(float deltaTime)
+        +Render(IReadOnlyList~Entity~ entities)
+        +Dispose()
+    }
+    SandboxScene --> ModelManager : uses for models
+    SandboxScene --> LightingSystem : adds
+
+```
 
