@@ -118,12 +118,12 @@ graph LR
     E --> E1[Launcher.cs]
 
     subgraph Stubs
-    F --> F1[MapRoom/Class1.cs (Stub)]
-    F --> F2[QuestHall/Class1.cs (Stub)]
-    F --> F3[ScriptChamber/Class1.cs (Stub)]
-    F --> F4[ThroneRoom/Class1.cs (Stub)]
-    F --> F5[GuildTower/Class1.cs (Stub)]
-    F --> F6[ReadingChamber/Class1.cs (Stub)]
+    F --> F1[MapRoom/Class1.cs - Stub]
+    F --> F2[QuestHall/Class1.cs - Stub]
+    F --> F3[ScriptChamber/Class1.cs - Stub]
+    F --> F4[ThroneRoom/Class1.cs - Stub]
+    F --> F5[GuildTower/Class1.cs - Stub]
+    F --> F6[ReadingChamber/Class1.cs - Stub]
     end
 
     G --> G1[Models (FBX files)]
