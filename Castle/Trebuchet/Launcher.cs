@@ -32,6 +32,8 @@ namespace Trebuchet
         private ModManager _modManager;
         private ContextManager _contextManager;
         private Process _serverProcess;
+        private SceneManager _sceneManager;
+        private bool _inScene;
         public void Start(string context)
         {
             try
@@ -72,6 +74,7 @@ namespace Trebuchet
                     Console.WriteLine($"Launcher: Resolved MainMenu.json path: {configPath}, Exists: {File.Exists(configPath)}");
                     _menuSystem = new MenuSystem(_settingsManager, _modManager, _eventBus, _controlContext, _window, _renderContext, configPath);
                     _menuSystem.Initialize();
+                    _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler);
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
                         if (_settingsManager.AllowResize)
@@ -83,6 +86,7 @@ namespace Trebuchet
                         {
                             Console.WriteLine($"Launcher: Window resize to {width}x{height} blocked, allowResize is false");
                         }
+                        _sceneManager.Resize(width, height);
                     });
                     _isRunning = true;
                     float lastFrameTime = 0f;
@@ -98,8 +102,16 @@ namespace Trebuchet
                         _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
                         _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
                         _renderContext.Disable(_renderContext.Enums.DepthTest);
-                        _menuSystem.Update(deltaTime);
-                        _menuSystem.Render();
+                        if (_inScene)
+                        {
+                            _sceneManager.Update(deltaTime);
+                            _sceneManager.Render();
+                        }
+                        else
+                        {
+                            _menuSystem.Update(deltaTime);
+                            _menuSystem.Render();
+                        }
                         _renderContext.Enable(_renderContext.Enums.DepthTest);
                         _controlContext.SwapBuffers(_window);
                     }
@@ -111,6 +123,7 @@ namespace Trebuchet
             }
             finally
             {
+                _sceneManager?.Dispose();
                 _serverProcess?.Kill();
                 _settingsManager?.SaveSettings();
                 _contextManager?.Terminate();

@@ -346,9 +346,11 @@ input[type=""checkbox""] {
             {
                 string hook = elem.Attributes["data-hook"];
                 Console.WriteLine($"MenuSystem: Processing data-hook: {hook}");
-                //if (hook.StartsWith("SiegeEngine.Scenes.") || _modManager.IsWhitelistedHook(hook))
-                //{
-                if (hook.Contains("Scene"))
+                if (hook == "RealmFoundry.Test.LaunchSandbox")
+                {
+                    _eventBus.Publish(new SwitchSceneEvent("Sandbox"));
+                }
+                else if (hook.Contains("Scene"))
                 {
                     //_eventBus.Publish(new SwitchSceneEvent { Hook = hook });
                     Console.WriteLine($"MenuSystem: Published SwitchSceneEvent with hook {hook}");
@@ -358,11 +360,6 @@ input[type=""checkbox""] {
                     //_eventBus.Publish(new GenericEvent { Hook = hook });
                     Console.WriteLine($"MenuSystem: Published GenericEvent with hook {hook}");
                 }
-                //}
-                //else
-                //{
-                // Console.WriteLine($"MenuSystem: Rejected unsafe hook: {hook}");
-                //}
             }
         }
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
