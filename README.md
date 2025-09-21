@@ -480,3 +480,134 @@ flowchart TD
     E
     end
 ```
+## Audio System (unproven)
+```mermaid
+%%{init: {'theme':'dark'}}%%
+flowchart TD
+    A[SoundEmissionEvent] --> B[AudioSystem.OnSoundEmission]
+    B --> C[ValidateSoundSource (via ISoundValidator)]
+    C -->|Valid| D[RayTraceSound (RequestRayTrace from GameServer)]
+    D --> E[RandomScatterDirection / Simulate Rays]
+    E --> F[PlaySound with Filter (e.g., LowPass for Occlusion)]
+    C -->|Invalid| G[Discard/Log]
+    subgraph AudioSystem
+    B
+    C
+    D
+    E
+    F
+    end
+    subgraph GameServer
+    D --> H[RequestRayTrace (AABB Intersect)]
+    end
+```
+## Entity Management subsystem
+```mermaid
+%%{init: {'theme':'dark'}}%%
+sequenceDiagram
+    participant Client
+    participant GameServer
+    participant EventBus
+    participant Systems
+
+    Client->>EventBus: Publish(EntityPlacedEvent)
+    EventBus->>GameServer: OnEntityPlaced
+    GameServer->>GameServer: AddEntity (With Components)
+    GameServer->>GameServer: UpdateSpatialGrid
+    GameServer->>EventBus: Publish(Event, networkSync=true)
+    loop Update
+        GameServer->>Systems: Update(deltaTime) e.g., Physics/Validation
+        Systems->>GameServer: Validate/Update Entities
+        GameServer->>GameServer: Frustum/Occlusion Checks
+        GameServer->>GameServer: DeltaTracker.Update
+    end
+    alt Remove Entity
+        Client->>EventBus: Publish(RemoveEvent)
+        EventBus->>GameServer: RemoveEntity(id)
+        GameServer->>GameServer: RemoveFromSpatialGrid
+    end
+```
+## Lighting subsystem
+```mermaid
+%%{init: {'theme':'dark'}}%%
+classDiagram
+    class LightingSystem {
+        <<GameSystem>>
+        -List~LightComponent~ _lights
+        +AddLight(LightComponent light)
+        +RemoveLight(LightComponent light)
+        +Update(float deltaTime)
+        +GetShaderUniforms() LightUniformData?
+    }
+
+    class LightComponent {
+        +LightType Type
+        +Vector3 Color
+        +float Intensity
+        +Vector3 Direction/Position
+    }
+
+    LightingSystem --> LightComponent : manages
+    SandboxScene --> LightingSystem : adds/removes lights
+    ShaderProgram --> LightingSystem : gets uniforms (uLightDir/Color/Intensity)
+```
+```mermaid
+%%{init: {'theme':'dark'}}%%
+flowchart TD
+    A[SandboxScene Init] --> B[Create LightingSystem]
+    B --> C[AddLight (Directional Sun)]
+    D[Update] --> E[LightingSystem.Update (Process Lights)]
+    F[Render] --> G[GetShaderUniforms]
+    G --> H[SetUniforms in ModelShader (Dir/Color/Intensity)]
+    H --> I[Render Model with Lighting]
+```
+## Event Subsystem (Class + Flow)
+```mermaid
+%%{init: {'theme':'dark'}}%%
+classDiagram
+    EventBus --> IEvent : Publishes/Processes
+    EventBus --> SteamEngine : Networks Non-Protected
+    IEvent <|-- MouseInputEvent
+    IEvent <|-- KeyInputEvent
+    IEvent <|-- LobbyCreatedEvent
+    GameServer --> EventBus : Subscribes (e.g., OnEntityPlaced)
+    MenuSystem --> EventBus : Publishes on Clicks
+```
+```mermaid
+%%{init: {'theme':'dark'}}%%
+flowchart TD
+    A[Caller Publishes Event<T>] --> B[Check ProtectedAttribute]
+    B -->|Protected & Unauthorized| C[Reject/Log]
+    B -->|Allowed| D[Invoke Subscribers (Handlers)]
+    D --> E[If NetworkSync & Not Protected: Serialize]
+    E --> F[Send via SteamEngine P2P]
+    G[Receive Network Message] --> H[Deserialize to Type]
+    H -->|Valid & Not Protected| I[Invoke Subscribers]
+    H -->|Invalid/Protected| J[Reject/Log]
+```
+## Rendering Subsystem
+```mermaid
+%%{init: {'theme':'dark'}}%%
+classDiagram
+    IRenderContext <|-- OpenGLRenderContext
+    ShaderProgram --> IRenderContext : uses for compile/use
+    VertexBuffer --> IRenderContext : uses for bind/bufferData
+    TextRenderer --> ShaderProgram : initializes with
+    UIQuadRenderer --> IRenderContext : draws quads
+    SandboxScene --> ShaderProgram : _modelShader / _gridShader
+    SandboxScene --> VertexBuffer : binds for grid/model
+    SandboxScene --> IRenderContext : clear/viewport/draw
+```
+```mermaid
+%%{init: {'theme':'dark'}}%%
+flowchart TD
+    A[SandboxScene.Render] --> B[Clear Buffers]
+    B --> C[Set View/Projection Matrices]
+    C --> D[Render Grid (Lines, No Depth)]
+    D --> E[Enable Depth Test]
+    E --> F[Use Model Shader, Set Uniforms (Light/ViewPos)]
+    F --> G[For Each Mesh: Bind Textures (Albedo/Normal/Metallic)]
+    G --> H[Bind VAO, DrawElements (Triangles)]
+    H --> I[Debug Passes (Material/Texture-Only)]
+    I --> J[Log Errors, End Render]
+```
