@@ -461,11 +461,11 @@ classDiagram
 ```mermaid
 %%{init: {'theme':'dark'}}%%
 flowchart TD
-    A[Client Sends Action (e.g., Movement/Input)] --> B[GameServer Receives via NetworkManager/EventBus]
+    A[Client Sends Action - e.g., Movement/Input] --> B[GameServer Receives via NetworkManager/EventBus]
     B --> C[QueueNetworkEvent(IEvent)]
-    C --> D[Update(deltaTime): Dequeue and Publish]
-    D --> E[ServerValidationSystem.Validate* (e.g., Movement/Inventory/Input)]
-    E -->|Valid| F[Update Entity/State, Publish Event (networkSync=true)]
+    C --> D[Update - deltaTime: Dequeue and Publish]
+    D --> E[ServerValidationSystem.Validate* - e.g., Movement/Inventory/Input)]
+    E -->|Valid| F[Update Entity/State, Publish Event - networkSync=true]
     E -->|Invalid| G[Log Rejection, Discard]
     F --> H[DeltaTracker.Update, Serialize Visible Deltas]
     H --> I[SendToAll via NetworkManager]
@@ -479,13 +479,4 @@ flowchart TD
     subgraph ServerValidationSystem
     E
     end
-```
-```mermaid
-
-```
-```mermaid
-
-```
-```mermaid
-
 ```
