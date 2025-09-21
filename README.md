@@ -82,7 +82,6 @@ While currently client-side focused, the engine is designed for P2P expansion: G
 * Dependencies: Silk.NET, Steam SDK; no internet/pip.
 ## Folder Structure
 ```
-%%{init: {'theme':'dark'}}%%
 graph LR
     A[Castle Repository] --> B[Citadel]
     A --> C[SiegeEngine]
