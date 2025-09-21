@@ -2196,6 +2196,8 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
+ - string GetEffectiveDisplay()
+ Calls: None
  - HtmlElement FindContainingBlock()
  Calls: None
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
@@ -2205,7 +2207,7 @@ Folder: Castle
  - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseBorderWidths, ParsePaddings, ParseSize
  - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
- Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, ParseSize
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, ParsePaddings, ParseSize
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
