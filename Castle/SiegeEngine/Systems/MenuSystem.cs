@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Systems
-// File: MenuSystem.cs
-using SiegeEngine.ContextManagement;
+﻿using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Managers;
@@ -58,9 +56,15 @@ namespace SiegeEngine.Systems
         }
         private void LoadHtml(string htmlPath)
         {
-            if (File.Exists(htmlPath))
+            string resolvedPath = _modManager.ResolvePath(htmlPath);
+            if (resolvedPath == null)
             {
-                string html = File.ReadAllText(htmlPath);
+                Console.WriteLine($"MenuSystem: Failed to resolve HTML path: {htmlPath}");
+                return;
+            }
+            if (File.Exists(resolvedPath))
+            {
+                string html = File.ReadAllText(resolvedPath);
                 HtmlParser parser = new HtmlParser();
                 _currentMenu = parser.Parse(html);
                 List<string> cssBlocks = new List<string>();
@@ -94,7 +98,7 @@ namespace SiegeEngine.Systems
                 ProcessSelects(_currentMenu);
                 _clickables.Clear();
                 CollectClickables(_currentMenu);
-                string htmlDir = Path.GetDirectoryName(htmlPath);
+                string htmlDir = Path.GetDirectoryName(resolvedPath);
                 _currentMenu.PrepareResources(htmlDir, _controlContext, _window, _renderContext, _uiShader);
                 _baseDir = htmlDir;
             }
@@ -119,8 +123,7 @@ namespace SiegeEngine.Systems
         }
         public void SwitchMenu(string menuName)
         {
-            string configDir = Path.GetDirectoryName(_configPath);
-            string htmlPath = Path.Combine(configDir, $"{menuName}.html");
+            string htmlPath = $"{menuName}.html";
             LoadHtml(htmlPath);
         }
         private void ApplyUserAgentDefaults(CssParser cssParser)
@@ -232,6 +235,7 @@ input[type=""checkbox""] {
             mousePos = new Vector2((float)x, (float)y);
             bool mouseDown = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press;
             bool mouseUp = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Release;
+            HtmlElement clickedElem = null;
             foreach (var clickable in _clickables)
             {
                 bool over = mousePos.X >= clickable.ComputedPosition.X && mousePos.X <= clickable.ComputedPosition.X + clickable.ComputedWidth &&
@@ -241,15 +245,19 @@ input[type=""checkbox""] {
                 {
                     clickable.IsActive = true;
                 }
+                if (over && mouseUp && clickable.IsActive)
+                {
+                    Console.WriteLine($"MenuSystem: Detected click on element at Pos=({clickable.ComputedPosition.X}, {clickable.ComputedPosition.Y}), Size=({clickable.ComputedWidth}, {clickable.ComputedHeight}), Tag={clickable.Tag}, Class={clickable.Attributes.GetValueOrDefault("class", "")}");
+                    clickedElem = clickable;
+                }
                 if (mouseUp)
                 {
                     clickable.IsActive = false;
                 }
-                if (over && mouseDown)
-                {
-                    Console.WriteLine($"MenuSystem: Detected click on element at Pos=({clickable.ComputedPosition.X}, {clickable.ComputedPosition.Y}), Size=({clickable.ComputedWidth}, {clickable.ComputedHeight}), Tag={clickable.Tag}, Class={clickable.Attributes.GetValueOrDefault("class", "")}");
-                    HandleClickableClick(clickable);
-                }
+            }
+            if (clickedElem != null)
+            {
+                HandleClickableClick(clickedElem);
             }
         }
         private void HandleClickableClick(HtmlElement elem)
@@ -279,16 +287,15 @@ input[type=""checkbox""] {
                 }
                 else
                 {
-                    string newPath = href;
-                    if (!Path.IsPathRooted(href))
-                    {
-                        newPath = Path.Combine(_baseDir, href);
-                        newPath = Path.GetFullPath(newPath);
-                    }
-                    if (File.Exists(newPath))
+                    string newPath = _modManager.ResolvePath(href);
+                    if (newPath != null && File.Exists(newPath))
                     {
                         LoadHtml(newPath);
                         _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"MenuSystem: Failed to resolve or find href path: {href}");
                     }
                 }
             }
@@ -343,7 +350,7 @@ input[type=""checkbox""] {
                 //{
                 if (hook.Contains("Scene"))
                 {
-                    //_eventBus.Publish(new Switch SceneEvent { Hook = hook });
+                    //_eventBus.Publish(new SwitchSceneEvent { Hook = hook });
                     Console.WriteLine($"MenuSystem: Published SwitchSceneEvent with hook {hook}");
                 }
                 else

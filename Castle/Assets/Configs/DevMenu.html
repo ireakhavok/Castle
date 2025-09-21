@@ -103,9 +103,9 @@
             text-align: center;
         }
 
-        #create:checked ~ .create,
-        #play:checked ~ .play,
-        #edit:checked ~ .edit {
+        #regression:checked ~ .regression,
+        #project:checked ~ .project,
+        #map:checked ~ .map {
             display: block;
         }
 
@@ -239,52 +239,39 @@
     <div id="main" class="screen">
         <div class="menu-container">
             <div class="sidebar">
-                <label for="create" class="button">Create</label>
-                <label for="play" class="button">Play</label>
-                <label for="edit" class="button">Edit</label>
-                <a href="#settings" class="button">Settings</a>
-                <a href="DevMenu.html" class="button">Dev Menu</a>
+                <label for="regression" class="button">Regression Test Sandbox</label>
+                <label for="project" class="button">Open Current Project</label>
+                <label for="map" class="button">Launch Map Room</label>
+                <a href="MainMenu.html" class="button">Back to Main Menu</a>
                 <div class="button">Exit</div>
             </div>
             <div class="content-area">
-                <input type="radio" id="create" name="menu-section" checked>
-                <input type="radio" id="play" name="menu-section">
-                <input type="radio" id="edit" name="menu-section">
-                <div class="content create">
-                    <div class="button">New Project</div>
-                    <div class="button">Game Type</div>
-                    <select>
-                        <option>2D</option>
-                        <option>2D Sidescrolling</option>
-                        <option>3D FPS</option>
-                        <option>3D Isometric</option>
-                        <option>3D Over Shoulder</option>
-                        <option>3D Third Person</option>
-                        <option>3D Dynamic</option>
-                    </select>
-                    <select>
-                        <option>Single Player</option>
-                        <option>Hosted</option>
-                        <option>Server</option>
-                    </select>
+                <input type="radio" id="regression" name="menu-section" checked>
+                <input type="radio" id="project" name="menu-section">
+                <input type="radio" id="map" name="menu-section">
+                <div class="content regression">
+                    <div class="button" data-hook="RealmFoundry.Test.LaunchSandbox">Run Sandbox Test</div>
                     <div class="toggle">
-                        <label for="allow-mods">Allow Mods</label>
-                        <input type="checkbox" id="allow-mods" checked>
+                        <label for="enable-logs">Enable Debug Logs</label>
+                        <input type="checkbox" id="enable-logs" checked>
                     </div>
-                    <div class="button">Create</div>
+                    <div class="button">View Test Results</div>
                 </div>
-                <div class="content play">
-                    <div class="button">Join Game</div>
-                    <div class="button">Browse Lobbies</div>
-                    <h4>Friends Online</h4>
-                </div>
-                <div class="content edit">
-                    <div class="button">Open Project</div>
-                    <div class="button">Asset Importer</div>
+                <div class="content project">
+                    <div class="button" data-hook="RealmFoundry.Project.Open">Load Project</div>
                     <select>
                         <option>Project1</option>
                         <option>Project2</option>
                     </select>
+                    <div class="button">New Project</div>
+                </div>
+                <div class="content map">
+                    <div class="button" data-hook="RealmFoundry.MapRoom.Launch">Open Map Editor</div>
+                    <div class="toggle">
+                        <label for="grid-snap">Enable Grid Snap</label>
+                        <input type="checkbox" id="grid-snap" checked>
+                    </div>
+                    <div class="button">Import Assets</div>
                 </div>
             </div>
         </div>
