@@ -98,6 +98,7 @@ namespace SiegeEngine.Managers
                 Console.WriteLine($"SceneManager: Unknown scene {e.SceneName}, defaulting to Sandbox");
                 _currentScene = new SandboxScene(_renderContext, _controlContext, _window, _player, _server, _playerMovement, _eventBus, _modelManager);
             }
+            _currentScene.SetPlayer(_player);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
         }
     }

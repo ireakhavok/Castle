@@ -1,4 +1,5 @@
-﻿using Silk.NET.OpenGL;
+﻿//SiegeEngine.Rendering/ShaderSetup.cs
+using Silk.NET.OpenGL;
 using SiegeEngine.Rendering.Shaders;
 using SiegeEngine.ContextManagement;
 

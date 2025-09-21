@@ -1,4 +1,5 @@
-﻿using SiegeEngine.Definitions;
+﻿//SiegeEngine.Managers/ModelManager.cs
+using SiegeEngine.Definitions;
 using SiegeEngine.AssetObjects;
 using SiegeEngine.AssetParsing;
 using SiegeEngine.Rendering;
