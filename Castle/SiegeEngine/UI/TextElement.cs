@@ -10,7 +10,7 @@ namespace SiegeEngine.UI
     public class TextElement : HtmlElement
     {
         public string Content { get; set; }
-        private List<string> _lines;
+        private List<string> _lines = new List<string>();
         private float _lineHeight;
         public TextElement()
         {

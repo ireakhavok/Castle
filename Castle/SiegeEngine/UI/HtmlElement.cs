@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -37,6 +36,19 @@ namespace SiegeEngine.UI
         public bool IsTarget { get; set; }
         private BackgroundRenderer _bgRenderer;
         private string _baseDir;
+        public string GetEffectiveDisplay()
+        {
+            CssStyle effective = Style;
+            if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle ts))
+                effective = ts;
+            if (Checked && PseudoStyles.TryGetValue("checked", out CssStyle cs))
+                effective = cs;
+            if (IsHover && PseudoStyles.TryGetValue("hover", out CssStyle hs))
+                effective = hs;
+            if (IsActive && PseudoStyles.TryGetValue("active", out CssStyle a))
+                effective = a;
+            return effective.Display;
+        }
         private HtmlElement FindContainingBlock()
         {
             HtmlElement current = Parent;
@@ -197,7 +209,7 @@ namespace SiegeEngine.UI
         }
         private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
-            List<HtmlElement> visibleChildren = Children.Where(c => c.Style.Display != "none").ToList();
+            List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             if (visibleChildren.Count == 0) return;
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
             List<HtmlElement> positionedChildren = visibleChildren.Where(c => c.Style.Position == "absolute" || c.Style.Position == "fixed").ToList();
@@ -497,7 +509,7 @@ namespace SiegeEngine.UI
         {
             float currentY = 0;
             float last_bottom = 0;
-            List<HtmlElement> visibleChildren = Children.Where(c => c.Style.Display != "none").ToList();
+            List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
             List<HtmlElement> positionedChildren = visibleChildren.Where(c => c.Style.Position == "absolute" || c.Style.Position == "fixed").ToList();
             for (int i = 0; i < normalChildren.Count; i++)
@@ -552,7 +564,7 @@ namespace SiegeEngine.UI
             float ih = 0;
             Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
             Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
-            List<HtmlElement> visibleChildren = Children.Where(c => c.Style.Display != "none").ToList();
+            List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
             if (normalChildren.Count == 0 && visibleChildren.Count > 0)
             {

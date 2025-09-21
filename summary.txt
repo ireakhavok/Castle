@@ -1882,6 +1882,17 @@ Folder: Castle
  Inherits: None
  Dependencies: System.Drawing, System.Drawing, System.Numerics
  Methods:
+ File: UIQuadRenderer.cs
+ class: UIQuadRenderer (Namespace: SiegeEngine.Rendering)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering.Shaders, System, System.Numerics
+ Methods:
+ - constructor UIQuadRenderer(IRenderContext renderContext, IRenderContext renderContext)
+ Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, GenBuffers, GenVertexArrays, ShaderProgram
+ - void Initialize()
+ Calls: None
+ - void DrawQuad(float posX, float posX, float posY, float sizeX, float sizeY, Vector4 color, float viewportWidth, float viewportHeight)
+ Calls: None
  File: VertexBuffer.cs
  class: VertexBuffer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
@@ -2078,6 +2089,10 @@ Folder: Castle
  Methods:
  - void OnResize(IntPtr win, IntPtr win, int w, int h)
  Calls: ComputeLayout, ComputeLayout
+ - void LoadHtml(string htmlPath, string htmlPath)
+ Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, ApplyUserAgentDefaults, Clear, CollectClickables, HtmlParser, InheritProperties, InitializeElementProperties, Parse, PrepareResources, ProcessSelects
+ - void InitializeElementProperties(HtmlElement root, HtmlElement root)
+ Calls: None
  - void SwitchMenu(string menuName, string menuName)
  Calls: None
  - void ApplyUserAgentDefaults(CssParser cssParser, CssParser cssParser)
@@ -2133,8 +2148,12 @@ Folder: Castle
  Inherits: None
  Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
- - void Apply(string css, string css, HtmlElement root)
- Calls: ApplyToElements, ApplyToElements, ParseProperties, ReadUntil, SkipWhitespaceAndComments
+ - void Apply(string css, string css)
+ Calls: ParseProperties, ParseProperties, ReadUntil, SkipWhitespaceAndComments
+ - void ApplyAll(HtmlElement root, HtmlElement root)
+ Calls: ApplyToElements, ApplyToElements
+ - void ApplyInlineStyles(HtmlElement root, HtmlElement root)
+ Calls: ApplyInline, ApplyInline
  - void SkipWhitespaceAndComments(string css, string css, ref int)
  Calls: None
  - string ReadUntil(string css, string css, ref int, char stop)
@@ -2146,6 +2165,8 @@ Folder: Castle
  - void ApplyToElements(HtmlElement root, HtmlElement root, string selector, string> props, string pseudo)
  Calls: ApplyProperties, ApplyProperties, Clone, Matches
  - bool Matches(HtmlElement elem, HtmlElement elem, string selector)
+ Calls: SimpleMatches, SimpleMatches
+ - bool SimpleMatches(HtmlElement elem, HtmlElement elem, string simple)
  Calls: None
  - void ApplyProperties(CssStyle style, CssStyle style, string> props)
  Calls: ParseColor, ParseColor
@@ -2209,7 +2230,7 @@ Folder: Castle
  - HtmlElement Parse(string html, string html)
  Calls: None
  - void ParseChildren(HtmlElement parent, HtmlElement parent)
- Calls: ApplyInline, ApplyInline, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace
+ Calls: AttachHook, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace
  - constructor HtmlParser()
  Calls: None
  - recursively ParseChildren()
@@ -2260,17 +2281,6 @@ Folder: Castle
  Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: GetTextSize, GetTextSize, RenderText
- File: UIQuadRenderer.cs
- class: UIQuadRenderer (Namespace: SiegeEngine.Rendering)
- Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering.Shaders, System, System.Numerics
- Methods:
- - constructor UIQuadRenderer(IRenderContext renderContext, IRenderContext renderContext)
- Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, GenBuffers, GenVertexArrays, ShaderProgram
- - void Initialize()
- Calls: None
- - void DrawQuad(float posX, float posX, float posY, float sizeX, float sizeY, Vector4 color, float viewportWidth, float viewportHeight)
- Calls: None
  File: MetaFileParser.cs
  class: MetaFileParser (Namespace: SiegeEngine.UnityAssetLoader)
  Inherits: None

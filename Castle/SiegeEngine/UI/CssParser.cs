@@ -44,7 +44,7 @@ namespace SiegeEngine.UI
                     selector = parts[0].Trim();
                     pseudo = parts[1].Trim();
                 }
-                if (pseudo != null && (pseudo == "hover" || pseudo == "active"))
+                if (pseudo != null && (pseudo == "hover" || pseudo == "active" || pseudo == "target" || pseudo == "checked"))
                 {
                     ApplyToElements(root, selector, rule.Props, pseudo);
                 }
