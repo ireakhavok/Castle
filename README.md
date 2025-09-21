@@ -313,3 +313,179 @@ graph LR
     MM -. "Scans Loads" .-> AM[AssetsMods]
     GS -. "Networks Events" .-> NM
 ```
+## Rendering System Class Diagram
+```mermaid
+%%{init: {'theme':'dark'}}%%
+classDiagram
+    class IRenderContext {
+        <<interface>>
+        +Clear(Enum bufferBits)
+        +Viewport(int x, int y, uint width, uint height)
+        +BindTexture(Enum target, uint texture)
+        +DrawElements(Enum mode, int count, Enum type, void* indices)
+        +GetError() Enum
+        +ActiveTexture(Enum texture)
+    }
+
+    class ShaderProgram {
+        +ShaderProgram(IRenderContext context, string vertexSrc, string fragmentSrc)
+        +Use()
+        +SetMatrix4(string name, Matrix4x4 value)
+        +SetUniform(string name, float x, float y, float z, float w)
+        +Dispose()
+    }
+
+    class VertexBuffer {
+        <<IDisposable>>
+        +VertexBuffer(IRenderContext context)
+        +Update(List~Entity~ entities)
+        +Bind()
+        +Dispose()
+    }
+
+    class TextRenderer {
+        +TextRenderer(IRenderContext context, IntPtr window)
+        +Initialize(ShaderProgram shader)
+        +RenderText(string text, float x, float y, float vw, float vh, float fs, Vector4 color, string font)
+        +Dispose()
+    }
+
+    class UIQuadRenderer {
+        +UIQuadRenderer(IRenderContext context)
+        +Initialize()
+        +DrawQuad(float posX, float posY, float sizeX, float sizeY, Vector4 color, float vw, float vh)
+    }
+
+    class SandboxScene {
+        -IRenderContext _renderContext
+        -ShaderProgram _modelShader
+        -ShaderProgram _gridShader
+        +Initialize(int width, int height)
+        +Render(IReadOnlyList~Entity~ entities)
+        +Dispose()
+    }
+
+    SandboxScene --> IRenderContext : uses
+    SandboxScene --> ShaderProgram : creates/uses
+    SandboxScene --> VertexBuffer : binds/draws
+    SandboxScene --> TextRenderer : optional for overlays
+    SandboxScene --> UIQuadRenderer : optional for UI
+```
+## UI/Menu System Flow Diagram
+```mermaid
+%%{init: {'theme':'dark'}}%%
+sequenceDiagram
+    participant Launcher
+    participant MenuSystem
+    participant HtmlParser
+    participant CssParser
+    participant EventBus
+    participant UserInput
+
+    Launcher->>MenuSystem: Initialize() / SwitchMenu("MainMenu")
+    MenuSystem->>HtmlParser: Parse(html)
+    HtmlParser-->>MenuSystem: HtmlElement tree
+    MenuSystem->>CssParser: Apply(cssBlocks) / ApplyAll(tree)
+    CssParser-->>MenuSystem: Styled elements
+    MenuSystem->>MenuSystem: ComputeLayout(vw, vh)
+    MenuSystem->>MenuSystem: CollectClickables()
+
+    loop Update Loop
+        UserInput->>MenuSystem: Mouse position / clicks (via IControlContext)
+        MenuSystem->>MenuSystem: Check hovers/clicks on _clickables
+        alt Click on Element
+            MenuSystem->>MenuSystem: HandleClickableClick(elem)
+            alt data-hook present
+                MenuSystem->>EventBus: Publish(GenericEvent or SwitchSceneEvent)
+            end
+        end
+    end
+
+    MenuSystem->>TextRenderer: RenderText(..)
+    MenuSystem->>UIQuadRenderer: DrawQuad(..)
+```
+## Event System Class Diagram
+```mermaid
+%%{init: {'theme':'dark'}}%%
+classDiagram
+    class IEvent {
+        <<interface>>
+        +string Type
+        +byte[] Serialize()
+        +void Deserialize(byte[] data)
+    }
+
+    class EventBus {
+        -Dictionary~Type, List~object~~ _subscribers
+        -SteamEngine _steamEngine
+        +Subscribe~T~(Action~T~ handler)
+        +Publish~T~(T eventData, bool networkSync)
+        +ProcessNetworkMessage(byte[] data)
+    }
+
+    class MouseInputEvent {
+        +Vector2 Position
+        +MouseButton Button
+        +InputAction Action
+        +ulong SteamId
+        +Serialize() byte[]
+        +Deserialize(byte[] data)
+    }
+
+    class KeyInputEvent {
+        +Key Key
+        +InputAction Action
+        +ulong SteamId
+        +Serialize() byte[]
+        +Deserialize(byte[] data)
+    }
+
+    class EntityMovedEvent {
+        +int EntityId
+        +Vector3 Position
+        +Serialize() byte[]
+        +Deserialize(byte[] data)
+    }
+
+    IEvent <|-- MouseInputEvent
+    IEvent <|-- KeyInputEvent
+    IEvent <|-- EntityMovedEvent
+
+    EventBus --> IEvent : publishes/processes
+    EventBus --> SteamEngine : sends via P2P
+    GameServer --> EventBus : subscribes/publishes (e.g., OnEntityPlaced)
+    MenuSystem --> EventBus : publishes on clicks/hooks
+    SandboxScene --> EventBus : implicit via systems
+```
+## Server Validation System Flow Diagram
+```mermaid
+%%{init: {'theme':'dark'}}%%
+flowchart TD
+    A[Client Sends Action (e.g., Movement/Input)] --> B[GameServer Receives via NetworkManager/EventBus]
+    B --> C[QueueNetworkEvent(IEvent)]
+    C --> D[Update(deltaTime): Dequeue and Publish]
+    D --> E[ServerValidationSystem.Validate* (e.g., Movement/Inventory/Input)]
+    E -->|Valid| F[Update Entity/State, Publish Event (networkSync=true)]
+    E -->|Invalid| G[Log Rejection, Discard]
+    F --> H[DeltaTracker.Update, Serialize Visible Deltas]
+    H --> I[SendToAll via NetworkManager]
+    subgraph GameServer
+    B
+    C
+    D
+    H
+    I
+    end
+    subgraph ServerValidationSystem
+    E
+    end
+```
+```mermaid
+
+```
+```mermaid
+
+```
+```mermaid
+
+```
