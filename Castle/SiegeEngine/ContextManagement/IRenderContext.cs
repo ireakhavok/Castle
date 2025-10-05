@@ -1,10 +1,13 @@
-﻿using System;
-
+﻿// Folder: SiegeEngine.ContextManagement
+// File: IRenderContext.cs
+using System;
 namespace SiegeEngine.ContextManagement
 {
     public unsafe interface IRenderContext
     {
         AbstractRenderEnums Enums { get; }
+        int ViewportWidth { get; }
+        int ViewportHeight { get; }
         uint GenVertexArray();
         void GenVertexArrays(uint n, out uint arrays);
         uint GenBuffer();
@@ -69,5 +72,6 @@ namespace SiegeEngine.ContextManagement
         void GenerateMipmap(int target);
         bool IsExtensionPresent(string extension);
         void GetFloat(int pname, out float param);
+        void Scissor(int x, int y, uint width, uint height);
     }
 }

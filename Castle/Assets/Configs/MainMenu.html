@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Menu</title>
+    <title></title>
     <style>
         * {
             box-sizing: border-box;
@@ -26,7 +26,10 @@
             height: 100vh;
             padding: 40px;
             box-sizing: border-box;
-            background: linear-gradient(to bottom, #1e1e1e, #121212);
+            background-image: url('../Static_Images/Main_Background.jpg');
+            background-repeat: no-repeat;
+            background-position: center center;
+            /*            background: linear-gradient(to bottom, #1e1e1e, #121212);*/
         }
 
         #main {
@@ -37,9 +40,9 @@
             display: flex;
         }
 
-        #settings:target ~ #main {
-            display: none;
-        }
+            #settings:target ~ #main {
+                display: none;
+            }
 
         .menu-container {
             display: flex;
@@ -57,7 +60,8 @@
 
         .content-area {
             flex: 1;
-            padding-left: 40px;
+            padding-left: 0px;
+            padding-right: 50px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -138,9 +142,9 @@
             cursor: pointer;
         }
 
-        select:hover {
-            background: rgba(77, 77, 77, 0.8);
-        }
+            select:hover {
+                background: rgba(77, 77, 77, 0.8);
+            }
 
         .option {
             display: flex;
@@ -149,11 +153,11 @@
             margin-bottom: 30px;
         }
 
-        .option label {
-            font-size: 16px;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
+            .option label {
+                font-size: 16px;
+                margin-bottom: 10px;
+                font-weight: bold;
+            }
 
         .buttons {
             display: flex;
@@ -180,23 +184,23 @@
             cursor: pointer;
         }
 
-        .toggle input {
-            margin-right: 10px;
-        }
+            .toggle input {
+                margin-right: 10px;
+            }
 
-        .toggle:hover {
-            background: rgba(77, 77, 77, 0.8);
-        }
+            .toggle:hover {
+                background: rgba(77, 77, 77, 0.8);
+            }
 
         #settings .button, #settings select, #settings .toggle {
             background: rgba(0, 128, 128, 0.8);
             border: 1px solid rgba(0, 0, 0, 1);
         }
 
-        #settings .button:hover, #settings select:hover, #settings .toggle:hover {
-            background: rgba(255, 255, 255, 0.8);
-            color: #000;
-        }
+            #settings .button:hover, #settings select:hover, #settings .toggle:hover {
+                background: rgba(255, 255, 255, 0.8);
+                color: #000;
+            }
     </style>
 </head>
 <body>
@@ -239,6 +243,7 @@
                 <label for="play" class="button">Play</label>
                 <label for="edit" class="button">Edit</label>
                 <a href="#settings" class="button">Settings</a>
+                <a href="DevMenu.html" class="button">Dev Menu</a>
                 <div class="button">Exit</div>
             </div>
             <div class="content-area">

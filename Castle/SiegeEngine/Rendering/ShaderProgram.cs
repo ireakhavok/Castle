@@ -1,4 +1,6 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.Rendering
+// File: ShaderProgram.cs
+using SiegeEngine.ContextManagement;
 using System;
 using System.Numerics;
 

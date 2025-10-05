@@ -1,16 +1,15 @@
-﻿// Citadel.Server/GameServer.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using Citadel.Network;
 using Citadel.Systems;
-using SiegeEngine.Systems;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
 using SiegeEngine.PlayerSystem;
+using SiegeEngine.Systems;
 using SiegeEngine.ContextManagement;
 
 namespace Citadel.Server
@@ -27,6 +26,7 @@ namespace Citadel.Server
         private readonly EntityDeltaTracker _deltaTracker = new();
         private readonly Dictionary<(int, int), List<Entity>> _spatialGrid = new();
         private const float GridCellSize = 10f;
+        private readonly Queue<IEvent> _networkEventQueue = new Queue<IEvent>();
         public GameServer(EventBus eventBus, NetworkManager networkManager = null)
         {
             _eventBus = eventBus;
@@ -68,6 +68,11 @@ namespace Citadel.Server
         }
         public void Update(float deltaTime)
         {
+            while (_networkEventQueue.Count > 0)
+            {
+                var e = _networkEventQueue.Dequeue();
+                _eventBus.Publish(e, false);
+            }
             foreach (var system in _systems)
             {
                 system.Update(deltaTime);
@@ -397,6 +402,10 @@ namespace Citadel.Server
                 }
             }
             return nearby;
+        }
+        public void QueueNetworkEvent(IEvent e)
+        {
+            _networkEventQueue.Enqueue(e);
         }
     }
 }

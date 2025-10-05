@@ -11,7 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Scenes
 {
     public unsafe class SandboxScene : Scene
@@ -31,15 +30,17 @@ namespace SiegeEngine.Scenes
             _modelManager = modelManager ?? throw new ArgumentNullException(nameof(modelManager));
             _server = server ?? throw new ArgumentNullException(nameof(server));
             _scrollDelta = 0f;
-            var lightingSystem = new LightingSystem(server);
-            foreach (var light in lightingSystem.GetDirectionalLights().ToList())
+            var lightingSystem = _systems.Find(s => s is LightingSystem) as LightingSystem;
+            if (lightingSystem != null)
             {
-                lightingSystem.RemoveLight(light);
+                foreach (var light in lightingSystem.GetDirectionalLights().ToList())
+                {
+                    lightingSystem.RemoveLight(light);
+                }
+                var sun = new LightComponent(LightType.Directional, new Vector3(1f, 1f, 1f), 1.0f, new Vector3(-0.707f, -0.707f, 0.707f));
+                lightingSystem.AddLight(sun);
+                Console.WriteLine("SandboxScene: Added directional light at direction (-0.707, -0.707, 0.707)");
             }
-            var sun = new LightComponent(LightType.Directional, new Vector3(1f, 1f, 1f), 1.0f, new Vector3(-0.707f, -0.707f, 0.707f));
-            lightingSystem.AddLight(sun);
-            Console.WriteLine("SandboxScene: Added directional light at direction (-0.707, -0.707, 0.707)");
-            _systems.Add(lightingSystem);
         }
         public override void Initialize(int width, int height)
         {

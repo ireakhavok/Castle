@@ -1,5 +1,4 @@
-﻿// SiegeEngine/Managers/ModManager.cs
-using SiegeEngine.Definitions;
+﻿using SiegeEngine.Definitions;
 using SiegeEngine.Interfaces;
 using SiegeEngine.UnityAssetLoader;
 using System;
@@ -16,7 +15,6 @@ namespace SiegeEngine.Managers
         private readonly string _solutionDirectory;
         private readonly ISteamEngine _steamEngine;
         private readonly List<ModInfo> _loadedMods;
-
         public ModManager(string modsDirectory, ISteamEngine steamEngine)
         {
             _modsDirectory = modsDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Mods");
@@ -26,9 +24,7 @@ namespace SiegeEngine.Managers
             LoadLocalMods();
             if (_steamEngine != null) LoadWorkshopMods();
         }
-
         public IReadOnlyList<ModInfo> LoadedMods => _loadedMods.AsReadOnly();
-
         public void LoadModels(ModelManager loader)
         {
             foreach (var mod in _loadedMods)
@@ -50,7 +46,6 @@ namespace SiegeEngine.Managers
             Console.WriteLine($"ModManager: Scanning characters path: {charactersPath}, Exists: {Directory.Exists(charactersPath)}");
             loader.ScanDirectory(charactersPath);
         }
-
         private void LoadLocalMods()
         {
             string localModsPath = _modsDirectory;
@@ -93,7 +88,6 @@ namespace SiegeEngine.Managers
                 }
             }
         }
-
         private void LoadWorkshopMods()
         {
             ulong[] subscribedItems = _steamEngine.GetSubscribedWorkshopItems();
@@ -109,7 +103,6 @@ namespace SiegeEngine.Managers
                 }
             }
         }
-
         private void LoadMod(string modJsonPath)
         {
             if (!File.Exists(modJsonPath))
@@ -133,20 +126,18 @@ namespace SiegeEngine.Managers
                 Console.WriteLine($"ModManager: Failed to load mod from {modJsonPath}: {ex.Message}");
             }
         }
-
         private void ProcessUnityAssets(string modPath)
         {
             try
             {
                 var scanner = new UnityAssetScanner();
-                var (files, guidMap) = scanner.ScanDirectoryDetailed(modPath);
+                var files = scanner.ScanDirectory(modPath);
                 Console.WriteLine($"ModManager: Processed Unity assets in {modPath}");
                 Console.WriteLine($"Found {files.Count} files");
-                Console.WriteLine($"GUID map has {guidMap.Count} entries");
                 var modInfo = _loadedMods.Find(m => m.Path == modPath);
                 if (modInfo != null)
                 {
-                    modInfo.UnityAssets = new UnityAssetData { Files = files, GuidMap = guidMap };
+                    modInfo.UnityAssets = new UnityAssetData { Files = files };
                 }
                 var prefabs = files.Where(f => f.Value == UnityAssetFileType.Prefab).Select(f => f.Key).ToList();
                 var prefabReader = new PrefabFileReader();
@@ -168,7 +159,6 @@ namespace SiegeEngine.Managers
                 Console.WriteLine($"ModManager: Error processing Unity assets in {modPath}: {ex.Message}");
             }
         }
-
         public string ResolvePath(string relativePath)
         {
             if (string.IsNullOrEmpty(relativePath)) return null;
@@ -207,7 +197,6 @@ namespace SiegeEngine.Managers
             Console.WriteLine($"ModManager: Path not found for {relativePath}");
             return null;
         }
-
         public string GetMenuConfigPath()
         {
             foreach (var mod in _loadedMods)
@@ -228,15 +217,14 @@ namespace SiegeEngine.Managers
             Console.WriteLine($"ModManager: Menu config path not found");
             return null;
         }
-
         //public List<MenuDefinition> GetAllMenuExtensions()
         //{
-        //    var extensions = new List<MenuDefinition>();
-        //    foreach (var mod in _loadedMods)
-        //    {
-        //        extensions.AddRange(mod.Menus);
-        //    }
-        //    return extensions;
+        // var extensions = new List<MenuDefinition>();
+        // foreach (var mod in _loadedMods)
+        // {
+        // extensions.AddRange(mod.Menus);
+        // }
+        // return extensions;
         //}
     }
 }

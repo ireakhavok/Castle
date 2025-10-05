@@ -1,0 +1,25 @@
+classDiagram
+    class IRenderBackend {
+        <<interface>>
+        +Initialize(windowHandle, width, height)
+        +Render(entities: IReadOnlyList~Entity~)
+        +Resize(width, height)
+        +Dispose()
+    }
+    class IAssetImporter {
+        <<interface>>
+        +ImportFBX(path: string) FBXModel
+        +PreviewAsset(model: FBXModel, camera: CameraController)
+    }
+    class IEventDispatcher {
+        <<interface>>
+        +Dispatch(event: IEvent)
+        +Subscribe(type: Type, handler: Action~IEvent~)
+        +NetworkSerialize(event: IEvent) byte[]
+    }
+    CitadelEngine --> IRenderBackend
+    CitadelEngine --> IAssetImporter
+    CitadelEngine --> IEventDispatcher
+    CastleBuilder --> CitadelEngine
+    Trebuchet --> CitadelEngine : Uses for Menu Rendering
+    Citadel --> IEventDispatcher : For Networked Events

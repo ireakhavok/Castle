@@ -1,7 +1,8 @@
-﻿using Silk.NET.OpenGL;
+﻿// Folder: SiegeEngine.ContextManagement
+// File: OpenGLRenderContext.cs
+using Silk.NET.OpenGL;
 using Silk.NET.GLFW;
 using System;
-
 namespace SiegeEngine.ContextManagement
 {
     public unsafe class OpenGLRenderContext : IRenderContext
@@ -9,9 +10,11 @@ namespace SiegeEngine.ContextManagement
         private readonly GL _gl;
         private readonly Glfw _glfw;
         private readonly AbstractRenderEnums _enums = new OpenGLEnums();
-
+        private int _viewportWidth;
+        private int _viewportHeight;
         public AbstractRenderEnums Enums => _enums;
-
+        public int ViewportWidth => _viewportWidth;
+        public int ViewportHeight => _viewportHeight;
         public OpenGLRenderContext(Glfw glfw, GL gl)
         {
             _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
@@ -45,7 +48,12 @@ namespace SiegeEngine.ContextManagement
         public void DrawElements(int mode, uint count, int type, void* indices) => _gl.DrawElements((PrimitiveType)mode, count, (DrawElementsType)type, indices);
         public void Clear(int mask) => _gl.Clear((ClearBufferMask)mask);
         public void ClearColor(float red, float green, float blue, float alpha) => _gl.ClearColor(red, green, blue, alpha);
-        public void Viewport(int x, int y, uint width, uint height) => _gl.Viewport(x, y, width, height);
+        public void Viewport(int x, int y, uint width, uint height)
+        {
+            _viewportWidth = (int)width;
+            _viewportHeight = (int)height;
+            _gl.Viewport(x, y, width, height);
+        }
         public void Enable(int cap) => _gl.Enable((EnableCap)cap);
         public void Disable(int cap) => _gl.Disable((EnableCap)cap);
         public void BlendFunc(int src, int dst) => _gl.BlendFunc((BlendingFactor)src, (BlendingFactor)dst);
@@ -91,5 +99,6 @@ namespace SiegeEngine.ContextManagement
         public void GenerateMipmap(int target) => _gl.GenerateMipmap((TextureTarget)target);
         public bool IsExtensionPresent(string extension) => _gl.IsExtensionPresent(extension);
         public void GetFloat(int pname, out float param) => _gl.GetFloat((GetPName)pname, out param);
+        public void Scissor(int x, int y, uint width, uint height) => _gl.Scissor(x, y, width, height);
     }
 }
