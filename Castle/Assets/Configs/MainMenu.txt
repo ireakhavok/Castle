@@ -13,7 +13,6 @@
             margin: 0;
             font-family: sans-serif;
             background: #121212;
-
             color: #ffffff;
             overflow: hidden;
         }
@@ -41,15 +40,15 @@
             display: flex;
         }
 
-        #settings:target ~ #main {
-            display: none;
-        }
+            #settings:target ~ #main {
+                display: none;
+            }
 
         .menu-container {
             display: flex;
             width: 100%;
             height: 100%;
-        } 
+        }
 
         .sidebar {
             width: 250px;
@@ -143,9 +142,9 @@
             cursor: pointer;
         }
 
-        select:hover {
-            background: rgba(77, 77, 77, 0.8);
-        }
+            select:hover {
+                background: rgba(77, 77, 77, 0.8);
+            }
 
         .option {
             display: flex;
@@ -154,11 +153,11 @@
             margin-bottom: 30px;
         }
 
-        .option label {
-            font-size: 16px;
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
+            .option label {
+                font-size: 16px;
+                margin-bottom: 10px;
+                font-weight: bold;
+            }
 
         .buttons {
             display: flex;
@@ -185,23 +184,23 @@
             cursor: pointer;
         }
 
-        .toggle input {
-            margin-right: 10px;
-        }
+            .toggle input {
+                margin-right: 10px;
+            }
 
-        .toggle:hover {
-            background: rgba(77, 77, 77, 0.8);
-        }
+            .toggle:hover {
+                background: rgba(77, 77, 77, 0.8);
+            }
 
         #settings .button, #settings select, #settings .toggle {
             background: rgba(0, 128, 128, 0.8);
             border: 1px solid rgba(0, 0, 0, 1);
         }
 
-        #settings .button:hover, #settings select:hover, #settings .toggle:hover {
-            background: rgba(255, 255, 255, 0.8);
-            color: #000;
-        }
+            #settings .button:hover, #settings select:hover, #settings .toggle:hover {
+                background: rgba(255, 255, 255, 0.8);
+                color: #000;
+            }
     </style>
 </head>
 <body>
@@ -244,6 +243,7 @@
                 <label for="play" class="button">Play</label>
                 <label for="edit" class="button">Edit</label>
                 <a href="#settings" class="button">Settings</a>
+                <a href="DevMenu.html" class="button">Dev Menu</a>
                 <div class="button">Exit</div>
             </div>
             <div class="content-area">

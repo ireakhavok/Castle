@@ -1,4 +1,6 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: SiegeEngine.Systems
+// File: MenuSystem.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Managers;
@@ -11,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Systems
 {
     public class MenuSystem : GameSystem
@@ -214,6 +217,7 @@ input[type=""checkbox""] {
         }
         private void CollectClickables(HtmlElement elem)
         {
+            if (elem.GetEffectiveDisplay() == "none") return;
             string classes = elem.Attributes.GetValueOrDefault("class", "");
             if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick"))
             {
@@ -288,6 +292,8 @@ input[type=""checkbox""] {
                         _cssParser.ApplyAll(_currentMenu);
                         InheritProperties(_currentMenu, null);
                         _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
+                        _clickables.Clear();
+                        CollectClickables(_currentMenu);
                         Console.WriteLine($"MenuSystem: Handled anchor click to #{targetId}");
                     }
                 }
@@ -323,6 +329,8 @@ input[type=""checkbox""] {
                             _cssParser.ApplyAll(_currentMenu);
                             InheritProperties(_currentMenu, null);
                             _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
+                            _clickables.Clear();
+                            CollectClickables(_currentMenu);
                             Console.WriteLine($"MenuSystem: Handled radio label click for {forId}");
                         }
                         else if (type == "checkbox")
@@ -331,6 +339,8 @@ input[type=""checkbox""] {
                             _cssParser.ApplyAll(_currentMenu);
                             InheritProperties(_currentMenu, null);
                             _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
+                            _clickables.Clear();
+                            CollectClickables(_currentMenu);
                             Console.WriteLine($"MenuSystem: Handled checkbox label click for {forId}");
                         }
                     }
@@ -345,6 +355,8 @@ input[type=""checkbox""] {
                     _cssParser.ApplyAll(_currentMenu);
                     InheritProperties(_currentMenu, null);
                     _currentMenu.ComputeLayout(0, 0, _vw, _vh, _vw, _vh, _textRenderer, 16f);
+                    _clickables.Clear();
+                    CollectClickables(_currentMenu);
                     Console.WriteLine($"MenuSystem: Handled toggle click");
                 }
             }

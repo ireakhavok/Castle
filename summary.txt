@@ -2015,6 +2015,20 @@ Folder: Castle
  Inherits: None
  Dependencies: System, System, System.Runtime.InteropServices
  Methods:
+ File: EditorScene.cs
+ class: EditorScene (Namespace: SiegeEngine.Scenes)
+ Inherits: Scene
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
+ Methods:
+ - void Initialize(int width, int width, int height)
+ Calls: None
+ - void Update(float deltaTime, float deltaTime)
+ Calls: Clear, Clear, ClearColor
+ - void Render(IReadOnlyList<Entity> entities, IReadOnlyList<Entity> entities)
+ Calls: Dispose, Dispose
+ - void Dispose()
+ Calls: None
  File: SandBoxScene.cs
  class: SandboxScene (Namespace: SiegeEngine.Scenes)
  Inherits: Scene
@@ -2382,4 +2396,20 @@ Folder: Castle
  Calls: Clear, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PollEvents, Render, Resize, RunCallbacks, SceneManager, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
+
+Folder: 
+ File: SandBoxScene - Copy.cs
+ class: SandboxScene (Namespace: SiegeEngine.Scenes)
+ Inherits: Scene
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
+ Methods:
+ - void Initialize(int width, int width, int height)
+ Calls: Viewport, Viewport
+ - void Update(float deltaTime, float deltaTime)
+ Calls: ActiveTexture, ActiveTexture, Bind, BindTexture, BindVertexArray, Clear, Disable, DrawArrays, DrawElements, Enable, GetEntityById, GetError, SetMatrix4, SetUniform, TryGetModelData, Use
+ - void Render(IReadOnlyList<Entity> entities, IReadOnlyList<Entity> entities)
+ Calls: SetUniform, SetUniform
+ - void Dispose()
+ Calls: Dispose, Dispose
 

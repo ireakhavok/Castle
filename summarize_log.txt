@@ -94,6 +94,11 @@ Found: net9.0
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\bin\Debug\net9.0
 Found: .
 Found: ..
+Found: CastleBuilder.deps.json
+Found: CastleBuilder.dll
+Found: CastleBuilder.exe
+Found: CastleBuilder.pdb
+Found: CastleBuilder.runtimeconfig.json
 Found: Release
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\bin\Release
 Found: .
@@ -220,15 +225,50 @@ Found: Assets
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets
 Found: .
 Found: ..
+Found: Characters
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets\Characters
+Found: .
+Found: ..
+Found: arrow_player.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets\Characters\arrow_player.fbm
+Found: .
+Found: ..
+Found: arrow_player_texture.png
+Found: arrow_player_UV.png
+Found: Man_Mesh.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets\Characters\Man_Mesh.fbm
+Found: .
+Found: ..
+Found: cube_test.png
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Ao.tga
+Found: Man_Body_Metallic.tga
+Found: Man_Body_Normals.tga
+Found: Man_Cloth_Down_Albedo_01.tga
+Found: Man_Cloth_Down_Albedo_02.tga
+Found: Man_Cloth_Down_Albedo_03.tga
+Found: Man_Cloth_Down_Ao.tga
+Found: Man_Cloth_Down_Metallic.tga
+Found: Man_Cloth_Down_Normals.tga
+Found: Man_Cloth_Up_Albedo_01.tga
+Found: Man_Cloth_Up_Albedo_02.tga
+Found: Man_Cloth_Up_Albedo_03.tga
+Found: Man_Cloth_Up_Ao.tga
+Found: Man_Cloth_Up_Metallic.tga
+Found: Man_Cloth_Up_Normals.tga
+Found: man_mesh.fbx
+Found: man_mesh_arrow.fbx
+Found: man_mesh_arrow_old.fbx
 Found: Configs
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets\Configs
 Found: .
 Found: ..
+Found: DevMenu.html
 Found: MainMenu.html
-Found: MainMenu.json
 Found: MainMenu.txt
+Found: MainMenu_archive.html
+Found: MainMenu_new.html
 Found: MainMenu_old.html
-Found: MainMenu_Production.html
 Found: MainMenu_production.txt
 Found: testing
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net9.0\win-x64\Assets\Configs\testing
@@ -248,207 +288,10 @@ Found: Citadel.deps.json
 Found: Citadel.dll
 Found: Citadel.exe
 Found: Citadel.pdb
-Found: Citadel.runtimeconfig.json
-Found: clretwrc.dll
-Found: clrgc.dll
-Found: clrgcexp.dll
-Found: clrjit.dll
-Found: coreclr.dll
-Found: createdump.exe
-Found: glfw3.dll
-Found: hostfxr.dll
-Found: hostpolicy.dll
-Found: Microsoft.CSharp.dll
-Found: Microsoft.DiaSymReader.Native.amd64.dll
-Found: Microsoft.DotNet.PlatformAbstractions.dll
-Found: Microsoft.Extensions.DependencyModel.dll
-Found: Microsoft.VisualBasic.Core.dll
-Found: Microsoft.VisualBasic.dll
-Found: Microsoft.Win32.Primitives.dll
-Found: Microsoft.Win32.Registry.dll
-Found: Microsoft.Win32.SystemEvents.dll
-Found: mscordaccore.dll
-Found: mscordaccore_amd64_amd64_9.0.825.36511.dll
-Found: mscordbi.dll
-Found: mscorlib.dll
-Found: mscorrc.dll
-Found: msquic.dll
-Found: netstandard.dll
 Found: SiegeEngine.dll
 Found: SiegeEngine.pdb
-Found: Silk.NET.Core.dll
-Found: Silk.NET.GLFW.dll
-Found: Silk.NET.Maths.dll
-Found: Silk.NET.OpenGL.dll
 Found: steam_api64.dll
 Found: steam_appid.txt
-Found: System.AppContext.dll
-Found: System.Buffers.dll
-Found: System.Collections.Concurrent.dll
-Found: System.Collections.dll
-Found: System.Collections.Immutable.dll
-Found: System.Collections.NonGeneric.dll
-Found: System.Collections.Specialized.dll
-Found: System.ComponentModel.Annotations.dll
-Found: System.ComponentModel.DataAnnotations.dll
-Found: System.ComponentModel.dll
-Found: System.ComponentModel.EventBasedAsync.dll
-Found: System.ComponentModel.Primitives.dll
-Found: System.ComponentModel.TypeConverter.dll
-Found: System.Configuration.dll
-Found: System.Console.dll
-Found: System.Core.dll
-Found: System.Data.Common.dll
-Found: System.Data.DataSetExtensions.dll
-Found: System.Data.dll
-Found: System.Diagnostics.Contracts.dll
-Found: System.Diagnostics.Debug.dll
-Found: System.Diagnostics.DiagnosticSource.dll
-Found: System.Diagnostics.FileVersionInfo.dll
-Found: System.Diagnostics.Process.dll
-Found: System.Diagnostics.StackTrace.dll
-Found: System.Diagnostics.TextWriterTraceListener.dll
-Found: System.Diagnostics.Tools.dll
-Found: System.Diagnostics.TraceSource.dll
-Found: System.Diagnostics.Tracing.dll
-Found: System.dll
-Found: System.Drawing.Common.dll
-Found: System.Drawing.dll
-Found: System.Drawing.Primitives.dll
-Found: System.Dynamic.Runtime.dll
-Found: System.Formats.Asn1.dll
-Found: System.Formats.Tar.dll
-Found: System.Globalization.Calendars.dll
-Found: System.Globalization.dll
-Found: System.Globalization.Extensions.dll
-Found: System.IO.Compression.Brotli.dll
-Found: System.IO.Compression.dll
-Found: System.IO.Compression.FileSystem.dll
-Found: System.IO.Compression.Native.dll
-Found: System.IO.Compression.ZipFile.dll
-Found: System.IO.dll
-Found: System.IO.FileSystem.AccessControl.dll
-Found: System.IO.FileSystem.dll
-Found: System.IO.FileSystem.DriveInfo.dll
-Found: System.IO.FileSystem.Primitives.dll
-Found: System.IO.FileSystem.Watcher.dll
-Found: System.IO.IsolatedStorage.dll
-Found: System.IO.MemoryMappedFiles.dll
-Found: System.IO.Pipelines.dll
-Found: System.IO.Pipes.AccessControl.dll
-Found: System.IO.Pipes.dll
-Found: System.IO.UnmanagedMemoryStream.dll
-Found: System.Linq.dll
-Found: System.Linq.Expressions.dll
-Found: System.Linq.Parallel.dll
-Found: System.Linq.Queryable.dll
-Found: System.Memory.dll
-Found: System.Net.dll
-Found: System.Net.Http.dll
-Found: System.Net.Http.Json.dll
-Found: System.Net.HttpListener.dll
-Found: System.Net.Mail.dll
-Found: System.Net.NameResolution.dll
-Found: System.Net.NetworkInformation.dll
-Found: System.Net.Ping.dll
-Found: System.Net.Primitives.dll
-Found: System.Net.Quic.dll
-Found: System.Net.Requests.dll
-Found: System.Net.Security.dll
-Found: System.Net.ServicePoint.dll
-Found: System.Net.Sockets.dll
-Found: System.Net.WebClient.dll
-Found: System.Net.WebHeaderCollection.dll
-Found: System.Net.WebProxy.dll
-Found: System.Net.WebSockets.Client.dll
-Found: System.Net.WebSockets.dll
-Found: System.Numerics.dll
-Found: System.Numerics.Vectors.dll
-Found: System.ObjectModel.dll
-Found: System.Private.CoreLib.dll
-Found: System.Private.DataContractSerialization.dll
-Found: System.Private.Uri.dll
-Found: System.Private.Windows.Core.dll
-Found: System.Private.Xml.dll
-Found: System.Private.Xml.Linq.dll
-Found: System.Reflection.DispatchProxy.dll
-Found: System.Reflection.dll
-Found: System.Reflection.Emit.dll
-Found: System.Reflection.Emit.ILGeneration.dll
-Found: System.Reflection.Emit.Lightweight.dll
-Found: System.Reflection.Extensions.dll
-Found: System.Reflection.Metadata.dll
-Found: System.Reflection.Primitives.dll
-Found: System.Reflection.TypeExtensions.dll
-Found: System.Resources.Reader.dll
-Found: System.Resources.ResourceManager.dll
-Found: System.Resources.Writer.dll
-Found: System.Runtime.CompilerServices.Unsafe.dll
-Found: System.Runtime.CompilerServices.VisualC.dll
-Found: System.Runtime.dll
-Found: System.Runtime.Extensions.dll
-Found: System.Runtime.Handles.dll
-Found: System.Runtime.InteropServices.dll
-Found: System.Runtime.InteropServices.JavaScript.dll
-Found: System.Runtime.InteropServices.RuntimeInformation.dll
-Found: System.Runtime.Intrinsics.dll
-Found: System.Runtime.Loader.dll
-Found: System.Runtime.Numerics.dll
-Found: System.Runtime.Serialization.dll
-Found: System.Runtime.Serialization.Formatters.dll
-Found: System.Runtime.Serialization.Json.dll
-Found: System.Runtime.Serialization.Primitives.dll
-Found: System.Runtime.Serialization.Xml.dll
-Found: System.Security.AccessControl.dll
-Found: System.Security.Claims.dll
-Found: System.Security.Cryptography.Algorithms.dll
-Found: System.Security.Cryptography.Cng.dll
-Found: System.Security.Cryptography.Csp.dll
-Found: System.Security.Cryptography.dll
-Found: System.Security.Cryptography.Encoding.dll
-Found: System.Security.Cryptography.OpenSsl.dll
-Found: System.Security.Cryptography.Primitives.dll
-Found: System.Security.Cryptography.X509Certificates.dll
-Found: System.Security.dll
-Found: System.Security.Principal.dll
-Found: System.Security.Principal.Windows.dll
-Found: System.Security.SecureString.dll
-Found: System.ServiceModel.Web.dll
-Found: System.ServiceProcess.dll
-Found: System.Text.Encoding.CodePages.dll
-Found: System.Text.Encoding.dll
-Found: System.Text.Encoding.Extensions.dll
-Found: System.Text.Encodings.Web.dll
-Found: System.Text.Json.dll
-Found: System.Text.RegularExpressions.dll
-Found: System.Threading.Channels.dll
-Found: System.Threading.dll
-Found: System.Threading.Overlapped.dll
-Found: System.Threading.Tasks.Dataflow.dll
-Found: System.Threading.Tasks.dll
-Found: System.Threading.Tasks.Extensions.dll
-Found: System.Threading.Tasks.Parallel.dll
-Found: System.Threading.Thread.dll
-Found: System.Threading.ThreadPool.dll
-Found: System.Threading.Timer.dll
-Found: System.Transactions.dll
-Found: System.Transactions.Local.dll
-Found: System.ValueTuple.dll
-Found: System.Web.dll
-Found: System.Web.HttpUtility.dll
-Found: System.Windows.dll
-Found: System.Windows.Extensions.dll
-Found: System.Xml.dll
-Found: System.Xml.Linq.dll
-Found: System.Xml.ReaderWriter.dll
-Found: System.Xml.Serialization.dll
-Found: System.Xml.XDocument.dll
-Found: System.Xml.XmlDocument.dll
-Found: System.Xml.XmlSerializer.dll
-Found: System.Xml.XPath.dll
-Found: System.Xml.XPath.XDocument.dll
-Found: WindowsBase.dll
-Found: YamlDotNet.dll
 Found: Release
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Release
 Found: .
@@ -734,12 +577,12 @@ Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\D
 Found: Citadel.AssemblyInfoInputs.cache
 Found: Citadel.assets.cache
 Found: Citadel.csproj.AssemblyReference.cache
+Found: Citadel.csproj.BuildWithSkipAnalyzers
 Found: Citadel.csproj.CoreCompileInputs.cache
 Found: Citadel.csproj.FileListAbsolute.txt
 Found: Citadel.csproj.Up2Date
 Found: Citadel.dll
 Found: Citadel.GeneratedMSBuildEditorConfig.editorconfig
-Found: Citadel.genruntimeconfig.cache
 Found: Citadel.GlobalUsings.g.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.GlobalUsings.g.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj\Debug\net9.0\win-x64\Citadel.GlobalUsings.g.cs
@@ -2478,7 +2321,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\M
 Found: ModelManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModelManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModelManager.cs
-Read 48983 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModelManager.cs
+Read 49022 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModelManager.cs
 Namespace: SiegeEngine.Managers
 Found 11 dependencies
 Class ModelManager: 15 methods
@@ -2496,7 +2339,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\M
 Found: SceneManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
-Read 4473 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
+Read 4519 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
 Namespace: SiegeEngine.Managers
 Found 12 dependencies
 Class SceneManager: 6 methods
@@ -2732,7 +2575,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: ShaderProgram.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
-Read 6651 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
+Read 6652 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
 Namespace: SiegeEngine.Rendering
 Found 3 dependencies
 Class ShaderProgram: 7 methods
@@ -2792,7 +2635,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: ShaderSetup.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderSetup.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderSetup.cs
-Read 974 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderSetup.cs
+Read 1013 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderSetup.cs
 Namespace: SiegeEngine.Rendering
 Found 3 dependencies
 Class ShaderSetup: 0 methods
@@ -2869,10 +2712,18 @@ Found: Scenes
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes
 Found: .
 Found: ..
+Found: EditorScene.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
+Read 1372 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
+Namespace: SiegeEngine.Scenes
+Found 13 dependencies
+Class EditorScene: 4 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
 Found: SandBoxScene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
-Read 11575 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
+Read 11659 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
 Namespace: SiegeEngine.Scenes
 Found 13 dependencies
 Class SandboxScene: 4 methods
@@ -3430,6 +3281,14 @@ Found: Next_steps_first_IDE.txt
 Found: Panel.txt
 Found: Prompt.txt
 Found: README.md
+Found: SandBoxScene - Copy.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
+Read 11659 chars from: C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
+Namespace: SiegeEngine.Scenes
+Found 13 dependencies
+Class SandboxScene: 4 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
 Found: SummarizeRepo
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\SummarizeRepo
 Found: .
@@ -3444,5 +3303,5 @@ Found: summaryV2.txt
 Found: SummarizeRepo.exe
 Found: summarize_log.txt
 Found: summary.txt
-Writing output for 1 folders
+Writing output for 2 folders
 Scan complete
