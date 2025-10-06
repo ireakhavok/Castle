@@ -856,6 +856,8 @@ Found: Models
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\Mods\Models
 Found: .
 Found: ..
+Found: ReadingChamber.dll
+Found: ReadingChamber.pdb
 Found: runtimes
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\Debug\net9.0\runtimes
 Found: .
@@ -1441,9 +1443,9 @@ Found: ..
 Found: AssetViewingPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
-Read 8031 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
+Read 17357 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
 Namespace: ReadingChamber
-Found 10 dependencies
+Found 11 dependencies
 Class AssetViewerPanel: 6 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
 Found: bin
@@ -1458,9 +1460,78 @@ Found: net9.0
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Debug\net9.0
 Found: .
 Found: ..
+Found: Assets
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Debug\net9.0\Assets
+Found: .
+Found: ..
+Found: Characters
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Debug\net9.0\Assets\Characters
+Found: .
+Found: ..
+Found: arrow_player.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Debug\net9.0\Assets\Characters\arrow_player.fbm
+Found: .
+Found: ..
+Found: arrow_player_texture.png
+Found: arrow_player_UV.png
+Found: Man_Mesh.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Debug\net9.0\Assets\Characters\Man_Mesh.fbm
+Found: .
+Found: ..
+Found: cube_test.png
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Ao.tga
+Found: Man_Body_Metallic.tga
+Found: Man_Body_Normals.tga
+Found: Man_Cloth_Down_Albedo_01.tga
+Found: Man_Cloth_Down_Albedo_02.tga
+Found: Man_Cloth_Down_Albedo_03.tga
+Found: Man_Cloth_Down_Ao.tga
+Found: Man_Cloth_Down_Metallic.tga
+Found: Man_Cloth_Down_Normals.tga
+Found: Man_Cloth_Up_Albedo_01.tga
+Found: Man_Cloth_Up_Albedo_02.tga
+Found: Man_Cloth_Up_Albedo_03.tga
+Found: Man_Cloth_Up_Ao.tga
+Found: Man_Cloth_Up_Metallic.tga
+Found: Man_Cloth_Up_Normals.tga
+Found: man_mesh.fbx
+Found: man_mesh_arrow.fbx
+Found: man_mesh_arrow_old.fbx
+Found: Configs
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Debug\net9.0\Assets\Configs
+Found: .
+Found: ..
+Found: DevMenu.html
+Found: DevMenu.txt
+Found: MainMenu.html
+Found: MainMenu.txt
+Found: MainMenu_archive.html
+Found: MainMenu_new.html
+Found: MainMenu_old.html
+Found: MainMenu_production.txt
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Debug\net9.0\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
+Found: Static_Images
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Debug\net9.0\Assets\Static_Images
+Found: .
+Found: ..
+Found: DirtPath2.jpg
+Found: DirtPathTexture.jpg
+Found: Main_Background.jpg
+Found: main_background_grok_lol.jpg
+Found: Citadel.exe
 Found: ReadingChamber.deps.json
 Found: ReadingChamber.dll
 Found: ReadingChamber.pdb
+Found: SiegeEngine.dll
+Found: SiegeEngine.pdb
+Found: steam_api64.dll
+Found: steam_appid.txt
 Found: Release
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Release
 Found: .
@@ -1482,6 +1553,7 @@ Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\o
 Found: .
 Found: ..
 Found: .NETCoreApp,Version=v9.0.AssemblyAttributes.cs
+Found: ReadingC.E5EF87A7.Up2Date
 Found: ReadingChamber.AssemblyInfo.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Debug\net9.0\ReadingChamber.AssemblyInfo.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Debug\net9.0\ReadingChamber.AssemblyInfo.cs
@@ -1492,6 +1564,7 @@ Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChambe
 Found: ReadingChamber.AssemblyInfoInputs.cache
 Found: ReadingChamber.assets.cache
 Found: ReadingChamber.csproj.AssemblyReference.cache
+Found: ReadingChamber.csproj.BuildWithSkipAnalyzers
 Found: ReadingChamber.csproj.CoreCompileInputs.cache
 Found: ReadingChamber.csproj.FileListAbsolute.txt
 Found: ReadingChamber.dll
@@ -2156,6 +2229,14 @@ Namespace: SiegeEngine.Events
 Found 3 dependencies
 Class CustomEvent: 2 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\CustomEvent.cs
+Found: EntityAddedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityAddedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityAddedEvent.cs
+Read 1730 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityAddedEvent.cs
+Namespace: SiegeEngine.Events
+Found 5 dependencies
+Class EntityAddedEvent: 3 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityAddedEvent.cs
 Found: EntityMovedEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityMovedEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityMovedEvent.cs
@@ -2172,6 +2253,14 @@ Namespace: SiegeEngine.Events
 Found 3 dependencies
 Class EntityPlacedEvent: 3 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityPlacedEvent.cs
+Found: EntityRemovedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityRemovedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityRemovedEvent.cs
+Read 744 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityRemovedEvent.cs
+Namespace: SiegeEngine.Events
+Found 2 dependencies
+Class EntityRemovedEvent: 3 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityRemovedEvent.cs
 Found: EventBus.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
@@ -2203,6 +2292,14 @@ Namespace: SiegeEngine.Events
 Found 2 dependencies
 Class ItemPickedUpEvent: 3 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ItemPickedUpEvent.cs
+Found: MovementRequestEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\MovementRequestEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\MovementRequestEvent.cs
+Read 1927 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\MovementRequestEvent.cs
+Namespace: SiegeEngine.Events
+Found 4 dependencies
+Class MovementRequestEvent: 3 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\MovementRequestEvent.cs
 Found: OpenPanelEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\OpenPanelEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\OpenPanelEvent.cs
@@ -2401,7 +2498,7 @@ Found: ..
 Found: ClientGameServerProxy.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
-Read 2498 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
+Read 2501 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
 Namespace: SiegeEngine.Networking
 Found 6 dependencies
 Class ClientGameServerProxy: 11 methods
@@ -2625,6 +2722,14 @@ Found: Shaders
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders
 Found: .
 Found: ..
+Found: AssetShader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\AssetShader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\AssetShader.cs
+Read 2839 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\AssetShader.cs
+Namespace: SiegeEngine.Rendering.Shaders
+Found 0 dependencies
+Class AssetShader: 2 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\AssetShader.cs
 Found: EditorSceneShader.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\EditorSceneShader.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\EditorSceneShader.cs

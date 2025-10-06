@@ -140,18 +140,18 @@ Folder: Castle
  class: AssetViewerPanel (Namespace: ReadingChamber)
  Inherits: IPanel
     
- Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, System, System.Collections.Generic, System.IO, System.Numerics
+ Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, System, System.Collections.Generic, System.IO, System.Numerics
  Methods:
  - constructor AssetViewerPanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
- Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, BuildModelFromForest, EnableVertexAttribArray, GenBuffer, GenVertexArray, Load, VertexAttribPointer
+ Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, BuildModelFromForest, EnableVertexAttribArray, GenBuffer, GenVertexArray, Load, ShaderProgram, VertexAttribPointer
  - void Init()
- Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, EnableVertexAttribArray, GenBuffer, GenVertexArray, VertexAttribPointer
+ Calls: None
  - void Update(float deltaTime, float deltaTime)
- Calls: GetBoneTransforms, GetBoneTransforms, UpdateTransforms
+ Calls: None
  - void Render()
  Calls: GetTransforms, GetTransforms, SetMatrix4Array
  - void Dispose()
- Calls: DeleteBuffer, DeleteBuffer, DeleteVertexArray
+ Calls: DeleteBuffer, DeleteBuffer, DeleteTexture, DeleteVertexArray
  - void Detach()
  Calls: None
  File: Class1.cs
@@ -1000,6 +1000,18 @@ Folder: Castle
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
  Calls: None
+ File: EntityAddedEvent.cs
+ class: EntityAddedEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, System, System.Collections.Generic, System.Text, System.Text.Json
+ Methods:
+ - constructor EntityAddedEvent(Entity entity, Entity entity)
+ Calls: None
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
  File: EntityMovedEvent.cs
  class: EntityMovedEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
@@ -1019,6 +1031,18 @@ Folder: Castle
  Dependencies: System, System, System.Numerics, System.Text.Json
  Methods:
  - constructor EntityPlacedEvent(int entityId, int entityId, string type, Vector3 position, bool isPreview)
+ Calls: Serialize, Serialize
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: EntityRemovedEvent.cs
+ class: EntityRemovedEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: System.Text, System.Text, System.Text.Json
+ Methods:
+ - constructor EntityRemovedEvent(int id, int id)
  Calls: Serialize, Serialize
  - byte[] Serialize()
  Calls: None
@@ -1127,6 +1151,18 @@ Folder: Castle
  Dependencies: System, System, System.Text.Json
  Methods:
  - constructor ItemPickedUpEvent(int entityId, int entityId, string itemId)
+ Calls: Serialize, Serialize
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: MovementRequestEvent.cs
+ class: MovementRequestEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text, System.Text.Json
+ Methods:
+ - constructor MovementRequestEvent(int entityId, int entityId, Vector2 position, Quaternion rotation, ulong steamId)
  Calls: Serialize, Serialize
  - byte[] Serialize()
  Calls: None
@@ -1525,11 +1561,11 @@ Folder: Castle
  Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
  Methods:
  - constructor ClientGameServerProxy(EventBus eventBus, EventBus eventBus)
- Calls: None
+ Calls: EntityAddedEvent, EntityAddedEvent
  - void AddEntity(Entity entity, Entity entity)
- Calls: None
+ Calls: EntityRemovedEvent, EntityRemovedEvent
  - void RemoveEntity(int id, int id)
- Calls: None
+ Calls: EntityRemovedEvent, EntityRemovedEvent
  - IReadOnlyList<Entity> GetEntities()
  Calls: None
  - Entity GetEntityById(int id, int id)
@@ -1537,7 +1573,7 @@ Folder: Castle
  - void AddSystem(GameSystem system, GameSystem system)
  Calls: None
  - void Update(float deltaTime, float deltaTime)
- Calls: None
+ Calls: MovementRequestEvent, MovementRequestEvent
  - bool ValidateAndUpdateMovement(int entityId, int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
  Calls: None
  - bool ValidateInventory(int entityId, int entityId, string action, object data)
@@ -1900,6 +1936,15 @@ Folder: Castle
  Calls: None
  - void Dispose()
  Calls: DeleteProgram, DeleteProgram
+ File: AssetShader.cs
+ class: AssetShader (Namespace: SiegeEngine.Rendering.Shaders)
+ Inherits: None
+ Dependencies: None
+ Methods:
+ - void main()
+ Calls: None
+ - void main()
+ Calls: None
  File: EditorSceneShader.cs
  class: EditorSceneShader (Namespace: SiegeEngine.Rendering.Shaders)
  Inherits: None
