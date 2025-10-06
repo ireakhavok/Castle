@@ -1,6 +1,7 @@
 ﻿// Folder: SiegeEngine.ContextManagement
 // File: IRenderContext.cs
 using System;
+
 namespace SiegeEngine.ContextManagement
 {
     public unsafe interface IRenderContext
@@ -19,6 +20,7 @@ namespace SiegeEngine.ContextManagement
         void EnableVertexAttribArray(uint index);
         void DisableVertexAttribArray(uint index);
         void VertexAttribPointer(uint index, int size, int type, bool normalized, uint stride, void* pointer);
+        void VertexAttribIPointer(uint index, int size, int type, uint stride, void* pointer);
         void DeleteVertexArray(uint array);
         void DeleteBuffer(uint buffer);
         void DeleteBuffers(uint n, uint* buffers);
@@ -73,5 +75,6 @@ namespace SiegeEngine.ContextManagement
         bool IsExtensionPresent(string extension);
         void GetFloat(int pname, out float param);
         void Scissor(int x, int y, uint width, uint height);
+        void CullFace(int mode);
     }
 }

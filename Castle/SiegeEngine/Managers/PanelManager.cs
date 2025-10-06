@@ -1,8 +1,8 @@
 ﻿// Folder: SiegeEngine.Managers
 // File: PanelManager.cs
 using SiegeEngine.ContextManagement;
+using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
-using SiegeEngine.Rendering;
 using System;
 using System.Collections.Generic;
 
@@ -14,12 +14,20 @@ namespace SiegeEngine.Managers
         private readonly IRenderContext _renderContext;
         private readonly IControlContext _controlContext;
         private readonly IntPtr _window;
+        private readonly EventBus _eventBus;
 
-        public PanelManager(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
+        public PanelManager(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _window = window;
+            _eventBus = eventBus;
+            _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
+        }
+
+        private void OnOpenPanel(OpenPanelEvent e)
+        {
+            AddPanel(e.Panel);
         }
 
         public void AddPanel(IPanel panel)
