@@ -3,7 +3,6 @@
 using SiegeEngine.ContextManagement;
 using System;
 using System.Numerics;
-
 namespace SiegeEngine.Rendering
 {
     public class ShaderProgram : IDisposable
@@ -117,6 +116,40 @@ namespace SiegeEngine.Rendering
             fixed (float* matrixPtr = matrixArray)
             {
                 _renderContext.UniformMatrix4(location, 1, false, matrixPtr);
+            }
+        }
+        public unsafe void SetMatrix4Array(string name, Matrix4x4[] matrices)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
+            int location = _renderContext.GetUniformLocation(_program, name);
+            if (location == -1)
+                return;
+            float[] data = new float[matrices.Length * 16];
+            for (int i = 0; i < matrices.Length; i++)
+            {
+                data[i * 16 + 0] = matrices[i].M11;
+                data[i * 16 + 1] = matrices[i].M12;
+                data[i * 16 + 2] = matrices[i].M13;
+                data[i * 16 + 3] = matrices[i].M14;
+                data[i * 16 + 4] = matrices[i].M21;
+                data[i * 16 + 5] = matrices[i].M22;
+                data[i * 16 + 6] = matrices[i].M23;
+                data[i * 16 + 7] = matrices[i].M24;
+                data[i * 16 + 8] = matrices[i].M31;
+                data[i * 16 + 9] = matrices[i].M32;
+                data[i * 16 + 10] = matrices[i].M33;
+                data[i * 16 + 11] = matrices[i].M34;
+                data[i * 16 + 12] = matrices[i].M41;
+                data[i * 16 + 13] = matrices[i].M42;
+                data[i * 16 + 14] = matrices[i].M43;
+                data[i * 16 + 15] = matrices[i].M44;
+            }
+            fixed (float* ptr = data)
+            {
+                _renderContext.UniformMatrix4(location, (uint)matrices.Length, false, ptr);
             }
         }
         public void Dispose()

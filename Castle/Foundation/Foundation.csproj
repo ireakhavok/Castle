@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ReadingChamber\ReadingChamber.csproj" />
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
     <ProjectReference Include="..\Trebuchet\Trebuchet.csproj" />
   </ItemGroup>

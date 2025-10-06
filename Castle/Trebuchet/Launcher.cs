@@ -1,4 +1,6 @@
-﻿using SiegeEngine.ContextManagement;
+﻿// Folder: Trebuchet
+// File: Launcher.cs
+using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
@@ -33,6 +35,7 @@ namespace Trebuchet
         private ContextManager _contextManager;
         private Process _serverProcess;
         private SceneManager _sceneManager;
+        private PanelManager _panelManager;
         public void Start(string context)
         {
             try
@@ -74,6 +77,8 @@ namespace Trebuchet
                     _menuSystem = new MenuSystem(_settingsManager, _modManager, _eventBus, _controlContext, _window, _renderContext, configPath);
                     _menuSystem.Initialize();
                     _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuSystem);
+                    _panelManager = new PanelManager(_renderContext, _controlContext, _window);
+                    _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
                         if (_settingsManager.AllowResize)
@@ -102,12 +107,14 @@ namespace Trebuchet
                         _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
                         _renderContext.Disable(_renderContext.Enums.DepthTest);
                         _sceneManager.Update(deltaTime);
+                        _panelManager.Update(deltaTime);
                         _sceneManager.Render();
                         if (_menuSystem.Visible)
                         {
                             _menuSystem.Update(deltaTime);
                             _menuSystem.Render();
                         }
+                        _panelManager.Render();
                         _renderContext.Enable(_renderContext.Enums.DepthTest);
                         _controlContext.SwapBuffers(_window);
                     }
@@ -124,6 +131,10 @@ namespace Trebuchet
                 _settingsManager?.SaveSettings();
                 _contextManager?.Terminate();
             }
+        }
+        private void OnOpenPanel(OpenPanelEvent e)
+        {
+            _panelManager.AddPanel(e.Panel);
         }
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr LoadLibrary(string lpFileName);

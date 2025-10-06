@@ -57,6 +57,7 @@ Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs
 Found: .
 Found: ..
 Found: DevMenu.html
+Found: DevMenu.txt
 Found: MainMenu.html
 Found: MainMenu.txt
 Found: MainMenu_archive.html
@@ -211,6 +212,10 @@ Found: .
 Found: ..
 Found: Debug
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug
+Found: .
+Found: ..
+Found: net8.0
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin\Debug\net8.0
 Found: .
 Found: ..
 Found: net9.0
@@ -809,6 +814,7 @@ Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin\D
 Found: .
 Found: ..
 Found: DevMenu.html
+Found: DevMenu.txt
 Found: MainMenu.html
 Found: MainMenu.txt
 Found: MainMenu_archive.html
@@ -1432,6 +1438,14 @@ Found: ReadingChamber
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber
 Found: .
 Found: ..
+Found: AssetViewingPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
+Read 8031 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
+Namespace: ReadingChamber
+Found 10 dependencies
+Class AssetViewerPanel: 6 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
 Found: bin
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin
 Found: .
@@ -1455,14 +1469,6 @@ Found: net9.0
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin\Release\net9.0
 Found: .
 Found: ..
-Found: Class1.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\Class1.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\Class1.cs
-Read 55 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\Class1.cs
-Namespace: ReadingChamber
-Found 0 dependencies
-Class Class1: 0 methods
-Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\Class1.cs
 Found: obj
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj
 Found: .
@@ -1485,6 +1491,7 @@ Found 2 dependencies
 Found 0 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj\Debug\net9.0\ReadingChamber.AssemblyInfo.cs
 Found: ReadingChamber.AssemblyInfoInputs.cache
 Found: ReadingChamber.assets.cache
+Found: ReadingChamber.csproj.AssemblyReference.cache
 Found: ReadingChamber.csproj.CoreCompileInputs.cache
 Found: ReadingChamber.csproj.FileListAbsolute.txt
 Found: ReadingChamber.dll
@@ -1731,10 +1738,10 @@ Found 9 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\A
 Found: FBXParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParser.cs
-Read 2725 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParser.cs
+Read 22090 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParser.cs
 Namespace: SiegeEngine.AssetParsing
-Found 7 dependencies
-Class FBXParser: 1 methods
+Found 8 dependencies
+Class FBXParser: 2 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParser.cs
 Found: FBXParserBase.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParserBase.cs
@@ -1823,6 +1830,7 @@ Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin\
 Found: .
 Found: ..
 Found: DevMenu.html
+Found: DevMenu.txt
 Found: MainMenu.html
 Found: MainMenu.txt
 Found: MainMenu_archive.html
@@ -1981,6 +1989,14 @@ Found: Definitions
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions
 Found: .
 Found: ..
+Found: AnimationComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\AnimationComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\AnimationComponent.cs
+Read 302 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\AnimationComponent.cs
+Namespace: SiegeEngine.Definitions
+Found 0 dependencies
+Class AnimationComponent: 0 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\AnimationComponent.cs
 Found: Entity.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\Entity.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\Entity.cs
@@ -2187,6 +2203,14 @@ Namespace: SiegeEngine.Events
 Found 2 dependencies
 Class ItemPickedUpEvent: 3 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ItemPickedUpEvent.cs
+Found: OpenPanelEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\OpenPanelEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\OpenPanelEvent.cs
+Read 621 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\OpenPanelEvent.cs
+Namespace: SiegeEngine.Events
+Found 1 dependencies
+Class OpenPanelEvent: 3 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\OpenPanelEvent.cs
 Found: PhysicsCollisionEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\PhysicsCollisionEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\PhysicsCollisionEvent.cs
@@ -2250,14 +2274,6 @@ Found: Interfaces
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces
 Found: .
 Found: ..
-Found: ClientGameServerProxy.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ClientGameServerProxy.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ClientGameServerProxy.cs
-Read 4010 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ClientGameServerProxy.cs
-Namespace: SiegeEngine.Interfaces
-Found 8 dependencies
-Class ClientGameServerProxy: 11 methods
-Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ClientGameServerProxy.cs
 Found: IGameServer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
@@ -2266,6 +2282,15 @@ Namespace: SiegeEngine.Interfaces
 Found 5 dependencies
 Class IGameServer: 10 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
+Found: IPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
+Read 395 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
+Namespace: SiegeEngine.Interfaces
+Found 0 dependencies
+Class DockState: 0 methods
+Class IPanel: 5 methods
+Found 2 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
 Found: IRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IRenderer.cs
@@ -2336,6 +2361,14 @@ Namespace: SiegeEngine.Managers
 Found 8 dependencies
 Class ModManager: 8 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
+Found: PanelManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
+Read 1366 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
+Namespace: SiegeEngine.Managers
+Found 5 dependencies
+Class PanelManager: 5 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
 Found: SceneManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
@@ -2365,6 +2398,14 @@ Found: Networking
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking
 Found: .
 Found: ..
+Found: ClientGameServerProxy.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
+Read 2498 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
+Namespace: SiegeEngine.Networking
+Found 6 dependencies
+Class ClientGameServerProxy: 11 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
 Found: MovementRequest.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\MovementRequest.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\MovementRequest.cs
@@ -2575,10 +2616,10 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: ShaderProgram.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
-Read 6652 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
+Read 8229 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
 Namespace: SiegeEngine.Rendering
 Found 3 dependencies
-Class ShaderProgram: 7 methods
+Class ShaderProgram: 8 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
 Found: Shaders
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders
@@ -2741,6 +2782,14 @@ Found: Systems
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems
 Found: .
 Found: ..
+Found: AnimationSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Read 1231 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Namespace: SiegeEngine.Systems
+Found 4 dependencies
+Class AnimationSystem: 1 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
 Found: AudioSystem.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
@@ -2784,9 +2833,9 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\S
 Found: MenuSystem.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
-Read 17771 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
+Read 19181 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
 Namespace: SiegeEngine.Systems
-Found 13 dependencies
+Found 15 dependencies
 Class MenuSystem: 16 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\MenuSystem.cs
 Found: PlayerControllerSystem.cs
@@ -3088,6 +3137,7 @@ Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin\De
 Found: .
 Found: ..
 Found: DevMenu.html
+Found: DevMenu.txt
 Found: MainMenu.html
 Found: MainMenu.txt
 Found: MainMenu_archive.html
@@ -3127,10 +3177,10 @@ Found: ..
 Found: Launcher.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 6229 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 6702 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
 Found 18 dependencies
-Class Launcher: 2 methods
+Class Launcher: 3 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Found: obj
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj
@@ -3266,6 +3316,12 @@ Found: FolderStructure.svg
 Found: modularitycomponentdiagram.svg
 Found: StartupSequenceDiagram.mmd
 Found: StartupSequenceDiagram.svg
+Found: Next_steps_first_IDE.txt
+Found: old prompts
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation\old prompts
+Found: .
+Found: ..
+Found: NewPrompt.txt
 Found: Prospective
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Documentation\Prospective
 Found: .
@@ -3276,10 +3332,9 @@ Found: .
 Found: ..
 Found: steam_api64.dll
 Found: steam_appid.txt
-Found: NewPrompt.txt
-Found: Next_steps_first_IDE.txt
 Found: Panel.txt
 Found: Prompt.txt
+Found: readingchamber.txt
 Found: README.md
 Found: SandBoxScene - Copy.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs

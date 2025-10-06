@@ -3,6 +3,7 @@
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
+using SiegeEngine.Interfaces;
 using SiegeEngine.Managers;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Rendering;
@@ -13,7 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-
+using System.Reflection;
 namespace SiegeEngine.Systems
 {
     public class MenuSystem : GameSystem
@@ -367,6 +368,21 @@ input[type=""checkbox""] {
                 if (hook == "RealmFoundry.Test.LaunchSandbox")
                 {
                     _eventBus.Publish(new SwitchSceneEvent("Sandbox"));
+                }
+                else if (hook == "ReadingChamber.OpenAssetViewer")
+                {
+                    try
+                    {
+                        string dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ReadingChamber.dll");
+                        Assembly ass = Assembly.LoadFrom(dllPath);
+                        Type type = ass.GetType("ReadingChamber.AssetViewerPanel");
+                        IPanel panel = (IPanel)Activator.CreateInstance(type, _renderContext, _controlContext, _window);
+                        _eventBus.Publish(new OpenPanelEvent(panel));
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"MenuSystem: Failed to open ReadingChamber panel: {ex.Message}");
+                    }
                 }
                 else if (hook.Contains("Scene"))
                 {
