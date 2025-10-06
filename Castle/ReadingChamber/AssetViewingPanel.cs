@@ -151,7 +151,7 @@ namespace ReadingChamber
                 _renderContext.EnableVertexAttribArray(5); // Tangent
                 _renderContext.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
                 _renderContext.EnableVertexAttribArray(6); // BoneIDs
-                _renderContext.VertexAttribIPointer(6, 4, _renderContext.Enums.Int, stride, (void*)(12 * sizeof(float)));
+                _renderContext.VertexAttribPointer(6, 4, _renderContext.Enums.Float, false, stride, (void*)(12 * sizeof(float)));
                 _renderContext.EnableVertexAttribArray(7); // Weights
                 _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
 
@@ -187,7 +187,8 @@ namespace ReadingChamber
                         }
                         else
                         {
-                            (albedo, _) = TextureLoader.LoadTexture(_renderContext, texPath, texInfo.WrapU, texInfo.WrapV);
+                            string adjustedPath = texInfo.Path.Replace("Man_Mesh.fbm/", "");
+                            (albedo, _) = TextureLoader.LoadTexture(_renderContext, Path.Combine(Path.GetDirectoryName(_path), adjustedPath), texInfo.WrapU, texInfo.WrapV);
                         }
                     }
                     albedos[m] = albedo > 0 ? albedo : _defaultAlbedo;
@@ -208,7 +209,8 @@ namespace ReadingChamber
                         }
                         else
                         {
-                            (normalTex, _) = TextureLoader.LoadTexture(_renderContext, texPath, texInfo.WrapU, texInfo.WrapV);
+                            string adjustedPath = texInfo.Path.Replace("Man_Mesh.fbm/", "");
+                            (normalTex, _) = TextureLoader.LoadTexture(_renderContext, Path.Combine(Path.GetDirectoryName(_path), adjustedPath), texInfo.WrapU, texInfo.WrapV);
                         }
                     }
                     normals[m] = normalTex > 0 ? normalTex : _defaultNormal;
@@ -229,7 +231,8 @@ namespace ReadingChamber
                         }
                         else
                         {
-                            (metallicTex, _) = TextureLoader.LoadTexture(_renderContext, texPath, texInfo.WrapU, texInfo.WrapV);
+                            string adjustedPath = texInfo.Path.Replace("Man_Mesh.fbm/", "");
+                            (metallicTex, _) = TextureLoader.LoadTexture(_renderContext, Path.Combine(Path.GetDirectoryName(_path), adjustedPath), texInfo.WrapU, texInfo.WrapV);
                         }
                     }
                     metallics[m] = metallicTex > 0 ? metallicTex : _defaultMetallic;
@@ -345,7 +348,7 @@ namespace ReadingChamber
             // Set matrices
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)w / h, 0.1f, 100f);
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)w / h, 0.1f, 1000f);
 
             _assetShader.Use();
             _assetShader.SetMatrix4("uModel", modelMatrix);
