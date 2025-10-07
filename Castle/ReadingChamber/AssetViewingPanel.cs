@@ -1,14 +1,13 @@
 ﻿// Folder: ReadingChamber
 // File: AssetViewerPanel.cs
-using SiegeEngine.AssetObjects;
 using SiegeEngine.AssetParsing;
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Interfaces;
+using SiegeEngine.Managers;
 using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Shaders;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 
@@ -20,13 +19,7 @@ namespace ReadingChamber
         private readonly IControlContext _controlContext;
         private readonly IntPtr _window;
         private FBXModel _model;
-        private List<uint> _vaos = new List<uint>();
-        private List<uint> _vbos = new List<uint>();
-        private List<uint> _ebos = new List<uint>();
-        private List<uint> _indexCounts = new List<uint>();
-        private List<uint[]> _albedoTextures = new List<uint[]>();
-        private List<uint[]> _normalTextures = new List<uint[]>();
-        private List<uint[]> _metallicTextures = new List<uint[]>();
+        private ModelManager.ModelData _modelData;
         private float _time = 0f;
         private string _currentAnimation;
         private bool _playing = true;
@@ -39,9 +32,6 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private uint _defaultAlbedo;
-        private uint _defaultNormal;
-        private uint _defaultMetallic;
         private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx");
         public DockState DockState { get; set; } = DockState.Floating;
 
@@ -54,25 +44,22 @@ namespace ReadingChamber
 
         public void Init()
         {
-            // Create default textures
-            _defaultAlbedo = CreateDefaultTexture(new byte[] { 255, 255, 255, 255 }, _renderContext.Enums.Rgba);
-            _defaultNormal = CreateDefaultTexture(new byte[] { 128, 128, 255, 255 }, _renderContext.Enums.Rgba);
-            _defaultMetallic = CreateDefaultTexture(new byte[] { 0, 0, 0, 255 }, _renderContext.Enums.Rgba);
+            var modelManager = new ModelManager(renderContext: _renderContext);
+            modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
+            string key = Path.GetFileNameWithoutExtension(_path).ToLower();
 
-            // Load the asset
-            if (!File.Exists(_path))
-            {
-                Console.WriteLine($"AssetViewerPanel: Sample FBX not found at {_path}");
-                return;
-            }
-            FBXFileForest forest = FBXParser.Load(_path);
-            _model = FBXParser.BuildModelFromForest(forest);
-            if (_model == null || _model.Meshes.Count == 0)
+            if (!modelManager.TryGetModel(key, out _model))
             {
                 Console.WriteLine("AssetViewerPanel: Failed to load or parse model");
                 return;
             }
             Console.WriteLine($"AssetViewerPanel: Loaded model with {_model.Meshes.Count} meshes");
+
+            if (!modelManager.TryGetModelData(key, out _modelData))
+            {
+                Console.WriteLine("AssetViewerPanel: Failed to get model data");
+                return;
+            }
 
             // Center model based on bounds
             Vector3 minBounds = new Vector3(float.MaxValue);
@@ -91,160 +78,6 @@ namespace ReadingChamber
             _cameraTarget = center;
             Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
 
-            // Setup VAO/VBO and textures for model
-            int meshIndex = 0;
-            foreach (var mesh in _model.Meshes)
-            {
-                float[] vertexData = new float[mesh.Vertices.Count * 20]; // Expanded for boneIDs and weights
-                for (int i = 0; i < mesh.Vertices.Count; i++)
-                {
-                    var v = mesh.Vertices[i];
-                    vertexData[i * 20 + 0] = v.X;
-                    vertexData[i * 20 + 1] = v.Y;
-                    vertexData[i * 20 + 2] = v.Z;
-                    vertexData[i * 20 + 3] = v.Nx;
-                    vertexData[i * 20 + 4] = v.Ny;
-                    vertexData[i * 20 + 5] = v.Nz;
-                    vertexData[i * 20 + 6] = v.U;
-                    vertexData[i * 20 + 7] = v.V;
-                    vertexData[i * 20 + 8] = v.MatIdx;
-                    vertexData[i * 20 + 9] = v.Tx;
-                    vertexData[i * 20 + 10] = v.Ty;
-                    vertexData[i * 20 + 11] = v.Tz;
-                    vertexData[i * 20 + 12] = v.BoneID0;
-                    vertexData[i * 20 + 13] = v.BoneID1;
-                    vertexData[i * 20 + 14] = v.BoneID2;
-                    vertexData[i * 20 + 15] = v.BoneID3;
-                    vertexData[i * 20 + 16] = v.Weight0;
-                    vertexData[i * 20 + 17] = v.Weight1;
-                    vertexData[i * 20 + 18] = v.Weight2;
-                    vertexData[i * 20 + 19] = v.Weight3;
-                }
-
-                uint vao = _renderContext.GenVertexArray();
-                uint vbo = _renderContext.GenBuffer();
-                uint ebo = _renderContext.GenBuffer();
-
-                _renderContext.BindVertexArray(vao);
-
-                fixed (float* ptr = vertexData)
-                {
-                    _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, vbo);
-                    _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
-                }
-
-                fixed (uint* ptr = mesh.Indices.ToArray())
-                {
-                    _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, ebo);
-                    _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(mesh.Indices.Count * sizeof(uint)), ptr, _renderContext.Enums.StaticDraw);
-                }
-
-                uint stride = 20 * sizeof(float);
-                _renderContext.EnableVertexAttribArray(0); // Position
-                _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
-                _renderContext.EnableVertexAttribArray(3); // Normal
-                _renderContext.VertexAttribPointer(3, 3, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
-                _renderContext.EnableVertexAttribArray(2); // UV
-                _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(6 * sizeof(float)));
-                _renderContext.EnableVertexAttribArray(4); // MaterialIndex
-                _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
-                _renderContext.EnableVertexAttribArray(5); // Tangent
-                _renderContext.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
-                _renderContext.EnableVertexAttribArray(6); // BoneIDs
-                _renderContext.VertexAttribPointer(6, 4, _renderContext.Enums.Float, false, stride, (void*)(12 * sizeof(float)));
-                _renderContext.EnableVertexAttribArray(7); // Weights
-                _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
-
-                _renderContext.BindVertexArray(0);
-
-                _vaos.Add(vao);
-                _vbos.Add(vbo);
-                _ebos.Add(ebo);
-                _indexCounts.Add((uint)mesh.Indices.Count);
-
-                // Load textures for this mesh
-                uint[] albedos = new uint[mesh.Materials.Count];
-                uint[] normals = new uint[mesh.Materials.Count];
-                uint[] metallics = new uint[mesh.Materials.Count];
-
-                for (int m = 0; m < mesh.Materials.Count; m++)
-                {
-                    var mat = mesh.Materials[m];
-
-                    // Albedo
-                    uint albedo = _defaultAlbedo;
-                    if (mat.Textures.TryGetValue("albedo", out var texInfo))
-                    {
-                        string texPath = texInfo.Path;
-                        if (texPath.StartsWith("embedded_"))
-                        {
-                            string embName = texPath.Substring(9);
-                            var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
-                            if (data != null)
-                            {
-                                (albedo, _) = TextureLoader.LoadEmbeddedTexture(_renderContext, data, embName, texInfo.WrapU, texInfo.WrapV);
-                            }
-                        }
-                        else
-                        {
-                            string adjustedPath = texInfo.Path.Replace("Man_Mesh.fbm/", "");
-                            (albedo, _) = TextureLoader.LoadTexture(_renderContext, Path.Combine(Path.GetDirectoryName(_path), adjustedPath), texInfo.WrapU, texInfo.WrapV);
-                        }
-                    }
-                    albedos[m] = albedo > 0 ? albedo : _defaultAlbedo;
-
-                    // Normal
-                    uint normalTex = _defaultNormal;
-                    if (mat.Textures.TryGetValue("normal", out texInfo))
-                    {
-                        string texPath = texInfo.Path;
-                        if (texPath.StartsWith("embedded_"))
-                        {
-                            string embName = texPath.Substring(9);
-                            var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
-                            if (data != null)
-                            {
-                                (normalTex, _) = TextureLoader.LoadEmbeddedTexture(_renderContext, data, embName, texInfo.WrapU, texInfo.WrapV);
-                            }
-                        }
-                        else
-                        {
-                            string adjustedPath = texInfo.Path.Replace("Man_Mesh.fbm/", "");
-                            (normalTex, _) = TextureLoader.LoadTexture(_renderContext, Path.Combine(Path.GetDirectoryName(_path), adjustedPath), texInfo.WrapU, texInfo.WrapV);
-                        }
-                    }
-                    normals[m] = normalTex > 0 ? normalTex : _defaultNormal;
-
-                    // Metallic
-                    uint metallicTex = _defaultMetallic;
-                    if (mat.Textures.TryGetValue("metallic", out texInfo))
-                    {
-                        string texPath = texInfo.Path;
-                        if (texPath.StartsWith("embedded_"))
-                        {
-                            string embName = texPath.Substring(9);
-                            var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
-                            if (data != null)
-                            {
-                                (metallicTex, _) = TextureLoader.LoadEmbeddedTexture(_renderContext, data, embName, texInfo.WrapU, texInfo.WrapV);
-                            }
-                        }
-                        else
-                        {
-                            string adjustedPath = texInfo.Path.Replace("Man_Mesh.fbm/", "");
-                            (metallicTex, _) = TextureLoader.LoadTexture(_renderContext, Path.Combine(Path.GetDirectoryName(_path), adjustedPath), texInfo.WrapU, texInfo.WrapV);
-                        }
-                    }
-                    metallics[m] = metallicTex > 0 ? metallicTex : _defaultMetallic;
-                }
-
-                _albedoTextures.Add(albedos);
-                _normalTextures.Add(normals);
-                _metallicTextures.Add(metallics);
-
-                meshIndex++;
-            }
-
             if (_model.Animations.Count > 0)
             {
                 _currentAnimation = _model.Animations[0].Name;
@@ -252,21 +85,6 @@ namespace ReadingChamber
 
             // Initialize shader
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
-        }
-
-        private uint CreateDefaultTexture(byte[] rgba, int format)
-        {
-            uint tex;
-            _renderContext.GenTextures(1, out tex);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, tex);
-            fixed (byte* ptr = rgba)
-            {
-                _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, format, 1, 1, 0, _renderContext.Enums.Rgba, _renderContext.Enums.UnsignedByte, ptr);
-            }
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
-            return tex;
         }
 
         public void Update(float deltaTime)
@@ -348,7 +166,7 @@ namespace ReadingChamber
             // Set matrices
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)w / h, 0.1f, 1000f);
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)w / h, 0.1f, 100f);
 
             _assetShader.Use();
             _assetShader.SetMatrix4("uModel", modelMatrix);
@@ -369,34 +187,30 @@ namespace ReadingChamber
                 _assetShader.SetMatrix4Array("uBoneTransforms", transforms);
             }
 
-            for (int i = 0; i < _vaos.Count; i++)
+            foreach (var mmr in _modelData.MeshRenders)
             {
-                // Bind textures for this mesh
-                var albedos = _albedoTextures[i];
-                var normals = _normalTextures[i];
-                var metallics = _metallicTextures[i];
-
-                for (int t = 0; t < Math.Min(albedos.Length, 4); t++)
+                // Bind textures
+                for (int t = 0; t < Math.Min(mmr.AlbedoTextures.Length, 4); t++)
                 {
                     _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + t);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, albedos[t]);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[t]);
                     _assetShader.SetUniform($"uAlbedoMap[{t}]", t);
                 }
-                for (int t = 0; t < Math.Min(normals.Length, 4); t++)
+                for (int t = 0; t < Math.Min(mmr.NormalTextures.Length, 4); t++)
                 {
                     _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + t);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, normals[t]);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[t]);
                     _assetShader.SetUniform($"uNormalMap[{t}]", 4 + t);
                 }
-                for (int t = 0; t < Math.Min(metallics.Length, 4); t++)
+                for (int t = 0; t < Math.Min(mmr.MetallicTextures.Length, 4); t++)
                 {
                     _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + t);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, metallics[t]);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[t]);
                     _assetShader.SetUniform($"uMetallicMap[{t}]", 8 + t);
                 }
 
-                _renderContext.BindVertexArray(_vaos[i]);
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, _indexCounts[i], _renderContext.Enums.UnsignedInt, null);
+                _renderContext.BindVertexArray(mmr.Vao);
+                _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
 
                 int error;
                 while ((error = _renderContext.GetError()) != _renderContext.Enums.NoError)
@@ -408,19 +222,7 @@ namespace ReadingChamber
 
         public void Dispose()
         {
-            for (int i = 0; i < _vaos.Count; i++)
-            {
-                _renderContext.DeleteVertexArray(_vaos[i]);
-                _renderContext.DeleteBuffer(_vbos[i]);
-                _renderContext.DeleteBuffer(_ebos[i]);
-                // Clean textures
-                foreach (var tex in _albedoTextures[i]) if (tex != _defaultAlbedo) _renderContext.DeleteTexture(tex);
-                foreach (var tex in _normalTextures[i]) if (tex != _defaultNormal) _renderContext.DeleteTexture(tex);
-                foreach (var tex in _metallicTextures[i]) if (tex != _defaultMetallic) _renderContext.DeleteTexture(tex);
-            }
-            _renderContext.DeleteTexture(_defaultAlbedo);
-            _renderContext.DeleteTexture(_defaultNormal);
-            _renderContext.DeleteTexture(_defaultMetallic);
+            // No need to delete VAOs etc., as they are managed by ModelManager
             _assetShader.Dispose();
         }
 

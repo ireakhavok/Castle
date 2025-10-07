@@ -24,10 +24,12 @@ namespace SiegeEngine.Managers
         private int _nextEntityId = 1;
         private readonly MetaFileParser _metaParser;
         private readonly PrefabFileReader _prefabReader;
+
         public class ModelData
         {
             public List<ModelMeshRender> MeshRenders { get; set; } = new List<ModelMeshRender>();
         }
+
         public class ModelMeshRender
         {
             public uint Vao { get; set; }
@@ -38,6 +40,7 @@ namespace SiegeEngine.Managers
             public uint[] MetallicTextures { get; set; }
             public uint IndexCount { get; set; }
         }
+
         public ModelManager(string primaryPath = "Mods/Models", string fallbackPath = "Assets/Models", ModManager modManager = null, IRenderContext renderContext = null)
         {
             _primaryPath = primaryPath;
@@ -54,6 +57,7 @@ namespace SiegeEngine.Managers
             ScanDirectory(_fallbackPath);
             ScanDirectory(charactersPath);
         }
+
         public void LoadCharacters()
         {
             string charactersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters");
@@ -74,6 +78,7 @@ namespace SiegeEngine.Managers
                 Console.WriteLine($"ModelManager: Error: Man_Mesh.fbx not found at {fbxPath}");
             }
         }
+
         public void ScanDirectory(string path)
         {
             if (!Directory.Exists(path))
@@ -91,6 +96,7 @@ namespace SiegeEngine.Managers
                 }
             }
         }
+
         public void LoadPlayerFromPrefab(string prefabPath)
         {
             string fbxPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx");
@@ -98,14 +104,17 @@ namespace SiegeEngine.Managers
             LoadModel(fbxPath, new HashSet<string>(), new Dictionary<string, string>());
             _models["player"] = _models["man_mesh"];
         }
+
         private HashSet<string> ParsePrefabReferences(string prefabPath)
         {
             return new HashSet<string>();
         }
+
         private Dictionary<string, string> BuildGuidToPathMap(string basePath)
         {
             return new Dictionary<string, string>();
         }
+
         private (uint TextureId, byte PixelDepth) LoadEmbeddedTexture(byte[] textureData, string textureName, int wrapS, int wrapT)
         {
             if (textureData == null || textureData.Length < 18)
@@ -133,6 +142,7 @@ namespace SiegeEngine.Managers
                 return (0, 0);
             }
         }
+
         private (uint, byte) LoadExternalTexture(string texturePath, string fbxDir, int wrapS, int wrapT)
         {
             if (string.IsNullOrEmpty(texturePath))
@@ -200,7 +210,8 @@ namespace SiegeEngine.Managers
                 return (0, 0);
             }
         }
-        private unsafe void LoadModel(string filePath, HashSet<string> referencedGuids, Dictionary<string, string> guidToPath)
+
+        public unsafe void LoadModel(string filePath, HashSet<string> referencedGuids, Dictionary<string, string> guidToPath)
         {
             string key = Path.GetFileNameWithoutExtension(filePath).ToLower();
             string fbxDir = Path.GetDirectoryName(filePath);
@@ -393,6 +404,7 @@ namespace SiegeEngine.Managers
                 throw;
             }
         }
+
         private static FBXModel BuildModelFromForest(FBXFileForest forest)
         {
             FBXModel model = new FBXModel();
