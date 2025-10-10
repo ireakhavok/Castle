@@ -1,16 +1,17 @@
 ﻿// Folder: SiegeEngine.UI
-// File: UIPanel.cs
+// File: UIOverlay.cs
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
-using SiegeEngine.Interfaces;
 using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Shaders;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.UI
 {
-    public abstract class UIPanel : IPanel
+    public class UIOverlay
     {
         protected readonly IRenderContext _renderContext;
         protected readonly IControlContext _controlContext;
@@ -21,13 +22,14 @@ namespace SiegeEngine.UI
         protected CssParser _cssParser;
         protected HtmlElement _uiRoot;
         protected List<HtmlElement> _uiClickables = new List<HtmlElement>();
-        public DockState DockState { get; set; } = DockState.Floating;
-        protected UIPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
+
+        public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _window = window;
         }
+
         public virtual void Init()
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -36,11 +38,34 @@ namespace SiegeEngine.UI
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _cssParser = new CssParser();
         }
-        protected void LoadUI(string html)
+
+        public void LoadUI(string html)
         {
             HtmlParser parser = new HtmlParser();
             _uiRoot = parser.Parse(html);
-            ApplyUserAgentDefaults();
+            List<string> cssBlocks = new List<string>();
+            Queue<HtmlElement> q = new Queue<HtmlElement>();
+            q.Enqueue(_uiRoot);
+            while (q.Count > 0)
+            {
+                var e = q.Dequeue();
+                if (e.Tag.ToLower() == "style")
+                {
+                    var text = e.Children.FirstOrDefault(c => c is TextElement) as TextElement;
+                    if (text != null) cssBlocks.Add(text.Content);
+                    if (e.Parent != null) e.Parent.Children.Remove(e);
+                }
+                else if (e.Tag.ToLower() == "script")
+                {
+                    if (e.Parent != null) e.Parent.Children.Remove(e);
+                }
+                foreach (var c in e.Children) q.Enqueue(c);
+            }
+            foreach (var css in cssBlocks)
+            {
+                _cssParser.Apply(css);
+            }
+            _cssParser.Apply(CssParser.DefaultUserAgentCss);
             _cssParser.ApplyInlineStyles(_uiRoot);
             _cssParser.ApplyAll(_uiRoot);
             InheritProperties(_uiRoot, null);
@@ -49,22 +74,9 @@ namespace SiegeEngine.UI
             CollectClickables(_uiRoot);
             // Initial layout
             _controlContext.GetWindowSize(_window, out int w, out int h);
-            _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f, 0, 0);
+            RecomputeLayout(w, h);
         }
-        private void ApplyUserAgentDefaults()
-        {
-            string defaultCss = @"
-button {
-    padding: 2px 10px;
-    min-height: 30px;
-    border: 1px solid rgba(128, 128, 128, 1);
-    border-radius: 5px;
-    background-color: rgba(200, 200, 200, 1);
-    color: black;
-}
-";
-            _cssParser.Apply(defaultCss);
-        }
+
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -82,6 +94,7 @@ button {
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
+
         private void CollectClickables(HtmlElement elem)
         {
             if (elem.GetEffectiveDisplay() == "none") return;
@@ -93,9 +106,11 @@ button {
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
+
         protected virtual void HandleUIClick(HtmlElement elem)
         {
         }
+
         public virtual void Update(float deltaTime)
         {
             // UI input handling
@@ -128,12 +143,14 @@ button {
                 HandleUIClick(clickedElem);
             }
         }
+
         protected void RenderUI(int w, int h)
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
+
         public virtual void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
@@ -142,15 +159,19 @@ button {
                 RenderUI(w, h);
             }
         }
+
+        public void RecomputeLayout(int w, int h)
+        {
+            if (_uiRoot != null)
+            {
+                _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f, 0, 0);
+            }
+        }
+
         public virtual void Dispose()
         {
             _uiShader.Dispose();
             _textRenderer.Dispose();
-        }
-        public void Detach()
-        {
-            // Implement pop-out to new window
-            // Create new ContextManager, new window, transfer state
         }
     }
 }

@@ -13,10 +13,24 @@ using System;
 using System.IO;
 using System.Numerics;
 using System.Text;
+using System.Reflection;
+
 namespace ReadingChamber
 {
-    public unsafe class AssetViewerPanel : UIPanel
+    public unsafe class AssetViewerPanel : IPanel
     {
+        private class AssetUIOverlay : UIOverlay
+        {
+            private readonly AssetViewerPanel _parent;
+            public AssetUIOverlay(AssetViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, IntPtr window) : base(renderContext, controlContext, window)
+            {
+                _parent = parent;
+            }
+            protected override void HandleUIClick(HtmlElement elem)
+            {
+                _parent.HandleUIClick(elem);
+            }
+        }
         private FBXModel _model;
         private ModelManager.ModelData _modelData;
         private float _time = 0f;
@@ -32,13 +46,24 @@ namespace ReadingChamber
         private bool _isPanning = false;
         private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx");
         private readonly EventBus _eventBus;
-        public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window)
+        private readonly IRenderContext _renderContext;
+        private readonly IControlContext _controlContext;
+        private readonly IntPtr _window;
+        private AssetUIOverlay _uiOverlay;
+        private int _lastW;
+        private int _lastH;
+        public DockState DockState { get; set; } = DockState.Floating;
+        public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
         {
+            _renderContext = renderContext;
+            _controlContext = controlContext;
+            _window = window;
             _eventBus = eventBus;
+            _uiOverlay = new AssetUIOverlay(this, renderContext, controlContext, window);
         }
-        public override void Init()
+        public void Init()
         {
-            base.Init();
+            _uiOverlay.Init();
             var modelManager = new ModelManager(renderContext: _renderContext);
             modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
             string key = Path.GetFileNameWithoutExtension(_path).ToLower();
@@ -80,7 +105,7 @@ namespace ReadingChamber
         }
         private void UpdateUIControls()
         {
-            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ReadingChamber", "AssetViewerUI.html");
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetViewerUI.html");
             if (!File.Exists(htmlPath))
             {
                 Console.WriteLine($"AssetViewerPanel: UI HTML file not found at {htmlPath}");
@@ -99,24 +124,7 @@ namespace ReadingChamber
                 dynamicButtons.Append($"<button class=\"ui-button\" data-hook=\"SelectAnim:{a.Name}\">{a.Name}</button>");
             }
             string modifiedHtml = baseHtml.Insert(insertIndex, dynamicButtons.ToString());
-            LoadUI(modifiedHtml);
-        }
-        private void ApplyUserAgentDefaults()
-        {
-            string defaultCss = @"
-* {
-    color: white;
-}
-button {
-    padding: 2px 10px;
-    min-height: 30px;
-    border: 1px solid rgba(128, 128, 128, 1);
-    border-radius: 5px;
-    background-color: rgba(200, 200, 200, 1);
-    color: black;
-}
-";
-            _cssParser.Apply(defaultCss);
+            _uiOverlay.LoadUI(modifiedHtml);
         }
         private void OnFileSelected(FileSelectedEvent e)
         {
@@ -133,7 +141,7 @@ button {
                 UpdateUIControls();
             }
         }
-        protected override void HandleUIClick(HtmlElement elem)
+        public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
             if (hook == "TogglePlay")
@@ -152,9 +160,8 @@ button {
                 _eventBus.Publish(new OpenPanelEvent(fileSelector));
             }
         }
-        public override void Update(float deltaTime)
+        public void Update(float deltaTime)
         {
-            base.Update(deltaTime);
             // Camera control
             _controlContext.GetCursorPos(_window, out double mx, out double my);
             float mouseX = (float)mx;
@@ -211,10 +218,17 @@ button {
             {
                 _playing = !_playing;
             }
+            _uiOverlay.Update(deltaTime);
         }
-        public override void Render()
+        public void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
+            if (w != _lastW || h != _lastH)
+            {
+                _lastW = w;
+                _lastH = h;
+                _uiOverlay.RecomputeLayout(w, h);
+            }
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
             _renderContext.ClearColor(0.2f, 0.2f, 0.2f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
@@ -272,12 +286,25 @@ button {
                 }
             }
             // Render UI overlay
+            Console.WriteLine("AssetViewerPanel: Starting UI overlay render");
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
-            base.Render();
+            _renderContext.Enable(_renderContext.Enums.Blend);
+            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+            _uiOverlay.Render();
+            _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
+            Console.WriteLine("AssetViewerPanel: Finished UI overlay render");
+        }
+        public void Dispose()
+        {
+            _assetShader.Dispose();
+            _uiOverlay.Dispose();
+        }
+        public void Detach()
+        {
         }
     }
 }

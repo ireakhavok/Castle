@@ -8,6 +8,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="AssetViewerUI.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="AssetViewerUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
   </ItemGroup>
 

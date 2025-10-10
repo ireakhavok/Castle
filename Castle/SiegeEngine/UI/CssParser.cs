@@ -10,6 +10,31 @@ namespace SiegeEngine.UI
 {
     public class CssParser
     {
+        public static string DefaultUserAgentCss = @"
+* {
+    color: white;
+}
+button {
+    padding: 2px 10px;
+    min-height: 30px;
+    border: 1px solid rgba(128, 128, 128, 1);
+    border-radius: 5px;
+    background-color: rgba(200, 200, 200, 1);
+    color: black;
+}
+select {
+    padding: 2px 10px;
+    min-height: 30px;
+    border: 1px solid rgba(128, 128, 128, 1);
+    border-radius: 5px;
+}
+input[type=""checkbox""] {
+    width: 16px;
+    height: 16px;
+    margin: 0 5px 0 0;
+}
+";
+
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
 
         public void Apply(string css)

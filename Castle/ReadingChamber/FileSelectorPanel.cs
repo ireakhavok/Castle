@@ -9,22 +9,38 @@ using System;
 using System.IO;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
-    public class FileSelectorPanel : UIPanel
+    public class FileSelectorPanel : IPanel
     {
-        private string _currentDir;
+        private readonly IRenderContext _renderContext;
+        private readonly IControlContext _controlContext;
+        private readonly IntPtr _window;
         private readonly EventBus _eventBus;
-        public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, string initialDir) : base(renderContext, controlContext, window)
+        private string _currentDir;
+        private UIOverlay _uiOverlay;
+        private int _lastW;
+        private int _lastH;
+
+        public DockState DockState { get; set; } = DockState.Floating;
+
+        public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, string initialDir)
         {
+            _renderContext = renderContext;
+            _controlContext = controlContext;
+            _window = window;
             _eventBus = eventBus;
             _currentDir = initialDir;
+            _uiOverlay = new UIOverlay(renderContext, controlContext, window);
         }
-        public override void Init()
+
+        public void Init()
         {
-            base.Init();
+            _uiOverlay.Init();
             UpdateFileList();
         }
+
         private void UpdateFileList()
         {
             StringBuilder html = new StringBuilder();
@@ -43,9 +59,10 @@ namespace ReadingChamber
                 html.Append($"<button data-hook=\"SelectFile:{file}\">{fileName}</button>");
             }
             html.Append("</div>");
-            LoadUI(html.ToString());
+            _uiOverlay.LoadUI(html.ToString());
         }
-        protected override void HandleUIClick(HtmlElement elem)
+
+        public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
             if (hook.StartsWith("EnterDir:"))
@@ -60,17 +77,36 @@ namespace ReadingChamber
                 // Close panel, assuming PanelManager handles removal
             }
         }
-        public override void Update(float deltaTime)
+
+        public void Update(float deltaTime)
         {
-            base.Update(deltaTime);
+            _uiOverlay.Update(deltaTime);
         }
-        public override void Render()
+
+        public void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
+            if (w != _lastW || h != _lastH)
+            {
+                _lastW = w;
+                _lastH = h;
+                _uiOverlay.RecomputeLayout(w, h);
+            }
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
             _renderContext.ClearColor(0.8f, 0.8f, 0.8f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            base.Render();
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
+            _uiOverlay.Render();
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+        }
+
+        public void Dispose()
+        {
+            _uiOverlay.Dispose();
+        }
+
+        public void Detach()
+        {
         }
     }
 }
