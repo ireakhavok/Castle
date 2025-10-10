@@ -140,10 +140,10 @@ Folder: Castle
  class: AssetViewerPanel (Namespace: ReadingChamber)
  Inherits: IPanel
     
- Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, System, System.Collections.Generic, System.IO, System.Numerics
+ Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, System, System.IO, System.Numerics
  Methods:
  - constructor AssetViewerPanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
- Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, BuildModelFromForest, EnableVertexAttribArray, GenBuffer, GenVertexArray, Load, ShaderProgram, VertexAttribPointer
+ Calls: LoadModel, LoadModel, ModelManager, ShaderProgram, TryGetModel, TryGetModelData
  - void Init()
  Calls: None
  - void Update(float deltaTime, float deltaTime)
@@ -151,7 +151,7 @@ Folder: Castle
  - void Render()
  Calls: GetTransforms, GetTransforms, SetMatrix4Array
  - void Dispose()
- Calls: DeleteBuffer, DeleteBuffer, DeleteTexture, DeleteVertexArray
+ Calls: None
  - void Detach()
  Calls: None
  File: Class1.cs
@@ -197,7 +197,7 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Rendering, System, System.Collections.Generic, System.Numerics
  Methods:
- - constructor FBXVertex(float x, float x, float y, float z, float nx, float ny, float nz, float u, float v, float matIdx, float tx, float ty, float tz)
+ - constructor FBXVertex(float x, float x, float y, float z, float nx, float ny, float nz, float u, float v, float matIdx, float tx, float ty, float tz, int boneID0, int boneID1, int boneID2, int boneID3, float weight0, float weight1, float weight2, float weight3)
  Calls: None
  File: FBXModel.cs
  class: Skeleton (Namespace: SiegeEngine.AssetParsing)
@@ -297,7 +297,7 @@ Folder: Castle
  File: AbstractRenderEnums.cs
  class: AbstractRenderEnums (Namespace: SiegeEngine.ContextManagement)
  Inherits: None
- Dependencies: None
+ Dependencies: System, System
  Methods:
  File: ContextManager.cs
  class: ContextManager (Namespace: SiegeEngine.ContextManagement)
@@ -590,7 +590,7 @@ Folder: Castle
  File: IRenderContext.cs
  interface: IRenderContext (Namespace: SiegeEngine.ContextManagement)
  Inherits: None
- Dependencies: System, System
+ Dependencies: None
  Methods:
  - uint GenVertexArray()
  Calls: None
@@ -613,6 +613,8 @@ Folder: Castle
  - void DisableVertexAttribArray(uint index, uint index)
  Calls: None
  - void VertexAttribPointer(uint index, uint index, int size, int type, bool normalized, uint stride)
+ Calls: None
+ - void VertexAttribIPointer(uint index, uint index, int size, int type, uint stride)
  Calls: None
  - void DeleteVertexArray(uint array, uint array)
  Calls: None
@@ -702,6 +704,8 @@ Folder: Castle
  Calls: None
  - void Uniform1(int location, int location, int value)
  Calls: None
+ - void Uniform3(int location, int location, float x, float y, float z)
+ Calls: None
  - void Uniform4(int location, int location, float x, float y, float z, float w)
  Calls: None
  - void UniformMatrix4(int location, int location, uint count, bool transpose)
@@ -721,6 +725,8 @@ Folder: Castle
  - void GetFloat(int pname, int pname, out float)
  Calls: None
  - void Scissor(int x, int x, int y, uint width, uint height)
+ Calls: None
+ - void CullFace(int mode, int mode)
  Calls: None
  File: OpenGLContextManager.cs
  class: OpenGLContextManager (Namespace: SiegeEngine.ContextManagement)
@@ -1438,8 +1444,6 @@ Folder: Castle
  Calls: ApplyTransformation, ApplyTransformation, BindBuffer, BindVertexArray, BufferData, BuildModelFromForest, ComputeTangents, EnableVertexAttribArray, GenBuffer, GenVertexArray, Load, SmoothNormals, VertexAttribPointer
  - model SmoothNormals()
  Calls: ComputeTangents, ComputeTangents
- - FBXModel BuildModelFromForest(FBXFileForest forest, FBXFileForest forest)
- Calls: CreateDefaultCubeModel, CreateDefaultCubeModel
  - void SmoothNormals(FBXModel model, FBXModel model)
  Calls: None
  - void ComputeTangents(MeshData mesh, MeshData mesh)
@@ -1486,9 +1490,11 @@ Folder: Castle
  File: PanelManager.cs
  class: PanelManager (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Interfaces, SiegeEngine.Rendering, System, System.Collections.Generic
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System, System.Collections.Generic
  Methods:
- - constructor PanelManager(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
+ - constructor PanelManager(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
+ Calls: AddPanel, AddPanel
+ - void OnOpenPanel(OpenPanelEvent e, OpenPanelEvent e)
  Calls: Init, Init
  - void AddPanel(IPanel panel, IPanel panel)
  Calls: Update, Update
@@ -1927,6 +1933,8 @@ Folder: Castle
  - void SetUniform(string name, string name, float value)
  Calls: None
  - void SetUniform(string name, string name, int value)
+ Calls: None
+ - void SetUniform(string name, string name, float x, float y, float z)
  Calls: None
  - void SetUniform(string name, string name, float x, float y, float z, float w)
  Calls: None
@@ -2517,8 +2525,6 @@ Folder: Castle
  Methods:
  - void Start(string context, string context)
  Calls: Clear, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PanelManager, PollEvents, Render, Resize, RunCallbacks, SceneManager, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
- - void OnOpenPanel(OpenPanelEvent e, OpenPanelEvent e)
- Calls: None
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
 

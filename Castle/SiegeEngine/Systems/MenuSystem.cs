@@ -376,7 +376,7 @@ input[type=""checkbox""] {
                         string dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ReadingChamber.dll");
                         Assembly ass = Assembly.LoadFrom(dllPath);
                         Type type = ass.GetType("ReadingChamber.AssetViewerPanel");
-                        IPanel panel = (IPanel)Activator.CreateInstance(type, _renderContext, _controlContext, _window);
+                        IPanel panel = (IPanel)Activator.CreateInstance(type, _renderContext, _controlContext, _window, _eventBus);
                         _eventBus.Publish(new OpenPanelEvent(panel));
                     }
                     catch (Exception ex)

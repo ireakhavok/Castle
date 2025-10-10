@@ -1,20 +1,21 @@
-﻿using SiegeEngine.AssetParsing;
+﻿// Folder: ReadingChamber
+// File: AssetViewerPanel.cs
+using SiegeEngine.AssetParsing;
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
+using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
 using SiegeEngine.Managers;
 using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Shaders;
+using SiegeEngine.UI;
 using System;
 using System.IO;
 using System.Numerics;
 namespace ReadingChamber
 {
-    public unsafe class AssetViewerPanel : IPanel
+    public unsafe class AssetViewerPanel : UIPanel
     {
-        private readonly IRenderContext _renderContext;
-        private readonly IControlContext _controlContext;
-        private readonly IntPtr _window;
         private FBXModel _model;
         private ModelManager.ModelData _modelData;
         private float _time = 0f;
@@ -29,15 +30,14 @@ namespace ReadingChamber
         private bool _firstMouse = true;
         private bool _isPanning = false;
         private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx");
-        public DockState DockState { get; set; } = DockState.Floating;
-        public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
+        private readonly EventBus _eventBus;
+        public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window)
         {
-            _renderContext = renderContext;
-            _controlContext = controlContext;
-            _window = window;
+            _eventBus = eventBus;
         }
-        public void Init()
+        public override void Init()
         {
+            base.Init();
             var modelManager = new ModelManager(renderContext: _renderContext);
             modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
             string key = Path.GetFileNameWithoutExtension(_path).ToLower();
@@ -74,9 +74,58 @@ namespace ReadingChamber
             }
             // Initialize shader
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
+            UpdateUIControls();
+            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
         }
-        public void Update(float deltaTime)
+        private void UpdateUIControls()
         {
+            string html = "<div style=\"position: absolute; bottom: 10px; left: 10px; background-color: rgba(0,0,0,0.5); padding: 5px; display: flex; flex-direction: row;\">";
+            html += "<button data-hook=\"TogglePlay\">Play/Pause</button>";
+            html += "<button data-hook=\"LoadFBX\">Load FBX</button>";
+            foreach (var a in _model.Animations)
+            {
+                html += $"<button data-hook=\"SelectAnim:{a.Name}\">{a.Name}</button>";
+            }
+            html += "</div>";
+            LoadUI(html);
+        }
+        private void OnFileSelected(FileSelectedEvent e)
+        {
+            _path = e.Path;
+            var modelManager = new ModelManager(renderContext: _renderContext);
+            modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
+            string key = Path.GetFileNameWithoutExtension(_path).ToLower();
+            if (modelManager.TryGetModel(key, out _model) && modelManager.TryGetModelData(key, out _modelData))
+            {
+                if (_model.Animations.Count > 0)
+                {
+                    _currentAnimation = _model.Animations[0].Name;
+                }
+                UpdateUIControls();
+            }
+        }
+        protected override void HandleUIClick(HtmlElement elem)
+        {
+            string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
+            if (hook == "TogglePlay")
+            {
+                _playing = !_playing;
+            }
+            else if (hook.StartsWith("SelectAnim:"))
+            {
+                _currentAnimation = hook.Substring(11);
+                _time = 0f; // Reset time on selection
+            }
+            else if (hook == "LoadFBX")
+            {
+                string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir);
+                _eventBus.Publish(new OpenPanelEvent(fileSelector));
+            }
+        }
+        public override void Update(float deltaTime)
+        {
+            base.Update(deltaTime);
             // Camera control
             _controlContext.GetCursorPos(_window, out double mx, out double my);
             float mouseX = (float)mx;
@@ -134,7 +183,7 @@ namespace ReadingChamber
                 _playing = !_playing;
             }
         }
-        public unsafe void Render()
+        public override void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
@@ -193,16 +242,8 @@ namespace ReadingChamber
                     Console.WriteLine($"AssetViewerPanel: OpenGL error after draw: {error}");
                 }
             }
-        }
-        public void Dispose()
-        {
-            // No need to delete VAOs etc., as they are managed by ModelManager
-            _assetShader.Dispose();
-        }
-        public void Detach()
-        {
-            // Implement pop-out to new window
-            // Create new ContextManager, new window, transfer state
+            // Render UI overlay
+            base.Render();
         }
     }
 }

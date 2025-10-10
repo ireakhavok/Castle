@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Networking;
+﻿// Folder: SiegeEngine.Events
+// File: EventBus.cs
+using SiegeEngine.Networking;
 using SiegeEngine.Definitions;
 using System;
 using System.Collections.Generic;
@@ -282,4 +284,5 @@ namespace SiegeEngine.Events
             SceneName = obj.SceneName;
         }
     }
+
 }
