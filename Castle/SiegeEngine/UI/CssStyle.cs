@@ -8,6 +8,8 @@ namespace SiegeEngine.UI
         public string Position { get; set; } = "static";
         public string LeftStr { get; set; }
         public string TopStr { get; set; }
+        public string RightStr { get; set; }
+        public string BottomStr { get; set; }
         public string WidthStr { get; set; }
         public string HeightStr { get; set; }
         public string MinWidthStr { get; set; }
@@ -61,6 +63,8 @@ namespace SiegeEngine.UI
                 Position = Position,
                 LeftStr = LeftStr,
                 TopStr = TopStr,
+                RightStr = RightStr,
+                BottomStr = BottomStr,
                 WidthStr = WidthStr,
                 HeightStr = HeightStr,
                 MinWidthStr = MinWidthStr,

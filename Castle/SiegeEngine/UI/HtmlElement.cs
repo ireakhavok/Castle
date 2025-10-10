@@ -105,16 +105,9 @@ namespace SiegeEngine.UI
             if (float.IsNaN(fs)) fs = parentFs;
             Style.FontSize = fs;
             float left = ParseSize(effectiveStyle.LeftStr, refWidth, viewportWidth, viewportHeight);
-            if (float.IsNaN(left)) left = 0;
             float top = ParseSize(effectiveStyle.TopStr, refHeight, viewportWidth, viewportHeight);
-            if (float.IsNaN(top)) top = 0;
-            if (effectiveStyle.Position == "static")
-            {
-                left = 0;
-                top = 0;
-            }
-            float boxX = baseX + left;
-            float boxY = baseY + top;
+            float right = ParseSize(effectiveStyle.RightStr, refWidth, viewportWidth, viewportHeight);
+            float bottom = ParseSize(effectiveStyle.BottomStr, refHeight, viewportWidth, viewportHeight);
             float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
             float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
             if ((string.IsNullOrEmpty(effectiveStyle.Display) || effectiveStyle.Display == "block" || effectiveStyle.Display == "flex") && float.IsNaN(w))
@@ -170,6 +163,27 @@ namespace SiegeEngine.UI
             ComputedHeight = boxH;
             ComputedContentWidth = contentW;
             ComputedContentHeight = contentH;
+            float boxX = baseX;
+            float boxY = baseY;
+            if (effectiveStyle.Position == "absolute" || effectiveStyle.Position == "fixed")
+            {
+                if (!float.IsNaN(left))
+                {
+                    boxX += left;
+                }
+                else if (!float.IsNaN(right))
+                {
+                    boxX += refWidth - right - boxW;
+                }
+                if (!float.IsNaN(top))
+                {
+                    boxY += top;
+                }
+                else if (!float.IsNaN(bottom))
+                {
+                    boxY += refHeight - bottom - boxH;
+                }
+            }
             if (effectiveStyle.Position != "absolute" && effectiveStyle.Position != "fixed")
             {
                 boxX -= margin.W;
@@ -875,6 +889,16 @@ namespace SiegeEngine.UI
                 return true;
             }
             return false;
+        }
+        public HtmlElement FindElementById(string id)
+        {
+            if (Attributes.GetValueOrDefault("id", "") == id) return this;
+            foreach (var child in Children)
+            {
+                var found = child.FindElementById(id);
+                if (found != null) return found;
+            }
+            return null;
         }
     }
 }

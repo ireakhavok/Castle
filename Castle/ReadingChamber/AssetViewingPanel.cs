@@ -12,6 +12,7 @@ using SiegeEngine.UI;
 using System;
 using System.IO;
 using System.Numerics;
+using System.Text;
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : UIPanel
@@ -79,15 +80,26 @@ namespace ReadingChamber
         }
         private void UpdateUIControls()
         {
-            string html = "<div style=\"position: absolute; bottom: 10px; left: 10px; background-color: rgba(0,0,0,0.5); padding: 5px; display: flex; flex-direction: row;\">";
-            html += "<button data-hook=\"TogglePlay\">Play/Pause</button>";
-            html += "<button data-hook=\"LoadFBX\">Load FBX</button>";
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ReadingChamber", "AssetViewerUI.html");
+            if (!File.Exists(htmlPath))
+            {
+                Console.WriteLine($"AssetViewerPanel: UI HTML file not found at {htmlPath}");
+                return;
+            }
+            string baseHtml = File.ReadAllText(htmlPath);
+            int insertIndex = baseHtml.IndexOf("<!-- Animation buttons will be added here dynamically -->");
+            if (insertIndex == -1)
+            {
+                Console.WriteLine("AssetViewerPanel: Insertion point not found in HTML");
+                return;
+            }
+            StringBuilder dynamicButtons = new StringBuilder();
             foreach (var a in _model.Animations)
             {
-                html += $"<button data-hook=\"SelectAnim:{a.Name}\">{a.Name}</button>";
+                dynamicButtons.Append($"<button class=\"ui-button\" data-hook=\"SelectAnim:{a.Name}\">{a.Name}</button>");
             }
-            html += "</div>";
-            LoadUI(html);
+            string modifiedHtml = baseHtml.Insert(insertIndex, dynamicButtons.ToString());
+            LoadUI(modifiedHtml);
         }
         private void OnFileSelected(FileSelectedEvent e)
         {

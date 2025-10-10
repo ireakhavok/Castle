@@ -257,6 +257,10 @@ namespace SiegeEngine.UI
                 style.LeftStr = left;
             if (props.TryGetValue("top", out string top))
                 style.TopStr = top;
+            if (props.TryGetValue("right", out string right))
+                style.RightStr = right;
+            if (props.TryGetValue("bottom", out string bottom))
+                style.BottomStr = bottom;
             if (props.TryGetValue("width", out string width))
                 style.WidthStr = width;
             if (props.TryGetValue("height", out string height))
