@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Rendering
-// File: ShaderProgram.cs
-using SiegeEngine.ContextManagement;
+﻿using SiegeEngine.ContextManagement;
 using System;
 using System.Numerics;
 namespace SiegeEngine.Rendering
@@ -85,6 +83,17 @@ namespace SiegeEngine.Rendering
             if (location == -1)
                 throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
             _renderContext.Uniform1(location, value);
+        }
+        public void SetUniform(string name, float x, float y, float z)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
+            int location = _renderContext.GetUniformLocation(_program, name);
+            if (location == -1)
+                throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
+            _renderContext.Uniform3(location, x, y, z);
         }
         public void SetUniform(string name, float x, float y, float z, float w)
         {
