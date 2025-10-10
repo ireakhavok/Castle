@@ -101,6 +101,23 @@ namespace ReadingChamber
             string modifiedHtml = baseHtml.Insert(insertIndex, dynamicButtons.ToString());
             LoadUI(modifiedHtml);
         }
+        private void ApplyUserAgentDefaults()
+        {
+            string defaultCss = @"
+* {
+    color: white;
+}
+button {
+    padding: 2px 10px;
+    min-height: 30px;
+    border: 1px solid rgba(128, 128, 128, 1);
+    border-radius: 5px;
+    background-color: rgba(200, 200, 200, 1);
+    color: black;
+}
+";
+            _cssParser.Apply(defaultCss);
+        }
         private void OnFileSelected(FileSelectedEvent e)
         {
             _path = e.Path;
@@ -255,7 +272,12 @@ namespace ReadingChamber
                 }
             }
             // Render UI overlay
+            _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
+            _renderContext.Disable(_renderContext.Enums.CullFace);
             base.Render();
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.CullFace);
         }
     }
 }
