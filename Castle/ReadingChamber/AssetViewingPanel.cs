@@ -24,8 +24,7 @@ namespace ReadingChamber
         private Vector3 _cameraPosition = new Vector3(0, 0, 5);
         private Vector3 _cameraTarget = Vector3.Zero;
         private Vector3 _cameraUp = Vector3.UnitZ;
-        private float _yaw = 0f;
-        private float _pitch = 0f;
+        private Quaternion _cameraRotation = Quaternion.Identity;
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
@@ -94,8 +93,9 @@ namespace ReadingChamber
             _lastMouseY = mouseY;
             if (_controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press)
             {
-                _yaw += -deltaX * 0.1f;
-                _pitch += -deltaY * 0.1f;
+                Quaternion yawQuat = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -deltaX * 0.002f);
+                Quaternion pitchQuat = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -deltaY * 0.002f);
+                _cameraRotation = Quaternion.Normalize(yawQuat * _cameraRotation * pitchQuat);
             }
             if (_controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press)
             {
@@ -109,15 +109,11 @@ namespace ReadingChamber
             {
                 _isPanning = false;
             }
-            Vector3 front = new Vector3
-            {
-                X = MathF.Cos(MathF.PI * _yaw / 180) * MathF.Cos(MathF.PI * _pitch / 180),
-                Y = MathF.Sin(MathF.PI * _yaw / 180) * MathF.Cos(MathF.PI * _pitch / 180),
-                Z = MathF.Sin(MathF.PI * _pitch / 180)
-            };
+            Vector3 front = Vector3.Normalize(Vector3.Transform(new Vector3(0, 1, 0), _cameraRotation));
+            _cameraUp = Vector3.Normalize(Vector3.Transform(new Vector3(0, 0, 1), _cameraRotation));
             if (!_isPanning)
             {
-                _cameraPosition = _cameraTarget + Vector3.Normalize(front) * (_cameraPosition - _cameraTarget).Length();
+                _cameraPosition = _cameraTarget + front * (_cameraPosition - _cameraTarget).Length();
             }
             if (_playing)
             {
