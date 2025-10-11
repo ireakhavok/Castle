@@ -286,7 +286,7 @@ namespace ReadingChamber
                 }
             }
             // Render UI overlay
-            Console.WriteLine("AssetViewerPanel: Starting UI overlay render");
+            //Console.WriteLine("AssetViewerPanel: Starting UI overlay render");
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
@@ -296,7 +296,7 @@ namespace ReadingChamber
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
-            Console.WriteLine("AssetViewerPanel: Finished UI overlay render");
+            //Console.WriteLine("AssetViewerPanel: Finished UI overlay render");
         }
         public void Dispose()
         {

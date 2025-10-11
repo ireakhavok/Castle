@@ -138,18 +138,18 @@ Folder: Castle
  Methods:
  File: AssetViewingPanel.cs
  class: AssetViewerPanel (Namespace: ReadingChamber)
- Inherits: UIPanel
+ Inherits: IPanel
     
- Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Text
+ Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Reflection, System.Text
  Methods:
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ - constructor AssetViewerPanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
+ Calls: Init, Init, LoadModel, ModelManager, ShaderProgram, TryGetModel, TryGetModelData, UpdateUIControls
  - void Init()
  Calls: None
  - void UpdateUIControls()
  Calls: None
- - void ApplyUserAgentDefaults()
- Calls: None
- - solid rgba()
- Calls: LoadModel, LoadModel, ModelManager, TryGetModel, TryGetModelData, UpdateUIControls
  - void OnFileSelected(FileSelectedEvent e, FileSelectedEvent e)
  Calls: UpdateUIControls, UpdateUIControls
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
@@ -157,13 +157,27 @@ Folder: Castle
  - void Update(float deltaTime, float deltaTime)
  Calls: None
  - void Render()
- Calls: GetTransforms, GetTransforms, SetMatrix4Array
+ Calls: RecomputeLayout, RecomputeLayout
+ - void Dispose()
+ Calls: None
+ - void Detach()
+ Calls: None
+ File: AssetViewingPanel.cs
+ class: AssetUIOverlay (Namespace: ReadingChamber)
+ Inherits: UIOverlay
+        
+ Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Reflection, System.Text
+ Methods:
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
  File: FileSelectorPanel.cs
  class: FileSelectorPanel (Namespace: ReadingChamber)
- Inherits: UIPanel
+ Inherits: IPanel
     
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.UI, System, System.IO, System.Numerics, System.Text
  Methods:
+ - constructor FileSelectorPanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, string initialDir)
+ Calls: Init, Init, UpdateFileList
  - void Init()
  Calls: LoadUI, LoadUI, rgba
  - void UpdateFileList()
@@ -171,8 +185,12 @@ Folder: Castle
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
  Calls: UpdateFileList, UpdateFileList
  - void Update(float deltaTime, float deltaTime)
- Calls: Clear, Clear, ClearColor, GetWindowSize, Render, Viewport
+ Calls: Clear, Clear, ClearColor, Disable, Enable, GetWindowSize, RecomputeLayout, Render, Viewport
  - void Render()
+ Calls: RecomputeLayout, RecomputeLayout
+ - void Dispose()
+ Calls: None
+ - void Detach()
  Calls: None
  File: Class1.cs
  class: Class1 (Namespace: ScriptChamber)
@@ -2382,6 +2400,10 @@ Folder: Castle
  Inherits: None
  Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
+ - solid rgba()
+ Calls: rgba, rgba
+ - solid rgba()
+ Calls: None
  - void Apply(string css, string css)
  Calls: ParseProperties, ParseProperties, ReadUntil, SkipWhitespaceAndComments
  - void ApplyAll(HtmlElement root, HtmlElement root)
@@ -2519,22 +2541,17 @@ Folder: Castle
  Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
  Calls: GetTextSize, GetTextSize, RenderText
- File: UIPanel.cs
- class: UIPanel (Namespace: SiegeEngine.UI)
- Inherits: IPanel
-    
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+ File: UIOverlay.cs
+ class: UIOverlay (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, System, System.Collections.Generic, System.Linq, System.Numerics
  Methods:
- - constructor UIPanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
+ - constructor UIOverlay(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
  Calls: Initialize, Initialize, ShaderProgram, TextRenderer, UIQuadRenderer
  - void Init()
- Calls: ApplyAll, ApplyAll, ApplyInlineStyles, ApplyUserAgentDefaults, Clear, CollectClickables, ComputeLayout, GetWindowSize, HtmlParser, InheritProperties, Parse, PrepareResources
+ Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, Clear, CollectClickables, GetWindowSize, HtmlParser, InheritProperties, Parse, PrepareResources, RecomputeLayout
  - void LoadUI(string html, string html)
- Calls: Apply, Apply, rgba
- - void ApplyUserAgentDefaults()
- Calls: rgba, rgba
- - solid rgba()
- Calls: InheritProperties, InheritProperties
+ Calls: None
  - void InheritProperties(HtmlElement elem, HtmlElement elem, HtmlElement parent)
  Calls: None
  - void CollectClickables(HtmlElement elem, HtmlElement elem)
@@ -2547,9 +2564,9 @@ Folder: Castle
  Calls: GetWindowSize, GetWindowSize, RenderUI
  - void Render()
  Calls: RenderUI, RenderUI
+ - void RecomputeLayout(int w, int w, int h)
+ Calls: ComputeLayout, ComputeLayout
  - void Dispose()
- Calls: None
- - void Detach()
  Calls: None
  File: MetaFileParser.cs
  class: MetaFileParser (Namespace: SiegeEngine.UnityAssetLoader)

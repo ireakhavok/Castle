@@ -1,6 +1,7 @@
 ﻿// Folder: SiegeEngine.UI
 // File: CssStyle.cs
 using System.Numerics;
+
 namespace SiegeEngine.UI
 {
     public class CssStyle
@@ -56,62 +57,11 @@ namespace SiegeEngine.UI
         public string BorderLeftStyle { get; set; }
         public Vector4 BorderLeftColor { get; set; }
         public string BoxSizing { get; set; }
+        public string Transform { get; set; }  // New property for transform
+
         public CssStyle Clone()
         {
-            return new CssStyle
-            {
-                Position = Position,
-                LeftStr = LeftStr,
-                TopStr = TopStr,
-                RightStr = RightStr,
-                BottomStr = BottomStr,
-                WidthStr = WidthStr,
-                HeightStr = HeightStr,
-                MinWidthStr = MinWidthStr,
-                MinHeightStr = MinHeightStr,
-                MaxWidthStr = MaxWidthStr,
-                MaxHeightStr = MaxHeightStr,
-                Background = Background,
-                BackgroundColor = BackgroundColor,
-                BackgroundImage = BackgroundImage,
-                Color = Color,
-                TextColor = TextColor,
-                FontSizeStr = FontSizeStr,
-                FontSize = FontSize,
-                FontFamily = FontFamily,
-                Display = Display,
-                FlexDirection = FlexDirection,
-                AlignItems = AlignItems,
-                JustifyContent = JustifyContent,
-                Flex = Flex,
-                PaddingStr = PaddingStr,
-                PaddingTopStr = PaddingTopStr,
-                PaddingRightStr = PaddingRightStr,
-                PaddingBottomStr = PaddingBottomStr,
-                PaddingLeftStr = PaddingLeftStr,
-                MarginStr = MarginStr,
-                Margin = Margin,
-                GapStr = GapStr,
-                TextAlign = TextAlign,
-                WhiteSpace = WhiteSpace,
-                TextTransform = TextTransform,
-                BorderWidthStr = BorderWidthStr,
-                BorderStyle = BorderStyle,
-                BorderColor = BorderColor,
-                BorderTopWidthStr = BorderTopWidthStr,
-                BorderTopStyle = BorderTopStyle,
-                BorderTopColor = BorderTopColor,
-                BorderRightWidthStr = BorderRightWidthStr,
-                BorderRightStyle = BorderRightStyle,
-                BorderRightColor = BorderRightColor,
-                BorderBottomWidthStr = BorderBottomWidthStr,
-                BorderBottomStyle = BorderBottomStyle,
-                BorderBottomColor = BorderBottomColor,
-                BorderLeftWidthStr = BorderLeftWidthStr,
-                BorderLeftStyle = BorderLeftStyle,
-                BorderLeftColor = BorderLeftColor,
-                BoxSizing = BoxSizing
-            };
+            return (CssStyle)MemberwiseClone();
         }
     }
 }
