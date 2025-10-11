@@ -111,7 +111,9 @@ namespace SiegeEngine.UI
             float bottom = ParseSize(effectiveStyle.BottomStr, refHeight, viewportWidth, viewportHeight);
             float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
             float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
-            if ((string.IsNullOrEmpty(effectiveStyle.Display) || effectiveStyle.Display == "block" || effectiveStyle.Display == "flex") && float.IsNaN(w))
+            bool isBlockOrFlex = string.IsNullOrEmpty(effectiveStyle.Display) || effectiveStyle.Display == "block" || effectiveStyle.Display == "flex";
+            bool isStaticOrRelative = string.IsNullOrEmpty(effectiveStyle.Position) || effectiveStyle.Position == "static" || effectiveStyle.Position == "relative";
+            if (isBlockOrFlex && isStaticOrRelative && float.IsNaN(w))
             {
                 w = refWidth;
             }
