@@ -1041,6 +1041,7 @@ Found: Main_Background.jpg
 Found: main_background_grok_lol.jpg
 Found: AssetViewerUI.html
 Found: Citadel.exe
+Found: FileSelectorTemplate.html
 Found: Foundation.deps.json
 Found: Foundation.dll
 Found: Foundation.exe
@@ -1645,10 +1646,10 @@ Found: AssetViewerUI.html
 Found: AssetViewingPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
-Read 14787 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
+Read 14195 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
 Namespace: ReadingChamber
-Found 14 dependencies
-Class AssetViewerPanel: 10 methods
+Found 12 dependencies
+Class AssetViewerPanel: 8 methods
 Class AssetUIOverlay: 1 methods
 Found 2 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewingPanel.cs
 Found: bin
@@ -1729,6 +1730,7 @@ Found: Main_Background.jpg
 Found: main_background_grok_lol.jpg
 Found: AssetViewerUI.html
 Found: Citadel.exe
+Found: FileSelectorTemplate.html
 Found: ReadingChamber.deps.json
 Found: ReadingChamber.dll
 Found: ReadingChamber.pdb
@@ -1747,11 +1749,13 @@ Found: ..
 Found: FileSelectorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
-Read 3843 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Read 7493 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Namespace: ReadingChamber
 Found 9 dependencies
-Class FileSelectorPanel: 8 methods
-Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Class FileSelectorPanel: 6 methods
+Class FileSelectorUIOverlay: 1 methods
+Found 2 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Found: FileSelectorTemplate.html
 Found: obj
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj
 Found: .
@@ -2694,6 +2698,15 @@ Namespace: SiegeEngine.Managers
 Found 12 dependencies
 Class SceneManager: 6 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
+Found: UIManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
+Read 4635 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
+Namespace: SiegeEngine.Managers
+Found 13 dependencies
+Class UIManager: 11 methods
+Class if: 0 methods
+Found 2 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
 Found: UISettingsManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UISettingsManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UISettingsManager.cs
@@ -3009,7 +3022,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: SystemFontRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
-Read 8775 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
+Read 8702 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
 Namespace: SiegeEngine.Rendering
 Found 7 dependencies
 Class SystemFontRenderer: 5 methods
@@ -3018,7 +3031,7 @@ Found 2 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: TextRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
-Read 9272 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
+Read 9351 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
 Namespace: SiegeEngine.Rendering
 Found 5 dependencies
 Class TextRenderer: 8 methods
@@ -3175,10 +3188,18 @@ Found: UI
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI
 Found: .
 Found: ..
+Found: BasePanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
+Read 2188 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
+Namespace: SiegeEngine.UI
+Found 4 dependencies
+Class BasePanel: 7 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
 Found: ButtonElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
-Read 3698 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
+Read 2924 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
 Namespace: SiegeEngine.UI
 Found 5 dependencies
 Class ButtonElement: 5 methods
@@ -3186,7 +3207,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: CssParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
-Read 19313 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
+Read 19337 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
 Namespace: SiegeEngine.UI
 Found 5 dependencies
 Class CssParser: 16 methods
@@ -3231,6 +3252,14 @@ Namespace: SiegeEngine.UI
 Found 4 dependencies
 Class InputElement: 5 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
+Found: MenuPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
+Read 662 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
+Namespace: SiegeEngine.UI
+Found 4 dependencies
+Class MenuPanel: 1 methods
+Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
 Found: SelectElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\SelectElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\SelectElement.cs
@@ -3250,7 +3279,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
-Read 6715 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
+Read 6709 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Namespace: SiegeEngine.UI
 Found 8 dependencies
 Class UIOverlay: 11 methods
@@ -3672,11 +3701,8 @@ Found: README.md
 Found: SandBoxScene - Copy.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
-Read 11659 chars from: C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
-Namespace: SiegeEngine.Scenes
-Found 13 dependencies
-Class SandboxScene: 4 methods
-Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
+Failed to open file: C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
+Skipping empty file: C:\Users\ireak\source\repos\RealmFoundry\SandBoxScene - Copy.cs
 Found: SummarizeRepo
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\SummarizeRepo
 Found: .
@@ -3691,5 +3717,5 @@ Found: summaryV2.txt
 Found: SummarizeRepo.exe
 Found: summarize_log.txt
 Found: summary.txt
-Writing output for 2 folders
+Writing output for 1 folders
 Scan complete

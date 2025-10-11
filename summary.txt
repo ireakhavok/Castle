@@ -138,13 +138,13 @@ Folder: Castle
  Methods:
  File: AssetViewingPanel.cs
  class: AssetViewerPanel (Namespace: ReadingChamber)
- Inherits: IPanel
+ Inherits: BasePanel
     
- Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Reflection, System.Text
+ Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Text
  Methods:
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
  Calls: None
- - constructor AssetViewerPanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
+ - UIOverlay CreateUIOverlay()
  Calls: Init, Init, LoadModel, ModelManager, ShaderProgram, TryGetModel, TryGetModelData, UpdateUIControls
  - void Init()
  Calls: None
@@ -158,39 +158,39 @@ Folder: Castle
  Calls: None
  - void Render()
  Calls: RecomputeLayout, RecomputeLayout
- - void Dispose()
- Calls: None
- - void Detach()
- Calls: None
  File: AssetViewingPanel.cs
  class: AssetUIOverlay (Namespace: ReadingChamber)
  Inherits: UIOverlay
         
- Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Reflection, System.Text
+ Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Text
  Methods:
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
  Calls: None
  File: FileSelectorPanel.cs
  class: FileSelectorPanel (Namespace: ReadingChamber)
- Inherits: IPanel
+ Inherits: BasePanel
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.UI, System, System.IO, System.Numerics, System.Text
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Text
  Methods:
- - constructor FileSelectorPanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, string initialDir)
- Calls: Init, Init, UpdateFileList
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ - UIOverlay CreateUIOverlay()
+ Calls: Init, Init, NavigateTo
  - void Init()
- Calls: LoadUI, LoadUI, rgba
+ Calls: UpdateFileList, UpdateFileList
+ - void NavigateTo(string dir, string dir, bool addToHistory)
+ Calls: None
  - void UpdateFileList()
  Calls: None
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
- Calls: UpdateFileList, UpdateFileList
- - void Update(float deltaTime, float deltaTime)
- Calls: Clear, Clear, ClearColor, Disable, Enable, GetWindowSize, RecomputeLayout, Render, Viewport
- - void Render()
- Calls: RecomputeLayout, RecomputeLayout
- - void Dispose()
- Calls: None
- - void Detach()
+ Calls: NavigateTo, NavigateTo
+ File: FileSelectorPanel.cs
+ class: FileSelectorUIOverlay (Namespace: ReadingChamber)
+ Inherits: UIOverlay
+        
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Text
+ Methods:
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
  Calls: None
  File: Class1.cs
  class: Class1 (Namespace: ScriptChamber)
@@ -1571,6 +1571,38 @@ Folder: Castle
  Calls: Dispose, Dispose
  - void OnSwitchScene(SwitchSceneEvent e, SwitchSceneEvent e)
  Calls: None
+ File: UIManager.cs
+ class: UIManager (Namespace: SiegeEngine.Managers)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
+ Methods:
+ - constructor UIManager(UISettingsManager settingsManager, UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath)
+ Calls: Viewport, Viewport
+ - void OnResize(IntPtr win, IntPtr win, int w, int h)
+ Calls: None
+ - void Initialize(string initialMenuHtmlPath, string initialMenuHtmlPath)
+ Calls: AddPanel, AddPanel, ResolvePath
+ - void LoadMenu(string htmlPath, string htmlPath)
+ Calls: None
+ - needed AddPanel()
+ Calls: AddPanel, AddPanel, Init
+ - void OnOpenPanel(OpenPanelEvent e, OpenPanelEvent e)
+ Calls: None
+ - void AddPanel(IPanel panel, IPanel panel)
+ Calls: Dispose, Dispose
+ - void RemovePanel(IPanel panel, IPanel panel)
+ Calls: Update, Update
+ - void Update(float deltaTime, float deltaTime)
+ Calls: Update, Update
+ - void Render()
+ Calls: Render, Render
+ - void Dispose()
+ Calls: Dispose, Dispose
+ File: UIManager.cs
+ class: if (Namespace: SiegeEngine.Managers)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
+ Methods:
  File: UISettingsManager.cs
  class: UISettingsManager (Namespace: SiegeEngine.Managers)
  Inherits: None
@@ -2067,9 +2099,9 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
  Methods:
- - constructor SystemFontRenderer(IRenderContext renderContext, IRenderContext renderContext, string fontName, float fontSize)
+ - constructor SystemFontRenderer(IRenderContext renderContext, IRenderContext renderContext, string fontName)
  Calls: BindTexture, BindTexture, Clear, GenTextures, GetError, PixelStore, TexImage2D, TexParameter
- - void LoadFontData(string fontName, string fontName, float fontSize)
+ - void LoadFontData(string fontName, string fontName)
  Calls: None
  - float GetStringWidth(string text, string text)
  Calls: None
@@ -2383,6 +2415,26 @@ Folder: Castle
  Methods:
  - void Update(float deltaTime, float deltaTime)
  Calls: EntityMovedEvent, EntityMovedEvent, GetKey
+ File: BasePanel.cs
+ class: BasePanel (Namespace: SiegeEngine.UI)
+ Inherits: IPanel
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System
+ Methods:
+ - constructor BasePanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
+ Calls: UIOverlay, UIOverlay
+ - UIOverlay CreateUIOverlay()
+ Calls: Init, Init
+ - void Init()
+ Calls: Update, Update
+ - void Update(float deltaTime, float deltaTime)
+ Calls: Clear, Clear, ClearColor, Disable, Enable, GetWindowSize, RecomputeLayout, Render, Viewport
+ - void Render()
+ Calls: RecomputeLayout, RecomputeLayout
+ - void Dispose()
+ Calls: None
+ - void Detach()
+ Calls: None
  File: ButtonElement.cs
  class: ButtonElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2394,7 +2446,7 @@ Folder: Castle
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: GetTextSize, GetTextSize
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
- Calls: GetTextSize, GetTextSize, RenderText
+ Calls: HandleClick, HandleClick
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
  Calls: None
  - void AttachHook(string hookStr, string hookStr)
@@ -2527,6 +2579,14 @@ Folder: Castle
  Calls: ParseBorderWidths, ParseBorderWidths, ParsePaddings
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
  Calls: None
+ File: MenuPanel.cs
+ class: MenuPanel (Namespace: SiegeEngine.UI)
+ Inherits: BasePanel
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System
+ Methods:
+ - void Init()
+ Calls: None
  File: SelectElement.cs
  class: SelectElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2628,20 +2688,4 @@ Folder: Castle
  Calls: Clear, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PanelManager, PollEvents, Render, Resize, RunCallbacks, SceneManager, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
-
-Folder: 
- File: SandBoxScene - Copy.cs
- class: SandboxScene (Namespace: SiegeEngine.Scenes)
- Inherits: Scene
-    
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
- Methods:
- - void Initialize(int width, int width, int height)
- Calls: Viewport, Viewport
- - void Update(float deltaTime, float deltaTime)
- Calls: ActiveTexture, ActiveTexture, Bind, BindTexture, BindVertexArray, Clear, Disable, DrawArrays, DrawElements, Enable, GetEntityById, GetError, SetMatrix4, SetUniform, TryGetModelData, Use
- - void Render(IReadOnlyList<Entity> entities, IReadOnlyList<Entity> entities)
- Calls: SetUniform, SetUniform
- - void Dispose()
- Calls: Dispose, Dispose
 
