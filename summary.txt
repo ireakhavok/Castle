@@ -2086,7 +2086,7 @@ Folder: Castle
  class: TextRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.UI, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor TextRenderer(IRenderContext renderContext, IRenderContext renderContext, IntPtr window)
  Calls: BindBuffer, BindBuffer, BindVertexArray, BlendFunc, BufferData, Enable, EnableVertexAttribArray, GenBuffers, GenVertexArrays, VertexAttribPointer
@@ -2095,9 +2095,11 @@ Folder: Castle
  - Vector2 GetTextSize(string text, string text, float fontSize, string fontFamily)
  Calls: GetCharacterData, GetCharacterData
  - void RenderText(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, string fontFamily)
+ Calls: RenderTextPass, RenderTextPass
+ - void RenderText(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, string fontFamily, Matrix4x4 transformMatrix)
  Calls: None
- - void RenderTextPass(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily)
- Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, GetStringWidth, SetMatrix4, SetUniform, VertexAttribPointer
+ - void RenderTextPass(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily, Matrix4x4 transformMatrix)
+ Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, GetNdcQuad, GetStringWidth, SetMatrix4, SetUniform, VertexAttribPointer
  - SystemFontRenderer GetFontRenderer(string fontFamily, string fontFamily)
  Calls: None
  - void Dispose()
@@ -2115,13 +2117,15 @@ Folder: Castle
  File: UIQuadRenderer.cs
  class: UIQuadRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering.Shaders, System, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor UIQuadRenderer(IRenderContext renderContext, IRenderContext renderContext)
  Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, GenBuffers, GenVertexArrays, ShaderProgram
  - void Initialize()
  Calls: None
  - void DrawQuad(float posX, float posX, float posY, float sizeX, float sizeY, Vector4 color, float viewportWidth, float viewportHeight)
+ Calls: None
+ - void DrawNdcQuad(float[] ndc, float[] ndc, Vector4 color)
  Calls: None
  File: VertexBuffer.cs
  class: VertexBuffer (Namespace: SiegeEngine.Rendering)
@@ -2389,9 +2393,9 @@ Folder: Castle
  Calls: ComputeLayout, ComputeLayout, GetTextSize
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: GetTextSize, GetTextSize
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
- Calls: None
- - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: GetTextSize, GetTextSize, RenderText
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
  Calls: None
  - void AttachHook(string hookStr, string hookStr)
  Calls: None
@@ -2458,6 +2462,8 @@ Folder: Castle
  Calls: None
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
+ - void UpdateFullTransforms(Matrix4x4 parentMatrix, Matrix4x4 parentMatrix)
+ Calls: UpdateFullTransforms, UpdateFullTransforms
  - void PrepareResources(string baseDir, string baseDir, IControlContext controlContext, IntPtr window, IRenderContext renderContext, ShaderProgram shader)
  Calls: BackgroundRenderer, BackgroundRenderer, Initialize
  - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
@@ -2466,7 +2472,7 @@ Folder: Castle
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, ParsePaddings, ParseSize
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: None
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
  Calls: None
  - float ParseSize(string s, string s, float parent, float vw, float vh)
  Calls: Parse, Parse
@@ -2478,10 +2484,16 @@ Folder: Castle
  Calls: None
  - float GetVal(int index, int index, float defaultVal)
  Calls: ParseSize, ParseSize
- - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
- Calls: HandleClick, HandleClick
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
  - HtmlElement FindElementById(string id, string id)
  Calls: FindElementById, FindElementById
+ - Matrix4x4 ComputeTransform(float viewportWidth, float viewportWidth, float viewportHeight)
+ Calls: Parse, Parse, ParseAngle, ParseSize
+ - float ParseAngle(string s, string s)
+ Calls: Parse, Parse
+ - float[] GetNdcQuad(float x, float x, float y, float w, float h, Matrix4x4 trans, float vw, float vh)
+ Calls: None
  File: HtmlParser.cs
  class: HtmlParser (Namespace: SiegeEngine.UI)
  Inherits: None
@@ -2509,10 +2521,12 @@ Folder: Castle
  Calls: ComputeLayout, ComputeLayout
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
  Calls: GetTextSize, GetTextSize, RenderText
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ParseBorderWidths, ParseBorderWidths, ParsePaddings
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
  File: SelectElement.cs
  class: SelectElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2523,10 +2537,12 @@ Folder: Castle
  Calls: ComputeLayout, ComputeLayout
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: GetTextSize, GetTextSize, Render, RenderText
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
  Calls: GetTextSize, GetTextSize, RenderText
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: GetTextSize, GetTextSize
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
  File: TextElement.cs
  class: TextElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2539,8 +2555,10 @@ Folder: Castle
  Calls: GetWrappedLines, GetWrappedLines
  - List<string> GetWrappedLines(float maxWidth, float maxWidth, float fs, TextRenderer textRenderer, string fontFamily)
  Calls: None
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
  Calls: GetTextSize, GetTextSize, RenderText
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
  File: UIOverlay.cs
  class: UIOverlay (Namespace: SiegeEngine.UI)
  Inherits: None
@@ -2557,15 +2575,15 @@ Folder: Castle
  - void CollectClickables(HtmlElement elem, HtmlElement elem)
  Calls: None
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
- Calls: GetCursorPos, GetCursorPos, GetMouseButton, HandleUIClick
+ Calls: GetCursorPos, GetCursorPos, GetMouseButton, GetWindowSize, HandleClick, HandleUIClick
  - void Update(float deltaTime, float deltaTime)
- Calls: None
+ Calls: HandleClick, HandleClick
  - void RenderUI(int w, int w, int h)
  Calls: GetWindowSize, GetWindowSize, RenderUI
  - void Render()
  Calls: RenderUI, RenderUI
  - void RecomputeLayout(int w, int w, int h)
- Calls: ComputeLayout, ComputeLayout
+ Calls: ComputeLayout, ComputeLayout, UpdateFullTransforms
  - void Dispose()
  Calls: None
  File: MetaFileParser.cs
