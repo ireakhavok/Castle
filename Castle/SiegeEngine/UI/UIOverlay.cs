@@ -57,11 +57,11 @@ namespace SiegeEngine.UI
                 }
                 foreach (var c in e.Children) q.Enqueue(c);
             }
+            _cssParser.Apply(CssParser.DefaultUserAgentCss);
             foreach (var css in cssBlocks)
             {
                 _cssParser.Apply(css);
             }
-            _cssParser.Apply(CssParser.DefaultUserAgentCss);
             _cssParser.ApplyInlineStyles(_uiRoot);
             _cssParser.ApplyAll(_uiRoot);
             InheritProperties(_uiRoot, null);
@@ -155,7 +155,7 @@ namespace SiegeEngine.UI
         {
             if (_uiRoot != null)
             {
-                _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f, 0, 0);
+                _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f);
                 _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             }
         }
