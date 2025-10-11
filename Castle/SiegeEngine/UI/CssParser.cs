@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class CssParser
@@ -34,9 +33,7 @@ input[type=""checkbox""] {
     margin: 0 5px 0 0;
 }
 ";
-
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
-
         public void Apply(string css)
         {
             int i = 0;
@@ -55,7 +52,6 @@ input[type=""checkbox""] {
                 }
             }
         }
-
         public void ApplyAll(HtmlElement root)
         {
             ApplyInlineStyles(root);
@@ -79,7 +75,6 @@ input[type=""checkbox""] {
                 }
             }
         }
-
         public void ApplyInlineStyles(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -97,7 +92,6 @@ input[type=""checkbox""] {
                 }
             }
         }
-
         private void SkipWhitespaceAndComments(string css, ref int i)
         {
             while (i < css.Length)
@@ -120,7 +114,6 @@ input[type=""checkbox""] {
                 break;
             }
         }
-
         private string ReadUntil(string css, ref int i, char stop)
         {
             string result = "";
@@ -131,7 +124,6 @@ input[type=""checkbox""] {
             }
             return result;
         }
-
         private Dictionary<string, string> ParseProperties(string block)
         {
             Dictionary<string, string> props = new Dictionary<string, string>();
@@ -148,13 +140,11 @@ input[type=""checkbox""] {
             }
             return props;
         }
-
         public void ApplyInline(string inline, CssStyle style)
         {
             var props = ParseProperties(inline);
             ApplyProperties(style, props);
         }
-
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props, string pseudo)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -183,7 +173,6 @@ input[type=""checkbox""] {
                 }
             }
         }
-
         private bool Matches(HtmlElement elem, string selector)
         {
             if (string.IsNullOrEmpty(selector)) return true;
@@ -221,7 +210,6 @@ input[type=""checkbox""] {
                 return true;
             }
         }
-
         private bool SimpleMatches(HtmlElement elem, string simple)
         {
             if (string.IsNullOrEmpty(simple)) return true;
@@ -273,7 +261,6 @@ input[type=""checkbox""] {
             }
             return match;
         }
-
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
             if (props.TryGetValue("position", out string pos))
@@ -421,8 +408,9 @@ input[type=""checkbox""] {
             }
             if (props.TryGetValue("box-sizing", out string boxs))
                 style.BoxSizing = boxs;
+            if (props.TryGetValue("transform", out string tr))
+                style.Transform = tr;
         }
-
         private Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
@@ -447,7 +435,6 @@ input[type=""checkbox""] {
             }
             return ParseSingleColor(color);
         }
-
         private Vector4 ParseSingleColor(string color)
         {
             color = color.Trim();

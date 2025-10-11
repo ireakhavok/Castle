@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
+using System.Reflection;
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -22,14 +22,12 @@ namespace SiegeEngine.UI
         protected CssParser _cssParser;
         protected HtmlElement _uiRoot;
         protected List<HtmlElement> _uiClickables = new List<HtmlElement>();
-
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _window = window;
         }
-
         public virtual void Init()
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -38,7 +36,6 @@ namespace SiegeEngine.UI
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _cssParser = new CssParser();
         }
-
         public void LoadUI(string html)
         {
             HtmlParser parser = new HtmlParser();
@@ -76,7 +73,6 @@ namespace SiegeEngine.UI
             _controlContext.GetWindowSize(_window, out int w, out int h);
             RecomputeLayout(w, h);
         }
-
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -94,7 +90,6 @@ namespace SiegeEngine.UI
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
-
         private void CollectClickables(HtmlElement elem)
         {
             if (elem.GetEffectiveDisplay() == "none") return;
@@ -106,11 +101,9 @@ namespace SiegeEngine.UI
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
-
         protected virtual void HandleUIClick(HtmlElement elem)
         {
         }
-
         public virtual void Update(float deltaTime)
         {
             // UI input handling
@@ -143,14 +136,12 @@ namespace SiegeEngine.UI
                 HandleUIClick(clickedElem);
             }
         }
-
         protected void RenderUI(int w, int h)
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h);
+            _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         public virtual void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
@@ -159,7 +150,6 @@ namespace SiegeEngine.UI
                 RenderUI(w, h);
             }
         }
-
         public void RecomputeLayout(int w, int h)
         {
             if (_uiRoot != null)
@@ -167,7 +157,6 @@ namespace SiegeEngine.UI
                 _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f, 0, 0);
             }
         }
-
         public virtual void Dispose()
         {
             _uiShader.Dispose();

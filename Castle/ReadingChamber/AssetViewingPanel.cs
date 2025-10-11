@@ -14,7 +14,6 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using System.Reflection;
-
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : IPanel

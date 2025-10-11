@@ -1,9 +1,11 @@
 ﻿// Folder: SiegeEngine.Rendering
 // File: UIQuadRenderer.cs
-using System.Numerics;
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering.Shaders;
+using SiegeEngine.UI;
 using System;
+using System.Collections.Generic;
+using System.Numerics;
 namespace SiegeEngine.Rendering
 {
     public unsafe class UIQuadRenderer
@@ -59,6 +61,31 @@ namespace SiegeEngine.Rendering
             _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 2 * sizeof(float), (void*)0);
             _shader.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
             _shader.SetUniform("uUseTexture", 0.0f);
+            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
+            _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, (void*)0);
+            _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, 0);
+            _renderContext.BindVertexArray(0);
+        }
+        public void DrawNdcQuad(float[] ndc, Vector4 color)
+        {
+            _shader.Use();
+            _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
+            _shader.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
+            _shader.SetUniform("uUseTexture", 0.0f);
+            _renderContext.BindVertexArray(_vao);
+            _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
+            float[] vertices = new float[8];
+            for (int i = 0; i < 4; i++)
+            {
+                vertices[i * 2] = ndc[i * 2];
+                vertices[i * 2 + 1] = ndc[i * 2 + 1];
+            }
+            fixed (float* ptr = vertices)
+            {
+                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
+            }
+            _renderContext.EnableVertexAttribArray(0);
+            _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 2 * sizeof(float), (void*)0);
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
             _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, (void*)0);
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, 0);

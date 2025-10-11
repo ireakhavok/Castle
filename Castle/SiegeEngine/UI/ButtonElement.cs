@@ -31,9 +31,19 @@ namespace SiegeEngine.UI
                 textChild.ComputedContentY = textChild.ComputedPosition.Y;
             }
         }
-        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
-            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
+            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
+            var textChild = Children.Find(c => c is TextElement) as TextElement;
+            if (textChild != null)
+            {
+                float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
+                float textW = textRenderer.GetTextSize(textChild.Content, fs, Style.FontFamily ?? "Arial").X;
+                float textH = textRenderer.GetTextSize(textChild.Content, fs, Style.FontFamily ?? "Arial").Y;
+                float textX = ComputedContentX + (ComputedContentWidth - textW) / 2;
+                float textY = ComputedContentY + (ComputedContentHeight - textH) / 2;
+                textRenderer.RenderText(textChild.Content, textX, textY, viewportWidth, viewportHeight, fs, Style.TextColor, Style.FontFamily ?? "Arial", parentMatrix);
+            }
         }
         public override bool HandleClick(Vector2 mousePos)
         {

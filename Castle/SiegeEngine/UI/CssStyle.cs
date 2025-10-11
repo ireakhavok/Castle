@@ -57,11 +57,11 @@ namespace SiegeEngine.UI
         public string BorderLeftStyle { get; set; }
         public Vector4 BorderLeftColor { get; set; }
         public string BoxSizing { get; set; }
-        public string Transform { get; set; }  // New property for transform
+        public string Transform { get; set; }
 
         public CssStyle Clone()
         {
-            return (CssStyle)MemberwiseClone();
+            return (CssStyle)this.MemberwiseClone();
         }
     }
 }
