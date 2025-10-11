@@ -3,63 +3,128 @@
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
-using SiegeEngine.Interfaces;
 using SiegeEngine.UI;
 using System;
+using System.Collections.Generic;
 using System.IO;
-using System.Numerics;
+using System.Linq;
 using System.Text;
 
 namespace ReadingChamber
 {
-    public class FileSelectorPanel : IPanel
+    public class FileSelectorPanel : BasePanel
     {
-        private readonly IRenderContext _renderContext;
-        private readonly IControlContext _controlContext;
-        private readonly IntPtr _window;
-        private readonly EventBus _eventBus;
-        private string _currentDir;
-        private UIOverlay _uiOverlay;
-        private int _lastW;
-        private int _lastH;
-
-        public DockState DockState { get; set; } = DockState.Floating;
-
-        public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, string initialDir)
+        private class FileSelectorUIOverlay : UIOverlay
         {
-            _renderContext = renderContext;
-            _controlContext = controlContext;
-            _window = window;
-            _eventBus = eventBus;
-            _currentDir = initialDir;
-            _uiOverlay = new UIOverlay(renderContext, controlContext, window);
+            private readonly FileSelectorPanel _parent;
+            public FileSelectorUIOverlay(FileSelectorPanel parent, IRenderContext renderContext, IControlContext controlContext, IntPtr window) : base(renderContext, controlContext, window)
+            {
+                _parent = parent;
+            }
+            protected override void HandleUIClick(HtmlElement elem)
+            {
+                _parent.HandleUIClick(elem);
+            }
         }
 
-        public void Init()
+        private string _currentDir;
+        private List<string> _history = new List<string>();
+        private int _historyIndex = -1;
+        private string _viewType = "list";
+        private string _sortBy = "name";
+        private bool _sortAscending = true;
+
+        public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, string initialDir) : base(renderContext, controlContext, window, eventBus)
         {
-            _uiOverlay.Init();
+            _currentDir = initialDir;
+        }
+
+        protected override UIOverlay CreateUIOverlay()
+        {
+            return new FileSelectorUIOverlay(this, _renderContext, _controlContext, _window);
+        }
+
+        public override void Init()
+        {
+            base.Init();
+            NavigateTo(_currentDir);
+        }
+
+        private void NavigateTo(string dir, bool addToHistory = true)
+        {
+            if (addToHistory)
+            {
+                if (_historyIndex < _history.Count - 1)
+                {
+                    _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
+                }
+                _history.Add(dir);
+                _historyIndex = _history.Count - 1;
+            }
+            _currentDir = dir;
             UpdateFileList();
         }
 
         private void UpdateFileList()
         {
-            StringBuilder html = new StringBuilder();
-            html.Append("<div style=\"position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(255,255,255,0.8); display: flex; flex-direction: column;\">");
-            html.Append("<h2>Files in " + _currentDir + "</h2>");
-            // List directories
-            foreach (var dir in Directory.GetDirectories(_currentDir))
+            string templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FileSelectorTemplate.html");
+            if (!File.Exists(templatePath))
             {
-                string dirName = Path.GetFileName(dir);
-                html.Append($"<button data-hook=\"EnterDir:{dir}\">{dirName}/</button>");
+                Console.WriteLine($"FileSelectorPanel: Template HTML file not found at {templatePath}");
+                return;
             }
-            // List FBX files
-            foreach (var file in Directory.GetFiles(_currentDir, "*.fbx"))
+            string templateHtml = File.ReadAllText(templatePath);
+            StringBuilder dynamicItems = new StringBuilder();
+
+            // Get directories and files
+            var dirs = Directory.GetDirectories(_currentDir);
+            var files = Directory.GetFiles(_currentDir, "*.fbx");
+
+            // Combine and sort
+            var items = new List<(string Name, string Path, bool IsDir, long Size, DateTime Modified)>();
+            foreach (var dir in dirs)
             {
-                string fileName = Path.GetFileName(file);
-                html.Append($"<button data-hook=\"SelectFile:{file}\">{fileName}</button>");
+                items.Add((Path.GetFileName(dir), dir, true, 0, Directory.GetLastWriteTime(dir)));
             }
-            html.Append("</div>");
-            _uiOverlay.LoadUI(html.ToString());
+            foreach (var file in files)
+            {
+                var fi = new FileInfo(file);
+                items.Add((fi.Name, file, false, fi.Length, fi.LastWriteTime));
+            }
+
+            // Sort
+            if (_sortBy == "name")
+            {
+                items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            }
+            else if (_sortBy == "size")
+            {
+                items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Size).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Size).ToList();
+            }
+            else if (_sortBy == "date")
+            {
+                items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Modified).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Modified).ToList();
+            }
+
+            // Generate HTML
+            if (items.Count == 0)
+            {
+                dynamicItems.Append("<p style=\"text-align: center; color: #888888;\">No files or directories found.</p>");
+            }
+            else
+            {
+                foreach (var item in items)
+                {
+                    string hook = item.IsDir ? $"EnterDir:{item.Path.Replace("\\", "\\\\")}" : $"SelectFile:{item.Path.Replace("\\", "\\\\")}";
+                    string cls = item.IsDir ? "dir" : "file";
+                    dynamicItems.Append($"<button class='item-button {cls}' data-hook=\"{hook}\">{item.Name}</button>");
+                }
+            }
+
+            string currentDirEscaped = _currentDir.Replace("\\", "\\\\");
+            string modifiedHtml = templateHtml.Replace("<!--CURRENT_DIR-->", currentDirEscaped).Replace("<!--DYNAMIC_ITEMS-->", dynamicItems.ToString());
+            modifiedHtml = modifiedHtml.Replace("class=\"file-list\"", $"class=\"file-list {_viewType}\"");
+            _uiOverlay.LoadUI(modifiedHtml);
         }
 
         public void HandleUIClick(HtmlElement elem)
@@ -67,46 +132,67 @@ namespace ReadingChamber
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
             if (hook.StartsWith("EnterDir:"))
             {
-                _currentDir = hook.Substring(9);
-                UpdateFileList();
+                string path = hook.Substring(9);
+                NavigateTo(path);
             }
             else if (hook.StartsWith("SelectFile:"))
             {
                 string path = hook.Substring(11);
                 _eventBus.Publish(new FileSelectedEvent(path));
-                // Close panel, assuming PanelManager handles removal
+                // Close panel
             }
-        }
-
-        public void Update(float deltaTime)
-        {
-            _uiOverlay.Update(deltaTime);
-        }
-
-        public void Render()
-        {
-            _controlContext.GetWindowSize(_window, out int w, out int h);
-            if (w != _lastW || h != _lastH)
+            else if (hook == "back")
             {
-                _lastW = w;
-                _lastH = h;
-                _uiOverlay.RecomputeLayout(w, h);
+                if (_historyIndex > 0)
+                {
+                    _historyIndex--;
+                    NavigateTo(_history[_historyIndex], false);
+                }
             }
-            _renderContext.Viewport(0, 0, (uint)w, (uint)h);
-            _renderContext.ClearColor(0.8f, 0.8f, 0.8f, 1.0f);
-            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _uiOverlay.Render();
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
-        }
-
-        public void Dispose()
-        {
-            _uiOverlay.Dispose();
-        }
-
-        public void Detach()
-        {
+            else if (hook == "forward")
+            {
+                if (_historyIndex < _history.Count - 1)
+                {
+                    _historyIndex++;
+                    NavigateTo(_history[_historyIndex], false);
+                }
+            }
+            else if (hook == "up")
+            {
+                string parent = Directory.GetParent(_currentDir)?.FullName;
+                if (parent != null)
+                {
+                    NavigateTo(parent);
+                }
+            }
+            else if (hook == "view-list")
+            {
+                _viewType = "list";
+                UpdateFileList();
+            }
+            else if (hook == "view-grid")
+            {
+                _viewType = "grid";
+                UpdateFileList();
+            }
+            else if (hook == "sort-name")
+            {
+                if (_sortBy == "name") _sortAscending = !_sortAscending;
+                _sortBy = "name";
+                UpdateFileList();
+            }
+            else if (hook == "sort-size")
+            {
+                if (_sortBy == "size") _sortAscending = !_sortAscending;
+                _sortBy = "size";
+                UpdateFileList();
+            }
+            else if (hook == "sort-date")
+            {
+                if (_sortBy == "date") _sortAscending = !_sortAscending;
+                _sortBy = "date";
+                UpdateFileList();
+            }
         }
     }
 }

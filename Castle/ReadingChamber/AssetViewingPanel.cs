@@ -4,7 +4,6 @@ using SiegeEngine.AssetParsing;
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
-using SiegeEngine.Interfaces;
 using SiegeEngine.Managers;
 using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Shaders;
@@ -13,10 +12,10 @@ using System;
 using System.IO;
 using System.Numerics;
 using System.Text;
-using System.Reflection;
+
 namespace ReadingChamber
 {
-    public unsafe class AssetViewerPanel : IPanel
+    public unsafe class AssetViewerPanel : BasePanel
     {
         private class AssetUIOverlay : UIOverlay
         {
@@ -44,25 +43,19 @@ namespace ReadingChamber
         private bool _firstMouse = true;
         private bool _isPanning = false;
         private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx");
-        private readonly EventBus _eventBus;
-        private readonly IRenderContext _renderContext;
-        private readonly IControlContext _controlContext;
-        private readonly IntPtr _window;
-        private AssetUIOverlay _uiOverlay;
-        private int _lastW;
-        private int _lastH;
-        public DockState DockState { get; set; } = DockState.Floating;
-        public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
+
+        public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
-            _renderContext = renderContext;
-            _controlContext = controlContext;
-            _window = window;
-            _eventBus = eventBus;
-            _uiOverlay = new AssetUIOverlay(this, renderContext, controlContext, window);
         }
-        public void Init()
+
+        protected override UIOverlay CreateUIOverlay()
         {
-            _uiOverlay.Init();
+            return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
+        }
+
+        public override void Init()
+        {
+            base.Init();
             var modelManager = new ModelManager(renderContext: _renderContext);
             modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
             string key = Path.GetFileNameWithoutExtension(_path).ToLower();
@@ -159,7 +152,7 @@ namespace ReadingChamber
                 _eventBus.Publish(new OpenPanelEvent(fileSelector));
             }
         }
-        public void Update(float deltaTime)
+        public override void Update(float deltaTime)
         {
             // Camera control
             _controlContext.GetCursorPos(_window, out double mx, out double my);
@@ -219,7 +212,7 @@ namespace ReadingChamber
             }
             _uiOverlay.Update(deltaTime);
         }
-        public void Render()
+        public override void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
             if (w != _lastW || h != _lastH)
@@ -296,14 +289,6 @@ namespace ReadingChamber
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
             //Console.WriteLine("AssetViewerPanel: Finished UI overlay render");
-        }
-        public void Dispose()
-        {
-            _assetShader.Dispose();
-            _uiOverlay.Dispose();
-        }
-        public void Detach()
-        {
         }
     }
 }

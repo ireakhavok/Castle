@@ -20,6 +20,7 @@ button {
     border-radius: 5px;
     background-color: rgba(200, 200, 200, 1);
     color: black;
+    text-align: center;
 }
 select {
     padding: 2px 10px;

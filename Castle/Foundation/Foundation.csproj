@@ -9,7 +9,12 @@
 
   <ItemGroup>
     <Content Include="$(SolutionDir)Assets\**\*" CopyToOutputDirectory="PreserveNewest" Link="Assets\%(RecursiveDir)%(Filename)%(Extension)" />
-    <Content Include="..\ReadingChamber\AssetViewerUI.html" Link="AssetViewerUI.html" />
+    <Content Include="..\ReadingChamber\AssetViewerUI.html" Link="AssetViewerUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\ReadingChamber\FileSelectorTemplate.html" Link="FileSelectorTemplate.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <ProjectReference Include="..\ReadingChamber\ReadingChamber.csproj" />
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
     <ProjectReference Include="..\Trebuchet\Trebuchet.csproj" />
