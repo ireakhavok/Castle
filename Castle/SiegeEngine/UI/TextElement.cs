@@ -2,8 +2,6 @@
 // File: TextElement.cs
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering;
-using SiegeEngine.Rendering.Shaders;
-using SiegeEngine.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -86,6 +84,10 @@ namespace SiegeEngine.UI
                 textRenderer.RenderText(renderLine, x, y, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
                 y += _lineHeight;
             }
+        }
+        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
+        {
+            return base.HandleClick(mousePos, viewportWidth, viewportHeight);
         }
     }
 }

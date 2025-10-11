@@ -65,5 +65,9 @@ namespace SiegeEngine.UI
             }
             return base.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
         }
+        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
+        {
+            return base.HandleClick(mousePos, viewportWidth, viewportHeight);
+        }
     }
 }

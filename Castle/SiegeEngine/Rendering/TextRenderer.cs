@@ -76,7 +76,7 @@ namespace SiegeEngine.Rendering
                 return;
             text = text.Replace("\n", " ").Replace("\r", " "); // Avoid non-printable
             // Render black outline (2px)
-            float[] offsets = { -1f, 1f };
+            float[] offsets = { -0.5f, 0.5f };
             for (int i = 0; i < offsets.Length; i++)
             {
                 for (int j = 0; j < offsets.Length; j++)

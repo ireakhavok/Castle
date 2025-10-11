@@ -59,5 +59,9 @@ namespace SiegeEngine.UI
             float ih = textH + pad.X + pad.Z + borderW.X + borderW.Z;
             return new Vector2(iw, ih);
         }
+        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
+        {
+            return base.HandleClick(mousePos, viewportWidth, viewportHeight);
+        }
     }
 }

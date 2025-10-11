@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Reflection;
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -112,11 +111,13 @@ namespace SiegeEngine.UI
             mousePos = new Vector2((float)x, (float)y);
             bool mouseDown = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press;
             bool mouseUp = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Release;
+            _controlContext.GetWindowSize(_window, out int vw_int, out int vh_int);
+            float vw = vw_int;
+            float vh = vh_int;
             HtmlElement clickedElem = null;
             foreach (var clickable in _uiClickables)
             {
-                bool over = mousePos.X >= clickable.ComputedPosition.X && mousePos.X <= clickable.ComputedPosition.X + clickable.ComputedWidth &&
-                            mousePos.Y >= clickable.ComputedPosition.Y && mousePos.Y <= clickable.ComputedPosition.Y + clickable.ComputedHeight;
+                bool over = clickable.HandleClick(mousePos, vw, vh);
                 clickable.IsHover = over;
                 if (over && mouseDown)
                 {
@@ -155,6 +156,7 @@ namespace SiegeEngine.UI
             if (_uiRoot != null)
             {
                 _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f, 0, 0);
+                _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             }
         }
         public virtual void Dispose()

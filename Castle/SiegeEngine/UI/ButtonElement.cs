@@ -45,10 +45,9 @@ namespace SiegeEngine.UI
                 textRenderer.RenderText(textChild.Content, textX, textY, viewportWidth, viewportHeight, fs, Style.TextColor, Style.FontFamily ?? "Arial", parentMatrix);
             }
         }
-        public override bool HandleClick(Vector2 mousePos)
+        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
-            if (mousePos.X >= ComputedPosition.X && mousePos.X <= ComputedPosition.X + ComputedWidth &&
-                mousePos.Y >= ComputedPosition.Y && mousePos.Y <= ComputedPosition.Y + ComputedHeight)
+            if (base.HandleClick(mousePos, viewportWidth, viewportHeight))
             {
                 OnClick?.Invoke();
                 return true;

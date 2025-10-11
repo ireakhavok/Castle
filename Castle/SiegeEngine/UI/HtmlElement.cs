@@ -37,6 +37,7 @@ namespace SiegeEngine.UI
         private BackgroundRenderer _bgRenderer;
         private string _baseDir;
         private Matrix4x4 ComputedTransform;
+        protected Matrix4x4 ComputedFullTransform;
         public string GetEffectiveDisplay()
         {
             CssStyle effective = Style;
@@ -213,6 +214,14 @@ namespace SiegeEngine.UI
                 }
             }
             ComputedTransform = ComputeTransform(viewportWidth, viewportHeight);
+        }
+        public virtual void UpdateFullTransforms(Matrix4x4 parentMatrix)
+        {
+            ComputedFullTransform = parentMatrix * ComputedTransform;
+            foreach (var child in Children)
+            {
+                child.UpdateFullTransforms(ComputedFullTransform);
+            }
         }
         public void PrepareResources(string baseDir, IControlContext controlContext, IntPtr window, IRenderContext renderContext, ShaderProgram shader)
         {
@@ -886,19 +895,28 @@ namespace SiegeEngine.UI
             float left = GetVal(3, right);
             return new Vector4(top, right, bottom, left);
         }
-        public virtual bool HandleClick(Vector2 mousePos)
+        public virtual bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
-            if (mousePos.X >= ComputedPosition.X && mousePos.X <= ComputedPosition.X + ComputedWidth &&
-                mousePos.Y >= ComputedPosition.Y && mousePos.Y <= ComputedPosition.Y + ComputedHeight)
+            float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+            float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
+            for (int k = 0; k < 4; k++)
             {
-                foreach (var child in Children)
-                {
-                    if (child.HandleClick(mousePos)) return true;
-                }
-                return true;
+                float nx = ndc[k * 2];
+                float ny = ndc[k * 2 + 1];
+                minX = Math.Min(minX, nx);
+                maxX = Math.Max(maxX, nx);
+                minY = Math.Min(minY, ny);
+                maxY = Math.Max(maxY, ny);
             }
-            return false;
+            float mx = 2 * mousePos.X / viewportWidth - 1;
+            float my = 1 - 2 * mousePos.Y / viewportHeight;
+            if (mx < minX || mx > maxX || my < minY || my > maxY) return false;
+            for (int ci = Children.Count - 1; ci >= 0; ci--)
+            {
+                if (Children[ci].HandleClick(mousePos, viewportWidth, viewportHeight)) return true;
+            }
+            return true;
         }
         public HtmlElement FindElementById(string id)
         {
