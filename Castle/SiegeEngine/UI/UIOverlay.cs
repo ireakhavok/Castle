@@ -168,7 +168,7 @@ namespace SiegeEngine.UI
                 Console.WriteLine($"UIOverlay: Failed to load relative path: {resolvedPath}");
             }
         }
-        protected void RefreshUI()
+        public void RefreshUI()
         {
             if (_uiRoot == null) return;
             _cssParser.ApplyAll(_uiRoot);

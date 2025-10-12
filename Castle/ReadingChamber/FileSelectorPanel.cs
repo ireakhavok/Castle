@@ -135,6 +135,12 @@ namespace ReadingChamber
             string modifiedHtml = templateHtml.Replace("<!--CURRENT_DIR-->", currentDirEscaped).Replace("<!--DYNAMIC_ITEMS-->", dynamicItems.ToString());
             modifiedHtml = modifiedHtml.Replace("class=\"file-list\"", $"class=\"file-list {_viewType}\"");
             _uiOverlay.LoadUI(modifiedHtml);
+            var fileListElem = _uiOverlay.FindElementById("file-list");
+            if (fileListElem != null)
+            {
+                fileListElem.Style.AlignItems = "flex-start";
+                _uiOverlay.RefreshUI();
+            }
         }
 
         private string GetFileClass(string fileName)

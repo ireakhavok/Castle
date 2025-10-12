@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.Linq;
 using SiegeEngine.ContextManagement;
+
 namespace SiegeEngine.Rendering
 {
     public class SystemFontRenderer
@@ -30,7 +31,7 @@ namespace SiegeEngine.Rendering
             //Console.WriteLine($"SystemFontRenderer: Loading font '{fontName}', size {_baseSize}");
             try
             {
-                using (var font = new Font(fontName, _baseSize, FontStyle.Bold))
+                using (var font = new Font(fontName, _baseSize, FontStyle.Regular))
                 using (var bitmap = new Bitmap(1, 1))
                 using (var graphics = Graphics.FromImage(bitmap))
                 {
@@ -119,7 +120,7 @@ namespace SiegeEngine.Rendering
         public float GetStringWidth(string text)
         {
             if (string.IsNullOrEmpty(text)) return 0f;
-            using (var font = new Font(_fontName, _baseSize, FontStyle.Bold))
+            using (var font = new Font(_fontName, _baseSize, FontStyle.Regular))
             using (var bitmap = new Bitmap(1, 1))
             using (var graphics = Graphics.FromImage(bitmap))
             {
