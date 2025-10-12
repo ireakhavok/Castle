@@ -143,9 +143,9 @@ Folder: Castle
  Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Text
  Methods:
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
- Calls: None
+ Calls: ShaderProgram, ShaderProgram
  - UIOverlay CreateUIOverlay()
- Calls: Init, Init, LoadModel, ModelManager, ShaderProgram, TryGetModel, TryGetModelData, UpdateUIControls
+ Calls: Init, Init, LoadModel, ModelManager, TryGetModel, TryGetModelData, UpdateUIControls
  - void Init()
  Calls: None
  - void UpdateUIControls()
@@ -1166,18 +1166,6 @@ Folder: Castle
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
  Calls: None
- File: EventBus.cs
- class: SwitchSceneEvent (Namespace: SiegeEngine.Events)
- Inherits: IEvent
-    
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Diagnostics, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
- Methods:
- - constructor SwitchSceneEvent(string sceneName, string sceneName)
- Calls: Serialize, Serialize
- - byte[] Serialize()
- Calls: None
- - void Deserialize(byte[] data, byte[] data)
- Calls: None
  File: ExitEditorEvent.cs
  class: ExitEditorEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
@@ -1308,6 +1296,18 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, System.Numerics, System.Text.Json
  Methods:
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: SwitchSceneEvent.cs
+ class: SwitchSceneEvent (Namespace: None)
+ Inherits: IEvent
+
+ Dependencies: SiegeEngine.Events, SiegeEngine.Events, System.Text, System.Text.Json
+ Methods:
+ - constructor SwitchSceneEvent(string sceneName, string sceneName)
+ Calls: Serialize, Serialize
  - byte[] Serialize()
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
@@ -1557,9 +1557,9 @@ Folder: Castle
  File: SceneManager.cs
  class: SceneManager (Namespace: SiegeEngine.Managers)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, SiegeEngine.UI, System, System.Numerics
  Methods:
- - constructor SceneManager(EventBus eventBus, EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, IntPtr window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuSystem menuSystem)
+ - constructor SceneManager(EventBus eventBus, EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, IntPtr window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuPanel menuPanel)
  Calls: Update, Update
  - void Update(float deltaTime, float deltaTime)
  Calls: Update, Update
@@ -1582,10 +1582,8 @@ Folder: Castle
  Calls: None
  - void Initialize(string initialMenuHtmlPath, string initialMenuHtmlPath)
  Calls: AddPanel, AddPanel, ResolvePath
- - void LoadMenu(string htmlPath, string htmlPath)
+ - void LoadMenu(string initialMenuHtmlPath, string initialMenuHtmlPath)
  Calls: None
- - needed AddPanel()
- Calls: AddPanel, AddPanel, Init
  - void OnOpenPanel(OpenPanelEvent e, OpenPanelEvent e)
  Calls: None
  - void AddPanel(IPanel panel, IPanel panel)
@@ -1598,11 +1596,6 @@ Folder: Castle
  Calls: Render, Render
  - void Dispose()
  Calls: Dispose, Dispose
- File: UIManager.cs
- class: if (Namespace: SiegeEngine.Managers)
- Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
- Methods:
  File: UISettingsManager.cs
  class: UISettingsManager (Namespace: SiegeEngine.Managers)
  Inherits: None
@@ -2583,10 +2576,28 @@ Folder: Castle
  class: MenuPanel (Namespace: SiegeEngine.UI)
  Inherits: BasePanel
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, System, System.IO, System.Reflection
  Methods:
+ - void HandleDataHook(string hook, string hook)
+ Calls: SwitchSceneEvent, SwitchSceneEvent
+ - void HandleLink(string href, string href)
+ Calls: ResolvePath, ResolvePath
+ - UIOverlay CreateUIOverlay()
+ Calls: Init, Init, LoadUI
  - void Init()
+ Calls: LoadUI, LoadUI
+ - void SwitchMenu(string menuName, string menuName)
  Calls: None
+ File: MenuPanel.cs
+ class: MenuUIOverlay (Namespace: SiegeEngine.UI)
+ Inherits: UIOverlay
+        
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, System, System.IO, System.Reflection
+ Methods:
+ - void HandleDataHook(string hook, string hook)
+ Calls: SwitchSceneEvent, SwitchSceneEvent
+ - void HandleLink(string href, string href)
+ Calls: ResolvePath, ResolvePath
  File: SelectElement.cs
  class: SelectElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2622,20 +2633,44 @@ Folder: Castle
  File: UIOverlay.cs
  class: UIOverlay (Namespace: SiegeEngine.UI)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, System, System.Collections.Generic, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
  Methods:
  - constructor UIOverlay(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
  Calls: Initialize, Initialize, ShaderProgram, TextRenderer, UIQuadRenderer
  - void Init()
- Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, Clear, CollectClickables, GetWindowSize, HtmlParser, InheritProperties, Parse, PrepareResources, RecomputeLayout
- - void LoadUI(string html, string html)
+ Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, Clear, CollectClickables, GetWindowSize, HtmlParser, InheritProperties, InitializeElementProperties, Parse, PrepareResources, ProcessSelects, RecomputeLayout
+ - void LoadUI(string html, string html, string baseDir)
+ Calls: None
+ - void InitializeElementProperties(HtmlElement root, HtmlElement root)
+ Calls: None
+ - void ProcessSelects(HtmlElement root, HtmlElement root)
  Calls: None
  - void InheritProperties(HtmlElement elem, HtmlElement elem, HtmlElement parent)
  Calls: None
  - void CollectClickables(HtmlElement elem, HtmlElement elem)
  Calls: None
+ - void HandleDataHook(string hook, string hook)
+ Calls: LoadUI, LoadUI
+ - void HandleLink(string href, string href)
+ Calls: LoadUI, LoadUI
+ - void RefreshUI()
+ Calls: FindElementById, FindElementById
+ - HtmlElement FindElementById(HtmlElement root, HtmlElement root, string id)
+ Calls: FindElementById, FindElementById
+ - HtmlElement FindElementById(string id, string id)
+ Calls: None
+ - return FindElementById()
+ Calls: None
+ - List<HtmlElement> FindElementsByClass(HtmlElement root, HtmlElement root, string className)
+ Calls: None
+ - List<HtmlElement> FindElementsByTag(HtmlElement root, HtmlElement root, string tag)
+ Calls: None
+ - List<HtmlElement> FindElementsByTag(string tag, string tag)
+ Calls: FindElementById, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, RefreshUI
+ - return FindElementsByTag()
+ Calls: FindElementById, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, RefreshUI
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
- Calls: GetCursorPos, GetCursorPos, GetMouseButton, GetWindowSize, HandleClick, HandleUIClick
+ Calls: None
  - void Update(float deltaTime, float deltaTime)
  Calls: HandleClick, HandleClick
  - void RenderUI(int w, int w, int h)
@@ -2682,10 +2717,10 @@ Folder: Castle
  File: Launcher.cs
  class: Launcher (Namespace: Trebuchet)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, SiegeEngine.UI, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
  Methods:
  - void Start(string context, string context)
- Calls: Clear, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PanelManager, PollEvents, Render, Resize, RunCallbacks, SceneManager, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
+ Calls: AddPanel, AddPanel, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Init, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PanelManager, PollEvents, Render, Resize, RunCallbacks, SceneManager, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
 

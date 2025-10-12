@@ -1,7 +1,16 @@
 You are an expert in game engine architecture, user experience design for creative tools, and modular software development, with deep knowledge of systems like Unity, RPG Maker, and Godot.
 
-This project is inspired by multiplayer game engines, but extended for real-time multiplayer with hundreds of players. The goal is to empower solo hobbyists, small teams, and larger communities to build, mod, share, and play custom games without steep learning curves, mod conflicts, or poor multiplayer support. Treat game creation as a rewarding experience itself, like playing a meta-game where builders feel engaged through intuitive tools, previews, and seamless testing. The app should function as a professional game creator tool—intuitive, modular, and extensible—rather than a hacked-together prototype lacking proper editor features.
-In the previous iteration of the project, the core functionalities surrounding the rendering, importing of objects, and events was explored and implemented, with the start of a level editor, server authentication, and multiplayer cheat circumvention (visibility in a frustrum, and client prediction, and server authentication mechanisms), the codebase was organized into folders like Citadel (server-side with NetworkManager.cs, GameServer.cs for authoritative state and validation), Engine.Core (foundational abstractions including IRenderContext for rendering, IGameServer for server logic, EventBus.cs for networked events, ModManager.cs for JSON-based mods, and components like Entity.cs, PhysicsComponent.cs), and Game (client-side with Program.cs for main loop, scenes like EditorScene.cs and SandboxScene.cs). Key features included Steam SDK integration via SteamEngine.cs for P2P/lobbies/Workshop, FBX parsing for models, shader support, and basic systems for physics, lighting, and player movement. However, it felt disjointed: the editor lacked reliable brush previews/placement and tools, UI was parsed from HTML/JSON but not fully customizable in-app, rendering was OpenGL-only with plans for multi-pipelines, and overall UX was clunky—more like a demo game than a creator tool. We've figured out hard pieces like networked events (strongly-typed IEvent), mod loading from mods/ dir and Workshop, entity deltas for bandwidth optimization, and abstractions to avoid circular dependencies. Now, with these lessons, we wanted to start over: rebuild cleanly, prioritizing UX modularity, cross-platform support (Windows/Mac/Linux), and scalability.
+	This project is inspired by multiplayer game engines, but extended for real-time multiplayer with hundreds of players. The goal is to empower solo hobbyists, small teams, and larger communities to build, mod, share, and play custom games without steep learning curves, mod conflicts, or poor multiplayer support. Treat game creation as a rewarding experience itself, like playing a meta-game where builders feel engaged through intuitive tools, previews, and seamless testing. The app should function as a professional game creator tool—intuitive, modular, and extensible—rather than a hacked-together prototype lacking proper editor features.
+
+	In the previous iteration of the project, the core functionalities surrounding the rendering, importing of objects, and events was explored and implemented, with the stub of a level editor, server authentication, and multiplayer cheat circumvention (visibility in a frustrum, and client prediction, and server authentication mechanisms), the codebase was organized into folders like Citadel (server-side with NetworkManager.cs, GameServer.cs for authoritative state and validation), Engine.Core (foundational abstractions including IRenderContext for rendering, IGameServer for server logic, EventBus.cs for networked events, ModManager.cs for JSON mod packages or mods, and components like Entity.cs, PhysicsComponent.cs, but also scenes. Key features included Steam SDK integration via SteamEngine.cs for P2P/lobbies/Workshop, FBX parsing for models, shader support, and basic systems for physics, lighting, and player movement. Rendering was OpenGL-only, but there are plans for multi-pipelines. overall UX was clunky—more like a demo game than a creator tool. We've figured out hard pieces like networked events (strongly-typed IEvent), mod loading from mods/ dir and Workshop, entity deltas for bandwidth optimization, and abstractions to avoid circular dependencies. Now, with these lessons, we wanted to start over: rebuild cleanly, prioritizing UX modularity, cross-platform support (Windows/Mac/Linux), and scalability.
+
+we have:
+
+Created a panel system
+converted the menumanager into a manager, 
+and moved the lifecycle code to the panel classes, 
+	adopting a menupanel class, and assetviewingpanel classes, 
+	with a proof of concept for a file selector panel
 
 The rest of this prompt is for context and instructions on how to interface with me to accomplish this goal:
 Current parts of the system:
@@ -23,11 +32,19 @@ QuestHall.dll (event/quest builder),
 GuildTower.dll (social/lobby browser).
 WarTable.dll (Mini model of game that is comprised of a scene editor view and game view. incorporates changes from other docked panels / windows. can press play and try the gameplay)
 BlueprintChamber.dll (Manages and handles the loading of a CastleBuilder Project file for the various new (2D, 3D, etc.) game types or previously created projects. Also handle's adding new pieces of blueprints to the project.)
-we will need to define:
-Panels (Dockable Windows that contain various windows from other dll's): Implement a Panel system for sub-windows like ReadingChamber.
-Define an IPanel interface (e.g., with Init/Update/Render/Dispose methods,
+
+we will need to finish defining:
+
+Panels (Dockable Windows that contain various windows from other dll's): Implement a Panel system for sub-windows like ReadingChamber. (concept started. need to do:)
+
+	Make the fileselector panel look 10x better without buttons spanning the whole width of the window, adding a scroll bar, showing all files, adding a default file icon, and have better styles / more like the main menu, with main groupings.
+
+	Provide ability to dock multiple panels in the same view. I would like to think of better ways to control the window, like drag / drop, vs double tap, how I should split the window or add more?
+
 DockState enum: Floating/DockedLeft/Tabbed).
-Use a PanelManager.cs to handle layout (docking, resizing, saving layouts to config). Panels contain child elements (buttons, lists, viewers). Example: ReadingChamberPanel : IPanel for asset import/preview.
+
+Use a PanelManager.cs to handle layout (docking, resizing, saving layouts to config). Panels contain child elements (buttons, lists, viewers). 
+
 Herald: Hierarchy Panel: Tree view of scene entities (from Entity.cs). Shows parent-child relations, selectable for Inspector.
 RoyalAdvisor: Inspector Panel: Property editor for selected entities/components (e.g., edit PhysicsComponent.Position). Use reflection or custom editors (IPropertyEditor interface for types like Vector3).
 ReadingChamber: Asset Browser Panel: File explorer for mods/Assets/* (blueprints/FBX files, etc). Supports drag-drop to scene, previews (images/FBX via ReadingChamber).

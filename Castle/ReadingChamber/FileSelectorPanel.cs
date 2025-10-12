@@ -78,7 +78,7 @@ namespace ReadingChamber
 
             // Get directories and files
             var dirs = Directory.GetDirectories(_currentDir);
-            var files = Directory.GetFiles(_currentDir, "*.fbx");
+            var files = Directory.GetFiles(_currentDir);
 
             // Combine and sort
             var items = new List<(string Name, string Path, bool IsDir, long Size, DateTime Modified)>();
@@ -116,8 +116,18 @@ namespace ReadingChamber
                 foreach (var item in items)
                 {
                     string hook = item.IsDir ? $"EnterDir:{item.Path.Replace("\\", "\\\\")}" : $"SelectFile:{item.Path.Replace("\\", "\\\\")}";
-                    string cls = item.IsDir ? "dir" : "file";
-                    dynamicItems.Append($"<button class='item-button {cls}' data-hook=\"{hook}\">{item.Name}</button>");
+                    string cls = item.IsDir ? "dir" : GetFileClass(item.Name);
+                    string icon = GetIcon(cls);
+                    if (_viewType == "list")
+                    {
+                        string sizeStr = item.IsDir ? "" : FormatSize(item.Size);
+                        string dateStr = item.Modified.ToString("yyyy-MM-dd HH:mm");
+                        dynamicItems.Append($"<button class='item-button {cls}' data-hook=\"{hook}\"><span class='icon'>{icon}</span><span class='name'>{item.Name}</span><span class='size'>{sizeStr}</span><span class='date'>{dateStr}</span></button>");
+                    }
+                    else
+                    {
+                        dynamicItems.Append($"<button class='item-button {cls}' data-hook=\"{hook}\"><span class='icon'>{icon}</span>{item.Name}</button>");
+                    }
                 }
             }
 
@@ -125,6 +135,30 @@ namespace ReadingChamber
             string modifiedHtml = templateHtml.Replace("<!--CURRENT_DIR-->", currentDirEscaped).Replace("<!--DYNAMIC_ITEMS-->", dynamicItems.ToString());
             modifiedHtml = modifiedHtml.Replace("class=\"file-list\"", $"class=\"file-list {_viewType}\"");
             _uiOverlay.LoadUI(modifiedHtml);
+        }
+
+        private string GetFileClass(string fileName)
+        {
+            string ext = Path.GetExtension(fileName).ToLowerInvariant();
+            return "file" + (string.IsNullOrEmpty(ext) ? "" : ext.Replace(".", "-"));
+        }
+
+        private string GetIcon(string cls)
+        {
+            if (cls == "dir") return "📁";
+            if (cls == "file-fbx") return "🗿";
+            if (cls == "file-png" || cls == "file-jpg" || cls == "file-jpeg" || cls == "file-gif") return "🖼️";
+            if (cls == "file-txt" || cls == "file-md") return "📝";
+            if (cls == "file-json" || cls == "file-xml") return "⚙️";
+            return "📄";
+        }
+
+        private string FormatSize(long size)
+        {
+            if (size < 1024) return size + " B";
+            if (size < 1024 * 1024) return (size / 1024) + " KB";
+            if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)) + " MB";
+            return (size / (1024 * 1024 * 1024)) + " GB";
         }
 
         public void HandleUIClick(HtmlElement elem)
