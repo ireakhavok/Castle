@@ -4,14 +4,6 @@ You are an expert in game engine architecture, user experience design for creati
 
 	In the previous iteration of the project, the core functionalities surrounding the rendering, importing of objects, and events was explored and implemented, with the stub of a level editor, server authentication, and multiplayer cheat circumvention (visibility in a frustrum, and client prediction, and server authentication mechanisms), the codebase was organized into folders like Citadel (server-side with NetworkManager.cs, GameServer.cs for authoritative state and validation), Engine.Core (foundational abstractions including IRenderContext for rendering, IGameServer for server logic, EventBus.cs for networked events, ModManager.cs for JSON mod packages or mods, and components like Entity.cs, PhysicsComponent.cs, but also scenes. Key features included Steam SDK integration via SteamEngine.cs for P2P/lobbies/Workshop, FBX parsing for models, shader support, and basic systems for physics, lighting, and player movement. Rendering was OpenGL-only, but there are plans for multi-pipelines. overall UX was clunky—more like a demo game than a creator tool. We've figured out hard pieces like networked events (strongly-typed IEvent), mod loading from mods/ dir and Workshop, entity deltas for bandwidth optimization, and abstractions to avoid circular dependencies. Now, with these lessons, we wanted to start over: rebuild cleanly, prioritizing UX modularity, cross-platform support (Windows/Mac/Linux), and scalability.
 
-we have:
-
-Created a panel system
-converted the menumanager into a manager, 
-and moved the lifecycle code to the panel classes, 
-	adopting a menupanel class, and assetviewingpanel classes, 
-	with a proof of concept for a file selector panel
-
 The rest of this prompt is for context and instructions on how to interface with me to accomplish this goal:
 Current parts of the system:
 SeigeEngine is the core of the engine, it incorporates many parts and could potentially contain the commonized code. Implemented components include rendering abstractions (IRenderContext, ShaderProgram.cs, VertexBuffer.cs), event handling (EventBus.cs), networking (SteamEngine.cs), asset parsing (FBXParser.cs, NodeParser.cs), UI parsing and rendering (MenuSystem.cs, HtmlParser.cs, CssParser.cs, HtmlElement.cs, ButtonElement.cs), systems (PhysicsSystem.cs, AudioSystem.cs, LightingSystem.cs, PlayerControllerSystem.cs), scenes (EditorScene.cs, SandboxScene.cs), and definitions (Entity.cs, PhysicsComponent.cs).
@@ -32,19 +24,10 @@ QuestHall.dll (event/quest builder),
 GuildTower.dll (social/lobby browser).
 WarTable.dll (Mini model of game that is comprised of a scene editor view and game view. incorporates changes from other docked panels / windows. can press play and try the gameplay)
 BlueprintChamber.dll (Manages and handles the loading of a CastleBuilder Project file for the various new (2D, 3D, etc.) game types or previously created projects. Also handle's adding new pieces of blueprints to the project.)
-
-we will need to finish defining:
-
-Panels (Dockable Windows that contain various windows from other dll's): Implement a Panel system for sub-windows like ReadingChamber. (concept started. need to do:)
-
-	Make the fileselector panel look 10x better without buttons spanning the whole width of the window, adding a scroll bar, showing all files, adding a default file icon, and have better styles / more like the main menu, with main groupings.
-
-	Provide ability to dock multiple panels in the same view. I would like to think of better ways to control the window, like drag / drop, vs double tap, how I should split the window or add more?
-
+Panels (Dockable Windows that contain various windows from other dll's): Implement a Panel system for sub-windows like ReadingChamber. (concept started.)
+Provide ability to dock multiple panels in the same view. I would like to think of better ways to control the window, like drag / drop, vs double tap, how I should split the window or add more?
 DockState enum: Floating/DockedLeft/Tabbed).
-
 Use a PanelManager.cs to handle layout (docking, resizing, saving layouts to config). Panels contain child elements (buttons, lists, viewers). 
-
 Herald: Hierarchy Panel: Tree view of scene entities (from Entity.cs). Shows parent-child relations, selectable for Inspector.
 RoyalAdvisor: Inspector Panel: Property editor for selected entities/components (e.g., edit PhysicsComponent.Position). Use reflection or custom editors (IPropertyEditor interface for types like Vector3).
 ReadingChamber: Asset Browser Panel: File explorer for mods/Assets/* (blueprints/FBX files, etc). Supports drag-drop to scene, previews (images/FBX via ReadingChamber).

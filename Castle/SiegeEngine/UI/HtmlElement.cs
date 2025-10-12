@@ -189,7 +189,7 @@ namespace SiegeEngine.UI
                     boxY += refHeight - bottom - boxH;
                 }
             }
-            if (effectiveStyle.Position != "absolute" && effectiveStyle.Position != "fixed")
+            else
             {
                 boxX -= margin.W;
                 boxY -= margin.X;
@@ -776,19 +776,6 @@ namespace SiegeEngine.UI
             }
             if (effectiveStyle.Display == "none") return;
             Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
-            if (effectiveStyle.BackgroundColor != Vector4.Zero)
-            {
-                float[] ndc = GetNdcQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(ndc, effectiveStyle.BackgroundColor);
-            }
-            if (_bgRenderer != null)
-            {
-                renderContext.Enable(renderContext.Enums.ScissorTest);
-                int scissorY = (int)(viewportHeight - (ComputedBackgroundY + ComputedBackgroundHeight));
-                renderContext.Scissor((int)ComputedBackgroundX, scissorY, (uint)ComputedBackgroundWidth, (uint)ComputedBackgroundHeight);
-                _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, viewportWidth, viewportHeight);
-                renderContext.Disable(renderContext.Enums.ScissorTest);
-            }
             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
@@ -798,25 +785,60 @@ namespace SiegeEngine.UI
             string borderBottomS = string.IsNullOrEmpty(effectiveStyle.BorderBottomStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderBottomStyle;
             string borderLeftS = string.IsNullOrEmpty(effectiveStyle.BorderLeftStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderLeftStyle;
             Vector4 borderW = this.BorderWidth;
-            if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
+            bool uniformBorder = borderW.X == borderW.Y && borderW.Y == borderW.Z && borderW.Z == borderW.W;
+            bool uniformColor = borderTopC == borderRightC && borderRightC == borderBottomC && borderBottomC == borderLeftC;
+            bool uniformStyle = borderTopS == borderRightS && borderRightS == borderBottomS && borderBottomS == borderLeftS && borderTopS != "none";
+            bool hasUniformBorder = uniformBorder && uniformColor && uniformStyle && borderW.X > 0;
+            Vector4 br = ParseSides(effectiveStyle.BorderRadiusStr, ComputedBackgroundWidth, viewportWidth, viewportHeight);
+            float minRad = Math.Min(ComputedBackgroundWidth / 2, ComputedBackgroundHeight / 2);
+            br.X = Math.Min(br.X, minRad);
+            br.Y = Math.Min(br.Y, minRad);
+            br.Z = Math.Min(br.Z, minRad);
+            br.W = Math.Min(br.W, minRad);
+            bool hasBg = effectiveStyle.BackgroundColor != Vector4.Zero || _bgRenderer != null;
+            if (hasBg)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(ndc, borderTopC);
+                float[] bgNdc = GetNdcQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, localMatrix, viewportWidth, viewportHeight);
+                if (br != Vector4.Zero && hasUniformBorder)
+                {
+                    float bw = borderW.X;
+                    Vector4 borderC = borderTopC;
+                    float[] outerNdc = GetNdcQuad(ComputedPosition.X - bw, ComputedPosition.Y - bw, ComputedWidth + 2 * bw, ComputedHeight + 2 * bw, localMatrix, viewportWidth, viewportHeight);
+                    quadRenderer.DrawNdcQuad(outerNdc, borderC, new Vector4(br.X + bw, br.Y + bw, br.Z + bw, br.W + bw), new Vector2(ComputedWidth + 2 * bw, ComputedHeight + 2 * bw));
+                }
+                quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(ComputedBackgroundWidth, ComputedBackgroundHeight));
             }
-            if (borderBottomS != "none" && borderBottomC != Vector4.Zero && borderW.Z > 0)
+            if (_bgRenderer != null)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW.Z, ComputedWidth, borderW.Z, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(ndc, borderBottomC);
+                renderContext.Enable(renderContext.Enums.ScissorTest);
+                int scissorY = (int)(viewportHeight - (ComputedBackgroundY + ComputedBackgroundHeight));
+                renderContext.Scissor((int)ComputedBackgroundX, scissorY, (uint)ComputedBackgroundWidth, (uint)ComputedBackgroundHeight);
+                _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, viewportWidth, viewportHeight);
+                renderContext.Disable(renderContext.Enums.ScissorTest);
             }
-            if (borderLeftS != "none" && borderLeftC != Vector4.Zero && borderW.W > 0)
+            bool drawSideBorders = br == Vector4.Zero || !hasUniformBorder;
+            if (drawSideBorders)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, borderW.W, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(ndc, borderLeftC);
-            }
-            if (borderRightS != "none" && borderRightC != Vector4.Zero && borderW.Y > 0)
-            {
-                float[] ndc = GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(ndc, borderRightC);
+                if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
+                {
+                    float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, localMatrix, viewportWidth, viewportHeight);
+                    quadRenderer.DrawNdcQuad(ndc, borderTopC);
+                }
+                if (borderBottomS != "none" && borderBottomC != Vector4.Zero && borderW.Z > 0)
+                {
+                    float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW.Z, ComputedWidth, borderW.Z, localMatrix, viewportWidth, viewportHeight);
+                    quadRenderer.DrawNdcQuad(ndc, borderBottomC);
+                }
+                if (borderLeftS != "none" && borderLeftC != Vector4.Zero && borderW.W > 0)
+                {
+                    float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, borderW.W, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
+                    quadRenderer.DrawNdcQuad(ndc, borderLeftC);
+                }
+                if (borderRightS != "none" && borderRightC != Vector4.Zero && borderW.Y > 0)
+                {
+                    float[] ndc = GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
+                    quadRenderer.DrawNdcQuad(ndc, borderRightC);
+                }
             }
             foreach (var child in Children)
             {
@@ -898,11 +920,11 @@ namespace SiegeEngine.UI
                 }
                 return defaultVal;
             }
-            float top = GetVal(0, 0);
-            float right = GetVal(1, top);
-            float bottom = GetVal(2, top);
-            float left = GetVal(3, right);
-            return new Vector4(top, right, bottom, left);
+            float val1 = GetVal(0, 0);
+            float val2 = GetVal(1, val1);
+            float val3 = GetVal(2, val1);
+            float val4 = GetVal(3, val2);
+            return new Vector4(val1, val2, val3, val4);
         }
         public virtual bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {

@@ -58,6 +58,8 @@ namespace SiegeEngine.UI
         public Vector4 BorderLeftColor { get; set; }
         public string BoxSizing { get; set; }
         public string Transform { get; set; }
+        public string BorderRadiusStr { get; set; }
+        public Vector4 BorderRadius { get; set; }
 
         public CssStyle Clone()
         {

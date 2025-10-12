@@ -407,6 +407,8 @@ input[type=""checkbox""] {
                     style.BorderLeftColor = ParseColor(colorStr);
                 }
             }
+            if (props.TryGetValue("border-radius", out string bradius))
+                style.BorderRadiusStr = bradius;
             if (props.TryGetValue("box-sizing", out string boxs))
                 style.BoxSizing = boxs;
             if (props.TryGetValue("transform", out string tr))

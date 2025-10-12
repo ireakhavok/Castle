@@ -68,24 +68,36 @@ namespace SiegeEngine.Rendering
         }
         public void DrawNdcQuad(float[] ndc, Vector4 color)
         {
+            DrawNdcQuad(ndc, color, Vector4.Zero, Vector2.Zero);
+        }
+        public void DrawNdcQuad(float[] ndc, Vector4 color, Vector4 borderRadius, Vector2 rectSize)
+        {
             _shader.Use();
             _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
             _shader.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
             _shader.SetUniform("uUseTexture", 0.0f);
+            float useRounded = borderRadius == Vector4.Zero ? 0f : 1f;
+            _shader.SetUniform("uUseRounded", useRounded);
+            if (useRounded > 0.5f)
+            {
+                _shader.SetUniform("uBorderRadius", borderRadius.X, borderRadius.Y, borderRadius.Z, borderRadius.W);
+                _shader.SetUniform("uRectSize", rectSize.X, rectSize.Y, 0f, 0f);
+            }
             _renderContext.BindVertexArray(_vao);
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-            float[] vertices = new float[8];
-            for (int i = 0; i < 4; i++)
-            {
-                vertices[i * 2] = ndc[i * 2];
-                vertices[i * 2 + 1] = ndc[i * 2 + 1];
-            }
+            float[] vertices = new float[16];
+            vertices[0] = ndc[0]; vertices[1] = ndc[1]; vertices[2] = 0f; vertices[3] = 0f;
+            vertices[4] = ndc[2]; vertices[5] = ndc[3]; vertices[6] = 1f; vertices[7] = 0f;
+            vertices[8] = ndc[4]; vertices[9] = ndc[5]; vertices[10] = 1f; vertices[11] = 1f;
+            vertices[12] = ndc[6]; vertices[13] = ndc[7]; vertices[14] = 0f; vertices[15] = 1f;
             fixed (float* ptr = vertices)
             {
                 _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
             }
             _renderContext.EnableVertexAttribArray(0);
-            _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 2 * sizeof(float), (void*)0);
+            _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
+            _renderContext.EnableVertexAttribArray(1);
+            _renderContext.VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
             _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, (void*)0);
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, 0);
