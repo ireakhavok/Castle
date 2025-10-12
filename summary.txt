@@ -182,6 +182,12 @@ Folder: Castle
  Calls: None
  - void UpdateFileList()
  Calls: None
+ - string GetFileClass(string fileName, string fileName)
+ Calls: None
+ - string GetIcon(string cls, string cls)
+ Calls: None
+ - string FormatSize(long size, long size)
+ Calls: FileSelectedEvent, FileSelectedEvent, NavigateTo, UpdateFileList
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
  Calls: NavigateTo, NavigateTo
  File: FileSelectorPanel.cs
