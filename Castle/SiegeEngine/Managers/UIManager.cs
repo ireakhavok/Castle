@@ -78,18 +78,18 @@ namespace SiegeEngine.Managers
             _initialized = true;
         }
 
-        private void LoadMenu(string htmlPath)
+        private void LoadMenu(string initialMenuHtmlPath)
         {
-            string resolvedPath = _modManager.ResolvePath(htmlPath);
+            string resolvedPath = _modManager.ResolvePath(initialMenuHtmlPath);
             if (resolvedPath == null || !File.Exists(resolvedPath))
             {
-                Console.WriteLine($"UIManager: Failed to load menu HTML: {htmlPath}");
+                Console.WriteLine($"UIManager: Failed to load menu HTML: {initialMenuHtmlPath}");
                 return;
             }
             string html = File.ReadAllText(resolvedPath);
             // Load into menu overlay or main UI root
             // For simplicity, assume menu is loaded as a special panel
-            var menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, html); // Create a MenuPanel class if needed
+            var menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialMenuHtmlPath);
             AddPanel(menuPanel);
         }
 

@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -229,9 +230,17 @@ namespace SiegeEngine.UI
             if (!string.IsNullOrEmpty(Style.BackgroundImage))
             {
                 string relativePath = Style.BackgroundImage;
-                string fullPath = Path.Combine(baseDir, relativePath).Replace('\\', '/');
-                _bgRenderer = new BackgroundRenderer(controlContext, window, renderContext);
-                _bgRenderer.Initialize(fullPath, shader);
+                string fullPath = Path.GetFullPath(Path.Combine(baseDir, relativePath));
+                Console.WriteLine($"HtmlElement: Attempting to load background texture from: {fullPath}");
+                if (File.Exists(fullPath))
+                {
+                    _bgRenderer = new BackgroundRenderer(controlContext, window, renderContext);
+                    _bgRenderer.Initialize(fullPath, shader);
+                }
+                else
+                {
+                    Console.WriteLine($"HtmlElement: Background file not found: {fullPath}");
+                }
             }
             foreach (var child in Children)
             {
@@ -418,8 +427,8 @@ namespace SiegeEngine.UI
                 HtmlElement child = normalChildren[i];
                 float item_start = current_main + childMarginStart[i];
                 float child_main = childBaseMain[i];
-                string cross_str_raw = isRow ? child.Style.HeightStr : child.Style.WidthStr;
-                float child_cross_str = ParseSize(cross_str_raw, availableCross, viewportWidth, viewportHeight);
+                string cross_str = isRow ? child.Style.HeightStr : child.Style.WidthStr;
+                float child_cross_str = ParseSize(cross_str, availableCross, viewportWidth, viewportHeight);
                 Vector4 pad_child = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
                 Vector4 border_child = ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
                 float pad_cross_start = isRow ? pad_child.X : pad_child.W;
@@ -942,45 +951,57 @@ namespace SiegeEngine.UI
                 switch (func)
                 {
                     case "translate":
-                        float tx = ParseSize(argParts[0], ComputedWidth, viewportWidth, viewportHeight);
-                        float ty = argParts.Length > 1 ? ParseSize(argParts[1], ComputedHeight, viewportWidth, viewportHeight) : 0;
-                        fmat = Matrix4x4.CreateTranslation(tx, ty, 0);
-                        break;
+                        {
+                            float tx = ParseSize(argParts[0], ComputedWidth, viewportWidth, viewportHeight);
+                            float ty = argParts.Length > 1 ? ParseSize(argParts[1], ComputedHeight, viewportWidth, viewportHeight) : 0;
+                            fmat = Matrix4x4.CreateTranslation(tx, ty, 0);
+                            break;
+                        }
                     case "translatex":
-                        float tx_x = ParseSize(argParts[0], ComputedWidth, viewportWidth, viewportHeight);
-                        fmat = Matrix4x4.CreateTranslation(tx_x, 0, 0);
-                        break;
+                        {
+                            float tx = ParseSize(argParts[0], ComputedWidth, viewportWidth, viewportHeight);
+                            fmat = Matrix4x4.CreateTranslation(tx, 0, 0);
+                            break;
+                        }
                     case "rotate":
-                        float angle = ParseAngle(argParts[0]);
-                        fmat = Matrix4x4.CreateRotationZ(angle);
-                        break;
+                        {
+                            float angle = ParseAngle(argParts[0]);
+                            fmat = Matrix4x4.CreateRotationZ(angle);
+                            break;
+                        }
                     case "scale":
-                        float sx = float.Parse(argParts[0]);
-                        float sy = argParts.Length > 1 ? float.Parse(argParts[1]) : sx;
-                        fmat = Matrix4x4.CreateScale(sx, sy, 1);
-                        break;
+                        {
+                            float sx = float.Parse(argParts[0]);
+                            float sy = argParts.Length > 1 ? float.Parse(argParts[1]) : sx;
+                            fmat = Matrix4x4.CreateScale(sx, sy, 1);
+                            break;
+                        }
                     case "skew":
-                        float ax = ParseAngle(argParts[0]);
-                        float ay = argParts.Length > 1 ? ParseAngle(argParts[1]) : 0;
-                        fmat = new Matrix4x4(
-                            1, MathF.Tan(ay), 0, 0,
-                            MathF.Tan(ax), 1, 0, 0,
-                            0, 0, 1, 0,
-                            0, 0, 0, 1);
-                        break;
+                        {
+                            float ax = ParseAngle(argParts[0]);
+                            float ay = argParts.Length > 1 ? ParseAngle(argParts[1]) : 0;
+                            fmat = new Matrix4x4(
+                                1, MathF.Tan(ay), 0, 0,
+                                MathF.Tan(ax), 1, 0, 0,
+                                0, 0, 1, 0,
+                                0, 0, 0, 1);
+                            break;
+                        }
                     case "matrix":
-                        float a = float.Parse(argParts[0]);
-                        float b = float.Parse(argParts[1]);
-                        float c = float.Parse(argParts[2]);
-                        float d = float.Parse(argParts[3]);
-                        tx = float.Parse(argParts[4]);
-                        ty = float.Parse(argParts[5]);
-                        fmat = new Matrix4x4(
-                            a, b, 0, 0,
-                            c, d, 0, 0,
-                            0, 0, 1, 0,
-                            tx, ty, 0, 1);
-                        break;
+                        {
+                            float a = float.Parse(argParts[0]);
+                            float b = float.Parse(argParts[1]);
+                            float c = float.Parse(argParts[2]);
+                            float d = float.Parse(argParts[3]);
+                            float tx = float.Parse(argParts[4]);
+                            float ty = float.Parse(argParts[5]);
+                            fmat = new Matrix4x4(
+                                a, b, 0, 0,
+                                c, d, 0, 0,
+                                0, 0, 1, 0,
+                                tx, ty, 0, 1);
+                            break;
+                        }
                 }
                 mat = mat * fmat;
             }

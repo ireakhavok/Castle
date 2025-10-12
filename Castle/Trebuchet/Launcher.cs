@@ -1,4 +1,5 @@
-﻿// Trebuchet/Launcher.cs
+﻿// Folder: Trebuchet
+// File: Launcher.cs
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
@@ -9,6 +10,7 @@ using SiegeEngine.PlayerSystem;
 using SiegeEngine.Rendering;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
+using SiegeEngine.UI;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -27,7 +29,7 @@ namespace Trebuchet
         private UISettingsManager _settingsManager;
         private ISteamEngine _steamEngine;
         private EventBus _eventBus;
-        private MenuSystem _menuSystem;
+        private MenuPanel _menuPanel;
         private IRenderContext _renderContext;
         private IControlContext _controlContext;
         private InputHandler _inputHandler;
@@ -81,15 +83,16 @@ namespace Trebuchet
                     _inputHandler.SetMouseCallback("ui", (button, action) => { });
                     _inputHandler.SetKeyCallback("ui", (key, action) => { });
 
-                    string configPath = _modManager.GetMenuConfigPath();
-                    Console.WriteLine($"Launcher: Resolved MainMenu.json path: {configPath}, Exists: {File.Exists(configPath)}");
+                    string initialHtmlPath = _modManager.GetMenuConfigPath();
+                    Console.WriteLine($"Launcher: Resolved MainMenu.html path: {initialHtmlPath}, Exists: {File.Exists(initialHtmlPath)}");
 
-                    _menuSystem = new MenuSystem(_settingsManager, _modManager, _eventBus, _controlContext, _window, _renderContext, configPath);
-                    _menuSystem.Initialize();
+                    _menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialHtmlPath);
+                    _menuPanel.Init();
 
-                    _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuSystem);
+                    _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuPanel);
 
                     _panelManager = new PanelManager(_renderContext, _controlContext, _window, _eventBus);
+                    _panelManager.AddPanel(_menuPanel);
 
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
@@ -129,12 +132,6 @@ namespace Trebuchet
                         _panelManager.Update(deltaTime);
 
                         _sceneManager.Render();
-
-                        if (_menuSystem.Visible)
-                        {
-                            _menuSystem.Update(deltaTime);
-                            _menuSystem.Render();
-                        }
 
                         _panelManager.Render();
 

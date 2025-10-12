@@ -18,6 +18,7 @@ namespace SiegeEngine.UI
         protected int _lastH;
 
         public DockState DockState { get; set; } = DockState.Floating;
+        public bool Visible { get; set; } = true;
 
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
         {
@@ -40,11 +41,13 @@ namespace SiegeEngine.UI
 
         public virtual void Update(float deltaTime)
         {
+            if (!Visible) return;
             _uiOverlay.Update(deltaTime);
         }
 
         public virtual void Render()
         {
+            if (!Visible) return;
             _controlContext.GetWindowSize(_window, out int w, out int h);
             if (w != _lastW || h != _lastH)
             {

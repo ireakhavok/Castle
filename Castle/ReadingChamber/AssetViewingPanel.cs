@@ -46,6 +46,7 @@ namespace ReadingChamber
 
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
+            _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -56,42 +57,46 @@ namespace ReadingChamber
         public override void Init()
         {
             base.Init();
+            // Initialize shader first
+
             var modelManager = new ModelManager(renderContext: _renderContext);
             modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
             string key = Path.GetFileNameWithoutExtension(_path).ToLower();
             if (!modelManager.TryGetModel(key, out _model))
             {
                 Console.WriteLine("AssetViewerPanel: Failed to load or parse model");
-                return;
             }
-            Console.WriteLine($"AssetViewerPanel: Loaded model with {_model.Meshes.Count} meshes");
+            else
+            {
+                Console.WriteLine($"AssetViewerPanel: Loaded model with {_model.Meshes.Count} meshes");
+            }
             if (!modelManager.TryGetModelData(key, out _modelData))
             {
                 Console.WriteLine("AssetViewerPanel: Failed to get model data");
-                return;
             }
-            // Center model based on bounds
-            Vector3 minBounds = new Vector3(float.MaxValue);
-            Vector3 maxBounds = new Vector3(float.MinValue);
-            foreach (var mesh in _model.Meshes)
+            if (_model != null)
             {
-                foreach (var v in mesh.Vertices)
+                // Center model based on bounds
+                Vector3 minBounds = new Vector3(float.MaxValue);
+                Vector3 maxBounds = new Vector3(float.MinValue);
+                foreach (var mesh in _model.Meshes)
                 {
-                    minBounds = Vector3.Min(minBounds, new Vector3(v.X, v.Y, v.Z));
-                    maxBounds = Vector3.Max(maxBounds, new Vector3(v.X, v.Y, v.Z));
+                    foreach (var v in mesh.Vertices)
+                    {
+                        minBounds = Vector3.Min(minBounds, new Vector3(v.X, v.Y, v.Z));
+                        maxBounds = Vector3.Max(maxBounds, new Vector3(v.X, v.Y, v.Z));
+                    }
+                }
+                Vector3 center = (minBounds + maxBounds) / 2;
+                float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
+                _cameraPosition = center + new Vector3(0, -maxExtent * 2.5f, 0);
+                _cameraTarget = center;
+                Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
+                if (_model.Animations.Count > 0)
+                {
+                    _currentAnimation = _model.Animations[0].Name;
                 }
             }
-            Vector3 center = (minBounds + maxBounds) / 2;
-            float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
-            _cameraPosition = center + new Vector3(0, -maxExtent * 2.5f, 0);
-            _cameraTarget = center;
-            Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
-            if (_model.Animations.Count > 0)
-            {
-                _currentAnimation = _model.Animations[0].Name;
-            }
-            // Initialize shader
-            _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
             UpdateUIControls();
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
         }
@@ -111,9 +116,12 @@ namespace ReadingChamber
                 return;
             }
             StringBuilder dynamicButtons = new StringBuilder();
-            foreach (var a in _model.Animations)
+            if (_model != null)
             {
-                dynamicButtons.Append($"<button class=\"ui-button\" data-hook=\"SelectAnim:{a.Name}\">{a.Name}</button>");
+                foreach (var a in _model.Animations)
+                {
+                    dynamicButtons.Append($"<button class=\"ui-button\" data-hook=\"SelectAnim:{a.Name}\">{a.Name}</button>");
+                }
             }
             string modifiedHtml = baseHtml.Insert(insertIndex, dynamicButtons.ToString());
             _uiOverlay.LoadUI(modifiedHtml);
@@ -131,6 +139,10 @@ namespace ReadingChamber
                     _currentAnimation = _model.Animations[0].Name;
                 }
                 UpdateUIControls();
+            }
+            else
+            {
+                Console.WriteLine("AssetViewerPanel: Failed to load selected model");
             }
         }
         public void HandleUIClick(HtmlElement elem)
@@ -192,7 +204,7 @@ namespace ReadingChamber
             {
                 _cameraPosition = _cameraTarget + front * (_cameraPosition - _cameraTarget).Length();
             }
-            if (_playing)
+            if (_playing && _model != null)
             {
                 _time += deltaTime;
                 if (_model.Skeleton != null && _model.Animations.Count > 0)

@@ -6,8 +6,10 @@ using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Shaders;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -21,6 +23,7 @@ namespace SiegeEngine.UI
         protected CssParser _cssParser;
         protected HtmlElement _uiRoot;
         protected List<HtmlElement> _uiClickables = new List<HtmlElement>();
+        protected string _currentBaseDir = "";
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
             _renderContext = renderContext;
@@ -35,8 +38,9 @@ namespace SiegeEngine.UI
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _cssParser = new CssParser();
         }
-        public void LoadUI(string html)
+        public void LoadUI(string html, string baseDir = "")
         {
+            _currentBaseDir = baseDir;
             HtmlParser parser = new HtmlParser();
             _uiRoot = parser.Parse(html);
             List<string> cssBlocks = new List<string>();
@@ -63,14 +67,62 @@ namespace SiegeEngine.UI
                 _cssParser.Apply(css);
             }
             _cssParser.ApplyInlineStyles(_uiRoot);
+            InitializeElementProperties(_uiRoot);
+            ProcessSelects(_uiRoot);
             _cssParser.ApplyAll(_uiRoot);
             InheritProperties(_uiRoot, null);
-            _uiRoot.PrepareResources("", _controlContext, _window, _renderContext, _uiShader);
+            _uiRoot.PrepareResources(baseDir, _controlContext, _window, _renderContext, _uiShader);
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
             // Initial layout
             _controlContext.GetWindowSize(_window, out int w, out int h);
             RecomputeLayout(w, h);
+        }
+        private void InitializeElementProperties(HtmlElement root)
+        {
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                if (elem is InputElement input)
+                {
+                    input.Type = elem.Attributes.GetValueOrDefault("type", "text");
+                    input.Checked = elem.Attributes.ContainsKey("checked");
+                }
+                foreach (var child in elem.Children)
+                {
+                    queue.Enqueue(child);
+                }
+            }
+        }
+        private void ProcessSelects(HtmlElement root)
+        {
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                if (elem is SelectElement select)
+                {
+                    foreach (var child in elem.Children.ToList())
+                    {
+                        if (child.Tag.ToLower() == "option")
+                        {
+                            string value = child.Attributes.GetValueOrDefault("value", "");
+                            string text = string.Join("", child.Children.OfType<TextElement>().Select(t => t.Content));
+                            select.Options.Add(text);
+                            if (child.Attributes.ContainsKey("selected"))
+                                select.Selected = text;
+                            elem.Children.Remove(child);
+                        }
+                    }
+                    if (string.IsNullOrEmpty(select.Selected) && select.Options.Count > 0)
+                        select.Selected = select.Options[0];
+                }
+                foreach (var child in elem.Children)
+                    queue.Enqueue(child);
+            }
         }
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
@@ -100,8 +152,149 @@ namespace SiegeEngine.UI
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
+        protected virtual void HandleDataHook(string hook)
+        {
+        }
+        protected virtual void HandleLink(string href)
+        {
+            if (string.IsNullOrEmpty(href)) return;
+            string resolvedPath = Path.GetFullPath(Path.Combine(_currentBaseDir, href));
+            if (File.Exists(resolvedPath))
+            {
+                LoadUI(File.ReadAllText(resolvedPath), Path.GetDirectoryName(resolvedPath) ?? "");
+            }
+            else
+            {
+                Console.WriteLine($"UIOverlay: Failed to load relative path: {resolvedPath}");
+            }
+        }
+        protected void RefreshUI()
+        {
+            if (_uiRoot == null) return;
+            _cssParser.ApplyAll(_uiRoot);
+            InheritProperties(_uiRoot, null);
+            _controlContext.GetWindowSize(_window, out int w, out int h);
+            RecomputeLayout(w, h);
+            _uiClickables.Clear();
+            CollectClickables(_uiRoot);
+        }
+        protected HtmlElement FindElementById(HtmlElement root, string id)
+        {
+            if (root == null) return null;
+            if (root.Attributes.GetValueOrDefault("id", "") == id) return root;
+            foreach (var child in root.Children)
+            {
+                var found = FindElementById(child, id);
+                if (found != null) return found;
+            }
+            return null;
+        }
+        public HtmlElement FindElementById(string id)
+        {
+            return FindElementById(_uiRoot, id);
+        }
+        private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
+        {
+            if (root == null) return new List<HtmlElement>();
+            List<HtmlElement> list = new List<HtmlElement>();
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                string classes = elem.Attributes.GetValueOrDefault("class", "");
+                if (classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(className)) list.Add(elem);
+                foreach (var child in elem.Children) queue.Enqueue(child);
+            }
+            return list;
+        }
+        private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
+        {
+            if (root == null) return new List<HtmlElement>();
+            List<HtmlElement> list = new List<HtmlElement>();
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                if (tag == "*" || elem.Tag.ToLower() == tag.ToLower()) list.Add(elem);
+                foreach (var child in elem.Children) queue.Enqueue(child);
+            }
+            return list;
+        }
+        protected List<HtmlElement> FindElementsByTag(string tag)
+        {
+            return FindElementsByTag(_uiRoot, tag);
+        }
         protected virtual void HandleUIClick(HtmlElement elem)
         {
+            if (elem == null) return;
+            Console.WriteLine($"UIOverlay: Handling click for element Tag={elem.Tag}, Class={elem.Attributes.GetValueOrDefault("class", "")}, ID={elem.Attributes.GetValueOrDefault("id", "")}");
+            if (elem.Tag == "a")
+            {
+                string href = elem.Attributes.GetValueOrDefault("href", "");
+                if (string.IsNullOrEmpty(href)) return;
+                if (href.StartsWith("#"))
+                {
+                    string targetId = href.Substring(1);
+                    var target = FindElementById(targetId);
+                    if (target != null)
+                    {
+                        var oldTargets = FindElementsByTag("*").Where(e => e.IsTarget).ToList();
+                        foreach (var old in oldTargets) old.IsTarget = false;
+                        target.IsTarget = true;
+                        RefreshUI();
+                        Console.WriteLine($"UIOverlay: Handled anchor click to #{targetId}");
+                    }
+                }
+                else
+                {
+                    HandleLink(href);
+                }
+            }
+            else if (elem.Tag == "label")
+            {
+                string forId = elem.Attributes.GetValueOrDefault("for", "");
+                if (!string.IsNullOrEmpty(forId))
+                {
+                    var input = FindElementById(forId);
+                    if (input != null && input.Tag == "input")
+                    {
+                        string type = input.Attributes.GetValueOrDefault("type", "");
+                        if (type == "radio")
+                        {
+                            string name = input.Attributes.GetValueOrDefault("name", "");
+                            var radios = FindElementsByTag("input").Where(i => i.Attributes.GetValueOrDefault("type", "") == "radio" && i.Attributes.GetValueOrDefault("name", "") == name).ToList();
+                            foreach (var r in radios) r.Checked = false;
+                            input.Checked = true;
+                            RefreshUI();
+                            Console.WriteLine($"UIOverlay: Handled radio label click for {forId}");
+                        }
+                        else if (type == "checkbox")
+                        {
+                            input.Checked = !input.Checked;
+                            RefreshUI();
+                            Console.WriteLine($"UIOverlay: Handled checkbox label click for {forId}");
+                        }
+                    }
+                }
+            }
+            else if (elem.Attributes.GetValueOrDefault("class", "").Contains("toggle"))
+            {
+                var input = elem.Children.FirstOrDefault(c => c.Tag == "input" && c.Attributes.GetValueOrDefault("type", "") == "checkbox");
+                if (input != null)
+                {
+                    input.Checked = !input.Checked;
+                    RefreshUI();
+                    Console.WriteLine($"UIOverlay: Handled toggle click");
+                }
+            }
+            else if (elem.Attributes.ContainsKey("data-hook"))
+            {
+                string hook = elem.Attributes["data-hook"];
+                Console.WriteLine($"UIOverlay: Processing data-hook: {hook}");
+                HandleDataHook(hook);
+            }
         }
         public virtual void Update(float deltaTime)
         {
