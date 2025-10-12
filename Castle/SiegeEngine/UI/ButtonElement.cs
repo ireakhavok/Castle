@@ -31,14 +31,13 @@ namespace SiegeEngine.UI
                 textChild.ComputedContentY = textChild.ComputedPosition.Y;
             }
         }
-        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
-            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
+            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
         }
-        public override bool HandleClick(Vector2 mousePos)
+        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
-            if (mousePos.X >= ComputedPosition.X && mousePos.X <= ComputedPosition.X + ComputedWidth &&
-                mousePos.Y >= ComputedPosition.Y && mousePos.Y <= ComputedPosition.Y + ComputedHeight)
+            if (base.HandleClick(mousePos, viewportWidth, viewportHeight))
             {
                 OnClick?.Invoke();
                 return true;

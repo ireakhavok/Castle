@@ -105,8 +105,7 @@
 
         #regression:checked ~ .regression,
         #project:checked ~ .project,
-        #map:checked ~ .map,
-        #reading:checked ~ .reading {
+        #map:checked ~ .map {
             display: block;
         }
 
@@ -243,7 +242,6 @@
                 <label for="regression" class="button">Regression Test Sandbox</label>
                 <label for="project" class="button">Open Current Project</label>
                 <label for="map" class="button">Launch Map Room</label>
-                <label for="reading" class="button">Reading Chamber</label>
                 <a href="MainMenu.html" class="button">Back to Main Menu</a>
                 <div class="button">Exit</div>
             </div>
@@ -251,7 +249,6 @@
                 <input type="radio" id="regression" name="menu-section" checked>
                 <input type="radio" id="project" name="menu-section">
                 <input type="radio" id="map" name="menu-section">
-                <input type="radio" id="reading" name="menu-section">
                 <div class="content regression">
                     <div class="button" data-hook="RealmFoundry.Test.LaunchSandbox">Run Sandbox Test</div>
                     <div class="toggle">
@@ -275,9 +272,6 @@
                         <input type="checkbox" id="grid-snap" checked>
                     </div>
                     <div class="button">Import Assets</div>
-                </div>
-                <div class="content reading">
-                    <div class="button" data-hook="ReadingChamber.OpenAssetViewer">Open Asset Viewer</div>
                 </div>
             </div>
         </div>

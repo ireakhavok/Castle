@@ -58,8 +58,9 @@ namespace SiegeEngine.UI
             if (!string.IsNullOrEmpty(line)) lines.Add(line);
             return lines;
         }
-        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
+            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
             float fs = Style.FontSize;
             float y = ComputedContentY;
             Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
@@ -80,9 +81,13 @@ namespace SiegeEngine.UI
                 {
                     x += ComputedContentWidth - lineWidth;
                 }
-                textRenderer.RenderText(renderLine, x, y, (int)viewportWidth, (int)viewportHeight, fs, color, Style.FontFamily ?? "Arial");
+                textRenderer.RenderText(renderLine, x, y, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
                 y += _lineHeight;
             }
+        }
+        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
+        {
+            return base.HandleClick(mousePos, viewportWidth, viewportHeight);
         }
     }
 }

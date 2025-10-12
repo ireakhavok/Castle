@@ -5,13 +5,36 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class CssParser
     {
+        public static string DefaultUserAgentCss = @"
+* {
+    color: white;
+}
+button {
+    padding: 2px 10px;
+    min-height: 30px;
+    border: 1px solid rgba(128, 128, 128, 1);
+    border-radius: 5px;
+    background-color: rgba(200, 200, 200, 1);
+    color: black;
+    text-align: center;
+}
+select {
+    padding: 2px 10px;
+    min-height: 30px;
+    border: 1px solid rgba(128, 128, 128, 1);
+    border-radius: 5px;
+}
+input[type=""checkbox""] {
+    width: 16px;
+    height: 16px;
+    margin: 0 5px 0 0;
+}
+";
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
-
         public void Apply(string css)
         {
             int i = 0;
@@ -30,7 +53,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         public void ApplyAll(HtmlElement root)
         {
             ApplyInlineStyles(root);
@@ -54,7 +76,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         public void ApplyInlineStyles(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -72,7 +93,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         private void SkipWhitespaceAndComments(string css, ref int i)
         {
             while (i < css.Length)
@@ -95,7 +115,6 @@ namespace SiegeEngine.UI
                 break;
             }
         }
-
         private string ReadUntil(string css, ref int i, char stop)
         {
             string result = "";
@@ -106,7 +125,6 @@ namespace SiegeEngine.UI
             }
             return result;
         }
-
         private Dictionary<string, string> ParseProperties(string block)
         {
             Dictionary<string, string> props = new Dictionary<string, string>();
@@ -123,13 +141,11 @@ namespace SiegeEngine.UI
             }
             return props;
         }
-
         public void ApplyInline(string inline, CssStyle style)
         {
             var props = ParseProperties(inline);
             ApplyProperties(style, props);
         }
-
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props, string pseudo)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -158,7 +174,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         private bool Matches(HtmlElement elem, string selector)
         {
             if (string.IsNullOrEmpty(selector)) return true;
@@ -196,7 +211,6 @@ namespace SiegeEngine.UI
                 return true;
             }
         }
-
         private bool SimpleMatches(HtmlElement elem, string simple)
         {
             if (string.IsNullOrEmpty(simple)) return true;
@@ -248,7 +262,6 @@ namespace SiegeEngine.UI
             }
             return match;
         }
-
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
             if (props.TryGetValue("position", out string pos))
@@ -257,6 +270,10 @@ namespace SiegeEngine.UI
                 style.LeftStr = left;
             if (props.TryGetValue("top", out string top))
                 style.TopStr = top;
+            if (props.TryGetValue("right", out string right))
+                style.RightStr = right;
+            if (props.TryGetValue("bottom", out string bottom))
+                style.BottomStr = bottom;
             if (props.TryGetValue("width", out string width))
                 style.WidthStr = width;
             if (props.TryGetValue("height", out string height))
@@ -392,8 +409,9 @@ namespace SiegeEngine.UI
             }
             if (props.TryGetValue("box-sizing", out string boxs))
                 style.BoxSizing = boxs;
+            if (props.TryGetValue("transform", out string tr))
+                style.Transform = tr;
         }
-
         private Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
@@ -418,7 +436,6 @@ namespace SiegeEngine.UI
             }
             return ParseSingleColor(color);
         }
-
         private Vector4 ParseSingleColor(string color)
         {
             color = color.Trim();

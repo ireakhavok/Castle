@@ -1,9 +1,10 @@
 ﻿// Folder: SiegeEngine.Rendering
 // File: TextRenderer.cs
-using System;
-using System.Numerics;
-using System.Collections.Generic;
 using SiegeEngine.ContextManagement;
+using SiegeEngine.UI;
+using System;
+using System.Collections.Generic;
+using System.Numerics;
 namespace SiegeEngine.Rendering
 {
     public unsafe class TextRenderer : IDisposable
@@ -38,7 +39,7 @@ namespace SiegeEngine.Rendering
             };
             fixed (float* ptr = textVertices)
             {
-                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(textVertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
+                _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(textVertices.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
             }
             _renderContext.EnableVertexAttribArray(0);
             _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
@@ -67,29 +68,35 @@ namespace SiegeEngine.Rendering
         }
         public void RenderText(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize = 12.0f, Vector4? textColor = null, string fontFamily = "Arial")
         {
+            RenderText(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor, fontFamily, Matrix4x4.Identity);
+        }
+        public void RenderText(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4? textColor, string fontFamily, Matrix4x4 transformMatrix)
+        {
             if (string.IsNullOrEmpty(text))
                 return;
             text = text.Replace("\n", " ").Replace("\r", " "); // Avoid non-printable
-            // Render black outline (2px)
-            float[] offsets = { -1f, 1f };
+            // Render black outline (1px)
+            float[] offsets = { -1f, 0f, 1f };
             for (int i = 0; i < offsets.Length; i++)
             {
                 for (int j = 0; j < offsets.Length; j++)
                 {
+                    if (i == 1 && j == 1) continue; // Skip center for outline
                     float offsetX = offsets[i];
                     float offsetY = offsets[j];
-                    RenderTextPass(text, startX + offsetX, startY + offsetY, viewportWidth, viewportHeight, fontSize, new Vector4(0.0f, 0.0f, 0.0f, 1.0f), fontFamily);
+                    RenderTextPass(text, startX + offsetX, startY + offsetY, viewportWidth, viewportHeight, fontSize, new Vector4(0.0f, 0.0f, 0.0f, 1.0f), fontFamily, transformMatrix);
                 }
             }
-            // Render white text
-            RenderTextPass(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f), fontFamily);
+            // Render text color
+            RenderTextPass(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f), fontFamily, transformMatrix);
         }
-        private void RenderTextPass(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily)
+        private void RenderTextPass(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily, Matrix4x4 transformMatrix)
         {
+            _shaderProgram.Use();
             var renderer = GetFontRenderer(fontFamily);
             float scale = fontSize / renderer.BaseSize;
             float currentX = startX;
-            Matrix4x4 transform = Matrix4x4.Identity;
+            Matrix4x4 trans = transformMatrix;
             for (int i = 0; i < text.Length; i++)
             {
                 char c = text[i];
@@ -104,16 +111,15 @@ namespace SiegeEngine.Rendering
                 float charHeight = data.Height * scale;
                 if (!char.IsWhiteSpace(c))
                 {
-                    float charLeft = 2.0f * currentX / viewportWidth - 1.0f;
-                    float charRight = 2.0f * (currentX + charWidth) / viewportWidth - 1.0f;
-                    float charTop = 1.0f - 2.0f * startY / viewportHeight;
-                    float charBottom = 1.0f - 2.0f * (startY + charHeight) / viewportHeight;
+                    float x = currentX;
+                    float y = startY;
+                    float[] ndc = HtmlElement.GetNdcQuad(x, y, charWidth, charHeight, trans, viewportWidth, viewportHeight);
                     float[] textVertices = new float[]
                     {
-                        charLeft, charBottom, 0.0f, 1.0f,
-                        charRight, charBottom, 1.0f, 1.0f,
-                        charRight, charTop, 1.0f, 0.0f,
-                        charLeft, charTop, 0.0f, 0.0f
+                        ndc[0], ndc[1], 0.0f, 1.0f,
+                        ndc[2], ndc[3], 1.0f, 1.0f,
+                        ndc[4], ndc[5], 1.0f, 0.0f,
+                        ndc[6], ndc[7], 0.0f, 0.0f
                     };
                     _renderContext.BindVertexArray(_textVao);
                     _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
@@ -129,7 +135,7 @@ namespace SiegeEngine.Rendering
                     _renderContext.BindTexture(_renderContext.Enums.Texture2D, renderer.GetCharacterTexture(c));
                     _shaderProgram.SetUniform("uTexture", 0);
                     _shaderProgram.SetUniform("uUseTexture", 1.0f);
-                    _shaderProgram.SetMatrix4("uTransform", transform);
+                    _shaderProgram.SetMatrix4("uTransform", Matrix4x4.Identity);
                     _shaderProgram.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
                     _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
                     _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);

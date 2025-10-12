@@ -1,4 +1,8 @@
-﻿namespace SiegeEngine.ContextManagement
+﻿// Folder: SiegeEngine.ContextManagement
+// File: AbstractRenderEnums.cs
+using System;
+
+namespace SiegeEngine.ContextManagement
 {
     public abstract class AbstractRenderEnums
     {
@@ -7,6 +11,7 @@
         public abstract int StaticDraw { get; }
         public abstract int DynamicDraw { get; }
         public abstract int Float { get; }
+        public abstract int Int { get; }
         public abstract int Points { get; }
         public abstract int Lines { get; }
         public abstract int TriangleFan { get; }
@@ -50,5 +55,8 @@
         public abstract int ColorAttachment0 { get; }
         public abstract int Less { get; }
         public abstract int NoError { get; }
+        public abstract int Rgba { get; }
+        public abstract int CullFace { get; }
+        public abstract int Back { get; }
     }
 }

@@ -1,0 +1,124 @@
+﻿// Folder: SiegeEngine.UI
+// File: MenuPanel.cs
+using SiegeEngine.ContextManagement;
+using SiegeEngine.Events;
+using SiegeEngine.Interfaces;
+using SiegeEngine.Managers;
+using System;
+using System.IO;
+using System.Reflection;
+
+namespace SiegeEngine.UI
+{
+    public class MenuPanel : BasePanel
+    {
+        private class MenuUIOverlay : UIOverlay
+        {
+            private readonly MenuPanel _parent;
+            private readonly ModManager _modManager;
+            private readonly EventBus _eventBus;
+            public MenuUIOverlay(MenuPanel parent, IRenderContext renderContext, IControlContext controlContext, IntPtr window, ModManager modManager, EventBus eventBus) : base(renderContext, controlContext, window)
+            {
+                _parent = parent;
+                _modManager = modManager;
+                _eventBus = eventBus;
+            }
+            protected override void HandleDataHook(string hook)
+            {
+                if (hook == "RealmFoundry.Test.LaunchSandbox")
+                {
+                    _eventBus.Publish(new SwitchSceneEvent("Sandbox"));
+                }
+                else if (hook == "ReadingChamber.OpenAssetViewer")
+                {
+                    try
+                    {
+                        string dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ReadingChamber.dll");
+                        Assembly ass = Assembly.LoadFrom(dllPath);
+                        Type type = ass.GetType("ReadingChamber.AssetViewerPanel");
+                        IPanel panel = (IPanel)Activator.CreateInstance(type, _renderContext, _controlContext, _window, _eventBus);
+                        _eventBus.Publish(new OpenPanelEvent(panel));
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"MenuUIOverlay: Failed to open ReadingChamber panel: {ex.Message}");
+                    }
+                }
+                else if (hook.Contains("Scene"))
+                {
+                    //_eventBus.Publish(new SwitchSceneEvent { Hook = hook });
+                    Console.WriteLine($"MenuUIOverlay: Published SwitchSceneEvent with hook {hook}");
+                }
+                else
+                {
+                    //_eventBus.Publish(new GenericEvent { Hook = hook });
+                    Console.WriteLine($"MenuUIOverlay: Published GenericEvent with hook {hook}");
+                }
+            }
+            protected override void HandleLink(string href)
+            {
+                if (string.IsNullOrEmpty(href)) return;
+                string newPath = null;
+                if (_modManager != null)
+                {
+                    newPath = _modManager.ResolvePath(href);
+                }
+                if (newPath == null)
+                {
+                    newPath = Path.GetFullPath(Path.Combine(_currentBaseDir, href));
+                }
+                if (File.Exists(newPath))
+                {
+                    LoadUI(File.ReadAllText(newPath), Path.GetDirectoryName(newPath) ?? "");
+                    _controlContext.GetWindowSize(_window, out int w, out int h);
+                    RecomputeLayout(w, h);
+                }
+                else
+                {
+                    Console.WriteLine($"MenuUIOverlay: Failed to resolve or find href path: {href}, tried {newPath}");
+                }
+            }
+        }
+        private readonly ModManager _modManager;
+        private readonly string _initialHtmlPath;
+
+        public MenuPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, ModManager modManager, string initialHtmlPath) : base(renderContext, controlContext, window, eventBus)
+        {
+            _modManager = modManager;
+            _initialHtmlPath = initialHtmlPath;
+        }
+
+        protected override UIOverlay CreateUIOverlay()
+        {
+            return new MenuUIOverlay(this, _renderContext, _controlContext, _window, _modManager, _eventBus);
+        }
+
+        public override void Init()
+        {
+            base.Init();
+            if (File.Exists(_initialHtmlPath))
+            {
+                _uiOverlay.LoadUI(File.ReadAllText(_initialHtmlPath), Path.GetDirectoryName(_initialHtmlPath) ?? "");
+            }
+            else
+            {
+                Console.WriteLine($"MenuPanel: Initial HTML file not found at {_initialHtmlPath}");
+            }
+        }
+
+        public void SwitchMenu(string menuName)
+        {
+            string htmlPath = _modManager.ResolvePath($"{menuName}.html");
+            if (htmlPath != null && File.Exists(htmlPath))
+            {
+                _uiOverlay.LoadUI(File.ReadAllText(htmlPath), Path.GetDirectoryName(htmlPath) ?? "");
+                _controlContext.GetWindowSize(_window, out int w, out int h);
+                _uiOverlay.RecomputeLayout(w, h);
+            }
+            else
+            {
+                Console.WriteLine($"MenuPanel: Failed to load menu {menuName}");
+            }
+        }
+    }
+}

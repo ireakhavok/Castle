@@ -1,7 +1,5 @@
-﻿// Folder: SiegeEngine.ContextManagement
-// File: OpenGLRenderContext.cs
+﻿using Silk.NET.GLFW;
 using Silk.NET.OpenGL;
-using Silk.NET.GLFW;
 using System;
 namespace SiegeEngine.ContextManagement
 {
@@ -41,6 +39,7 @@ namespace SiegeEngine.ContextManagement
         public void EnableVertexAttribArray(uint index) => _gl.EnableVertexAttribArray(index);
         public void DisableVertexAttribArray(uint index) => _gl.DisableVertexAttribArray(index);
         public void VertexAttribPointer(uint index, int size, int type, bool normalized, uint stride, void* pointer) => _gl.VertexAttribPointer(index, size, (VertexAttribPointerType)type, normalized, stride, pointer);
+        public void VertexAttribIPointer(uint index, int size, int type, uint stride, void* pointer) => _gl.VertexAttribIPointer(index, size, (VertexAttribIType)type, stride, pointer);
         public void DeleteVertexArray(uint array) => _gl.DeleteVertexArrays(1, ref array);
         public void DeleteBuffer(uint buffer) => _gl.DeleteBuffers(1, ref buffer);
         public void DeleteBuffers(uint n, uint* buffers) => _gl.DeleteBuffers(n, buffers);
@@ -90,6 +89,7 @@ namespace SiegeEngine.ContextManagement
         public int GetUniformLocation(uint program, string name) => _gl.GetUniformLocation(program, name);
         public void Uniform1(int location, float value) => _gl.Uniform1(location, value);
         public void Uniform1(int location, int value) => _gl.Uniform1(location, value);
+        public void Uniform3(int location, float x, float y, float z) => _gl.Uniform3(location, x, y, z);
         public void Uniform4(int location, float x, float y, float z, float w) => _gl.Uniform4(location, x, y, z, w);
         public void UniformMatrix4(int location, uint count, bool transpose, float* value) => _gl.UniformMatrix4(location, count, transpose, value);
         public int GetError() => (int)_gl.GetError();
@@ -100,5 +100,6 @@ namespace SiegeEngine.ContextManagement
         public bool IsExtensionPresent(string extension) => _gl.IsExtensionPresent(extension);
         public void GetFloat(int pname, out float param) => _gl.GetFloat((GetPName)pname, out param);
         public void Scissor(int x, int y, uint width, uint height) => _gl.Scissor(x, y, width, height);
+        public void CullFace(int mode) => _gl.CullFace((GLEnum)mode);
     }
 }

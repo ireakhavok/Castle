@@ -15,23 +15,22 @@ namespace SiegeEngine.Rendering
         private readonly Dictionary<char, uint> _charTextures;
         private readonly IRenderContext _renderContext;
         private readonly string _fontName;
-        private readonly float _baseSize;
+        private readonly float _baseSize = 128.0f;
         public float BaseSize => _baseSize;
-        public SystemFontRenderer(IRenderContext renderContext, string fontName, float fontSize = 12.0f)
+        public SystemFontRenderer(IRenderContext renderContext, string fontName)
         {
             _renderContext = renderContext;
             _fontName = fontName;
-            _baseSize = fontSize;
             _characterData = new Dictionary<char, CharacterData>();
             _charTextures = new Dictionary<char, uint>();
-            LoadFontData(fontName, fontSize);
+            LoadFontData(fontName);
         }
-        private unsafe void LoadFontData(string fontName, float fontSize)
+        private unsafe void LoadFontData(string fontName)
         {
-            //Console.WriteLine($"SystemFontRenderer: Loading font '{fontName}', size {fontSize}");
+            //Console.WriteLine($"SystemFontRenderer: Loading font '{fontName}', size {_baseSize}");
             try
             {
-                using (var font = new Font(fontName, fontSize, FontStyle.Bold))
+                using (var font = new Font(fontName, _baseSize, FontStyle.Bold))
                 using (var bitmap = new Bitmap(1, 1))
                 using (var graphics = Graphics.FromImage(bitmap))
                 {

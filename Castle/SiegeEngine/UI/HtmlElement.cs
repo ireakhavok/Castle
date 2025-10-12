@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -36,6 +37,8 @@ namespace SiegeEngine.UI
         public bool IsTarget { get; set; }
         private BackgroundRenderer _bgRenderer;
         private string _baseDir;
+        private Matrix4x4 ComputedTransform;
+        protected Matrix4x4 ComputedFullTransform;
         public string GetEffectiveDisplay()
         {
             CssStyle effective = Style;
@@ -105,19 +108,14 @@ namespace SiegeEngine.UI
             if (float.IsNaN(fs)) fs = parentFs;
             Style.FontSize = fs;
             float left = ParseSize(effectiveStyle.LeftStr, refWidth, viewportWidth, viewportHeight);
-            if (float.IsNaN(left)) left = 0;
             float top = ParseSize(effectiveStyle.TopStr, refHeight, viewportWidth, viewportHeight);
-            if (float.IsNaN(top)) top = 0;
-            if (effectiveStyle.Position == "static")
-            {
-                left = 0;
-                top = 0;
-            }
-            float boxX = baseX + left;
-            float boxY = baseY + top;
+            float right = ParseSize(effectiveStyle.RightStr, refWidth, viewportWidth, viewportHeight);
+            float bottom = ParseSize(effectiveStyle.BottomStr, refHeight, viewportWidth, viewportHeight);
             float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
             float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
-            if ((string.IsNullOrEmpty(effectiveStyle.Display) || effectiveStyle.Display == "block" || effectiveStyle.Display == "flex") && float.IsNaN(w))
+            bool isBlockOrFlex = string.IsNullOrEmpty(effectiveStyle.Display) || effectiveStyle.Display == "block" || effectiveStyle.Display == "flex";
+            bool isStaticOrRelative = string.IsNullOrEmpty(effectiveStyle.Position) || effectiveStyle.Position == "static" || effectiveStyle.Position == "relative";
+            if (isBlockOrFlex && isStaticOrRelative && float.IsNaN(w))
             {
                 w = refWidth;
             }
@@ -170,6 +168,27 @@ namespace SiegeEngine.UI
             ComputedHeight = boxH;
             ComputedContentWidth = contentW;
             ComputedContentHeight = contentH;
+            float boxX = baseX;
+            float boxY = baseY;
+            if (effectiveStyle.Position == "absolute" || effectiveStyle.Position == "fixed")
+            {
+                if (!float.IsNaN(left))
+                {
+                    boxX += left;
+                }
+                else if (!float.IsNaN(right))
+                {
+                    boxX += refWidth - right - boxW;
+                }
+                if (!float.IsNaN(top))
+                {
+                    boxY += top;
+                }
+                else if (!float.IsNaN(bottom))
+                {
+                    boxY += refHeight - bottom - boxH;
+                }
+            }
             if (effectiveStyle.Position != "absolute" && effectiveStyle.Position != "fixed")
             {
                 boxX -= margin.W;
@@ -195,6 +214,15 @@ namespace SiegeEngine.UI
                     LayoutBlockChildren(viewportWidth, viewportHeight, textRenderer, fs);
                 }
             }
+            ComputedTransform = ComputeTransform(viewportWidth, viewportHeight);
+        }
+        public virtual void UpdateFullTransforms(Matrix4x4 parentMatrix)
+        {
+            ComputedFullTransform = parentMatrix * ComputedTransform;
+            foreach (var child in Children)
+            {
+                child.UpdateFullTransforms(ComputedFullTransform);
+            }
         }
         public void PrepareResources(string baseDir, IControlContext controlContext, IntPtr window, IRenderContext renderContext, ShaderProgram shader)
         {
@@ -202,9 +230,17 @@ namespace SiegeEngine.UI
             if (!string.IsNullOrEmpty(Style.BackgroundImage))
             {
                 string relativePath = Style.BackgroundImage;
-                string fullPath = Path.Combine(baseDir, relativePath).Replace('\\', '/');
-                _bgRenderer = new BackgroundRenderer(controlContext, window, renderContext);
-                _bgRenderer.Initialize(fullPath, shader);
+                string fullPath = Path.GetFullPath(Path.Combine(baseDir, relativePath));
+                Console.WriteLine($"HtmlElement: Attempting to load background texture from: {fullPath}");
+                if (File.Exists(fullPath))
+                {
+                    _bgRenderer = new BackgroundRenderer(controlContext, window, renderContext);
+                    _bgRenderer.Initialize(fullPath, shader);
+                }
+                else
+                {
+                    Console.WriteLine($"HtmlElement: Background file not found: {fullPath}");
+                }
             }
             foreach (var child in Children)
             {
@@ -391,8 +427,8 @@ namespace SiegeEngine.UI
                 HtmlElement child = normalChildren[i];
                 float item_start = current_main + childMarginStart[i];
                 float child_main = childBaseMain[i];
-                string cross_str_raw = isRow ? child.Style.HeightStr : child.Style.WidthStr;
-                float child_cross_str = ParseSize(cross_str_raw, availableCross, viewportWidth, viewportHeight);
+                string cross_str = isRow ? child.Style.HeightStr : child.Style.WidthStr;
+                float child_cross_str = ParseSize(cross_str, availableCross, viewportWidth, viewportHeight);
                 Vector4 pad_child = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
                 Vector4 border_child = ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
                 float pad_cross_start = isRow ? pad_child.X : pad_child.W;
@@ -719,7 +755,7 @@ namespace SiegeEngine.UI
             if (float.IsNaN(ih)) ih = 0;
             return new Vector2(iw, ih);
         }
-        public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+        public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
             if (Checked && PseudoStyles.TryGetValue("checked", out CssStyle checkedStyle))
@@ -739,9 +775,11 @@ namespace SiegeEngine.UI
                 effectiveStyle = targetStyle;
             }
             if (effectiveStyle.Display == "none") return;
+            Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
             if (effectiveStyle.BackgroundColor != Vector4.Zero)
             {
-                quadRenderer.DrawQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, effectiveStyle.BackgroundColor, viewportWidth, viewportHeight);
+                float[] ndc = GetNdcQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, localMatrix, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(ndc, effectiveStyle.BackgroundColor);
             }
             if (_bgRenderer != null)
             {
@@ -762,23 +800,27 @@ namespace SiegeEngine.UI
             Vector4 borderW = this.BorderWidth;
             if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
             {
-                quadRenderer.DrawQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, borderTopC, viewportWidth, viewportHeight);
+                float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, localMatrix, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(ndc, borderTopC);
             }
             if (borderBottomS != "none" && borderBottomC != Vector4.Zero && borderW.Z > 0)
             {
-                quadRenderer.DrawQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW.Z, ComputedWidth, borderW.Z, borderBottomC, viewportWidth, viewportHeight);
+                float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW.Z, ComputedWidth, borderW.Z, localMatrix, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(ndc, borderBottomC);
             }
             if (borderLeftS != "none" && borderLeftC != Vector4.Zero && borderW.W > 0)
             {
-                quadRenderer.DrawQuad(ComputedPosition.X, ComputedPosition.Y, borderW.W, ComputedHeight, borderLeftC, viewportWidth, viewportHeight);
+                float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, borderW.W, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(ndc, borderLeftC);
             }
             if (borderRightS != "none" && borderRightC != Vector4.Zero && borderW.Y > 0)
             {
-                quadRenderer.DrawQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, borderRightC, viewportWidth, viewportHeight);
+                float[] ndc = GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(ndc, borderRightC);
             }
             foreach (var child in Children)
             {
-                child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
+                child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, localMatrix);
             }
         }
         public float ParseSize(string s, float parent, float vw, float vh)
@@ -862,19 +904,159 @@ namespace SiegeEngine.UI
             float left = GetVal(3, right);
             return new Vector4(top, right, bottom, left);
         }
-        public virtual bool HandleClick(Vector2 mousePos)
+        public virtual bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
-            if (mousePos.X >= ComputedPosition.X && mousePos.X <= ComputedPosition.X + ComputedWidth &&
-                mousePos.Y >= ComputedPosition.Y && mousePos.Y <= ComputedPosition.Y + ComputedHeight)
+            float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+            float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
+            for (int k = 0; k < 4; k++)
             {
-                foreach (var child in Children)
-                {
-                    if (child.HandleClick(mousePos)) return true;
-                }
-                return true;
+                float nx = ndc[k * 2];
+                float ny = ndc[k * 2 + 1];
+                minX = Math.Min(minX, nx);
+                maxX = Math.Max(maxX, nx);
+                minY = Math.Min(minY, ny);
+                maxY = Math.Max(maxY, ny);
             }
-            return false;
+            float mx = 2 * mousePos.X / viewportWidth - 1;
+            float my = 1 - 2 * mousePos.Y / viewportHeight;
+            if (mx < minX || mx > maxX || my < minY || my > maxY) return false;
+            for (int ci = Children.Count - 1; ci >= 0; ci--)
+            {
+                if (Children[ci].HandleClick(mousePos, viewportWidth, viewportHeight)) return true;
+            }
+            return true;
+        }
+        public HtmlElement FindElementById(string id)
+        {
+            if (Attributes.GetValueOrDefault("id", "") == id) return this;
+            foreach (var child in Children)
+            {
+                var found = child.FindElementById(id);
+                if (found != null) return found;
+            }
+            return null;
+        }
+        private Matrix4x4 ComputeTransform(float viewportWidth, float viewportHeight)
+        {
+            if (string.IsNullOrEmpty(Style.Transform) || Style.Transform == "none") return Matrix4x4.Identity;
+            Matrix4x4 mat = Matrix4x4.Identity;
+            var matches = Regex.Matches(Style.Transform, @"(\w+)\((.+?)\)");
+            foreach (Match m in matches)
+            {
+                string func = m.Groups[1].Value.ToLower();
+                string args = m.Groups[2].Value;
+                var argParts = args.Split(',').Select(a => a.Trim()).ToArray();
+                Matrix4x4 fmat = Matrix4x4.Identity;
+                switch (func)
+                {
+                    case "translate":
+                        {
+                            float tx = ParseSize(argParts[0], ComputedWidth, viewportWidth, viewportHeight);
+                            float ty = argParts.Length > 1 ? ParseSize(argParts[1], ComputedHeight, viewportWidth, viewportHeight) : 0;
+                            fmat = Matrix4x4.CreateTranslation(tx, ty, 0);
+                            break;
+                        }
+                    case "translatex":
+                        {
+                            float tx = ParseSize(argParts[0], ComputedWidth, viewportWidth, viewportHeight);
+                            fmat = Matrix4x4.CreateTranslation(tx, 0, 0);
+                            break;
+                        }
+                    case "rotate":
+                        {
+                            float angle = ParseAngle(argParts[0]);
+                            fmat = Matrix4x4.CreateRotationZ(angle);
+                            break;
+                        }
+                    case "scale":
+                        {
+                            float sx = float.Parse(argParts[0]);
+                            float sy = argParts.Length > 1 ? float.Parse(argParts[1]) : sx;
+                            fmat = Matrix4x4.CreateScale(sx, sy, 1);
+                            break;
+                        }
+                    case "skew":
+                        {
+                            float ax = ParseAngle(argParts[0]);
+                            float ay = argParts.Length > 1 ? ParseAngle(argParts[1]) : 0;
+                            fmat = new Matrix4x4(
+                                1, MathF.Tan(ay), 0, 0,
+                                MathF.Tan(ax), 1, 0, 0,
+                                0, 0, 1, 0,
+                                0, 0, 0, 1);
+                            break;
+                        }
+                    case "matrix":
+                        {
+                            float a = float.Parse(argParts[0]);
+                            float b = float.Parse(argParts[1]);
+                            float c = float.Parse(argParts[2]);
+                            float d = float.Parse(argParts[3]);
+                            float tx = float.Parse(argParts[4]);
+                            float ty = float.Parse(argParts[5]);
+                            fmat = new Matrix4x4(
+                                a, b, 0, 0,
+                                c, d, 0, 0,
+                                0, 0, 1, 0,
+                                tx, ty, 0, 1);
+                            break;
+                        }
+                }
+                mat = mat * fmat;
+            }
+            Vector3 origin = new Vector3(ComputedWidth / 2, ComputedHeight / 2, 0);
+            Matrix4x4 toOrigin = Matrix4x4.CreateTranslation(-origin);
+            Matrix4x4 fromOrigin = Matrix4x4.CreateTranslation(origin);
+            mat = fromOrigin * mat * toOrigin;
+            return mat;
+        }
+        private float ParseAngle(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return 0;
+            float val;
+            if (s.EndsWith("deg"))
+            {
+                val = float.Parse(s.Replace("deg", ""));
+                return val * MathF.PI / 180;
+            }
+            else if (s.EndsWith("rad"))
+            {
+                val = float.Parse(s.Replace("rad", ""));
+                return val;
+            }
+            else if (s.EndsWith("turn"))
+            {
+                val = float.Parse(s.Replace("turn", ""));
+                return val * MathF.PI * 2;
+            }
+            else if (s.EndsWith("grad"))
+            {
+                val = float.Parse(s.Replace("grad", ""));
+                return val * MathF.PI / 200;
+            }
+            val = float.Parse(s);
+            return val * MathF.PI / 180; // default deg
+        }
+        public static float[] GetNdcQuad(float x, float y, float w, float h, Matrix4x4 trans, float vw, float vh)
+        {
+            Vector4 bl = Vector4.Transform(new Vector4(x, y + h, 0, 1), trans);
+            Vector4 br = Vector4.Transform(new Vector4(x + w, y + h, 0, 1), trans);
+            Vector4 tr = Vector4.Transform(new Vector4(x + w, y, 0, 1), trans);
+            Vector4 tl = Vector4.Transform(new Vector4(x, y, 0, 1), trans);
+            bl /= bl.W;
+            br /= br.W;
+            tr /= tr.W;
+            tl /= tl.W;
+            float blx = 2 * bl.X / vw - 1;
+            float bly = 1 - 2 * bl.Y / vh;
+            float brx = 2 * br.X / vw - 1;
+            float bry = 1 - 2 * br.Y / vh;
+            float trx = 2 * tr.X / vw - 1;
+            float try_ = 1 - 2 * tr.Y / vh;
+            float tlx = 2 * tl.X / vw - 1;
+            float tly = 1 - 2 * tl.Y / vh;
+            return new float[] { blx, bly, brx, bry, trx, try_, tlx, tly };
         }
     }
 }

@@ -136,11 +136,62 @@ Folder: Castle
  Inherits: None
  Dependencies: None
  Methods:
- File: Class1.cs
- class: Class1 (Namespace: ReadingChamber)
- Inherits: None
- Dependencies: None
+ File: AssetViewingPanel.cs
+ class: AssetViewerPanel (Namespace: ReadingChamber)
+ Inherits: BasePanel
+    
+ Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Text
  Methods:
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ - UIOverlay CreateUIOverlay()
+ Calls: Init, Init, LoadModel, ModelManager, ShaderProgram, TryGetModel, TryGetModelData, UpdateUIControls
+ - void Init()
+ Calls: None
+ - void UpdateUIControls()
+ Calls: None
+ - void OnFileSelected(FileSelectedEvent e, FileSelectedEvent e)
+ Calls: UpdateUIControls, UpdateUIControls
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ - void Update(float deltaTime, float deltaTime)
+ Calls: None
+ - void Render()
+ Calls: RecomputeLayout, RecomputeLayout
+ File: AssetViewingPanel.cs
+ class: AssetUIOverlay (Namespace: ReadingChamber)
+ Inherits: UIOverlay
+        
+ Dependencies: SiegeEngine.AssetParsing, SiegeEngine.AssetParsing, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Managers, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.IO, System.Numerics, System.Text
+ Methods:
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ File: FileSelectorPanel.cs
+ class: FileSelectorPanel (Namespace: ReadingChamber)
+ Inherits: BasePanel
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Text
+ Methods:
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ - UIOverlay CreateUIOverlay()
+ Calls: Init, Init, NavigateTo
+ - void Init()
+ Calls: UpdateFileList, UpdateFileList
+ - void NavigateTo(string dir, string dir, bool addToHistory)
+ Calls: None
+ - void UpdateFileList()
+ Calls: None
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: NavigateTo, NavigateTo
+ File: FileSelectorPanel.cs
+ class: FileSelectorUIOverlay (Namespace: ReadingChamber)
+ Inherits: UIOverlay
+        
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Text
+ Methods:
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
  File: Class1.cs
  class: Class1 (Namespace: ScriptChamber)
  Inherits: None
@@ -184,7 +235,7 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Rendering, System, System.Collections.Generic, System.Numerics
  Methods:
- - constructor FBXVertex(float x, float x, float y, float z, float nx, float ny, float nz, float u, float v, float matIdx, float tx, float ty, float tz)
+ - constructor FBXVertex(float x, float x, float y, float z, float nx, float ny, float nz, float u, float v, float matIdx, float tx, float ty, float tz, int boneID0, int boneID1, int boneID2, int boneID3, float weight0, float weight1, float weight2, float weight3)
  Calls: None
  File: FBXModel.cs
  class: Skeleton (Namespace: SiegeEngine.AssetParsing)
@@ -227,10 +278,12 @@ Folder: Castle
  File: FBXParser.cs
  class: FBXParser (Namespace: SiegeEngine.AssetParsing)
  Inherits: None
- Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Text
+ Dependencies: SiegeEngine.AssetObjects, SiegeEngine.AssetObjects, SiegeEngine.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
  Methods:
  - FBXFileForest Load(string path, string path)
  Calls: Log, Log
+ - FBXModel BuildModelFromForest(FBXFileForest forest, FBXFileForest forest)
+ Calls: CreateDefaultCubeModel, CreateDefaultCubeModel
  File: FBXParserBase.cs
  class: FBXParserBase (Namespace: SiegeEngine.AssetParsing)
  Inherits: None
@@ -282,7 +335,7 @@ Folder: Castle
  File: AbstractRenderEnums.cs
  class: AbstractRenderEnums (Namespace: SiegeEngine.ContextManagement)
  Inherits: None
- Dependencies: None
+ Dependencies: System, System
  Methods:
  File: ContextManager.cs
  class: ContextManager (Namespace: SiegeEngine.ContextManagement)
@@ -575,7 +628,7 @@ Folder: Castle
  File: IRenderContext.cs
  interface: IRenderContext (Namespace: SiegeEngine.ContextManagement)
  Inherits: None
- Dependencies: System, System
+ Dependencies: None
  Methods:
  - uint GenVertexArray()
  Calls: None
@@ -598,6 +651,8 @@ Folder: Castle
  - void DisableVertexAttribArray(uint index, uint index)
  Calls: None
  - void VertexAttribPointer(uint index, uint index, int size, int type, bool normalized, uint stride)
+ Calls: None
+ - void VertexAttribIPointer(uint index, uint index, int size, int type, uint stride)
  Calls: None
  - void DeleteVertexArray(uint array, uint array)
  Calls: None
@@ -687,6 +742,8 @@ Folder: Castle
  Calls: None
  - void Uniform1(int location, int location, int value)
  Calls: None
+ - void Uniform3(int location, int location, float x, float y, float z)
+ Calls: None
  - void Uniform4(int location, int location, float x, float y, float z, float w)
  Calls: None
  - void UniformMatrix4(int location, int location, uint count, bool transpose)
@@ -706,6 +763,8 @@ Folder: Castle
  - void GetFloat(int pname, int pname, out float)
  Calls: None
  - void Scissor(int x, int x, int y, uint width, uint height)
+ Calls: None
+ - void CullFace(int mode, int mode)
  Calls: None
  File: OpenGLContextManager.cs
  class: OpenGLContextManager (Namespace: SiegeEngine.ContextManagement)
@@ -792,6 +851,12 @@ Folder: Castle
  Calls: None
  - void vkDestroyDeviceLinux(IntPtr device, IntPtr device, IntPtr pAllocator)
  Calls: None
+ File: AnimationComponent.cs
+ class: AnimationComponent (Namespace: SiegeEngine.Definitions)
+ Inherits: IComponent
+    
+ Dependencies: None
+ Methods:
  File: Entity.cs
  interface: IComponent (Namespace: SiegeEngine.Definitions)
  Inherits: None
@@ -979,6 +1044,18 @@ Folder: Castle
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
  Calls: None
+ File: EntityAddedEvent.cs
+ class: EntityAddedEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, System, System.Collections.Generic, System.Text, System.Text.Json
+ Methods:
+ - constructor EntityAddedEvent(Entity entity, Entity entity)
+ Calls: None
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
  File: EntityMovedEvent.cs
  class: EntityMovedEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
@@ -998,6 +1075,18 @@ Folder: Castle
  Dependencies: System, System, System.Numerics, System.Text.Json
  Methods:
  - constructor EntityPlacedEvent(int entityId, int entityId, string type, Vector3 position, bool isPreview)
+ Calls: Serialize, Serialize
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: EntityRemovedEvent.cs
+ class: EntityRemovedEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: System.Text, System.Text, System.Text.Json
+ Methods:
+ - constructor EntityRemovedEvent(int id, int id)
  Calls: Serialize, Serialize
  - byte[] Serialize()
  Calls: None
@@ -1099,6 +1188,18 @@ Folder: Castle
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
  Calls: None
+ File: FileSelectedEvent.cs
+ class: FileSelectedEvent (Namespace: None)
+ Inherits: IEvent
+
+ Dependencies: SiegeEngine.Events, SiegeEngine.Events, System.Text, System.Text.Json
+ Methods:
+ - constructor FileSelectedEvent(string path, string path)
+ Calls: Serialize, Serialize
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
  File: ItemPickedUpEvent.cs
  class: ItemPickedUpEvent (Namespace: SiegeEngine.Events)
  Inherits: IEvent
@@ -1107,6 +1208,30 @@ Folder: Castle
  Methods:
  - constructor ItemPickedUpEvent(int entityId, int entityId, string itemId)
  Calls: Serialize, Serialize
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: MovementRequestEvent.cs
+ class: MovementRequestEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: System.Collections.Generic, System.Collections.Generic, System.Numerics, System.Text, System.Text.Json
+ Methods:
+ - constructor MovementRequestEvent(int entityId, int entityId, Vector2 position, Quaternion rotation, ulong steamId)
+ Calls: Serialize, Serialize
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: OpenPanelEvent.cs
+ class: OpenPanelEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces
+ Methods:
+ - constructor OpenPanelEvent(IPanel panel, IPanel panel)
+ Calls: None
  - byte[] Serialize()
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
@@ -1211,34 +1336,6 @@ Folder: Castle
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
  Calls: None
- File: ClientGameServerProxy.cs
- class: ClientGameServerProxy (Namespace: SiegeEngine.Interfaces)
- Inherits: IGameServer
-    
- Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics, System.Text.Json
- Methods:
- - constructor ClientGameServerProxy(EventBus eventBus, EventBus eventBus)
- Calls: EntityPlacedEvent, EntityPlacedEvent
- - void AddEntity(Entity entity, Entity entity)
- Calls: None
- - void RemoveEntity(int id, int id)
- Calls: None
- - void AddSystem(GameSystem system, GameSystem system)
- Calls: None
- - void Update(float deltaTime, float deltaTime)
- Calls: EntityMovedEvent, EntityMovedEvent
- - bool ValidateAndUpdateMovement(int entityId, int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
- Calls: None
- - bool ValidateInventory(int entityId, int entityId, string action, object data)
- Calls: None
- - RayTraceResult RequestRayTrace(Vector3 start, Vector3 start, Vector3 direction, float maxDistance)
- Calls: None
- - void QueueNetworkEvent(IEvent e, IEvent e)
- Calls: None
- - void OnEntityPlaced(EntityPlacedEvent e, EntityPlacedEvent e)
- Calls: None
- - void OnEntityMoved(EntityMovedEvent e, EntityMovedEvent e)
- Calls: None
  File: IGameServer.cs
  interface: IGameServer (Namespace: SiegeEngine.Interfaces)
  Inherits: None
@@ -1263,6 +1360,26 @@ Folder: Castle
  - RayTraceResult RequestRayTrace(Vector3 start, Vector3 start, Vector3 direction, float maxDistance)
  Calls: None
  - void QueueNetworkEvent(IEvent e, IEvent e)
+ Calls: None
+ File: IPanel.cs
+ enum: DockState (Namespace: SiegeEngine.Interfaces)
+ Inherits: None
+ Dependencies: None
+ Methods:
+ File: IPanel.cs
+ interface: IPanel (Namespace: SiegeEngine.Interfaces)
+ Inherits: None
+ Dependencies: None
+ Methods:
+ - void Init()
+ Calls: None
+ - void Update(float deltaTime, float deltaTime)
+ Calls: None
+ - void Render()
+ Calls: None
+ - void Dispose()
+ Calls: None
+ - void Detach()
  Calls: None
  File: IRenderer.cs
  interface: IRenderer (Namespace: SiegeEngine.Interfaces)
@@ -1377,8 +1494,6 @@ Folder: Castle
  Calls: ApplyTransformation, ApplyTransformation, BindBuffer, BindVertexArray, BufferData, BuildModelFromForest, ComputeTangents, EnableVertexAttribArray, GenBuffer, GenVertexArray, Load, SmoothNormals, VertexAttribPointer
  - model SmoothNormals()
  Calls: ComputeTangents, ComputeTangents
- - FBXModel BuildModelFromForest(FBXFileForest forest, FBXFileForest forest)
- Calls: CreateDefaultCubeModel, CreateDefaultCubeModel
  - void SmoothNormals(FBXModel model, FBXModel model)
  Calls: None
  - void ComputeTangents(MeshData mesh, MeshData mesh)
@@ -1422,6 +1537,23 @@ Folder: Castle
  Calls: None
  - string GetMenuConfigPath()
  Calls: None
+ File: PanelManager.cs
+ class: PanelManager (Namespace: SiegeEngine.Managers)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System, System.Collections.Generic
+ Methods:
+ - constructor PanelManager(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
+ Calls: AddPanel, AddPanel
+ - void OnOpenPanel(OpenPanelEvent e, OpenPanelEvent e)
+ Calls: Init, Init
+ - void AddPanel(IPanel panel, IPanel panel)
+ Calls: Update, Update
+ - void Update(float deltaTime, float deltaTime)
+ Calls: Update, Update
+ - void Render()
+ Calls: Render, Render
+ - void RemovePanel(IPanel panel, IPanel panel)
+ Calls: None
  File: SceneManager.cs
  class: SceneManager (Namespace: SiegeEngine.Managers)
  Inherits: None
@@ -1439,6 +1571,38 @@ Folder: Castle
  Calls: Dispose, Dispose
  - void OnSwitchScene(SwitchSceneEvent e, SwitchSceneEvent e)
  Calls: None
+ File: UIManager.cs
+ class: UIManager (Namespace: SiegeEngine.Managers)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
+ Methods:
+ - constructor UIManager(UISettingsManager settingsManager, UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, IntPtr window, IRenderContext renderContext, string configPath)
+ Calls: Viewport, Viewport
+ - void OnResize(IntPtr win, IntPtr win, int w, int h)
+ Calls: None
+ - void Initialize(string initialMenuHtmlPath, string initialMenuHtmlPath)
+ Calls: AddPanel, AddPanel, ResolvePath
+ - void LoadMenu(string htmlPath, string htmlPath)
+ Calls: None
+ - needed AddPanel()
+ Calls: AddPanel, AddPanel, Init
+ - void OnOpenPanel(OpenPanelEvent e, OpenPanelEvent e)
+ Calls: None
+ - void AddPanel(IPanel panel, IPanel panel)
+ Calls: Dispose, Dispose
+ - void RemovePanel(IPanel panel, IPanel panel)
+ Calls: Update, Update
+ - void Update(float deltaTime, float deltaTime)
+ Calls: Update, Update
+ - void Render()
+ Calls: Render, Render
+ - void Dispose()
+ Calls: Dispose, Dispose
+ File: UIManager.cs
+ class: if (Namespace: SiegeEngine.Managers)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
+ Methods:
  File: UISettingsManager.cs
  class: UISettingsManager (Namespace: SiegeEngine.Managers)
  Inherits: None
@@ -1478,6 +1642,34 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, System, System.IO, System.Runtime.InteropServices, System.Text, System.Text.Json
  Methods:
+ File: ClientGameServerProxy.cs
+ class: ClientGameServerProxy (Namespace: SiegeEngine.Networking)
+ Inherits: IGameServer
+    
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
+ Methods:
+ - constructor ClientGameServerProxy(EventBus eventBus, EventBus eventBus)
+ Calls: EntityAddedEvent, EntityAddedEvent
+ - void AddEntity(Entity entity, Entity entity)
+ Calls: EntityRemovedEvent, EntityRemovedEvent
+ - void RemoveEntity(int id, int id)
+ Calls: EntityRemovedEvent, EntityRemovedEvent
+ - IReadOnlyList<Entity> GetEntities()
+ Calls: None
+ - Entity GetEntityById(int id, int id)
+ Calls: None
+ - void AddSystem(GameSystem system, GameSystem system)
+ Calls: None
+ - void Update(float deltaTime, float deltaTime)
+ Calls: MovementRequestEvent, MovementRequestEvent
+ - bool ValidateAndUpdateMovement(int entityId, int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
+ Calls: None
+ - bool ValidateInventory(int entityId, int entityId, string action, object data)
+ Calls: None
+ - RayTraceResult RequestRayTrace(Vector3 start, Vector3 start, Vector3 direction, float maxDistance)
+ Calls: None
+ - void QueueNetworkEvent(IEvent e, IEvent e)
+ Calls: None
  File: SteamEngine.cs
  class: SteamEngine (Namespace: SiegeEngine.Networking)
  Inherits: ISteamEngine
@@ -1824,12 +2016,25 @@ Folder: Castle
  Calls: None
  - void SetUniform(string name, string name, int value)
  Calls: None
+ - void SetUniform(string name, string name, float x, float y, float z)
+ Calls: None
  - void SetUniform(string name, string name, float x, float y, float z, float w)
  Calls: None
  - void SetMatrix4(string name, string name, Matrix4x4 matrix)
  Calls: None
+ - void SetMatrix4Array(string name, string name, Matrix4x4[] matrices)
+ Calls: None
  - void Dispose()
  Calls: DeleteProgram, DeleteProgram
+ File: AssetShader.cs
+ class: AssetShader (Namespace: SiegeEngine.Rendering.Shaders)
+ Inherits: None
+ Dependencies: None
+ Methods:
+ - void main()
+ Calls: None
+ - void main()
+ Calls: None
  File: EditorSceneShader.cs
  class: EditorSceneShader (Namespace: SiegeEngine.Rendering.Shaders)
  Inherits: None
@@ -1894,9 +2099,9 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
  Methods:
- - constructor SystemFontRenderer(IRenderContext renderContext, IRenderContext renderContext, string fontName, float fontSize)
+ - constructor SystemFontRenderer(IRenderContext renderContext, IRenderContext renderContext, string fontName)
  Calls: BindTexture, BindTexture, Clear, GenTextures, GetError, PixelStore, TexImage2D, TexParameter
- - void LoadFontData(string fontName, string fontName, float fontSize)
+ - void LoadFontData(string fontName, string fontName)
  Calls: None
  - float GetStringWidth(string text, string text)
  Calls: None
@@ -1913,7 +2118,7 @@ Folder: Castle
  class: TextRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.UI, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor TextRenderer(IRenderContext renderContext, IRenderContext renderContext, IntPtr window)
  Calls: BindBuffer, BindBuffer, BindVertexArray, BlendFunc, BufferData, Enable, EnableVertexAttribArray, GenBuffers, GenVertexArrays, VertexAttribPointer
@@ -1922,9 +2127,11 @@ Folder: Castle
  - Vector2 GetTextSize(string text, string text, float fontSize, string fontFamily)
  Calls: GetCharacterData, GetCharacterData
  - void RenderText(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, string fontFamily)
+ Calls: RenderTextPass, RenderTextPass
+ - void RenderText(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, string fontFamily, Matrix4x4 transformMatrix)
  Calls: None
- - void RenderTextPass(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily)
- Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, GetStringWidth, SetMatrix4, SetUniform, VertexAttribPointer
+ - void RenderTextPass(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily, Matrix4x4 transformMatrix)
+ Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, GetNdcQuad, GetStringWidth, SetMatrix4, SetUniform, VertexAttribPointer
  - SystemFontRenderer GetFontRenderer(string fontFamily, string fontFamily)
  Calls: None
  - void Dispose()
@@ -1942,13 +2149,15 @@ Folder: Castle
  File: UIQuadRenderer.cs
  class: UIQuadRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering.Shaders, System, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.Numerics
  Methods:
  - constructor UIQuadRenderer(IRenderContext renderContext, IRenderContext renderContext)
  Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, GenBuffers, GenVertexArrays, ShaderProgram
  - void Initialize()
  Calls: None
  - void DrawQuad(float posX, float posX, float posY, float sizeX, float sizeY, Vector4 color, float viewportWidth, float viewportHeight)
+ Calls: None
+ - void DrawNdcQuad(float[] ndc, float[] ndc, Vector4 color)
  Calls: None
  File: VertexBuffer.cs
  class: VertexBuffer (Namespace: SiegeEngine.Rendering)
@@ -2069,6 +2278,14 @@ Folder: Castle
  Calls: Dispose, Dispose
  - void Dispose()
  Calls: Dispose, Dispose
+ File: AnimationSystem.cs
+ class: AnimationSystem (Namespace: SiegeEngine.Systems)
+ Inherits: GameSystem
+    
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Interfaces, System, System.Numerics
+ Methods:
+ - void Update(float deltaTime, float deltaTime)
+ Calls: GetBoneTransforms, GetBoneTransforms, UpdateTransforms
  File: AudioSystem.cs
  class: AudioSystem (Namespace: SiegeEngine.Systems)
  Inherits: GameSystem
@@ -2156,7 +2373,7 @@ Folder: Castle
  class: MenuSystem (Namespace: SiegeEngine.Systems)
  Inherits: GameSystem
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
  Methods:
  - void OnResize(IntPtr win, IntPtr win, int w, int h)
  Calls: ComputeLayout, ComputeLayout
@@ -2198,6 +2415,26 @@ Folder: Castle
  Methods:
  - void Update(float deltaTime, float deltaTime)
  Calls: EntityMovedEvent, EntityMovedEvent, GetKey
+ File: BasePanel.cs
+ class: BasePanel (Namespace: SiegeEngine.UI)
+ Inherits: IPanel
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System
+ Methods:
+ - constructor BasePanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
+ Calls: UIOverlay, UIOverlay
+ - UIOverlay CreateUIOverlay()
+ Calls: Init, Init
+ - void Init()
+ Calls: Update, Update
+ - void Update(float deltaTime, float deltaTime)
+ Calls: Clear, Clear, ClearColor, Disable, Enable, GetWindowSize, RecomputeLayout, Render, Viewport
+ - void Render()
+ Calls: RecomputeLayout, RecomputeLayout
+ - void Dispose()
+ Calls: None
+ - void Detach()
+ Calls: None
  File: ButtonElement.cs
  class: ButtonElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2208,9 +2445,9 @@ Folder: Castle
  Calls: ComputeLayout, ComputeLayout, GetTextSize
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: GetTextSize, GetTextSize
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
- Calls: None
- - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: HandleClick, HandleClick
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
  Calls: None
  - void AttachHook(string hookStr, string hookStr)
  Calls: None
@@ -2219,6 +2456,10 @@ Folder: Castle
  Inherits: None
  Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
+ - solid rgba()
+ Calls: rgba, rgba
+ - solid rgba()
+ Calls: None
  - void Apply(string css, string css)
  Calls: ParseProperties, ParseProperties, ReadUntil, SkipWhitespaceAndComments
  - void ApplyAll(HtmlElement root, HtmlElement root)
@@ -2273,6 +2514,8 @@ Folder: Castle
  Calls: None
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
+ - void UpdateFullTransforms(Matrix4x4 parentMatrix, Matrix4x4 parentMatrix)
+ Calls: UpdateFullTransforms, UpdateFullTransforms
  - void PrepareResources(string baseDir, string baseDir, IControlContext controlContext, IntPtr window, IRenderContext renderContext, ShaderProgram shader)
  Calls: BackgroundRenderer, BackgroundRenderer, Initialize
  - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
@@ -2281,7 +2524,7 @@ Folder: Castle
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, ParsePaddings, ParseSize
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: None
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
  Calls: None
  - float ParseSize(string s, string s, float parent, float vw, float vh)
  Calls: Parse, Parse
@@ -2293,8 +2536,16 @@ Folder: Castle
  Calls: None
  - float GetVal(int index, int index, float defaultVal)
  Calls: ParseSize, ParseSize
- - bool HandleClick(Vector2 mousePos, Vector2 mousePos)
- Calls: HandleClick, HandleClick
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
+ - HtmlElement FindElementById(string id, string id)
+ Calls: FindElementById, FindElementById
+ - Matrix4x4 ComputeTransform(float viewportWidth, float viewportWidth, float viewportHeight)
+ Calls: Parse, Parse, ParseAngle, ParseSize
+ - float ParseAngle(string s, string s)
+ Calls: Parse, Parse
+ - float[] GetNdcQuad(float x, float x, float y, float w, float h, Matrix4x4 trans, float vw, float vh)
+ Calls: None
  File: HtmlParser.cs
  class: HtmlParser (Namespace: SiegeEngine.UI)
  Inherits: None
@@ -2322,10 +2573,20 @@ Folder: Castle
  Calls: ComputeLayout, ComputeLayout
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
  Calls: GetTextSize, GetTextSize, RenderText
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ParseBorderWidths, ParseBorderWidths, ParsePaddings
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
+ File: MenuPanel.cs
+ class: MenuPanel (Namespace: SiegeEngine.UI)
+ Inherits: BasePanel
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System
+ Methods:
+ - void Init()
+ Calls: None
  File: SelectElement.cs
  class: SelectElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2336,10 +2597,12 @@ Folder: Castle
  Calls: ComputeLayout, ComputeLayout
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: GetTextSize, GetTextSize, Render, RenderText
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
  Calls: GetTextSize, GetTextSize, RenderText
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: GetTextSize, GetTextSize
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
  File: TextElement.cs
  class: TextElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2352,8 +2615,37 @@ Folder: Castle
  Calls: GetWrappedLines, GetWrappedLines
  - List<string> GetWrappedLines(float maxWidth, float maxWidth, float fs, TextRenderer textRenderer, string fontFamily)
  Calls: None
- - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
  Calls: GetTextSize, GetTextSize, RenderText
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
+ File: UIOverlay.cs
+ class: UIOverlay (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, System, System.Collections.Generic, System.Linq, System.Numerics
+ Methods:
+ - constructor UIOverlay(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
+ Calls: Initialize, Initialize, ShaderProgram, TextRenderer, UIQuadRenderer
+ - void Init()
+ Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, Clear, CollectClickables, GetWindowSize, HtmlParser, InheritProperties, Parse, PrepareResources, RecomputeLayout
+ - void LoadUI(string html, string html)
+ Calls: None
+ - void InheritProperties(HtmlElement elem, HtmlElement elem, HtmlElement parent)
+ Calls: None
+ - void CollectClickables(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: GetCursorPos, GetCursorPos, GetMouseButton, GetWindowSize, HandleClick, HandleUIClick
+ - void Update(float deltaTime, float deltaTime)
+ Calls: HandleClick, HandleClick
+ - void RenderUI(int w, int w, int h)
+ Calls: GetWindowSize, GetWindowSize, RenderUI
+ - void Render()
+ Calls: RenderUI, RenderUI
+ - void RecomputeLayout(int w, int w, int h)
+ Calls: ComputeLayout, ComputeLayout, UpdateFullTransforms
+ - void Dispose()
+ Calls: None
  File: MetaFileParser.cs
  class: MetaFileParser (Namespace: SiegeEngine.UnityAssetLoader)
  Inherits: None
@@ -2393,23 +2685,7 @@ Folder: Castle
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
  Methods:
  - void Start(string context, string context)
- Calls: Clear, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PollEvents, Render, Resize, RunCallbacks, SceneManager, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
+ Calls: Clear, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PanelManager, PollEvents, Render, Resize, RunCallbacks, SceneManager, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
-
-Folder: 
- File: SandBoxScene - Copy.cs
- class: SandboxScene (Namespace: SiegeEngine.Scenes)
- Inherits: Scene
-    
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
- Methods:
- - void Initialize(int width, int width, int height)
- Calls: Viewport, Viewport
- - void Update(float deltaTime, float deltaTime)
- Calls: ActiveTexture, ActiveTexture, Bind, BindTexture, BindVertexArray, Clear, Disable, DrawArrays, DrawElements, Enable, GetEntityById, GetError, SetMatrix4, SetUniform, TryGetModelData, Use
- - void Render(IReadOnlyList<Entity> entities, IReadOnlyList<Entity> entities)
- Calls: SetUniform, SetUniform
- - void Dispose()
- Calls: Dispose, Dispose
 

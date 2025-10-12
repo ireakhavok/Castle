@@ -5,27 +5,23 @@ using SiegeEngine.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.UI
 {
     public class SelectElement : HtmlElement
     {
         public List<string> Options { get; set; } = new List<string>();
         public string Selected { get; set; } = "";
-
         public SelectElement()
         {
             Tag = "select";
         }
-
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
         }
-
-        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
-            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
+            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
             if (!string.IsNullOrEmpty(Selected))
             {
                 float fs = Style.FontSize > 0 ? Style.FontSize : 16f;
@@ -42,10 +38,9 @@ namespace SiegeEngine.UI
                 }
                 float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
                 Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
-                textRenderer.RenderText(Selected, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color, Style.FontFamily ?? "Arial");
+                textRenderer.RenderText(Selected, textX, textY, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
             }
         }
-
         protected override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             string fontFamily = Style.FontFamily ?? "Arial";
@@ -63,6 +58,10 @@ namespace SiegeEngine.UI
             float iw = maxW + pad.W + pad.Y + borderW.W + borderW.Y;
             float ih = textH + pad.X + pad.Z + borderW.X + borderW.Z;
             return new Vector2(iw, ih);
+        }
+        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
+        {
+            return base.HandleClick(mousePos, viewportWidth, viewportHeight);
         }
     }
 }

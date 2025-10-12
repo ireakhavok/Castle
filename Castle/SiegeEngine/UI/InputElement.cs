@@ -4,7 +4,6 @@ using SiegeEngine.ContextManagement;
 using SiegeEngine.Rendering;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.UI
 {
     public class InputElement : HtmlElement
@@ -14,7 +13,6 @@ namespace SiegeEngine.UI
         {
             Tag = "input";
         }
-
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             if (Type == "radio")
@@ -29,10 +27,9 @@ namespace SiegeEngine.UI
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = fs;
             }
         }
-
-        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
-            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight);
+            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
             if (Type == "checkbox")
             {
                 string symbol = Checked ? "x" : "";
@@ -52,11 +49,10 @@ namespace SiegeEngine.UI
                     }
                     float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
                     Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
-                    textRenderer.RenderText(symbol, textX, textY, (int)viewportWidth, (int)viewportHeight, fs, color);
+                    textRenderer.RenderText(symbol, textX, textY, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
                 }
             }
         }
-
         protected override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             if (Type == "checkbox")
@@ -68,6 +64,10 @@ namespace SiegeEngine.UI
                 return new Vector2(iw, ih);
             }
             return base.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+        }
+        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
+        {
+            return base.HandleClick(mousePos, viewportWidth, viewportHeight);
         }
     }
 }
