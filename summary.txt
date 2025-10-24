@@ -2077,6 +2077,8 @@ Folder: Castle
  Methods:
  - void main()
  Calls: None
+ - float roundedRect(vec2 p, vec2 p, vec2 b, vec4 r)
+ Calls: roundedRect, roundedRect
  - void main()
  Calls: None
  File: WaterShader.cs
@@ -2157,7 +2159,9 @@ Folder: Castle
  - void DrawQuad(float posX, float posX, float posY, float sizeX, float sizeY, Vector4 color, float viewportWidth, float viewportHeight)
  Calls: None
  - void DrawNdcQuad(float[] ndc, float[] ndc, Vector4 color)
- Calls: None
+ Calls: BindBuffer, BindBuffer, BindVertexArray, BufferData, DrawElements, EnableVertexAttribArray, SetMatrix4, SetUniform, Use, VertexAttribPointer
+ - void DrawNdcQuad(float[] ndc, float[] ndc, Vector4 color, Vector4 borderRadius, Vector2 rectSize)
+ Calls: SetUniform, SetUniform
  File: VertexBuffer.cs
  class: VertexBuffer (Namespace: SiegeEngine.Rendering)
  Inherits: IDisposable
