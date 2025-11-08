@@ -75,18 +75,6 @@ namespace SiegeEngine.Rendering
             if (string.IsNullOrEmpty(text))
                 return;
             text = text.Replace("\n", " ").Replace("\r", " "); // Avoid non-printable
-            // Render black outline (1px)
-            float[] offsets = { -1f, 0f, 1f };
-            for (int i = 0; i < offsets.Length; i++)
-            {
-                for (int j = 0; j < offsets.Length; j++)
-                {
-                    if (i == 1 && j == 1) continue; // Skip center for outline
-                    float offsetX = offsets[i];
-                    float offsetY = offsets[j];
-                    RenderTextPass(text, startX + offsetX, startY + offsetY, viewportWidth, viewportHeight, fontSize, new Vector4(0.0f, 0.0f, 0.0f, 1.0f), fontFamily, transformMatrix);
-                }
-            }
             // Render text color
             RenderTextPass(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f), fontFamily, transformMatrix);
         }

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!--<title>Regression Test for SiegeEngine UI Parser</title>-->
+    <style>
+        /* Test basic selectors: tag, #id, .class */
+        div {
+            background-color: #ffffff;
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #000000;
+        }
+
+        #test-id {
+            color: rgba(255, 0, 0, 1);
+            font-size: 20px;
+            font-family: Arial;
+        }
+
+        .test-class {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Test pseudo-classes */
+        button:hover {
+            background-color: #dddddd;
+        }
+
+        button:active {
+            background-color: #bbbbbb;
+        }
+
+        input[type="checkbox"]:checked {
+            background-color: #00ff00;
+        }
+
+        #target-test:target {
+            background-color: #ffff00;
+        }
+
+        /* Test layouts */
+        .flex-column {
+            flex-direction: column;
+        }
+
+        .justify-start {
+            justify-content: flex-start;
+        }
+
+        .justify-end {
+            justify-content: flex-end;
+        }
+
+        .justify-space-between {
+            justify-content: space-between;
+        }
+
+        .justify-space-around {
+            justify-content: space-around;
+        }
+
+        .justify-space-evenly {
+            justify-content: space-evenly;
+        }
+
+        .align-stretch {
+            align-items: stretch;
+        }
+
+        .align-flex-end {
+            align-items: flex-end;
+        }
+
+        .block-layout {
+            display: block;
+        }
+
+        .inline-test span {
+            display: inline;
+            background-color: #eeeeee;
+        }
+
+        /* Test positioning */
+        .relative-pos {
+            position: relative;
+        }
+
+        .absolute-pos {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 100px;
+            height: 50px;
+            background-color: #ff0000;
+        }
+
+        .fixed-pos {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 80px;
+            height: 40px;
+            background-color: #0000ff;
+        }
+
+        /* Test borders and radius */
+        .border-test {
+            border-width: 2px;
+            border-style: solid;
+            border-color: #00ff00;
+            border-radius: 10px;
+        }
+
+        .border-sides {
+            border-top: 3px dashed #ff00ff;
+            border-right: 4px dotted rgba(0, 0, 0, 0.5);
+            border-bottom: 5px double #000000;
+            border-left: 6px solid #ffffff;
+        }
+
+        /* Test text styles */
+        .text-test {
+            text-align: center;
+            white-space: normal;
+            text-transform: uppercase;
+        }
+
+        /* Test transforms */
+        .transform-test {
+            transform: translate(10px, 20px) rotate(45deg) scale(1.5) skew(10deg, 20deg) matrix(1, 0.5, -0.5, 1, 0, 0);
+        }
+
+        /* Test background image (assume local file exists for engine) */
+        .bg-image {
+            background-image: url(test.png);
+        }
+
+        /* Test units */
+        .units-test {
+            width: 50%;
+            height: 30vh;
+            min-width: 100px;
+            max-height: 200px;
+        }
+
+        /* Test box-sizing */
+        .box-sizing {
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <!-- Test basic elements and selectors -->
+    <div id="test-id">Test ID Selector</div>
+    <div class="test-class">Test Class Selector</div>
+
+    <!-- Test flex layouts -->
+    <div class="test-class flex-column">Flex Column</div>
+    <div class="test-class justify-start">Justify Start <div>Child1</div><div>Child2</div></div>
+    <div class="test-class justify-end">Justify End <div>Child1</div><div>Child2</div></div>
+    <div class="test-class justify-space-between">Space Between <div>Child1</div><div>Child2</div></div>
+    <div class="test-class justify-space-around">Space Around <div>Child1</div><div>Child2</div></div>
+    <div class="test-class justify-space-evenly">Space Evenly <div>Child1</div><div>Child2</div></div>
+    <div class="test-class align-stretch">Align Stretch <div style="flex:1">Child</div></div>
+    <div class="test-class align-flex-end">Align Flex End <div>Child</div></div>
+
+    <!-- Test block and inline -->
+    <div class="block-layout">Block Child1</div>
+    <div class="block-layout">Block Child2</div>
+    <div class="inline-test"><span>Inline Span1</span><span>Inline Span2</span></div>
+
+    <!-- Test positioning -->
+    <div class="relative-pos">
+        Relative Container
+        <div class="absolute-pos">Absolute Inside</div>
+    </div>
+    <div class="fixed-pos">Fixed Element</div>
+
+    <!-- Test borders -->
+    <div class="border-test">Uniform Border</div>
+    <div class="border-sides">Different Sides Borders</div>
+
+    <!-- Test text -->
+    <div class="text-test">This is centered uppercase text that should wrap if long enough to test white-space normal.</div>
+
+    <!-- Test transforms -->
+    <div class="transform-test">Transformed Element</div>
+
+    <!-- Test background image -->
+    <div class="bg-image" style="width:200px;height:100px;">Background Image Test</div>
+
+    <!-- Test units and min/max -->
+    <div class="units-test">Units Test</div>
+
+    <!-- Test box-sizing -->
+    <div class="box-sizing" style="width:200px;padding:20px;border:10px solid black;">Box Sizing Border Box</div>
+
+    <!-- Test forms -->
+    <select>
+        <option value="opt1">Option 1</option>
+        <option value="opt2" selected>Option 2</option>
+    </select>
+
+    <input type="text" value="Text Input">
+
+    <label for="checkbox1">Checkbox Label</label>
+    <input id="checkbox1" type="checkbox" checked>
+
+    <label><input type="radio" name="radio-group"> Radio 1</label>
+    <label><input type="radio" name="radio-group" checked> Radio 2</label>
+
+    <button data-hook="Test.Namespace.Method">Button with Hook</button>
+
+    <!-- Test links -->
+    <a href="#target-test">Link to Target</a>
+    <div id="target-test">Target Element</div>
+    <a href="another.html">Link to File</a>
+
+    <!-- Test include (custom tag) -->
+    <include src="included.html"></include>
+
+</body>
+</html>

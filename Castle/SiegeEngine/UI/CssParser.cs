@@ -10,8 +10,9 @@ namespace SiegeEngine.UI
     public class CssParser
     {
         public static string DefaultUserAgentCss = @"
-* {
-    color: white;
+body {
+    color: black;
+    background-color: white;
 }
 button {
     padding: 2px 10px;
@@ -309,9 +310,7 @@ input[type=""checkbox""] {
                 style.FontSizeStr = fs;
             }
             if (props.TryGetValue("font-family", out string ff))
-            {
                 style.FontFamily = ff.Trim('\'', '"');
-            }
             if (props.TryGetValue("display", out string disp))
                 style.Display = disp;
             if (props.TryGetValue("flex-direction", out string fd))
@@ -440,7 +439,31 @@ input[type=""checkbox""] {
         }
         private Vector4 ParseSingleColor(string color)
         {
-            color = color.Trim();
+            color = color.Trim().ToLower();
+            var namedColors = new Dictionary<string, Vector4>
+            {
+                { "black", new Vector4(0f, 0f, 0f, 1f) },
+                { "white", new Vector4(1f, 1f, 1f, 1f) },
+                { "red", new Vector4(1f, 0f, 0f, 1f) },
+                { "lime", new Vector4(0f, 1f, 0f, 1f) },
+                { "blue", new Vector4(0f, 0f, 1f, 1f) },
+                { "yellow", new Vector4(1f, 1f, 0f, 1f) },
+                { "cyan", new Vector4(0f, 1f, 1f, 1f) },
+                { "magenta", new Vector4(1f, 0f, 1f, 1f) },
+                { "silver", new Vector4(0.75f, 0.75f, 0.75f, 1f) },
+                { "gray", new Vector4(0.5f, 0.5f, 0.5f, 1f) },
+                { "maroon", new Vector4(0.5f, 0f, 0f, 1f) },
+                { "olive", new Vector4(0.5f, 0.5f, 0f, 1f) },
+                { "green", new Vector4(0f, 0.5f, 0f, 1f) },
+                { "purple", new Vector4(0.5f, 0f, 0.5f, 1f) },
+                { "teal", new Vector4(0f, 0.5f, 0.5f, 1f) },
+                { "navy", new Vector4(0f, 0f, 0.5f, 1f) },
+                { "transparent", new Vector4(0f, 0f, 0f, 0f) }
+            };
+            if (namedColors.TryGetValue(color, out var col))
+            {
+                return col;
+            }
             if (color.StartsWith("#"))
             {
                 color = color.Substring(1);

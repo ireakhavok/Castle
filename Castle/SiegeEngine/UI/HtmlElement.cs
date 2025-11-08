@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class HtmlElement
