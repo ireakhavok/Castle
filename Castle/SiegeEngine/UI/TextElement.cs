@@ -63,7 +63,7 @@ namespace SiegeEngine.UI
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
             float fs = Style.FontSize;
             float y = ComputedContentY;
-            Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
+            Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0f, 0f, 0f, 1f);
             string renderContent = Content;
             if (Style.TextTransform == "uppercase") renderContent = Content.ToUpper();
             string textAlign = string.IsNullOrEmpty(Style.TextAlign) ? "left" : Style.TextAlign;

@@ -418,6 +418,8 @@ input[type=""checkbox""] {
                 OnResize(_window, w, h);
             }
             _renderContext.Viewport(0, 0, (uint)_vw, (uint)_vh);
+            _renderContext.Enable(_renderContext.Enums.Blend);
+            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             _currentMenu.Render(_renderContext, _textRenderer, _quadRenderer, _vw, _vh, Matrix4x4.Identity);
         }
     }
