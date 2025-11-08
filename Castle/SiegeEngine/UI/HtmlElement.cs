@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -798,14 +799,14 @@ namespace SiegeEngine.UI
             if (hasBg)
             {
                 float[] bgNdc = GetNdcQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, localMatrix, viewportWidth, viewportHeight);
+                float bw = 0f;
+                Vector4 borderC = Vector4.Zero;
                 if (br != Vector4.Zero && hasUniformBorder)
                 {
-                    float bw = borderW.X;
-                    Vector4 borderC = borderTopC;
-                    float[] outerNdc = GetNdcQuad(ComputedPosition.X - bw, ComputedPosition.Y - bw, ComputedWidth + 2 * bw, ComputedHeight + 2 * bw, localMatrix, viewportWidth, viewportHeight);
-                    quadRenderer.DrawNdcQuad(outerNdc, borderC, new Vector4(br.X + bw, br.Y + bw, br.Z + bw, br.W + bw), new Vector2(ComputedWidth + 2 * bw, ComputedHeight + 2 * bw));
+                    bw = borderW.X;
+                    borderC = borderTopC;
                 }
-                quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(ComputedBackgroundWidth, ComputedBackgroundHeight));
+                quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(ComputedBackgroundWidth, ComputedBackgroundHeight), bw, borderC);
             }
             if (_bgRenderer != null)
             {

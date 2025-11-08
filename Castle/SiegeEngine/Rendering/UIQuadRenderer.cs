@@ -6,6 +6,7 @@ using SiegeEngine.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Rendering
 {
     public unsafe class UIQuadRenderer
@@ -68,10 +69,12 @@ namespace SiegeEngine.Rendering
         }
         public void DrawNdcQuad(float[] ndc, Vector4 color)
         {
-            DrawNdcQuad(ndc, color, Vector4.Zero, Vector2.Zero);
+            DrawNdcQuad(ndc, color, Vector4.Zero, Vector2.Zero, 0f, Vector4.Zero);
         }
-        public void DrawNdcQuad(float[] ndc, Vector4 color, Vector4 borderRadius, Vector2 rectSize)
+        public void DrawNdcQuad(float[] ndc, Vector4 color, Vector4 borderRadius, Vector2 rectSize, float borderWidth = 0f, Vector4 borderColor = new Vector4())
         {
+            _renderContext.Enable(_renderContext.Enums.Blend);
+            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             _shader.Use();
             _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
             _shader.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
@@ -83,6 +86,8 @@ namespace SiegeEngine.Rendering
                 _shader.SetUniform("uBorderRadius", borderRadius.X, borderRadius.Y, borderRadius.Z, borderRadius.W);
                 _shader.SetUniform("uRectSize", rectSize.X, rectSize.Y, 0f, 0f);
             }
+            _shader.SetUniform("uBorderWidth", borderWidth);
+            _shader.SetUniform("uBorderColor", borderColor.X, borderColor.Y, borderColor.Z, borderColor.W);
             _renderContext.BindVertexArray(_vao);
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             float[] vertices = new float[16];

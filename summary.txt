@@ -2130,7 +2130,7 @@ Folder: Castle
  - void RenderText(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, string fontFamily)
  Calls: RenderTextPass, RenderTextPass
  - void RenderText(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, string fontFamily, Matrix4x4 transformMatrix)
- Calls: None
+ Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, GetFontRenderer, GetNdcQuad, GetStringWidth, SetMatrix4, SetUniform, Use, VertexAttribPointer
  - void RenderTextPass(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily, Matrix4x4 transformMatrix)
  Calls: ActiveTexture, ActiveTexture, BindBuffer, BindTexture, BindVertexArray, BufferSubData, DrawArrays, EnableVertexAttribArray, GetCharacterData, GetCharacterTexture, GetNdcQuad, GetStringWidth, SetMatrix4, SetUniform, VertexAttribPointer
  - SystemFontRenderer GetFontRenderer(string fontFamily, string fontFamily)
@@ -2490,7 +2490,7 @@ Folder: Castle
  - return ParseSingleColor()
  Calls: Parse, Parse
  - Vector4 ParseSingleColor(string color, string color)
- Calls: Parse, Parse
+ Calls: None
  File: CssStyle.cs
  class: CssStyle (Namespace: SiegeEngine.UI)
  Inherits: None
