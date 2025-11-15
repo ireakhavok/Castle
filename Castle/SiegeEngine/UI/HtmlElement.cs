@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -113,7 +112,7 @@ namespace SiegeEngine.UI
             float bottom = ParseSize(effectiveStyle.BottomStr, refHeight, viewportWidth, viewportHeight);
             float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
             float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
-            bool isBlockOrFlex = string.IsNullOrEmpty(effectiveStyle.Display) || effectiveStyle.Display == "block" || effectiveStyle.Display == "flex";
+            bool isBlockOrFlex = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex";
             bool isStaticOrRelative = string.IsNullOrEmpty(effectiveStyle.Position) || effectiveStyle.Position == "static" || effectiveStyle.Position == "relative";
             if (isBlockOrFlex && isStaticOrRelative && float.IsNaN(w))
             {
@@ -550,7 +549,9 @@ namespace SiegeEngine.UI
         }
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
+            float currentX = 0;
             float currentY = 0;
+            float maxLineH = 0;
             float last_bottom = 0;
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
@@ -558,10 +559,10 @@ namespace SiegeEngine.UI
             for (int i = 0; i < normalChildren.Count; i++)
             {
                 HtmlElement child = normalChildren[i];
+                string childDisplay = child.GetEffectiveDisplay();
+                bool isInline = childDisplay.StartsWith("inline");
                 float childW = ParseSize(child.Style.WidthStr, ComputedContentWidth, viewportWidth, viewportHeight);
-                if (float.IsNaN(childW)) childW = ComputedContentWidth; // for block
                 float childH = ParseSize(child.Style.HeightStr, ComputedContentHeight, viewportWidth, viewportHeight);
-                if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
                 Vector4 parsedMargin = ParsePaddings(child.Style, ComputedContentHeight, viewportWidth, viewportHeight, isMargin: true);
                 float m_top = parsedMargin.X;
                 float m_bottom = parsedMargin.Z;
@@ -571,30 +572,64 @@ namespace SiegeEngine.UI
                 float c_m_bottom = float.IsNaN(m_bottom) ? 0 : m_bottom;
                 float c_m_left = float.IsNaN(m_left) ? 0 : m_left;
                 float c_m_right = float.IsNaN(m_right) ? 0 : m_right;
-                float eff = Math.Max(last_bottom, c_m_top);
-                float child_pos_y = currentY + eff;
-                float child_pos_x = 0;
-                float free_side = ComputedContentWidth - childW - c_m_left - c_m_right;
-                if (float.IsNaN(free_side)) free_side = 0;
-                if (float.IsNaN(m_left)) c_m_left = 0;
-                if (float.IsNaN(m_right)) c_m_right = 0;
-                if (float.IsNaN(m_left) && float.IsNaN(m_right))
+                if (isInline)
                 {
-                    c_m_left = free_side / 2;
-                    c_m_right = free_side / 2;
+                    if (float.IsNaN(childW)) childW = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X;
+                    if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
+                    float availW = ComputedContentWidth - currentX - c_m_left - c_m_right;
+                    float effW = childW + c_m_left + c_m_right;
+                    if (currentX > 0 && effW > availW)
+                    {
+                        currentY += maxLineH;
+                        currentX = 0;
+                        maxLineH = 0;
+                    }
+                    float child_pos_x = currentX + c_m_left;
+                    float child_pos_y = currentY + c_m_top;
+                    child.ComputeLayout(ComputedContentX + child_pos_x, ComputedContentY + child_pos_y, childW, childH, viewportWidth, viewportHeight, textRenderer, fs);
+                    currentX += child.ComputedWidth + c_m_left + c_m_right;
+                    maxLineH = Math.Max(maxLineH, child.ComputedHeight + c_m_top + c_m_bottom);
+                    last_bottom = c_m_bottom;
                 }
-                else if (float.IsNaN(m_left))
+                else
                 {
-                    c_m_left = free_side;
+                    if (currentX > 0)
+                    {
+                        currentY += maxLineH;
+                        currentX = 0;
+                        maxLineH = 0;
+                    }
+                    if (float.IsNaN(childW)) childW = ComputedContentWidth;
+                    if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
+                    float eff = Math.Max(last_bottom, c_m_top);
+                    float child_pos_y = currentY + eff;
+                    float child_pos_x = 0;
+                    float free_side = ComputedContentWidth - childW - c_m_left - c_m_right;
+                    if (float.IsNaN(free_side)) free_side = 0;
+                    if (float.IsNaN(m_left)) c_m_left = 0;
+                    if (float.IsNaN(m_right)) c_m_right = 0;
+                    if (float.IsNaN(m_left) && float.IsNaN(m_right))
+                    {
+                        c_m_left = free_side / 2;
+                        c_m_right = free_side / 2;
+                    }
+                    else if (float.IsNaN(m_left))
+                    {
+                        c_m_left = free_side;
+                    }
+                    else if (float.IsNaN(m_right))
+                    {
+                        c_m_right = free_side;
+                    }
+                    child_pos_x = c_m_left;
+                    child.ComputeLayout(ComputedContentX + child_pos_x, ComputedContentY + child_pos_y, childW, childH, viewportWidth, viewportHeight, textRenderer, fs);
+                    currentY = child_pos_y + child.ComputedHeight;
+                    last_bottom = c_m_bottom;
                 }
-                else if (float.IsNaN(m_right))
-                {
-                    c_m_right = free_side;
-                }
-                child_pos_x = c_m_left;
-                child.ComputeLayout(ComputedContentX + child_pos_x, ComputedContentY + child_pos_y, childW, childH, viewportWidth, viewportHeight, textRenderer, fs);
-                currentY = child_pos_y + child.ComputedHeight;
-                last_bottom = c_m_bottom;
+            }
+            if (currentX > 0)
+            {
+                currentY += maxLineH;
             }
             foreach (var child in positionedChildren)
             {
@@ -661,9 +696,14 @@ namespace SiegeEngine.UI
                     float currentH = 0;
                     float last_bottom = 0;
                     int count = normalChildren.Count;
+                    bool inLine = false;
+                    float lineW = 0;
+                    float lineH = 0;
                     for (int i = 0; i < count; i++)
                     {
                         HtmlElement child = normalChildren[i];
+                        string childDisplay = child.GetEffectiveDisplay();
+                        bool isInline = childDisplay.StartsWith("inline");
                         Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
                         Vector4 parsedMargin = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight, isMargin: true);
                         float m_top = parsedMargin.X;
@@ -674,32 +714,56 @@ namespace SiegeEngine.UI
                         m_bottom = float.IsNaN(m_bottom) ? 0 : m_bottom;
                         m_left = float.IsNaN(m_left) ? 0 : m_left;
                         m_right = float.IsNaN(m_right) ? 0 : m_right;
-                        float eff = Math.Max(last_bottom, m_top);
-                        currentH += eff + childSize.Y;
-                        last_bottom = m_bottom;
-                        float childMinW = childSize.X + m_left + m_right;
-                        float childSpecW = float.NaN;
-                        if (!string.IsNullOrEmpty(child.Style.WidthStr) && !child.Style.WidthStr.Trim().EndsWith("%"))
+                        if (isInline)
                         {
-                            childSpecW = child.ParseSize(child.Style.WidthStr, 0, viewportWidth, viewportHeight);
+                            float childMinW = childSize.X + m_left + m_right;
+                            float childHWithM = childSize.Y + m_top + m_bottom;
+                            lineW += childMinW;
+                            lineH = Math.Max(lineH, childHWithM);
+                            inLine = true;
                         }
-                        if (!float.IsNaN(childSpecW))
+                        else
                         {
-                            string childBox = child.Style.BoxSizing;
-                            Vector4 childPad = child.ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
-                            Vector4 childBorder = child.ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
-                            float specboxW;
-                            if (childBox == "border-box")
+                            if (inLine)
                             {
-                                specboxW = childSpecW;
+                                currentH += lineH;
+                                maxW = Math.Max(maxW, lineW);
+                                lineW = 0;
+                                lineH = 0;
+                                inLine = false;
                             }
-                            else
+                            float eff = Math.Max(last_bottom, m_top);
+                            currentH += eff + childSize.Y;
+                            last_bottom = m_bottom;
+                            float childMinW = childSize.X + m_left + m_right;
+                            float childSpecW = float.NaN;
+                            if (!string.IsNullOrEmpty(child.Style.WidthStr) && !child.Style.WidthStr.Trim().EndsWith("%"))
                             {
-                                specboxW = childSpecW + childPad.W + childPad.Y + childBorder.W + childBorder.Y;
+                                childSpecW = child.ParseSize(child.Style.WidthStr, 0, viewportWidth, viewportHeight);
                             }
-                            childMinW = Math.Max(childSize.X + m_left + m_right, specboxW + m_left + m_right);
+                            if (!float.IsNaN(childSpecW))
+                            {
+                                string childBox = child.Style.BoxSizing;
+                                Vector4 childPad = child.ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
+                                Vector4 childBorder = child.ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
+                                float specboxW;
+                                if (childBox == "border-box")
+                                {
+                                    specboxW = childSpecW;
+                                }
+                                else
+                                {
+                                    specboxW = childSpecW + childPad.W + childPad.Y + childBorder.W + childBorder.Y;
+                                }
+                                childMinW = Math.Max(childSize.X + m_left + m_right, specboxW + m_left + m_right);
+                            }
+                            maxW = Math.Max(maxW, childMinW);
                         }
-                        maxW = Math.Max(maxW, childMinW);
+                    }
+                    if (inLine)
+                    {
+                        currentH += lineH;
+                        maxW = Math.Max(maxW, lineW);
                     }
                     currentH += last_bottom;
                     iw = maxW;
