@@ -13,26 +13,60 @@ namespace SiegeEngine.UI
 body {
     color: black;
     background-color: white;
+    margin: 8px;
+    display: block;
+}
+div {
+    display: block;
+}
+a {
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
 }
 button {
-    padding: 2px 10px;
-    min-height: 30px;
-    border: 1px solid rgba(128, 128, 128, 1);
-    border-radius: 5px;
-    background-color: rgba(200, 200, 200, 1);
-    color: black;
+    display: inline-block;
+    padding: 1px 6px;
+    min-height: 20px;
+    border: 2px outset buttonface;
+    border-radius: 2px;
+    background-color: buttonface;
+    color: buttontext;
     text-align: center;
+    cursor: default;
 }
 select {
-    padding: 2px 10px;
-    min-height: 30px;
-    border: 1px solid rgba(128, 128, 128, 1);
-    border-radius: 5px;
+    display: inline-block;
+    padding: 1px 6px;
+    min-height: 20px;
+    border: 2px inset buttonface;
+    background-color: window;
+    color: windowtext;
+}
+input {
+    display: inline-block;
+}
+input[type=""text""] {
+    padding: 1px 2px;
+    border: 2px inset;
 }
 input[type=""checkbox""] {
-    width: 16px;
-    height: 16px;
-    margin: 0 5px 0 0;
+    width: 13px;
+    height: 13px;
+    margin: 3px 3px 3px 4px;
+    border: 2px inset;
+    background-color: window;
+}
+input[type=""radio""] {
+    width: 13px;
+    height: 13px;
+    margin: 3px 3px 3px 4px;
+    border: 2px inset;
+    background-color: window;
+}
+label {
+    display: inline;
+    cursor: default;
 }
 ";
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
@@ -248,15 +282,15 @@ input[type=""checkbox""] {
                 {
                     match = elem.IsTarget;
                 }
-                else if (pseudo == "checked")
+                if (pseudo == "checked")
                 {
                     match = elem.Checked;
                 }
-                else if (pseudo == "hover")
+                if (pseudo == "hover")
                 {
                     match = elem.IsHover;
                 }
-                else if (pseudo == "active")
+                if (pseudo == "active")
                 {
                     match = elem.IsActive;
                 }
@@ -458,7 +492,11 @@ input[type=""checkbox""] {
                 { "purple", new Vector4(0.5f, 0f, 0.5f, 1f) },
                 { "teal", new Vector4(0f, 0.5f, 0.5f, 1f) },
                 { "navy", new Vector4(0f, 0f, 0.5f, 1f) },
-                { "transparent", new Vector4(0f, 0f, 0f, 0f) }
+                { "transparent", new Vector4(0f, 0f, 0f, 0f) },
+                { "buttonface", new Vector4(0.867f, 0.867f, 0.867f, 1f) },
+                { "buttontext", new Vector4(0f, 0f, 0f, 1f) },
+                { "window", new Vector4(1f, 1f, 1f, 1f) },
+                { "windowtext", new Vector4(0f, 0f, 0f, 1f) }
             };
             if (namedColors.TryGetValue(color, out var col))
             {

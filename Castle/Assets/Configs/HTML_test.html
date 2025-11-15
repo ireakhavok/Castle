@@ -157,7 +157,21 @@
     <!-- Test basic elements and selectors -->
     <div id="test-id">Test ID Selector</div>
     <div class="test-class">Test Class Selector</div>
+    <!-- Test forms -->
+    <select>
+        <option value="opt1">Option 1</option>
+        <option value="opt2" selected>Option 2</option>
+    </select>
 
+    <input type="text" value="Text Input">
+
+    <label for="checkbox1">Checkbox Label</label>
+    <input id="checkbox1" type="checkbox" checked>
+
+    <label><input type="radio" name="radio-group"> Radio 1</label>
+    <label><input type="radio" name="radio-group" checked> Radio 2</label>
+
+    <button data-hook="Test.Namespace.Method">Button with Hook</button>
     <!-- Test flex layouts -->
     <div class="test-class flex-column">Flex Column</div>
     <div class="test-class justify-start">Justify Start <div>Child1</div><div>Child2</div></div>
@@ -199,21 +213,7 @@
     <!-- Test box-sizing -->
     <div class="box-sizing" style="width:200px;padding:20px;border:10px solid black;">Box Sizing Border Box</div>
 
-    <!-- Test forms -->
-    <select>
-        <option value="opt1">Option 1</option>
-        <option value="opt2" selected>Option 2</option>
-    </select>
 
-    <input type="text" value="Text Input">
-
-    <label for="checkbox1">Checkbox Label</label>
-    <input id="checkbox1" type="checkbox" checked>
-
-    <label><input type="radio" name="radio-group"> Radio 1</label>
-    <label><input type="radio" name="radio-group" checked> Radio 2</label>
-
-    <button data-hook="Test.Namespace.Method">Button with Hook</button>
 
     <!-- Test links -->
     <a href="#target-test">Link to Target</a>
