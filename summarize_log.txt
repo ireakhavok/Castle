@@ -3011,7 +3011,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: UiShader.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
-Read 2267 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
+Read 2681 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
 Namespace: SiegeEngine.Rendering.Shaders
 Found 0 dependencies
 Class UiShader: 3 methods
@@ -3068,10 +3068,10 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\R
 Found: UIQuadRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\UIQuadRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\UIQuadRenderer.cs
-Read 5707 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\UIQuadRenderer.cs
+Read 6127 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\UIQuadRenderer.cs
 Namespace: SiegeEngine.Rendering
 Found 6 dependencies
-Class UIQuadRenderer: 5 methods
+Class UIQuadRenderer: 4 methods
 Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\UIQuadRenderer.cs
 Found: Vertex.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Vertex.cs
@@ -3244,7 +3244,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: HtmlElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
-Read 56287 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
+Read 55988 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
 Namespace: SiegeEngine.UI
 Found 8 dependencies
 Class HtmlElement: 19 methods
@@ -3293,7 +3293,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
-Read 15244 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
+Read 15415 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Namespace: SiegeEngine.UI
 Found 9 dependencies
 Class UIOverlay: 23 methods
