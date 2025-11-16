@@ -2142,11 +2142,6 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Linq
  Methods:
- File: UiElement.cs
- class: UiElement (Namespace: SiegeEngine.Rendering)
- Inherits: None
- Dependencies: System.Drawing, System.Drawing, System.Numerics
- Methods:
  File: UIQuadRenderer.cs
  class: UIQuadRenderer (Namespace: SiegeEngine.Rendering)
  Inherits: None
@@ -2571,7 +2566,7 @@ Folder: Castle
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
- Calls: GetTextSize, GetTextSize, RenderText
+ Calls: None
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ParseBorderWidths, ParseBorderWidths, ParsePaddings
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
@@ -2670,9 +2665,9 @@ Folder: Castle
  - List<HtmlElement> FindElementsByTag(HtmlElement root, HtmlElement root, string tag)
  Calls: None
  - List<HtmlElement> FindElementsByTag(string tag, string tag)
- Calls: FindElementById, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, RefreshUI
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, DivElement, FindElementById, FindElementsByTag, GetWindowSize, HandleDataHook, HandleLink, RefreshUI
  - return FindElementsByTag()
- Calls: FindElementById, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, RefreshUI
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, DivElement, FindElementById, FindElementsByTag, GetWindowSize, HandleDataHook, HandleLink, RefreshUI
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
  Calls: None
  - void Update(float deltaTime, float deltaTime)
