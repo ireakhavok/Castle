@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -23,12 +24,14 @@ namespace SiegeEngine.UI
         protected HtmlElement _uiRoot;
         protected List<HtmlElement> _uiClickables = new List<HtmlElement>();
         protected string _currentBaseDir = "";
+
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _window = window;
         }
+
         public virtual void Init()
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -37,6 +40,7 @@ namespace SiegeEngine.UI
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _cssParser = new CssParser();
         }
+
         public void LoadUI(string html, string baseDir = "")
         {
             _currentBaseDir = baseDir;
@@ -77,6 +81,7 @@ namespace SiegeEngine.UI
             _controlContext.GetWindowSize(_window, out int w, out int h);
             RecomputeLayout(w, h);
         }
+
         private void InitializeElementProperties(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -95,6 +100,7 @@ namespace SiegeEngine.UI
                 }
             }
         }
+
         private void ProcessSelects(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -123,6 +129,7 @@ namespace SiegeEngine.UI
                     queue.Enqueue(child);
             }
         }
+
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -140,20 +147,23 @@ namespace SiegeEngine.UI
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
+
         private void CollectClickables(HtmlElement elem)
         {
             if (elem.GetEffectiveDisplay() == "none") return;
             string classes = elem.Attributes.GetValueOrDefault("class", "");
-            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick"))
+            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option"))
             {
                 _uiClickables.Add(elem);
             }
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
+
         protected virtual void HandleDataHook(string hook)
         {
         }
+
         protected virtual void HandleLink(string href)
         {
             if (string.IsNullOrEmpty(href)) return;
@@ -167,6 +177,7 @@ namespace SiegeEngine.UI
                 Console.WriteLine($"UIOverlay: Failed to load relative path: {resolvedPath}");
             }
         }
+
         public void RefreshUI()
         {
             if (_uiRoot == null) return;
@@ -177,6 +188,7 @@ namespace SiegeEngine.UI
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
         }
+
         protected HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root == null) return null;
@@ -188,10 +200,12 @@ namespace SiegeEngine.UI
             }
             return null;
         }
+
         public HtmlElement FindElementById(string id)
         {
             return FindElementById(_uiRoot, id);
         }
+
         private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             if (root == null) return new List<HtmlElement>();
@@ -207,6 +221,7 @@ namespace SiegeEngine.UI
             }
             return list;
         }
+
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             if (root == null) return new List<HtmlElement>();
@@ -221,10 +236,12 @@ namespace SiegeEngine.UI
             }
             return list;
         }
+
         protected List<HtmlElement> FindElementsByTag(string tag)
         {
             return FindElementsByTag(_uiRoot, tag);
         }
+
         protected virtual void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
@@ -320,12 +337,7 @@ namespace SiegeEngine.UI
                         var dropdown = new DivElement();
                         dropdown.Style.Position = "absolute";
                         dropdown.Style.LeftStr = select.ComputedPosition.X.ToString() + "px";
-                        dropdown.Style.TopStr = (select.ComputedPosition.Y + select.ComputedHeight).ToString() + "px";
-                        dropdown.Style.WidthStr = select.ComputedWidth.ToString() + "px";
-                        dropdown.Style.BackgroundColor = new Vector4(1, 1, 1, 1);
-                        dropdown.Style.BorderWidthStr = "1px";
-                        dropdown.Style.BorderStyle = "solid";
-                        dropdown.Style.BorderColor = new Vector4(0, 0, 0, 1);
+                        float proposedTop = select.ComputedPosition.Y + select.ComputedHeight;
                         float optHeight = 0f;
                         float fs = select.Style.FontSize > 0 ? select.Style.FontSize : 16f;
                         foreach (var option in select.Options)
@@ -335,10 +347,32 @@ namespace SiegeEngine.UI
                             optDiv.Attributes["class"] = "select-option";
                             optDiv.Attributes["data-value"] = option;
                             optDiv.Children.Add(new TextElement { Content = option });
+                            if (option == select.Selected)
+                            {
+                                optDiv.Style.BackgroundColor = new Vector4(0.678f, 0.847f, 0.902f, 1f);
+                            }
                             Vector2 intr = optDiv.ComputeIntrinsicSize(vw, vh, _textRenderer, fs);
                             optHeight += intr.Y;
-                            dropdown.Children.Add(optDiv);
                         }
+                        float maxH = vh - proposedTop;
+                        optHeight = Math.Min(optHeight, maxH);
+                        if (proposedTop + optHeight > vh)
+                        {
+                            proposedTop = select.ComputedPosition.Y - optHeight;
+                            maxH = vh - proposedTop;
+                            optHeight = Math.Min(optHeight, maxH);
+                            if (proposedTop < 0)
+                            {
+                                proposedTop = 0;
+                                optHeight = Math.Min(optHeight, vh);
+                            }
+                        }
+                        dropdown.Style.TopStr = proposedTop.ToString() + "px";
+                        dropdown.Style.WidthStr = select.ComputedWidth.ToString() + "px";
+                        dropdown.Style.BackgroundColor = new Vector4(1, 1, 1, 1);
+                        dropdown.Style.BorderWidthStr = "1px";
+                        dropdown.Style.BorderStyle = "solid";
+                        dropdown.Style.BorderColor = new Vector4(0, 0, 0, 1);
                         dropdown.Style.HeightStr = optHeight.ToString() + "px";
                         _uiRoot.Children.Add(dropdown);
                         select.Dropdown = dropdown;
@@ -380,6 +414,7 @@ namespace SiegeEngine.UI
                 }
             }
         }
+
         public virtual void Update(float deltaTime)
         {
             // UI input handling
@@ -414,6 +449,7 @@ namespace SiegeEngine.UI
                 HandleUIClick(clickedElem);
             }
         }
+
         protected void RenderUI(int w, int h)
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -422,6 +458,7 @@ namespace SiegeEngine.UI
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
+
         public virtual void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
@@ -430,6 +467,7 @@ namespace SiegeEngine.UI
                 RenderUI(w, h);
             }
         }
+
         public void RecomputeLayout(int w, int h)
         {
             if (_uiRoot != null)
@@ -438,6 +476,7 @@ namespace SiegeEngine.UI
                 _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             }
         }
+
         public virtual void Dispose()
         {
             _uiShader.Dispose();

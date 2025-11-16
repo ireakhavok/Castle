@@ -136,13 +136,6 @@ namespace SiegeEngine.UI
                 if (float.IsNaN(w)) w = intrinsic.X;
                 if (float.IsNaN(h)) h = intrinsic.Y;
             }
-            if (effectiveStyle.BoxSizing != "border-box")
-            {
-                w -= pad.W + pad.Y + borderW.W + borderW.Y;
-                if (w < 0) w = 0;
-                h -= pad.X + pad.Z + borderW.X + borderW.Z;
-                if (h < 0) h = 0;
-            }
             if (!float.IsNaN(forcedWidth)) w = forcedWidth;
             if (!float.IsNaN(forcedHeight)) h = forcedHeight;
             if (!float.IsNaN(minW)) w = Math.Max(w, minW);
@@ -151,21 +144,10 @@ namespace SiegeEngine.UI
             if (!float.IsNaN(maxH)) h = Math.Min(h, maxH);
             if (float.IsNaN(w)) w = 0;
             if (float.IsNaN(h)) h = 0;
-            float boxW, boxH, contentW, contentH;
-            if (effectiveStyle.BoxSizing == "border-box")
-            {
-                boxW = w;
-                boxH = h;
-                contentW = w - pad.W - pad.Y - borderW.W - borderW.Y;
-                contentH = h - pad.X - pad.Z - borderW.X - borderW.Z;
-            }
-            else
-            {
-                contentW = w;
-                contentH = h;
-                boxW = w + pad.W + pad.Y + borderW.W + borderW.Y;
-                boxH = h + pad.X + pad.Z + borderW.X + borderW.Z;
-            }
+            float boxW = w;
+            float boxH = h;
+            float contentW = w - pad.W - pad.Y - borderW.W - borderW.Y;
+            float contentH = h - pad.X - pad.Z - borderW.X - borderW.Z;
             if (float.IsNaN(boxW)) boxW = 0;
             if (float.IsNaN(boxH)) boxH = 0;
             if (float.IsNaN(contentW)) contentW = 0;

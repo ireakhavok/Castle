@@ -68,6 +68,9 @@ label {
     display: inline;
     cursor: default;
 }
+.select-option:hover {
+    background-color: #dddddd;
+}
 ";
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
         public void Apply(string css)
