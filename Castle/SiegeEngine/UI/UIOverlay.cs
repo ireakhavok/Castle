@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -294,6 +293,94 @@ namespace SiegeEngine.UI
                 string hook = elem.Attributes["data-hook"];
                 Console.WriteLine($"UIOverlay: Processing data-hook: {hook}");
                 HandleDataHook(hook);
+            }
+            else if (elem.Tag == "input")
+            {
+                var input = elem as InputElement;
+                if (input != null)
+                {
+                    if (input.Type == "checkbox")
+                    {
+                        input.Checked = !input.Checked;
+                        RefreshUI();
+                    }
+                    else if (input.Type == "radio")
+                    {
+                        string name = input.Attributes.GetValueOrDefault("name", "");
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            var radios = FindElementsByTag("input").Where(i => (i as InputElement)?.Type == "radio" && i.Attributes.GetValueOrDefault("name", "") == name).ToList();
+                            foreach (var r in radios) r.Checked = false;
+                            input.Checked = true;
+                            RefreshUI();
+                        }
+                    }
+                }
+            }
+            else if (elem.Tag == "select")
+            {
+                var select = elem as SelectElement;
+                if (select != null)
+                {
+                    select.IsOpen = !select.IsOpen;
+                    if (select.IsOpen)
+                    {
+                        var dropdown = new DivElement();
+                        dropdown.Style.Position = "absolute";
+                        dropdown.Style.LeftStr = select.ComputedPosition.X.ToString() + "px";
+                        dropdown.Style.TopStr = (select.ComputedPosition.Y + select.ComputedHeight).ToString() + "px";
+                        dropdown.Style.WidthStr = select.ComputedWidth.ToString() + "px";
+                        dropdown.Style.BackgroundColor = new Vector4(1, 1, 1, 1);
+                        dropdown.Style.BorderWidthStr = "1px";
+                        dropdown.Style.BorderStyle = "solid";
+                        dropdown.Style.BorderColor = new Vector4(0, 0, 0, 1);
+                        foreach (var option in select.Options)
+                        {
+                            var optDiv = new DivElement();
+                            optDiv.Style.PaddingStr = "5px";
+                            optDiv.Attributes["class"] = "select-option";
+                            optDiv.Attributes["data-value"] = option;
+                            optDiv.Children.Add(new TextElement { Content = option });
+                            dropdown.Children.Add(optDiv);
+                        }
+                        _uiRoot.Children.Add(dropdown);
+                        select.Dropdown = dropdown;
+                        RefreshUI();
+                    }
+                    else if (select.Dropdown != null)
+                    {
+                        _uiRoot.Children.Remove(select.Dropdown);
+                        select.Dropdown = null;
+                        RefreshUI();
+                    }
+                }
+            }
+            else if (elem.Attributes.GetValueOrDefault("class", "").Contains("select-option"))
+            {
+                var dropdown = elem.Parent;
+                if (dropdown != null)
+                {
+                    string value = elem.Attributes.GetValueOrDefault("data-value", "");
+                    SelectElement select = null;
+                    var selects = FindElementsByTag("select");
+                    foreach (var s in selects)
+                    {
+                        var sel = s as SelectElement;
+                        if (sel != null && sel.Dropdown == dropdown)
+                        {
+                            select = sel;
+                            break;
+                        }
+                    }
+                    if (select != null)
+                    {
+                        select.Selected = value;
+                        select.IsOpen = false;
+                        _uiRoot.Children.Remove(dropdown);
+                        select.Dropdown = null;
+                        RefreshUI();
+                    }
+                }
             }
         }
         public virtual void Update(float deltaTime)

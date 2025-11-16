@@ -11,6 +11,8 @@ namespace SiegeEngine.UI
     {
         public List<string> Options { get; set; } = new List<string>();
         public string Selected { get; set; } = "";
+        public bool IsOpen { get; set; } = false;
+        public HtmlElement Dropdown { get; set; }
         public SelectElement()
         {
             Tag = "select";

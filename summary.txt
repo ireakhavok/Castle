@@ -2457,10 +2457,6 @@ Folder: Castle
  Inherits: None
  Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
- - solid rgba()
- Calls: rgba, rgba
- - solid rgba()
- Calls: None
  - void Apply(string css, string css)
  Calls: ParseProperties, ParseProperties, ReadUntil, SkipWhitespaceAndComments
  - void ApplyAll(HtmlElement root, HtmlElement root)
@@ -2522,7 +2518,7 @@ Folder: Castle
  - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseBorderWidths, ParsePaddings, ParseSize
  - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
- Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, ParsePaddings, ParseSize
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, GetEffectiveDisplay, ParsePaddings, ParseSize
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
