@@ -5,6 +5,7 @@ using SiegeEngine.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Rendering
 {
     public unsafe class TextRenderer : IDisposable
@@ -15,6 +16,7 @@ namespace SiegeEngine.Rendering
         private ShaderProgram _shaderProgram;
         private Dictionary<string, SystemFontRenderer> _fontRenderers = new Dictionary<string, SystemFontRenderer>();
         private SystemFontRenderer _defaultFontRenderer;
+
         public TextRenderer(IRenderContext renderContext, IntPtr window)
         {
             _renderContext = renderContext;
@@ -22,6 +24,7 @@ namespace SiegeEngine.Rendering
             _defaultFontRenderer = new SystemFontRenderer(_renderContext, "Arial");
             _fontRenderers["Arial"] = _defaultFontRenderer;
         }
+
         public void Initialize(ShaderProgram shaderProgram)
         {
             //Console.WriteLine("TextRenderer: Initializing with font 'Arial', size 12.0f");
@@ -51,6 +54,7 @@ namespace SiegeEngine.Rendering
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
+
         public Vector2 GetTextSize(string text, float fontSize, string fontFamily = "Arial")
         {
             var renderer = GetFontRenderer(fontFamily);
@@ -66,10 +70,12 @@ namespace SiegeEngine.Rendering
             }
             return new Vector2(width, height);
         }
+
         public void RenderText(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize = 12.0f, Vector4? textColor = null, string fontFamily = "Arial")
         {
             RenderText(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor, fontFamily, Matrix4x4.Identity);
         }
+
         public void RenderText(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4? textColor, string fontFamily, Matrix4x4 transformMatrix)
         {
             if (string.IsNullOrEmpty(text))
@@ -78,6 +84,7 @@ namespace SiegeEngine.Rendering
             // Render text color
             RenderTextPass(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f), fontFamily, transformMatrix);
         }
+
         private void RenderTextPass(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily, Matrix4x4 transformMatrix)
         {
             _shaderProgram.Use();
@@ -143,6 +150,7 @@ namespace SiegeEngine.Rendering
                 //Console.WriteLine($"TextRenderer: Rendered char '{c}' at ({charLeft:F3}, {charTop:F3}) to ({charRight:F3}, {charBottom:F3}), Texture: {_charTextures[c]}, Unit: Texture0");
             }
         }
+
         private SystemFontRenderer GetFontRenderer(string fontFamily)
         {
             if (_fontRenderers.TryGetValue(fontFamily, out var renderer))
@@ -160,6 +168,7 @@ namespace SiegeEngine.Rendering
             _fontRenderers[fontFamily] = renderer;
             return renderer;
         }
+
         public void Dispose()
         {
             _renderContext.DeleteVertexArray(_textVao);

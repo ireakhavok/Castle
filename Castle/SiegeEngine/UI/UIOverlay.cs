@@ -356,6 +356,7 @@ namespace SiegeEngine.UI
                             }
                             Vector2 intr = optDiv.ComputeIntrinsicSize(vw, vh, _textRenderer, fs);
                             optHeight += intr.Y;
+                            dropdown.Children.Add(optDiv);
                         }
                         float maxH = vh - proposedTop;
                         optHeight = Math.Min(optHeight, maxH);
