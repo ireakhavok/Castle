@@ -130,12 +130,18 @@ namespace SiegeEngine.UI
                 if (float.IsNaN(w)) w = viewportWidth;
                 if (float.IsNaN(h)) h = viewportHeight;
             }
-            float boxW, boxH, contentW, contentH;
             if (float.IsNaN(w) || float.IsNaN(h))
             {
                 Vector2 intrinsic = ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
                 if (float.IsNaN(w)) w = intrinsic.X;
                 if (float.IsNaN(h)) h = intrinsic.Y;
+            }
+            if (effectiveStyle.BoxSizing != "border-box")
+            {
+                w -= pad.W + pad.Y + borderW.W + borderW.Y;
+                if (w < 0) w = 0;
+                h -= pad.X + pad.Z + borderW.X + borderW.Z;
+                if (h < 0) h = 0;
             }
             if (!float.IsNaN(forcedWidth)) w = forcedWidth;
             if (!float.IsNaN(forcedHeight)) h = forcedHeight;
@@ -145,6 +151,7 @@ namespace SiegeEngine.UI
             if (!float.IsNaN(maxH)) h = Math.Min(h, maxH);
             if (float.IsNaN(w)) w = 0;
             if (float.IsNaN(h)) h = 0;
+            float boxW, boxH, contentW, contentH;
             if (effectiveStyle.BoxSizing == "border-box")
             {
                 boxW = w;
@@ -378,38 +385,38 @@ namespace SiegeEngine.UI
             }
             float total_used = sum_outer + total_gap;
             float start_main = 0;
-            float spacing = gap;
+            float justify_spacing = 0;
             if (has_auto_main)
             {
                 start_main = 0;
             }
             else
             {
+                float extra_free = availableMain - sum_outer - total_gap;
                 if (Style.JustifyContent == "space-between")
                 {
                     if (normalChildren.Count > 1)
                     {
-                        spacing = (availableMain - sum_outer) / (normalChildren.Count - 1);
+                        justify_spacing = extra_free / (normalChildren.Count - 1);
                     }
-                    else spacing = 0;
                 }
                 else if (Style.JustifyContent == "space-around")
                 {
-                    spacing = (availableMain - sum_outer) / normalChildren.Count;
-                    start_main = spacing / 2;
+                    justify_spacing = extra_free / normalChildren.Count;
+                    start_main = justify_spacing / 2;
                 }
                 else if (Style.JustifyContent == "space-evenly")
                 {
-                    spacing = (availableMain - sum_outer) / (normalChildren.Count + 1);
-                    start_main = spacing;
+                    justify_spacing = extra_free / (normalChildren.Count + 1);
+                    start_main = justify_spacing;
                 }
                 else if (Style.JustifyContent == "center")
                 {
-                    start_main = (availableMain - total_used) / 2;
+                    start_main = extra_free / 2;
                 }
                 else if (Style.JustifyContent == "flex-end")
                 {
-                    start_main = availableMain - total_used;
+                    start_main = extra_free;
                 }
                 else
                 {
@@ -417,12 +424,12 @@ namespace SiegeEngine.UI
                 }
             }
             if (float.IsNaN(start_main)) start_main = 0;
-            if (float.IsNaN(spacing)) spacing = 0;
+            if (float.IsNaN(justify_spacing)) justify_spacing = 0;
             float current_main = start_main;
             string alignItems = string.IsNullOrEmpty(Style.AlignItems) ? "stretch" : Style.AlignItems;
             for (int i = 0; i < normalChildren.Count; i++)
             {
-                if (i > 0) current_main += spacing;
+                if (i > 0) current_main += gap + justify_spacing;
                 HtmlElement child = normalChildren[i];
                 float item_start = current_main + childMarginStart[i];
                 float child_main = childBaseMain[i];
@@ -647,7 +654,6 @@ namespace SiegeEngine.UI
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
             if (normalChildren.Count == 0 && visibleChildren.Count > 0)
             {
-                // If all children are positioned, intrinsic size is 0 + pads
             }
             else if (visibleChildren.Count == 0)
             {
