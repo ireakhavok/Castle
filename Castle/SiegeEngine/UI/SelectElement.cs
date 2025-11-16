@@ -43,7 +43,7 @@ namespace SiegeEngine.UI
                 textRenderer.RenderText(Selected, textX, textY, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
             }
         }
-        protected override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+        public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             string fontFamily = Style.FontFamily ?? "Arial";
             float maxW = 0;

@@ -299,21 +299,10 @@ namespace SiegeEngine.UI
                 var input = elem as InputElement;
                 if (input != null)
                 {
-                    if (input.Type == "checkbox")
+                    if (input.Type == "checkbox" || input.Type == "radio")
                     {
                         input.Checked = !input.Checked;
                         RefreshUI();
-                    }
-                    else if (input.Type == "radio")
-                    {
-                        string name = input.Attributes.GetValueOrDefault("name", "");
-                        if (!string.IsNullOrEmpty(name))
-                        {
-                            var radios = FindElementsByTag("input").Where(i => (i as InputElement)?.Type == "radio" && i.Attributes.GetValueOrDefault("name", "") == name).ToList();
-                            foreach (var r in radios) r.Checked = false;
-                            input.Checked = true;
-                            RefreshUI();
-                        }
                     }
                 }
             }
@@ -325,6 +314,9 @@ namespace SiegeEngine.UI
                     select.IsOpen = !select.IsOpen;
                     if (select.IsOpen)
                     {
+                        _controlContext.GetWindowSize(_window, out int vw_int, out int vh_int);
+                        float vw = vw_int;
+                        float vh = vh_int;
                         var dropdown = new DivElement();
                         dropdown.Style.Position = "absolute";
                         dropdown.Style.LeftStr = select.ComputedPosition.X.ToString() + "px";
@@ -334,6 +326,8 @@ namespace SiegeEngine.UI
                         dropdown.Style.BorderWidthStr = "1px";
                         dropdown.Style.BorderStyle = "solid";
                         dropdown.Style.BorderColor = new Vector4(0, 0, 0, 1);
+                        float optHeight = 0f;
+                        float fs = select.Style.FontSize > 0 ? select.Style.FontSize : 16f;
                         foreach (var option in select.Options)
                         {
                             var optDiv = new DivElement();
@@ -341,8 +335,11 @@ namespace SiegeEngine.UI
                             optDiv.Attributes["class"] = "select-option";
                             optDiv.Attributes["data-value"] = option;
                             optDiv.Children.Add(new TextElement { Content = option });
+                            Vector2 intr = optDiv.ComputeIntrinsicSize(vw, vh, _textRenderer, fs);
+                            optHeight += intr.Y;
                             dropdown.Children.Add(optDiv);
                         }
+                        dropdown.Style.HeightStr = optHeight.ToString() + "px";
                         _uiRoot.Children.Add(dropdown);
                         select.Dropdown = dropdown;
                         RefreshUI();

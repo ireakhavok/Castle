@@ -20,7 +20,7 @@ namespace SiegeEngine.UI
                 Style.Display = "none";
             }
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
-            if (Type == "checkbox")
+            if (Type == "checkbox" || Type == "radio")
             {
                 float fs = Style.FontSize;
                 if (float.IsNaN(ComputedWidth)) ComputedWidth = fs * 1.5f;
@@ -30,32 +30,29 @@ namespace SiegeEngine.UI
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
+            string symbol = "";
             if (Type == "checkbox")
             {
-                string symbol = Checked ? "x" : "";
-                if (!string.IsNullOrEmpty(symbol))
-                {
-                    float fs = Style.FontSize;
-                    float symbolWidth = textRenderer.GetTextSize(symbol, fs).X;
-                    float textX = ComputedContentX;
-                    string textAlign = string.IsNullOrEmpty(Style.TextAlign) ? "left" : Style.TextAlign;
-                    if (textAlign == "center")
-                    {
-                        textX += (ComputedContentWidth - symbolWidth) / 2;
-                    }
-                    else if (textAlign == "right")
-                    {
-                        textX += ComputedContentWidth - symbolWidth;
-                    }
-                    float textY = ComputedContentY + (ComputedContentHeight - fs) / 2;
-                    Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
-                    textRenderer.RenderText(symbol, textX, textY, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
-                }
+                symbol = Checked ? "✔" : "";
+            }
+            else if (Type == "radio")
+            {
+                symbol = Checked ? "●" : "○";
+            }
+            if (!string.IsNullOrEmpty(symbol))
+            {
+                float fs = Style.FontSize;
+                float symbolWidth = textRenderer.GetTextSize(symbol, fs).X;
+                float symbolHeight = textRenderer.GetTextSize(symbol, fs).Y;
+                float textX = ComputedContentX + (ComputedContentWidth - symbolWidth) / 2;
+                float textY = ComputedContentY + (ComputedContentHeight - symbolHeight) / 2;
+                Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : Vector4.One;
+                textRenderer.RenderText(symbol, textX, textY, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
             }
         }
-        protected override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+        public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
-            if (Type == "checkbox")
+            if (Type == "checkbox" || Type == "radio")
             {
                 Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
                 Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
