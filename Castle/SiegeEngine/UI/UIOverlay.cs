@@ -346,7 +346,10 @@ namespace SiegeEngine.UI
                             optDiv.Style.PaddingStr = "5px";
                             optDiv.Attributes["class"] = "select-option";
                             optDiv.Attributes["data-value"] = option;
-                            optDiv.Children.Add(new TextElement { Content = option });
+                            var textElem = new TextElement { Content = option };
+                            textElem.Style.Color = "black";
+                            textElem.Style.TextColor = new Vector4(0, 0, 0, 1);
+                            optDiv.Children.Add(textElem);
                             if (option == select.Selected)
                             {
                                 optDiv.Style.BackgroundColor = new Vector4(0.678f, 0.847f, 0.902f, 1f);
