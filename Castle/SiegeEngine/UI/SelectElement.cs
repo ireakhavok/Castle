@@ -28,7 +28,7 @@ namespace SiegeEngine.UI
 
             HtmlElement selectedOpt = null;
 
-            float optTop = lineH;
+            // First, compute intrinsic as closed
             foreach (var child in Children)
             {
                 if (child.Tag.ToLower() == "option")
@@ -42,8 +42,25 @@ namespace SiegeEngine.UI
                     {
                         child.Attributes.Remove("selected");
                     }
-                    if (IsOpen)
+                    child.Style.Display = "none";
+                    if (child == selectedOpt)
                     {
+                        child.Style.Display = "block";
+                    }
+                }
+            }
+
+            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
+
+            // Now, if open, layout options absolutely
+            if (IsOpen)
+            {
+                float optTop = lineH;
+                foreach (var child in Children)
+                {
+                    if (child.Tag.ToLower() == "option")
+                    {
+                        child.Style.Display = "block";
                         child.Style.Position = "absolute";
                         child.Style.LeftStr = "0px";
                         child.Style.TopStr = optTop + "px";
@@ -51,22 +68,10 @@ namespace SiegeEngine.UI
                         child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, float.NaN, viewportWidth, viewportHeight, textRenderer, fs);
                         optTop += child.ComputedHeight;
                     }
-                    else
-                    {
-                        child.Style.Position = "static";
-                        child.Style.Display = "none";
-                    }
-                    if (child == selectedOpt)
-                    {
-                        child.Style.Display = "block";
-                        child.Style.Position = "static";
-                    }
                 }
             }
 
             Style.Overflow = IsOpen ? "visible" : "hidden";
-
-            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
 
             float singleContentH = lineH;
             Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);

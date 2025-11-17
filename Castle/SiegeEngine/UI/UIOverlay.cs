@@ -356,8 +356,22 @@ namespace SiegeEngine.UI
             float vw = vw_int;
             float vh = vh_int;
             HtmlElement clickedElem = null;
+            bool isClickOnOpenSelect = false;
+            SelectElement openSelect = FindElementsByTag("select").FirstOrDefault(s => (s as SelectElement)?.IsOpen ?? false) as SelectElement;
+            if (openSelect != null)
+            {
+                // Check if click is on open select or descendants
+                if (openSelect.HandleClick(mousePos, vw, vh))
+                {
+                    isClickOnOpenSelect = true;
+                }
+            }
             foreach (var clickable in _uiClickables)
             {
+                if (openSelect != null && !clickable.IsDescendantOf(openSelect) && !(clickable == openSelect))
+                {
+                    continue; // Skip non-descendants when select open
+                }
                 bool over = clickable.HandleClick(mousePos, vw, vh);
                 clickable.IsHover = over;
                 if (over && mouseDown)
@@ -377,17 +391,13 @@ namespace SiegeEngine.UI
             {
                 HandleUIClick(clickedElem);
             }
-            else if (mouseUp && !_justOpenedSelect)
+            else if (mouseUp && openSelect != null && !isClickOnOpenSelect)
             {
-                // Click outside, close open selects
-                bool hasOpen = FindElementsByTag("select").Any(s => (s as SelectElement)?.IsOpen ?? false);
-                if (hasOpen)
-                {
-                    CloseAllOpenSelects();
-                    RefreshUI();
-                }
+                // Click outside open select, close it
+                CloseAllOpenSelects();
+                RefreshUI();
             }
-            //_justOpenedSelect = false;
+            _justOpenedSelect = false;
         }
 
         protected void RenderUI(int w, int h)

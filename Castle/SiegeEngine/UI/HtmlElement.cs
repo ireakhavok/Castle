@@ -54,6 +54,17 @@ namespace SiegeEngine.UI
             return effective.Display;
         }
 
+        public bool IsDescendantOf(HtmlElement ancestor)
+        {
+            var current = this;
+            while (current != null)
+            {
+                if (current == ancestor) return true;
+                current = current.Parent;
+            }
+            return false;
+        }
+
         private HtmlElement FindContainingBlock()
         {
             HtmlElement current = Parent;
