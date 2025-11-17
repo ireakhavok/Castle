@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -38,6 +39,7 @@ namespace SiegeEngine.UI
         private string _baseDir;
         private Matrix4x4 ComputedTransform;
         protected Matrix4x4 ComputedFullTransform;
+
         public string GetEffectiveDisplay()
         {
             CssStyle effective = Style;
@@ -51,6 +53,7 @@ namespace SiegeEngine.UI
                 effective = a;
             return effective.Display;
         }
+
         private HtmlElement FindContainingBlock()
         {
             HtmlElement current = Parent;
@@ -60,6 +63,7 @@ namespace SiegeEngine.UI
             }
             return current;
         }
+
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             CssStyle effectiveStyle = Style;
@@ -68,9 +72,7 @@ namespace SiegeEngine.UI
                 effectiveStyle = ts;
             }
             if (Checked && PseudoStyles.TryGetValue("checked", out CssStyle cs))
-            {
                 effectiveStyle = cs;
-            }
             if (effectiveStyle.Display == "none")
             {
                 ComputedWidth = 0;
@@ -204,6 +206,7 @@ namespace SiegeEngine.UI
             }
             ComputedTransform = ComputeTransform(viewportWidth, viewportHeight);
         }
+
         public virtual void UpdateFullTransforms(Matrix4x4 parentMatrix)
         {
             ComputedFullTransform = parentMatrix * ComputedTransform;
@@ -212,6 +215,7 @@ namespace SiegeEngine.UI
                 child.UpdateFullTransforms(ComputedFullTransform);
             }
         }
+
         public void PrepareResources(string baseDir, IControlContext controlContext, IntPtr window, IRenderContext renderContext, ShaderProgram shader)
         {
             _baseDir = baseDir;
@@ -235,6 +239,7 @@ namespace SiegeEngine.UI
                 child.PrepareResources(baseDir, controlContext, window, renderContext, shader);
             }
         }
+
         private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
@@ -536,6 +541,7 @@ namespace SiegeEngine.UI
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
         }
+
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             float currentX = 0;
@@ -625,6 +631,7 @@ namespace SiegeEngine.UI
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
         }
+
         public virtual Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             if (Style.Display == "none") return new Vector2(0, 0);
@@ -641,7 +648,7 @@ namespace SiegeEngine.UI
             {
                 if (this is TextElement text)
                 {
-                    var size = textRenderer.GetTextSize(text.Content, fs);
+                    var size = textRenderer.GetTextSize(text.Content, fs, Style.FontFamily ?? "Arial");
                     iw = size.X;
                     ih = size.Y;
                 }
@@ -807,6 +814,7 @@ namespace SiegeEngine.UI
             if (float.IsNaN(ih)) ih = 0;
             return new Vector2(iw, ih);
         }
+
         public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
@@ -892,11 +900,22 @@ namespace SiegeEngine.UI
                     quadRenderer.DrawNdcQuad(ndc, borderRightC);
                 }
             }
+            if (Style.Overflow == "hidden")
+            {
+                renderContext.Enable(renderContext.Enums.ScissorTest);
+                int scissorY = (int)(viewportHeight - (ComputedContentY + ComputedContentHeight));
+                renderContext.Scissor((int)ComputedContentX, scissorY, (uint)ComputedContentWidth, (uint)ComputedContentHeight);
+            }
             foreach (var child in Children)
             {
                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, localMatrix);
             }
+            if (Style.Overflow == "hidden")
+            {
+                renderContext.Disable(renderContext.Enums.ScissorTest);
+            }
         }
+
         public float ParseSize(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s) || s == "auto") return float.NaN;
@@ -925,6 +944,7 @@ namespace SiegeEngine.UI
             }
             return float.NaN;
         }
+
         protected Vector4 ParsePaddings(CssStyle style, float parent, float vw, float vh, bool isMargin = false)
         {
             string allStr = isMargin ? style.MarginStr : style.PaddingStr;
@@ -946,6 +966,7 @@ namespace SiegeEngine.UI
             }
             return values;
         }
+
         protected Vector4 ParseBorderWidths(CssStyle style, float parent, float vw, float vh)
         {
             Vector4 values = string.IsNullOrEmpty(style.BorderWidthStr) ? Vector4.Zero : ParseSides(style.BorderWidthStr, parent, vw, vh);
@@ -959,6 +980,7 @@ namespace SiegeEngine.UI
             if (float.IsNaN(values.W)) values.W = 0;
             return values;
         }
+
         private Vector4 ParseSides(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s)) return Vector4.Zero;
@@ -978,6 +1000,7 @@ namespace SiegeEngine.UI
             float val4 = GetVal(3, val2);
             return new Vector4(val1, val2, val3, val4);
         }
+
         public virtual bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
@@ -1001,6 +1024,7 @@ namespace SiegeEngine.UI
             }
             return true;
         }
+
         public HtmlElement FindElementById(string id)
         {
             if (Attributes.GetValueOrDefault("id", "") == id) return this;
@@ -1011,6 +1035,7 @@ namespace SiegeEngine.UI
             }
             return null;
         }
+
         private Matrix4x4 ComputeTransform(float viewportWidth, float viewportHeight)
         {
             if (string.IsNullOrEmpty(Style.Transform) || Style.Transform == "none") return Matrix4x4.Identity;
@@ -1085,6 +1110,7 @@ namespace SiegeEngine.UI
             mat = fromOrigin * mat * toOrigin;
             return mat;
         }
+
         private float ParseAngle(string s)
         {
             if (string.IsNullOrEmpty(s)) return 0;
@@ -1112,6 +1138,7 @@ namespace SiegeEngine.UI
             val = float.Parse(s);
             return val * MathF.PI / 180; // default deg
         }
+
         public static float[] GetNdcQuad(float x, float y, float w, float h, Matrix4x4 trans, float vw, float vh)
         {
             Vector4 bl = Vector4.Transform(new Vector4(x, y + h, 0, 1), trans);

@@ -71,6 +71,13 @@ namespace SiegeEngine.Rendering
             return new Vector2(width, height);
         }
 
+        public float GetLineHeight(float fontSize, string fontFamily = "Arial")
+        {
+            var renderer = GetFontRenderer(fontFamily);
+            float scale = fontSize / renderer.BaseSize;
+            return renderer.LineHeight * scale;
+        }
+
         public void RenderText(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize = 12.0f, Vector4? textColor = null, string fontFamily = "Arial")
         {
             RenderText(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor, fontFamily, Matrix4x4.Identity);

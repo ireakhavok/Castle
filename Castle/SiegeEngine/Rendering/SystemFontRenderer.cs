@@ -18,6 +18,8 @@ namespace SiegeEngine.Rendering
         private readonly string _fontName;
         private readonly float _baseSize = 128.0f;
         public float BaseSize => _baseSize;
+        public float LineHeight { get; private set; }
+
         public SystemFontRenderer(IRenderContext renderContext, string fontName)
         {
             _renderContext = renderContext;
@@ -26,6 +28,7 @@ namespace SiegeEngine.Rendering
             _charTextures = new Dictionary<char, uint>();
             LoadFontData(fontName);
         }
+
         private unsafe void LoadFontData(string fontName)
         {
             //Console.WriteLine($"SystemFontRenderer: Loading font '{fontName}', size {_baseSize}");
@@ -36,6 +39,7 @@ namespace SiegeEngine.Rendering
                 using (var graphics = Graphics.FromImage(bitmap))
                 {
                     graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
+                    LineHeight = font.Height;
                     string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 :.,!?-+()[]{}x";
                     foreach (char c in chars)
                     {
@@ -117,6 +121,7 @@ namespace SiegeEngine.Rendering
                 //Console.WriteLine($"SystemFontRenderer: Failed to load font '{fontName}': {ex.Message}");
             }
         }
+
         public float GetStringWidth(string text)
         {
             if (string.IsNullOrEmpty(text)) return 0f;
@@ -132,6 +137,7 @@ namespace SiegeEngine.Rendering
                 }
             }
         }
+
         public CharacterData GetCharacterData(char c)
         {
             if (!_characterData.ContainsKey(c))
@@ -141,6 +147,7 @@ namespace SiegeEngine.Rendering
             }
             return _characterData[c];
         }
+
         public uint GetCharacterTexture(char c)
         {
             if (!_charTextures.ContainsKey(c))
@@ -150,6 +157,7 @@ namespace SiegeEngine.Rendering
             return _charTextures[c];
         }
     }
+
     public class CharacterData
     {
         public int Width { get; set; }

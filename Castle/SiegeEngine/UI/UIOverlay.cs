@@ -24,6 +24,7 @@ namespace SiegeEngine.UI
         protected HtmlElement _uiRoot;
         protected List<HtmlElement> _uiClickables = new List<HtmlElement>();
         protected string _currentBaseDir = "";
+        private bool _justOpenedSelect = false;
 
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
@@ -71,7 +72,6 @@ namespace SiegeEngine.UI
             }
             _cssParser.ApplyInlineStyles(_uiRoot);
             InitializeElementProperties(_uiRoot);
-            ProcessSelects(_uiRoot);
             _cssParser.ApplyAll(_uiRoot);
             InheritProperties(_uiRoot, null);
             _uiRoot.PrepareResources(baseDir, _controlContext, _window, _renderContext, _uiShader);
@@ -101,35 +101,6 @@ namespace SiegeEngine.UI
             }
         }
 
-        private void ProcessSelects(HtmlElement root)
-        {
-            Queue<HtmlElement> queue = new Queue<HtmlElement>();
-            queue.Enqueue(root);
-            while (queue.Count > 0)
-            {
-                var elem = queue.Dequeue();
-                if (elem is SelectElement select)
-                {
-                    foreach (var child in elem.Children.ToList())
-                    {
-                        if (child.Tag.ToLower() == "option")
-                        {
-                            string value = child.Attributes.GetValueOrDefault("value", "");
-                            string text = string.Join("", child.Children.OfType<TextElement>().Select(t => t.Content));
-                            select.Options.Add(text);
-                            if (child.Attributes.ContainsKey("selected"))
-                                select.Selected = text;
-                            elem.Children.Remove(child);
-                        }
-                    }
-                    if (string.IsNullOrEmpty(select.Selected) && select.Options.Count > 0)
-                        select.Selected = select.Options[0];
-                }
-                foreach (var child in elem.Children)
-                    queue.Enqueue(child);
-            }
-        }
-
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -152,7 +123,7 @@ namespace SiegeEngine.UI
         {
             if (elem.GetEffectiveDisplay() == "none") return;
             string classes = elem.Attributes.GetValueOrDefault("class", "");
-            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option"))
+            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || elem.Tag == "option")
             {
                 _uiClickables.Add(elem);
             }
@@ -328,93 +299,47 @@ namespace SiegeEngine.UI
                 var select = elem as SelectElement;
                 if (select != null)
                 {
+                    CloseAllOpenSelects();
                     select.IsOpen = !select.IsOpen;
-                    if (select.IsOpen)
-                    {
-                        _controlContext.GetWindowSize(_window, out int vw_int, out int vh_int);
-                        float vw = vw_int;
-                        float vh = vh_int;
-                        var dropdown = new DivElement();
-                        dropdown.Style.Position = "absolute";
-                        dropdown.Style.LeftStr = select.ComputedPosition.X.ToString() + "px";
-                        float proposedTop = select.ComputedPosition.Y + select.ComputedHeight;
-                        float optHeight = 0f;
-                        float fs = select.Style.FontSize > 0 ? select.Style.FontSize : 16f;
-                        foreach (var option in select.Options)
-                        {
-                            var optDiv = new DivElement();
-                            optDiv.Style.PaddingStr = "5px";
-                            optDiv.Attributes["class"] = "select-option";
-                            optDiv.Attributes["data-value"] = option;
-                            var textElem = new TextElement { Content = option };
-                            textElem.Style.Color = "black";
-                            textElem.Style.TextColor = new Vector4(0, 0, 0, 1);
-                            optDiv.Children.Add(textElem);
-                            if (option == select.Selected)
-                            {
-                                optDiv.Style.BackgroundColor = new Vector4(0.678f, 0.847f, 0.902f, 1f);
-                            }
-                            Vector2 intr = optDiv.ComputeIntrinsicSize(vw, vh, _textRenderer, fs);
-                            optHeight += intr.Y;
-                            dropdown.Children.Add(optDiv);
-                        }
-                        float maxH = vh - proposedTop;
-                        optHeight = Math.Min(optHeight, maxH);
-                        if (proposedTop + optHeight > vh)
-                        {
-                            proposedTop = select.ComputedPosition.Y - optHeight;
-                            maxH = vh - proposedTop;
-                            optHeight = Math.Min(optHeight, maxH);
-                            if (proposedTop < 0)
-                            {
-                                proposedTop = 0;
-                                optHeight = Math.Min(optHeight, vh);
-                            }
-                        }
-                        dropdown.Style.TopStr = proposedTop.ToString() + "px";
-                        dropdown.Style.WidthStr = select.ComputedWidth.ToString() + "px";
-                        dropdown.Style.BackgroundColor = new Vector4(1, 1, 1, 1);
-                        dropdown.Style.BorderWidthStr = "1px";
-                        dropdown.Style.BorderStyle = "solid";
-                        dropdown.Style.BorderColor = new Vector4(0, 0, 0, 1);
-                        dropdown.Style.HeightStr = optHeight.ToString() + "px";
-                        _uiRoot.Children.Add(dropdown);
-                        select.Dropdown = dropdown;
-                        RefreshUI();
-                    }
-                    else if (select.Dropdown != null)
-                    {
-                        _uiRoot.Children.Remove(select.Dropdown);
-                        select.Dropdown = null;
-                        RefreshUI();
-                    }
+                    _justOpenedSelect = select.IsOpen;
+                    RefreshUI();
                 }
             }
-            else if (elem.Attributes.GetValueOrDefault("class", "").Contains("select-option"))
+            else if (elem.Tag == "option")
             {
-                var dropdown = elem.Parent;
-                if (dropdown != null)
+                var select = elem.Parent as SelectElement;
+                if (select != null)
                 {
-                    string value = elem.Attributes.GetValueOrDefault("data-value", "");
-                    SelectElement select = null;
-                    var selects = FindElementsByTag("select");
-                    foreach (var s in selects)
+                    if (select.IsOpen)
                     {
-                        var sel = s as SelectElement;
-                        if (sel != null && sel.Dropdown == dropdown)
+                        // select this option
+                        foreach (var opt in select.Children.Where(c => c.Tag.ToLower() == "option"))
                         {
-                            select = sel;
-                            break;
+                            opt.Attributes.Remove("selected");
                         }
-                    }
-                    if (select != null)
-                    {
-                        select.Selected = value;
+                        elem.Attributes["selected"] = "";
                         select.IsOpen = false;
-                        _uiRoot.Children.Remove(dropdown);
-                        select.Dropdown = null;
-                        RefreshUI();
                     }
+                    else
+                    {
+                        // open the select
+                        CloseAllOpenSelects();
+                        select.IsOpen = true;
+                        _justOpenedSelect = true;
+                    }
+                    RefreshUI();
+                }
+            }
+        }
+
+        private void CloseAllOpenSelects()
+        {
+            var selects = FindElementsByTag("select");
+            foreach (var s in selects)
+            {
+                if (s is SelectElement sel)
+                {
+                    sel.IsOpen = false;
                 }
             }
         }
@@ -452,6 +377,17 @@ namespace SiegeEngine.UI
             {
                 HandleUIClick(clickedElem);
             }
+            else if (mouseUp && !_justOpenedSelect)
+            {
+                // Click outside, close open selects
+                bool hasOpen = FindElementsByTag("select").Any(s => (s as SelectElement)?.IsOpen ?? false);
+                if (hasOpen)
+                {
+                    CloseAllOpenSelects();
+                    RefreshUI();
+                }
+            }
+            //_justOpenedSelect = false;
         }
 
         protected void RenderUI(int w, int h)

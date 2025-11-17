@@ -60,6 +60,7 @@ namespace SiegeEngine.UI
         public string Transform { get; set; }
         public string BorderRadiusStr { get; set; }
         public Vector4 BorderRadius { get; set; }
+        public string Overflow { get; set; }
 
         public CssStyle Clone()
         {

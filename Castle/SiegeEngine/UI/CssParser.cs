@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class CssParser
@@ -40,8 +41,10 @@ select {
     padding: 1px 6px;
     min-height: 20px;
     border: 2px inset buttonface;
-    background-color: window;
+    background-color: rgba(51, 51, 51, 0.8);
     color: windowtext;
+    overflow: hidden;
+    position: relative;
 }
 input {
     display: inline-block;
@@ -68,11 +71,21 @@ label {
     display: inline;
     cursor: default;
 }
-.select-option:hover {
-    background-color: #dddddd;
+option {
+    display: block;
+    padding: 2px 5px;
+    background-color: inherit;
+}
+option[selected] {
+    background-color: rgba(0, 128, 128, 0.8);
+}
+option:hover {
+    background-color: rgba(77, 77, 77, 0.8);
 }
 ";
+
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
+
         public void Apply(string css)
         {
             int i = 0;
@@ -91,6 +104,7 @@ label {
                 }
             }
         }
+
         public void ApplyAll(HtmlElement root)
         {
             ApplyInlineStyles(root);
@@ -114,6 +128,7 @@ label {
                 }
             }
         }
+
         public void ApplyInlineStyles(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -131,6 +146,7 @@ label {
                 }
             }
         }
+
         private void SkipWhitespaceAndComments(string css, ref int i)
         {
             while (i < css.Length)
@@ -153,6 +169,7 @@ label {
                 break;
             }
         }
+
         private string ReadUntil(string css, ref int i, char stop)
         {
             string result = "";
@@ -163,6 +180,7 @@ label {
             }
             return result;
         }
+
         private Dictionary<string, string> ParseProperties(string block)
         {
             Dictionary<string, string> props = new Dictionary<string, string>();
@@ -179,11 +197,13 @@ label {
             }
             return props;
         }
+
         public void ApplyInline(string inline, CssStyle style)
         {
             var props = ParseProperties(inline);
             ApplyProperties(style, props);
         }
+
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props, string pseudo)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -212,6 +232,7 @@ label {
                 }
             }
         }
+
         private bool Matches(HtmlElement elem, string selector)
         {
             if (string.IsNullOrEmpty(selector)) return true;
@@ -249,6 +270,7 @@ label {
                 return true;
             }
         }
+
         private bool SimpleMatches(HtmlElement elem, string simple)
         {
             if (string.IsNullOrEmpty(simple)) return true;
@@ -300,6 +322,7 @@ label {
             }
             return match;
         }
+
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
             if (props.TryGetValue("position", out string pos))
@@ -449,7 +472,10 @@ label {
                 style.BoxSizing = boxs;
             if (props.TryGetValue("transform", out string tr))
                 style.Transform = tr;
+            if (props.TryGetValue("overflow", out string ov))
+                style.Overflow = ov;
         }
+
         private Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
@@ -474,6 +500,7 @@ label {
             }
             return ParseSingleColor(color);
         }
+
         private Vector4 ParseSingleColor(string color)
         {
             color = color.Trim().ToLower();

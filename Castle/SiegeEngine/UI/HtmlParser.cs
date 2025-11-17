@@ -68,6 +68,10 @@ namespace SiegeEngine.UI
                         {
                             elem = new InputElement();
                         }
+                        else if (lowerTag == "option")
+                        {
+                            elem = new OptionElement();
+                        }
                         else
                         {
                             elem = new HtmlElement { Tag = tag };
