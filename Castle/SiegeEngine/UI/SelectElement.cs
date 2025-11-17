@@ -28,7 +28,6 @@ namespace SiegeEngine.UI
 
             HtmlElement selectedOpt = null;
 
-            // First, compute intrinsic as closed
             foreach (var child in Children)
             {
                 if (child.Tag.ToLower() == "option")
@@ -42,7 +41,7 @@ namespace SiegeEngine.UI
                     {
                         child.Attributes.Remove("selected");
                     }
-                    child.Style.Display = "none";
+                    child.Style.Display = IsOpen ? "block" : "none";
                     if (child == selectedOpt)
                     {
                         child.Style.Display = "block";
@@ -50,28 +49,9 @@ namespace SiegeEngine.UI
                 }
             }
 
-            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
-
-            // Now, if open, layout options absolutely
-            if (IsOpen)
-            {
-                float optTop = lineH;
-                foreach (var child in Children)
-                {
-                    if (child.Tag.ToLower() == "option")
-                    {
-                        child.Style.Display = "block";
-                        child.Style.Position = "absolute";
-                        child.Style.LeftStr = "0px";
-                        child.Style.TopStr = optTop + "px";
-                        child.Style.WidthStr = ComputedContentWidth + "px";
-                        child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, float.NaN, viewportWidth, viewportHeight, textRenderer, fs);
-                        optTop += child.ComputedHeight;
-                    }
-                }
-            }
-
             Style.Overflow = IsOpen ? "visible" : "hidden";
+
+            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
 
             float singleContentH = lineH;
             Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
@@ -86,6 +66,34 @@ namespace SiegeEngine.UI
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
+            if (IsOpen)
+            {
+                float fullH = 0;
+                foreach (var opt in Children.Where(c => c.Tag.ToLower() == "option"))
+                {
+                    fullH += opt.ComputedHeight;
+                }
+                float[] fullNdc = GetNdcQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, fullH, parentMatrix, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(fullNdc, Style.BackgroundColor);
+                // Draw border
+                Vector4 borderC = Style.BorderColor;
+                float bw = BorderWidth.X; // assume uniform
+                if (bw > 0)
+                {
+                    // top
+                    float[] topNdc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, bw, parentMatrix, viewportWidth, viewportHeight);
+                    quadRenderer.DrawNdcQuad(topNdc, borderC);
+                    // bottom
+                    float[] bottomNdc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y + fullH - bw, ComputedWidth, bw, parentMatrix, viewportWidth, viewportHeight);
+                    quadRenderer.DrawNdcQuad(bottomNdc, borderC);
+                    // left
+                    float[] leftNdc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, bw, fullH, parentMatrix, viewportWidth, viewportHeight);
+                    quadRenderer.DrawNdcQuad(leftNdc, borderC);
+                    // right
+                    float[] rightNdc = GetNdcQuad(ComputedPosition.X + ComputedWidth - bw, ComputedPosition.Y, bw, fullH, parentMatrix, viewportWidth, viewportHeight);
+                    quadRenderer.DrawNdcQuad(rightNdc, borderC);
+                }
+            }
         }
 
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)

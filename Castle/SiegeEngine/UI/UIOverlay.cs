@@ -391,7 +391,7 @@ namespace SiegeEngine.UI
             {
                 HandleUIClick(clickedElem);
             }
-            else if (mouseUp && openSelect != null && !isClickOnOpenSelect)
+            else if (mouseUp && openSelect != null && !isClickOnOpenSelect && !_justOpenedSelect)
             {
                 // Click outside open select, close it
                 CloseAllOpenSelects();
