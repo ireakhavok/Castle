@@ -40,6 +40,17 @@ namespace SiegeEngine.UI
         private Matrix4x4 ComputedTransform;
         protected Matrix4x4 ComputedFullTransform;
 
+        public bool IsDescendantOf(HtmlElement ancestor)
+        {
+            var current = this;
+            while (current != null)
+            {
+                if (current == ancestor) return true;
+                current = current.Parent;
+            }
+            return false;
+        }
+
         public string GetEffectiveDisplay()
         {
             CssStyle effective = Style;
@@ -52,17 +63,6 @@ namespace SiegeEngine.UI
             if (IsActive && PseudoStyles.TryGetValue("active", out CssStyle a))
                 effective = a;
             return effective.Display;
-        }
-
-        public bool IsDescendantOf(HtmlElement ancestor)
-        {
-            var current = this;
-            while (current != null)
-            {
-                if (current == ancestor) return true;
-                current = current.Parent;
-            }
-            return false;
         }
 
         private HtmlElement FindContainingBlock()
