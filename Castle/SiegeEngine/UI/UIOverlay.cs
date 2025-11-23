@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using SiegeEngine.UI.JSParser;
 
 namespace SiegeEngine.UI
 {
@@ -27,6 +28,7 @@ namespace SiegeEngine.UI
         private bool _justOpenedSelect = false;
         private bool _prevMouseDown = false;
         private List<SelectElement> _openSelects = new List<SelectElement>();
+        private JSContext _jsContext = new JSContext();
 
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
@@ -63,6 +65,11 @@ namespace SiegeEngine.UI
                 }
                 else if (e.Tag.ToLower() == "script")
                 {
+                    var text = e.Children.FirstOrDefault(c => c is TextElement) as TextElement;
+                    if (text != null)
+                    {
+                        _jsContext.Run(text.Content);
+                    }
                     if (e.Parent != null) e.Parent.Children.Remove(e);
                 }
                 foreach (var c in e.Children) q.Enqueue(c);
@@ -219,6 +226,10 @@ namespace SiegeEngine.UI
         {
             if (elem == null) return;
             Console.WriteLine($"UIOverlay: Handling click for element Tag={elem.Tag}, Class={elem.Attributes.GetValueOrDefault("class", "")}, ID={elem.Attributes.GetValueOrDefault("id", "")}");
+            if (!string.IsNullOrEmpty(elem.OnClickJS))
+            {
+                _jsContext.Run(elem.OnClickJS);
+            }
             if (elem.Tag == "a")
             {
                 string href = elem.Attributes.GetValueOrDefault("href", "");

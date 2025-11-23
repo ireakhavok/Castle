@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace SiegeEngine.UI
 {
@@ -10,6 +11,7 @@ namespace SiegeEngine.UI
     {
         private string _html;
         private int _index;
+
         public HtmlElement Parse(string html)
         {
             _html = html;
@@ -104,6 +106,10 @@ namespace SiegeEngine.UI
                             {
                                 btn.AttachHook(value);
                             }
+                            if (key.ToLower() == "onclick")
+                            {
+                                elem.OnClickJS = value;
+                            }
                         }
                         _index++; // skip '>'
                         bool isSelfClosing = tag.EndsWith("/") || Array.Exists(new string[] { "br", "hr", "img", "input", "meta", "link" }, t => t == lowerTag);
@@ -118,6 +124,17 @@ namespace SiegeEngine.UI
                                 parent.Children.Add(child);
                                 child.Parent = parent;
                             }
+                        }
+                        else if (lowerTag == "script")
+                        {
+                            ParseChildren(elem); // Parse inside script as children (text)
+                            var textChild = elem.Children.FirstOrDefault(c => c is TextElement) as TextElement;
+                            if (textChild != null)
+                            {
+                                string scriptContent = textChild.Content.Trim();
+                                // Global script, store or execute later
+                            }
+                            if (elem.Parent != null) elem.Parent.Children.Remove(elem); // Remove script from tree
                         }
                         else
                         {
