@@ -26,6 +26,7 @@ namespace SiegeEngine.UI
         protected string _currentBaseDir = "";
         private bool _justOpenedSelect = false;
         private bool _prevMouseDown = false;
+        private List<SelectElement> _openSelects = new List<SelectElement>();
 
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
@@ -358,7 +359,8 @@ namespace SiegeEngine.UI
             float vh = vh_int;
             HtmlElement clickedElem = null;
             bool isClickOnOpenSelect = false;
-            SelectElement openSelect = FindElementsByTag("select").FirstOrDefault(s => (s as SelectElement)?.IsOpen ?? false) as SelectElement;
+            _openSelects = FindElementsByTag("select").Where(s => (s as SelectElement)?.IsOpen ?? false).Cast<SelectElement>().ToList();
+            SelectElement openSelect = _openSelects.FirstOrDefault();
             if (openSelect != null)
             {
                 // Check if click is on open select or descendants
@@ -408,6 +410,10 @@ namespace SiegeEngine.UI
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
+            foreach (var sel in _openSelects)
+            {
+                sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
+            }
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
 
