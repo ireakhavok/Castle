@@ -2127,6 +2127,8 @@ Folder: Castle
  Calls: None
  - Vector2 GetTextSize(string text, string text, float fontSize, string fontFamily)
  Calls: GetCharacterData, GetCharacterData
+ - float GetLineHeight(float fontSize, float fontSize, string fontFamily)
+ Calls: RenderText, RenderText
  - void RenderText(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, string fontFamily)
  Calls: RenderTextPass, RenderTextPass
  - void RenderText(string text, string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, string fontFamily, Matrix4x4 transformMatrix)
@@ -2365,44 +2367,6 @@ Folder: Castle
  Calls: None
  - void Update(float deltaTime, float deltaTime)
  Calls: None
- File: MenuSystem.cs
- class: MenuSystem (Namespace: SiegeEngine.Systems)
- Inherits: GameSystem
-    
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
- Methods:
- - void OnResize(IntPtr win, IntPtr win, int w, int h)
- Calls: ComputeLayout, ComputeLayout
- - void LoadHtml(string htmlPath, string htmlPath)
- Calls: None
- - void InitializeElementProperties(HtmlElement root, HtmlElement root)
- Calls: None
- - void SwitchMenu(string menuName, string menuName)
- Calls: None
- - void ApplyUserAgentDefaults(CssParser cssParser, CssParser cssParser)
- Calls: rgba, rgba
- - solid rgba()
- Calls: None
- - void InheritProperties(HtmlElement elem, HtmlElement elem, HtmlElement parent)
- Calls: None
- - void ProcessSelects(HtmlElement elem, HtmlElement elem)
- Calls: None
- - HtmlElement FindElementById(HtmlElement root, HtmlElement root, string id)
- Calls: FindElementById, FindElementById
- - List<HtmlElement> FindElementsByClass(HtmlElement root, HtmlElement root, string className)
- Calls: None
- - void CollectClickables(HtmlElement elem, HtmlElement elem)
- Calls: None
- - void Initialize()
- Calls: GetCursorPos, GetCursorPos, GetMouseButton, HandleClickableClick
- - void Update(float deltaTime, float deltaTime)
- Calls: None
- - void HandleClickableClick(HtmlElement elem, HtmlElement elem)
- Calls: None
- - List<HtmlElement> FindElementsByTag(HtmlElement root, HtmlElement root, string tag)
- Calls: None
- - void Render()
- Calls: OnResize, OnResize
  File: PlayerControllerSystem.cs
  class: PlayerControllerSystem (Namespace: SiegeEngine.Systems)
  Inherits: GameSystem
@@ -2500,6 +2464,8 @@ Folder: Castle
  Inherits: None
  Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
  Methods:
+ - bool IsDescendantOf(HtmlElement ancestor, HtmlElement ancestor)
+ Calls: None
  - string GetEffectiveDisplay()
  Calls: None
  - HtmlElement FindContainingBlock()
@@ -2546,7 +2512,7 @@ Folder: Castle
  - HtmlElement Parse(string html, string html)
  Calls: None
  - void ParseChildren(HtmlElement parent, HtmlElement parent)
- Calls: AttachHook, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace
+ Calls: AttachHook, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, OptionElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace
  - constructor HtmlParser()
  Calls: None
  - recursively ParseChildren()
@@ -2597,18 +2563,28 @@ Folder: Castle
  Calls: SwitchSceneEvent, SwitchSceneEvent
  - void HandleLink(string href, string href)
  Calls: ResolvePath, ResolvePath
+ File: OptionElement.cs
+ class: OptionElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: System, System, System.Numerics
+ Methods:
+ - constructor OptionElement()
+ Calls: HandleClick, HandleClick
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
  File: SelectElement.cs
  class: SelectElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
     
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
  Methods:
  - constructor SelectElement()
- Calls: ComputeLayout, ComputeLayout
+ Calls: ComputeLayout, ComputeLayout, GetLineHeight, ParseBorderWidths, ParsePaddings, ParseSize
  - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
- Calls: GetTextSize, GetTextSize, Render, RenderText
+ Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
- Calls: GetTextSize, GetTextSize, RenderText
+ Calls: DrawNdcQuad, DrawNdcQuad, GetNdcQuad
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: GetTextSize, GetTextSize
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
@@ -2637,12 +2613,10 @@ Folder: Castle
  - constructor UIOverlay(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
  Calls: Initialize, Initialize, ShaderProgram, TextRenderer, UIQuadRenderer
  - void Init()
- Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, Clear, CollectClickables, GetWindowSize, HtmlParser, InheritProperties, InitializeElementProperties, Parse, PrepareResources, ProcessSelects, RecomputeLayout
+ Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, Clear, CollectClickables, GetWindowSize, HtmlParser, InheritProperties, InitializeElementProperties, Parse, PrepareResources, RecomputeLayout
  - void LoadUI(string html, string html, string baseDir)
  Calls: None
  - void InitializeElementProperties(HtmlElement root, HtmlElement root)
- Calls: None
- - void ProcessSelects(HtmlElement root, HtmlElement root)
  Calls: None
  - void InheritProperties(HtmlElement elem, HtmlElement elem, HtmlElement parent)
  Calls: None
@@ -2665,13 +2639,19 @@ Folder: Castle
  - List<HtmlElement> FindElementsByTag(HtmlElement root, HtmlElement root, string tag)
  Calls: None
  - List<HtmlElement> FindElementsByTag(string tag, string tag)
- Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, DivElement, FindElementById, FindElementsByTag, GetWindowSize, HandleDataHook, HandleLink, RefreshUI
+ Calls: CloseAllOpenSelects, CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, RefreshUI
  - return FindElementsByTag()
- Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, DivElement, FindElementById, FindElementsByTag, GetWindowSize, HandleDataHook, HandleLink, RefreshUI
+ Calls: CloseAllOpenSelects, CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, RefreshUI
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ - select CloseAllOpenSelects()
+ Calls: FindElementsByTag, FindElementsByTag
+ - void CloseAllOpenSelects()
  Calls: None
  - void Update(float deltaTime, float deltaTime)
  Calls: HandleClick, HandleClick
+ - it CloseAllOpenSelects()
+ Calls: BlendFunc, BlendFunc, Disable, Enable, Render
  - void RenderUI(int w, int w, int h)
  Calls: GetWindowSize, GetWindowSize, RenderUI
  - void Render()

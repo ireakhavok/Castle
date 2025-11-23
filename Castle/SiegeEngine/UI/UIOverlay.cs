@@ -25,6 +25,7 @@ namespace SiegeEngine.UI
         protected List<HtmlElement> _uiClickables = new List<HtmlElement>();
         protected string _currentBaseDir = "";
         private bool _justOpenedSelect = false;
+        private bool _prevMouseDown = false;
 
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
@@ -350,8 +351,8 @@ namespace SiegeEngine.UI
             Vector2 mousePos = new Vector2();
             _controlContext.GetCursorPos(_window, out double x, out double y);
             mousePos = new Vector2((float)x, (float)y);
-            bool mouseDown = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press;
-            bool mouseUp = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Release;
+            bool currentMouseDown = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press;
+            bool mouseRelease = _prevMouseDown && !currentMouseDown;
             _controlContext.GetWindowSize(_window, out int vw_int, out int vh_int);
             float vw = vw_int;
             float vh = vh_int;
@@ -374,15 +375,15 @@ namespace SiegeEngine.UI
                 }
                 bool over = clickable.HandleClick(mousePos, vw, vh);
                 clickable.IsHover = over;
-                if (over && mouseDown)
+                if (over && currentMouseDown)
                 {
                     clickable.IsActive = true;
                 }
-                if (over && mouseUp && clickable.IsActive)
+                if (over && mouseRelease && clickable.IsActive)
                 {
                     clickedElem = clickable;
                 }
-                if (mouseUp)
+                if (mouseRelease)
                 {
                     clickable.IsActive = false;
                 }
@@ -391,13 +392,14 @@ namespace SiegeEngine.UI
             {
                 HandleUIClick(clickedElem);
             }
-            else if (mouseUp && openSelect != null && !isClickOnOpenSelect && !_justOpenedSelect)
+            else if (mouseRelease && openSelect != null && !isClickOnOpenSelect && !_justOpenedSelect)
             {
                 // Click outside open select, close it
                 CloseAllOpenSelects();
                 RefreshUI();
             }
             _justOpenedSelect = false;
+            _prevMouseDown = currentMouseDown;
         }
 
         protected void RenderUI(int w, int h)
