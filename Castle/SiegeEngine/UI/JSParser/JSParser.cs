@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-
 namespace SiegeEngine.UI.JSParser
 {
     public class JSParser
@@ -11,14 +10,12 @@ namespace SiegeEngine.UI.JSParser
         private string _source;
         private int _position;
         private char _currentChar;
-
         public JSParser(string source)
         {
             _source = source;
             _position = 0;
             Advance();
         }
-
         private void Advance()
         {
             if (_position < _source.Length)
@@ -31,7 +28,6 @@ namespace SiegeEngine.UI.JSParser
                 _currentChar = '\0';
             }
         }
-
         private void SkipWhitespace()
         {
             while (_currentChar != '\0' && char.IsWhiteSpace(_currentChar))
@@ -39,33 +35,27 @@ namespace SiegeEngine.UI.JSParser
                 Advance();
             }
         }
-
         private Token GetNextToken()
         {
             while (_currentChar != '\0')
             {
                 SkipWhitespace();
-
                 if (char.IsLetter(_currentChar) || _currentChar == '_')
                 {
                     return new Token(TokenType.Identifier, ParseIdentifier());
                 }
-
                 if (char.IsDigit(_currentChar))
                 {
                     return new Token(TokenType.Number, ParseNumber());
                 }
-
                 if (_currentChar == '"')
                 {
                     return new Token(TokenType.String, ParseString());
                 }
-
                 if (_currentChar == '\'')
                 {
                     return new Token(TokenType.String, ParseString());
                 }
-
                 switch (_currentChar)
                 {
                     case '=':
@@ -75,8 +65,12 @@ namespace SiegeEngine.UI.JSParser
                             Advance();
                             return new Token(TokenType.EqualEqual, "==");
                         }
+                        if (_currentChar == '>')
+                        {
+                            Advance();
+                            return new Token(TokenType.Arrow, "=>");
+                        }
                         return new Token(TokenType.Assign, "=");
-
                     case '!':
                         Advance();
                         if (_currentChar == '=')
@@ -85,7 +79,6 @@ namespace SiegeEngine.UI.JSParser
                             return new Token(TokenType.NotEqual, "!=");
                         }
                         return new Token(TokenType.Not, "!");
-
                     case '<':
                         Advance();
                         if (_currentChar == '=')
@@ -94,7 +87,6 @@ namespace SiegeEngine.UI.JSParser
                             return new Token(TokenType.LessEqual, "<=");
                         }
                         return new Token(TokenType.Less, "<");
-
                     case '>':
                         Advance();
                         if (_currentChar == '=')
@@ -103,7 +95,6 @@ namespace SiegeEngine.UI.JSParser
                             return new Token(TokenType.GreaterEqual, ">=");
                         }
                         return new Token(TokenType.Greater, ">");
-
                     case '+':
                         Advance();
                         if (_currentChar == '+')
@@ -112,7 +103,6 @@ namespace SiegeEngine.UI.JSParser
                             return new Token(TokenType.PlusPlus, "++");
                         }
                         return new Token(TokenType.Plus, "+");
-
                     case '-':
                         Advance();
                         if (_currentChar == '-')
@@ -121,11 +111,9 @@ namespace SiegeEngine.UI.JSParser
                             return new Token(TokenType.MinusMinus, "--");
                         }
                         return new Token(TokenType.Minus, "-");
-
                     case '*':
                         Advance();
                         return new Token(TokenType.Multiply, "*");
-
                     case '/':
                         Advance();
                         if (_currentChar == '/')
@@ -139,55 +127,42 @@ namespace SiegeEngine.UI.JSParser
                             continue;
                         }
                         return new Token(TokenType.Divide, "/");
-
                     case '%':
                         Advance();
                         return new Token(TokenType.Modulo, "%");
-
                     case '(':
                         Advance();
                         return new Token(TokenType.LeftParen, "(");
-
                     case ')':
                         Advance();
                         return new Token(TokenType.RightParen, ")");
-
                     case '{':
                         Advance();
                         return new Token(TokenType.LeftBrace, "{");
-
                     case '}':
                         Advance();
                         return new Token(TokenType.RightBrace, "}");
-
                     case '[':
                         Advance();
                         return new Token(TokenType.LeftBracket, "[");
-
                     case ']':
                         Advance();
                         return new Token(TokenType.RightBracket, "]");
-
                     case ';':
                         Advance();
                         return new Token(TokenType.Semicolon, ";");
-
                     case ',':
                         Advance();
                         return new Token(TokenType.Comma, ",");
-
                     case '.':
                         Advance();
                         return new Token(TokenType.Dot, ".");
-
                     case '?':
                         Advance();
                         return new Token(TokenType.Question, "?");
-
                     case ':':
                         Advance();
                         return new Token(TokenType.Colon, ":");
-
                     case '&':
                         Advance();
                         if (_currentChar == '&')
@@ -196,7 +171,6 @@ namespace SiegeEngine.UI.JSParser
                             return new Token(TokenType.AndAnd, "&&");
                         }
                         return new Token(TokenType.And, "&");
-
                     case '|':
                         Advance();
                         if (_currentChar == '|')
@@ -205,22 +179,18 @@ namespace SiegeEngine.UI.JSParser
                             return new Token(TokenType.OrOr, "||");
                         }
                         return new Token(TokenType.Or, "|");
-
                     case '^':
                         Advance();
                         return new Token(TokenType.Xor, "^");
-
                     case '~':
                         Advance();
                         return new Token(TokenType.Tilde, "~");
-
                     default:
                         throw new Exception($"Unexpected character: {_currentChar}");
                 }
             }
             return new Token(TokenType.EOF, null);
         }
-
         private string ParseIdentifier()
         {
             StringBuilder sb = new StringBuilder();
@@ -231,7 +201,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return sb.ToString();
         }
-
         private string ParseNumber()
         {
             StringBuilder sb = new StringBuilder();
@@ -242,7 +211,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return sb.ToString();
         }
-
         private string ParseString()
         {
             char quote = _currentChar;
@@ -259,7 +227,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return sb.ToString();
         }
-
         private void SkipSingleLineComment()
         {
             while (_currentChar != '\0' && _currentChar != '\n')
@@ -267,7 +234,6 @@ namespace SiegeEngine.UI.JSParser
                 Advance();
             }
         }
-
         private void SkipMultiLineComment()
         {
             Advance(); // skip *
@@ -282,12 +248,10 @@ namespace SiegeEngine.UI.JSParser
                 Advance();
             }
         }
-
         public ASTNode Parse()
         {
             return ParseProgram();
         }
-
         private ASTNode ParseProgram()
         {
             List<ASTNode> statements = new List<ASTNode>();
@@ -297,7 +261,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return new ProgramNode(statements);
         }
-
         private ASTNode ParseStatement()
         {
             SkipWhitespace();
@@ -331,7 +294,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return ParseExpressionStatement();
         }
-
         private bool PeekKeyword(string keyword)
         {
             int savePos = _position;
@@ -341,17 +303,19 @@ namespace SiegeEngine.UI.JSParser
             _currentChar = saveChar;
             return id == keyword;
         }
-
         private ASTNode ParseVariableDeclaration()
         {
             string kind = ParseIdentifier(); // var, let, const
             string name = ParseIdentifier();
             Consume(TokenType.Assign);
             ASTNode initializer = ParseExpression();
-            Consume(TokenType.Semicolon);
+            SkipWhitespace();
+            if (_currentChar == ';')
+            {
+                Advance();
+            }
             return new VariableDeclarationNode(kind, name, initializer);
         }
-
         private ASTNode ParseFunctionDeclaration()
         {
             ConsumeKeyword("function");
@@ -371,7 +335,6 @@ namespace SiegeEngine.UI.JSParser
             ASTNode body = ParseBlockStatement();
             return new FunctionDeclarationNode(name, paramsList, body);
         }
-
         private ASTNode ParseIfStatement()
         {
             ConsumeKeyword("if");
@@ -387,7 +350,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return new IfStatementNode(test, consequent, alternate);
         }
-
         private ASTNode ParseWhileStatement()
         {
             ConsumeKeyword("while");
@@ -397,7 +359,6 @@ namespace SiegeEngine.UI.JSParser
             ASTNode body = ParseStatement();
             return new WhileStatementNode(test, body);
         }
-
         private ASTNode ParseForStatement()
         {
             ConsumeKeyword("for");
@@ -410,15 +371,17 @@ namespace SiegeEngine.UI.JSParser
             ASTNode body = ParseStatement();
             return new ForStatementNode(init, test, update, body);
         }
-
         private ASTNode ParseReturnStatement()
         {
             ConsumeKeyword("return");
-            ASTNode arg = ParseExpression();
-            Consume(TokenType.Semicolon);
-            return new ReturnStatementNode(arg);
+            ASTNode argument = ParseExpression();
+            SkipWhitespace();
+            if (_currentChar == ';')
+            {
+                Advance();
+            }
+            return new ReturnStatementNode(argument);
         }
-
         private ASTNode ParseBlockStatement()
         {
             Consume(TokenType.LeftBrace);
@@ -430,19 +393,20 @@ namespace SiegeEngine.UI.JSParser
             Consume(TokenType.RightBrace);
             return new BlockStatementNode(body);
         }
-
         private ASTNode ParseExpressionStatement()
         {
             ASTNode expr = ParseExpression();
-            Consume(TokenType.Semicolon);
+            SkipWhitespace();
+            if (_currentChar == ';')
+            {
+                Advance();
+            }
             return new ExpressionStatementNode(expr);
         }
-
         private ASTNode ParseStatementNoSemi()
         {
             return ParseVariableDeclarationNoSemi();
         }
-
         private ASTNode ParseVariableDeclarationNoSemi()
         {
             string kind = ParseIdentifier();
@@ -451,12 +415,10 @@ namespace SiegeEngine.UI.JSParser
             ASTNode initializer = ParseExpression();
             return new VariableDeclarationNode(kind, name, initializer);
         }
-
         private ASTNode ParseExpression()
         {
             return ParseAssignmentExpression();
         }
-
         private ASTNode ParseAssignmentExpression()
         {
             ASTNode left = ParseConditionalExpression();
@@ -468,7 +430,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseConditionalExpression()
         {
             ASTNode test = ParseLogicalOrExpression();
@@ -482,7 +443,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return test;
         }
-
         private ASTNode ParseLogicalOrExpression()
         {
             ASTNode left = ParseLogicalAndExpression();
@@ -494,7 +454,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseLogicalAndExpression()
         {
             ASTNode left = ParseBitwiseOrExpression();
@@ -506,7 +465,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseBitwiseOrExpression()
         {
             ASTNode left = ParseBitwiseXorExpression();
@@ -518,7 +476,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseBitwiseXorExpression()
         {
             ASTNode left = ParseBitwiseAndExpression();
@@ -530,7 +487,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseBitwiseAndExpression()
         {
             ASTNode left = ParseEqualityExpression();
@@ -542,7 +498,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseEqualityExpression()
         {
             ASTNode left = ParseRelationalExpression();
@@ -554,7 +509,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseRelationalExpression()
         {
             ASTNode left = ParseShiftExpression();
@@ -566,7 +520,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseShiftExpression()
         {
             ASTNode left = ParseAdditiveExpression();
@@ -578,7 +531,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseAdditiveExpression()
         {
             ASTNode left = ParseMultiplicativeExpression();
@@ -590,7 +542,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseMultiplicativeExpression()
         {
             ASTNode left = ParseUnaryExpression();
@@ -602,7 +553,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseUnaryExpression()
         {
             if (_currentChar == '+' || _currentChar == '-' || _currentChar == '!' || _currentChar == '~')
@@ -613,7 +563,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return ParsePostfixExpression();
         }
-
         private ASTNode ParsePostfixExpression()
         {
             ASTNode left = ParseLeftHandSideExpression();
@@ -643,7 +592,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-
         private ASTNode ParseLeftHandSideExpression()
         {
             ASTNode callee = ParsePrimaryExpression();
@@ -654,7 +602,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return callee;
         }
-
         private List<ASTNode> ParseArguments()
         {
             Consume(TokenType.LeftParen);
@@ -671,14 +618,28 @@ namespace SiegeEngine.UI.JSParser
             Consume(TokenType.RightParen);
             return args;
         }
-
         private ASTNode ParsePrimaryExpression()
         {
             Token token = GetNextToken();
             switch (token.Type)
             {
                 case TokenType.Identifier:
-                    return new IdentifierNode((string)token.Value);
+                    string name = (string)token.Value;
+                    if (Match("=>"))
+                    {
+                        GetOperator(); // consume =>
+                        ASTNode body;
+                        if (_currentChar == '{')
+                        {
+                            body = ParseBlockStatement();
+                        }
+                        else
+                        {
+                            body = ParseAssignmentExpression();
+                        }
+                        return new ArrowExpressionNode(new List<ASTNode> { new IdentifierNode(name) }, body);
+                    }
+                    return new IdentifierNode(name);
                 case TokenType.Number:
                     return new LiteralNode(float.Parse((string)token.Value));
                 case TokenType.String:
@@ -697,7 +658,6 @@ namespace SiegeEngine.UI.JSParser
                     throw new Exception("Unexpected token in primary expression");
             }
         }
-
         private ASTNode ParseArrayLiteral()
         {
             List<ASTNode> elements = new List<ASTNode>();
@@ -718,7 +678,6 @@ namespace SiegeEngine.UI.JSParser
             Consume(TokenType.RightBracket);
             return new ArrayExpressionNode(elements);
         }
-
         private ASTNode ParseObjectLiteral()
         {
             Dictionary<string, ASTNode> properties = new Dictionary<string, ASTNode>();
@@ -736,7 +695,6 @@ namespace SiegeEngine.UI.JSParser
             Consume(TokenType.RightBrace);
             return new ObjectExpressionNode(properties);
         }
-
         private string ParsePropertyKey()
         {
             Token token = GetNextToken();
@@ -746,7 +704,6 @@ namespace SiegeEngine.UI.JSParser
             }
             throw new Exception("Invalid property key");
         }
-
         private void Consume(TokenType type)
         {
             Token token = GetNextToken();
@@ -755,7 +712,6 @@ namespace SiegeEngine.UI.JSParser
                 throw new Exception($"Expected {type}, got {token.Type}");
             }
         }
-
         private void ConsumeKeyword(string keyword)
         {
             string id = ParseIdentifier();
@@ -764,7 +720,6 @@ namespace SiegeEngine.UI.JSParser
                 throw new Exception($"Expected {keyword}, got {id}");
             }
         }
-
         private bool Match(params string[] ops)
         {
             foreach (var op in ops)
@@ -776,7 +731,6 @@ namespace SiegeEngine.UI.JSParser
             }
             return false;
         }
-
         private string GetOperator()
         {
             StringBuilder sb = new StringBuilder();
@@ -791,7 +745,6 @@ namespace SiegeEngine.UI.JSParser
             return sb.ToString();
         }
     }
-
     public enum TokenType
     {
         Identifier,
@@ -829,15 +782,14 @@ namespace SiegeEngine.UI.JSParser
         MinusMinus,
         Question,
         Colon,
+        Arrow,
         EOF,
         This
     }
-
     public class Token
     {
         public TokenType Type { get; }
         public object Value { get; }
-
         public Token(TokenType type, object value)
         {
             Type = type;

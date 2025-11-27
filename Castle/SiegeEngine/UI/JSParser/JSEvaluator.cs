@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-
 namespace SiegeEngine.UI.JSParser
 {
     public class JSEvaluator
@@ -11,12 +10,10 @@ namespace SiegeEngine.UI.JSParser
         private Dictionary<string, object> _globalScope = new Dictionary<string, object>();
         private Stack<Dictionary<string, object>> _scopeStack = new Stack<Dictionary<string, object>>();
         private Dictionary<string, FunctionDeclarationNode> _functions = new Dictionary<string, FunctionDeclarationNode>();
-
         public JSEvaluator()
         {
             _scopeStack.Push(_globalScope);
         }
-
         public object Evaluate(ASTNode node)
         {
             switch (node)
@@ -28,7 +25,6 @@ namespace SiegeEngine.UI.JSParser
                         last = Evaluate(stmt);
                     }
                     return last;
-
                 case BlockStatementNode block:
                     PushScope();
                     object blockLast = null;
@@ -43,22 +39,20 @@ namespace SiegeEngine.UI.JSParser
                     }
                     PopScope();
                     return blockLast;
-
                 case ExpressionStatementNode exprStmt:
                     return Evaluate(exprStmt.Expression);
-
                 case VariableDeclarationNode varDecl:
                     object initValue = Evaluate(varDecl.Initializer);
                     CurrentScope()[varDecl.Name] = initValue;
                     return initValue;
-
                 case FunctionDeclarationNode funcDecl:
                     _functions[funcDecl.Name] = funcDecl;
+                    _globalScope[funcDecl.Name] = funcDecl;
                     return null;
-
+                case ArrowExpressionNode arrow:
+                    return arrow;
                 case ReturnStatementNode ret:
                     return new ReturnValue(Evaluate(ret.Argument));
-
                 case IfStatementNode ifStmt:
                     object test = Evaluate(ifStmt.Test);
                     if (IsTruthy(test))
@@ -70,7 +64,6 @@ namespace SiegeEngine.UI.JSParser
                         return Evaluate(ifStmt.Alternate);
                     }
                     return null;
-
                 case WhileStatementNode whileStmt:
                     object whileLast = null;
                     while (IsTruthy(Evaluate(whileStmt.Test)))
@@ -80,7 +73,6 @@ namespace SiegeEngine.UI.JSParser
                             return whileLast;
                     }
                     return whileLast;
-
                 case ForStatementNode forStmt:
                     Evaluate(forStmt.Init);
                     object forLast = null;
@@ -92,21 +84,17 @@ namespace SiegeEngine.UI.JSParser
                         Evaluate(forStmt.Update);
                     }
                     return forLast;
-
                 case BinaryExpressionNode bin:
                     object left = Evaluate(bin.Left);
                     object right = Evaluate(bin.Right);
                     return ApplyBinaryOp(bin.Operator, left, right);
-
                 case UnaryExpressionNode un:
                     object arg = Evaluate(un.Argument);
                     return ApplyUnaryOp(un.Operator, arg);
-
                 case AssignmentExpressionNode assign:
                     object assignRight = Evaluate(assign.Right);
                     SetValue(assign.Left, assignRight);
                     return assignRight;
-
                 case UpdateExpressionNode update:
                     object updateArg = Evaluate(update.Argument);
                     object newVal;
@@ -121,7 +109,6 @@ namespace SiegeEngine.UI.JSParser
                     }
                     SetValue(update.Argument, newVal);
                     return update.Prefix ? newVal : updateArg;
-
                 case MemberExpressionNode member:
                     object objValue = Evaluate(member.Object);
                     object propValue;
@@ -134,7 +121,6 @@ namespace SiegeEngine.UI.JSParser
                         propValue = ((LiteralNode)member.Property).Value;
                     }
                     return GetMember(objValue, propValue);
-
                 case CallExpressionNode call:
                     object callee = Evaluate(call.Callee);
                     List<object> args = new List<object>();
@@ -143,13 +129,10 @@ namespace SiegeEngine.UI.JSParser
                         args.Add(Evaluate(a));
                     }
                     return CallFunction(callee, args);
-
                 case IdentifierNode id:
                     return GetVariable(id.Name);
-
                 case LiteralNode lit:
                     return lit.Value;
-
                 case ArrayExpressionNode arr:
                     List<object> arrElements = new List<object>();
                     foreach (var el in arr.Elements)
@@ -157,7 +140,6 @@ namespace SiegeEngine.UI.JSParser
                         arrElements.Add(el == null ? null : Evaluate(el));
                     }
                     return arrElements;
-
                 case ObjectExpressionNode objNode:
                     Dictionary<object, object> obj = new Dictionary<object, object>();
                     foreach (var kv in objNode.Properties)
@@ -165,34 +147,27 @@ namespace SiegeEngine.UI.JSParser
                         obj[kv.Key] = Evaluate(kv.Value);
                     }
                     return obj;
-
                 case ConditionalExpressionNode cond:
                     object condTest = Evaluate(cond.Test);
                     return IsTruthy(condTest) ? Evaluate(cond.Consequent) : Evaluate(cond.Alternate);
-
                 case ThisExpressionNode _:
                     return CurrentScope().GetValueOrDefault("this", null);
-
                 default:
                     throw new Exception($"Unsupported node type: {node.GetType()}");
             }
         }
-
-        private void PushScope()
+        public void PushScope()
         {
             _scopeStack.Push(new Dictionary<string, object>());
         }
-
-        private void PopScope()
+        public void PopScope()
         {
             _scopeStack.Pop();
         }
-
-        private Dictionary<string, object> CurrentScope()
+        public Dictionary<string, object> CurrentScope()
         {
             return _scopeStack.Peek();
         }
-
         private object GetVariable(string name)
         {
             foreach (var scope in _scopeStack)
@@ -204,7 +179,6 @@ namespace SiegeEngine.UI.JSParser
             }
             throw new Exception($"Undefined variable: {name}");
         }
-
         private void SetValue(ASTNode target, object value)
         {
             switch (target)
@@ -226,7 +200,6 @@ namespace SiegeEngine.UI.JSParser
                         CurrentScope()[id.Name] = value;
                     }
                     break;
-
                 case MemberExpressionNode member:
                     object objValue = Evaluate(member.Object);
                     object propValue;
@@ -240,12 +213,10 @@ namespace SiegeEngine.UI.JSParser
                     }
                     SetMember(objValue, propValue, value);
                     break;
-
                 default:
                     throw new Exception("Invalid assignment target");
             }
         }
-
         private object GetMember(object objValue, object propValue)
         {
             if (objValue is Dictionary<object, object> dictObj)
@@ -253,19 +224,43 @@ namespace SiegeEngine.UI.JSParser
                 dictObj.TryGetValue(propValue, out object val);
                 return val;
             }
-            if (objValue is List<object> listObj && propValue is double propD && Math.Floor(propD) == propD)
+            if (objValue is List<object> listObj)
             {
-                int index = (int)propD;
-                if (index >= 0 && index < listObj.Count)
+                if (propValue is double propD && Math.Floor(propD) == propD)
                 {
-                    return listObj[index];
+                    int index = (int)propD;
+                    if (index >= 0 && index < listObj.Count)
+                    {
+                        return listObj[index];
+                    }
+                }
+                else if (propValue.ToString() == "forEach")
+                {
+                    return new Action<object>((callback) =>
+                    {
+                        foreach (var item in listObj)
+                        {
+                            CallFunction(callback, new List<object> { item });
+                        }
+                    });
                 }
             }
-            var type = objValue?.GetType();
-            var prop = type?.GetProperty(propValue.ToString());
-            return prop?.GetValue(objValue);
+            if (propValue is string propName)
+            {
+                var type = objValue?.GetType();
+                var prop = type?.GetProperty(propName);
+                if (prop != null)
+                {
+                    return prop.GetValue(objValue);
+                }
+                var meth = type?.GetMethod(propName);
+                if (meth != null)
+                {
+                    return new Func<object[], object>(args => meth.Invoke(objValue, args));
+                }
+            }
+            return null;
         }
-
         private void SetMember(object objValue, object propValue, object value)
         {
             if (objValue is Dictionary<object, object> dictObj)
@@ -286,7 +281,6 @@ namespace SiegeEngine.UI.JSParser
             var prop = type?.GetProperty(propValue.ToString());
             prop?.SetValue(objValue, value);
         }
-
         private object CallFunction(object callee, List<object> args)
         {
             if (callee is FunctionDeclarationNode func)
@@ -315,13 +309,48 @@ namespace SiegeEngine.UI.JSParser
                 }
                 return result;
             }
+            if (callee is ArrowExpressionNode arrow)
+            {
+                if (arrow.Params.Count != args.Count)
+                {
+                    throw new Exception("Argument count mismatch");
+                }
+                PushScope();
+                for (int i = 0; i < args.Count; i++)
+                {
+                    string paramName = ((IdentifierNode)arrow.Params[i]).Name;
+                    CurrentScope()[paramName] = args[i];
+                }
+                object result = null;
+                try
+                {
+                    result = Evaluate(arrow.Body);
+                }
+                catch (ReturnException re)
+                {
+                    result = re.Value;
+                }
+                finally
+                {
+                    PopScope();
+                }
+                return result;
+            }
             if (callee is Delegate del)
             {
                 return del.DynamicInvoke(args.ToArray());
             }
+            if (callee is Func<object[], object> funcObj)
+            {
+                return funcObj(args.ToArray());
+            }
+            if (callee is Action<object> act)
+            {
+                act.DynamicInvoke(args[0]);
+                return null;
+            }
             throw new Exception("Not callable");
         }
-
         private object ApplyBinaryOp(string op, object left, object right)
         {
             dynamic dLeft = left ?? 0;
@@ -347,7 +376,6 @@ namespace SiegeEngine.UI.JSParser
                 default: throw new Exception($"Unsupported binary operator: {op}");
             }
         }
-
         private object ApplyUnaryOp(string op, object arg)
         {
             dynamic dArg = arg ?? 0;
@@ -360,7 +388,6 @@ namespace SiegeEngine.UI.JSParser
                 default: throw new Exception($"Unsupported unary operator: {op}");
             }
         }
-
         private bool IsTruthy(object value)
         {
             if (value == null) return false;
@@ -371,78 +398,63 @@ namespace SiegeEngine.UI.JSParser
             if (value is Dictionary<object, object> d) return d.Count > 0;
             return true;
         }
-
         public void RegisterFunction(string name, FunctionDeclarationNode func)
         {
             _functions[name] = func;
         }
-
         public void RegisterGlobal(string name, object value)
         {
             _globalScope[name] = value;
         }
     }
-
     public class ReturnValue
     {
         public object Value { get; }
-
         public ReturnValue(object value)
         {
             Value = value;
         }
     }
-
     public class ReturnException : Exception
     {
         public object Value { get; }
-
         public ReturnException(object value) : base("Return")
         {
             Value = value;
         }
     }
-
     public abstract class ASTNode
     {
     }
-
     public class ProgramNode : ASTNode
     {
         public List<ASTNode> Statements { get; }
-
         public ProgramNode(List<ASTNode> statements)
         {
             Statements = statements;
         }
     }
-
     public class BlockStatementNode : ASTNode
     {
         public List<ASTNode> Body { get; }
-
         public BlockStatementNode(List<ASTNode> body)
         {
             Body = body;
         }
     }
-
     public class ExpressionStatementNode : ASTNode
     {
         public ASTNode Expression { get; }
-
         public ExpressionStatementNode(ASTNode expression)
         {
             Expression = expression;
         }
     }
-
     public class VariableDeclarationNode : ASTNode
     {
         public string Kind { get; }
         public string Name { get; }
         public ASTNode Initializer { get; }
-
         public VariableDeclarationNode(string kind, string name, ASTNode initializer)
         {
             Kind = kind;
@@ -450,13 +462,11 @@ namespace SiegeEngine.UI.JSParser
             Initializer = initializer;
         }
     }
-
     public class FunctionDeclarationNode : ASTNode
     {
         public string Name { get; }
         public List<string> Params { get; }
         public ASTNode Body { get; }
-
         public FunctionDeclarationNode(string name, List<string> paramsList, ASTNode body)
         {
             Name = name;
@@ -464,23 +474,29 @@ namespace SiegeEngine.UI.JSParser
             Body = body;
         }
     }
-
+    public class ArrowExpressionNode : ASTNode
+    {
+        public List<ASTNode> Params { get; }
+        public ASTNode Body { get; }
+        public ArrowExpressionNode(List<ASTNode> paramsList, ASTNode body)
+        {
+            Params = paramsList;
+            Body = body;
+        }
+    }
     public class ReturnStatementNode : ASTNode
     {
         public ASTNode Argument { get; }
-
         public ReturnStatementNode(ASTNode argument)
         {
             Argument = argument;
         }
     }
-
     public class IfStatementNode : ASTNode
     {
         public ASTNode Test { get; }
         public ASTNode Consequent { get; }
         public ASTNode Alternate { get; }
-
         public IfStatementNode(ASTNode test, ASTNode consequent, ASTNode alternate)
         {
             Test = test;
@@ -488,26 +504,22 @@ namespace SiegeEngine.UI.JSParser
             Alternate = alternate;
         }
     }
-
     public class WhileStatementNode : ASTNode
     {
         public ASTNode Test { get; }
         public ASTNode Body { get; }
-
         public WhileStatementNode(ASTNode test, ASTNode body)
         {
             Test = test;
             Body = body;
         }
     }
-
     public class ForStatementNode : ASTNode
     {
         public ASTNode Init { get; }
         public ASTNode Test { get; }
         public ASTNode Update { get; }
         public ASTNode Body { get; }
-
         public ForStatementNode(ASTNode init, ASTNode test, ASTNode update, ASTNode body)
         {
             Init = init;
@@ -516,13 +528,11 @@ namespace SiegeEngine.UI.JSParser
             Body = body;
         }
     }
-
     public class BinaryExpressionNode : ASTNode
     {
         public ASTNode Left { get; }
         public string Operator { get; }
         public ASTNode Right { get; }
-
         public BinaryExpressionNode(ASTNode left, string op, ASTNode right)
         {
             Left = left;
@@ -530,37 +540,31 @@ namespace SiegeEngine.UI.JSParser
             Right = right;
         }
     }
-
     public class UnaryExpressionNode : ASTNode
     {
         public string Operator { get; }
         public ASTNode Argument { get; }
-
         public UnaryExpressionNode(string op, ASTNode argument)
         {
             Operator = op;
             Argument = argument;
         }
     }
-
     public class AssignmentExpressionNode : ASTNode
     {
         public ASTNode Left { get; }
         public ASTNode Right { get; }
-
         public AssignmentExpressionNode(ASTNode left, ASTNode right)
         {
             Left = left;
             Right = right;
         }
     }
-
     public class UpdateExpressionNode : ASTNode
     {
         public string Operator { get; }
         public ASTNode Argument { get; }
         public bool Prefix { get; }
-
         public UpdateExpressionNode(string op, ASTNode argument, bool prefix)
         {
             Operator = op;
@@ -568,13 +572,11 @@ namespace SiegeEngine.UI.JSParser
             Prefix = prefix;
         }
     }
-
     public class MemberExpressionNode : ASTNode
     {
         public ASTNode Object { get; }
         public ASTNode Property { get; }
         public bool Computed { get; }
-
         public MemberExpressionNode(ASTNode obj, ASTNode prop, bool computed)
         {
             Object = obj;
@@ -582,65 +584,53 @@ namespace SiegeEngine.UI.JSParser
             Computed = computed;
         }
     }
-
     public class CallExpressionNode : ASTNode
     {
         public ASTNode Callee { get; }
         public List<ASTNode> Arguments { get; }
-
         public CallExpressionNode(ASTNode callee, List<ASTNode> arguments)
         {
             Callee = callee;
             Arguments = arguments;
         }
     }
-
     public class IdentifierNode : ASTNode
     {
         public string Name { get; }
-
         public IdentifierNode(string name)
         {
             Name = name;
         }
     }
-
     public class LiteralNode : ASTNode
     {
         public object Value { get; }
-
         public LiteralNode(object value)
         {
             Value = value;
         }
     }
-
     public class ArrayExpressionNode : ASTNode
     {
         public List<ASTNode> Elements { get; }
-
         public ArrayExpressionNode(List<ASTNode> elements)
         {
             Elements = elements;
         }
     }
-
     public class ObjectExpressionNode : ASTNode
     {
         public Dictionary<string, ASTNode> Properties { get; }
-
         public ObjectExpressionNode(Dictionary<string, ASTNode> properties)
         {
             Properties = properties;
         }
     }
-
     public class ConditionalExpressionNode : ASTNode
     {
         public ASTNode Test { get; }
         public ASTNode Consequent { get; }
         public ASTNode Alternate { get; }
-
         public ConditionalExpressionNode(ASTNode test, ASTNode consequent, ASTNode alternate)
         {
             Test = test;
@@ -648,7 +638,6 @@ namespace SiegeEngine.UI.JSParser
             Alternate = alternate;
         }
     }
-
     public class ThisExpressionNode : ASTNode
     {
     }

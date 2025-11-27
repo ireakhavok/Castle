@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -36,6 +35,7 @@ namespace SiegeEngine.UI
         public bool Checked { get; set; }
         public bool IsTarget { get; set; }
         public string OnClickJS { get; set; }
+        public string OnChangeJS { get; set; }
         private BackgroundRenderer _bgRenderer;
         private string _baseDir;
         protected Matrix4x4 ComputedTransform;

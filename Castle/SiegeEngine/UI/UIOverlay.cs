@@ -10,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.UI.JSParser;
-
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -29,14 +28,13 @@ namespace SiegeEngine.UI
         private bool _prevMouseDown = false;
         private List<SelectElement> _openSelects = new List<SelectElement>();
         private JSContext _jsContext = new JSContext();
-
+        private JSDocument _document;
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _window = window;
         }
-
         public virtual void Init()
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -45,13 +43,13 @@ namespace SiegeEngine.UI
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _cssParser = new CssParser();
         }
-
         public void LoadUI(string html, string baseDir = "")
         {
             _currentBaseDir = baseDir;
             HtmlParser parser = new HtmlParser();
             _uiRoot = parser.Parse(html);
             List<string> cssBlocks = new List<string>();
+            List<string> scriptBlocks = new List<string>();
             Queue<HtmlElement> q = new Queue<HtmlElement>();
             q.Enqueue(_uiRoot);
             while (q.Count > 0)
@@ -68,7 +66,7 @@ namespace SiegeEngine.UI
                     var text = e.Children.FirstOrDefault(c => c is TextElement) as TextElement;
                     if (text != null)
                     {
-                        _jsContext.Run(text.Content);
+                        scriptBlocks.Add(text.Content);
                     }
                     if (e.Parent != null) e.Parent.Children.Remove(e);
                 }
@@ -89,8 +87,13 @@ namespace SiegeEngine.UI
             // Initial layout
             _controlContext.GetWindowSize(_window, out int w, out int h);
             RecomputeLayout(w, h);
+            _document = new JSDocument(this);
+            _jsContext.Evaluator.RegisterGlobal("document", _document);
+            foreach (var script in scriptBlocks)
+            {
+                _jsContext.Run(script);
+            }
         }
-
         private void InitializeElementProperties(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -109,7 +112,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -127,23 +129,20 @@ namespace SiegeEngine.UI
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
-
         private void CollectClickables(HtmlElement elem)
         {
             if (elem.GetEffectiveDisplay() == "none") return;
             string classes = elem.Attributes.GetValueOrDefault("class", "");
-            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || elem.Tag == "option")
+            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || elem.Tag == "option" || elem.Attributes.ContainsKey("onchange"))
             {
                 _uiClickables.Add(elem);
             }
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
-
         protected virtual void HandleDataHook(string hook)
         {
         }
-
         protected virtual void HandleLink(string href)
         {
             if (string.IsNullOrEmpty(href)) return;
@@ -157,7 +156,6 @@ namespace SiegeEngine.UI
                 Console.WriteLine($"UIOverlay: Failed to load relative path: {resolvedPath}");
             }
         }
-
         public void RefreshUI()
         {
             if (_uiRoot == null) return;
@@ -168,7 +166,6 @@ namespace SiegeEngine.UI
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
         }
-
         protected HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root == null) return null;
@@ -180,12 +177,10 @@ namespace SiegeEngine.UI
             }
             return null;
         }
-
         public HtmlElement FindElementById(string id)
         {
             return FindElementById(_uiRoot, id);
         }
-
         private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             if (root == null) return new List<HtmlElement>();
@@ -201,7 +196,6 @@ namespace SiegeEngine.UI
             }
             return list;
         }
-
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             if (root == null) return new List<HtmlElement>();
@@ -216,19 +210,18 @@ namespace SiegeEngine.UI
             }
             return list;
         }
-
         protected List<HtmlElement> FindElementsByTag(string tag)
         {
             return FindElementsByTag(_uiRoot, tag);
         }
-
         protected virtual void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
             Console.WriteLine($"UIOverlay: Handling click for element Tag={elem.Tag}, Class={elem.Attributes.GetValueOrDefault("class", "")}, ID={elem.Attributes.GetValueOrDefault("id", "")}");
+            bool valueChanged = false;
             if (!string.IsNullOrEmpty(elem.OnClickJS))
             {
-                _jsContext.Run(elem.OnClickJS);
+                _jsContext.RunWithThis(elem.OnClickJS, new JSElement(elem, this));
             }
             if (elem.Tag == "a")
             {
@@ -267,12 +260,14 @@ namespace SiegeEngine.UI
                             var radios = FindElementsByTag("input").Where(i => i.Attributes.GetValueOrDefault("type", "") == "radio" && i.Attributes.GetValueOrDefault("name", "") == name).ToList();
                             foreach (var r in radios) r.Checked = false;
                             input.Checked = true;
+                            valueChanged = true;
                             RefreshUI();
                             Console.WriteLine($"UIOverlay: Handled radio label click for {forId}");
                         }
                         else if (type == "checkbox")
                         {
                             input.Checked = !input.Checked;
+                            valueChanged = true;
                             RefreshUI();
                             Console.WriteLine($"UIOverlay: Handled checkbox label click for {forId}");
                         }
@@ -285,6 +280,7 @@ namespace SiegeEngine.UI
                 if (input != null)
                 {
                     input.Checked = !input.Checked;
+                    valueChanged = true;
                     RefreshUI();
                     Console.WriteLine($"UIOverlay: Handled toggle click");
                 }
@@ -303,6 +299,7 @@ namespace SiegeEngine.UI
                     if (input.Type == "checkbox" || input.Type == "radio")
                     {
                         input.Checked = !input.Checked;
+                        valueChanged = true;
                         RefreshUI();
                     }
                 }
@@ -332,6 +329,7 @@ namespace SiegeEngine.UI
                         }
                         elem.Attributes["selected"] = "";
                         select.IsOpen = false;
+                        valueChanged = true;
                     }
                     else
                     {
@@ -343,8 +341,19 @@ namespace SiegeEngine.UI
                     RefreshUI();
                 }
             }
+            if (valueChanged && !string.IsNullOrEmpty(elem.OnChangeJS))
+            {
+                _jsContext.RunWithThis(elem.OnChangeJS, new JSElement(elem, this));
+            }
+            else if (valueChanged && elem.Parent != null && elem.Parent.Tag == "select" && !string.IsNullOrEmpty(elem.Parent.OnChangeJS))
+            {
+                _jsContext.RunWithThis(elem.Parent.OnChangeJS, new JSElement(elem.Parent, this));
+            }
+            else if (valueChanged && elem.Parent != null && elem.Parent.Tag == "input" && !string.IsNullOrEmpty(elem.Parent.OnChangeJS))
+            {
+                _jsContext.RunWithThis(elem.Parent.OnChangeJS, new JSElement(elem.Parent, this));
+            }
         }
-
         private void CloseAllOpenSelects()
         {
             var selects = FindElementsByTag("select");
@@ -356,7 +365,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         public virtual void Update(float deltaTime)
         {
             // UI input handling
@@ -414,7 +422,6 @@ namespace SiegeEngine.UI
             _justOpenedSelect = false;
             _prevMouseDown = currentMouseDown;
         }
-
         protected void RenderUI(int w, int h)
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -427,7 +434,6 @@ namespace SiegeEngine.UI
             }
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         public virtual void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
@@ -436,7 +442,6 @@ namespace SiegeEngine.UI
                 RenderUI(w, h);
             }
         }
-
         public void RecomputeLayout(int w, int h)
         {
             if (_uiRoot != null)
@@ -445,7 +450,6 @@ namespace SiegeEngine.UI
                 _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             }
         }
-
         public virtual void Dispose()
         {
             _uiShader.Dispose();

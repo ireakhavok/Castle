@@ -6,18 +6,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.UI
 {
     public class SelectElement : HtmlElement
     {
         public bool IsOpen { get; set; } = false;
-
         public SelectElement()
         {
             Tag = "select";
         }
-
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             float fs = ParseSize(Style.FontSizeStr, parentFs, viewportWidth, viewportHeight);
@@ -64,7 +61,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
@@ -128,7 +124,6 @@ namespace SiegeEngine.UI
                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, local);
             }
         }
-
         public void RenderDropdown(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
         {
             Matrix4x4 local = ComputedFullTransform;
@@ -197,7 +192,6 @@ namespace SiegeEngine.UI
                 opt.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, local);
             }
         }
-
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             string fontFamily = Style.FontFamily ?? "Arial";
@@ -220,7 +214,6 @@ namespace SiegeEngine.UI
             float ih = textH + pad.X + pad.Z + borderW.X + borderW.Z;
             return new Vector2(iw, ih);
         }
-
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             return base.HandleClick(mousePos, viewportWidth, viewportHeight);
