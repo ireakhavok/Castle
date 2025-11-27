@@ -2554,7 +2554,33 @@ Folder: Castle
  - constructor JSContext()
  Calls: None
  - object Run(string code, string code)
+ Calls: CurrentScope, CurrentScope, PopScope, PushScope, Run
+ - object RunWithThis(string code, string code, object thisObj)
  Calls: None
+ File: JSDocument.cs
+ class: JSDocument (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System
+ Methods:
+ - constructor JSDocument(UIOverlay overlay, UIOverlay overlay)
+ Calls: FindElementById, FindElementById, JSElement
+ - JSElement getElementById(string id, string id)
+ Calls: JSElement, JSElement, OptionElement
+ - JSElement createElement(string tag, string tag)
+ Calls: OptionElement, OptionElement
+ File: JSElement.cs
+ class: JSElement (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Linq
+ Methods:
+ - constructor JSElement(HtmlElement elem, HtmlElement elem, UIOverlay overlay)
+ Calls: None
+ - void appendChild(JSElement child, JSElement child)
+ Calls: OptionElement, OptionElement, RefreshUI
+ - void addOption(string text, string text, string value)
+ Calls: OptionElement, OptionElement, RefreshUI
+ - void clearOptions()
+ Calls: RefreshUI, RefreshUI
  File: JSEvaluator.cs
  class: JSEvaluator (Namespace: SiegeEngine.UI.JSParser)
  Inherits: None
@@ -2663,6 +2689,14 @@ Folder: Castle
  Dependencies: System, System, System.Collections.Generic, System.Reflection
  Methods:
  - constructor FunctionDeclarationNode(string name, string name, List<string> paramsList, ASTNode body)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ArrowExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ArrowExpressionNode(List<ASTNode> paramsList, List<ASTNode> paramsList, ASTNode body)
  Calls: None
  File: JSEvaluator.cs
  class: ReturnStatementNode (Namespace: SiegeEngine.UI.JSParser)
@@ -2838,27 +2872,27 @@ Folder: Castle
  - return ParseExpressionStatement()
  Calls: ParseIdentifier, ParseIdentifier
  - bool PeekKeyword(string keyword, string keyword)
- Calls: ParseExpression, ParseExpression, ParseIdentifier, VariableDeclarationNode
+ Calls: Advance, Advance, Consume, ParseExpression, ParseIdentifier, SkipWhitespace, VariableDeclarationNode
  - ASTNode ParseVariableDeclaration()
- Calls: Advance, Advance, FunctionDeclarationNode, ParseBlockStatement, ParseIdentifier
+ Calls: Advance, Advance
  - ASTNode ParseFunctionDeclaration()
  Calls: Advance, Advance, ParseIdentifier
  - ASTNode ParseIfStatement()
- Calls: ParseStatement, ParseStatement
+ Calls: ConsumeKeyword, ConsumeKeyword, ParseStatement
  - ASTNode ParseWhileStatement()
- Calls: ForStatementNode, ForStatementNode, ParseExpression, ParseStatement, ParseStatementNoSemi
+ Calls: Consume, Consume, ConsumeKeyword, ForStatementNode, ParseExpression, ParseStatement, ParseStatementNoSemi
  - ASTNode ParseForStatement()
- Calls: ParseExpression, ParseExpression, ReturnStatementNode
+ Calls: Advance, Advance, ConsumeKeyword, ParseExpression, ReturnStatementNode, SkipWhitespace
  - ASTNode ParseReturnStatement()
- Calls: None
+ Calls: Advance, Advance
  - ASTNode ParseBlockStatement()
  Calls: ParseStatement, ParseStatement
  - ASTNode ParseExpressionStatement()
- Calls: ParseVariableDeclarationNoSemi, ParseVariableDeclarationNoSemi
+ Calls: Advance, Advance
  - ASTNode ParseStatementNoSemi()
- Calls: ParseExpression, ParseExpression, ParseIdentifier, VariableDeclarationNode
+ Calls: Consume, Consume, ParseExpression, ParseIdentifier, VariableDeclarationNode
  - return ParseVariableDeclarationNoSemi()
- Calls: ParseExpression, ParseExpression, ParseIdentifier, VariableDeclarationNode
+ Calls: Consume, Consume, ParseExpression, ParseIdentifier, VariableDeclarationNode
  - ASTNode ParseVariableDeclarationNoSemi()
  Calls: ParseAssignmentExpression, ParseAssignmentExpression
  - ASTNode ParseExpression()
@@ -2868,47 +2902,57 @@ Folder: Castle
  - ASTNode ParseAssignmentExpression()
  Calls: Advance, Advance, AssignmentExpressionNode, ParseAssignmentExpression
  - ASTNode ParseConditionalExpression()
- Calls: Advance, Advance, ConditionalExpressionNode, ParseAssignmentExpression
+ Calls: Advance, Advance, ConditionalExpressionNode, Consume, ParseAssignmentExpression
  - ASTNode ParseLogicalOrExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseLogicalAndExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseLogicalAndExpression
  - ASTNode ParseLogicalAndExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseBitwiseOrExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseBitwiseOrExpression
  - ASTNode ParseBitwiseOrExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseBitwiseXorExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseBitwiseXorExpression
  - ASTNode ParseBitwiseXorExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseBitwiseAndExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseBitwiseAndExpression
  - ASTNode ParseBitwiseAndExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseEqualityExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseEqualityExpression
  - ASTNode ParseEqualityExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseRelationalExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseRelationalExpression
  - ASTNode ParseRelationalExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseShiftExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseShiftExpression
  - ASTNode ParseShiftExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseAdditiveExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseAdditiveExpression
  - ASTNode ParseAdditiveExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseMultiplicativeExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseMultiplicativeExpression
  - ASTNode ParseMultiplicativeExpression()
- Calls: BinaryExpressionNode, BinaryExpressionNode, ParseUnaryExpression
+ Calls: BinaryExpressionNode, BinaryExpressionNode, GetOperator, ParseUnaryExpression
  - ASTNode ParseUnaryExpression()
- Calls: ParseUnaryExpression, ParseUnaryExpression, UnaryExpressionNode
+ Calls: GetOperator, GetOperator, ParseUnaryExpression, UnaryExpressionNode
  - return ParsePostfixExpression()
- Calls: Advance, Advance, LiteralNode, MemberExpressionNode, ParseExpression, ParseIdentifier, ParseLeftHandSideExpression, UpdateExpressionNode
+ Calls: Advance, Advance, Consume, GetOperator, LiteralNode, Match, MemberExpressionNode, ParseExpression, ParseIdentifier, ParseLeftHandSideExpression, UpdateExpressionNode
  - ASTNode ParsePostfixExpression()
- Calls: Advance, Advance, LiteralNode, MemberExpressionNode, ParseExpression, ParseIdentifier
+ Calls: Advance, Advance, Consume, LiteralNode, MemberExpressionNode, ParseExpression, ParseIdentifier
  - ASTNode ParseLeftHandSideExpression()
  Calls: CallExpressionNode, CallExpressionNode, ParseArguments
  - List<ASTNode> ParseArguments()
  Calls: Advance, Advance, ParseAssignmentExpression
  - ASTNode ParsePrimaryExpression()
- Calls: IdentifierNode, IdentifierNode, LiteralNode, Parse, ParseArrayLiteral, ParseExpression, ParseObjectLiteral
+ Calls: ArrowExpressionNode, ArrowExpressionNode, Consume, GetOperator, IdentifierNode, LiteralNode, Match, Parse, ParseArrayLiteral, ParseAssignmentExpression, ParseBlockStatement, ParseExpression, ParseObjectLiteral
  - return ParseArrayLiteral()
- Calls: Advance, Advance, ArrayExpressionNode, ParseAssignmentExpression
+ Calls: Advance, Advance, ArrayExpressionNode, Consume, ParseAssignmentExpression
  - return ParseObjectLiteral()
- Calls: Advance, Advance, ArrayExpressionNode, ParseAssignmentExpression
+ Calls: Advance, Advance, ArrayExpressionNode, Consume, ParseAssignmentExpression
  - ASTNode ParseArrayLiteral()
  Calls: Advance, Advance, ParseAssignmentExpression
  - ASTNode ParseObjectLiteral()
- Calls: Advance, Advance, ParseAssignmentExpression
+ Calls: Advance, Advance, Consume, ParseAssignmentExpression, ParsePropertyKey
+ - string ParsePropertyKey()
+ Calls: None
+ - void Consume(TokenType type, TokenType type)
+ Calls: None
+ - void ConsumeKeyword(string keyword, string keyword)
+ Calls: None
+ - bool Match(params string, params string, [] ops)
+ Calls: None
+ - string GetOperator()
+ Calls: Advance, Advance
  File: JSParser.cs
  enum: TokenType (Namespace: SiegeEngine.UI.JSParser)
  Inherits: None
@@ -2999,9 +3043,9 @@ Folder: Castle
  - constructor UIOverlay(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
  Calls: Initialize, Initialize, ShaderProgram, TextRenderer, UIQuadRenderer
  - void Init()
- Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, Clear, CollectClickables, GetWindowSize, HtmlParser, InheritProperties, InitializeElementProperties, Parse, PrepareResources, RecomputeLayout, Run
+ Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, Clear, CollectClickables, GetWindowSize, HtmlParser, InheritProperties, InitializeElementProperties, JSDocument, Parse, PrepareResources, RecomputeLayout, RegisterGlobal, Run
  - void LoadUI(string html, string html, string baseDir)
- Calls: Run, Run
+ Calls: None
  - void InitializeElementProperties(HtmlElement root, HtmlElement root)
  Calls: None
  - void InheritProperties(HtmlElement elem, HtmlElement elem, HtmlElement parent)
@@ -3025,13 +3069,13 @@ Folder: Castle
  - List<HtmlElement> FindElementsByTag(HtmlElement root, HtmlElement root, string tag)
  Calls: None
  - List<HtmlElement> FindElementsByTag(string tag, string tag)
- Calls: CloseAllOpenSelects, CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, RefreshUI, Run
+ Calls: CloseAllOpenSelects, CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, JSElement, RefreshUI, RunWithThis
  - return FindElementsByTag()
- Calls: CloseAllOpenSelects, CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, RefreshUI, Run
+ Calls: CloseAllOpenSelects, CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, JSElement, RefreshUI, RunWithThis
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
  Calls: None
  - select CloseAllOpenSelects()
- Calls: FindElementsByTag, FindElementsByTag
+ Calls: JSElement, JSElement, RunWithThis
  - void CloseAllOpenSelects()
  Calls: None
  - void Update(float deltaTime, float deltaTime)
