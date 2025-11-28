@@ -42,128 +42,114 @@ namespace SiegeEngine.UI.JSParser
                 SkipWhitespace();
                 if (char.IsLetter(_currentChar) || _currentChar == '_')
                 {
-                    var id = ParseIdentifier();
-                    var token = new Token(TokenType.Identifier, id);
-                    Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                    Token token = new Token(TokenType.Identifier, ParseIdentifier());
+                    Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                     return token;
                 }
                 if (char.IsDigit(_currentChar))
                 {
-                    var num = ParseNumber();
-                    var token = new Token(TokenType.Number, num);
-                    Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                    Token token = new Token(TokenType.Number, ParseNumber());
+                    Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                     return token;
                 }
                 if (_currentChar == '"')
                 {
-                    var str = ParseString();
-                    var token = new Token(TokenType.String, str);
-                    Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                    Token token = new Token(TokenType.String, ParseString());
+                    Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                     return token;
                 }
                 if (_currentChar == '\'')
                 {
-                    var str = ParseString();
-                    var token = new Token(TokenType.String, str);
-                    Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                    Token token = new Token(TokenType.String, ParseString());
+                    Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                     return token;
                 }
                 switch (_currentChar)
                 {
                     case '=':
                         Advance();
-                        Token eqToken;
                         if (_currentChar == '=')
                         {
                             Advance();
-                            eqToken = new Token(TokenType.EqualEqual, "==");
+                            Token token = new Token(TokenType.EqualEqual, "==");
+                            Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
+                            return token;
                         }
-                        else if (_currentChar == '>')
+                        if (_currentChar == '>')
                         {
                             Advance();
-                            eqToken = new Token(TokenType.Arrow, "=>");
+                            Token token = new Token(TokenType.Arrow, "=>");
+                            Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
+                            return token;
                         }
-                        else
-                        {
-                            eqToken = new Token(TokenType.Assign, "=");
-                        }
-                        Console.WriteLine($"Token: {eqToken.Type} - {eqToken.Value}");
-                        return eqToken;
+                        Token token1 = new Token(TokenType.Assign, "=");
+                        Console.WriteLine($"Processed token: {token1.Type} {token1.Value ?? "null"}");
+                        return token1;
                     case '!':
                         Advance();
-                        Token notToken;
                         if (_currentChar == '=')
                         {
                             Advance();
-                            notToken = new Token(TokenType.NotEqual, "!=");
+                            Token token = new Token(TokenType.NotEqual, "!=");
+                            Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
+                            return token;
                         }
-                        else
-                        {
-                            notToken = new Token(TokenType.Not, "!");
-                        }
-                        Console.WriteLine($"Token: {notToken.Type} - {notToken.Value}");
-                        return notToken;
+                        Token token2 = new Token(TokenType.Not, "!");
+                        Console.WriteLine($"Processed token: {token2.Type} {token2.Value ?? "null"}");
+                        return token2;
                     case '<':
                         Advance();
-                        Token lessToken;
                         if (_currentChar == '=')
                         {
                             Advance();
-                            lessToken = new Token(TokenType.LessEqual, "<=");
+                            Token token = new Token(TokenType.LessEqual, "<=");
+                            Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
+                            return token;
                         }
-                        else
-                        {
-                            lessToken = new Token(TokenType.Less, "<");
-                        }
-                        Console.WriteLine($"Token: {lessToken.Type} - {lessToken.Value}");
-                        return lessToken;
+                        Token token3 = new Token(TokenType.Less, "<");
+                        Console.WriteLine($"Processed token: {token3.Type} {token3.Value ?? "null"}");
+                        return token3;
                     case '>':
                         Advance();
-                        Token greaterToken;
                         if (_currentChar == '=')
                         {
                             Advance();
-                            greaterToken = new Token(TokenType.GreaterEqual, ">=");
+                            Token token = new Token(TokenType.GreaterEqual, ">=");
+                            Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
+                            return token;
                         }
-                        else
-                        {
-                            greaterToken = new Token(TokenType.Greater, ">");
-                        }
-                        Console.WriteLine($"Token: {greaterToken.Type} - {greaterToken.Value}");
-                        return greaterToken;
+                        Token token4 = new Token(TokenType.Greater, ">");
+                        Console.WriteLine($"Processed token: {token4.Type} {token4.Value ?? "null"}");
+                        return token4;
                     case '+':
                         Advance();
-                        Token plusToken;
                         if (_currentChar == '+')
                         {
                             Advance();
-                            plusToken = new Token(TokenType.PlusPlus, "++");
+                            Token token = new Token(TokenType.PlusPlus, "++");
+                            Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
+                            return token;
                         }
-                        else
-                        {
-                            plusToken = new Token(TokenType.Plus, "+");
-                        }
-                        Console.WriteLine($"Token: {plusToken.Type} - {plusToken.Value}");
-                        return plusToken;
+                        Token token5 = new Token(TokenType.Plus, "+");
+                        Console.WriteLine($"Processed token: {token5.Type} {token5.Value ?? "null"}");
+                        return token5;
                     case '-':
                         Advance();
-                        Token minusToken;
                         if (_currentChar == '-')
                         {
                             Advance();
-                            minusToken = new Token(TokenType.MinusMinus, "--");
+                            Token token = new Token(TokenType.MinusMinus, "--");
+                            Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
+                            return token;
                         }
-                        else
-                        {
-                            minusToken = new Token(TokenType.Minus, "-");
-                        }
-                        Console.WriteLine($"Token: {minusToken.Type} - {minusToken.Value}");
-                        return minusToken;
+                        Token token6 = new Token(TokenType.Minus, "-");
+                        Console.WriteLine($"Processed token: {token6.Type} {token6.Value ?? "null"}");
+                        return token6;
                     case '*':
                         Advance();
-                        var multiplyToken = new Token(TokenType.Multiply, "*");
-                        Console.WriteLine($"Token: {multiplyToken.Type} - {multiplyToken.Value}");
-                        return multiplyToken;
+                        Token token7 = new Token(TokenType.Multiply, "*");
+                        Console.WriteLine($"Processed token: {token7.Type} {token7.Value ?? "null"}");
+                        return token7;
                     case '/':
                         Advance();
                         if (_currentChar == '/')
@@ -176,114 +162,110 @@ namespace SiegeEngine.UI.JSParser
                             SkipMultiLineComment();
                             continue;
                         }
-                        var divideToken = new Token(TokenType.Divide, "/");
-                        Console.WriteLine($"Token: {divideToken.Type} - {divideToken.Value}");
-                        return divideToken;
+                        Token token8 = new Token(TokenType.Divide, "/");
+                        Console.WriteLine($"Processed token: {token8.Type} {token8.Value ?? "null"}");
+                        return token8;
                     case '%':
                         Advance();
-                        var moduloToken = new Token(TokenType.Modulo, "%");
-                        Console.WriteLine($"Token: {moduloToken.Type} - {moduloToken.Value}");
-                        return moduloToken;
+                        Token token9 = new Token(TokenType.Modulo, "%");
+                        Console.WriteLine($"Processed token: {token9.Type} {token9.Value ?? "null"}");
+                        return token9;
                     case '(':
                         Advance();
-                        var leftParenToken = new Token(TokenType.LeftParen, "(");
-                        Console.WriteLine($"Token: {leftParenToken.Type} - {leftParenToken.Value}");
-                        return leftParenToken;
+                        Token token10 = new Token(TokenType.LeftParen, "(");
+                        Console.WriteLine($"Processed token: {token10.Type} {token10.Value ?? "null"}");
+                        return token10;
                     case ')':
                         Advance();
-                        var rightParenToken = new Token(TokenType.RightParen, ")");
-                        Console.WriteLine($"Token: {rightParenToken.Type} - {rightParenToken.Value}");
-                        return rightParenToken;
+                        Token token11 = new Token(TokenType.RightParen, ")");
+                        Console.WriteLine($"Processed token: {token11.Type} {token11.Value ?? "null"}");
+                        return token11;
                     case '{':
                         Advance();
-                        var leftBraceToken = new Token(TokenType.LeftBrace, "{");
-                        Console.WriteLine($"Token: {leftBraceToken.Type} - {leftBraceToken.Value}");
-                        return leftBraceToken;
+                        Token token12 = new Token(TokenType.LeftBrace, "{");
+                        Console.WriteLine($"Processed token: {token12.Type} {token12.Value ?? "null"}");
+                        return token12;
                     case '}':
                         Advance();
-                        var rightBraceToken = new Token(TokenType.RightBrace, "}");
-                        Console.WriteLine($"Token: {rightBraceToken.Type} - {rightBraceToken.Value}");
-                        return rightBraceToken;
+                        Token token13 = new Token(TokenType.RightBrace, "}");
+                        Console.WriteLine($"Processed token: {token13.Type} {token13.Value ?? "null"}");
+                        return token13;
                     case '[':
                         Advance();
-                        var leftBracketToken = new Token(TokenType.LeftBracket, "[");
-                        Console.WriteLine($"Token: {leftBracketToken.Type} - {leftBracketToken.Value}");
-                        return leftBracketToken;
+                        Token token14 = new Token(TokenType.LeftBracket, "[");
+                        Console.WriteLine($"Processed token: {token14.Type} {token14.Value ?? "null"}");
+                        return token14;
                     case ']':
                         Advance();
-                        var rightBracketToken = new Token(TokenType.RightBracket, "]");
-                        Console.WriteLine($"Token: {rightBracketToken.Type} - {rightBracketToken.Value}");
-                        return rightBracketToken;
+                        Token token15 = new Token(TokenType.RightBracket, "]");
+                        Console.WriteLine($"Processed token: {token15.Type} {token15.Value ?? "null"}");
+                        return token15;
                     case ';':
                         Advance();
-                        var semicolonToken = new Token(TokenType.Semicolon, ";");
-                        Console.WriteLine($"Token: {semicolonToken.Type} - {semicolonToken.Value}");
-                        return semicolonToken;
+                        Token token16 = new Token(TokenType.Semicolon, ";");
+                        Console.WriteLine($"Processed token: {token16.Type} {token16.Value ?? "null"}");
+                        return token16;
                     case ',':
                         Advance();
-                        var commaToken = new Token(TokenType.Comma, ",");
-                        Console.WriteLine($"Token: {commaToken.Type} - {commaToken.Value}");
-                        return commaToken;
+                        Token token17 = new Token(TokenType.Comma, ",");
+                        Console.WriteLine($"Processed token: {token17.Type} {token17.Value ?? "null"}");
+                        return token17;
                     case '.':
                         Advance();
-                        var dotToken = new Token(TokenType.Dot, ".");
-                        Console.WriteLine($"Token: {dotToken.Type} - {dotToken.Value}");
-                        return dotToken;
+                        Token token18 = new Token(TokenType.Dot, ".");
+                        Console.WriteLine($"Processed token: {token18.Type} {token18.Value ?? "null"}");
+                        return token18;
                     case '?':
                         Advance();
-                        var questionToken = new Token(TokenType.Question, "?");
-                        Console.WriteLine($"Token: {questionToken.Type} - {questionToken.Value}");
-                        return questionToken;
+                        Token token19 = new Token(TokenType.Question, "?");
+                        Console.WriteLine($"Processed token: {token19.Type} {token19.Value ?? "null"}");
+                        return token19;
                     case ':':
                         Advance();
-                        var colonToken = new Token(TokenType.Colon, ":");
-                        Console.WriteLine($"Token: {colonToken.Type} - {colonToken.Value}");
-                        return colonToken;
+                        Token token20 = new Token(TokenType.Colon, ":");
+                        Console.WriteLine($"Processed token: {token20.Type} {token20.Value ?? "null"}");
+                        return token20;
                     case '&':
                         Advance();
-                        Token andToken;
                         if (_currentChar == '&')
                         {
                             Advance();
-                            andToken = new Token(TokenType.AndAnd, "&&");
+                            Token token = new Token(TokenType.AndAnd, "&&");
+                            Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
+                            return token;
                         }
-                        else
-                        {
-                            andToken = new Token(TokenType.And, "&");
-                        }
-                        Console.WriteLine($"Token: {andToken.Type} - {andToken.Value}");
-                        return andToken;
+                        Token token21 = new Token(TokenType.And, "&");
+                        Console.WriteLine($"Processed token: {token21.Type} {token21.Value ?? "null"}");
+                        return token21;
                     case '|':
                         Advance();
-                        Token orToken;
                         if (_currentChar == '|')
                         {
                             Advance();
-                            orToken = new Token(TokenType.OrOr, "||");
+                            Token token = new Token(TokenType.OrOr, "||");
+                            Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
+                            return token;
                         }
-                        else
-                        {
-                            orToken = new Token(TokenType.Or, "|");
-                        }
-                        Console.WriteLine($"Token: {orToken.Type} - {orToken.Value}");
-                        return orToken;
+                        Token token22 = new Token(TokenType.Or, "|");
+                        Console.WriteLine($"Processed token: {token22.Type} {token22.Value ?? "null"}");
+                        return token22;
                     case '^':
                         Advance();
-                        var xorToken = new Token(TokenType.Xor, "^");
-                        Console.WriteLine($"Token: {xorToken.Type} - {xorToken.Value}");
-                        return xorToken;
+                        Token token23 = new Token(TokenType.Xor, "^");
+                        Console.WriteLine($"Processed token: {token23.Type} {token23.Value ?? "null"}");
+                        return token23;
                     case '~':
                         Advance();
-                        var tildeToken = new Token(TokenType.Tilde, "~");
-                        Console.WriteLine($"Token: {tildeToken.Type} - {tildeToken.Value}");
-                        return tildeToken;
+                        Token token24 = new Token(TokenType.Tilde, "~");
+                        Console.WriteLine($"Processed token: {token24.Type} {token24.Value ?? "null"}");
+                        return token24;
                     default:
                         throw new Exception($"Unexpected character: {_currentChar}");
                 }
             }
-            var eofToken = new Token(TokenType.EOF, null);
-            Console.WriteLine($"Token: {eofToken.Type}");
-            return eofToken;
+            Token token25 = new Token(TokenType.EOF, null);
+            Console.WriteLine($"Processed token: {token25.Type} {token25.Value ?? "null"}");
+            return token25;
         }
         private string ParseIdentifier()
         {
@@ -916,7 +898,8 @@ namespace SiegeEngine.UI.JSParser
         {
             foreach (var op in ops)
             {
-                if (_position - 1 + op.Length <= _source.Length && _source.Substring(_position - 1, op.Length) == op)
+                int start = _position - 1;
+                if (start >= 0 && start + op.Length <= _source.Length && _source.Substring(start, op.Length) == op)
                 {
                     return true;
                 }

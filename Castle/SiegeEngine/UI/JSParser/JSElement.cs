@@ -3,25 +3,30 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
 namespace SiegeEngine.UI.JSParser
 {
     public class JSElement
     {
         private HtmlElement _elem;
         private UIOverlay _overlay;
+
         public JSElement(HtmlElement elem, UIOverlay overlay)
         {
             _elem = elem;
             _overlay = overlay;
         }
+
         public string id
         {
             get { return _elem.Attributes.GetValueOrDefault("id", ""); }
         }
+
         public string tagName
         {
             get { return _elem.Tag; }
         }
+
         public string innerHTML
         {
             get { return string.Join("", _elem.Children.OfType<TextElement>().Select(t => t.Content)); }
@@ -36,6 +41,7 @@ namespace SiegeEngine.UI.JSParser
                 _overlay.RefreshUI();
             }
         }
+
         public string textContent
         {
             get { return string.Join("", _elem.Children.OfType<TextElement>().Select(t => t.Content)); }
@@ -49,6 +55,7 @@ namespace SiegeEngine.UI.JSParser
                 _overlay.RefreshUI();
             }
         }
+
         public string value
         {
             get
@@ -57,11 +64,11 @@ namespace SiegeEngine.UI.JSParser
                 if (tag == "select")
                 {
                     var selected = _elem.Children.FirstOrDefault(c => c.Attributes.ContainsKey("selected"));
-                    return selected?.Attributes.GetValueOrDefault("value", GetTextContent(selected)) ?? "";
+                    return selected?.Attributes.GetValueOrDefault("value", ((TextElement)selected?.Children.FirstOrDefault())?.Content ?? "") ?? "";
                 }
                 else if (tag == "option")
                 {
-                    return _elem.Attributes.GetValueOrDefault("value", textContent);
+                    return _elem.Attributes.GetValueOrDefault("value", ((TextElement)_elem.Children.FirstOrDefault())?.Content ?? "");
                 }
                 return "";
             }
@@ -73,7 +80,7 @@ namespace SiegeEngine.UI.JSParser
                     bool found = false;
                     foreach (var opt in _elem.Children.Where(c => c.Tag.ToLower() == "option"))
                     {
-                        string optVal = opt.Attributes.GetValueOrDefault("value", GetTextContent(opt));
+                        string optVal = opt.Attributes.GetValueOrDefault("value", ((TextElement)opt.Children.FirstOrDefault())?.Content ?? "");
                         if (optVal == value)
                         {
                             opt.Attributes["selected"] = "";
@@ -96,6 +103,7 @@ namespace SiegeEngine.UI.JSParser
                 }
             }
         }
+
         public object[] options
         {
             get
@@ -105,7 +113,7 @@ namespace SiegeEngine.UI.JSParser
                     List<object> opts = new List<object>();
                     foreach (var opt in _elem.Children.Where(c => c.Tag.ToLower() == "option"))
                     {
-                        string txt = GetTextContent(opt);
+                        string txt = ((TextElement)opt.Children.FirstOrDefault())?.Content ?? "";
                         string val = opt.Attributes.GetValueOrDefault("value", txt);
                         bool sel = opt.Attributes.ContainsKey("selected");
                         opts.Add(new Dictionary<string, object> { ["text"] = txt, ["value"] = val, ["selected"] = sel });
@@ -115,12 +123,14 @@ namespace SiegeEngine.UI.JSParser
                 return new object[0];
             }
         }
+
         public void appendChild(JSElement child)
         {
             _elem.Children.Add(child._elem);
             child._elem.Parent = _elem;
             _overlay.RefreshUI();
         }
+
         public void addOption(string text, string value)
         {
             if (_elem.Tag.ToLower() == "select")
@@ -133,6 +143,7 @@ namespace SiegeEngine.UI.JSParser
                 _overlay.RefreshUI();
             }
         }
+
         public void clearOptions()
         {
             if (_elem.Tag.ToLower() == "select")
@@ -140,11 +151,6 @@ namespace SiegeEngine.UI.JSParser
                 _elem.Children.RemoveAll(c => c.Tag.ToLower() == "option");
                 _overlay.RefreshUI();
             }
-        }
-        private string GetTextContent(HtmlElement el)
-        {
-            if (el == null) return "";
-            return string.Join("", el.Children.OfType<TextElement>().Select(t => t.Content));
         }
     }
 }
