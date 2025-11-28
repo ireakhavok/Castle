@@ -337,10 +337,6 @@ namespace SiegeEngine.UI.JSParser
                 }
                 return result;
             }
-            if (callee is Delegate del)
-            {
-                return del.DynamicInvoke(args.ToArray());
-            }
             if (callee is Func<object[], object> funcObj)
             {
                 return funcObj(args.ToArray());
@@ -349,6 +345,10 @@ namespace SiegeEngine.UI.JSParser
             {
                 act.DynamicInvoke(args[0]);
                 return null;
+            }
+            if (callee is Delegate del)
+            {
+                return del.DynamicInvoke(args.ToArray());
             }
             throw new Exception("Not callable");
         }
