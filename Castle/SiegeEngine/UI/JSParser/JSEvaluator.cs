@@ -153,7 +153,8 @@ namespace SiegeEngine.UI.JSParser
                 case ThisExpressionNode _:
                     return CurrentScope().GetValueOrDefault("this", null);
                 default:
-                    throw new Exception($"Unsupported node type: {node.GetType()}");
+                    Console.WriteLine("Unsupported node type: " + node.GetType());
+                    throw new Exception("Unsupported node type: " + node.GetType());
             }
         }
         public void PushScope()

@@ -260,6 +260,7 @@ namespace SiegeEngine.UI.JSParser
                         Console.WriteLine($"Token: {tildeToken.Type} - {tildeToken.Value}");
                         return tildeToken;
                     default:
+                        Console.WriteLine($"Unexpected character: {_currentChar}");
                         throw new Exception($"Unexpected character: {_currentChar}");
                 }
             }
@@ -386,6 +387,7 @@ namespace SiegeEngine.UI.JSParser
             string name = ParseIdentifier();
             SkipWhitespace();
             Consume(TokenType.Assign);
+            SkipWhitespace();
             ASTNode initializer = ParseExpression();
             SkipWhitespace();
             if (_currentChar == ';')
@@ -399,32 +401,44 @@ namespace SiegeEngine.UI.JSParser
             ConsumeKeyword("function");
             SkipWhitespace();
             string name = ParseIdentifier();
+            SkipWhitespace();
             Consume(TokenType.LeftParen);
             List<string> paramsList = new List<string>();
+            SkipWhitespace();
             if (_currentChar != ')')
             {
                 paramsList.Add(ParseIdentifier());
+                SkipWhitespace();
                 while (_currentChar == ',')
                 {
                     Advance();
+                    SkipWhitespace();
                     paramsList.Add(ParseIdentifier());
+                    SkipWhitespace();
                 }
             }
             Consume(TokenType.RightParen);
+            SkipWhitespace();
             ASTNode body = ParseBlockStatement();
             return new FunctionDeclarationNode(name, paramsList, body);
         }
         private ASTNode ParseIfStatement()
         {
             ConsumeKeyword("if");
+            SkipWhitespace();
             Consume(TokenType.LeftParen);
+            SkipWhitespace();
             ASTNode test = ParseExpression();
+            SkipWhitespace();
             Consume(TokenType.RightParen);
+            SkipWhitespace();
             ASTNode consequent = ParseStatement();
             ASTNode alternate = null;
+            SkipWhitespace();
             if (PeekKeyword("else"))
             {
                 ConsumeKeyword("else");
+                SkipWhitespace();
                 alternate = ParseStatement();
             }
             return new IfStatementNode(test, consequent, alternate);
@@ -432,27 +446,39 @@ namespace SiegeEngine.UI.JSParser
         private ASTNode ParseWhileStatement()
         {
             ConsumeKeyword("while");
+            SkipWhitespace();
             Consume(TokenType.LeftParen);
+            SkipWhitespace();
             ASTNode test = ParseExpression();
+            SkipWhitespace();
             Consume(TokenType.RightParen);
+            SkipWhitespace();
             ASTNode body = ParseStatement();
             return new WhileStatementNode(test, body);
         }
         private ASTNode ParseForStatement()
         {
             ConsumeKeyword("for");
+            SkipWhitespace();
             Consume(TokenType.LeftParen);
+            SkipWhitespace();
             ASTNode init = ParseStatementNoSemi();
+            SkipWhitespace();
             ASTNode test = ParseExpression();
+            SkipWhitespace();
             Consume(TokenType.Semicolon);
+            SkipWhitespace();
             ASTNode update = ParseExpression();
+            SkipWhitespace();
             Consume(TokenType.RightParen);
+            SkipWhitespace();
             ASTNode body = ParseStatement();
             return new ForStatementNode(init, test, update, body);
         }
         private ASTNode ParseReturnStatement()
         {
             ConsumeKeyword("return");
+            SkipWhitespace();
             ASTNode argument = ParseExpression();
             SkipWhitespace();
             if (_currentChar == ';')
@@ -464,10 +490,12 @@ namespace SiegeEngine.UI.JSParser
         private ASTNode ParseBlockStatement()
         {
             Consume(TokenType.LeftBrace);
+            SkipWhitespace();
             List<ASTNode> body = new List<ASTNode>();
             while (_currentChar != '}')
             {
                 body.Add(ParseStatement());
+                SkipWhitespace();
             }
             Consume(TokenType.RightBrace);
             return new BlockStatementNode(body);
@@ -493,6 +521,7 @@ namespace SiegeEngine.UI.JSParser
             string name = ParseIdentifier();
             SkipWhitespace();
             Consume(TokenType.Assign);
+            SkipWhitespace();
             ASTNode initializer = ParseExpression();
             return new VariableDeclarationNode(kind, name, initializer);
         }
@@ -503,9 +532,11 @@ namespace SiegeEngine.UI.JSParser
         private ASTNode ParseAssignmentExpression()
         {
             ASTNode left = ParseConditionalExpression();
+            SkipWhitespace();
             if (_currentChar == '=')
             {
                 Advance();
+                SkipWhitespace();
                 ASTNode right = ParseAssignmentExpression();
                 return new AssignmentExpressionNode(left, right);
             }
@@ -514,11 +545,15 @@ namespace SiegeEngine.UI.JSParser
         private ASTNode ParseConditionalExpression()
         {
             ASTNode test = ParseLogicalOrExpression();
+            SkipWhitespace();
             if (_currentChar == '?')
             {
                 Advance();
+                SkipWhitespace();
                 ASTNode consequent = ParseAssignmentExpression();
+                SkipWhitespace();
                 Consume(TokenType.Colon);
+                SkipWhitespace();
                 ASTNode alternate = ParseAssignmentExpression();
                 return new ConditionalExpressionNode(test, consequent, alternate);
             }
@@ -530,6 +565,7 @@ namespace SiegeEngine.UI.JSParser
             while (Match("||"))
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseLogicalAndExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -541,6 +577,7 @@ namespace SiegeEngine.UI.JSParser
             while (Match("&&"))
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseBitwiseOrExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -552,6 +589,7 @@ namespace SiegeEngine.UI.JSParser
             while (_currentChar == '|')
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseBitwiseXorExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -563,6 +601,7 @@ namespace SiegeEngine.UI.JSParser
             while (_currentChar == '^')
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseBitwiseAndExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -574,6 +613,7 @@ namespace SiegeEngine.UI.JSParser
             while (_currentChar == '&')
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseEqualityExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -585,6 +625,7 @@ namespace SiegeEngine.UI.JSParser
             while (Match("==") || Match("!="))
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseRelationalExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -596,6 +637,7 @@ namespace SiegeEngine.UI.JSParser
             while (Match("<") || Match(">") || Match("<=") || Match(">="))
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseShiftExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -607,6 +649,7 @@ namespace SiegeEngine.UI.JSParser
             while (Match("<<") || Match(">>") || Match(">>>"))
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseAdditiveExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -618,6 +661,7 @@ namespace SiegeEngine.UI.JSParser
             while (_currentChar == '+' || _currentChar == '-')
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseMultiplicativeExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -629,6 +673,7 @@ namespace SiegeEngine.UI.JSParser
             while (_currentChar == '*' || _currentChar == '/' || _currentChar == '%')
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode right = ParseUnaryExpression();
                 left = new BinaryExpressionNode(left, op, right);
             }
@@ -639,6 +684,7 @@ namespace SiegeEngine.UI.JSParser
             if (_currentChar == '+' || _currentChar == '-' || _currentChar == '!' || _currentChar == '~')
             {
                 string op = GetOperator();
+                SkipWhitespace();
                 ASTNode argument = ParseUnaryExpression();
                 return new UnaryExpressionNode(op, argument);
             }
@@ -646,25 +692,33 @@ namespace SiegeEngine.UI.JSParser
         }
         private ASTNode ParsePostfixExpression()
         {
-            ASTNode left = ParseLeftHandSideExpression();
-            if (_currentChar == '[' || _currentChar == '.')
+            ASTNode left = ParsePrimaryExpression();
+            SkipWhitespace();
+            while (_currentChar == '(' || _currentChar == '[' || _currentChar == '.')
             {
-                while (_currentChar == '[' || _currentChar == '.')
+                if (_currentChar == '(')
                 {
-                    if (_currentChar == '[')
-                    {
-                        Advance();
-                        ASTNode property = ParseExpression();
-                        Consume(TokenType.RightBracket);
-                        left = new MemberExpressionNode(left, property, true);
-                    }
-                    else
-                    {
-                        Advance();
-                        string property = ParseIdentifier();
-                        left = new MemberExpressionNode(left, new LiteralNode(property), false);
-                    }
+                    SkipWhitespace();
+                    List<ASTNode> args = ParseArguments();
+                    left = new CallExpressionNode(left, args);
                 }
+                else if (_currentChar == '[')
+                {
+                    Advance();
+                    SkipWhitespace();
+                    ASTNode property = ParseExpression();
+                    SkipWhitespace();
+                    Consume(TokenType.RightBracket);
+                    left = new MemberExpressionNode(left, property, true);
+                }
+                else if (_currentChar == '.')
+                {
+                    Advance();
+                    SkipWhitespace();
+                    string property = ParseIdentifier();
+                    left = new MemberExpressionNode(left, new LiteralNode(property), false);
+                }
+                SkipWhitespace();
             }
             if (Match("++") || Match("--"))
             {
@@ -673,27 +727,21 @@ namespace SiegeEngine.UI.JSParser
             }
             return left;
         }
-        private ASTNode ParseLeftHandSideExpression()
-        {
-            ASTNode callee = ParsePrimaryExpression();
-            if (_currentChar == '(')
-            {
-                List<ASTNode> args = ParseArguments();
-                return new CallExpressionNode(callee, args);
-            }
-            return callee;
-        }
         private List<ASTNode> ParseArguments()
         {
             Consume(TokenType.LeftParen);
+            SkipWhitespace();
             List<ASTNode> args = new List<ASTNode>();
             if (_currentChar != ')')
             {
                 args.Add(ParseAssignmentExpression());
+                SkipWhitespace();
                 while (_currentChar == ',')
                 {
                     Advance();
+                    SkipWhitespace();
                     args.Add(ParseAssignmentExpression());
+                    SkipWhitespace();
                 }
             }
             Consume(TokenType.RightParen);
@@ -706,9 +754,11 @@ namespace SiegeEngine.UI.JSParser
             {
                 case TokenType.Identifier:
                     string name = (string)token.Value;
+                    SkipWhitespace();
                     if (Match("=>"))
                     {
                         GetOperator(); // consume =>
+                        SkipWhitespace();
                         ASTNode body;
                         if (_currentChar == '{')
                         {
@@ -727,6 +777,7 @@ namespace SiegeEngine.UI.JSParser
                     return new LiteralNode((string)token.Value);
                 case TokenType.LeftParen:
                     ASTNode expr = ParseExpression();
+                    SkipWhitespace();
                     Consume(TokenType.RightParen);
                     return expr;
                 case TokenType.LeftBracket:
@@ -736,24 +787,29 @@ namespace SiegeEngine.UI.JSParser
                 case TokenType.This:
                     return new ThisExpressionNode();
                 default:
-                    throw new Exception("Unexpected token in primary expression");
+                    Console.WriteLine("Unexpected token in primary expression: " + token.Type);
+                    throw new Exception("Unexpected token in primary expression: " + token.Type);
             }
         }
         private ASTNode ParseArrayLiteral()
         {
             List<ASTNode> elements = new List<ASTNode>();
+            SkipWhitespace();
             while (_currentChar != ']')
             {
                 if (_currentChar == ',')
                 {
                     Advance();
+                    SkipWhitespace();
                     elements.Add(null); // elision
                     continue;
                 }
                 elements.Add(ParseAssignmentExpression());
+                SkipWhitespace();
                 if (_currentChar == ',')
                 {
                     Advance();
+                    SkipWhitespace();
                 }
             }
             Consume(TokenType.RightBracket);
@@ -762,35 +818,42 @@ namespace SiegeEngine.UI.JSParser
         private ASTNode ParseObjectLiteral()
         {
             Dictionary<string, ASTNode> properties = new Dictionary<string, ASTNode>();
+            SkipWhitespace();
             while (_currentChar != '}')
             {
-                string key = ParsePropertyKey();
+                Token keyToken = GetNextToken();
+                string key;
+                if (keyToken.Type == TokenType.Identifier || keyToken.Type == TokenType.String || keyToken.Type == TokenType.Number)
+                {
+                    key = keyToken.Value.ToString();
+                }
+                else
+                {
+                    Console.WriteLine("Invalid property key: " + keyToken.Type);
+                    throw new Exception("Invalid property key");
+                }
+                SkipWhitespace();
                 Consume(TokenType.Colon);
+                SkipWhitespace();
                 ASTNode value = ParseAssignmentExpression();
                 properties[key] = value;
+                SkipWhitespace();
                 if (_currentChar == ',')
                 {
                     Advance();
+                    SkipWhitespace();
                 }
             }
             Consume(TokenType.RightBrace);
             return new ObjectExpressionNode(properties);
-        }
-        private string ParsePropertyKey()
-        {
-            Token token = GetNextToken();
-            if (token.Type == TokenType.Identifier || token.Type == TokenType.String || token.Type == TokenType.Number)
-            {
-                return token.Value.ToString();
-            }
-            throw new Exception("Invalid property key");
         }
         private void Consume(TokenType type)
         {
             Token token = GetNextToken();
             if (token.Type != type)
             {
-                throw new Exception($"Expected {type}, got {token.Type}");
+                Console.WriteLine("Expected " + type + ", got " + token.Type);
+                throw new Exception("Expected " + type + ", got " + token.Type);
             }
         }
         private void ConsumeKeyword(string keyword)
@@ -798,7 +861,8 @@ namespace SiegeEngine.UI.JSParser
             string id = ParseIdentifier();
             if (id != keyword)
             {
-                throw new Exception($"Expected {keyword}, got {id}");
+                Console.WriteLine("Expected " + keyword + ", got " + id);
+                throw new Exception("Expected " + keyword + ", got " + id);
             }
         }
         private bool Match(params string[] ops)
