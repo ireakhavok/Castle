@@ -56,7 +56,7 @@ namespace SiegeEngine.UI
                 {
                     opt.Style.Display = "block";
                     opt.IsTarget = (opt == selectedOpt);
-                    opt.ComputeLayout(ComputedPosition.X, currentY, ComputedWidth, lineH, viewportWidth, viewportHeight, textRenderer, fs);
+                    opt.ComputeLayout(ComputedBackgroundX, currentY, ComputedBackgroundWidth, lineH, viewportWidth, viewportHeight, textRenderer, fs);
                     currentY += lineH;
                 }
             }
@@ -153,7 +153,7 @@ namespace SiegeEngine.UI
             // Draw dropdown background
             if (effectiveStyle.BackgroundColor != Vector4.Zero)
             {
-                float[] dropdownNdc = GetNdcQuad(ComputedBackgroundX, dropdownY - ComputedBackgroundY + ComputedBackgroundY, ComputedBackgroundWidth, dropdownH, local, viewportWidth, viewportHeight);
+                float[] dropdownNdc = GetNdcQuad(ComputedBackgroundX, dropdownY, ComputedBackgroundWidth, dropdownH, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(dropdownNdc, effectiveStyle.BackgroundColor);
             }
             // Dropdown borders

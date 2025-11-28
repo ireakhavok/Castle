@@ -278,9 +278,35 @@ namespace SiegeEngine.UI.JSParser
                     return;
                 }
             }
+            if (objValue is JSElement jsElem && propValue is string prop)
+            {
+                if (prop == "innerHTML")
+                {
+                    if (value is string str && str == "")
+                    {
+                        jsElem.elem.Children.Clear();
+                        jsElem.overlay.RefreshUI();
+                    }
+                }
+                else if (prop == "textContent")
+                {
+                    if (value is string txt)
+                    {
+                        jsElem.elem.Children.Clear();
+                        jsElem.elem.Children.Add(new TextElement { Content = txt });
+                        jsElem.overlay.RefreshUI();
+                    }
+                }
+                else if (prop == "value")
+                {
+                    jsElem.elem.Attributes["value"] = value.ToString();
+                    jsElem.overlay.RefreshUI();
+                }
+                return;
+            }
             var type = objValue?.GetType();
-            var prop = type?.GetProperty(propValue.ToString());
-            prop?.SetValue(objValue, value);
+            var prop1 = type?.GetProperty(propValue.ToString());
+            prop1?.SetValue(objValue, value);
         }
         private object CallFunction(object callee, List<object> args)
         {
