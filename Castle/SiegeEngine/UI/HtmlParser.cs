@@ -114,12 +114,19 @@ namespace SiegeEngine.UI
                         }
                         _index++; // skip '>'
                         bool isSelfClosing = tag.EndsWith("/") || Array.Exists(new string[] { "br", "hr", "img", "input", "meta", "link" }, t => t == lowerTag);
+                        parent.Children.Add(elem);
+                        if (!isSelfClosing)
+                        {
+                            // Parse children recursively
+                            ParseChildren(elem);
+                        }
                         if (lowerTag == "include" && elem.Attributes.TryGetValue("src", out string src))
                         {
                             // Handle include
                             string incHtml = File.ReadAllText(src);
                             HtmlParser incParser = new HtmlParser();
                             HtmlElement incRoot = incParser.Parse(incHtml);
+                            parent.Children.Remove(elem);
                             foreach (var child in incRoot.Children)
                             {
                                 parent.Children.Add(child);
@@ -128,23 +135,7 @@ namespace SiegeEngine.UI
                         }
                         else if (lowerTag == "script")
                         {
-                            ParseChildren(elem); // Parse inside script as children (text)
-                            var textChild = elem.Children.FirstOrDefault(c => c is TextElement) as TextElement;
-                            if (textChild != null)
-                            {
-                                string scriptContent = textChild.Content.Trim();
-                                // Global script, store or execute later
-                            }
-                            if (elem.Parent != null) elem.Parent.Children.Remove(elem); // Remove script from tree
-                        }
-                        else
-                        {
-                            parent.Children.Add(elem);
-                            if (!isSelfClosing)
-                            {
-                                // Parse children recursively
-                                ParseChildren(elem);
-                            }
+                            // Script handled in LoadUI
                         }
                     }
                 }

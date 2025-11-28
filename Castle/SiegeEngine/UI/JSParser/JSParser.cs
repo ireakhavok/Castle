@@ -42,19 +42,27 @@ namespace SiegeEngine.UI.JSParser
                 SkipWhitespace();
                 if (char.IsLetter(_currentChar) || _currentChar == '_')
                 {
-                    return new Token(TokenType.Identifier, ParseIdentifier());
+                    var token = new Token(TokenType.Identifier, ParseIdentifier());
+                    Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                    return token;
                 }
                 if (char.IsDigit(_currentChar))
                 {
-                    return new Token(TokenType.Number, ParseNumber());
+                    var token = new Token(TokenType.Number, ParseNumber());
+                    Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                    return token;
                 }
                 if (_currentChar == '"')
                 {
-                    return new Token(TokenType.String, ParseString());
+                    var token = new Token(TokenType.String, ParseString());
+                    Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                    return token;
                 }
                 if (_currentChar == '\'')
                 {
-                    return new Token(TokenType.String, ParseString());
+                    var token = new Token(TokenType.String, ParseString());
+                    Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                    return token;
                 }
                 switch (_currentChar)
                 {
@@ -63,57 +71,85 @@ namespace SiegeEngine.UI.JSParser
                         if (_currentChar == '=')
                         {
                             Advance();
-                            return new Token(TokenType.EqualEqual, "==");
+                            var token = new Token(TokenType.EqualEqual, "==");
+                            Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                            return token;
                         }
                         if (_currentChar == '>')
                         {
                             Advance();
-                            return new Token(TokenType.Arrow, "=>");
+                            var token = new Token(TokenType.Arrow, "=>");
+                            Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                            return token;
                         }
-                        return new Token(TokenType.Assign, "=");
+                        var assignToken = new Token(TokenType.Assign, "=");
+                        Console.WriteLine($"Token: {assignToken.Type} - {assignToken.Value}");
+                        return assignToken;
                     case '!':
                         Advance();
                         if (_currentChar == '=')
                         {
                             Advance();
-                            return new Token(TokenType.NotEqual, "!=");
+                            var token = new Token(TokenType.NotEqual, "!=");
+                            Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                            return token;
                         }
-                        return new Token(TokenType.Not, "!");
+                        var notToken = new Token(TokenType.Not, "!");
+                        Console.WriteLine($"Token: {notToken.Type} - {notToken.Value}");
+                        return notToken;
                     case '<':
                         Advance();
                         if (_currentChar == '=')
                         {
                             Advance();
-                            return new Token(TokenType.LessEqual, "<=");
+                            var token = new Token(TokenType.LessEqual, "<=");
+                            Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                            return token;
                         }
-                        return new Token(TokenType.Less, "<");
+                        var lessToken = new Token(TokenType.Less, "<");
+                        Console.WriteLine($"Token: {lessToken.Type} - {lessToken.Value}");
+                        return lessToken;
                     case '>':
                         Advance();
                         if (_currentChar == '=')
                         {
                             Advance();
-                            return new Token(TokenType.GreaterEqual, ">=");
+                            var token = new Token(TokenType.GreaterEqual, ">=");
+                            Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                            return token;
                         }
-                        return new Token(TokenType.Greater, ">");
+                        var greaterToken = new Token(TokenType.Greater, ">");
+                        Console.WriteLine($"Token: {greaterToken.Type} - {greaterToken.Value}");
+                        return greaterToken;
                     case '+':
                         Advance();
                         if (_currentChar == '+')
                         {
                             Advance();
-                            return new Token(TokenType.PlusPlus, "++");
+                            var token = new Token(TokenType.PlusPlus, "++");
+                            Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                            return token;
                         }
-                        return new Token(TokenType.Plus, "+");
+                        var plusToken = new Token(TokenType.Plus, "+");
+                        Console.WriteLine($"Token: {plusToken.Type} - {plusToken.Value}");
+                        return plusToken;
                     case '-':
                         Advance();
                         if (_currentChar == '-')
                         {
                             Advance();
-                            return new Token(TokenType.MinusMinus, "--");
+                            var token = new Token(TokenType.MinusMinus, "--");
+                            Console.WriteLine($"Token: {token.Type} - {token.Value}");
+                            return token;
                         }
-                        return new Token(TokenType.Minus, "-");
+                        var minusToken = new Token(TokenType.Minus, "-");
+                        Console.WriteLine($"Token: {minusToken.Type} - {minusToken.Value}");
+                        return minusToken;
                     case '*':
                         Advance();
-                        return new Token(TokenType.Multiply, "*");
+                        var multiplyToken = new Token(TokenType.Multiply, "*");
+                        Console.WriteLine($"Token: {multiplyToken.Type} - {multiplyToken.Value}");
+                        return multiplyToken;
                     case '/':
                         Advance();
                         if (_currentChar == '/')
@@ -126,70 +162,110 @@ namespace SiegeEngine.UI.JSParser
                             SkipMultiLineComment();
                             continue;
                         }
-                        return new Token(TokenType.Divide, "/");
+                        var divideToken = new Token(TokenType.Divide, "/");
+                        Console.WriteLine($"Token: {divideToken.Type} - {divideToken.Value}");
+                        return divideToken;
                     case '%':
                         Advance();
-                        return new Token(TokenType.Modulo, "%");
+                        var moduloToken = new Token(TokenType.Modulo, "%");
+                        Console.WriteLine($"Token: {moduloToken.Type} - {moduloToken.Value}");
+                        return moduloToken;
                     case '(':
                         Advance();
-                        return new Token(TokenType.LeftParen, "(");
+                        var leftParenToken = new Token(TokenType.LeftParen, "(");
+                        Console.WriteLine($"Token: {leftParenToken.Type} - {leftParenToken.Value}");
+                        return leftParenToken;
                     case ')':
                         Advance();
-                        return new Token(TokenType.RightParen, ")");
+                        var rightParenToken = new Token(TokenType.RightParen, ")");
+                        Console.WriteLine($"Token: {rightParenToken.Type} - {rightParenToken.Value}");
+                        return rightParenToken;
                     case '{':
                         Advance();
-                        return new Token(TokenType.LeftBrace, "{");
+                        var leftBraceToken = new Token(TokenType.LeftBrace, "{");
+                        Console.WriteLine($"Token: {leftBraceToken.Type} - {leftBraceToken.Value}");
+                        return leftBraceToken;
                     case '}':
                         Advance();
-                        return new Token(TokenType.RightBrace, "}");
+                        var rightBraceToken = new Token(TokenType.RightBrace, "}");
+                        Console.WriteLine($"Token: {rightBraceToken.Type} - {rightBraceToken.Value}");
+                        return rightBraceToken;
                     case '[':
                         Advance();
-                        return new Token(TokenType.LeftBracket, "[");
+                        var leftBracketToken = new Token(TokenType.LeftBracket, "[");
+                        Console.WriteLine($"Token: {leftBracketToken.Type} - {leftBracketToken.Value}");
+                        return leftBracketToken;
                     case ']':
                         Advance();
-                        return new Token(TokenType.RightBracket, "]");
+                        var rightBracketToken = new Token(TokenType.RightBracket, "]");
+                        Console.WriteLine($"Token: {rightBracketToken.Type} - {rightBracketToken.Value}");
+                        return rightBracketToken;
                     case ';':
                         Advance();
-                        return new Token(TokenType.Semicolon, ";");
+                        var semicolonToken = new Token(TokenType.Semicolon, ";");
+                        Console.WriteLine($"Token: {semicolonToken.Type} - {semicolonToken.Value}");
+                        return semicolonToken;
                     case ',':
                         Advance();
-                        return new Token(TokenType.Comma, ",");
+                        var commaToken = new Token(TokenType.Comma, ",");
+                        Console.WriteLine($"Token: {commaToken.Type} - {commaToken.Value}");
+                        return commaToken;
                     case '.':
                         Advance();
-                        return new Token(TokenType.Dot, ".");
+                        var dotToken = new Token(TokenType.Dot, ".");
+                        Console.WriteLine($"Token: {dotToken.Type} - {dotToken.Value}");
+                        return dotToken;
                     case '?':
                         Advance();
-                        return new Token(TokenType.Question, "?");
+                        var questionToken = new Token(TokenType.Question, "?");
+                        Console.WriteLine($"Token: {questionToken.Type} - {questionToken.Value}");
+                        return questionToken;
                     case ':':
                         Advance();
-                        return new Token(TokenType.Colon, ":");
+                        var colonToken = new Token(TokenType.Colon, ":");
+                        Console.WriteLine($"Token: {colonToken.Type} - {colonToken.Value}");
+                        return colonToken;
                     case '&':
                         Advance();
                         if (_currentChar == '&')
                         {
                             Advance();
-                            return new Token(TokenType.AndAnd, "&&");
+                            var andAndToken = new Token(TokenType.AndAnd, "&&");
+                            Console.WriteLine($"Token: {andAndToken.Type} - {andAndToken.Value}");
+                            return andAndToken;
                         }
-                        return new Token(TokenType.And, "&");
+                        var andToken = new Token(TokenType.And, "&");
+                        Console.WriteLine($"Token: {andToken.Type} - {andToken.Value}");
+                        return andToken;
                     case '|':
                         Advance();
                         if (_currentChar == '|')
                         {
                             Advance();
-                            return new Token(TokenType.OrOr, "||");
+                            var orOrToken = new Token(TokenType.OrOr, "||");
+                            Console.WriteLine($"Token: {orOrToken.Type} - {orOrToken.Value}");
+                            return orOrToken;
                         }
-                        return new Token(TokenType.Or, "|");
+                        var orToken = new Token(TokenType.Or, "|");
+                        Console.WriteLine($"Token: {orToken.Type} - {orToken.Value}");
+                        return orToken;
                     case '^':
                         Advance();
-                        return new Token(TokenType.Xor, "^");
+                        var xorToken = new Token(TokenType.Xor, "^");
+                        Console.WriteLine($"Token: {xorToken.Type} - {xorToken.Value}");
+                        return xorToken;
                     case '~':
                         Advance();
-                        return new Token(TokenType.Tilde, "~");
+                        var tildeToken = new Token(TokenType.Tilde, "~");
+                        Console.WriteLine($"Token: {tildeToken.Type} - {tildeToken.Value}");
+                        return tildeToken;
                     default:
                         throw new Exception($"Unexpected character: {_currentChar}");
                 }
             }
-            return new Token(TokenType.EOF, null);
+            var eofToken = new Token(TokenType.EOF, null);
+            Console.WriteLine($"Token: {eofToken.Type}");
+            return eofToken;
         }
         private string ParseIdentifier()
         {
@@ -306,7 +382,9 @@ namespace SiegeEngine.UI.JSParser
         private ASTNode ParseVariableDeclaration()
         {
             string kind = ParseIdentifier(); // var, let, const
+            SkipWhitespace();
             string name = ParseIdentifier();
+            SkipWhitespace();
             Consume(TokenType.Assign);
             ASTNode initializer = ParseExpression();
             SkipWhitespace();
@@ -319,6 +397,7 @@ namespace SiegeEngine.UI.JSParser
         private ASTNode ParseFunctionDeclaration()
         {
             ConsumeKeyword("function");
+            SkipWhitespace();
             string name = ParseIdentifier();
             Consume(TokenType.LeftParen);
             List<string> paramsList = new List<string>();
@@ -410,7 +489,9 @@ namespace SiegeEngine.UI.JSParser
         private ASTNode ParseVariableDeclarationNoSemi()
         {
             string kind = ParseIdentifier();
+            SkipWhitespace();
             string name = ParseIdentifier();
+            SkipWhitespace();
             Consume(TokenType.Assign);
             ASTNode initializer = ParseExpression();
             return new VariableDeclarationNode(kind, name, initializer);

@@ -66,7 +66,9 @@ namespace SiegeEngine.UI
                     var text = e.Children.FirstOrDefault(c => c is TextElement) as TextElement;
                     if (text != null)
                     {
-                        scriptBlocks.Add(text.Content);
+                        string scriptContent = text.Content.Trim();
+                        Console.WriteLine("Script content:\n" + scriptContent);
+                        scriptBlocks.Add(scriptContent);
                     }
                     if (e.Parent != null) e.Parent.Children.Remove(e);
                 }
