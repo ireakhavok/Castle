@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -34,8 +35,15 @@ namespace SiegeEngine.UI
         public bool IsActive { get; set; }
         public bool Checked { get; set; }
         public bool IsTarget { get; set; }
+        public bool IsFocused { get; set; }
         public string OnClickJS { get; set; }
         public string OnChangeJS { get; set; }
+        public string OnMouseEnterJS { get; set; }
+        public string OnMouseLeaveJS { get; set; }
+        public string OnMouseDownJS { get; set; }
+        public string OnMouseUpJS { get; set; }
+        public string OnFocusJS { get; set; }
+        public string OnBlurJS { get; set; }
         private BackgroundRenderer _bgRenderer;
         private string _baseDir;
         protected Matrix4x4 ComputedTransform;
@@ -588,7 +596,6 @@ namespace SiegeEngine.UI
                     child.ComputeLayout(ComputedContentX + child_pos_x, ComputedContentY + child_pos_y, childW, childH, viewportWidth, viewportHeight, textRenderer, fs);
                     currentX += child.ComputedWidth + c_m_left + c_m_right;
                     maxLineH = Math.Max(maxLineH, child.ComputedHeight + c_m_top + c_m_bottom);
-                    last_bottom = c_m_bottom;
                 }
                 else
                 {
@@ -824,6 +831,10 @@ namespace SiegeEngine.UI
             {
                 effectiveStyle = checkedStyle;
             }
+            if (IsFocused && PseudoStyles.TryGetValue("focus", out CssStyle focusStyle))
+            {
+                effectiveStyle = focusStyle;
+            }
             if (IsHover && PseudoStyles.TryGetValue("hover", out CssStyle hover))
             {
                 effectiveStyle = hover;
@@ -947,7 +958,10 @@ namespace SiegeEngine.UI
                 value = float.Parse(s.Replace("px", ""));
                 return value;
             }
-            return float.NaN;
+            else
+            {
+                return float.NaN;
+            }
         }
         protected Vector4 ParsePaddings(CssStyle style, float parent, float vw, float vh, bool isMargin = false)
         {

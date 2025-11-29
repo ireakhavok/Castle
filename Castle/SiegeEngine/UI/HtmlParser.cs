@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+
 namespace SiegeEngine.UI
 {
     public class HtmlParser
@@ -103,13 +104,38 @@ namespace SiegeEngine.UI
                             {
                                 btn.AttachHook(value);
                             }
-                            if (key.ToLower() == "onclick")
+                            string lowerKey = key.ToLower();
+                            if (lowerKey == "onclick")
                             {
                                 elem.OnClickJS = value;
                             }
-                            if (key.ToLower() == "onchange")
+                            else if (lowerKey == "onchange")
                             {
                                 elem.OnChangeJS = value;
+                            }
+                            else if (lowerKey == "onmouseenter" || lowerKey == "onmouseover")
+                            {
+                                elem.OnMouseEnterJS = value;
+                            }
+                            else if (lowerKey == "onmouseleave" || lowerKey == "onmouseout")
+                            {
+                                elem.OnMouseLeaveJS = value;
+                            }
+                            else if (lowerKey == "onmousedown")
+                            {
+                                elem.OnMouseDownJS = value;
+                            }
+                            else if (lowerKey == "onmouseup")
+                            {
+                                elem.OnMouseUpJS = value;
+                            }
+                            else if (lowerKey == "onfocus")
+                            {
+                                elem.OnFocusJS = value;
+                            }
+                            else if (lowerKey == "onblur")
+                            {
+                                elem.OnBlurJS = value;
                             }
                         }
                         _index++; // skip '>'

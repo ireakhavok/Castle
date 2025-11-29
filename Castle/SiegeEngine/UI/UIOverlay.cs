@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.UI.JSParser;
+
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -29,6 +30,7 @@ namespace SiegeEngine.UI
         private List<SelectElement> _openSelects = new List<SelectElement>();
         private JSContext _jsContext = new JSContext();
         private JSDocument _document;
+        private HtmlElement _currentFocused;
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
             _renderContext = renderContext;
@@ -136,7 +138,7 @@ namespace SiegeEngine.UI
         {
             if (elem.GetEffectiveDisplay() == "none") return;
             string classes = elem.Attributes.GetValueOrDefault("class", "");
-            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || elem.Tag == "option" || elem.Attributes.ContainsKey("onchange"))
+            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || elem.Tag == "option" || elem.Attributes.ContainsKey("onchange") || elem.Attributes.ContainsKey("onmouseenter") || elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") || elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") || elem.Attributes.ContainsKey("onblur"))
             {
                 _uiClickables.Add(elem);
             }
@@ -344,21 +346,19 @@ namespace SiegeEngine.UI
                     RefreshUI();
                 }
             }
-            if (valueChanged && !string.IsNullOrEmpty(elem.OnChangeJS))
+            if (valueChanged)
             {
-                _jsContext.RunWithThis(elem.OnChangeJS, new JSElement(elem, this));
-                RefreshUI();
+                var current = elem;
+                while (current != null)
+                {
+                    if (!string.IsNullOrEmpty(current.OnChangeJS))
+                    {
+                        _jsContext.RunWithThis(current.OnChangeJS, new JSElement(current, this));
+                    }
+                    current = current.Parent;
+                }
             }
-            else if (valueChanged && elem.Parent != null && elem.Parent.Tag == "select" && !string.IsNullOrEmpty(elem.Parent.OnChangeJS))
-            {
-                _jsContext.RunWithThis(elem.Parent.OnChangeJS, new JSElement(elem.Parent, this));
-                RefreshUI();
-            }
-            else if (valueChanged && elem.Parent != null && elem.Parent.Tag == "input" && !string.IsNullOrEmpty(elem.Parent.OnChangeJS))
-            {
-                _jsContext.RunWithThis(elem.Parent.OnChangeJS, new JSElement(elem.Parent, this));
-                RefreshUI();
-            }
+            RefreshUI();
         }
         private void CloseAllOpenSelects()
         {
@@ -378,6 +378,7 @@ namespace SiegeEngine.UI
             _controlContext.GetCursorPos(_window, out double x, out double y);
             mousePos = new Vector2((float)x, (float)y);
             bool currentMouseDown = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press;
+            bool mousePress = !_prevMouseDown && currentMouseDown;
             bool mouseRelease = _prevMouseDown && !currentMouseDown;
             _controlContext.GetWindowSize(_window, out int vw_int, out int vh_int);
             float vw = vw_int;
@@ -401,15 +402,37 @@ namespace SiegeEngine.UI
                     continue; // Skip non-descendants when select open
                 }
                 bool over = clickable.HandleClick(mousePos, vw, vh);
-                clickable.IsHover = over;
-                if (over && currentMouseDown)
+                if (over && mousePress)
                 {
+                    if (!string.IsNullOrEmpty(clickable.OnMouseDownJS))
+                    {
+                        _jsContext.RunWithThis(clickable.OnMouseDownJS, new JSElement(clickable, this));
+                    }
                     clickable.IsActive = true;
                 }
                 if (over && mouseRelease && clickable.IsActive)
                 {
+                    if (!string.IsNullOrEmpty(clickable.OnMouseUpJS))
+                    {
+                        _jsContext.RunWithThis(clickable.OnMouseUpJS, new JSElement(clickable, this));
+                    }
                     clickedElem = clickable;
                 }
+                if (over && !clickable.IsHover)
+                {
+                    if (!string.IsNullOrEmpty(clickable.OnMouseEnterJS))
+                    {
+                        _jsContext.RunWithThis(clickable.OnMouseEnterJS, new JSElement(clickable, this));
+                    }
+                }
+                if (!over && clickable.IsHover)
+                {
+                    if (!string.IsNullOrEmpty(clickable.OnMouseLeaveJS))
+                    {
+                        _jsContext.RunWithThis(clickable.OnMouseLeaveJS, new JSElement(clickable, this));
+                    }
+                }
+                clickable.IsHover = over;
                 if (mouseRelease)
                 {
                     clickable.IsActive = false;
@@ -417,6 +440,27 @@ namespace SiegeEngine.UI
             }
             if (clickedElem != null)
             {
+                bool focusable = clickedElem.Tag.ToLower() == "input" || clickedElem.Tag.ToLower() == "select" || clickedElem.Tag.ToLower() == "button" || clickedElem.Attributes.ContainsKey("tabindex") || !string.IsNullOrEmpty(clickedElem.OnFocusJS) || !string.IsNullOrEmpty(clickedElem.OnBlurJS);
+                if (focusable)
+                {
+                    if (_currentFocused != null && _currentFocused != clickedElem)
+                    {
+                        if (!string.IsNullOrEmpty(_currentFocused.OnBlurJS))
+                        {
+                            _jsContext.RunWithThis(_currentFocused.OnBlurJS, new JSElement(_currentFocused, this));
+                        }
+                        _currentFocused.IsFocused = false;
+                    }
+                    if (!clickedElem.IsFocused)
+                    {
+                        if (!string.IsNullOrEmpty(clickedElem.OnFocusJS))
+                        {
+                            _jsContext.RunWithThis(clickedElem.OnFocusJS, new JSElement(clickedElem, this));
+                        }
+                        clickedElem.IsFocused = true;
+                        _currentFocused = clickedElem;
+                    }
+                }
                 HandleUIClick(clickedElem);
             }
             else if (mouseRelease && openSelect != null && !isClickOnOpenSelect && !_justOpenedSelect)

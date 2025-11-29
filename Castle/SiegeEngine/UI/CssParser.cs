@@ -83,9 +83,7 @@ option:hover {
     background-color: rgba(77, 77, 77, 0.8);
 }
 ";
-
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
-
         public void Apply(string css)
         {
             int i = 0;
@@ -104,7 +102,6 @@ option:hover {
                 }
             }
         }
-
         public void ApplyAll(HtmlElement root)
         {
             ApplyInlineStyles(root);
@@ -118,7 +115,7 @@ option:hover {
                     selector = parts[0].Trim();
                     pseudo = parts[1].Trim();
                 }
-                if (pseudo != null && (pseudo == "hover" || pseudo == "active" || pseudo == "target" || pseudo == "checked"))
+                if (pseudo != null && (pseudo == "hover" || pseudo == "active" || pseudo == "target" || pseudo == "checked" || pseudo == "focus"))
                 {
                     ApplyToElements(root, selector, rule.Props, pseudo);
                 }
@@ -128,7 +125,6 @@ option:hover {
                 }
             }
         }
-
         public void ApplyInlineStyles(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -146,7 +142,6 @@ option:hover {
                 }
             }
         }
-
         private void SkipWhitespaceAndComments(string css, ref int i)
         {
             while (i < css.Length)
@@ -169,7 +164,6 @@ option:hover {
                 break;
             }
         }
-
         private string ReadUntil(string css, ref int i, char stop)
         {
             string result = "";
@@ -180,7 +174,6 @@ option:hover {
             }
             return result;
         }
-
         private Dictionary<string, string> ParseProperties(string block)
         {
             Dictionary<string, string> props = new Dictionary<string, string>();
@@ -197,13 +190,11 @@ option:hover {
             }
             return props;
         }
-
         public void ApplyInline(string inline, CssStyle style)
         {
             var props = ParseProperties(inline);
             ApplyProperties(style, props);
         }
-
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props, string pseudo)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -232,7 +223,6 @@ option:hover {
                 }
             }
         }
-
         private bool Matches(HtmlElement elem, string selector)
         {
             if (string.IsNullOrEmpty(selector)) return true;
@@ -270,7 +260,6 @@ option:hover {
                 return true;
             }
         }
-
         private bool SimpleMatches(HtmlElement elem, string simple)
         {
             if (string.IsNullOrEmpty(simple)) return true;
@@ -303,26 +292,30 @@ option:hover {
             }
             if (match && pseudo != null)
             {
-                if (pseudo == "target")
+                switch (pseudo)
                 {
-                    match = elem.IsTarget;
-                }
-                if (pseudo == "checked")
-                {
-                    match = elem.Checked;
-                }
-                if (pseudo == "hover")
-                {
-                    match = elem.IsHover;
-                }
-                if (pseudo == "active")
-                {
-                    match = elem.IsActive;
+                    case "target":
+                        match = elem.IsTarget;
+                        break;
+                    case "checked":
+                        match = elem.Checked;
+                        break;
+                    case "hover":
+                        match = elem.IsHover;
+                        break;
+                    case "active":
+                        match = elem.IsActive;
+                        break;
+                    case "focus":
+                        match = elem.IsFocused;
+                        break;
+                    default:
+                        match = false;
+                        break;
                 }
             }
             return match;
         }
-
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
             if (props.TryGetValue("position", out string pos))
@@ -475,7 +468,6 @@ option:hover {
             if (props.TryGetValue("overflow", out string ov))
                 style.Overflow = ov;
         }
-
         private Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
@@ -500,7 +492,6 @@ option:hover {
             }
             return ParseSingleColor(color);
         }
-
         private Vector4 ParseSingleColor(string color)
         {
             color = color.Trim().ToLower();
