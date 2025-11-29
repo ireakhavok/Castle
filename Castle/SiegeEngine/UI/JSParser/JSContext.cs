@@ -25,6 +25,7 @@ namespace SiegeEngine.UI.JSParser
         }
         public object RunWithThis(string code, object thisObj)
         {
+            Console.WriteLine("Debug: Running JS: " + code);
             Evaluator.PushScope();
             Evaluator.CurrentScope()["this"] = thisObj;
             object result = Run(code);

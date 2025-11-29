@@ -282,6 +282,7 @@ namespace SiegeEngine.UI.JSParser
             {
                 if (prop == "innerHTML")
                 {
+                    Console.WriteLine("Debug: Setting innerHTML");
                     if (value is string str && str == "")
                     {
                         jsElem.elem.Children.Clear();
@@ -312,6 +313,7 @@ namespace SiegeEngine.UI.JSParser
         {
             if (callee is FunctionDeclarationNode func)
             {
+                Console.WriteLine("Debug: Calling function " + func.Name);
                 if (func.Params.Count != args.Count)
                 {
                     throw new Exception("Argument count mismatch");

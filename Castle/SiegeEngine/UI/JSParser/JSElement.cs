@@ -27,12 +27,14 @@ namespace SiegeEngine.UI.JSParser
             get { return string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)); }
             set
             {
+                Console.WriteLine("Debug: Cleared children for ID: " + id);
                 elem.Children.Clear();
                 if (!string.IsNullOrEmpty(value))
                 {
                     // Simple parse, assume text
                     elem.Children.Add(new TextElement { Content = value });
                 }
+                Console.WriteLine("Debug: RefreshUI from JS");
                 overlay.RefreshUI();
             }
         }
@@ -46,6 +48,7 @@ namespace SiegeEngine.UI.JSParser
                 {
                     elem.Children.Add(new TextElement { Content = value });
                 }
+                Console.WriteLine("Debug: RefreshUI from JS");
                 overlay.RefreshUI();
             }
         }
@@ -119,6 +122,7 @@ namespace SiegeEngine.UI.JSParser
         {
             elem.Children.Add(child.elem);
             child.elem.Parent = elem;
+            Console.WriteLine("Debug: RefreshUI from JS");
             overlay.RefreshUI();
         }
         public void addOption(string text, string value)
@@ -130,6 +134,8 @@ namespace SiegeEngine.UI.JSParser
                 opt.Children.Add(new TextElement { Content = text });
                 opt.Parent = elem;
                 elem.Children.Add(opt);
+                Console.WriteLine("Debug: Added option " + text);
+                Console.WriteLine("Debug: RefreshUI from JS");
                 overlay.RefreshUI();
             }
         }
@@ -138,6 +144,7 @@ namespace SiegeEngine.UI.JSParser
             if (elem.Tag.ToLower() == "select")
             {
                 elem.Children.RemoveAll(c => c.Tag.ToLower() == "option");
+                Console.WriteLine("Debug: RefreshUI from JS");
                 overlay.RefreshUI();
             }
         }
