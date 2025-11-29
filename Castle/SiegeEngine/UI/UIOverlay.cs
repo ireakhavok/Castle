@@ -175,7 +175,8 @@ namespace SiegeEngine.UI
             foreach (var child in root.Children)
             {
                 var found = FindElementById(child, id);
-                if (found != null) return found;
+                if (found != null) 
+                    return found;
             }
             return null;
         }

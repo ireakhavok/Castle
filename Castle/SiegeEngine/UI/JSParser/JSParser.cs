@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI/JSParser
+﻿// Folder: SiegeEngine.UI.JSParser
 // File: JSParser.cs
 using System;
 using System.Collections.Generic;
@@ -750,7 +750,7 @@ namespace SiegeEngine.UI.JSParser
                     Advance();
                     SkipWhitespaceAndComments();
                     string property = ParseIdentifier();
-                    left = new MemberExpressionNode(left, new LiteralNode(property), false);
+                    left = new MemberExpressionNode(left, new IdentifierNode(property), false);
                 }
                 SkipWhitespaceAndComments();
             }
@@ -806,7 +806,7 @@ namespace SiegeEngine.UI.JSParser
                     }
                     return new IdentifierNode(name);
                 case TokenType.Number:
-                    return new LiteralNode(float.Parse((string)token.Value));
+                    return new LiteralNode(double.Parse((string)token.Value));
                 case TokenType.String:
                     return new LiteralNode((string)token.Value);
                 case TokenType.LeftParen:
@@ -891,7 +891,7 @@ namespace SiegeEngine.UI.JSParser
         }
         private ASTNode ParseObjectLiteral()
         {
-            Dictionary<string, ASTNode> properties = new Dictionary<string, ASTNode>();
+            Dictionary<ASTNode, ASTNode> properties = new Dictionary<ASTNode, ASTNode>();
             SkipWhitespaceAndComments();
             while (_currentChar != '}')
             {
@@ -900,10 +900,18 @@ namespace SiegeEngine.UI.JSParser
                 {
                     break;
                 }
-                string key;
-                if (keyToken.Type == TokenType.Identifier || keyToken.Type == TokenType.String || keyToken.Type == TokenType.Number)
+                ASTNode keyNode;
+                if (keyToken.Type == TokenType.Identifier)
                 {
-                    key = keyToken.Value.ToString();
+                    keyNode = new IdentifierNode((string)keyToken.Value);
+                }
+                else if (keyToken.Type == TokenType.String)
+                {
+                    keyNode = new LiteralNode((string)keyToken.Value);
+                }
+                else if (keyToken.Type == TokenType.Number)
+                {
+                    keyNode = new LiteralNode(double.Parse((string)keyToken.Value));
                 }
                 else
                 {
@@ -913,7 +921,7 @@ namespace SiegeEngine.UI.JSParser
                 Consume(TokenType.Colon);
                 SkipWhitespaceAndComments();
                 ASTNode value = ParseAssignmentExpression();
-                properties[key] = value;
+                properties[keyNode] = value;
                 SkipWhitespaceAndComments();
                 if (_currentChar == ',')
                 {

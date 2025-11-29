@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI/JSParser
+﻿// Folder: SiegeEngine.UI.JSParser
 // File: JSEvaluator.cs
 using System;
 using System.Collections.Generic;
@@ -118,7 +118,7 @@ namespace SiegeEngine.UI.JSParser
                     }
                     else
                     {
-                        propValue = ((LiteralNode)member.Property).Value;
+                        propValue = ((IdentifierNode)member.Property).Name;
                     }
                     return GetMember(objValue, propValue);
                 case CallExpressionNode call:
@@ -144,7 +144,20 @@ namespace SiegeEngine.UI.JSParser
                     Dictionary<object, object> obj = new Dictionary<object, object>();
                     foreach (var kv in objNode.Properties)
                     {
-                        obj[kv.Key] = Evaluate(kv.Value);
+                        object keyVal;
+                        if (kv.Key is IdentifierNode id)
+                        {
+                            keyVal = id.Name;
+                        }
+                        else if (kv.Key is LiteralNode lit)
+                        {
+                            keyVal = lit.Value;
+                        }
+                        else
+                        {
+                            throw new Exception("Unsupported key type in object literal");
+                        }
+                        obj[keyVal] = Evaluate(kv.Value);
                     }
                     return obj;
                 case ConditionalExpressionNode cond:
@@ -210,7 +223,7 @@ namespace SiegeEngine.UI.JSParser
                     }
                     else
                     {
-                        propValue = ((LiteralNode)member.Property).Value;
+                        propValue = ((IdentifierNode)member.Property).Name;
                     }
                     SetMember(objValue, propValue, value);
                     break;
@@ -254,7 +267,7 @@ namespace SiegeEngine.UI.JSParser
                 {
                     return prop.GetValue(objValue);
                 }
-                var meth = type?.GetMethod(propName);
+                var meth = type?.GetMethod(propName, BindingFlags.Instance | BindingFlags.Public);
                 if (meth != null)
                 {
                     return new Func<object[], object>(args => meth.Invoke(objValue, args));
@@ -293,8 +306,13 @@ namespace SiegeEngine.UI.JSParser
                 {
                     if (value is string txt)
                     {
-                        jsElem.elem.Children.Clear();
-                        jsElem.elem.Children.Add(new TextElement { Content = txt });
+                        jsElem.elem.Children.RemoveAll(c => c is TextElement);
+                        if (!string.IsNullOrEmpty(txt))
+                        {
+                            TextElement textElem = new TextElement { Content = txt };
+                            textElem.Parent = jsElem.elem;
+                            jsElem.elem.Children.Add(textElem);
+                        }
                         jsElem.overlay.RefreshUI();
                     }
                 }
@@ -649,8 +667,8 @@ namespace SiegeEngine.UI.JSParser
     }
     public class ObjectExpressionNode : ASTNode
     {
-        public Dictionary<string, ASTNode> Properties { get; }
-        public ObjectExpressionNode(Dictionary<string, ASTNode> properties)
+        public Dictionary<ASTNode, ASTNode> Properties { get; }
+        public ObjectExpressionNode(Dictionary<ASTNode, ASTNode> properties)
         {
             Properties = properties;
         }

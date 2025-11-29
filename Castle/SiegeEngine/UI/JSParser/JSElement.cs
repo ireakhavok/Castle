@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI/JSParser
+﻿// Folder: SiegeEngine.UI.JSParser
 // File: JSElement.cs
 using System;
 using System.Collections.Generic;
@@ -31,8 +31,9 @@ namespace SiegeEngine.UI.JSParser
                 elem.Children.Clear();
                 if (!string.IsNullOrEmpty(value))
                 {
-                    // Simple parse, assume text
-                    elem.Children.Add(new TextElement { Content = value });
+                    TextElement textElem = new TextElement { Content = value };
+                    textElem.Parent = elem;
+                    elem.Children.Add(textElem);
                 }
                 Console.WriteLine("Debug: RefreshUI from JS");
                 overlay.RefreshUI();
@@ -46,7 +47,9 @@ namespace SiegeEngine.UI.JSParser
                 elem.Children.RemoveAll(c => c is TextElement);
                 if (!string.IsNullOrEmpty(value))
                 {
-                    elem.Children.Add(new TextElement { Content = value });
+                    TextElement textElem = new TextElement { Content = value };
+                    textElem.Parent = elem;
+                    elem.Children.Add(textElem);
                 }
                 Console.WriteLine("Debug: RefreshUI from JS");
                 overlay.RefreshUI();
@@ -131,7 +134,9 @@ namespace SiegeEngine.UI.JSParser
             {
                 var opt = new OptionElement();
                 opt.Attributes["value"] = value;
-                opt.Children.Add(new TextElement { Content = text });
+                TextElement textElem = new TextElement { Content = text };
+                textElem.Parent = opt;
+                opt.Children.Add(textElem);
                 opt.Parent = elem;
                 elem.Children.Add(opt);
                 Console.WriteLine("Debug: Added option " + text);
