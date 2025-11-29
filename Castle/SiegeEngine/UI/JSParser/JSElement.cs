@@ -1,4 +1,5 @@
-﻿// Folder: SiegeEngine.UI.JSParser
+﻿
+// Folder: SiegeEngine.UI.JSParser
 // File: JSElement.cs
 using System;
 using System.Collections.Generic;
@@ -35,8 +36,6 @@ namespace SiegeEngine.UI.JSParser
                     textElem.Parent = elem;
                     elem.Children.Add(textElem);
                 }
-                Console.WriteLine("Debug: RefreshUI from JS");
-                overlay.RefreshUI();
             }
         }
         public string textContent
@@ -51,8 +50,6 @@ namespace SiegeEngine.UI.JSParser
                     textElem.Parent = elem;
                     elem.Children.Add(textElem);
                 }
-                Console.WriteLine("Debug: RefreshUI from JS");
-                overlay.RefreshUI();
             }
         }
         public string value
@@ -92,13 +89,11 @@ namespace SiegeEngine.UI.JSParser
                     }
                     if (found)
                     {
-                        overlay.RefreshUI();
                     }
                 }
                 else if (tag == "option")
                 {
                     elem.Attributes["value"] = value;
-                    overlay.RefreshUI();
                 }
             }
         }
@@ -125,8 +120,6 @@ namespace SiegeEngine.UI.JSParser
         {
             elem.Children.Add(child.elem);
             child.elem.Parent = elem;
-            Console.WriteLine("Debug: RefreshUI from JS");
-            overlay.RefreshUI();
         }
         public void addOption(string text, string value)
         {
@@ -140,8 +133,6 @@ namespace SiegeEngine.UI.JSParser
                 opt.Parent = elem;
                 elem.Children.Add(opt);
                 Console.WriteLine("Debug: Added option " + text);
-                Console.WriteLine("Debug: RefreshUI from JS");
-                overlay.RefreshUI();
             }
         }
         public void clearOptions()
@@ -149,8 +140,6 @@ namespace SiegeEngine.UI.JSParser
             if (elem.Tag.ToLower() == "select")
             {
                 elem.Children.RemoveAll(c => c.Tag.ToLower() == "option");
-                Console.WriteLine("Debug: RefreshUI from JS");
-                overlay.RefreshUI();
             }
         }
     }

@@ -22,18 +22,14 @@ namespace SiegeEngine.UI
             Style.FontSize = fs;
             float lineH = textRenderer.GetLineHeight(fs, Style.FontFamily ?? "Arial");
             List<HtmlElement> options = Children.Where(c => c.Tag.ToLower() == "option").ToList();
-            HtmlElement selectedOpt = null;
+            HtmlElement selectedOpt = options.FirstOrDefault(o => o.Attributes.ContainsKey("selected"));
+            if (selectedOpt == null && options.Count > 0)
+            {
+                selectedOpt = options[0];
+                selectedOpt.Attributes["selected"] = "";
+            }
             foreach (var opt in options)
             {
-                if (opt.Attributes.ContainsKey("selected") || selectedOpt == null)
-                {
-                    selectedOpt = opt;
-                    opt.Attributes["selected"] = "";
-                }
-                else
-                {
-                    opt.Attributes.Remove("selected");
-                }
                 opt.Style.Display = "none";
             }
             if (selectedOpt != null)

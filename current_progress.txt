@@ -1,0 +1,25 @@
+For the JSParser and UIOverlay final implementation: 
+
+High-Priority (Core UI Interactions - Implement First):
+
+onclick: User clicks an element (e.g., buttons, links). Already should be supported.
+onchange: (need to make sure we traverse the entire parent tree for onchange events, not just the one layer above the element)
+onmouseover / onmouseout: Mouse enters/leaves (for hover effects, tooltips). (make this efficient, not check every option, check from the mouse positions perspective?)
+onmousedown / onmouseup: Mouse button press/release (for drag-start, custom buttons).
+onfocus / onblur: Element gains/loses focus (e.g., inputs, accessibility).
+
+Medium-Priority (Advanced Interactivity):
+
+onkeydown / onkeyup / onkeypress: Keyboard input (for search fields, hotkeys).
+onsubmit: Form submission (if adding forms).
+oninput: Real-time input changes (e.g., text fields).
+ondblclick: Double-click (for advanced actions like editing).
+
+Low-Priority (Less Common in Menus, but Extensible):
+
+onload / onunload: Page/element loads/unloads (for init/cleanup scripts).
+onresize: Window resize (via window size changes in Update).
+onscroll: Scrolling (if adding scrollable divs with overflow).
+oncontextmenu: Right-click (for menus).
+ontouchstart / ontouchend: Touch events (for mobile, if expanding platforms).
+onwheel: Mouse wheel (for zooming/scrolling).

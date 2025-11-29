@@ -95,6 +95,7 @@ namespace SiegeEngine.UI
             {
                 _jsContext.Run(script);
             }
+            RefreshUI();
         }
         private void InitializeElementProperties(HtmlElement root)
         {
@@ -175,8 +176,7 @@ namespace SiegeEngine.UI
             foreach (var child in root.Children)
             {
                 var found = FindElementById(child, id);
-                if (found != null) 
-                    return found;
+                if (found != null) return found;
             }
             return null;
         }
@@ -347,14 +347,17 @@ namespace SiegeEngine.UI
             if (valueChanged && !string.IsNullOrEmpty(elem.OnChangeJS))
             {
                 _jsContext.RunWithThis(elem.OnChangeJS, new JSElement(elem, this));
+                RefreshUI();
             }
             else if (valueChanged && elem.Parent != null && elem.Parent.Tag == "select" && !string.IsNullOrEmpty(elem.Parent.OnChangeJS))
             {
                 _jsContext.RunWithThis(elem.Parent.OnChangeJS, new JSElement(elem.Parent, this));
+                RefreshUI();
             }
             else if (valueChanged && elem.Parent != null && elem.Parent.Tag == "input" && !string.IsNullOrEmpty(elem.Parent.OnChangeJS))
             {
                 _jsContext.RunWithThis(elem.Parent.OnChangeJS, new JSElement(elem.Parent, this));
+                RefreshUI();
             }
         }
         private void CloseAllOpenSelects()
