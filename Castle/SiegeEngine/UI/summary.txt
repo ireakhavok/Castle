@@ -1,0 +1,590 @@
+Folder: 
+ File: BasePanel.cs
+ class: BasePanel (Namespace: SiegeEngine.UI)
+ Inherits: IPanel
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System
+ Methods:
+ - constructor BasePanel(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
+ Calls: UIOverlay, UIOverlay
+ - UIOverlay CreateUIOverlay()
+ Calls: Init, Init
+ - void Init()
+ Calls: Update, Update
+ - void Update(float deltaTime, float deltaTime)
+ Calls: RecomputeLayout, RecomputeLayout, Render
+ - void Render()
+ Calls: RecomputeLayout, RecomputeLayout
+ - void Dispose()
+ Calls: None
+ - void Detach()
+ Calls: None
+ File: ButtonElement.cs
+ class: ButtonElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Numerics, System.Reflection
+ Methods:
+ - constructor ButtonElement()
+ Calls: ComputeLayout, ComputeLayout
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
+ Calls: None
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: HandleClick, HandleClick, Invoke
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: Invoke, Invoke
+ - void AttachHook(string hookStr, string hookStr)
+ Calls: None
+ File: CssParser.cs
+ class: CssParser (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
+ Methods:
+ - void Apply(string css, string css)
+ Calls: ParseProperties, ParseProperties, ReadUntil, SkipWhitespaceAndComments
+ - void ApplyAll(HtmlElement root, HtmlElement root)
+ Calls: ApplyToElements, ApplyToElements
+ - void ApplyInlineStyles(HtmlElement root, HtmlElement root)
+ Calls: ApplyInline, ApplyInline
+ - void SkipWhitespaceAndComments(string css, string css, ref int)
+ Calls: None
+ - string ReadUntil(string css, string css, ref int, char stop)
+ Calls: None
+ - string> ParseProperties(string block, string block)
+ Calls: ReadUntil, ReadUntil, SkipWhitespaceAndComments
+ - void ApplyInline(string inline, string inline, CssStyle style)
+ Calls: ApplyProperties, ApplyProperties, Clone, Matches
+ - void ApplyToElements(HtmlElement root, HtmlElement root, string selector, string> props, string pseudo)
+ Calls: ApplyProperties, ApplyProperties, Clone, Matches
+ - bool Matches(HtmlElement elem, HtmlElement elem, string selector)
+ Calls: SimpleMatches, SimpleMatches
+ - bool SimpleMatches(HtmlElement elem, HtmlElement elem, string simple)
+ Calls: None
+ - void ApplyProperties(CssStyle style, CssStyle style, string> props)
+ Calls: ParseColor, ParseColor
+ - Vector4 ParseColor(string color, string color)
+ Calls: Matches, Matches, ParseSingleColor
+ - return ParseSingleColor()
+ Calls: Parse, Parse
+ - Vector4 ParseSingleColor(string color, string color)
+ Calls: None
+ File: CssStyle.cs
+ class: CssStyle (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: System.Numerics, System.Numerics
+ Methods:
+ - CssStyle Clone()
+ Calls: None
+ File: DivElement.cs
+ class: DivElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: None
+ Methods:
+ - constructor DivElement()
+ Calls: None
+ File: HtmlElement.cs
+ class: HtmlElement (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
+ Methods:
+ - bool IsDescendantOf(HtmlElement ancestor, HtmlElement ancestor)
+ Calls: None
+ - string GetEffectiveDisplay()
+ Calls: None
+ - HtmlElement FindContainingBlock()
+ Calls: None
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
+ Calls: None
+ - void UpdateFullTransforms(Matrix4x4 parentMatrix, Matrix4x4 parentMatrix)
+ Calls: UpdateFullTransforms, UpdateFullTransforms
+ - void PrepareResources(string baseDir, string baseDir, IControlContext controlContext, IntPtr window, IRenderContext renderContext, ShaderProgram shader)
+ Calls: None
+ - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseBorderWidths, ParsePaddings, ParseSize
+ - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, GetEffectiveDisplay, ParsePaddings, ParseSize
+ - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+ Calls: None
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: None
+ - float ParseSize(string s, string s, float parent, float vw, float vh)
+ Calls: Parse, Parse
+ - Vector4 ParsePaddings(CssStyle style, CssStyle style, float parent, float vw, float vh, bool isMargin)
+ Calls: None
+ - Vector4 ParseBorderWidths(CssStyle style, CssStyle style, float parent, float vw, float vh)
+ Calls: GetVal, GetVal, ParseSize
+ - Vector4 ParseSides(string s, string s, float parent, float vw, float vh)
+ Calls: None
+ - float GetVal(int index, int index, float defaultVal)
+ Calls: ParseSize, ParseSize
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
+ - HtmlElement FindElementById(string id, string id)
+ Calls: FindElementById, FindElementById
+ - Matrix4x4 ComputeTransform(float viewportWidth, float viewportWidth, float viewportHeight)
+ Calls: Parse, Parse, ParseAngle, ParseSize
+ - float ParseAngle(string s, string s)
+ Calls: Parse, Parse
+ - float[] GetNdcQuad(float x, float x, float y, float w, float h, Matrix4x4 trans, float vw, float vh)
+ Calls: None
+ File: HtmlParser.cs
+ class: HtmlParser (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.IO, System.Linq
+ Methods:
+ - HtmlElement Parse(string html, string html)
+ Calls: None
+ - void ParseChildren(HtmlElement parent, HtmlElement parent)
+ Calls: AttachHook, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, OptionElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace
+ - recursively ParseChildren()
+ Calls: HtmlParser, HtmlParser, Parse
+ - constructor HtmlParser()
+ Calls: None
+ - void SkipWhitespace()
+ Calls: None
+ - string ReadUntil(bool> condition, bool> condition)
+ Calls: None
+ File: InputElement.cs
+ class: InputElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Collections.Generic, System.Numerics
+ Methods:
+ - constructor InputElement()
+ Calls: ComputeLayout, ComputeLayout
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
+ Calls: None
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: None
+ - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+ Calls: ParseBorderWidths, ParseBorderWidths, ParsePaddings
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
+ File: MenuPanel.cs
+ class: MenuPanel (Namespace: SiegeEngine.UI)
+ Inherits: BasePanel
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, System, System.IO, System.Reflection
+ Methods:
+ - void HandleDataHook(string hook, string hook)
+ Calls: None
+ - void HandleLink(string href, string href)
+ Calls: None
+ - UIOverlay CreateUIOverlay()
+ Calls: Init, Init, LoadUI
+ - void Init()
+ Calls: LoadUI, LoadUI
+ - void SwitchMenu(string menuName, string menuName)
+ Calls: None
+ File: MenuPanel.cs
+ class: MenuUIOverlay (Namespace: SiegeEngine.UI)
+ Inherits: UIOverlay
+        
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, System, System.IO, System.Reflection
+ Methods:
+ - void HandleDataHook(string hook, string hook)
+ Calls: None
+ - void HandleLink(string href, string href)
+ Calls: None
+ File: OptionElement.cs
+ class: OptionElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: System, System, System.Numerics
+ Methods:
+ - constructor OptionElement()
+ Calls: HandleClick, HandleClick
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
+ File: SelectElement.cs
+ class: SelectElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+ Methods:
+ - constructor SelectElement()
+ Calls: ComputeLayout, ComputeLayout, ParseBorderWidths, ParsePaddings, ParseSize
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
+ Calls: None
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: None
+ - void RenderDropdown(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
+ Calls: None
+ - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+ Calls: None
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
+ File: TextElement.cs
+ class: TextElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Numerics
+ Methods:
+ - constructor TextElement()
+ Calls: ComputeLayout, ComputeLayout, GetWrappedLines
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
+ Calls: GetWrappedLines, GetWrappedLines
+ - List<string> GetWrappedLines(float maxWidth, float maxWidth, float fs, TextRenderer textRenderer, string fontFamily)
+ Calls: None
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: None
+ - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
+ File: UIOverlay.cs
+ class: UIOverlay (Namespace: SiegeEngine.UI)
+ Inherits: None
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+ Methods:
+ - constructor UIOverlay(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window)
+ Calls: None
+ - void Init()
+ Calls: Apply, Apply, ApplyAll, ApplyInlineStyles, CollectClickables, HtmlParser, InheritProperties, InitializeElementProperties, JSDocument, Parse, PrepareResources, RecomputeLayout, RefreshUI, RegisterGlobal, Run
+ - void LoadUI(string html, string html, string baseDir)
+ Calls: None
+ - void InitializeElementProperties(HtmlElement root, HtmlElement root)
+ Calls: None
+ - void InheritProperties(HtmlElement elem, HtmlElement elem, HtmlElement parent)
+ Calls: None
+ - void CollectClickables(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ - void HandleDataHook(string hook, string hook)
+ Calls: LoadUI, LoadUI
+ - void HandleLink(string href, string href)
+ Calls: LoadUI, LoadUI
+ - void RefreshUI()
+ Calls: FindElementById, FindElementById
+ - HtmlElement FindElementById(HtmlElement root, HtmlElement root, string id)
+ Calls: FindElementById, FindElementById
+ - HtmlElement FindElementById(string id, string id)
+ Calls: None
+ - return FindElementById()
+ Calls: None
+ - List<HtmlElement> FindElementsByClass(HtmlElement root, HtmlElement root, string className)
+ Calls: None
+ - List<HtmlElement> FindElementsByTag(HtmlElement root, HtmlElement root, string tag)
+ Calls: None
+ - List<HtmlElement> FindElementsByTag(string tag, string tag)
+ Calls: CloseAllOpenSelects, CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, JSElement, RefreshUI, RunWithThis
+ - return FindElementsByTag()
+ Calls: CloseAllOpenSelects, CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, JSElement, RefreshUI, RunWithThis
+ - void HandleUIClick(HtmlElement elem, HtmlElement elem)
+ Calls: None
+ - select CloseAllOpenSelects()
+ Calls: JSElement, JSElement, RunWithThis
+ - void CloseAllOpenSelects()
+ Calls: None
+ - void Update(float deltaTime, float deltaTime)
+ Calls: HandleClick, HandleClick
+ - it CloseAllOpenSelects()
+ Calls: Render, Render, RenderDropdown
+ - void RenderUI(int w, int w, int h)
+ Calls: RenderDropdown, RenderDropdown
+ - void Render()
+ Calls: RenderUI, RenderUI
+ - void RecomputeLayout(int w, int w, int h)
+ Calls: ComputeLayout, ComputeLayout, UpdateFullTransforms
+ - void Dispose()
+ Calls: None
+
+Folder: JSParser
+ File: JSBinding.cs
+ class: JSBinding (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic
+ Methods:
+ - void Bind(string name, string name, Delegate action)
+ Calls: None
+ - object Invoke(string name, string name, params object, [] args)
+ Calls: None
+ File: JSContext.cs
+ class: JSContext (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic
+ Methods:
+ - constructor JSContext()
+ Calls: None
+ - object Run(string code, string code)
+ Calls: CurrentScope, CurrentScope, PopScope, PushScope, Run
+ - object RunWithThis(string code, string code, object thisObj)
+ Calls: None
+ File: JSDocument.cs
+ class: JSDocument (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System
+ Methods:
+ - constructor JSDocument(UIOverlay overlay, UIOverlay overlay)
+ Calls: FindElementById, FindElementById, JSElement
+ - JSElement getElementById(string id, string id)
+ Calls: JSElement, JSElement, OptionElement
+ - JSElement createElement(string tag, string tag)
+ Calls: OptionElement, OptionElement
+ File: JSElement.cs
+ class: JSElement (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Linq
+ Methods:
+ - constructor JSElement(HtmlElement elem, HtmlElement elem, UIOverlay overlay)
+ Calls: None
+ - void appendChild(JSElement child, JSElement child)
+ Calls: OptionElement, OptionElement
+ - void addOption(string text, string text, string value)
+ Calls: OptionElement, OptionElement
+ - void clearOptions()
+ Calls: None
+ File: JSEvaluator.cs
+ class: JSEvaluator (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor JSEvaluator()
+ Calls: ApplyBinaryOp, ApplyBinaryOp, ApplyUnaryOp, CallFunction, CurrentScope, Evaluate, GetMember, GetVariable, IsTruthy, PopScope, PushScope, ReturnValue, SetValue
+ - object Evaluate(ASTNode node, ASTNode node)
+ Calls: ApplyBinaryOp, ApplyBinaryOp, ApplyUnaryOp, CallFunction, CurrentScope, Evaluate, GetMember, GetVariable, IsTruthy, PopScope, PushScope, ReturnValue, SetValue
+ - return Evaluate()
+ Calls: Evaluate, Evaluate
+ - return Evaluate()
+ Calls: Evaluate, Evaluate
+ - return Evaluate()
+ Calls: Evaluate, Evaluate
+ - return ApplyBinaryOp()
+ Calls: None
+ - return ApplyUnaryOp()
+ Calls: None
+ - return GetMember()
+ Calls: Evaluate, Evaluate
+ - return CallFunction()
+ Calls: Evaluate, Evaluate
+ - return GetVariable()
+ Calls: Evaluate, Evaluate
+ - void PushScope()
+ Calls: None
+ - void PopScope()
+ Calls: None
+ - object> CurrentScope()
+ Calls: None
+ - object GetVariable(string name, string name)
+ Calls: None
+ - void SetValue(ASTNode target, ASTNode target, object value)
+ Calls: CurrentScope, CurrentScope, Evaluate, SetMember
+ - object GetMember(object objValue, object objValue, object propValue)
+ Calls: None
+ - void SetMember(object objValue, object objValue, object propValue, object value)
+ Calls: None
+ - object CallFunction(object callee, object callee, List<object> args)
+ Calls: CurrentScope, CurrentScope, Evaluate, PopScope, PushScope
+ - object ApplyBinaryOp(string op, string op, object left, object right)
+ Calls: IsTruthy, IsTruthy
+ - object ApplyUnaryOp(string op, string op, object arg)
+ Calls: IsTruthy, IsTruthy
+ - bool IsTruthy(object value, object value)
+ Calls: None
+ - void RegisterFunction(string name, string name, FunctionDeclarationNode func)
+ Calls: None
+ - void RegisterGlobal(string name, string name, object value)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ReturnValue (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ReturnValue(object value, object value)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ReturnException (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: Exception
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ File: JSEvaluator.cs
+ class: ASTNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ File: JSEvaluator.cs
+ class: ProgramNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ProgramNode(List<ASTNode> statements, List<ASTNode> statements)
+ Calls: None
+ File: JSEvaluator.cs
+ class: BlockStatementNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor BlockStatementNode(List<ASTNode> body, List<ASTNode> body)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ExpressionStatementNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ExpressionStatementNode(ASTNode expression, ASTNode expression)
+ Calls: None
+ File: JSEvaluator.cs
+ class: VariableDeclarationNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor VariableDeclarationNode(string kind, string kind, string name, ASTNode initializer)
+ Calls: None
+ File: JSEvaluator.cs
+ class: FunctionDeclarationNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor FunctionDeclarationNode(string name, string name, List<string> paramsList, ASTNode body)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ArrowExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ArrowExpressionNode(List<ASTNode> paramsList, List<ASTNode> paramsList, ASTNode body)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ReturnStatementNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ReturnStatementNode(ASTNode argument, ASTNode argument)
+ Calls: None
+ File: JSEvaluator.cs
+ class: IfStatementNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor IfStatementNode(ASTNode test, ASTNode test, ASTNode consequent, ASTNode alternate)
+ Calls: None
+ File: JSEvaluator.cs
+ class: WhileStatementNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor WhileStatementNode(ASTNode test, ASTNode test, ASTNode body)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ForStatementNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ForStatementNode(ASTNode init, ASTNode init, ASTNode test, ASTNode update, ASTNode body)
+ Calls: None
+ File: JSEvaluator.cs
+ class: BinaryExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor BinaryExpressionNode(ASTNode left, ASTNode left, string op, ASTNode right)
+ Calls: None
+ File: JSEvaluator.cs
+ class: UnaryExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor UnaryExpressionNode(string op, string op, ASTNode argument)
+ Calls: None
+ File: JSEvaluator.cs
+ class: AssignmentExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor AssignmentExpressionNode(ASTNode left, ASTNode left, ASTNode right)
+ Calls: None
+ File: JSEvaluator.cs
+ class: UpdateExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor UpdateExpressionNode(string op, string op, ASTNode argument, bool prefix)
+ Calls: None
+ File: JSEvaluator.cs
+ class: MemberExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor MemberExpressionNode(ASTNode obj, ASTNode obj, ASTNode prop, bool computed)
+ Calls: None
+ File: JSEvaluator.cs
+ class: CallExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor CallExpressionNode(ASTNode callee, ASTNode callee, List<ASTNode> arguments)
+ Calls: None
+ File: JSEvaluator.cs
+ class: IdentifierNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor IdentifierNode(string name, string name)
+ Calls: None
+ File: JSEvaluator.cs
+ class: LiteralNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor LiteralNode(object value, object value)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ArrayExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ArrayExpressionNode(List<ASTNode> elements, List<ASTNode> elements)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ObjectExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ObjectExpressionNode(ASTNode> properties, ASTNode> properties)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ConditionalExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ - constructor ConditionalExpressionNode(ASTNode test, ASTNode test, ASTNode consequent, ASTNode alternate)
+ Calls: None
+ File: JSEvaluator.cs
+ class: ThisExpressionNode (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: ASTNode
+    
+ Dependencies: System, System, System.Collections.Generic, System.Reflection
+ Methods:
+ File: JSParser.cs
+ enum: TokenType (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Text
+ Methods:
+ File: JSParser.cs
+ class: Token (Namespace: SiegeEngine.UI.JSParser)
+ Inherits: None
+ Dependencies: System, System, System.Collections.Generic, System.Text
+ Methods:
+ - constructor Token(TokenType type, TokenType type, object value)
+ Calls: None
+

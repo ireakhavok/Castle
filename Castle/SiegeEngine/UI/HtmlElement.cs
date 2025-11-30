@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -141,7 +140,7 @@ namespace SiegeEngine.UI
             float maxW = ParseSize(effectiveStyle.MaxWidthStr, refWidth, viewportWidth, viewportHeight);
             float maxH = ParseSize(effectiveStyle.MaxHeightStr, refHeight, viewportWidth, viewportHeight);
             Vector4 pad = ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight);
-            Vector4 margin = ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight, isMargin: true);
+            Vector4 margin = ParseMargins(effectiveStyle, refWidth, viewportWidth, viewportHeight);
             Vector4 borderW = ParseBorderWidths(effectiveStyle, refWidth, viewportWidth, viewportHeight);
             if (Parent == null)
             {
@@ -194,11 +193,6 @@ namespace SiegeEngine.UI
                 {
                     boxY += refHeight - bottom - boxH;
                 }
-            }
-            else
-            {
-                boxX -= margin.W;
-                boxY -= margin.X;
             }
             ComputedPosition = new Vector2(boxX, boxY);
             ComputedBackgroundX = boxX + borderW.W;
@@ -286,6 +280,13 @@ namespace SiegeEngine.UI
                 totalGrow += grow;
                 string main_str_raw = isRow ? child.Style.WidthStr : child.Style.HeightStr;
                 float mainStr = ParseSize(main_str_raw, availableMain, viewportWidth, viewportHeight);
+                float min_main = ParseSize(isRow ? child.Style.MinWidthStr : child.Style.MinHeightStr, availableMain, viewportWidth, viewportHeight);
+                float max_main = ParseSize(isRow ? child.Style.MaxWidthStr : child.Style.MaxHeightStr, availableMain, viewportWidth, viewportHeight);
+                if (!float.IsNaN(mainStr))
+                {
+                    if (!float.IsNaN(min_main)) mainStr = Math.Max(mainStr, min_main);
+                    if (!float.IsNaN(max_main)) mainStr = Math.Min(mainStr, max_main);
+                }
                 Vector4 pad = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
                 Vector4 border_w = ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
                 float pad_start = isRow ? pad.W : pad.X;
@@ -350,7 +351,7 @@ namespace SiegeEngine.UI
             for (int i = 0; i < normalChildren.Count; i++)
             {
                 HtmlElement child = normalChildren[i];
-                Vector4 parsedMargin = ParsePaddings(child.Style, availableMain, viewportWidth, viewportHeight, isMargin: true);
+                Vector4 parsedMargin = ParseMargins(child.Style, availableMain, viewportWidth, viewportHeight);
                 float start = isRow ? parsedMargin.W : parsedMargin.X;
                 float end = isRow ? parsedMargin.Y : parsedMargin.Z;
                 float c_start = float.IsNaN(start) ? 0 : start;
@@ -370,7 +371,7 @@ namespace SiegeEngine.UI
             for (int i = 0; i < normalChildren.Count; i++)
             {
                 HtmlElement child = normalChildren[i];
-                Vector4 parsedMargin = ParsePaddings(child.Style, availableMain, viewportWidth, viewportHeight, isMargin: true);
+                Vector4 parsedMargin = ParseMargins(child.Style, availableMain, viewportWidth, viewportHeight);
                 float start = isRow ? parsedMargin.W : parsedMargin.X;
                 float end = isRow ? parsedMargin.Y : parsedMargin.Z;
                 if (float.IsNaN(start)) childMarginStart[i] = auto_size;
@@ -459,7 +460,7 @@ namespace SiegeEngine.UI
                 if (!float.IsNaN(max_cross)) child_cross = Math.Min(child_cross, max_cross);
                 float min_cross = ParseSize(isRow ? child.Style.MinHeightStr : child.Style.MinWidthStr, availableCross, viewportWidth, viewportHeight);
                 if (!float.IsNaN(min_cross)) child_cross = Math.Max(child_cross, min_cross);
-                Vector4 parsedMarginCross = ParsePaddings(child.Style, availableCross, viewportWidth, viewportHeight, isMargin: true);
+                Vector4 parsedMarginCross = ParseMargins(child.Style, availableCross, viewportWidth, viewportHeight);
                 float m_cross_start = isRow ? parsedMarginCross.X : parsedMarginCross.W;
                 float m_cross_end = isRow ? parsedMarginCross.Z : parsedMarginCross.Y;
                 float c_m_cross_start = float.IsNaN(m_cross_start) ? 0 : m_cross_start;
@@ -563,6 +564,8 @@ namespace SiegeEngine.UI
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
             List<HtmlElement> positionedChildren = visibleChildren.Where(c => c.Style.Position == "absolute" || c.Style.Position == "fixed").ToList();
+            string textAlign = Style.TextAlign ?? "left";
+            List<HtmlElement> currentLine = new List<HtmlElement>();
             for (int i = 0; i < normalChildren.Count; i++)
             {
                 HtmlElement child = normalChildren[i];
@@ -570,7 +573,7 @@ namespace SiegeEngine.UI
                 bool isInline = childDisplay.StartsWith("inline");
                 float childW = ParseSize(child.Style.WidthStr, ComputedContentWidth, viewportWidth, viewportHeight);
                 float childH = ParseSize(child.Style.HeightStr, ComputedContentHeight, viewportWidth, viewportHeight);
-                Vector4 parsedMargin = ParsePaddings(child.Style, ComputedContentHeight, viewportWidth, viewportHeight, isMargin: true);
+                Vector4 parsedMargin = ParseMargins(child.Style, ComputedContentHeight, viewportWidth, viewportHeight);
                 float m_top = parsedMargin.X;
                 float m_bottom = parsedMargin.Z;
                 float m_left = parsedMargin.W;
@@ -581,26 +584,47 @@ namespace SiegeEngine.UI
                 float c_m_right = float.IsNaN(m_right) ? 0 : m_right;
                 if (isInline)
                 {
-                    if (float.IsNaN(childW)) childW = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X;
-                    if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
                     float availW = ComputedContentWidth - currentX - c_m_left - c_m_right;
+                    if (float.IsNaN(childW))
+                    {
+                        if (child is TextElement && child.Style.WhiteSpace == "normal")
+                        {
+                            childW = availW;
+                        }
+                        else
+                        {
+                            childW = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X;
+                        }
+                    }
+                    if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
                     float effW = childW + c_m_left + c_m_right;
                     if (currentX > 0 && effW > availW)
                     {
+                        AlignCurrentLine(currentLine, textAlign, ComputedContentWidth);
+                        currentLine.Clear();
                         currentY += maxLineH;
                         currentX = 0;
                         maxLineH = 0;
                     }
                     float child_pos_x = currentX + c_m_left;
                     float child_pos_y = currentY + c_m_top;
-                    child.ComputeLayout(ComputedContentX + child_pos_x, ComputedContentY + child_pos_y, childW, childH, viewportWidth, viewportHeight, textRenderer, fs);
+                    float forcedW = float.NaN;
+                    float forcedH = float.NaN;
+                    if (child is TextElement && child.Style.WhiteSpace == "normal")
+                    {
+                        forcedW = availW;
+                    }
+                    child.ComputeLayout(ComputedContentX + child_pos_x, ComputedContentY + child_pos_y, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs, forcedW, forcedH);
+                    currentLine.Add(child);
                     currentX += child.ComputedWidth + c_m_left + c_m_right;
                     maxLineH = Math.Max(maxLineH, child.ComputedHeight + c_m_top + c_m_bottom);
                 }
                 else
                 {
-                    if (currentX > 0)
+                    if (currentLine.Count > 0)
                     {
+                        AlignCurrentLine(currentLine, textAlign, ComputedContentWidth);
+                        currentLine.Clear();
                         currentY += maxLineH;
                         currentX = 0;
                         maxLineH = 0;
@@ -633,6 +657,10 @@ namespace SiegeEngine.UI
                     last_bottom = c_m_bottom;
                 }
             }
+            if (currentLine.Count > 0)
+            {
+                AlignCurrentLine(currentLine, textAlign, ComputedContentWidth);
+            }
             if (currentX > 0)
             {
                 currentY += maxLineH;
@@ -640,6 +668,33 @@ namespace SiegeEngine.UI
             foreach (var child in positionedChildren)
             {
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
+            }
+        }
+        private void AlignCurrentLine(List<HtmlElement> line, string align, float containerW)
+        {
+            if (line.Count == 0) return;
+            float lineW = 0;
+            foreach (var child in line)
+            {
+                lineW += child.ComputedWidth + child.Style.Margin.W + child.Style.Margin.Y;
+            }
+            float offset = 0;
+            if (align == "center")
+            {
+                offset = (containerW - lineW) / 2;
+            }
+            else if (align == "right")
+            {
+                offset = containerW - lineW;
+            }
+            if (offset > 0)
+            {
+                foreach (var child in line)
+                {
+                    child.ComputedPosition = new Vector2(child.ComputedPosition.X + offset, child.ComputedPosition.Y);
+                    child.ComputedBackgroundX += offset;
+                    child.ComputedContentX += offset;
+                }
             }
         }
         public virtual Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
@@ -678,7 +733,7 @@ namespace SiegeEngine.UI
                     {
                         HtmlElement child = normalChildren[i];
                         Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                        Vector4 parsedMargin = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight, isMargin: true);
+                        Vector4 parsedMargin = ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
                         float m_start = isRow ? parsedMargin.W : parsedMargin.X;
                         float m_end = isRow ? parsedMargin.Y : parsedMargin.Z;
                         float m_cross_start = isRow ? parsedMargin.X : parsedMargin.W;
@@ -710,7 +765,7 @@ namespace SiegeEngine.UI
                         string childDisplay = child.GetEffectiveDisplay();
                         bool isInline = childDisplay.StartsWith("inline");
                         Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                        Vector4 parsedMargin = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight, isMargin: true);
+                        Vector4 parsedMargin = ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
                         float m_top = parsedMargin.X;
                         float m_bottom = parsedMargin.Z;
                         float m_left = parsedMargin.W;
@@ -963,25 +1018,28 @@ namespace SiegeEngine.UI
                 return float.NaN;
             }
         }
-        protected Vector4 ParsePaddings(CssStyle style, float parent, float vw, float vh, bool isMargin = false)
+        protected Vector4 ParsePaddings(CssStyle style, float parent, float vw, float vh)
         {
-            string allStr = isMargin ? style.MarginStr : style.PaddingStr;
+            string allStr = style.PaddingStr;
             Vector4 values = string.IsNullOrEmpty(allStr) ? Vector4.Zero : ParseSides(allStr, parent, vw, vh);
-            string topStr = isMargin ? null : style.PaddingTopStr; // margin no individual in this
-            string rightStr = isMargin ? null : style.PaddingRightStr;
-            string bottomStr = isMargin ? null : style.PaddingBottomStr;
-            string leftStr = isMargin ? null : style.PaddingLeftStr;
+            string topStr = style.PaddingTopStr;
+            string rightStr = style.PaddingRightStr;
+            string bottomStr = style.PaddingBottomStr;
+            string leftStr = style.PaddingLeftStr;
             if (!string.IsNullOrEmpty(topStr)) values.X = ParseSize(topStr, parent, vw, vh);
             if (!string.IsNullOrEmpty(rightStr)) values.Y = ParseSize(rightStr, parent, vw, vh);
             if (!string.IsNullOrEmpty(bottomStr)) values.Z = ParseSize(bottomStr, parent, vw, vh);
             if (!string.IsNullOrEmpty(leftStr)) values.W = ParseSize(leftStr, parent, vw, vh);
-            if (!isMargin)
-            {
-                if (float.IsNaN(values.X)) values.X = 0;
-                if (float.IsNaN(values.Y)) values.Y = 0;
-                if (float.IsNaN(values.Z)) values.Z = 0;
-                if (float.IsNaN(values.W)) values.W = 0;
-            }
+            if (float.IsNaN(values.X)) values.X = 0;
+            if (float.IsNaN(values.Y)) values.Y = 0;
+            if (float.IsNaN(values.Z)) values.Z = 0;
+            if (float.IsNaN(values.W)) values.W = 0;
+            return values;
+        }
+        protected Vector4 ParseMargins(CssStyle style, float parent, float vw, float vh)
+        {
+            string allStr = style.MarginStr;
+            Vector4 values = string.IsNullOrEmpty(allStr) ? Vector4.Zero : ParseSides(allStr, parent, vw, vh);
             return values;
         }
         protected Vector4 ParseBorderWidths(CssStyle style, float parent, float vw, float vh)
