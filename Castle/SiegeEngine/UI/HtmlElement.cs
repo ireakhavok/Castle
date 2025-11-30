@@ -338,10 +338,10 @@ namespace SiegeEngine.UI
             for (int i = 0; i < normalChildren.Count; i++)
             {
                 HtmlElement child = normalChildren[i];
-                float max_main = ParseSize(isRow ? child.Style.MaxWidthStr : child.Style.MaxHeightStr, availableMain, viewportWidth, viewportHeight);
-                if (!float.IsNaN(max_main)) childBaseMain[i] = Math.Min(childBaseMain[i], max_main);
                 float min_main = ParseSize(isRow ? child.Style.MinWidthStr : child.Style.MinHeightStr, availableMain, viewportWidth, viewportHeight);
+                float max_main = ParseSize(isRow ? child.Style.MaxWidthStr : child.Style.MaxHeightStr, availableMain, viewportWidth, viewportHeight);
                 if (!float.IsNaN(min_main)) childBaseMain[i] = Math.Max(childBaseMain[i], min_main);
+                if (!float.IsNaN(max_main)) childBaseMain[i] = Math.Min(childBaseMain[i], max_main);
             }
             float sum_border_boxes = 0;
             float sum_fixed_margins = 0;
@@ -564,7 +564,6 @@ namespace SiegeEngine.UI
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
             List<HtmlElement> positionedChildren = visibleChildren.Where(c => c.Style.Position == "absolute" || c.Style.Position == "fixed").ToList();
-            string textAlign = Style.TextAlign ?? "left";
             List<HtmlElement> currentLine = new List<HtmlElement>();
             for (int i = 0; i < normalChildren.Count; i++)
             {
@@ -584,47 +583,26 @@ namespace SiegeEngine.UI
                 float c_m_right = float.IsNaN(m_right) ? 0 : m_right;
                 if (isInline)
                 {
-                    float availW = ComputedContentWidth - currentX - c_m_left - c_m_right;
-                    if (float.IsNaN(childW))
-                    {
-                        if (child is TextElement && child.Style.WhiteSpace == "normal")
-                        {
-                            childW = availW;
-                        }
-                        else
-                        {
-                            childW = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X;
-                        }
-                    }
+                    if (float.IsNaN(childW)) childW = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X;
                     if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
+                    float availW = ComputedContentWidth - currentX - c_m_left - c_m_right;
                     float effW = childW + c_m_left + c_m_right;
                     if (currentX > 0 && effW > availW)
                     {
-                        AlignCurrentLine(currentLine, textAlign, ComputedContentWidth);
-                        currentLine.Clear();
                         currentY += maxLineH;
                         currentX = 0;
                         maxLineH = 0;
                     }
                     float child_pos_x = currentX + c_m_left;
                     float child_pos_y = currentY + c_m_top;
-                    float forcedW = float.NaN;
-                    float forcedH = float.NaN;
-                    if (child is TextElement && child.Style.WhiteSpace == "normal")
-                    {
-                        forcedW = availW;
-                    }
-                    child.ComputeLayout(ComputedContentX + child_pos_x, ComputedContentY + child_pos_y, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs, forcedW, forcedH);
-                    currentLine.Add(child);
+                    child.ComputeLayout(ComputedContentX + child_pos_x, ComputedContentY + child_pos_y, childW, childH, viewportWidth, viewportHeight, textRenderer, fs);
                     currentX += child.ComputedWidth + c_m_left + c_m_right;
                     maxLineH = Math.Max(maxLineH, child.ComputedHeight + c_m_top + c_m_bottom);
                 }
                 else
                 {
-                    if (currentLine.Count > 0)
+                    if (currentX > 0)
                     {
-                        AlignCurrentLine(currentLine, textAlign, ComputedContentWidth);
-                        currentLine.Clear();
                         currentY += maxLineH;
                         currentX = 0;
                         maxLineH = 0;
@@ -657,10 +635,6 @@ namespace SiegeEngine.UI
                     last_bottom = c_m_bottom;
                 }
             }
-            if (currentLine.Count > 0)
-            {
-                AlignCurrentLine(currentLine, textAlign, ComputedContentWidth);
-            }
             if (currentX > 0)
             {
                 currentY += maxLineH;
@@ -668,33 +642,6 @@ namespace SiegeEngine.UI
             foreach (var child in positionedChildren)
             {
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
-            }
-        }
-        private void AlignCurrentLine(List<HtmlElement> line, string align, float containerW)
-        {
-            if (line.Count == 0) return;
-            float lineW = 0;
-            foreach (var child in line)
-            {
-                lineW += child.ComputedWidth + child.Style.Margin.W + child.Style.Margin.Y;
-            }
-            float offset = 0;
-            if (align == "center")
-            {
-                offset = (containerW - lineW) / 2;
-            }
-            else if (align == "right")
-            {
-                offset = containerW - lineW;
-            }
-            if (offset > 0)
-            {
-                foreach (var child in line)
-                {
-                    child.ComputedPosition = new Vector2(child.ComputedPosition.X + offset, child.ComputedPosition.Y);
-                    child.ComputedBackgroundX += offset;
-                    child.ComputedContentX += offset;
-                }
             }
         }
         public virtual Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
@@ -799,13 +746,13 @@ namespace SiegeEngine.UI
                             float childSpecW = float.NaN;
                             if (!string.IsNullOrEmpty(child.Style.WidthStr) && !child.Style.WidthStr.Trim().EndsWith("%"))
                             {
-                                childSpecW = child.ParseSize(child.Style.WidthStr, 0, viewportWidth, viewportHeight);
+                                childSpecW = ParseSize(child.Style.WidthStr, 0, viewportWidth, viewportHeight);
                             }
                             if (!float.IsNaN(childSpecW))
                             {
                                 string childBox = child.Style.BoxSizing;
-                                Vector4 childPad = child.ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
-                                Vector4 childBorder = child.ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
+                                Vector4 childPad = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
+                                Vector4 childBorder = ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
                                 float specboxW;
                                 if (childBox == "border-box")
                                 {
@@ -1063,8 +1010,7 @@ namespace SiegeEngine.UI
             {
                 if (index < parts.Length)
                 {
-                    float val = ParseSize(parts[index], parent, vw, vh);
-                    return float.IsNaN(val) ? defaultVal : val;
+                    return ParseSize(parts[index], parent, vw, vh);
                 }
                 return defaultVal;
             }

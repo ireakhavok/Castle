@@ -16,7 +16,7 @@ namespace SiegeEngine.Rendering
         private readonly Dictionary<char, uint> _charTextures;
         private readonly IRenderContext _renderContext;
         private readonly string _fontName;
-        private readonly float _baseSize = 128.0f;
+        private readonly float _baseSize = 100.0f;
         public float BaseSize => _baseSize;
         public float LineHeight { get; private set; }
 
