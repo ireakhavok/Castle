@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -474,20 +475,20 @@ namespace SiegeEngine.UI
                 if (float.IsNaN(m_cross_end)) c_m_cross_end = auto_cross_size;
                 bool has_auto_cross = num_auto_cross > 0;
                 float child_cross_for_align = child_cross + c_m_cross_start + c_m_cross_end;
-                float offset_margin_box = 0;
+                float offset = 0;
                 if (has_auto_cross)
                 {
-                    offset_margin_box = 0;
+                    offset = 0;
                 }
                 else
                 {
                     if (alignItems == "center")
                     {
-                        offset_margin_box = (availableCross - child_cross_for_align) / 2;
+                        offset = (availableCross - child_cross_for_align) / 2;
                     }
                     else if (alignItems == "flex-end")
                     {
-                        offset_margin_box = availableCross - child_cross_for_align;
+                        offset = availableCross - child_cross_for_align;
                     }
                     else if (alignItems == "stretch")
                     {
@@ -495,15 +496,15 @@ namespace SiegeEngine.UI
                         {
                             child_cross = availableCross - c_m_cross_start - c_m_cross_end;
                         }
-                        offset_margin_box = 0;
+                        offset = 0;
                     }
                     else
                     {
-                        offset_margin_box = 0;
+                        offset = 0;
                     }
                 }
-                if (float.IsNaN(offset_margin_box)) offset_margin_box = 0;
-                float child_pos_cross = offset_margin_box + c_m_cross_start;
+                if (float.IsNaN(offset)) offset = 0;
+                float child_pos_cross = offset + c_m_cross_start;
                 float child_pos_x = ComputedContentX + (isRow ? item_start : child_pos_cross);
                 float child_pos_y = ComputedContentY + (isRow ? child_pos_cross : item_start);
                 float child_w = isRow ? child_main : child_cross;
@@ -934,6 +935,24 @@ namespace SiegeEngine.UI
                 _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, viewportWidth, viewportHeight);
                 renderContext.Disable(renderContext.Enums.ScissorTest);
             }
+            if (Style.Overflow == "hidden")
+            {
+                renderContext.Enable(renderContext.Enums.ScissorTest);
+                int scissorY = (int)(viewportHeight - (ComputedContentY + ComputedContentHeight));
+                renderContext.Scissor((int)ComputedContentX, scissorY, (uint)ComputedContentWidth, (uint)ComputedContentHeight);
+            }
+            foreach (var child in Children)
+            {
+                if (child.Tag.ToLower() == "option" && this is SelectElement sel && sel.IsOpen)
+                {
+                    continue; // Skip rendering options if parent select is open
+                }
+                child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, localMatrix);
+            }
+            if (Style.Overflow == "hidden")
+            {
+                renderContext.Disable(renderContext.Enums.ScissorTest);
+            }
             bool drawSideBorders = br == Vector4.Zero || !hasUniformBorder;
             if (drawSideBorders)
             {
@@ -957,24 +976,6 @@ namespace SiegeEngine.UI
                     float[] ndc = GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
                     quadRenderer.DrawNdcQuad(ndc, borderRightC);
                 }
-            }
-            if (Style.Overflow == "hidden")
-            {
-                renderContext.Enable(renderContext.Enums.ScissorTest);
-                int scissorY = (int)(viewportHeight - (ComputedContentY + ComputedContentHeight));
-                renderContext.Scissor((int)ComputedContentX, scissorY, (uint)ComputedContentWidth, (uint)ComputedContentHeight);
-            }
-            foreach (var child in Children)
-            {
-                if (child.Tag.ToLower() == "option" && this is SelectElement sel && sel.IsOpen)
-                {
-                    continue; // Skip rendering options if parent select is open
-                }
-                child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, localMatrix);
-            }
-            if (Style.Overflow == "hidden")
-            {
-                renderContext.Disable(renderContext.Enums.ScissorTest);
             }
         }
         public float ParseSize(string s, float parent, float vw, float vh)
@@ -1080,11 +1081,13 @@ namespace SiegeEngine.UI
             float mx = 2 * mousePos.X / viewportWidth - 1;
             float my = 1 - 2 * mousePos.Y / viewportHeight;
             if (mx < minX || mx > maxX || my < minY || my > maxY) return false;
-            for (int ci = Children.Count - 1; ci >= 0; ci--)
+            for (int i = Children.Count - 1; i >= 0; i--)
             {
-                if (Children[ci].HandleClick(mousePos, viewportWidth, viewportHeight)) return true;
+                if (Children[i].HandleClick(mousePos, viewportWidth, viewportHeight)) return true;
             }
-            return true;
+            string classes = Attributes.GetValueOrDefault("class", "");
+            bool isClickable = classes.Contains("button") || classes.Contains("toggle") || Tag == "select" || Tag == "label" || Tag == "a" || Attributes.ContainsKey("data-hook") || Attributes.ContainsKey("onclick") || classes.Contains("select-option") || Tag == "option" || Attributes.ContainsKey("onchange") || Attributes.ContainsKey("onmouseenter") || Attributes.ContainsKey("onmouseleave") || Attributes.ContainsKey("onmouseover") || Attributes.ContainsKey("onmouseout") || Attributes.ContainsKey("onmousedown") || Attributes.ContainsKey("onmouseup") || Attributes.ContainsKey("onfocus") || Attributes.ContainsKey("onblur");
+            return isClickable;
         }
         public HtmlElement FindElementById(string id)
         {

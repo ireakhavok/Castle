@@ -15,7 +15,6 @@ namespace SiegeEngine.Managers
         private readonly IControlContext _controlContext;
         private readonly IntPtr _window;
         private readonly EventBus _eventBus;
-
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -23,19 +22,21 @@ namespace SiegeEngine.Managers
             _window = window;
             _eventBus = eventBus;
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
+            _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
         }
-
         private void OnOpenPanel(OpenPanelEvent e)
         {
             AddPanel(e.Panel);
         }
-
+        private void OnClosePanel(ClosePanelEvent e)
+        {
+            RemovePanel(e.Panel);
+        }
         public void AddPanel(IPanel panel)
         {
             panel.Init();
             _panels.Add(panel);
         }
-
         public void Update(float deltaTime)
         {
             for (int i = _panels.Count - 1; i >= 0; i--)
@@ -43,7 +44,6 @@ namespace SiegeEngine.Managers
                 _panels[i].Update(deltaTime);
             }
         }
-
         public void Render()
         {
             for (int i = 0; i < _panels.Count; i++)
@@ -51,7 +51,6 @@ namespace SiegeEngine.Managers
                 _panels[i].Render();
             }
         }
-
         public void RemovePanel(IPanel panel)
         {
             panel.Dispose();

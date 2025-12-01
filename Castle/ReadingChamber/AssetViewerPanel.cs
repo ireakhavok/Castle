@@ -43,22 +43,18 @@ namespace ReadingChamber
         private bool _firstMouse = true;
         private bool _isPanning = false;
         private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx");
-
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             // Initialize shader first
-
             var modelManager = new ModelManager(renderContext: _renderContext);
             modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
             string key = Path.GetFileNameWithoutExtension(_path).ToLower();
@@ -160,7 +156,7 @@ namespace ReadingChamber
             else if (hook == "LoadFBX")
             {
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
-                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir);
+                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
                 _eventBus.Publish(new OpenPanelEvent(fileSelector));
             }
         }
