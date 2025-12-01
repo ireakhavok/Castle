@@ -11,6 +11,7 @@ namespace SiegeEngine.UI
     {
         private string _html;
         private int _index;
+
         public HtmlElement Parse(string html)
         {
             _html = html;
@@ -19,6 +20,7 @@ namespace SiegeEngine.UI
             ParseChildren(root);
             return root.Children.Count == 1 ? root.Children[0] : root;
         }
+
         private void ParseChildren(HtmlElement parent)
         {
             while (_index < _html.Length)
@@ -52,29 +54,50 @@ namespace SiegeEngine.UI
                         string tag = ReadUntil(c => char.IsWhiteSpace(c) || c == '>');
                         string lowerTag = tag.ToLower();
                         HtmlElement elem;
-                        if (lowerTag == "button")
+                        switch (lowerTag)
                         {
-                            elem = new ButtonElement();
-                        }
-                        else if (lowerTag == "div")
-                        {
-                            elem = new DivElement();
-                        }
-                        else if (lowerTag == "select")
-                        {
-                            elem = new SelectElement();
-                        }
-                        else if (lowerTag == "input")
-                        {
-                            elem = new InputElement();
-                        }
-                        else if (lowerTag == "option")
-                        {
-                            elem = new OptionElement();
-                        }
-                        else
-                        {
-                            elem = new HtmlElement { Tag = tag };
+                            case "button":
+                                elem = new ButtonElement();
+                                break;
+                            case "div":
+                                elem = new DivElement();
+                                break;
+                            case "select":
+                                elem = new SelectElement();
+                                break;
+                            case "input":
+                                elem = new InputElement();
+                                break;
+                            case "option":
+                                elem = new OptionElement();
+                                break;
+                            case "table":
+                                elem = new TableElement();
+                                break;
+                            case "tr":
+                                elem = new TrElement();
+                                break;
+                            case "th":
+                                elem = new ThElement();
+                                break;
+                            case "td":
+                                elem = new TdElement();
+                                break;
+                            case "ul":
+                                elem = new UlElement();
+                                break;
+                            case "ol":
+                                elem = new OlElement();
+                                break;
+                            case "li":
+                                elem = new LiElement();
+                                break;
+                            case "nav":
+                                elem = new NavElement();
+                                break;
+                            default:
+                                elem = new HtmlElement { Tag = tag };
+                                break;
                         }
                         elem.Parent = parent;
                         // Parse attributes
@@ -178,6 +201,7 @@ namespace SiegeEngine.UI
                 }
             }
         }
+
         private void SkipWhitespace()
         {
             while (_index < _html.Length && char.IsWhiteSpace(_html[_index]))
@@ -185,6 +209,7 @@ namespace SiegeEngine.UI
                 _index++;
             }
         }
+
         private string ReadUntil(Func<char, bool> condition)
         {
             string result = "";

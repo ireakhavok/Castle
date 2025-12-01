@@ -1,6 +1,4 @@
 <DOCUMENT filename="FileSelectorTemplate.html">
-    <!-- Folder: ReadingChamber -->
-    <!-- File: FileSelectorTemplate.html -->
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -59,101 +57,88 @@
                     font-size: 14px;
                 }
 
-            .file-list {
+            .file-container {
                 flex-grow: 1;
                 overflow-y: auto;
                 padding: 10px;
-                display: flex;
-                flex-direction: column;
-                gap: 5px;
             }
 
-                .file-list.grid {
-                    flex-direction: row;
-                    flex-wrap: wrap;
-                    justify-content: flex-start;
-                }
-
-            .item-button {
-                background-color: rgba(51, 51, 51, 0.8);
-                color: #ffffff;
-                border: 1px solid rgba(128, 128, 128, 1);
-                border-radius: 5px;
-                padding: 8px;
-                cursor: pointer;
-                transition: background-color 0.2s;
-                display: flex;
-                align-items: center;
-                gap: 5px;
+            .file-table {
+                width: 100%;
+                border-collapse: collapse;
                 font-size: 14px;
             }
 
-            .file-list.list .item-button {
-                width: auto;
-                max-width: 100%;
+                .file-table th {
+                    background-color: #1e1e1e;
+                    padding: 8px;
+                    text-align: left;
+                    border-bottom: 1px solid #333333;
+                }
+
+                .file-table td {
+                    padding: 8px;
+                    border-bottom: 1px solid #333333;
+                }
+
+                .file-table tr:hover {
+                    background-color: rgba(77, 77, 77, 0.8);
+                }
+
+                .file-table tr:active {
+                    background-color: rgba(100, 100, 100, 0.8);
+                }
+
+                .file-table .icon {
+                    width: 30px;
+                    text-align: center;
+                }
+
+                .file-table .name {
+                    flex: 1;
+                }
+
+                .file-table .size, .file-table .date {
+                    width: 120px;
+                    text-align: right;
+                }
+
+            .file-grid {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
                 justify-content: flex-start;
             }
 
-            .file-list.list .name {
-                flex: 1;
-            }
-
-            .file-list.list .size, .file-list.list .date {
-                width: 120px;
-                text-align: right;
-                margin-left: 10px;
-            }
-
-            .file-list.grid .item-button {
+            .grid-item {
                 width: 120px;
                 height: 120px;
+                background-color: rgba(51, 51, 51, 0.8);
+                border: 1px solid rgba(128, 128, 128, 1);
+                border-radius: 5px;
+                display: flex;
                 flex-direction: column;
+                align-items: center;
                 justify-content: center;
+                cursor: pointer;
+                transition: background-color 0.2s;
                 text-align: center;
                 word-break: break-all;
+                padding: 10px;
             }
 
-            .item-button:hover {
-                background-color: rgba(77, 77, 77, 0.8);
-            }
+                .grid-item:hover {
+                    background-color: rgba(77, 77, 77, 0.8);
+                }
 
-            .item-button:active {
-                background-color: rgba(100, 100, 100, 0.8);
-            }
+                .grid-item:active {
+                    background-color: rgba(100, 100, 100, 0.8);
+                }
 
-            .dir::before {
-                content: '📁';
-                font-size: 18px;
-            }
-
-            .file::before {
-                content: '📄';
-                font-size: 18px;
-            }
-
-            .file-fbx::before {
-                content: '🗿';
-                font-size: 18px;
-            }
-
-            .file-png::before, .file-jpg::before, .file-jpeg::before, .file-gif::before {
-                content: '🖼️';
-                font-size: 18px;
-            }
-
-            .file-txt::before, .file-md::before {
-                content: '📝';
-                font-size: 18px;
-            }
-
-            .file-json::before, .file-xml::before {
-                content: '⚙️';
-                font-size: 18px;
-            }
-
-            .file-list.grid .dir::before, .file-list.grid .file::before, .file-list.grid .file-fbx::before, .file-list.grid .file-png::before {
-                font-size: 48px;
-            }
+                .grid-item .icon {
+                    font-size: 48px;
+                    margin-bottom: 10px;
+                }
 
             h2 {
                 margin-bottom: 20px;
@@ -178,10 +163,34 @@
                 <button data-hook="sort-date">Sort by Date</button>
             </div>
         </div>
-        <div class="file-list" id="file-list">
+        <div class="file-container">
             <h2>Files in <!--CURRENT_DIR--></h2>
-            <!--DYNAMIC_ITEMS-->
+            <table class="file-table" id="file-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th class="icon"></th>
+                        <th class="name">Name</th>
+                        <th class="size">Size</th>
+                        <th class="date">Modified</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!--DYNAMIC_ITEMS-->
+                </tbody>
+            </table>
+            <div class="file-grid" id="file-grid" style="display: none;">
+                <!--DYNAMIC_GRID_ITEMS-->
+            </div>
         </div>
+        <script>
+        // Script to toggle views
+        function toggleView(view) {
+            document.getElementById('file-table').style.display = view === 'list' ? 'table' : 'none';
+            document.getElementById('file-grid').style.display = view === 'grid' ? 'flex' : 'none';
+        }
+        // Initial view
+        toggleView('list');
+        </script>
     </body>
 </html>
 </DOCUMENT>

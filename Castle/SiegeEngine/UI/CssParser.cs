@@ -82,8 +82,44 @@ option[selected] {
 option:hover {
     background-color: rgba(77, 77, 77, 0.8);
 }
+table {
+    display: table;
+    border-collapse: separate;
+    border-spacing: 2px;
+}
+thead, tbody, tfoot {
+    display: table-row-group;
+}
+tr {
+    display: table-row;
+}
+th, td {
+    display: table-cell;
+    padding: 1px;
+}
+th {
+    font-weight: bold;
+    text-align: center;
+}
+ul, ol {
+    display: block;
+    list-style-type: disc;
+    margin: 1em 0;
+    padding-left: 40px;
+}
+ol {
+    list-style-type: decimal;
+}
+li {
+    display: list-item;
+}
+nav {
+    display: block;
+}
 ";
+
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
+
         public void Apply(string css)
         {
             int i = 0;
@@ -102,6 +138,7 @@ option:hover {
                 }
             }
         }
+
         public void ApplyAll(HtmlElement root)
         {
             ApplyInlineStyles(root);
@@ -125,6 +162,7 @@ option:hover {
                 }
             }
         }
+
         public void ApplyInlineStyles(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -142,6 +180,7 @@ option:hover {
                 }
             }
         }
+
         private void SkipWhitespaceAndComments(string css, ref int i)
         {
             while (i < css.Length)
@@ -164,6 +203,7 @@ option:hover {
                 break;
             }
         }
+
         private string ReadUntil(string css, ref int i, char stop)
         {
             string result = "";
@@ -174,6 +214,7 @@ option:hover {
             }
             return result;
         }
+
         private Dictionary<string, string> ParseProperties(string block)
         {
             Dictionary<string, string> props = new Dictionary<string, string>();
@@ -190,11 +231,13 @@ option:hover {
             }
             return props;
         }
+
         public void ApplyInline(string inline, CssStyle style)
         {
             var props = ParseProperties(inline);
             ApplyProperties(style, props);
         }
+
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props, string pseudo)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -223,6 +266,7 @@ option:hover {
                 }
             }
         }
+
         private bool Matches(HtmlElement elem, string selector)
         {
             if (string.IsNullOrEmpty(selector)) return true;
@@ -260,6 +304,7 @@ option:hover {
                 return true;
             }
         }
+
         private bool SimpleMatches(HtmlElement elem, string simple)
         {
             if (string.IsNullOrEmpty(simple)) return true;
@@ -316,6 +361,7 @@ option:hover {
             }
             return match;
         }
+
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
             if (props.TryGetValue("position", out string pos))
@@ -364,6 +410,8 @@ option:hover {
             }
             if (props.TryGetValue("font-family", out string ff))
                 style.FontFamily = ff.Trim('\'', '"');
+            if (props.TryGetValue("font-weight", out string fw))
+                style.FontWeight = fw;
             if (props.TryGetValue("display", out string disp))
                 style.Display = disp;
             if (props.TryGetValue("flex-direction", out string fd))
@@ -461,6 +509,12 @@ option:hover {
             }
             if (props.TryGetValue("border-radius", out string bradius))
                 style.BorderRadiusStr = bradius;
+            if (props.TryGetValue("border-collapse", out string bcollapse))
+                style.BorderCollapse = bcollapse;
+            if (props.TryGetValue("border-spacing", out string bspacing))
+                style.BorderSpacing = bspacing;
+            if (props.TryGetValue("list-style-type", out string lstype))
+                style.ListStyleType = lstype;
             if (props.TryGetValue("box-sizing", out string boxs))
                 style.BoxSizing = boxs;
             if (props.TryGetValue("transform", out string tr))
@@ -468,7 +522,8 @@ option:hover {
             if (props.TryGetValue("overflow", out string ov))
                 style.Overflow = ov;
         }
-        private Vector4 ParseColor(string color)
+
+        public Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
             color = color.Trim();
@@ -492,6 +547,7 @@ option:hover {
             }
             return ParseSingleColor(color);
         }
+
         private Vector4 ParseSingleColor(string color)
         {
             color = color.Trim().ToLower();

@@ -321,6 +321,20 @@ namespace SiegeEngine.UI.JSParser
                     jsElem.elem.Attributes["value"] = value.ToString();
                     jsElem.overlay.RefreshUI();
                 }
+                else if (prop == "style")
+                {
+                    if (value is Dictionary<object, object> styleDict)
+                    {
+                        foreach (var kv in styleDict)
+                        {
+                            if (kv.Key is string key && kv.Value is string val)
+                            {
+                                jsElem.elem.Style.SetProperty(key, val);
+                            }
+                        }
+                        jsElem.overlay.RefreshUI();
+                    }
+                }
                 return;
             }
             var type = objValue?.GetType();
@@ -400,6 +414,17 @@ namespace SiegeEngine.UI.JSParser
         }
         private object ApplyBinaryOp(string op, object left, object right)
         {
+            if (op == "===")
+            {
+                if (left == null && right == null) return true;
+                if (left == null || right == null) return false;
+                if (left.GetType() != right.GetType()) return false;
+                return left.Equals(right);
+            }
+            if (op == "!==")
+            {
+                return !(bool)ApplyBinaryOp("===", left, right);
+            }
             dynamic dLeft = left ?? 0;
             dynamic dRight = right ?? 0;
             switch (op)

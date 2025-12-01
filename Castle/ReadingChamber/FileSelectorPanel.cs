@@ -106,10 +106,10 @@ namespace ReadingChamber
                 items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Modified).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Modified).ToList();
             }
 
-            // Generate HTML
+            // Generate HTML table rows
             if (items.Count == 0)
             {
-                dynamicItems.Append("<p style=\"text-align: center; color: #888888;\">No files or directories found.</p>");
+                dynamicItems.Append("<tr><td colspan=\"4\" style=\"text-align: center; color: #888888;\">No files or directories found.</td></tr>");
             }
             else
             {
@@ -118,27 +118,21 @@ namespace ReadingChamber
                     string hook = item.IsDir ? $"EnterDir:{item.Path.Replace("\\", "\\\\")}" : $"SelectFile:{item.Path.Replace("\\", "\\\\")}";
                     string cls = item.IsDir ? "dir" : GetFileClass(item.Name);
                     string icon = GetIcon(cls);
-                    if (_viewType == "list")
-                    {
-                        string sizeStr = item.IsDir ? "" : FormatSize(item.Size);
-                        string dateStr = item.Modified.ToString("yyyy-MM-dd HH:mm");
-                        dynamicItems.Append($"<button class='item-button {cls}' data-hook=\"{hook}\"><span class='icon'>{icon}</span><span class='name'>{item.Name}</span><span class='size'>{sizeStr}</span><span class='date'>{dateStr}</span></button>");
-                    }
-                    else
-                    {
-                        dynamicItems.Append($"<button class='item-button {cls}' data-hook=\"{hook}\"><span class='icon'>{icon}</span>{item.Name}</button>");
-                    }
+                    string sizeStr = item.IsDir ? "" : FormatSize(item.Size);
+                    string dateStr = item.Modified.ToString("yyyy-MM-dd HH:mm");
+                    dynamicItems.Append($"<tr class='{cls}' data-hook=\"{hook}\"><td>{icon}</td><td>{item.Name}</td><td>{sizeStr}</td><td>{dateStr}</td></tr>");
                 }
             }
 
             string currentDirEscaped = _currentDir.Replace("\\", "\\\\");
             string modifiedHtml = templateHtml.Replace("<!--CURRENT_DIR-->", currentDirEscaped).Replace("<!--DYNAMIC_ITEMS-->", dynamicItems.ToString());
-            modifiedHtml = modifiedHtml.Replace("class=\"file-list\"", $"class=\"file-list {_viewType}\"");
+            modifiedHtml = modifiedHtml.Replace("class=\"file-table\"", $"class=\"file-table {_viewType}\"");
+
             _uiOverlay.LoadUI(modifiedHtml);
-            var fileListElem = _uiOverlay.FindElementById("file-list");
-            if (fileListElem != null)
+            var fileTableElem = _uiOverlay.FindElementById("file-table");
+            if (fileTableElem != null)
             {
-                fileListElem.Style.AlignItems = "flex-start";
+                fileTableElem.Style.AlignItems = "flex-start";
                 _uiOverlay.RefreshUI();
             }
         }
