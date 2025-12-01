@@ -71,7 +71,7 @@ namespace ReadingChamber
                 return;
             }
             string templateHtml = File.ReadAllText(templatePath);
-            templateHtml = templateHtml.Replace("</style>", " .file-table td:not(:last-child), .file-table th:not(:last-child) { border-right: 1px solid #333333; } \n</style>");
+            templateHtml = templateHtml.Replace("</style>", " .file-table td:not(:last-child), .file-table th:not(:last-child) { border-right: 1px solid #333333; } .file-table a { color: inherit; text-decoration: none; display: block; } .grid-item a { color: inherit; text-decoration: none; display: block; height: 100%; width: 100%; } \n</style>");
             StringBuilder dynamicItems = new StringBuilder();
             StringBuilder dynamicGridItems = new StringBuilder();
             // Get directories and files
@@ -119,14 +119,14 @@ namespace ReadingChamber
                     string icon = GetIcon(cls);
                     string sizeStr = item.IsDir ? "" : FormatSize(item.Size);
                     string dateStr = item.Modified.ToString("yyyy-MM-dd HH:mm");
-                    dynamicItems.Append($"<tr class='{cls}' data-hook=\"{hook}\"><td>{icon}</td><td>{item.Name}</td><td>{sizeStr}</td><td>{dateStr}</td></tr>");
-                    dynamicGridItems.Append($"<div class=\"grid-item {cls}\" data-hook=\"{hook}\"><div class=\"icon\">{icon}</div>{item.Name}</div>");
+                    dynamicItems.Append($"<tr class='{cls}'><td><a data-hook=\"{hook}\">{icon}</a></td><td><a data-hook=\"{hook}\">{item.Name}</a></td><td><a data-hook=\"{hook}\">{sizeStr}</a></td><td><a data-hook=\"{hook}\">{dateStr}</a></td></tr>");
+                    //dynamicGridItems.Append($"<div class=\"grid-item {cls}\" ><a data-hook=\"{hook}\"><div class=\"icon\">{icon}</div>{item.Name}</a></div>");
                 }
             }
             string currentDirEscaped = _currentDir.Replace("\\", "\\\\");
             string modifiedHtml = templateHtml.Replace("<!--CURRENT_DIR-->", currentDirEscaped).Replace("<!--DYNAMIC_ITEMS-->", dynamicItems.ToString());
             modifiedHtml = modifiedHtml.Replace("<h2>Files in <!--CURRENT_DIR--></h2>", "");
-            modifiedHtml = modifiedHtml.Replace("<!--DYNAMIC_GRID_ITEMS-->", dynamicGridItems.ToString());
+            //modifiedHtml = modifiedHtml.Replace("<!--DYNAMIC_GRID_ITEMS-->", dynamicGridItems.ToString());
             modifiedHtml = modifiedHtml.Replace("class=\"file-table\"", $"class=\"file-table {_viewType}\"");
             _uiOverlay.LoadUI(modifiedHtml);
             var fileTableElem = _uiOverlay.FindElementById("file-table");

@@ -164,7 +164,6 @@
             </div>
         </div>
         <div class="file-container">
-            <h2>Files in <!--CURRENT_DIR--></h2>
             <table class="file-table" id="file-table" style="display: none;">
                 <thead>
                     <tr>
@@ -186,7 +185,7 @@
         // Script to toggle views
         function toggleView(view) {
             document.getElementById('file-table').style.display = view === 'list' ? 'table' : 'none';
-            document.getElementById('file-grid').style.display = view === 'grid' ? 'flex' : 'none';
+            //document.getElementById('file-grid').style.display = view === 'grid' ? 'flex' : 'none';
         }
         // Initial view
         toggleView('list');
