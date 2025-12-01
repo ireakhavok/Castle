@@ -564,6 +564,7 @@ namespace SiegeEngine.UI
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
             List<HtmlElement> positionedChildren = visibleChildren.Where(c => c.Style.Position == "absolute" || c.Style.Position == "fixed").ToList();
+            List<List<HtmlElement>> lines = new List<List<HtmlElement>>();
             List<HtmlElement> currentLine = new List<HtmlElement>();
             for (int i = 0; i < normalChildren.Count; i++)
             {
@@ -589,23 +590,28 @@ namespace SiegeEngine.UI
                     float effW = childW + c_m_left + c_m_right;
                     if (currentX > 0 && effW > availW)
                     {
+                        lines.Add(currentLine.ToList());
                         currentY += maxLineH;
                         currentX = 0;
                         maxLineH = 0;
+                        currentLine.Clear();
                     }
                     float child_pos_x = currentX + c_m_left;
                     float child_pos_y = currentY + c_m_top;
                     child.ComputeLayout(ComputedContentX + child_pos_x, ComputedContentY + child_pos_y, childW, childH, viewportWidth, viewportHeight, textRenderer, fs);
                     currentX += child.ComputedWidth + c_m_left + c_m_right;
                     maxLineH = Math.Max(maxLineH, child.ComputedHeight + c_m_top + c_m_bottom);
+                    currentLine.Add(child);
                 }
                 else
                 {
                     if (currentX > 0)
                     {
+                        lines.Add(currentLine.ToList());
                         currentY += maxLineH;
                         currentX = 0;
                         maxLineH = 0;
+                        currentLine.Clear();
                     }
                     if (float.IsNaN(childW)) childW = ComputedContentWidth;
                     if (float.IsNaN(childH)) childH = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
@@ -637,12 +643,49 @@ namespace SiegeEngine.UI
             }
             if (currentX > 0)
             {
+                lines.Add(currentLine.ToList());
                 currentY += maxLineH;
+            }
+            string textAlign = string.IsNullOrEmpty(Style.TextAlign) ? "left" : Style.TextAlign;
+            if (textAlign != "left")
+            {
+                foreach (var line in lines)
+                {
+                    if (line.Count == 0) continue;
+                    HtmlElement first = line[0];
+                    float startX = first.ComputedPosition.X - first.Style.Margin.W;
+                    HtmlElement last = line[line.Count - 1];
+                    float endX = last.ComputedPosition.X + last.ComputedWidth + last.Style.Margin.Y;
+                    float lineW = endX - startX;
+                    float offset = 0;
+                    if (textAlign == "center")
+                    {
+                        offset = (ComputedContentWidth - lineW) / 2;
+                    }
+                    else if (textAlign == "right")
+                    {
+                        offset = ComputedContentWidth - lineW;
+                    }
+                    if (offset > 0)
+                    {
+                        foreach (var c in line)
+                        {
+                            ShiftX(c, offset);
+                        }
+                    }
+                }
             }
             foreach (var child in positionedChildren)
             {
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
+        }
+        private void ShiftX(HtmlElement e, float off)
+        {
+            e.ComputedPosition = new Vector2(e.ComputedPosition.X + off, e.ComputedPosition.Y);
+            e.ComputedBackgroundX += off;
+            e.ComputedContentX += off;
+            foreach (var ch in e.Children) ShiftX(ch, off);
         }
         public virtual Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
