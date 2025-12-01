@@ -1,41 +1,5 @@
-To address the rework of the FileSelectorPanel, we'll focus on improving its visual structure by switching from the current div-based "file-item" approach to a table-based layout for better organization (e.g., columns for icon, name, size, etc.). This aligns with your feedback on appearance.
-To enable this, we first need to extend the HTML parsing and rendering system to support new elements: <table>, <tr>, <th>, <td>, <ul>, <ol>, <li>, and <nav>. These will be added as specialized subclasses of HtmlElement in SiegeEngine.UI, with custom layout and rendering logic where needed (e.g., table layout for rows/cells, list markers for li).
-Step 1: Add New Element Classes
-Create these in SiegeEngine.UI (new files or extend existing):
+ when I go "up" a level in the fileselectorpanel, the label that says "files in:" [the name of the directory] looks absolutely terrible and is overlapping with the top row of information - ultimately it is not really needed at all. 
 
-TableElement.cs (for <table>): Display as "table". Layout children as rows.
-TrElement.cs (for <tr>): Display as "table-row". Horizontal layout for cells.
-ThElement.cs / TdElement.cs (for <th>/<td>): Display as "table-cell". Similar to inline-block but with table-specific alignment/padding.
-UlElement.cs / OlElement.cs (for <ul>/<ol>): Display as "block". Handle list-style (bullet/number).
-LiElement.cs (for <li>): Display as "list-item". Add prefix (bullet/number) in render.
-NavElement.cs (for <nav>): Display as "block". No special logic initially; treat as semantic div.
+Also, it would be nice to have some default lines below each row and vertical separators for the columns. from the perspective of the assetviewerpanel, he fileselectorpanel needs the rows to be clickable to load an FBX file. So, could you add an option for file extension filters to the default constructor for the fileselectorpanel, and in the assetviewingpanel, have the filter set to ".fbx" files. Folders still need to be navigated through on click of those rows. The ".fbx" rows should be clickable, close the fileselectorpanel, and reload the assetviewingpanel with the selected FBX file.
 
-Each will override ComputeLayout, ComputeIntrinsicSize, and Render as needed. For tables, implement basic table layout (auto column widths based on content, rows stacking vertically). For lists, add pseudo-element rendering for markers.
-Step 2: Update HtmlParser.cs
-In ParseChildren, add cases for the new tags to instantiate the correct classes (similar to how ButtonElement, SelectElement, etc., are handled).
-Step 3: Extend CssParser.cs
-Add default styles for new elements (e.g., table { display: table; border-collapse: collapse; }, th { font-weight: bold; }, ul { list-style-type: disc; }, etc.). Support properties like border-collapse, list-style-type.
-Step 4: Rework FileSelectorPanel.cs
-
-In UpdateFileList(), generate HTML using <table> instead of divs. Example structure:text<table class="file-table">
-  <thead>
-    <tr><th>Icon</th><th>Name</th><th>Size</th></tr>
-  </thead>
-  <tbody>
-    <!-- Dynamically add <tr> for each entry -->
-    <tr class="file-item dir" data-hook="navigate:{entry.FullName}">
-      <td>{GetIcon("dir")}</td>
-      <td>{entry.Name}</td>
-      <td>{FormatSize(entry.Length)}</td>
-    </tr>
-  </tbody>
-</table>
-Add CSS in the panel's HTML template or via inline style for table styling (e.g., borders, hover rows).
-Ensure clickable rows via data-hook on  or onclick.
-
-Step 5: Testing and Iteration
-
-Load the updated FileSelectorPanel and verify table rendering.
-Add list support if needed (e.g., fallback to  for simpler views).
-Minimal changes: No refactors beyond this; keep existing flex/block logic intact.
-If this plan looks good, say "go" and provide any specific files/preferences—I can output the code changes iteratively.
+I want the rows to be clickable themselves. 

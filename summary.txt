@@ -136,7 +136,7 @@ Folder: Castle
  Inherits: None
  Dependencies: None
  Methods:
- File: AssetViewingPanel.cs
+ File: AssetViewerPanel.cs
  class: AssetViewerPanel (Namespace: ReadingChamber)
  Inherits: BasePanel
     
@@ -158,7 +158,7 @@ Folder: Castle
  Calls: None
  - void Render()
  Calls: RecomputeLayout, RecomputeLayout
- File: AssetViewingPanel.cs
+ File: AssetViewerPanel.cs
  class: AssetUIOverlay (Namespace: ReadingChamber)
  Inherits: UIOverlay
         
@@ -1035,6 +1035,18 @@ Folder: Castle
  Dependencies: System, System, System.Numerics, System.Text.Json
  Methods:
  - constructor BrushRegistryUpdateEvent(string brushType, string brushType, Vector3 size, int textureId)
+ Calls: Serialize, Serialize
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: ClosePanelEvent.cs
+ class: ClosePanelEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: SiegeEngine.Interfaces, SiegeEngine.Interfaces, System.Text, System.Text.Json
+ Methods:
+ - constructor ClosePanelEvent(IPanel panel, IPanel panel)
  Calls: Serialize, Serialize
  - byte[] Serialize()
  Calls: None
@@ -2447,10 +2459,12 @@ Folder: Castle
  File: CssStyle.cs
  class: CssStyle (Namespace: SiegeEngine.UI)
  Inherits: None
- Dependencies: System.Numerics, System.Numerics
+ Dependencies: System, System, System.Numerics
  Methods:
  - CssStyle Clone()
- Calls: None
+ Calls: ParseColor, ParseColor
+ - void SetProperty(string key, string key, string val)
+ Calls: ParseColor, ParseColor
  File: DivElement.cs
  class: DivElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2479,7 +2493,9 @@ Folder: Castle
  - void LayoutFlexChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ParseBorderWidths, ParsePaddings, ParseSize
  - void LayoutBlockChildren(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
- Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout, GetEffectiveDisplay, ParseMargins, ParseSize
+ Calls: Clear, Clear, ComputeIntrinsicSize, ComputeLayout, GetEffectiveDisplay, ParseMargins, ParseSize
+ - void ShiftX(HtmlElement e, HtmlElement e, float off)
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, GetEffectiveDisplay, GetTextSize, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize
  - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
  Calls: None
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
@@ -2516,7 +2532,7 @@ Folder: Castle
  - HtmlElement Parse(string html, string html)
  Calls: None
  - void ParseChildren(HtmlElement parent, HtmlElement parent)
- Calls: AttachHook, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, OptionElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace
+ Calls: AttachHook, AttachHook, ButtonElement, DivElement, HtmlParser, InputElement, LiElement, NavElement, OlElement, OptionElement, Parse, ParseChildren, ReadUntil, SelectElement, SkipWhitespace, TableElement, TdElement, ThElement, TrElement, UlElement
  - recursively ParseChildren()
  Calls: HtmlParser, HtmlParser, Parse
  - constructor HtmlParser()
@@ -2627,7 +2643,7 @@ Folder: Castle
  - object CallFunction(object callee, object callee, List<object> args)
  Calls: CurrentScope, CurrentScope, Evaluate, PopScope, PushScope
  - object ApplyBinaryOp(string op, string op, object left, object right)
- Calls: IsTruthy, IsTruthy
+ Calls: None
  - object ApplyUnaryOp(string op, string op, object arg)
  Calls: IsTruthy, IsTruthy
  - bool IsTruthy(object value, object value)
@@ -2840,6 +2856,18 @@ Folder: Castle
  Methods:
  - constructor Token(TokenType type, TokenType type, object value)
  Calls: None
+ File: LiElement.cs
+ class: LiElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Numerics
+ Methods:
+ - constructor LiElement()
+ Calls: GetTextSize, GetTextSize, Render, RenderText, ToRoman
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: ToRoman, ToRoman
+ - string ToRoman(int number, int number, bool lower)
+ Calls: None
  File: MenuPanel.cs
  class: MenuPanel (Namespace: SiegeEngine.UI)
  Inherits: BasePanel
@@ -2866,6 +2894,22 @@ Folder: Castle
  Calls: SwitchSceneEvent, SwitchSceneEvent
  - void HandleLink(string href, string href)
  Calls: ResolvePath, ResolvePath
+ File: NavElement.cs
+ class: NavElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Numerics
+ Methods:
+ - constructor NavElement()
+ Calls: None
+ File: OlElement.cs
+ class: OlElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Numerics
+ Methods:
+ - constructor OlElement()
+ Calls: None
  File: OptionElement.cs
  class: OptionElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2894,6 +2938,28 @@ Folder: Castle
  Calls: GetTextSize, GetTextSize
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
  Calls: None
+ File: TableElement.cs
+ class: TableElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+ Methods:
+ - constructor TableElement()
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize, ComputeLayout
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
+ Calls: None
+ - Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+ Calls: ComputeIntrinsicSize, ComputeIntrinsicSize
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: None
+ File: TdElement.cs
+ class: TdElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Numerics
+ Methods:
+ - constructor TdElement()
+ Calls: None
  File: TextElement.cs
  class: TextElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
@@ -2909,6 +2975,24 @@ Folder: Castle
  - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
  Calls: GetTextSize, GetTextSize, RenderText
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
+ Calls: None
+ File: ThElement.cs
+ class: ThElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Numerics
+ Methods:
+ - constructor ThElement()
+ Calls: None
+ File: TrElement.cs
+ class: TrElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Numerics
+ Methods:
+ - constructor TrElement()
+ Calls: ComputeLayout, ComputeLayout
+ - void ComputeLayout(float parentPositionX, float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth, float forcedHeight)
  Calls: None
  File: UIOverlay.cs
  class: UIOverlay (Namespace: SiegeEngine.UI)
@@ -2964,6 +3048,14 @@ Folder: Castle
  - void RecomputeLayout(int w, int w, int h)
  Calls: ComputeLayout, ComputeLayout, UpdateFullTransforms
  - void Dispose()
+ Calls: None
+ File: UlElement.cs
+ class: UlElement (Namespace: SiegeEngine.UI)
+ Inherits: HtmlElement
+    
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System.Numerics
+ Methods:
+ - constructor UlElement()
  Calls: None
  File: MetaFileParser.cs
  class: MetaFileParser (Namespace: SiegeEngine.UnityAssetLoader)
