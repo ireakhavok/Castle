@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class CssParser
@@ -117,9 +116,7 @@ nav {
     display: block;
 }
 ";
-
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
-
         public void Apply(string css)
         {
             int i = 0;
@@ -138,7 +135,6 @@ nav {
                 }
             }
         }
-
         public void ApplyAll(HtmlElement root)
         {
             ApplyInlineStyles(root);
@@ -162,7 +158,6 @@ nav {
                 }
             }
         }
-
         public void ApplyInlineStyles(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -180,7 +175,6 @@ nav {
                 }
             }
         }
-
         private void SkipWhitespaceAndComments(string css, ref int i)
         {
             while (i < css.Length)
@@ -203,7 +197,6 @@ nav {
                 break;
             }
         }
-
         private string ReadUntil(string css, ref int i, char stop)
         {
             string result = "";
@@ -214,7 +207,6 @@ nav {
             }
             return result;
         }
-
         private Dictionary<string, string> ParseProperties(string block)
         {
             Dictionary<string, string> props = new Dictionary<string, string>();
@@ -231,13 +223,11 @@ nav {
             }
             return props;
         }
-
         public void ApplyInline(string inline, CssStyle style)
         {
             var props = ParseProperties(inline);
             ApplyProperties(style, props);
         }
-
         private void ApplyToElements(HtmlElement root, string selector, Dictionary<string, string> props, string pseudo)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -266,7 +256,6 @@ nav {
                 }
             }
         }
-
         private bool Matches(HtmlElement elem, string selector)
         {
             if (string.IsNullOrEmpty(selector)) return true;
@@ -304,10 +293,10 @@ nav {
                 return true;
             }
         }
-
         private bool SimpleMatches(HtmlElement elem, string simple)
         {
             if (string.IsNullOrEmpty(simple)) return true;
+            simple = simple.Trim();
             string pseudo = null;
             if (simple.Contains(":"))
             {
@@ -316,7 +305,28 @@ nav {
                 pseudo = p[1];
             }
             bool match = false;
-            if (simple == "*")
+            if (simple.Contains("["))
+            {
+                int bracket = simple.IndexOf('[');
+                string tag = simple.Substring(0, bracket).Trim();
+                if (!string.Equals(elem.Tag, tag, StringComparison.OrdinalIgnoreCase)) return false;
+                string attrStr = simple.Substring(bracket + 1, simple.Length - bracket - 2).Trim();
+                bool attrMatch = false;
+                if (attrStr.Contains("="))
+                {
+                    var parts = attrStr.Split(new char[] { '=' }, 2);
+                    string attr = parts[0].Trim();
+                    string val = parts[1].Trim().Trim('"', '\'');
+                    attrMatch = elem.Attributes.TryGetValue(attr, out string eVal) && eVal == val;
+                }
+                else
+                {
+                    string attr = attrStr.Trim();
+                    attrMatch = elem.Attributes.ContainsKey(attr);
+                }
+                match = attrMatch;
+            }
+            else if (simple == "*")
             {
                 match = true;
             }
@@ -337,31 +347,28 @@ nav {
             }
             if (match && pseudo != null)
             {
-                switch (pseudo)
-                {
-                    case "target":
-                        match = elem.IsTarget;
-                        break;
-                    case "checked":
-                        match = elem.Checked;
-                        break;
-                    case "hover":
-                        match = elem.IsHover;
-                        break;
-                    case "active":
-                        match = elem.IsActive;
-                        break;
-                    case "focus":
-                        match = elem.IsFocused;
-                        break;
-                    default:
-                        match = false;
-                        break;
-                }
+                match = CheckPseudo(elem, pseudo);
             }
             return match;
         }
-
+        private bool CheckPseudo(HtmlElement elem, string pseudo)
+        {
+            switch (pseudo)
+            {
+                case "hover":
+                    return elem.IsHover;
+                case "active":
+                    return elem.IsActive;
+                case "checked":
+                    return elem.Checked;
+                case "target":
+                    return elem.IsTarget;
+                case "focus":
+                    return elem.IsFocused;
+                default:
+                    return false;
+            }
+        }
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
             if (props.TryGetValue("position", out string pos))
@@ -522,7 +529,6 @@ nav {
             if (props.TryGetValue("overflow", out string ov))
                 style.Overflow = ov;
         }
-
         public Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
@@ -547,7 +553,6 @@ nav {
             }
             return ParseSingleColor(color);
         }
-
         private Vector4 ParseSingleColor(string color)
         {
             color = color.Trim().ToLower();
