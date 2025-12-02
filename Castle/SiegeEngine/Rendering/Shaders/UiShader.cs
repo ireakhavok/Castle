@@ -60,6 +60,8 @@ namespace SiegeEngine.Rendering.Shaders
                     float inner_d = roundedRect(p, inner_b, inner_radius);
                     if (inner_d > 0.0) {
                         col = uBorderColor;
+                    } else {
+                        col = uColor;
                     }
                 }
                 FragColor = col;

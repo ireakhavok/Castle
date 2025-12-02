@@ -281,14 +281,33 @@ nav {
             }
             else
             {
-                var parts = selector.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var parts = selector.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToArray();
                 HtmlElement current = elem;
                 for (int k = parts.Length - 1; k >= 0; k--)
                 {
                     string part = parts[k];
-                    if (!SimpleMatches(current, part)) return false;
-                    current = current.Parent;
-                    if (current == null && k > 0) return false;
+                    bool found = false;
+                    if (k == parts.Length - 1)
+                    {
+                        if (SimpleMatches(current, part))
+                        {
+                            found = true;
+                        }
+                    }
+                    else
+                    {
+                        while (current != null)
+                        {
+                            if (SimpleMatches(current, part))
+                            {
+                                found = true;
+                                break;
+                            }
+                            current = current.Parent;
+                        }
+                    }
+                    if (!found) return false;
+                    current = current?.Parent;
                 }
                 return true;
             }
@@ -309,7 +328,7 @@ nav {
             {
                 int bracket = simple.IndexOf('[');
                 string tag = simple.Substring(0, bracket).Trim();
-                if (!string.Equals(elem.Tag, tag, StringComparison.OrdinalIgnoreCase)) return false;
+                if (!string.IsNullOrEmpty(tag) && !string.Equals(elem.Tag, tag, StringComparison.OrdinalIgnoreCase)) return false;
                 string attrStr = simple.Substring(bracket + 1, simple.Length - bracket - 2).Trim();
                 bool attrMatch = false;
                 if (attrStr.Contains("="))

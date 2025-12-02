@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -156,16 +155,26 @@ namespace SiegeEngine.UI
             }
             if (!float.IsNaN(forcedWidth)) w = forcedWidth;
             if (!float.IsNaN(forcedHeight)) h = forcedHeight;
-            if (!float.IsNaN(minW)) w = Math.Max(w, minW);
-            if (!float.IsNaN(minH)) h = Math.Max(h, minH);
-            if (!float.IsNaN(maxW)) w = Math.Min(w, maxW);
-            if (!float.IsNaN(maxH)) h = Math.Min(h, maxH);
-            if (float.IsNaN(w)) w = 0;
-            if (float.IsNaN(h)) h = 0;
-            float boxW = w;
-            float boxH = h;
-            float contentW = w - pad.W - pad.Y - borderW.W - borderW.Y;
-            float contentH = h - pad.X - pad.Z - borderW.X - borderW.Z;
+            string boxSizing = effectiveStyle.BoxSizing;
+            float boxW, boxH, contentW, contentH;
+            if (boxSizing == "border-box")
+            {
+                boxW = w;
+                boxH = h;
+                contentW = boxW - pad.W - pad.Y - borderW.W - borderW.Y;
+                contentH = boxH - pad.X - pad.Z - borderW.X - borderW.Z;
+            }
+            else
+            {
+                contentW = w;
+                contentH = h;
+                boxW = contentW + pad.W + pad.Y + borderW.W + borderW.Y;
+                boxH = contentH + pad.X + pad.Z + borderW.X + borderW.Z;
+            }
+            if (!float.IsNaN(minW)) boxW = Math.Max(boxW, minW);
+            if (!float.IsNaN(minH)) boxH = Math.Max(boxH, minH);
+            if (!float.IsNaN(maxW)) boxW = Math.Min(boxW, maxW);
+            if (!float.IsNaN(maxH)) boxH = Math.Min(boxH, maxH);
             if (float.IsNaN(boxW)) boxW = 0;
             if (float.IsNaN(boxH)) boxH = 0;
             if (float.IsNaN(contentW)) contentW = 0;
@@ -915,17 +924,17 @@ namespace SiegeEngine.UI
             br.Z = Math.Min(br.Z, minRad);
             br.W = Math.Min(br.W, minRad);
             bool hasBg = effectiveStyle.BackgroundColor != Vector4.Zero || _bgRenderer != null;
-            if (hasBg)
+            bool useShaderForBorder = br != Vector4.Zero && hasUniformBorder;
+            float drawX = useShaderForBorder ? ComputedPosition.X : ComputedBackgroundX;
+            float drawY = useShaderForBorder ? ComputedPosition.Y : ComputedBackgroundY;
+            float drawW = useShaderForBorder ? ComputedWidth : ComputedBackgroundWidth;
+            float drawH = useShaderForBorder ? ComputedHeight : ComputedBackgroundHeight;
+            float bw = useShaderForBorder ? borderW.X : 0f;
+            Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
+            if (hasBg || useShaderForBorder)
             {
-                float[] bgNdc = GetNdcQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, localMatrix, viewportWidth, viewportHeight);
-                float bw = 0f;
-                Vector4 borderC = Vector4.Zero;
-                if (br != Vector4.Zero && hasUniformBorder)
-                {
-                    bw = borderW.X;
-                    borderC = borderTopC;
-                }
-                quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(ComputedBackgroundWidth, ComputedBackgroundHeight), bw, borderC);
+                float[] bgNdc = GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(drawW, drawH), bw, borderC);
             }
             if (_bgRenderer != null)
             {
@@ -953,7 +962,7 @@ namespace SiegeEngine.UI
             {
                 renderContext.Disable(renderContext.Enums.ScissorTest);
             }
-            bool drawSideBorders = br == Vector4.Zero || !hasUniformBorder;
+            bool drawSideBorders = !useShaderForBorder;
             if (drawSideBorders)
             {
                 if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
