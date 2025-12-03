@@ -10,6 +10,9 @@ namespace SiegeEngine.UI
     public class CssParser
     {
         public static string DefaultUserAgentCss = @"
+* {
+    box-sizing: border-box;
+}
 body {
     color: black;
     background-color: white;
@@ -319,7 +322,7 @@ nav {
             string pseudo = null;
             if (simple.Contains(":"))
             {
-                var p = simple.Split(new[] { ':' }, 2);
+                var p = simple.Split(new char[] { ':' }, 2);
                 simple = p[0];
                 pseudo = p[1];
             }
@@ -415,7 +418,8 @@ nav {
             if (props.TryGetValue("background", out string bg) || props.TryGetValue("background-color", out bg))
             {
                 style.Background = bg;
-                style.BackgroundColor = ParseColor(bg);
+                if (bg != "inherit")
+                    style.BackgroundColor = ParseColor(bg);
             }
             if (props.TryGetValue("background-image", out string bgImg))
             {
@@ -428,7 +432,8 @@ nav {
             if (props.TryGetValue("color", out string textColorStr))
             {
                 style.Color = textColorStr;
-                style.TextColor = ParseColor(textColorStr);
+                if (textColorStr != "inherit")
+                    style.TextColor = ParseColor(textColorStr);
             }
             if (props.TryGetValue("font-size", out string fs))
             {

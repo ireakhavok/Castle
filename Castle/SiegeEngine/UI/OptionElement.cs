@@ -24,9 +24,9 @@ namespace SiegeEngine.UI
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             var select = Parent as SelectElement;
-            if (select != null && !select.IsOpen)
+            if (select != null && !select.IsOpen && Attributes.ContainsKey("selected"))
             {
-                // Skip drawing background for displayed option in closed select
+                // Skip drawing background for the displayed (selected) option in closed select
                 foreach (var child in Children)
                 {
                     child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
