@@ -1,5 +1,85 @@
- when I go "up" a level in the fileselectorpanel, the label that says "files in:" [the name of the directory] looks absolutely terrible and is overlapping with the top row of information - ultimately it is not really needed at all. 
+Step-by-Step Flow for "New Project"
 
-Also, it would be nice to have some default lines below each row and vertical separators for the columns. from the perspective of the assetviewerpanel, he fileselectorpanel needs the rows to be clickable to load an FBX file. So, could you add an option for file extension filters to the default constructor for the fileselectorpanel, and in the assetviewingpanel, have the filter set to ".fbx" files. Folders still need to be navigated through on click of those rows. The ".fbx" rows should be clickable, close the fileselectorpanel, and reload the assetviewingpanel with the selected FBX file.
+User Triggers from Menu:
+In main_menu.html "Create" tab, click "New Project" button (data-hook="CastleBuilder.NewProject").
+Opens form (HTML overlay): Inputs for project name, type (2D/3D FPS/etc.), location (default: Projects/<name>).
 
-I want the rows to be clickable themselves. 
+Handle Hook & Form Submission:
+UIOverlay.HandleDataHook("CastleBuilder.NewProject"): Shows form panel (new HtmlElement or load NewProject.html).
+Form submit (button data-hook="CastleBuilder.CreateProject"): Collects inputs, publishes NewProjectEvent { Name, Type, Path }.
+
+Create Project (BlueprintManager.cs):
+On event, create dir if not exists.
+Generate project.json from template (e.g., copy 2D.json: camera ortho, physics 2D).
+Initialize stubs (empty scenes/main.json, assets/ dir).
+
+Load Project:
+Publish LoadProjectEvent { Path }.
+BlueprintManager loads project.json, deserializes (e.g., scenes to Entity lists).
+Update IDE: Open relevant panels (e.g., WarTable for scene view), set active_project in IDE config.
+
+Save IDE State (PanelManager):
+Auto-save on project load/close: Include "active_project" path in config.json.
+On next open, load config → if active_project, auto-load it.
+
+Game Save Integration:
+Runtime (in SandboxScene): Manual/checkpoint saves to project/saves/player.json (serialize entities/deltas).
+IDE triggers: "Save Project" menu publishes SaveProjectEvent—saves scenes/assets (not runtime).
+Ref in IDE: config.json has "last_save": timestamp/path, but no direct game data.
+
+Implementation Details & Code Stubs
+
+Update main_menu.html (Add Form):
+Add  with inputs: , <select id="proj-type"> (options from templates), <button data-hook="CastleBuilder.CreateProject">Create</button>.
+JS to show form on NewProject hook.
+
+Event Definitions (EventBus.cs):C#public class NewProjectEvent : IEvent
+{
+    public string Name { get; set; }
+    public string Type { get; set; } // e.g., "2D"
+    public string Path { get; set; } // Optional custom path
+}
+public class LoadProjectEvent : IEvent { public string Path { get; set; } }
+public class SaveProjectEvent : IEvent { public string Path { get; set; } } // Optional path for specific
+BlueprintManager.cs (New Class in BlueprintChamber.dll):C#public class BlueprintManager
+{
+    private EventBus _eventBus;
+    private string _activeProject;
+    public BlueprintManager(EventBus eventBus) { _eventBus = eventBus; _eventBus.Subscribe<NewProjectEvent>(OnNewProject); _eventBus.Subscribe<LoadProjectEvent>(OnLoadProject); }
+    private void OnNewProject(NewProjectEvent evt)
+    {
+        string dir = evt.Path ?? Path.Combine("Projects", evt.Name);
+        Directory.CreateDirectory(dir);
+        string template = GetTemplate(evt.Type); // e.g., Load "templates/2D.json"
+        File.WriteAllText(Path.Combine(dir, "project.json"), template.Replace("{name}", evt.Name));
+        _eventBus.Publish(new LoadProjectEvent { Path = dir });
+    }
+    private void OnLoadProject(LoadProjectEvent evt)
+    {
+        string json = File.ReadAllText(Path.Combine(evt.Path, "project.json"));
+        // Deserialize: e.g., var proj = JsonSerializer.Deserialize<ProjectData>(json);
+        _activeProject = evt.Path;
+        // Load scenes/assets into memory (e.g., Entity lists)
+        // Open panels: _eventBus.Publish(new OpenPanelEvent { Type = "WarTable" });
+        _eventBus.Publish(new SaveIDEEvent()); // Update active_project in config
+    }
+    // SaveProject similar: Serialize current state to project.json/scenes/
+    private string GetDefaultIDEPath() => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CastleBuilder", "config.json");
+}
+// ProjectData class: { string Name, string Type, List<string> Scenes, List<string> Mods }
+PanelManager Updates:
+In SaveIDEState: Add _blueprintManager._activeProject to config.json.
+In LoadIDEState: If "active_project" in config, publish LoadProjectEvent.
+
+MenuPanel Hook:
+In HandleDataHook: If "CastleBuilder.NewProject", show form (load HTML or generate).
+Form JS: On submit, run document.getElementById("proj-name").value etc., then hook invoke.
+
+
+Testing & Rollout
+
+Iterative: First, implement NewProjectEvent/create dir (no load). Test menu hook.
+Edge Cases: Duplicate names (append -1), invalid paths, load failures (fallback to default project).
+Future: Runtime saves in Citadel (e.g., GameServer.SaveState() to saves/).
+
+This flow enables quick project creation/loading while keeping saves distinct.

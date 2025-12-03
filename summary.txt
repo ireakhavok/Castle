@@ -187,7 +187,7 @@ Folder: Castle
  - string GetIcon(string cls, string cls)
  Calls: None
  - string FormatSize(long size, long size)
- Calls: FileSelectedEvent, FileSelectedEvent, NavigateTo, UpdateFileList
+ Calls: ClosePanelEvent, ClosePanelEvent, FileSelectedEvent, NavigateTo, UpdateFileList
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
  Calls: NavigateTo, NavigateTo
  File: FileSelectorPanel.cs
@@ -1563,6 +1563,8 @@ Folder: Castle
  - constructor PanelManager(IRenderContext renderContext, IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
  Calls: AddPanel, AddPanel
  - void OnOpenPanel(OpenPanelEvent e, OpenPanelEvent e)
+ Calls: RemovePanel, RemovePanel
+ - void OnClosePanel(ClosePanelEvent e, ClosePanelEvent e)
  Calls: Init, Init
  - void AddPanel(IPanel panel, IPanel panel)
  Calls: Update, Update
@@ -2448,6 +2450,8 @@ Folder: Castle
  Calls: SimpleMatches, SimpleMatches
  - bool SimpleMatches(HtmlElement elem, HtmlElement elem, string simple)
  Calls: None
+ - bool CheckPseudo(HtmlElement elem, HtmlElement elem, string pseudo)
+ Calls: None
  - void ApplyProperties(CssStyle style, CssStyle style, string> props)
  Calls: ParseColor, ParseColor
  - Vector4 ParseColor(string color, string color)
@@ -2914,12 +2918,14 @@ Folder: Castle
  class: OptionElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
     
- Dependencies: System, System, System.Numerics
+ Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Rendering, System, System.Numerics
  Methods:
  - constructor OptionElement()
  Calls: HandleClick, HandleClick
  - bool HandleClick(Vector2 mousePos, Vector2 mousePos, float viewportWidth, float viewportHeight)
  Calls: None
+ - void Render(IRenderContext renderContext, IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+ Calls: Render, Render
  File: SelectElement.cs
  class: SelectElement (Namespace: SiegeEngine.UI)
  Inherits: HtmlElement
