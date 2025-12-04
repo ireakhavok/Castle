@@ -141,7 +141,8 @@ namespace SiegeEngine.UI
         {
             if (elem.GetEffectiveDisplay() == "none") return;
             string classes = elem.Attributes.GetValueOrDefault("class", "");
-            if (classes.Contains("button") || classes.Contains("toggle") || elem.Tag == "select" || elem.Tag == "label" || elem.Tag == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || elem.Tag == "option" || elem.Attributes.ContainsKey("onchange") || elem.Attributes.ContainsKey("onmouseenter") || elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") || elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") || elem.Attributes.ContainsKey("onblur"))
+            string tagLower = elem.Tag.ToLower();
+            if (classes.Contains("button") || classes.Contains("toggle") || tagLower == "select" || tagLower == "label" || tagLower == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || tagLower == "option" || elem.Attributes.ContainsKey("onchange") || elem.Attributes.ContainsKey("onmouseenter") || elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") || elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") || elem.Attributes.ContainsKey("onblur") || tagLower == "input")
             {
                 _uiClickables.Add(elem);
             }
@@ -284,8 +285,13 @@ namespace SiegeEngine.UI
                             // For text, clicking label focuses the input
                             if (!input.IsFocused)
                             {
+                                if (!string.IsNullOrEmpty(input.OnFocusJS))
+                                {
+                                    _jsContext.RunWithThis(input.OnFocusJS, new JSElement(input, this));
+                                }
                                 input.IsFocused = true;
                                 _currentFocused = input;
+                                Console.WriteLine($"UIOverlay: Focused text input via label {forId}");
                             }
                         }
                     }
@@ -318,6 +324,19 @@ namespace SiegeEngine.UI
                         input.Checked = !input.Checked;
                         valueChanged = true;
                         RefreshUI();
+                    }
+                    else if (input.Type == "text")
+                    {
+                        if (!input.IsFocused)
+                        {
+                            if (!string.IsNullOrEmpty(input.OnFocusJS))
+                            {
+                                _jsContext.RunWithThis(input.OnFocusJS, new JSElement(input, this));
+                            }
+                            input.IsFocused = true;
+                            _currentFocused = input;
+                            Console.WriteLine($"UIOverlay: Focused text input {input.Attributes.GetValueOrDefault("id", "")}");
+                        }
                     }
                 }
             }
