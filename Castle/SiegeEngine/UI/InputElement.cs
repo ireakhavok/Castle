@@ -12,6 +12,7 @@ namespace SiegeEngine.UI
     {
         public string Type { get; set; }
         public string Value { get; set; } = "";
+        public string Placeholder { get; set; } = "";
         private bool _cursorVisible = true;
         private float _cursorTimer = 0f;
         private const float CursorBlinkRate = 0.5f;
@@ -44,17 +45,18 @@ namespace SiegeEngine.UI
             if (Type == "text")
             {
                 float fs = Style.FontSize;
-                Vector4 color = Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0f, 0f, 0f, 1f);
-                textRenderer.RenderText(Value, ComputedContentX, ComputedContentY, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
+                string displayText = string.IsNullOrEmpty(Value) ? Placeholder : Value;
+                Vector4 color = string.IsNullOrEmpty(Value) ? new Vector4(0.5f, 0.5f, 0.5f, 1f) : (Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0f, 0f, 0f, 1f));
+                textRenderer.RenderText(displayText, ComputedContentX, ComputedContentY, viewportWidth, viewportHeight, fs, color, Style.FontFamily ?? "Arial", parentMatrix);
                 if (IsFocused && _cursorVisible)
                 {
-                    float textW = textRenderer.GetTextSize(Value, fs).X;
+                    float textW = textRenderer.GetTextSize(Value, fs).X; // Cursor at end of Value, not placeholder
                     float cursorX = ComputedContentX + textW;
                     float cursorY = ComputedContentY;
                     float cursorH = fs;
                     float cursorW = 2f;
                     float[] cursorNdc = GetNdcQuad(cursorX, cursorY, cursorW, cursorH, parentMatrix, viewportWidth, viewportHeight);
-                    quadRenderer.DrawNdcQuad(cursorNdc, color);
+                    quadRenderer.DrawNdcQuad(cursorNdc, Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0f, 0f, 0f, 1f));
                 }
             }
             else
@@ -92,7 +94,8 @@ namespace SiegeEngine.UI
             }
             if (Type == "text")
             {
-                float textW = textRenderer.GetTextSize(Value, fs).X;
+                string sizeText = string.IsNullOrEmpty(Value) ? (string.IsNullOrEmpty(Placeholder) ? " " : Placeholder) : Value;
+                float textW = textRenderer.GetTextSize(sizeText, fs).X;
                 float textH = textRenderer.GetTextSize("A", fs).Y;
                 Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
                 Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
@@ -116,6 +119,7 @@ namespace SiegeEngine.UI
                 {
                     _cursorVisible = !_cursorVisible;
                     _cursorTimer = 0f;
+                    valueChanged = true; // To force refresh for blink
                 }
                 // Handle keyboard input
                 bool shiftPressed = controlContext.GetKey(window, Key.LeftShift) == InputAction.Press || controlContext.GetKey(window, Key.RightShift) == InputAction.Press;

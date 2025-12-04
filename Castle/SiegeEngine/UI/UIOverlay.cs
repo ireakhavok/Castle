@@ -110,6 +110,7 @@ namespace SiegeEngine.UI
                     input.Type = elem.Attributes.GetValueOrDefault("type", "text");
                     input.Checked = elem.Attributes.ContainsKey("checked");
                     input.Value = elem.Attributes.GetValueOrDefault("value", "");
+                    input.Placeholder = elem.Attributes.GetValueOrDefault("placeholder", "");
                 }
                 foreach (var child in elem.Children)
                 {
@@ -277,6 +278,15 @@ namespace SiegeEngine.UI
                             valueChanged = true;
                             RefreshUI();
                             Console.WriteLine($"UIOverlay: Handled checkbox label click for {forId}");
+                        }
+                        else if (type == "text")
+                        {
+                            // For text, clicking label focuses the input
+                            if (!input.IsFocused)
+                            {
+                                input.IsFocused = true;
+                                _currentFocused = input;
+                            }
                         }
                     }
                 }

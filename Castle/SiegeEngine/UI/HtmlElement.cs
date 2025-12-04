@@ -895,9 +895,7 @@ namespace SiegeEngine.UI
                 effectiveStyle = hover;
             }
             if (IsActive && PseudoStyles.TryGetValue("active", out CssStyle active))
-            {
                 effectiveStyle = active;
-            }
             if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle targetStyle))
             {
                 effectiveStyle = targetStyle;
