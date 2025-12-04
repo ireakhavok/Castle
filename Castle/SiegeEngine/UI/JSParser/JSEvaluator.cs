@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI.JSParser
+﻿// Folder: SiegeEngine.UI/JSParser
 // File: JSEvaluator.cs
 using System;
 using System.Collections.Generic;
@@ -46,8 +46,11 @@ namespace SiegeEngine.UI.JSParser
                     CurrentScope()[varDecl.Name] = initValue;
                     return initValue;
                 case FunctionDeclarationNode funcDecl:
-                    _functions[funcDecl.Name] = funcDecl;
-                    _globalScope[funcDecl.Name] = funcDecl;
+                    if (funcDecl.Name != null)
+                    {
+                        _functions[funcDecl.Name] = funcDecl;
+                        _globalScope[funcDecl.Name] = funcDecl;
+                    }
                     return null;
                 case ArrowExpressionNode arrow:
                     return arrow;
@@ -345,7 +348,7 @@ namespace SiegeEngine.UI.JSParser
         {
             if (callee is FunctionDeclarationNode func)
             {
-                Console.WriteLine("Debug: Calling function " + func.Name);
+                Console.WriteLine("Debug: Calling function " + func.Name ?? "anonymous");
                 if (func.Params.Count != args.Count)
                 {
                     throw new Exception("Argument count mismatch");

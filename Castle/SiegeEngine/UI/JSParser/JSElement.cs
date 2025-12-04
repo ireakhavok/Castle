@@ -1,5 +1,4 @@
-﻿
-// Folder: SiegeEngine.UI.JSParser
+﻿// Folder: SiegeEngine.UI/JSParser
 // File: JSElement.cs
 using System;
 using System.Collections.Generic;
@@ -116,6 +115,11 @@ namespace SiegeEngine.UI.JSParser
                 return new object[0];
             }
         }
+        public bool @checked
+        {
+            get { return elem.Checked; }
+            set { elem.Checked = value; overlay.RefreshUI(); }
+        }
         public void appendChild(JSElement child)
         {
             elem.Children.Add(child.elem);
@@ -141,6 +145,12 @@ namespace SiegeEngine.UI.JSParser
             {
                 elem.Children.RemoveAll(c => c.Tag.ToLower() == "option");
             }
+        }
+        private Dictionary<string, List<object>> eventListeners = new Dictionary<string, List<object>>();
+        public void addEventListener(string eventName, object callback)
+        {
+            if (!eventListeners.ContainsKey(eventName)) eventListeners[eventName] = new List<object>();
+            eventListeners[eventName].Add(callback);
         }
     }
 }

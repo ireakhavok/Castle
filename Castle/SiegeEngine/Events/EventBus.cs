@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Events
+﻿// Folder: SiegeEngine/Events
 // File: EventBus.cs
 using SiegeEngine.Networking;
 using SiegeEngine.Definitions;
@@ -10,6 +10,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+
 namespace SiegeEngine.Events
 {
     public interface IEvent
@@ -18,14 +19,26 @@ namespace SiegeEngine.Events
         byte[] Serialize();
         void Deserialize(byte[] data);
     }
+
     public class EventBus
     {
         private readonly Dictionary<Type, List<object>> _subscribers = new Dictionary<Type, List<object>>();
         private readonly SteamEngine _steamEngine;
+        private readonly List<string> _eventNamespaces = new List<string> { "SiegeEngine.Events" };
+
         public EventBus(SteamEngine steamEngine = null)
         {
             _steamEngine = steamEngine;
         }
+
+        public void RegisterNamespace(string ns)
+        {
+            if (!_eventNamespaces.Contains(ns))
+            {
+                _eventNamespaces.Add(ns);
+            }
+        }
+
         public void Subscribe<T>(Action<T> handler) where T : class
         {
             Type type = typeof(T);
@@ -36,6 +49,7 @@ namespace SiegeEngine.Events
             _subscribers[type].Add(handler);
             Console.WriteLine($"EventBus: Subscribed to {type.Name}");
         }
+
         public void Publish<T>(T eventData, bool networkSync = false) where T : class
         {
             Type type = typeof(T);
@@ -66,6 +80,7 @@ namespace SiegeEngine.Events
                 Console.WriteLine($"EventBus: Sent networked event {type.Name}");
             }
         }
+
         public void ProcessNetworkMessage(byte[] data)
         {
             string message = Encoding.UTF8.GetString(data);
@@ -115,7 +130,12 @@ namespace SiegeEngine.Events
             {
                 var msg = JsonSerializer.Deserialize<Dictionary<string, object>>(message);
                 string typeName = msg["Type"]?.ToString();
-                Type type = Type.GetType($"SiegeEngine.Events.{typeName}");
+                Type type = null;
+                foreach (var ns in _eventNamespaces)
+                {
+                    type = Type.GetType($"{ns}.{typeName}");
+                    if (type != null) break;
+                }
                 if (type != null && _subscribers.ContainsKey(type))
                 {
                     bool isProtected = type.GetCustomAttribute<ProtectedEventAttribute>() != null;
@@ -138,6 +158,7 @@ namespace SiegeEngine.Events
             }
         }
     }
+
     public class LobbyCreatedEvent : IEvent
     {
         public string Type => "LobbyCreated";
@@ -155,6 +176,7 @@ namespace SiegeEngine.Events
             LobbyId = obj.LobbyId;
         }
     }
+
     public class LobbyJoinedEvent : IEvent
     {
         public string Type => "LobbyJoined";
@@ -172,6 +194,7 @@ namespace SiegeEngine.Events
             LobbyId = obj.LobbyId;
         }
     }
+
     public class MouseInputEvent : IEvent
     {
         public string Type => "MouseInput";
@@ -209,6 +232,7 @@ namespace SiegeEngine.Events
             SteamId = ulong.Parse(obj["SteamId"].ToString());
         }
     }
+
     public class KeyInputEvent : IEvent
     {
         public string Type => "KeyInput";
@@ -241,6 +265,7 @@ namespace SiegeEngine.Events
             SteamId = ulong.Parse(obj["SteamId"].ToString());
         }
     }
+
     public class ToggleGridSnapEvent : IEvent
     {
         public string Type => "ToggleGridSnap";
@@ -265,5 +290,22 @@ namespace SiegeEngine.Events
         }
     }
 
-
+    public class GenericEvent : IEvent
+    {
+        public string Type => "Generic";
+        public string Hook { get; set; }
+        public Dictionary<string, string> Data { get; set; } = new Dictionary<string, string>();
+        public byte[] Serialize()
+        {
+            var json = JsonSerializer.Serialize(new { Type, Hook, Data });
+            return Encoding.UTF8.GetBytes(json);
+        }
+        public void Deserialize(byte[] data)
+        {
+            var json = Encoding.UTF8.GetString(data);
+            var obj = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+            Hook = obj["Hook"].ToString();
+            Data = JsonSerializer.Deserialize<Dictionary<string, string>>(obj["Data"].ToString());
+        }
+    }
 }

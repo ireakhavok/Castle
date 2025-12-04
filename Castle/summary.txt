@@ -1,4 +1,94 @@
-Folder: Castle
+Folder: ScriptChamber
+ File: Class1.cs
+ class: Class1 (Namespace: ScriptChamber)
+ Inherits: None
+ Dependencies: None
+ Methods:
+
+Folder: CastleBuilder
+ File: BlueprintChamber.cs
+ class: ProjectData (Namespace: BlueprintChamber)
+ Inherits: None
+ Dependencies: CastleBuilder.Events, CastleBuilder.Events, SiegeEngine.Events, System, System.Collections.Generic, System.IO, System.Text.Json
+ Methods:
+ File: BlueprintChamber.cs
+ class: BlueprintManager (Namespace: BlueprintChamber)
+ Inherits: None
+ Dependencies: CastleBuilder.Events, CastleBuilder.Events, SiegeEngine.Events, System, System.Collections.Generic, System.IO, System.Text.Json
+ Methods:
+ - constructor BlueprintManager(EventBus eventBus, EventBus eventBus)
+ Calls: GetTemplate, GetTemplate
+ - void OnNewProject(NewProjectEvent evt, NewProjectEvent evt)
+ Calls: None
+ - void OnLoadProject(LoadProjectEvent evt, LoadProjectEvent evt)
+ Calls: None
+ - void OnSaveProject(SaveProjectEvent evt, SaveProjectEvent evt)
+ Calls: None
+ - string GetTemplate(string type, string type)
+ Calls: None
+ - string GetDefaultIDEPath()
+ Calls: None
+ - void LoadIDEState()
+ Calls: None
+ - void SaveIDEState()
+ Calls: None
+ File: BlueprintManager.cs
+ class: ProjectData (Namespace: CastleBuilder)
+ Inherits: None
+ Dependencies: CastleBuilder.Events, CastleBuilder.Events, SiegeEngine.Events, System, System.Collections.Generic, System.IO, System.Text.Json
+ Methods:
+ File: BlueprintManager.cs
+ class: BlueprintManager (Namespace: CastleBuilder)
+ Inherits: None
+ Dependencies: CastleBuilder.Events, CastleBuilder.Events, SiegeEngine.Events, System, System.Collections.Generic, System.IO, System.Text.Json
+ Methods:
+ - constructor BlueprintManager(EventBus eventBus, EventBus eventBus)
+ Calls: None
+ - void OnGenericEvent(GenericEvent evt, GenericEvent evt)
+ Calls: None
+ - void OnNewProject(NewProjectEvent evt, NewProjectEvent evt)
+ Calls: None
+ - void OnLoadProject(LoadProjectEvent evt, LoadProjectEvent evt)
+ Calls: None
+ - void OnSaveProject(SaveProjectEvent evt, SaveProjectEvent evt)
+ Calls: None
+ - string GetTemplate(string type, string type)
+ Calls: None
+ - string GetDefaultIDEPath()
+ Calls: None
+ - void LoadIDEState()
+ Calls: None
+ - void SaveIDEState()
+ Calls: None
+ File: LoadProjectEvent.cs
+ class: LoadProjectEvent (Namespace: CastleBuilder.Events)
+ Inherits: SiegeEngine
+ Dependencies: System.Text, System.Text, System.Text.Json
+ Methods:
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: NewProjectEvent.cs
+ class: NewProjectEvent (Namespace: CastleBuilder.Events)
+ Inherits: SiegeEngine
+ Dependencies: System.Text, System.Text, System.Text.Json
+ Methods:
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: SaveProjectEvent.cs
+ class: SaveProjectEvent (Namespace: CastleBuilder.Events)
+ Inherits: SiegeEngine
+ Dependencies: System.Text, System.Text, System.Text.Json
+ Methods:
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+
+Folder: Citadel
  File: NetworkManager.cs
  class: NetworkManager (Namespace: Citadel.Network)
  Inherits: None
@@ -112,6 +202,8 @@ Folder: Castle
  Methods:
  - void Update(float deltaTime, float deltaTime)
  Calls: None
+
+Folder: Foundation
  File: Program.cs
  class: Program (Namespace: Foundation)
  Inherits: None
@@ -121,21 +213,15 @@ Folder: Castle
  Calls: DetectAvailable, DetectAvailable, Dispose, Initialize, LoadSettings, MessageBox, SaveSettings, Start, SteamEngine, UISettingsManager
  - void Main(string[] args, string[] args)
  Calls: MessageBox, MessageBox
- File: Class1.cs
- class: Class1 (Namespace: GuildTower)
- Inherits: None
- Dependencies: None
- Methods:
+
+Folder: MapRoom
  File: Class1.cs
  class: Class1 (Namespace: MapRoom)
  Inherits: None
  Dependencies: None
  Methods:
- File: Class1.cs
- class: Class1 (Namespace: QuestHall)
- Inherits: None
- Dependencies: None
- Methods:
+
+Folder: ReadingChamber
  File: AssetViewerPanel.cs
  class: AssetViewerPanel (Namespace: ReadingChamber)
  Inherits: BasePanel
@@ -198,11 +284,22 @@ Folder: Castle
  Methods:
  - void HandleUIClick(HtmlElement elem, HtmlElement elem)
  Calls: None
+
+Folder: GuildTower
  File: Class1.cs
- class: Class1 (Namespace: ScriptChamber)
+ class: Class1 (Namespace: GuildTower)
  Inherits: None
  Dependencies: None
  Methods:
+
+Folder: QuestHall
+ File: Class1.cs
+ class: Class1 (Namespace: QuestHall)
+ Inherits: None
+ Dependencies: None
+ Methods:
+
+Folder: SiegeEngine
  File: BaseNode.cs
  class: BaseNode (Namespace: SiegeEngine.AssetObjects)
  Inherits: None
@@ -1126,6 +1223,8 @@ Folder: Castle
  Methods:
  - constructor EventBus(SteamEngine steamEngine, SteamEngine steamEngine)
  Calls: None
+ - void RegisterNamespace(string ns, string ns)
+ Calls: None
  - void ProcessNetworkMessage(byte[] data, byte[] data)
  Calls: KeyInputEvent, KeyInputEvent, MouseInputEvent, Parse
  File: EventBus.cs
@@ -1180,6 +1279,16 @@ Folder: Castle
  Methods:
  - constructor ToggleGridSnapEvent(ulong playerId, ulong playerId, bool state)
  Calls: Serialize, Serialize
+ - byte[] Serialize()
+ Calls: None
+ - void Deserialize(byte[] data, byte[] data)
+ Calls: None
+ File: EventBus.cs
+ class: GenericEvent (Namespace: SiegeEngine.Events)
+ Inherits: IEvent
+    
+ Dependencies: SiegeEngine.Definitions, SiegeEngine.Definitions, SiegeEngine.Networking, System, System.Collections.Generic, System.Diagnostics, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
+ Methods:
  - byte[] Serialize()
  Calls: None
  - void Deserialize(byte[] data, byte[] data)
@@ -3091,18 +3200,22 @@ Folder: Castle
  Calls: None
  - string> BuildGuidMap(string path, string path)
  Calls: None
+
+Folder: ThroneRoom
  File: Class1.cs
  class: Class1 (Namespace: ThroneRoom)
  Inherits: None
  Dependencies: None
  Methods:
+
+Folder: Trebuchet
  File: Launcher.cs
  class: Launcher (Namespace: Trebuchet)
  Inherits: None
- Dependencies: SiegeEngine.ContextManagement, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, SiegeEngine.UI, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
+ Dependencies: CastleBuilder, CastleBuilder, SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, SiegeEngine.UI, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
  Methods:
  - void Start(string context, string context)
- Calls: AddPanel, AddPanel, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Init, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PanelManager, PollEvents, Render, Resize, RunCallbacks, SceneManager, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
+ Calls: AddPanel, AddPanel, BlueprintManager, Clear, ClearColor, Disable, Enable, EventBus, GetMenuConfigPath, GetTime, Init, Initialize, InputHandler, LoadLibrary, LoadSettings, ModManager, PanelManager, PollEvents, RegisterNamespace, Render, Resize, RunCallbacks, SceneManager, SetKeyCallback, SetMouseCallback, SetWindowSizeCallback, Start, SteamEngine, SwapBuffers, UISettingsManager, Update, UpdateWindowSize, WindowShouldClose
  - IntPtr LoadLibrary(string lpFileName, string lpFileName)
  Calls: None
 

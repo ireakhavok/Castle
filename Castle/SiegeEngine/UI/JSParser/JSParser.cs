@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI.JSParser
+﻿// Folder: SiegeEngine.UI/JSParser
 // File: JSParser.cs
 using System;
 using System.Collections.Generic;
@@ -84,6 +84,10 @@ namespace SiegeEngine.UI.JSParser
                     else if (id == "this")
                     {
                         token = new Token(TokenType.This, null);
+                    }
+                    else if (id == "function")
+                    {
+                        token = new Token(TokenType.Function, null);
                     }
                     else
                     {
@@ -786,25 +790,51 @@ namespace SiegeEngine.UI.JSParser
             Token token = GetNextToken();
             switch (token.Type)
             {
+                case TokenType.Function:
+                    string name = null;
+                    SkipWhitespaceAndComments();
+                    if (char.IsLetter(_currentChar) || _currentChar == '_')
+                    {
+                        name = ParseIdentifier();
+                    }
+                    Consume(TokenType.LeftParen);
+                    List<string> paramsList = new List<string>();
+                    SkipWhitespaceAndComments();
+                    if (_currentChar != ')')
+                    {
+                        paramsList.Add(ParseIdentifier());
+                        SkipWhitespaceAndComments();
+                        while (_currentChar == ',')
+                        {
+                            Advance();
+                            SkipWhitespaceAndComments();
+                            paramsList.Add(ParseIdentifier());
+                            SkipWhitespaceAndComments();
+                        }
+                    }
+                    Consume(TokenType.RightParen);
+                    SkipWhitespaceAndComments();
+                    ASTNode body = ParseBlockStatement();
+                    return new FunctionDeclarationNode(name, paramsList, body);
                 case TokenType.Identifier:
-                    string name = (string)token.Value;
+                    string idName = (string)token.Value;
                     SkipWhitespaceAndComments();
                     if (Match("=>"))
                     {
                         GetOperator(); // consume =>
                         SkipWhitespaceAndComments();
-                        ASTNode body;
+                        ASTNode arrowBody;
                         if (_currentChar == '{')
                         {
-                            body = ParseBlockStatement();
+                            arrowBody = ParseBlockStatement();
                         }
                         else
                         {
-                            body = ParseAssignmentExpression();
+                            arrowBody = ParseAssignmentExpression();
                         }
-                        return new ArrowExpressionNode(new List<ASTNode> { new IdentifierNode(name) }, body);
+                        return new ArrowExpressionNode(new List<ASTNode> { new IdentifierNode(idName) }, arrowBody);
                     }
-                    return new IdentifierNode(name);
+                    return new IdentifierNode(idName);
                 case TokenType.Number:
                     return new LiteralNode(double.Parse((string)token.Value));
                 case TokenType.String:
@@ -830,16 +860,16 @@ namespace SiegeEngine.UI.JSParser
                     {
                         GetOperator(); // consume =>
                         SkipWhitespaceAndComments();
-                        ASTNode body;
+                        ASTNode arrowBody;
                         if (_currentChar == '{')
                         {
-                            body = ParseBlockStatement();
+                            arrowBody = ParseBlockStatement();
                         }
                         else
                         {
-                            body = ParseAssignmentExpression();
+                            arrowBody = ParseAssignmentExpression();
                         }
-                        return new ArrowExpressionNode(paramList, body);
+                        return new ArrowExpressionNode(paramList, arrowBody);
                     }
                     else
                     {
@@ -1016,7 +1046,8 @@ namespace SiegeEngine.UI.JSParser
         True,
         False,
         Null,
-        This
+        This,
+        Function
     }
     public class Token
     {

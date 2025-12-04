@@ -10,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.UI.JSParser;
-
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -29,7 +28,7 @@ namespace SiegeEngine.UI
         private bool _prevMouseDown = false;
         private List<SelectElement> _openSelects = new List<SelectElement>();
         private JSContext _jsContext = new JSContext();
-        private JSDocument _document;
+        public JSDocument _document;
         private HtmlElement _currentFocused;
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {

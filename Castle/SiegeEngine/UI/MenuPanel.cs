@@ -5,9 +5,9 @@ using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
 using SiegeEngine.Managers;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-
 namespace SiegeEngine.UI
 {
     public class MenuPanel : BasePanel
@@ -49,9 +49,23 @@ namespace SiegeEngine.UI
                     //_eventBus.Publish(new SwitchSceneEvent { Hook = hook });
                     Console.WriteLine($"MenuUIOverlay: Published SwitchSceneEvent with hook {hook}");
                 }
+                else if (hook == "CastleBuilder.CreateProject")
+                {
+                    var data = new Dictionary<string, string>();
+                    var nameJs = _document.getElementById("project-name");
+                    data["name"] = nameJs.value;
+                    var typeJs = _document.getElementById("game-type");
+                    data["projectType"] = typeJs.value;
+                    var modeJs = _document.getElementById("project-mode");
+                    data["mode"] = modeJs.value;
+                    var modsJs = _document.getElementById("allow-mods");
+                    data["allowMods"] = modsJs.@checked.ToString();
+                    data["path"] = "Projects/" + data["name"];
+                    _eventBus.Publish(new GenericEvent { Hook = "CreateProject", Data = data });
+                }
                 else
                 {
-                    //_eventBus.Publish(new GenericEvent { Hook = hook });
+                    _eventBus.Publish(new GenericEvent { Hook = hook });
                     Console.WriteLine($"MenuUIOverlay: Published GenericEvent with hook {hook}");
                 }
             }
@@ -81,18 +95,15 @@ namespace SiegeEngine.UI
         }
         private readonly ModManager _modManager;
         private readonly string _initialHtmlPath;
-
         public MenuPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, ModManager modManager, string initialHtmlPath) : base(renderContext, controlContext, window, eventBus)
         {
             _modManager = modManager;
             _initialHtmlPath = initialHtmlPath;
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new MenuUIOverlay(this, _renderContext, _controlContext, _window, _modManager, _eventBus);
         }
-
         public override void Init()
         {
             base.Init();
@@ -105,7 +116,6 @@ namespace SiegeEngine.UI
                 Console.WriteLine($"MenuPanel: Initial HTML file not found at {_initialHtmlPath}");
             }
         }
-
         public void SwitchMenu(string menuName)
         {
             string htmlPath = _modManager.ResolvePath($"{menuName}.html");
