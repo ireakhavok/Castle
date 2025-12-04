@@ -109,6 +109,7 @@ namespace SiegeEngine.UI
                 {
                     input.Type = elem.Attributes.GetValueOrDefault("type", "text");
                     input.Checked = elem.Attributes.ContainsKey("checked");
+                    input.Value = elem.Attributes.GetValueOrDefault("value", "");
                 }
                 foreach (var child in elem.Children)
                 {
@@ -129,6 +130,8 @@ namespace SiegeEngine.UI
                     elem.Style.FontSizeStr = parent.Style.FontSizeStr;
                 if (string.IsNullOrEmpty(elem.Style.TextAlign))
                     elem.Style.TextAlign = parent.Style.TextAlign;
+                if (elem is InputElement inp && inp.Type == "text" && elem.Style.BackgroundColor == Vector4.Zero)
+                    elem.Style.BackgroundColor = parent.Style.BackgroundColor;
             }
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
@@ -470,6 +473,16 @@ namespace SiegeEngine.UI
             }
             _justOpenedSelect = false;
             _prevMouseDown = currentMouseDown;
+            bool needsRefresh = false;
+            // Handle keyboard for focused text input
+            if (_currentFocused is InputElement input && input.Type == "text")
+            {
+                needsRefresh = input.Update(deltaTime, _controlContext, _window);
+            }
+            if (needsRefresh)
+            {
+                RefreshUI();
+            }
         }
         protected void RenderUI(int w, int h)
         {
