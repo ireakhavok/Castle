@@ -30,6 +30,10 @@ namespace SiegeEngine.UI
         private JSContext _jsContext = new JSContext();
         public JSDocument _document;
         private HtmlElement _currentFocused;
+        private readonly Dictionary<Key, double> _keyDownTime = new Dictionary<Key, double>();
+        private readonly Dictionary<Key, double> _lastAddTime = new Dictionary<Key, double>();
+        private const double InitialRepeatDelay = 0.5;
+        private const double RepeatRate = 0.05;
 
         public HtmlElement FocusedElement => _currentFocused;
 
@@ -421,6 +425,82 @@ namespace SiegeEngine.UI
             }
         }
 
+        private char? GetCharFromKey(Key key, bool shiftPressed)
+        {
+            if (key >= Key.A && key <= Key.Z)
+            {
+                return (char)((int)key - (int)Key.A + (shiftPressed ? 'A' : 'a'));
+            }
+            else if (key >= Key.Key0 && key <= Key.Key9)
+            {
+                char noShift = (char)((int)key - (int)Key.Key0 + '0');
+                char withShift = key switch
+                {
+                    Key.Key0 => ')',
+                    Key.Key1 => '!',
+                    Key.Key2 => '@',
+                    Key.Key3 => '#',
+                    Key.Key4 => '$',
+                    Key.Key5 => '%',
+                    Key.Key6 => '^',
+                    Key.Key7 => '&',
+                    Key.Key8 => '*',
+                    Key.Key9 => '(',
+                    _ => noShift
+                };
+                return shiftPressed ? withShift : noShift;
+            }
+            else if (key == Key.Space)
+            {
+                return ' ';
+            }
+            else if (key == Key.Minus)
+            {
+                return shiftPressed ? '_' : '-';
+            }
+            else if (key == Key.Equal)
+            {
+                return shiftPressed ? '+' : '=';
+            }
+            else if (key == Key.LeftBracket)
+            {
+                return shiftPressed ? '{' : '[';
+            }
+            else if (key == Key.RightBracket)
+            {
+                return shiftPressed ? '}' : ']';
+            }
+            else if (key == Key.Backslash)
+            {
+                return shiftPressed ? '|' : '\\';
+            }
+            else if (key == Key.Semicolon)
+            {
+                return shiftPressed ? ':' : ';';
+            }
+            else if (key == Key.Apostrophe)
+            {
+                return shiftPressed ? '"' : '\'';
+            }
+            else if (key == Key.Comma)
+            {
+                return shiftPressed ? '<' : ',';
+            }
+            else if (key == Key.Period)
+            {
+                return shiftPressed ? '>' : '.';
+            }
+            else if (key == Key.Slash)
+            {
+                return shiftPressed ? '?' : '/';
+            }
+            else if (key == Key.GraveAccent)
+            {
+                return shiftPressed ? '~' : '`';
+            }
+            return null;
+        }
+
         public virtual void Update(float deltaTime)
         {
             // UI input handling
@@ -525,6 +605,73 @@ namespace SiegeEngine.UI
             // Handle keyboard for focused text input
             if (_currentFocused is InputElement input && input.Type == "text")
             {
+                bool shiftPressed = _controlContext.GetKey(_window, Key.LeftShift) == InputAction.Press ||
+                                    _controlContext.GetKey(_window, Key.RightShift) == InputAction.Press;
+
+                double currentTime = _controlContext.GetTime();
+                bool changed = false;
+
+                foreach (Key key in Enum.GetValues(typeof(Key)))
+                {
+                    InputAction state = _controlContext.GetKey(_window, key);
+                    if (state == InputAction.Press)
+                    {
+                        if (!_keyDownTime.ContainsKey(key))
+                        {
+                            _keyDownTime[key] = currentTime;
+                            _lastAddTime[key] = currentTime;
+                            if (key == Key.Backspace)
+                            {
+                                if (input.Value.Length > 0)
+                                {
+                                    input.Value = input.Value.Substring(0, input.Value.Length - 1);
+                                    changed = true;
+                                }
+                            }
+                            else
+                            {
+                                char? ch = GetCharFromKey(key, shiftPressed);
+                                if (ch.HasValue)
+                                {
+                                    input.Value += ch.Value;
+                                    changed = true;
+                                }
+                            }
+                        }
+                        else if (currentTime - _keyDownTime[key] > InitialRepeatDelay && currentTime - _lastAddTime[key] > RepeatRate)
+                        {
+                            _lastAddTime[key] = currentTime;
+                            if (key == Key.Backspace)
+                            {
+                                if (input.Value.Length > 0)
+                                {
+                                    input.Value = input.Value.Substring(0, input.Value.Length - 1);
+                                    changed = true;
+                                }
+                            }
+                            else
+                            {
+                                char? ch = GetCharFromKey(key, shiftPressed);
+                                if (ch.HasValue)
+                                {
+                                    input.Value += ch.Value;
+                                    changed = true;
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _keyDownTime.Remove(key);
+                        _lastAddTime.Remove(key);
+                    }
+                }
+
+                if (changed)
+                {
+                    RefreshUI();
+                }
+
                 needsRefresh = input.Update(deltaTime, _controlContext, _window);
             }
             if (needsRefresh)

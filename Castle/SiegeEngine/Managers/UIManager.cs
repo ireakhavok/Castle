@@ -3,7 +3,6 @@ using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
-using SiegeEngine.PlayerSystem;
 using SiegeEngine.Rendering;
 using SiegeEngine.Rendering.Shaders;
 using SiegeEngine.UI;
@@ -89,8 +88,7 @@ namespace SiegeEngine.Managers
             string html = File.ReadAllText(resolvedPath);
             // Load into menu overlay or main UI root
             // For simplicity, assume menu is loaded as a special panel
-            var inputHandler = new InputHandler(_controlContext, _window, null);
-            var menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialMenuHtmlPath, inputHandler);
+            var menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialMenuHtmlPath);
             AddPanel(menuPanel);
         }
 

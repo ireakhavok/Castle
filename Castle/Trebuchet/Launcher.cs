@@ -80,7 +80,7 @@ namespace Trebuchet
                     _inputHandler.SetKeyCallback("ui", (key, action) => { });
                     string initialHtmlPath = _modManager.GetMenuConfigPath();
                     Console.WriteLine($"Launcher: Resolved MainMenu.html path: {initialHtmlPath}, Exists: {File.Exists(initialHtmlPath)}");
-                    _menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialHtmlPath, _inputHandler);
+                    _menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialHtmlPath);
                     _menuPanel.Init();
                     _eventBus.RegisterNamespace("CastleBuilder.Events");
                     _blueprintManager = new BlueprintManager(_eventBus);
