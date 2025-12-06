@@ -6,6 +6,7 @@ using SiegeEngine.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.UI
 {
     public class InputElement : HtmlElement
@@ -120,39 +121,6 @@ namespace SiegeEngine.UI
                     _cursorVisible = !_cursorVisible;
                     _cursorTimer = 0f;
                     valueChanged = true; // To force refresh for blink
-                }
-                // Handle keyboard input
-                bool shiftPressed = controlContext.GetKey(window, Key.LeftShift) == InputAction.Press || controlContext.GetKey(window, Key.RightShift) == InputAction.Press;
-                for (Key key = Key.A; key <= Key.Z; key = (Key)((int)key + 1))
-                {
-                    if (controlContext.GetKey(window, key) == InputAction.Press)
-                    {
-                        char ch = (char)((int)key - (int)Key.A + (shiftPressed ? 'A' : 'a'));
-                        Value += ch;
-                        valueChanged = true;
-                    }
-                }
-                for (Key key = Key.Key0; key <= Key.Key9; key = (Key)((int)key + 1))
-                {
-                    if (controlContext.GetKey(window, key) == InputAction.Press)
-                    {
-                        char ch = (char)((int)key - (int)Key.Key0 + '0');
-                        Value += ch;
-                        valueChanged = true;
-                    }
-                }
-                if (controlContext.GetKey(window, Key.Space) == InputAction.Press)
-                {
-                    Value += ' ';
-                    valueChanged = true;
-                }
-                if (controlContext.GetKey(window, Key.Backspace) == InputAction.Press || controlContext.GetKey(window, Key.Backspace) == InputAction.Repeat)
-                {
-                    if (Value.Length > 0)
-                    {
-                        Value = Value.Substring(0, Value.Length - 1);
-                        valueChanged = true;
-                    }
                 }
             }
             return valueChanged;

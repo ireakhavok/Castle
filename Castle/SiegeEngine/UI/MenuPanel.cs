@@ -1,4 +1,5 @@
-﻿// SiegeEngine.UI/MenuPanel.cs
+﻿// Folder: SiegeEngine.UI
+// File: MenuPanel.cs
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
@@ -138,24 +139,93 @@ namespace SiegeEngine.UI
 
             bool changed = false;
 
-            if (key >= Key.A && key <= Key.Z && (action == InputAction.Press || action == InputAction.Repeat))
+            if (key >= Key.A && key <= Key.Z)
             {
                 char ch = (char)((int)key - (int)Key.A + (shiftPressed ? 'A' : 'a'));
                 focused.Value += ch;
                 changed = true;
             }
-            else if (key >= Key.Key0 && key <= Key.Key9 && (action == InputAction.Press || action == InputAction.Repeat))
+            else if (key >= Key.Key0 && key <= Key.Key9)
             {
-                char ch = (char)((int)key - (int)Key.Key0 + '0');
-                focused.Value += ch;
+                char noShift = (char)((int)key - (int)Key.Key0 + '0');
+                char withShift = key switch
+                {
+                    Key.Key0 => ')',
+                    Key.Key1 => '!',
+                    Key.Key2 => '@',
+                    Key.Key3 => '#',
+                    Key.Key4 => '$',
+                    Key.Key5 => '%',
+                    Key.Key6 => '^',
+                    Key.Key7 => '&',
+                    Key.Key8 => '*',
+                    Key.Key9 => '(',
+                    _ => noShift
+                };
+                focused.Value += shiftPressed ? withShift : noShift;
                 changed = true;
             }
-            else if (key == Key.Space && (action == InputAction.Press || action == InputAction.Repeat))
+            else if (key == Key.Space)
             {
                 focused.Value += ' ';
                 changed = true;
             }
-            else if (key == Key.Backspace && (action == InputAction.Press || action == InputAction.Repeat))
+            else if (key == Key.Minus)
+            {
+                focused.Value += shiftPressed ? '_' : '-';
+                changed = true;
+            }
+            else if (key == Key.Equal)
+            {
+                focused.Value += shiftPressed ? '+' : '=';
+                changed = true;
+            }
+            else if (key == Key.LeftBracket)
+            {
+                focused.Value += shiftPressed ? '{' : '[';
+                changed = true;
+            }
+            else if (key == Key.RightBracket)
+            {
+                focused.Value += shiftPressed ? '}' : ']';
+                changed = true;
+            }
+            else if (key == Key.Backslash)
+            {
+                focused.Value += shiftPressed ? '|' : '\\';
+                changed = true;
+            }
+            else if (key == Key.Semicolon)
+            {
+                focused.Value += shiftPressed ? ':' : ';';
+                changed = true;
+            }
+            else if (key == Key.Apostrophe)
+            {
+                focused.Value += shiftPressed ? '"' : '\'';
+                changed = true;
+            }
+            else if (key == Key.Comma)
+            {
+                focused.Value += shiftPressed ? '<' : ',';
+                changed = true;
+            }
+            else if (key == Key.Period)
+            {
+                focused.Value += shiftPressed ? '>' : '.';
+                changed = true;
+            }
+            else if (key == Key.Slash)
+            {
+                focused.Value += shiftPressed ? '?' : '/';
+                changed = true;
+            }
+            else if (key == Key.GraveAccent)
+            {
+                focused.Value += shiftPressed ? '~' : '`';
+                changed = true;
+            }
+            else if (key == Key.Backspace)
             {
                 if (focused.Value.Length > 0)
                 {
