@@ -1,5 +1,4 @@
-﻿// Folder: Trebuchet
-// File: Launcher.cs
+﻿// Trebuchet/Launcher.cs
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
@@ -40,6 +39,7 @@ namespace Trebuchet
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
         private BlueprintManager _blueprintManager;
+
         public void Start(string context)
         {
             try
@@ -80,7 +80,7 @@ namespace Trebuchet
                     _inputHandler.SetKeyCallback("ui", (key, action) => { });
                     string initialHtmlPath = _modManager.GetMenuConfigPath();
                     Console.WriteLine($"Launcher: Resolved MainMenu.html path: {initialHtmlPath}, Exists: {File.Exists(initialHtmlPath)}");
-                    _menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialHtmlPath);
+                    _menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialHtmlPath, _inputHandler);
                     _menuPanel.Init();
                     _eventBus.RegisterNamespace("CastleBuilder.Events");
                     _blueprintManager = new BlueprintManager(_eventBus);
@@ -135,6 +135,7 @@ namespace Trebuchet
                 _contextManager?.Terminate();
             }
         }
+
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr LoadLibrary(string lpFileName);
     }

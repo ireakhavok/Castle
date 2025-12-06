@@ -1,13 +1,15 @@
-﻿// Folder: SiegeEngine.UI
-// File: MenuPanel.cs
+﻿// SiegeEngine.UI/MenuPanel.cs
 using SiegeEngine.ContextManagement;
+using SiegeEngine.Definitions;
 using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
 using SiegeEngine.Managers;
+using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+
 namespace SiegeEngine.UI
 {
     public class MenuPanel : BasePanel
@@ -93,20 +95,27 @@ namespace SiegeEngine.UI
                 }
             }
         }
+
         private readonly ModManager _modManager;
         private readonly string _initialHtmlPath;
-        public MenuPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, ModManager modManager, string initialHtmlPath) : base(renderContext, controlContext, window, eventBus)
+        private readonly InputHandler _inputHandler;
+
+        public MenuPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, ModManager modManager, string initialHtmlPath, InputHandler inputHandler) : base(renderContext, controlContext, window, eventBus)
         {
             _modManager = modManager;
             _initialHtmlPath = initialHtmlPath;
+            _inputHandler = inputHandler;
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new MenuUIOverlay(this, _renderContext, _controlContext, _window, _modManager, _eventBus);
         }
+
         public override void Init()
         {
             base.Init();
+            _inputHandler.KeyEvent += OnKeyEvent;
             if (File.Exists(_initialHtmlPath))
             {
                 _uiOverlay.LoadUI(File.ReadAllText(_initialHtmlPath), Path.GetDirectoryName(_initialHtmlPath) ?? "");
@@ -116,6 +125,51 @@ namespace SiegeEngine.UI
                 Console.WriteLine($"MenuPanel: Initial HTML file not found at {_initialHtmlPath}");
             }
         }
+
+        private void OnKeyEvent(Key key, InputAction action)
+        {
+            if (action == InputAction.Release) return;
+
+            var focused = _uiOverlay.FocusedElement as InputElement;
+            if (focused == null || focused.Type != "text") return;
+
+            bool shiftPressed = _controlContext.GetKey(_window, Key.LeftShift) == InputAction.Press ||
+                                _controlContext.GetKey(_window, Key.RightShift) == InputAction.Press;
+
+            bool changed = false;
+
+            if (key >= Key.A && key <= Key.Z && (action == InputAction.Press || action == InputAction.Repeat))
+            {
+                char ch = (char)((int)key - (int)Key.A + (shiftPressed ? 'A' : 'a'));
+                focused.Value += ch;
+                changed = true;
+            }
+            else if (key >= Key.Key0 && key <= Key.Key9 && (action == InputAction.Press || action == InputAction.Repeat))
+            {
+                char ch = (char)((int)key - (int)Key.Key0 + '0');
+                focused.Value += ch;
+                changed = true;
+            }
+            else if (key == Key.Space && (action == InputAction.Press || action == InputAction.Repeat))
+            {
+                focused.Value += ' ';
+                changed = true;
+            }
+            else if (key == Key.Backspace && (action == InputAction.Press || action == InputAction.Repeat))
+            {
+                if (focused.Value.Length > 0)
+                {
+                    focused.Value = focused.Value.Substring(0, focused.Value.Length - 1);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                _uiOverlay.RefreshUI();
+            }
+        }
+
         public void SwitchMenu(string menuName)
         {
             string htmlPath = _modManager.ResolvePath($"{menuName}.html");

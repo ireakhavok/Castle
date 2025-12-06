@@ -1,5 +1,4 @@
-﻿// Folder: SiegeEngine.UI
-// File: UIOverlay.cs
+﻿// SiegeEngine.UI/UIOverlay.cs
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Rendering;
@@ -10,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.UI.JSParser;
+
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -30,12 +30,16 @@ namespace SiegeEngine.UI
         private JSContext _jsContext = new JSContext();
         public JSDocument _document;
         private HtmlElement _currentFocused;
+
+        public HtmlElement FocusedElement => _currentFocused;
+
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _window = window;
         }
+
         public virtual void Init()
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -44,6 +48,7 @@ namespace SiegeEngine.UI
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _cssParser = new CssParser();
         }
+
         public void LoadUI(string html, string baseDir = "")
         {
             _currentBaseDir = baseDir;
@@ -98,6 +103,7 @@ namespace SiegeEngine.UI
             }
             RefreshUI();
         }
+
         private void InitializeElementProperties(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -118,6 +124,7 @@ namespace SiegeEngine.UI
                 }
             }
         }
+
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -137,6 +144,7 @@ namespace SiegeEngine.UI
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
+
         private void CollectClickables(HtmlElement elem)
         {
             if (elem.GetEffectiveDisplay() == "none") return;
@@ -149,9 +157,11 @@ namespace SiegeEngine.UI
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
+
         protected virtual void HandleDataHook(string hook)
         {
         }
+
         protected virtual void HandleLink(string href)
         {
             if (string.IsNullOrEmpty(href)) return;
@@ -165,6 +175,7 @@ namespace SiegeEngine.UI
                 Console.WriteLine($"UIOverlay: Failed to load relative path: {resolvedPath}");
             }
         }
+
         public void RefreshUI()
         {
             if (_uiRoot == null) return;
@@ -175,6 +186,7 @@ namespace SiegeEngine.UI
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
         }
+
         protected HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root == null) return null;
@@ -186,10 +198,12 @@ namespace SiegeEngine.UI
             }
             return null;
         }
+
         public HtmlElement FindElementById(string id)
         {
             return FindElementById(_uiRoot, id);
         }
+
         private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             if (root == null) return new List<HtmlElement>();
@@ -205,6 +219,7 @@ namespace SiegeEngine.UI
             }
             return list;
         }
+
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             if (root == null) return new List<HtmlElement>();
@@ -219,10 +234,12 @@ namespace SiegeEngine.UI
             }
             return list;
         }
+
         protected List<HtmlElement> FindElementsByTag(string tag)
         {
             return FindElementsByTag(_uiRoot, tag);
         }
+
         protected virtual void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
@@ -391,6 +408,7 @@ namespace SiegeEngine.UI
             }
             RefreshUI();
         }
+
         private void CloseAllOpenSelects()
         {
             var selects = FindElementsByTag("select");
@@ -402,6 +420,7 @@ namespace SiegeEngine.UI
                 }
             }
         }
+
         public virtual void Update(float deltaTime)
         {
             // UI input handling
@@ -513,6 +532,7 @@ namespace SiegeEngine.UI
                 RefreshUI();
             }
         }
+
         protected void RenderUI(int w, int h)
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -525,6 +545,7 @@ namespace SiegeEngine.UI
             }
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
+
         public virtual void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
@@ -533,6 +554,7 @@ namespace SiegeEngine.UI
                 RenderUI(w, h);
             }
         }
+
         public void RecomputeLayout(int w, int h)
         {
             if (_uiRoot != null)
@@ -541,6 +563,7 @@ namespace SiegeEngine.UI
                 _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             }
         }
+
         public virtual void Dispose()
         {
             _uiShader.Dispose();
