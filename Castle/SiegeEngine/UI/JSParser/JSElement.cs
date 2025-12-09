@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+
 namespace SiegeEngine.UI.JSParser
 {
     public class JSElement
@@ -65,6 +66,14 @@ namespace SiegeEngine.UI.JSParser
                 {
                     return elem.Attributes.GetValueOrDefault("value", ((TextElement)elem.Children.FirstOrDefault())?.Content ?? "");
                 }
+                else if (tag == "input")
+                {
+                    if (elem is InputElement inp)
+                    {
+                        return inp.Value;
+                    }
+                    return elem.Attributes.GetValueOrDefault("value", "");
+                }
                 return "";
             }
             set
@@ -88,11 +97,30 @@ namespace SiegeEngine.UI.JSParser
                     }
                     if (found)
                     {
+                        overlay.RefreshUI();
+                        overlay.TriggerChange(elem);
                     }
                 }
                 else if (tag == "option")
                 {
                     elem.Attributes["value"] = value;
+                }
+                else if (tag == "input")
+                {
+                    if (elem is InputElement inp)
+                    {
+                        string oldValue = inp.Value;
+                        inp.Value = value;
+                        if (oldValue != value)
+                        {
+                            overlay.RefreshUI();
+                            overlay.TriggerChange(elem);
+                        }
+                    }
+                    else
+                    {
+                        elem.Attributes["value"] = value;
+                    }
                 }
             }
         }
@@ -118,7 +146,16 @@ namespace SiegeEngine.UI.JSParser
         public bool @checked
         {
             get { return elem.Checked; }
-            set { elem.Checked = value; overlay.RefreshUI(); }
+            set
+            {
+                bool oldChecked = elem.Checked;
+                elem.Checked = value;
+                overlay.RefreshUI();
+                if (oldChecked != value)
+                {
+                    overlay.TriggerChange(elem);
+                }
+            }
         }
         public void appendChild(JSElement child)
         {
@@ -137,6 +174,7 @@ namespace SiegeEngine.UI.JSParser
                 opt.Parent = elem;
                 elem.Children.Add(opt);
                 Console.WriteLine("Debug: Added option " + text);
+                overlay.RefreshUI();
             }
         }
         public void clearOptions()
@@ -144,13 +182,14 @@ namespace SiegeEngine.UI.JSParser
             if (elem.Tag.ToLower() == "select")
             {
                 elem.Children.RemoveAll(c => c.Tag.ToLower() == "option");
+                overlay.RefreshUI();
             }
         }
-        private Dictionary<string, List<object>> eventListeners = new Dictionary<string, List<object>>();
         public void addEventListener(string eventName, object callback)
         {
-            if (!eventListeners.ContainsKey(eventName)) eventListeners[eventName] = new List<object>();
-            eventListeners[eventName].Add(callback);
+            eventName = eventName.ToLower();
+            if (!elem.EventListeners.ContainsKey(eventName)) elem.EventListeners[eventName] = new List<object>();
+            elem.EventListeners[eventName].Add(callback);
         }
     }
 }

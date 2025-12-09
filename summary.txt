@@ -2556,6 +2556,8 @@ Folder: Castle
  - bool _mouseReleased
  - > _mouseCallbacks
  - > _keyCallbacks
+ - InputAction> KeyEvent
+ - SteamEngine steamEngine
  - Vector2 MousePosition
  - bool MouseDown
  - bool MouseReleased
@@ -2566,7 +2568,7 @@ Folder: Castle
  - string message
  - byte[] data
  Methods:
- - constructor InputHandler( IntPtr window,  SteamEngine steamEngine, IControlContext controlContext)
+ - constructor InputHandler( IntPtr window,  SteamEngine steamEngine = null, IControlContext controlContext)
  Calls: SetupInputCallbacks
  - void ResetMouseReleased()
  - void SetMouseCallback( InputAction> callback, string id)
@@ -4481,11 +4483,6 @@ Folder: Castle
  - float iw
  - float ih
  - bool valueChanged
- - bool shiftPressed
- - Key key
- - char ch
- - Key key
- - char ch
  - return valueChanged
  Methods:
  - constructor InputElement()
@@ -4496,7 +4493,6 @@ Folder: Castle
  Calls: ParseBorderWidths, ParsePaddings, textRenderer.GetTextSize
  - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
  - bool Update( IControlContext controlContext,  IntPtr window, float deltaTime)
- Calls: controlContext.GetKey
  File: JSBinding.cs
  class: JSBinding (Namespace: SiegeEngine.UI.JSParser)
  Dependencies: System, System.Collections.Generic
@@ -5116,6 +5112,11 @@ Folder: Castle
  - JSContext _jsContext
  - JSDocument _document
  - HtmlElement _currentFocused
+ - double> _keyDownTime
+ - double> _lastAddTime
+ - double InitialRepeatDelay
+ - double RepeatRate
+ - HtmlElement FocusedElement
  - string baseDir
  - HtmlParser parser
  - List<string> cssBlocks
@@ -5162,6 +5163,9 @@ Folder: Castle
  - var select
  - var current
  - var selects
+ - char noShift
+ - char withShift
+ - return null
  - Vector2 mousePos
  - bool currentMouseDown
  - bool mousePress
@@ -5174,6 +5178,10 @@ Folder: Castle
  - bool over
  - bool focusable
  - bool needsRefresh
+ - bool shiftPressed
+ - double currentTime
+ - bool changed
+ - InputAction state
  Methods:
  - constructor UIOverlay( IControlContext controlContext,  IntPtr window, IRenderContext renderContext)
  - void Init()
@@ -5204,9 +5212,9 @@ Folder: Castle
  - void CloseAllOpenSelects()
  Calls: FindElementsByTag
  - void Update(float deltaTime)
- Calls: CloseAllOpenSelects, FindElementsByTag, HandleUIClick, JSElement, RefreshUI, _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _jsContext.RunWithThis, clickable.HandleClick
+ Calls: CloseAllOpenSelects, FindElementsByTag, HandleUIClick, JSElement, RefreshUI, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetTime, _controlContext.GetWindowSize
  - it CloseAllOpenSelects()
- Calls: input.Update
+ Calls: RefreshUI, _controlContext.GetKey, _controlContext.GetTime, input.Update
  - void RenderUI( int h, int w)
  Calls: _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _uiRoot.Render, sel.RenderDropdown
  - void Render()

@@ -207,7 +207,7 @@
         var projectNameInput = document.getElementById('project-name');
         var locationInput = document.getElementById('project-location');
         projectNameInput.addEventListener('input', function () {
-            locationInput.value = 'Projects/' + projectNameInput.value;
+            locationInput.value = 'Projects/' + projectNameInput.value.replace(/\s+/g, '');
         });
     </script>
 </body>

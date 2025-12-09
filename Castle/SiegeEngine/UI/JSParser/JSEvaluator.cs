@@ -3,6 +3,8 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI.JSParser
 {
     public class JSEvaluator
@@ -275,6 +277,30 @@ namespace SiegeEngine.UI.JSParser
                 {
                     return new Func<object[], object>(args => meth.Invoke(objValue, args));
                 }
+                if (objValue is string str)
+                {
+                    if (propName == "replace")
+                    {
+                        return new Func<object[], object>(args =>
+                        {
+                            if (args.Length != 2) throw new Exception("replace expects 2 arguments");
+                            string repl = args[1]?.ToString() ?? "";
+                            if (args[0] is JSRegex jsregex)
+                            {
+                                RegexOptions options = RegexOptions.None;
+                                if (jsregex.Flags.Contains("i")) options |= RegexOptions.IgnoreCase;
+                                if (jsregex.Flags.Contains("m")) options |= RegexOptions.Multiline;
+                                // g ignored, Replace does all
+                                return Regex.Replace(str, jsregex.Pattern, repl, options);
+                            }
+                            else if (args[0] is string pat)
+                            {
+                                return str.Replace(pat, repl);
+                            }
+                            throw new Exception("First argument to replace must be string or regex");
+                        });
+                    }
+                }
             }
             return null;
         }
@@ -344,7 +370,7 @@ namespace SiegeEngine.UI.JSParser
             var prop1 = type?.GetProperty(propValue.ToString());
             prop1?.SetValue(objValue, value);
         }
-        private object CallFunction(object callee, List<object> args)
+        public object CallFunction(object callee, List<object> args)
         {
             if (callee is FunctionDeclarationNode func)
             {
@@ -715,5 +741,15 @@ namespace SiegeEngine.UI.JSParser
     }
     public class ThisExpressionNode : ASTNode
     {
+    }
+    public class JSRegex
+    {
+        public string Pattern { get; }
+        public string Flags { get; }
+        public JSRegex(string pattern, string flags)
+        {
+            Pattern = pattern;
+            Flags = flags;
+        }
     }
 }

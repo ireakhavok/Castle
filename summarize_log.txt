@@ -483,7 +483,7 @@ Found 3 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\C
 Found: GlfwControlContext.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\GlfwControlContext.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\GlfwControlContext.cs
-Read 7454 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\GlfwControlContext.cs
+Read 15396 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\GlfwControlContext.cs
 Namespace: SiegeEngine.ContextManagement
 Found 3 dependencies
 Class GlfwControlContext: 22 methods
@@ -979,7 +979,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\M
 Found: UIManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
-Read 4658 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
+Read 4641 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
 Namespace: SiegeEngine.Managers
 Found 13 dependencies
 Class UIManager: 10 methods
@@ -1069,7 +1069,7 @@ Found 2 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\P
 Found: InputHandler.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\InputHandler.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\InputHandler.cs
-Read 6265 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\InputHandler.cs
+Read 6435 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\InputHandler.cs
 Namespace: SiegeEngine.PlayerSystem
 Found 7 dependencies
 Class InputHandler: 8 methods
@@ -1433,7 +1433,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: InputElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
-Read 8094 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
+Read 6475 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
 Namespace: SiegeEngine.UI
 Found 6 dependencies
 Class InputElement: 6 methods
@@ -1528,7 +1528,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: MenuPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
-Read 5923 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
+Read 5912 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
 Namespace: SiegeEngine.UI
 Found 8 dependencies
 Class MenuPanel: 5 methods
@@ -1609,7 +1609,7 @@ Found 1 classes in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\U
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
-Read 24302 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
+Read 29969 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Namespace: SiegeEngine.UI
 Found 10 dependencies
 Class UIOverlay: 25 methods
@@ -1687,7 +1687,7 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Treb
 Found: Launcher.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 6649 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 6634 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
 Found 20 dependencies
 Class Launcher: 1 methods

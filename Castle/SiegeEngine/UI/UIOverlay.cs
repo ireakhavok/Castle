@@ -34,16 +34,13 @@ namespace SiegeEngine.UI
         private readonly Dictionary<Key, double> _lastAddTime = new Dictionary<Key, double>();
         private const double InitialRepeatDelay = 0.5;
         private const double RepeatRate = 0.05;
-
         public HtmlElement FocusedElement => _currentFocused;
-
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _window = window;
         }
-
         public virtual void Init()
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -52,7 +49,6 @@ namespace SiegeEngine.UI
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _cssParser = new CssParser();
         }
-
         public void LoadUI(string html, string baseDir = "")
         {
             _currentBaseDir = baseDir;
@@ -107,7 +103,6 @@ namespace SiegeEngine.UI
             }
             RefreshUI();
         }
-
         private void InitializeElementProperties(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -115,6 +110,16 @@ namespace SiegeEngine.UI
             while (queue.Count > 0)
             {
                 var elem = queue.Dequeue();
+                if (elem.Attributes.TryGetValue("onclick", out string val)) elem.OnClickJS = val;
+                if (elem.Attributes.TryGetValue("onchange", out val)) elem.OnChangeJS = val;
+                if (elem.Attributes.TryGetValue("onmouseenter", out val)) elem.OnMouseEnterJS = val;
+                if (elem.Attributes.TryGetValue("onmouseleave", out val)) elem.OnMouseLeaveJS = val;
+                if (elem.Attributes.TryGetValue("onmouseover", out val)) elem.OnMouseOverJS = val;
+                if (elem.Attributes.TryGetValue("onmouseout", out val)) elem.OnMouseOutJS = val;
+                if (elem.Attributes.TryGetValue("onmousedown", out val)) elem.OnMouseDownJS = val;
+                if (elem.Attributes.TryGetValue("onmouseup", out val)) elem.OnMouseUpJS = val;
+                if (elem.Attributes.TryGetValue("onfocus", out val)) elem.OnFocusJS = val;
+                if (elem.Attributes.TryGetValue("onblur", out val)) elem.OnBlurJS = val;
                 if (elem is InputElement input)
                 {
                     input.Type = elem.Attributes.GetValueOrDefault("type", "text");
@@ -128,7 +133,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -148,7 +152,6 @@ namespace SiegeEngine.UI
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
-
         private void CollectClickables(HtmlElement elem)
         {
             if (elem.GetEffectiveDisplay() == "none") return;
@@ -161,11 +164,9 @@ namespace SiegeEngine.UI
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
-
         protected virtual void HandleDataHook(string hook)
         {
         }
-
         protected virtual void HandleLink(string href)
         {
             if (string.IsNullOrEmpty(href)) return;
@@ -179,7 +180,6 @@ namespace SiegeEngine.UI
                 Console.WriteLine($"UIOverlay: Failed to load relative path: {resolvedPath}");
             }
         }
-
         public void RefreshUI()
         {
             if (_uiRoot == null) return;
@@ -190,7 +190,6 @@ namespace SiegeEngine.UI
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
         }
-
         protected HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root == null) return null;
@@ -202,12 +201,10 @@ namespace SiegeEngine.UI
             }
             return null;
         }
-
         public HtmlElement FindElementById(string id)
         {
             return FindElementById(_uiRoot, id);
         }
-
         private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             if (root == null) return new List<HtmlElement>();
@@ -223,7 +220,6 @@ namespace SiegeEngine.UI
             }
             return list;
         }
-
         private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             if (root == null) return new List<HtmlElement>();
@@ -238,12 +234,10 @@ namespace SiegeEngine.UI
             }
             return list;
         }
-
         protected List<HtmlElement> FindElementsByTag(string tag)
         {
             return FindElementsByTag(_uiRoot, tag);
         }
-
         protected virtual void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
@@ -253,6 +247,7 @@ namespace SiegeEngine.UI
             {
                 _jsContext.RunWithThis(elem.OnClickJS, new JSElement(elem, this));
             }
+            InvokeListeners(elem, "click");
             if (elem.Tag == "a")
             {
                 string href = elem.Attributes.GetValueOrDefault("href", "");
@@ -310,6 +305,7 @@ namespace SiegeEngine.UI
                                 {
                                     _jsContext.RunWithThis(input.OnFocusJS, new JSElement(input, this));
                                 }
+                                InvokeListeners(input, "focus");
                                 input.IsFocused = true;
                                 _currentFocused = input;
                                 Console.WriteLine($"UIOverlay: Focused text input via label {forId}");
@@ -354,6 +350,7 @@ namespace SiegeEngine.UI
                             {
                                 _jsContext.RunWithThis(input.OnFocusJS, new JSElement(input, this));
                             }
+                            InvokeListeners(input, "focus");
                             input.IsFocused = true;
                             _currentFocused = input;
                             Console.WriteLine($"UIOverlay: Focused text input {input.Attributes.GetValueOrDefault("id", "")}");
@@ -400,19 +397,10 @@ namespace SiegeEngine.UI
             }
             if (valueChanged)
             {
-                var current = elem;
-                while (current != null)
-                {
-                    if (!string.IsNullOrEmpty(current.OnChangeJS))
-                    {
-                        _jsContext.RunWithThis(current.OnChangeJS, new JSElement(current, this));
-                    }
-                    current = current.Parent;
-                }
+                TriggerChange(elem);
             }
             RefreshUI();
         }
-
         private void CloseAllOpenSelects()
         {
             var selects = FindElementsByTag("select");
@@ -424,7 +412,6 @@ namespace SiegeEngine.UI
                 }
             }
         }
-
         private char? GetCharFromKey(Key key, bool shiftPressed)
         {
             if (key >= Key.A && key <= Key.Z)
@@ -500,7 +487,6 @@ namespace SiegeEngine.UI
             }
             return null;
         }
-
         public virtual void Update(float deltaTime)
         {
             // UI input handling
@@ -531,6 +517,8 @@ namespace SiegeEngine.UI
                 {
                     continue; // Skip non-descendants when select open
                 }
+                bool wasHover = clickable.IsHover;
+                bool wasActive = clickable.IsActive;
                 bool over = clickable.HandleClick(mousePos, vw, vh);
                 if (over && mousePress)
                 {
@@ -538,29 +526,46 @@ namespace SiegeEngine.UI
                     {
                         _jsContext.RunWithThis(clickable.OnMouseDownJS, new JSElement(clickable, this));
                     }
+                    InvokeListeners(clickable, "mousedown");
                     clickable.IsActive = true;
                 }
-                if (over && mouseRelease && clickable.IsActive)
+                if (over && mouseRelease)
                 {
                     if (!string.IsNullOrEmpty(clickable.OnMouseUpJS))
                     {
                         _jsContext.RunWithThis(clickable.OnMouseUpJS, new JSElement(clickable, this));
                     }
+                    InvokeListeners(clickable, "mouseup");
+                }
+                if (over && mouseRelease && wasActive)
+                {
                     clickedElem = clickable;
                 }
-                if (over && !clickable.IsHover)
+                if (!wasHover && over)
                 {
                     if (!string.IsNullOrEmpty(clickable.OnMouseEnterJS))
                     {
                         _jsContext.RunWithThis(clickable.OnMouseEnterJS, new JSElement(clickable, this));
                     }
+                    InvokeListeners(clickable, "mouseenter");
+                    if (!string.IsNullOrEmpty(clickable.OnMouseOverJS))
+                    {
+                        _jsContext.RunWithThis(clickable.OnMouseOverJS, new JSElement(clickable, this));
+                    }
+                    InvokeListeners(clickable, "mouseover");
                 }
-                if (!over && clickable.IsHover)
+                if (wasHover && !over)
                 {
                     if (!string.IsNullOrEmpty(clickable.OnMouseLeaveJS))
                     {
                         _jsContext.RunWithThis(clickable.OnMouseLeaveJS, new JSElement(clickable, this));
                     }
+                    InvokeListeners(clickable, "mouseleave");
+                    if (!string.IsNullOrEmpty(clickable.OnMouseOutJS))
+                    {
+                        _jsContext.RunWithThis(clickable.OnMouseOutJS, new JSElement(clickable, this));
+                    }
+                    InvokeListeners(clickable, "mouseout");
                 }
                 clickable.IsHover = over;
                 if (mouseRelease)
@@ -579,6 +584,7 @@ namespace SiegeEngine.UI
                         {
                             _jsContext.RunWithThis(_currentFocused.OnBlurJS, new JSElement(_currentFocused, this));
                         }
+                        InvokeListeners(_currentFocused, "blur");
                         _currentFocused.IsFocused = false;
                     }
                     if (!clickedElem.IsFocused)
@@ -587,6 +593,7 @@ namespace SiegeEngine.UI
                         {
                             _jsContext.RunWithThis(clickedElem.OnFocusJS, new JSElement(clickedElem, this));
                         }
+                        InvokeListeners(clickedElem, "focus");
                         clickedElem.IsFocused = true;
                         _currentFocused = clickedElem;
                     }
@@ -602,15 +609,14 @@ namespace SiegeEngine.UI
             _justOpenedSelect = false;
             _prevMouseDown = currentMouseDown;
             bool needsRefresh = false;
+            bool changed = false;
             // Handle keyboard for focused text input
             if (_currentFocused is InputElement input && input.Type == "text")
             {
                 bool shiftPressed = _controlContext.GetKey(_window, Key.LeftShift) == InputAction.Press ||
                                     _controlContext.GetKey(_window, Key.RightShift) == InputAction.Press;
-
                 double currentTime = _controlContext.GetTime();
-                bool changed = false;
-
+                changed = false;
                 foreach (Key key in Enum.GetValues(typeof(Key)))
                 {
                     InputAction state = _controlContext.GetKey(_window, key);
@@ -666,12 +672,11 @@ namespace SiegeEngine.UI
                         _lastAddTime.Remove(key);
                     }
                 }
-
                 if (changed)
                 {
                     RefreshUI();
+                    TriggerChange(input);
                 }
-
                 needsRefresh = input.Update(deltaTime, _controlContext, _window);
             }
             if (needsRefresh)
@@ -679,7 +684,6 @@ namespace SiegeEngine.UI
                 RefreshUI();
             }
         }
-
         protected void RenderUI(int w, int h)
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -692,7 +696,6 @@ namespace SiegeEngine.UI
             }
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         public virtual void Render()
         {
             _controlContext.GetWindowSize(_window, out int w, out int h);
@@ -701,7 +704,6 @@ namespace SiegeEngine.UI
                 RenderUI(w, h);
             }
         }
-
         public void RecomputeLayout(int w, int h)
         {
             if (_uiRoot != null)
@@ -710,11 +712,34 @@ namespace SiegeEngine.UI
                 _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             }
         }
-
         public virtual void Dispose()
         {
             _uiShader.Dispose();
             _textRenderer.Dispose();
+        }
+        public virtual void TriggerChange(HtmlElement elem)
+        {
+            var current = elem;
+            while (current != null)
+            {
+                if (!string.IsNullOrEmpty(current.OnChangeJS))
+                {
+                    _jsContext.RunWithThis(current.OnChangeJS, new JSElement(current, this));
+                }
+                InvokeListeners(current, "change");
+                current = current.Parent;
+            }
+        }
+        private void InvokeListeners(HtmlElement elem, string eventName)
+        {
+            if (elem.EventListeners.ContainsKey(eventName))
+            {
+                var jsElem = new JSElement(elem, this);
+                foreach (var cb in elem.EventListeners[eventName])
+                {
+                    _jsContext.Evaluator.CallFunction(cb, new List<object>());
+                }
+            }
         }
     }
 }

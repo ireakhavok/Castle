@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+
 namespace SiegeEngine.UI.JSParser
 {
     public class JSParser
@@ -113,6 +114,20 @@ namespace SiegeEngine.UI.JSParser
                     Token token = new Token(TokenType.String, ParseString());
                     Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                     return token;
+                }
+                if (_currentChar == '/')
+                {
+                    int savePos = _position;
+                    char saveChar = _currentChar;
+                    JSRegex regex = ParseRegex();
+                    if (regex != null)
+                    {
+                        Token token = new Token(TokenType.Regex, regex);
+                        Console.WriteLine($"Processed token: {token.Type} /{regex.Pattern}/{regex.Flags}");
+                        return token;
+                    }
+                    _position = savePos;
+                    _currentChar = saveChar;
                 }
                 switch (_currentChar)
                 {
@@ -342,6 +357,39 @@ namespace SiegeEngine.UI.JSParser
                 Advance();
             }
             return sb.ToString();
+        }
+        private JSRegex ParseRegex()
+        {
+            if (_currentChar != '/') return null;
+            Advance(); // skip /
+            StringBuilder body = new StringBuilder();
+            while (_currentChar != '\0' && _currentChar != '/')
+            {
+                if (_currentChar == '\\')
+                {
+                    body.Append('\\');
+                    Advance();
+                    if (_currentChar != '\0')
+                    {
+                        body.Append(_currentChar);
+                        Advance();
+                    }
+                }
+                else
+                {
+                    body.Append(_currentChar);
+                    Advance();
+                }
+            }
+            if (_currentChar != '/') return null;
+            Advance(); // skip closing /
+            StringBuilder flags = new StringBuilder();
+            while (char.IsLetter(_currentChar))
+            {
+                flags.Append(_currentChar);
+                Advance();
+            }
+            return new JSRegex(body.ToString(), flags.ToString());
         }
         private void SkipSingleLineComment()
         {
@@ -891,6 +939,8 @@ namespace SiegeEngine.UI.JSParser
                     return new LiteralNode(null);
                 case TokenType.This:
                     return new ThisExpressionNode();
+                case TokenType.Regex:
+                    return new LiteralNode(token.Value);
                 default:
                     throw new Exception("Unexpected token in primary expression");
             }
@@ -1047,7 +1097,8 @@ namespace SiegeEngine.UI.JSParser
         False,
         Null,
         This,
-        Function
+        Function,
+        Regex
     }
     public class Token
     {

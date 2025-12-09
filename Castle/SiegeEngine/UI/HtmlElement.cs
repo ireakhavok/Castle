@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI
 {
     public class HtmlElement
@@ -39,10 +40,13 @@ namespace SiegeEngine.UI
         public string OnChangeJS { get; set; }
         public string OnMouseEnterJS { get; set; }
         public string OnMouseLeaveJS { get; set; }
+        public string OnMouseOverJS { get; set; }
+        public string OnMouseOutJS { get; set; }
         public string OnMouseDownJS { get; set; }
         public string OnMouseUpJS { get; set; }
         public string OnFocusJS { get; set; }
         public string OnBlurJS { get; set; }
+        public Dictionary<string, List<object>> EventListeners { get; } = new Dictionary<string, List<object>>();
         private BackgroundRenderer _bgRenderer;
         private string _baseDir;
         protected Matrix4x4 ComputedTransform;
