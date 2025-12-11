@@ -12,10 +12,7 @@ namespace SiegeEngine.UI.JSParser
         {
             Evaluator = new JSEvaluator();
             Bindings = new JSBinding();
-            // Bind built-in functions
-            Bindings.Bind("console.log", new Action<object>(o => Console.WriteLine(o)));
-            Evaluator.RegisterGlobal("console", new { log = (Action<object>)(o => Console.WriteLine(o)) });
-            Evaluator.RegisterGlobal("alert", new Action<object>(o => Console.WriteLine(o)));
+            JSStandardLibrary.Register(Evaluator);
         }
         public object Run(string code)
         {

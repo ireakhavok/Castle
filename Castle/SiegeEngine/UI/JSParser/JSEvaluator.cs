@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.UI.JSParser
 {
     public class JSEvaluator
@@ -240,8 +239,9 @@ namespace SiegeEngine.UI.JSParser
         {
             if (objValue is Dictionary<object, object> dictObj)
             {
-                dictObj.TryGetValue(propValue, out object val);
-                return val;
+                if (dictObj.TryGetValue(propValue, out object val))
+                    return val;
+                return JSStandardLibrary.GetObjectMember(this, dictObj, propValue.ToString());
             }
             if (objValue is List<object> listObj)
             {
@@ -253,16 +253,23 @@ namespace SiegeEngine.UI.JSParser
                         return listObj[index];
                     }
                 }
-                else if (propValue.ToString() == "forEach")
-                {
-                    return new Action<object>((callback) =>
-                    {
-                        foreach (var item in listObj)
-                        {
-                            CallFunction(callback, new List<object> { item });
-                        }
-                    });
-                }
+                return JSStandardLibrary.GetArrayMember(this, listObj, propValue.ToString());
+            }
+            if (objValue is string str)
+            {
+                return JSStandardLibrary.GetStringMember(this, str, propValue.ToString());
+            }
+            if (objValue is double num)
+            {
+                return JSStandardLibrary.GetNumberMember(this, num, propValue.ToString());
+            }
+            if (objValue is JSRegex regex)
+            {
+                return JSStandardLibrary.GetRegexMember(this, regex, propValue.ToString());
+            }
+            if (objValue is JSStandardLibrary.JSDate date)
+            {
+                return JSStandardLibrary.GetDateMember(this, date, propValue.ToString());
             }
             if (propValue is string propName)
             {
@@ -276,30 +283,6 @@ namespace SiegeEngine.UI.JSParser
                 if (meth != null)
                 {
                     return new Func<object[], object>(args => meth.Invoke(objValue, args));
-                }
-                if (objValue is string str)
-                {
-                    if (propName == "replace")
-                    {
-                        return new Func<object[], object>(args =>
-                        {
-                            if (args.Length != 2) throw new Exception("replace expects 2 arguments");
-                            string repl = args[1]?.ToString() ?? "";
-                            if (args[0] is JSRegex jsregex)
-                            {
-                                RegexOptions options = RegexOptions.None;
-                                if (jsregex.Flags.Contains("i")) options |= RegexOptions.IgnoreCase;
-                                if (jsregex.Flags.Contains("m")) options |= RegexOptions.Multiline;
-                                // g ignored, Replace does all
-                                return Regex.Replace(str, jsregex.Pattern, repl, options);
-                            }
-                            else if (args[0] is string pat)
-                            {
-                                return str.Replace(pat, repl);
-                            }
-                            throw new Exception("First argument to replace must be string or regex");
-                        });
-                    }
                 }
             }
             return null;
@@ -325,7 +308,7 @@ namespace SiegeEngine.UI.JSParser
                 if (prop == "innerHTML")
                 {
                     Console.WriteLine("Debug: Setting innerHTML");
-                    if (value is string str && str == "")
+                    if (value is string strVal && strVal == "")
                     {
                         jsElem.elem.Children.Clear();
                         jsElem.overlay.RefreshUI();
@@ -489,7 +472,7 @@ namespace SiegeEngine.UI.JSParser
                 default: throw new Exception($"Unsupported unary operator: {op}");
             }
         }
-        private bool IsTruthy(object value)
+        public static bool IsTruthy(object value)
         {
             if (value == null) return false;
             if (value is bool b) return b;
