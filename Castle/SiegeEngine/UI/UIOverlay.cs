@@ -1,4 +1,5 @@
-﻿// SiegeEngine.UI/UIOverlay.cs
+﻿// Folder: SiegeEngine.UI
+// File: UIOverlay.cs
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Rendering;
@@ -9,7 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.UI.JSParser;
-
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -21,7 +21,7 @@ namespace SiegeEngine.UI
         protected TextRenderer _textRenderer;
         protected UIQuadRenderer _quadRenderer;
         protected CssParser _cssParser;
-        protected HtmlElement _uiRoot;
+        public HtmlElement _uiRoot;
         protected List<HtmlElement> _uiClickables = new List<HtmlElement>();
         protected string _currentBaseDir = "";
         private bool _justOpenedSelect = false;
@@ -190,6 +190,10 @@ namespace SiegeEngine.UI
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
         }
+        public HtmlElement FindElementById(string id)
+        {
+            return FindElementById(_uiRoot, id);
+        }
         protected HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root == null) return null;
@@ -201,11 +205,11 @@ namespace SiegeEngine.UI
             }
             return null;
         }
-        public HtmlElement FindElementById(string id)
+        public List<HtmlElement> FindElementsByClass(string className)
         {
-            return FindElementById(_uiRoot, id);
+            return FindElementsByClass(_uiRoot, className);
         }
-        private List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
+        protected List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             if (root == null) return new List<HtmlElement>();
             List<HtmlElement> list = new List<HtmlElement>();
@@ -220,7 +224,11 @@ namespace SiegeEngine.UI
             }
             return list;
         }
-        private List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
+        public List<HtmlElement> FindElementsByTag(string tag)
+        {
+            return FindElementsByTag(_uiRoot, tag);
+        }
+        protected List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             if (root == null) return new List<HtmlElement>();
             List<HtmlElement> list = new List<HtmlElement>();
@@ -233,10 +241,6 @@ namespace SiegeEngine.UI
                 foreach (var child in elem.Children) queue.Enqueue(child);
             }
             return list;
-        }
-        protected List<HtmlElement> FindElementsByTag(string tag)
-        {
-            return FindElementsByTag(_uiRoot, tag);
         }
         protected virtual void HandleUIClick(HtmlElement elem)
         {

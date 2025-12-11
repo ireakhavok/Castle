@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 namespace SiegeEngine.UI.JSParser
 {
     public class JSElement
@@ -161,35 +160,93 @@ namespace SiegeEngine.UI.JSParser
         {
             elem.Children.Add(child.elem);
             child.elem.Parent = elem;
+            overlay.RefreshUI();
         }
-        public void addOption(string text, string value)
+        public void removeChild(JSElement child)
         {
-            if (elem.Tag.ToLower() == "select")
+            elem.Children.Remove(child.elem);
+            child.elem.Parent = null;
+            overlay.RefreshUI();
+        }
+        public void insertBefore(JSElement newChild, JSElement referenceChild)
+        {
+            int index = elem.Children.IndexOf(referenceChild.elem);
+            if (index != -1)
             {
-                var opt = new OptionElement();
-                opt.Attributes["value"] = value;
-                TextElement textElem = new TextElement { Content = text };
-                textElem.Parent = opt;
-                opt.Children.Add(textElem);
-                opt.Parent = elem;
-                elem.Children.Add(opt);
-                Console.WriteLine("Debug: Added option " + text);
+                elem.Children.Insert(index, newChild.elem);
+                newChild.elem.Parent = elem;
                 overlay.RefreshUI();
             }
         }
-        public void clearOptions()
+        public void replaceChild(JSElement newChild, JSElement oldChild)
         {
-            if (elem.Tag.ToLower() == "select")
+            int index = elem.Children.IndexOf(oldChild.elem);
+            if (index != -1)
             {
-                elem.Children.RemoveAll(c => c.Tag.ToLower() == "option");
+                elem.Children[index] = newChild.elem;
+                newChild.elem.Parent = elem;
+                oldChild.elem.Parent = null;
                 overlay.RefreshUI();
             }
+        }
+        public string getAttribute(string name)
+        {
+            return elem.Attributes.GetValueOrDefault(name, null);
+        }
+        public void setAttribute(string name, string value)
+        {
+            elem.Attributes[name] = value;
+            overlay.RefreshUI();
+        }
+        public void removeAttribute(string name)
+        {
+            elem.Attributes.Remove(name);
+            overlay.RefreshUI();
+        }
+        public JSElement querySelector(string selector)
+        {
+            var elemFound = QuerySelectorAll(selector).FirstOrDefault();
+            return elemFound == null ? null : new JSElement(elemFound, overlay);
+        }
+        public List<JSElement> querySelectorAll(string selector)
+        {
+            var elems = QuerySelectorAll(selector);
+            return elems.Select(e => new JSElement(e, overlay)).ToList();
+        }
+        private List<HtmlElement> QuerySelectorAll(string selector)
+        {
+            List<HtmlElement> matches = new List<HtmlElement>();
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(elem);
+            var css = new CssParser();
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                if (css.Matches(current, selector))
+                {
+                    matches.Add(current);
+                }
+                foreach (var child in current.Children)
+                {
+                    queue.Enqueue(child);
+                }
+            }
+            return matches;
         }
         public void addEventListener(string eventName, object callback)
         {
             eventName = eventName.ToLower();
             if (!elem.EventListeners.ContainsKey(eventName)) elem.EventListeners[eventName] = new List<object>();
             elem.EventListeners[eventName].Add(callback);
+        }
+        public void removeEventListener(string eventName, object callback)
+        {
+            eventName = eventName.ToLower();
+            if (elem.EventListeners.ContainsKey(eventName))
+            {
+                elem.EventListeners[eventName].Remove(callback);
+                if (elem.EventListeners[eventName].Count == 0) elem.EventListeners.Remove(eventName);
+            }
         }
     }
 }

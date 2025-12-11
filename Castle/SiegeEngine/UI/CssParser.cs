@@ -31,6 +31,7 @@ button {
     display: inline-block;
     padding: 1px 6px;
     min-height: 20px;
+    min-width: 50px;
     border: 2px outset buttonface;
     border-radius: 2px;
     background-color: buttonface;
@@ -53,6 +54,7 @@ input {
 }
 input[type=""text""] {
     padding: 1px 2px;
+    min-height: 20px;
     border: 2px inset;
 }
 input[type=""checkbox""] {
@@ -259,7 +261,7 @@ nav {
                 }
             }
         }
-        private bool Matches(HtmlElement elem, string selector)
+        public bool Matches(HtmlElement elem, string selector)
         {
             if (string.IsNullOrEmpty(selector)) return true;
             selector = selector.Trim();
