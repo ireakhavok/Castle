@@ -52,7 +52,7 @@ namespace SiegeEngine.UI.JSParser
                         _functions[funcDecl.Name] = funcDecl;
                         _globalScope[funcDecl.Name] = funcDecl;
                     }
-                    return null;
+                    return funcDecl;
                 case ArrowExpressionNode arrow:
                     return arrow;
                 case ReturnStatementNode ret:

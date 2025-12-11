@@ -110,9 +110,17 @@ namespace SiegeEngine.UI.JSParser
                     {
                         string oldValue = inp.Value;
                         inp.Value = value;
+                        elem.Children.RemoveAll(c => c is TextElement);
+                        if (!string.IsNullOrEmpty(value))
+                        {
+                            TextElement textElem = new TextElement { Content = value };
+                            textElem.Parent = elem;
+                            elem.Children.Add(textElem);
+                        }
                         if (oldValue != value)
                         {
                             overlay.RefreshUI();
+                            overlay.InvokeListeners(elem, "input");
                             overlay.TriggerChange(elem);
                         }
                     }

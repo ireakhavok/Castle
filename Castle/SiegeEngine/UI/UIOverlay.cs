@@ -679,6 +679,7 @@ namespace SiegeEngine.UI
                 if (changed)
                 {
                     RefreshUI();
+                    InvokeListeners(input, "input");
                     TriggerChange(input);
                 }
                 needsRefresh = input.Update(deltaTime, _controlContext, _window);
@@ -734,7 +735,7 @@ namespace SiegeEngine.UI
                 current = current.Parent;
             }
         }
-        private void InvokeListeners(HtmlElement elem, string eventName)
+        public void InvokeListeners(HtmlElement elem, string eventName)
         {
             if (elem.EventListeners.ContainsKey(eventName))
             {
