@@ -2,8 +2,10 @@
 // File: JSEvaluator.cs
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.UI.JSParser
 {
     public class JSEvaluator
@@ -11,10 +13,12 @@ namespace SiegeEngine.UI.JSParser
         private Dictionary<string, object> _globalScope = new Dictionary<string, object>();
         private Stack<Dictionary<string, object>> _scopeStack = new Stack<Dictionary<string, object>>();
         private Dictionary<string, FunctionDeclarationNode> _functions = new Dictionary<string, FunctionDeclarationNode>();
+
         public JSEvaluator()
         {
             _scopeStack.Push(_globalScope);
         }
+
         public object Evaluate(ASTNode node)
         {
             switch (node)
@@ -174,18 +178,22 @@ namespace SiegeEngine.UI.JSParser
                     throw new Exception("Unsupported node type: " + node.GetType());
             }
         }
+
         public void PushScope()
         {
             _scopeStack.Push(new Dictionary<string, object>());
         }
+
         public void PopScope()
         {
             _scopeStack.Pop();
         }
+
         public Dictionary<string, object> CurrentScope()
         {
             return _scopeStack.Peek();
         }
+
         private object GetVariable(string name)
         {
             foreach (var scope in _scopeStack)
@@ -197,6 +205,7 @@ namespace SiegeEngine.UI.JSParser
             }
             throw new Exception($"Undefined variable: {name}");
         }
+
         private void SetValue(ASTNode target, object value)
         {
             switch (target)
@@ -235,6 +244,7 @@ namespace SiegeEngine.UI.JSParser
                     throw new Exception("Invalid assignment target");
             }
         }
+
         private object GetMember(object objValue, object propValue)
         {
             if (objValue is Dictionary<object, object> dictObj)
@@ -287,6 +297,7 @@ namespace SiegeEngine.UI.JSParser
             }
             return null;
         }
+
         private void SetMember(object objValue, object propValue, object value)
         {
             if (objValue is Dictionary<object, object> dictObj)
@@ -330,8 +341,49 @@ namespace SiegeEngine.UI.JSParser
                 }
                 else if (prop == "value")
                 {
-                    jsElem.elem.Attributes["value"] = value.ToString();
-                    jsElem.overlay.RefreshUI();
+                    string tag = jsElem.elem.Tag.ToLower();
+                    string oldValue = "";
+                    if (tag == "select")
+                    {
+                        bool found = false;
+                        foreach (var opt in jsElem.elem.Children.Where(c => c.Tag.ToLower() == "option"))
+                        {
+                            string optVal = opt.Attributes.GetValueOrDefault("value", ((TextElement)opt.Children.FirstOrDefault())?.Content ?? "");
+                            if (optVal == value.ToString())
+                            {
+                                opt.Attributes["selected"] = "";
+                                found = true;
+                            }
+                            else
+                            {
+                                opt.Attributes.Remove("selected");
+                            }
+                        }
+                        if (found)
+                        {
+                            jsElem.overlay.RefreshUI();
+                            jsElem.overlay.TriggerChange(jsElem.elem);
+                        }
+                    }
+                    else if (tag == "option")
+                    {
+                        jsElem.elem.Attributes["value"] = value.ToString();
+                    }
+                    else if (tag == "input")
+                    {
+                        if (jsElem.elem is InputElement inp)
+                        {
+                            oldValue = inp.Value;
+                            inp.Value = value.ToString();
+                        }
+                        jsElem.elem.Attributes["value"] = value.ToString();
+                        if (oldValue != value.ToString())
+                        {
+                            jsElem.overlay.RefreshUI();
+                            jsElem.overlay.InvokeListeners(jsElem.elem, "input");
+                            jsElem.overlay.TriggerChange(jsElem.elem);
+                        }
+                    }
                 }
                 else if (prop == "style")
                 {
@@ -353,6 +405,7 @@ namespace SiegeEngine.UI.JSParser
             var prop1 = type?.GetProperty(propValue.ToString());
             prop1?.SetValue(objValue, value);
         }
+
         public object CallFunction(object callee, List<object> args)
         {
             if (callee is FunctionDeclarationNode func)
@@ -424,6 +477,7 @@ namespace SiegeEngine.UI.JSParser
             }
             throw new Exception("Not callable");
         }
+
         private object ApplyBinaryOp(string op, object left, object right)
         {
             if (op == "===")
@@ -460,6 +514,7 @@ namespace SiegeEngine.UI.JSParser
                 default: throw new Exception($"Unsupported binary operator: {op}");
             }
         }
+
         private object ApplyUnaryOp(string op, object arg)
         {
             dynamic dArg = arg ?? 0;
@@ -472,6 +527,7 @@ namespace SiegeEngine.UI.JSParser
                 default: throw new Exception($"Unsupported unary operator: {op}");
             }
         }
+
         public static bool IsTruthy(object value)
         {
             if (value == null) return false;
@@ -482,15 +538,18 @@ namespace SiegeEngine.UI.JSParser
             if (value is Dictionary<object, object> d) return d.Count > 0;
             return true;
         }
+
         public void RegisterFunction(string name, FunctionDeclarationNode func)
         {
             _functions[name] = func;
         }
+
         public void RegisterGlobal(string name, object value)
         {
             _globalScope[name] = value;
         }
     }
+
     public class ReturnValue
     {
         public object Value { get; }
@@ -499,6 +558,7 @@ namespace SiegeEngine.UI.JSParser
             Value = value;
         }
     }
+
     public class ReturnException : Exception
     {
         public object Value { get; }
@@ -507,9 +567,11 @@ namespace SiegeEngine.UI.JSParser
             Value = value;
         }
     }
+
     public abstract class ASTNode
     {
     }
+
     public class ProgramNode : ASTNode
     {
         public List<ASTNode> Statements { get; }
@@ -518,6 +580,7 @@ namespace SiegeEngine.UI.JSParser
             Statements = statements;
         }
     }
+
     public class BlockStatementNode : ASTNode
     {
         public List<ASTNode> Body { get; }
@@ -526,6 +589,7 @@ namespace SiegeEngine.UI.JSParser
             Body = body;
         }
     }
+
     public class ExpressionStatementNode : ASTNode
     {
         public ASTNode Expression { get; }
@@ -534,6 +598,7 @@ namespace SiegeEngine.UI.JSParser
             Expression = expression;
         }
     }
+
     public class VariableDeclarationNode : ASTNode
     {
         public string Kind { get; }
@@ -546,6 +611,7 @@ namespace SiegeEngine.UI.JSParser
             Initializer = initializer;
         }
     }
+
     public class FunctionDeclarationNode : ASTNode
     {
         public string Name { get; }
@@ -558,6 +624,7 @@ namespace SiegeEngine.UI.JSParser
             Body = body;
         }
     }
+
     public class ArrowExpressionNode : ASTNode
     {
         public List<ASTNode> Params { get; }
@@ -568,6 +635,7 @@ namespace SiegeEngine.UI.JSParser
             Body = body;
         }
     }
+
     public class ReturnStatementNode : ASTNode
     {
         public ASTNode Argument { get; }
@@ -576,6 +644,7 @@ namespace SiegeEngine.UI.JSParser
             Argument = argument;
         }
     }
+
     public class IfStatementNode : ASTNode
     {
         public ASTNode Test { get; }
@@ -588,6 +657,7 @@ namespace SiegeEngine.UI.JSParser
             Alternate = alternate;
         }
     }
+
     public class WhileStatementNode : ASTNode
     {
         public ASTNode Test { get; }
@@ -598,6 +668,7 @@ namespace SiegeEngine.UI.JSParser
             Body = body;
         }
     }
+
     public class ForStatementNode : ASTNode
     {
         public ASTNode Init { get; }
@@ -612,6 +683,7 @@ namespace SiegeEngine.UI.JSParser
             Body = body;
         }
     }
+
     public class BinaryExpressionNode : ASTNode
     {
         public ASTNode Left { get; }
@@ -624,6 +696,7 @@ namespace SiegeEngine.UI.JSParser
             Right = right;
         }
     }
+
     public class UnaryExpressionNode : ASTNode
     {
         public string Operator { get; }
@@ -634,6 +707,7 @@ namespace SiegeEngine.UI.JSParser
             Argument = argument;
         }
     }
+
     public class AssignmentExpressionNode : ASTNode
     {
         public ASTNode Left { get; }
@@ -644,6 +718,7 @@ namespace SiegeEngine.UI.JSParser
             Right = right;
         }
     }
+
     public class UpdateExpressionNode : ASTNode
     {
         public string Operator { get; }
@@ -656,6 +731,7 @@ namespace SiegeEngine.UI.JSParser
             Prefix = prefix;
         }
     }
+
     public class MemberExpressionNode : ASTNode
     {
         public ASTNode Object { get; }
@@ -668,6 +744,7 @@ namespace SiegeEngine.UI.JSParser
             Computed = computed;
         }
     }
+
     public class CallExpressionNode : ASTNode
     {
         public ASTNode Callee { get; }
@@ -678,6 +755,7 @@ namespace SiegeEngine.UI.JSParser
             Arguments = arguments;
         }
     }
+
     public class IdentifierNode : ASTNode
     {
         public string Name { get; }
@@ -686,6 +764,7 @@ namespace SiegeEngine.UI.JSParser
             Name = name;
         }
     }
+
     public class LiteralNode : ASTNode
     {
         public object Value { get; }
@@ -694,6 +773,7 @@ namespace SiegeEngine.UI.JSParser
             Value = value;
         }
     }
+
     public class ArrayExpressionNode : ASTNode
     {
         public List<ASTNode> Elements { get; }
@@ -702,6 +782,7 @@ namespace SiegeEngine.UI.JSParser
             Elements = elements;
         }
     }
+
     public class ObjectExpressionNode : ASTNode
     {
         public Dictionary<ASTNode, ASTNode> Properties { get; }
@@ -710,6 +791,7 @@ namespace SiegeEngine.UI.JSParser
             Properties = properties;
         }
     }
+
     public class ConditionalExpressionNode : ASTNode
     {
         public ASTNode Test { get; }
@@ -722,9 +804,11 @@ namespace SiegeEngine.UI.JSParser
             Alternate = alternate;
         }
     }
+
     public class ThisExpressionNode : ASTNode
     {
     }
+
     public class JSRegex
     {
         public string Pattern { get; }
