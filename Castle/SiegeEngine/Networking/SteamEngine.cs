@@ -286,7 +286,7 @@ namespace SiegeEngine.Networking
             if (data == null || data.Length == 0) return;
             if (_connectionHandles.Count == 0)
             {
-                Console.WriteLine("SteamEngine: No active P2P connections to send message.");
+                //Console.WriteLine("SteamEngine: No active P2P connections to send message.");
                 return;
             }
             nint messagePtr = Marshal.AllocHGlobal(data.Length);

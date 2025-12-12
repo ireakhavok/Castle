@@ -134,7 +134,7 @@ namespace SiegeEngine.PlayerSystem
             string message = $"Input:MousePosition:{_mousePos.X}:{_mousePos.Y}:{_steamEngine.GetSteamId()}";
             byte[] data = Encoding.UTF8.GetBytes(message);
             _steamEngine.SendP2PMessage(data);
-            Console.WriteLine($"InputHandler: Sent mouse position over Steam network: {message}");
+            //Console.WriteLine($"InputHandler: Sent mouse position over Steam network: {message}");
         }
 
         private void SendMouseButton(MouseButton button, InputAction action)

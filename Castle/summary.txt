@@ -12,7 +12,7 @@ Folder: CastleBuilder
       - void OnGenericEvent(GenericEvent evt)
         - Calls: bool.Parse
       - void OnNewProject(NewProjectEvent evt)
-        - Calls: GetTemplate
+        - Calls: GetTemplate, evt.AllowMods.ToString
       - void OnLoadProject(LoadProjectEvent evt)
         - Calls: SaveIDEState
       - void OnSaveProject(SaveProjectEvent evt)
@@ -299,7 +299,7 @@ Folder: SiegeEngine
     - Methods:
       - constructor BackgroundRenderer( IRenderContext renderContext,  IntPtr window, IControlContext controlContext)
       - void Initialize( ShaderProgram shaderProgram, string backgroundPath)
-        - Calls: _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.GenBuffers, _renderContext.GenTextures, _renderContext.GenVertexArrays, _renderContext.GetError, _renderContext.PixelStore, _renderContext.TexImage2D, _renderContext.TexParameter, _renderContext.VertexAttribPointer
+        - Calls: BitConverter.ToString, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.GenBuffers, _renderContext.GenTextures, _renderContext.GenVertexArrays, _renderContext.GetError, _renderContext.PixelStore, _renderContext.TexImage2D, _renderContext.TexParameter, _renderContext.VertexAttribPointer
       - void Render( float height,  float posY,  float viewportHeight,  float viewportWidth,  float width, float posX)
         - Calls: _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.DrawArrays, _shaderProgram.SetMatrix4, _shaderProgram.SetUniform, _shaderProgram.Use
       - void Dispose()
@@ -583,6 +583,7 @@ Folder: SiegeEngine
       - constructor EntityMovedEvent( Quaternion rotation,  Vector2 position, int entityId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+        - Calls: ToString
 - File: EntityPlacedEvent.cs
   - Class: EntityPlacedEvent (Namespace: SiegeEngine.Events)
     - Inherits: IEvent
@@ -639,6 +640,7 @@ Folder: SiegeEngine
     - Methods:
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+        - Calls: ToString
 - File: ExitEditorEvent.cs
   - Class: ExitEditorEvent (Namespace: SiegeEngine.Events)
     - Inherits: IEvent
@@ -933,14 +935,14 @@ Folder: SiegeEngine
     - Dependencies: System, System.Collections.Generic
     - Methods:
       - constructor JSContext()
-        - Calls: Bindings.Bind, Evaluator.RegisterGlobal, JSEvaluator
+        - Calls: JSEvaluator, JSStandardLibrary.Register
       - object Run(string code)
         - Calls: Evaluator.Evaluate, parser.Parse
       - object RunWithThis( object thisObj, string code)
         - Calls: Evaluator.CurrentScope, Evaluator.PopScope, Evaluator.PushScope, Run
 - File: JSDocument.cs
   - Class: JSDocument (Namespace: SiegeEngine.UI.JSParser)
-    - Dependencies: System
+    - Dependencies: System, System.Collections.Generic, System.Linq
     - Fields:
       - UIOverlay _overlay
     - Methods:
@@ -949,6 +951,16 @@ Folder: SiegeEngine
         - Calls: JSElement, _overlay.FindElementById
       - JSElement createElement(string tag)
         - Calls: JSElement, OptionElement
+      - List<JSElement> getElementsByTagName(string tag)
+        - Calls: JSElement, _overlay.FindElementsByTag
+      - List<JSElement> getElementsByClassName(string className)
+        - Calls: JSElement, _overlay.FindElementsByClass
+      - JSElement querySelector(string selector)
+        - Calls: JSElement, QuerySelectorAll
+      - List<JSElement> querySelectorAll(string selector)
+        - Calls: JSElement, QuerySelectorAll
+      - List<HtmlElement> QuerySelectorAll(string selector)
+        - Calls: css.Matches
 - File: JSElement.cs
   - Class: JSElement (Namespace: SiegeEngine.UI.JSParser)
     - Dependencies: System, System.Collections.Generic, System.Linq
@@ -958,11 +970,28 @@ Folder: SiegeEngine
     - Methods:
       - constructor JSElement( UIOverlay overlay, HtmlElement elem)
       - void appendChild(JSElement child)
-      - void addOption( string value, string text)
-        - Calls: OptionElement, overlay.RefreshUI
-      - void clearOptions()
         - Calls: overlay.RefreshUI
+      - void removeChild(JSElement child)
+        - Calls: overlay.RefreshUI
+      - void insertBefore( JSElement referenceChild, JSElement newChild)
+        - Calls: overlay.RefreshUI
+      - void replaceChild( JSElement oldChild, JSElement newChild)
+        - Calls: overlay.RefreshUI
+      - string getAttribute(string name)
+      - void setAttribute( string value, string name)
+        - Calls: overlay.RefreshUI
+      - void removeAttribute(string name)
+        - Calls: overlay.RefreshUI
+      - JSElement querySelector(string selector)
+        - Calls: JSElement, QuerySelectorAll
+      - constructor JSElement()
+        - Calls: QuerySelectorAll
+      - List<JSElement> querySelectorAll(string selector)
+        - Calls: JSElement, QuerySelectorAll
+      - List<HtmlElement> QuerySelectorAll(string selector)
+        - Calls: css.Matches
       - void addEventListener( object callback, string eventName)
+      - void removeEventListener( object callback, string eventName)
 - File: JSEvaluator.cs
   - Class: JSRegex (Namespace: SiegeEngine.UI.JSParser)
     - Dependencies: System, System.Collections.Generic, System.Reflection, System.Text.RegularExpressions
@@ -973,6 +1002,14 @@ Folder: SiegeEngine
     - Dependencies: System, System.Collections.Generic, System.Text
     - Methods:
       - constructor Token( object value, TokenType type)
+- File: JSStandardLibrary.cs
+  - Class: JSDate (Namespace: SiegeEngine.UI.JSParser)
+    - Dependencies: System, System.Collections.Generic, System.Globalization, System.Linq, System.Text.Json, System.Text.RegularExpressions
+    - Methods:
+      - constructor JSDate()
+      - constructor JSDate(double ms)
+      - constructor JSDate(DateTime dt)
+      - string ToString()
 - File: LevelData.cs
   - Class: EntityData (Namespace: SiegeEngine.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
@@ -991,6 +1028,7 @@ Folder: SiegeEngine
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: ToRoman, textRenderer.GetTextSize, textRenderer.RenderText
       - string ToRoman( bool lower, int number)
+        - Calls: number.ToString
 - File: LightComponent.cs
   - Class: LightComponent (Namespace: SiegeEngine.Definitions)
     - Inherits: IComponent
@@ -1038,7 +1076,7 @@ Folder: SiegeEngine
       - EventBus _eventBus
     - Methods:
       - void HandleDataHook(string hook)
-        - Calls: OpenPanelEvent, SwitchSceneEvent, _document.getElementById
+        - Calls: OpenPanelEvent, SwitchSceneEvent, _document.getElementById, checked.ToString
       - void HandleLink(string href)
         - Calls: LoadUI, RecomputeLayout, _controlContext.GetWindowSize, _modManager.ResolvePath
 - File: MetaDataExporter.cs
@@ -1055,6 +1093,7 @@ Folder: SiegeEngine
     - Dependencies: System, System.Collections.Generic, System.IO, YamlDotNet.Serialization
     - Methods:
       - string ExtractGuid(string metaFilePath)
+        - Calls: guidObj.ToString
 - File: ModInfo.cs
   - Class: UnityAssetData (Namespace: SiegeEngine.Definitions)
     - Dependencies: SiegeEngine.Interfaces, SiegeEngine.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
@@ -1124,7 +1163,7 @@ Folder: SiegeEngine
       - constructor MovementRequestEvent( Quaternion rotation,  Vector2 position,  ulong steamId, int entityId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
-        - Calls: float.Parse, int.Parse, ulong.Parse
+        - Calls: ToString, float.Parse, int.Parse, ulong.Parse
 - File: NavElement.cs
   - Class: NavElement (Namespace: SiegeEngine.UI)
     - Inherits: HtmlElement
@@ -1634,7 +1673,7 @@ Folder: SiegeEngine
       - void RenderText( Matrix4x4 transformMatrix,  float fontSize,  float startX,  float startY,  float viewportHeight,  float viewportWidth,  string fontFamily, string text)
         - Calls: RenderTextPass
       - void RenderTextPass( Matrix4x4 transformMatrix,  Vector4 color,  float fontSize,  float startX,  float startY,  float viewportHeight,  float viewportWidth,  string fontFamily, string text)
-        - Calls: GetFontRenderer, HtmlElement.GetNdcQuad, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferSubData, _renderContext.DrawArrays, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shaderProgram.SetMatrix4, _shaderProgram.SetUniform, _shaderProgram.Use, renderer.GetCharacterData, renderer.GetCharacterTexture, renderer.GetStringWidth
+        - Calls: GetFontRenderer, HtmlElement.GetNdcQuad, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferSubData, _renderContext.DrawArrays, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shaderProgram.SetMatrix4, _shaderProgram.SetUniform, _shaderProgram.Use, c.ToString, next.ToString, renderer.GetCharacterData, renderer.GetCharacterTexture, renderer.GetStringWidth
       - SystemFontRenderer GetFontRenderer(string fontFamily)
         - Calls: SystemFontRenderer
       - void Dispose()
@@ -1747,14 +1786,15 @@ Folder: SiegeEngine
         - Calls: LoadUI
       - void RefreshUI()
         - Calls: CollectClickables, InheritProperties, RecomputeLayout, _controlContext.GetWindowSize, _cssParser.ApplyAll, _uiClickables.Clear
-      - HtmlElement FindElementById( string id, HtmlElement root)
       - HtmlElement FindElementById(string id)
       - return FindElementById()
+      - HtmlElement FindElementById( string id, HtmlElement root)
+      - List<HtmlElement> FindElementsByClass(string className)
+      - return FindElementsByClass()
       - List<HtmlElement> FindElementsByClass( string className, HtmlElement root)
-      - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - List<HtmlElement> FindElementsByTag(string tag)
       - return FindElementsByTag()
-        - Calls: CloseAllOpenSelects, FindElementById, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _jsContext.RunWithThis
+      - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - void HandleUIClick(HtmlElement elem)
         - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _jsContext.RunWithThis
       - select CloseAllOpenSelects()
@@ -1764,7 +1804,7 @@ Folder: SiegeEngine
       - void Update(float deltaTime)
         - Calls: CloseAllOpenSelects, FindElementsByTag, HandleUIClick, InvokeListeners, JSElement, RefreshUI, TriggerChange, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetTime, _controlContext.GetWindowSize, _jsContext.RunWithThis, clickable.HandleClick, clickable.IsDescendantOf, openSelect.HandleClick
       - it CloseAllOpenSelects()
-        - Calls: RefreshUI, TriggerChange, _controlContext.GetKey, _controlContext.GetTime, input.Update
+        - Calls: InvokeListeners, RefreshUI, TriggerChange, _controlContext.GetKey, _controlContext.GetTime, input.Update
       - void RenderUI( int h, int w)
         - Calls: _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _uiRoot.Render, sel.RenderDropdown
       - void Render()
@@ -1815,6 +1855,7 @@ Folder: SiegeEngine
       - void UpdateIconIndices( int> newIndices)
         - Calls: SaveSettings
       - void LoadSettings()
+        - Calls: availObj.ToString, fullscreenObj.ToString, heightObj.ToString, iconIndicesObj.ToString, rendererObj.ToString, widthObj.ToString
       - void SaveSettings()
         - Calls: JsonSerializer.Serialize
 - File: UiShader.cs
@@ -1916,6 +1957,7 @@ Folder: SiegeEngine
     - Methods:
       - constructor WeatherChangedEvent(WeatherState weather)
       - byte[] Serialize()
+        - Calls: Weather.ToString
       - void Deserialize(byte[] data)
 - File: WeatherState.cs
   - Class: WeatherState (Namespace: SiegeEngine.Definitions)
@@ -2098,6 +2140,7 @@ SiegeEngine.UI.HtmlParser
 SiegeEngine.UI.InputElement
 SiegeEngine.UI.JSParser.JSBinding
 SiegeEngine.UI.JSParser.JSContext
+SiegeEngine.UI.JSParser.JSDate
 SiegeEngine.UI.JSParser.JSDocument
 SiegeEngine.UI.JSParser.JSElement
 SiegeEngine.UI.JSParser.JSRegex
