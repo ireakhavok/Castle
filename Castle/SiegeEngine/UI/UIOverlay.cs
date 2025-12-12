@@ -53,6 +53,7 @@ namespace SiegeEngine.UI
         {
             _currentBaseDir = baseDir;
             HtmlParser parser = new HtmlParser();
+            _cssParser.Clear();
             _uiRoot = parser.Parse(html);
             List<string> cssBlocks = new List<string>();
             List<string> scriptBlocks = new List<string>();

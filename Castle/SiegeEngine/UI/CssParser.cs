@@ -122,6 +122,10 @@ nav {
 }
 ";
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
+        public void Clear()
+        {
+            _allRules.Clear();
+        }
         public void Apply(string css)
         {
             int i = 0;

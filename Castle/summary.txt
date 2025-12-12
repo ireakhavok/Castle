@@ -994,7 +994,7 @@ Folder: SiegeEngine
       - void removeEventListener( object callback, string eventName)
 - File: JSEvaluator.cs
   - Class: JSRegex (Namespace: SiegeEngine.UI.JSParser)
-    - Dependencies: System, System.Collections.Generic, System.Reflection, System.Text.RegularExpressions
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Reflection, System.Text.RegularExpressions
     - Methods:
       - constructor JSRegex( string flags, string pattern)
 - File: JSParser.cs
