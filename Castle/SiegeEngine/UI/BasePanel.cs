@@ -33,7 +33,7 @@ namespace SiegeEngine.UI
         protected ScalingMode Scaling = ScalingMode.Fill;
         protected float BaseWidth = 800f;
         protected float BaseHeight = 600f;
-        public virtual bool AllowDragging { get; set; } = true;
+        protected virtual bool AllowDragging { get; set; } = true;
         protected UIQuadRenderer _quadRenderer;
 
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
@@ -161,6 +161,17 @@ namespace SiegeEngine.UI
 
         public virtual void Detach()
         {
+        }
+
+        public virtual void OnPanelResize(float w, float h)
+        {
+            if (!AllowDragging)
+            {
+                Size = new Vector2(w, h);
+                _uiOverlay.PanelWidth = Size.X;
+                _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.RefreshUI();
+            }
         }
     }
 }

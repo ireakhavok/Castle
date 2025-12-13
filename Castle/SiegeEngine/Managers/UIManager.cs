@@ -62,9 +62,9 @@ namespace SiegeEngine.Managers
             _vh = h;
             foreach (var panel in _panels)
             {
-                if (panel.Position == Vector2.Zero && panel is BasePanel bp && !bp.AllowDragging)
+                if (panel is BasePanel bp)
                 {
-                    panel.Size = new Vector2(w, h);
+                    bp.OnPanelResize(w, h);
                 }
             }
         }

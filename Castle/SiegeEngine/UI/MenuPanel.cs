@@ -145,5 +145,10 @@ namespace SiegeEngine.UI
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
         }
+
+        public override void OnPanelResize(float w, float h)
+        {
+            base.OnPanelResize(w, h);
+        }
     }
 }
