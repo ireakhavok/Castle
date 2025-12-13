@@ -89,15 +89,15 @@ namespace Trebuchet
                     _panelManager.AddPanel(_menuPanel);
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
-                        if (_settingsManager.AllowResize)
-                        {
+                        //if (_settingsManager.AllowResize)
+                        //{
                             _settingsManager.UpdateWindowSize(width, height);
                             Console.WriteLine($"Launcher: Window resized to: {width}x{height}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Launcher: Window resize to {width}x{height} blocked, allowResize is false");
-                        }
+                        //}
+                        //else
+                        //{
+                        //    Console.WriteLine($"Launcher: Window resize to {width}x{height} blocked, allowResize is false");
+                        //}
                         _sceneManager.Resize(width, height);
                     });
                     _isRunning = true;
