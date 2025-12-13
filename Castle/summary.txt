@@ -205,7 +205,7 @@ Folder: ReadingChamber
   - Class: FileSelectorUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Text
+    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - FileSelectorPanel _parent
     - Methods:
@@ -311,7 +311,7 @@ Folder: SiegeEngine
   - Class: BasePanel (Namespace: SiegeEngine.UI)
     - Inherits: IPanel
     
-    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System
+    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Rendering, System, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -320,17 +320,30 @@ Folder: SiegeEngine
       - UIOverlay _uiOverlay
       - int _lastW
       - int _lastH
+      - bool _isDragging
+      - Vector2 _dragOffset
+      - double _lastClickTime
+      - float TitleHeight
+      - double DoubleClickTime
+      - ScalingMode Scaling
+      - float BaseWidth
+      - float BaseHeight
+      - UIQuadRenderer _quadRenderer
     - Methods:
       - constructor BasePanel( EventBus eventBus,  IControlContext controlContext,  IntPtr window, IRenderContext renderContext)
         - Calls: CreateUIOverlay
       - UIOverlay CreateUIOverlay()
         - Calls: UIOverlay
       - void Init()
-      - void Update(float deltaTime)
+        - Calls: UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
+      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
+        - Calls: _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Render()
-        - Calls: _controlContext.GetWindowSize, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _renderContext.Viewport, _uiOverlay.RecomputeLayout
+        - Calls: _quadRenderer.DrawQuad, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _uiOverlay.RefreshUI
       - void Dispose()
       - void Detach()
+      - void OnPanelResize( float h, float w)
+        - Calls: _uiOverlay.RefreshUI
 - File: BrushRegistryUpdateEvent.cs
   - Class: BrushRegistryUpdateEvent (Namespace: SiegeEngine.Events)
     - Inherits: IEvent
@@ -519,6 +532,30 @@ Folder: SiegeEngine
     
     - Methods:
       - constructor DivElement()
+- File: DockManager.cs
+  - Class: DockManager (Namespace: SiegeEngine.Managers)
+    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Fields:
+      - DockNode _root
+      - List<IPanel> _floatingPanels
+      - IPanel _draggingPanel
+      - Vector2 _dragOffset
+      - DockNode _dragOriginNode
+      - IRenderContext _renderContext
+      - IControlContext _controlContext
+      - EventBus _eventBus
+      - float SnapDistance
+    - Methods:
+      - constructor DockManager( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
+      - void AddPanel(IPanel panel)
+      - void RemovePanel(IPanel panel)
+      - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  int winH,  int winW, float deltaTime)
+        - Calls: DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, _root.FindNode, _root.HitTest
+      - DockState GetDockStateFromPosition( int winH,  int winW, Vector2 mousePos)
+      - void DockPanel( DockState state, IPanel panel)
+        - Calls: newTabbed.AddPanel
+      - void Render( int winH,  int winW, IRenderContext renderContext)
+        - Calls: renderContext.Scissor, renderContext.Viewport
 - File: EditorScene.cs
   - Class: EditorScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
@@ -843,11 +880,13 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
 - File: IPanel.cs
   - Class: IPanel (Namespace: SiegeEngine.Interfaces)
+    - Dependencies: System.Numerics
     - Methods:
       - void Init()
-      - void Update(float deltaTime)
+      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
       - void Render()
       - void Dispose()
+      - void Detach()
 - File: IRenderContext.cs
   - Class: IRenderContext (Namespace: SiegeEngine.ContextManagement)
 - File: IRenderer.cs
@@ -1070,7 +1109,7 @@ Folder: SiegeEngine
   - Class: MenuUIOverlay (Namespace: SiegeEngine.UI)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, System, System.Collections.Generic, System.IO, System.Reflection
+    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, System, System.Collections.Generic, System.IO, System.Numerics, System.Reflection
     - Fields:
       - MenuPanel _parent
       - ModManager _modManager
@@ -1079,7 +1118,7 @@ Folder: SiegeEngine
       - void HandleDataHook(string hook)
         - Calls: OpenPanelEvent, SwitchSceneEvent, _document.getElementById, checked.ToString
       - void HandleLink(string href)
-        - Calls: LoadUI, RecomputeLayout, _controlContext.GetWindowSize, _modManager.ResolvePath
+        - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
 - File: MetaDataExporter.cs
   - Class: MetaDataExporter (Namespace: SiegeEngine.AssetParsing)
     - Dependencies: SiegeEngine.AssetObjects, System, System.Collections.Generic, System.IO, System.Linq, System.Text, System.Text.Json, System.Text.Json.Serialization, System.Threading.Tasks
@@ -1251,15 +1290,17 @@ Folder: SiegeEngine
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
 - File: PanelManager.cs
   - Class: PanelManager (Namespace: SiegeEngine.Managers)
-    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Events, SiegeEngine.Interfaces, System, System.Collections.Generic
+    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, System, System.Collections.Generic, System.Numerics
     - Fields:
-      - List<IPanel> _panels
+      - DockManager _dockManager
       - IRenderContext _renderContext
       - IControlContext _controlContext
       - IntPtr _window
       - EventBus _eventBus
+      - bool _prevMouseDown
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  IntPtr window, IRenderContext renderContext)
+        - Calls: DockManager
       - void OnOpenPanel(OpenPanelEvent e)
         - Calls: AddPanel
       - void OnClosePanel(ClosePanelEvent e)
@@ -1267,7 +1308,9 @@ Folder: SiegeEngine
       - void AddPanel(IPanel panel)
         - Calls: panel.Init
       - void Update(float deltaTime)
+        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize
       - void Render()
+        - Calls: _controlContext.GetWindowSize, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
         - Calls: panel.Dispose
 - File: PhysicsCollisionEvent.cs
@@ -1731,11 +1774,12 @@ Folder: SiegeEngine
       - List<IPanel> _panels
       - string _configPath
       - bool _menuVisible
+      - bool _prevMouseDown
     - Methods:
       - constructor UIManager( EventBus eventBus,  IControlContext controlContext,  IRenderContext renderContext,  IntPtr window,  ModManager modManager,  string configPath, UISettingsManager settingsManager)
         - Calls: _controlContext.SetWindowSizeCallback
       - void OnResize( int h,  int w, IntPtr win)
-        - Calls: _renderContext.Viewport
+        - Calls: _renderContext.Viewport, bp.OnPanelResize
       - void Initialize(string initialMenuHtmlPath)
         - Calls: LoadMenu, OnResize, ShaderProgram, TextRenderer, UIQuadRenderer, _controlContext.GetWindowSize
       - void LoadMenu(string initialMenuHtmlPath)
@@ -1746,6 +1790,7 @@ Folder: SiegeEngine
       - void RemovePanel(IPanel panel)
         - Calls: panel.Dispose
       - void Update(float deltaTime)
+        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton
       - void Render()
         - Calls: _renderContext.Disable, _renderContext.Enable
       - void Dispose()
@@ -1777,7 +1822,7 @@ Folder: SiegeEngine
       - void Init()
         - Calls: ShaderProgram, TextRenderer, UIQuadRenderer, _textRenderer.Initialize
       - void LoadUI( string baseDir = "", string html)
-        - Calls: CollectClickables, HtmlParser, InheritProperties, InitializeElementProperties, JSDocument, RecomputeLayout, RefreshUI, _controlContext.GetWindowSize, _cssParser.Apply, _cssParser.ApplyAll, _cssParser.ApplyInlineStyles, _cssParser.Clear, _jsContext.Evaluator.RegisterGlobal, _jsContext.Run, _uiClickables.Clear, _uiRoot.PrepareResources, parser.Parse
+        - Calls: CollectClickables, HtmlParser, InheritProperties, InitializeElementProperties, _cssParser.Apply, _cssParser.ApplyAll, _cssParser.ApplyInlineStyles, _cssParser.Clear, _uiClickables.Clear, _uiRoot.PrepareResources, parser.Parse
       - void InitializeElementProperties(HtmlElement root)
       - void InheritProperties( HtmlElement parent, HtmlElement elem)
       - void CollectClickables(HtmlElement elem)
@@ -1786,7 +1831,7 @@ Folder: SiegeEngine
       - void HandleLink(string href)
         - Calls: LoadUI
       - void RefreshUI()
-        - Calls: CollectClickables, InheritProperties, RecomputeLayout, _controlContext.GetWindowSize, _cssParser.ApplyAll, _uiClickables.Clear
+        - Calls: CollectClickables, InheritProperties, RecomputeLayout, _cssParser.ApplyAll, _uiClickables.Clear
       - HtmlElement FindElementById(string id)
       - return FindElementById()
       - HtmlElement FindElementById( string id, HtmlElement root)
@@ -1802,15 +1847,15 @@ Folder: SiegeEngine
         - Calls: TriggerChange
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
-      - void Update(float deltaTime)
-        - Calls: CloseAllOpenSelects, FindElementsByTag, HandleUIClick, InvokeListeners, JSElement, RefreshUI, TriggerChange, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetTime, _controlContext.GetWindowSize, _jsContext.RunWithThis, clickable.HandleClick, clickable.IsDescendantOf, openSelect.HandleClick
+      - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
+        - Calls: CloseAllOpenSelects, FindElementsByTag, HandleUIClick, InvokeListeners, JSElement, RefreshUI, TriggerChange, _controlContext.GetKey, _controlContext.GetTime, _jsContext.RunWithThis, clickable.HandleClick, clickable.IsDescendantOf, openSelect.HandleClick
       - it CloseAllOpenSelects()
         - Calls: InvokeListeners, RefreshUI, TriggerChange, _controlContext.GetKey, _controlContext.GetTime, input.Update
-      - void RenderUI( int h, int w)
+      - void RenderUI( float h, float w)
         - Calls: _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _uiRoot.Render, sel.RenderDropdown
       - void Render()
-        - Calls: RenderUI, _controlContext.GetWindowSize
-      - void RecomputeLayout( int h, int w)
+        - Calls: RenderUI
+      - void RecomputeLayout( float h, float w)
         - Calls: _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
       - void Dispose()
       - void TriggerChange(HtmlElement elem)
@@ -2080,6 +2125,7 @@ SiegeEngine.Interfaces.IPanel
 SiegeEngine.Interfaces.IRenderer
 SiegeEngine.Interfaces.ISoundValidator
 SiegeEngine.Interfaces.ISteamEngine
+SiegeEngine.Managers.DockManager
 SiegeEngine.Managers.GameModeManager
 SiegeEngine.Managers.LevelManager
 SiegeEngine.Managers.LobbyManager

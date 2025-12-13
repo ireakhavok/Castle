@@ -273,7 +273,7 @@ Found: ..
 Found: AssetViewerPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
-Read 14572 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+Read 14783 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Namespace: ReadingChamber
 Found 12 dependencies
 Found: AssetViewerUI.html
@@ -282,9 +282,9 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Read
 Found: FileSelectorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
-Read 10335 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Read 10559 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Namespace: ReadingChamber
-Found 9 dependencies
+Found 10 dependencies
 Found: FileSelectorTemplate.html
 Found: obj
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj
@@ -692,9 +692,9 @@ Found 5 dependencies
 Found: IPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
-Read 395 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
+Read 666 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
 Namespace: SiegeEngine.Interfaces
-Found 0 dependencies
+Found 1 dependencies
 Found: IRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IRenderer.cs
@@ -717,6 +717,12 @@ Found: Managers
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers
 Found: .
 Found: ..
+Found: DockManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
+Read 14632 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
+Namespace: SiegeEngine.Managers
+Found 8 dependencies
 Found: GameModeManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\GameModeManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\GameModeManager.cs
@@ -750,9 +756,9 @@ Found 8 dependencies
 Found: PanelManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
-Read 1791 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
+Read 2660 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
 Namespace: SiegeEngine.Managers
-Found 5 dependencies
+Found 7 dependencies
 Found: SceneManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
@@ -762,7 +768,7 @@ Found 13 dependencies
 Found: UIManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
-Read 4641 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
+Read 5271 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
 Namespace: SiegeEngine.Managers
 Found 13 dependencies
 Found: UISettingsManager.cs
@@ -799,6 +805,10 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networ
 Read 25217 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\SteamEngine.cs
 Namespace: SiegeEngine.Networking
 Found 6 dependencies
+Found: NewFolder
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\NewFolder
+Found: .
+Found: ..
 Found: obj
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj
 Found: PlayerSystem
@@ -1060,9 +1070,9 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
-Read 2306 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
+Read 6346 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
 Namespace: SiegeEngine.UI
-Found 4 dependencies
+Found 7 dependencies
 Found: ButtonElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
@@ -1161,9 +1171,9 @@ Found 4 dependencies
 Found: MenuPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
-Read 5912 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
+Read 6399 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
 Namespace: SiegeEngine.UI
-Found 8 dependencies
+Found 9 dependencies
 Found: NavElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\NavElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\NavElement.cs
@@ -1221,7 +1231,7 @@ Found 3 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
-Read 33036 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
+Read 32481 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Namespace: SiegeEngine.UI
 Found 10 dependencies
 Found: UlElement.cs
@@ -1284,7 +1294,7 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Treb
 Found: Launcher.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 6634 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 6648 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
 Found 20 dependencies
 Found: obj
