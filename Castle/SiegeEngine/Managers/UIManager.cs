@@ -1,4 +1,5 @@
-﻿// SiegeEngine.Managers/UIManager.cs
+﻿// Folder: SiegeEngine.Managers
+// File: UIManager.cs
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
 using SiegeEngine.Events;
@@ -33,6 +34,7 @@ namespace SiegeEngine.Managers
         private readonly List<IPanel> _panels = new List<IPanel>();
         private readonly string _configPath;
         private bool _menuVisible = true;
+        private bool _prevMouseDown;
 
         public bool MenuVisible
         {
@@ -60,7 +62,10 @@ namespace SiegeEngine.Managers
             _vh = h;
             foreach (var panel in _panels)
             {
-                // Panels handle their own recompute if needed
+                if (panel.Position == Vector2.Zero && panel is BasePanel bp && !bp.AllowDragging)
+                {
+                    panel.Size = new Vector2(w, h);
+                }
             }
         }
 
@@ -112,9 +117,15 @@ namespace SiegeEngine.Managers
         public void Update(float deltaTime)
         {
             if (!_initialized) return;
-            foreach (var panel in _panels)
+            _controlContext.GetCursorPos(_window, out double mx, out double my);
+            Vector2 mousePos = new Vector2((float)mx, (float)my);
+            bool currentMouseDown = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press;
+            bool mousePressed = !_prevMouseDown && currentMouseDown;
+            bool mouseReleased = _prevMouseDown && !currentMouseDown;
+            _prevMouseDown = currentMouseDown;
+            foreach (var panel in _panels.ToArray())
             {
-                panel.Update(deltaTime);
+                panel.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased);
             }
         }
 

@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 
 namespace ReadingChamber
@@ -38,16 +39,23 @@ namespace ReadingChamber
         {
             _currentDir = initialDir;
             _allowedExtensions = allowedExtensions?.Select(ext => ext.ToLowerInvariant()).ToArray();
+            Scaling = ScalingMode.Fill;
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new FileSelectorUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
             NavigateTo(_currentDir);
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();
         }
+
         private void NavigateTo(string dir, bool addToHistory = true)
         {
             if (addToHistory)
@@ -62,6 +70,7 @@ namespace ReadingChamber
             _currentDir = dir;
             UpdateFileList();
         }
+
         private void UpdateFileList()
         {
             string templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FileSelectorTemplate.html");
@@ -73,7 +82,6 @@ namespace ReadingChamber
             string templateHtml = File.ReadAllText(templatePath);
             templateHtml = templateHtml.Replace("</style>", " .file-table td:not(:last-child), .file-table th:not(:last-child) { border-right: 1px solid #333333; } .file-table a { color: inherit; text-decoration: none; display: block; } .grid-item a { color: inherit; text-decoration: none; display: block; height: 100%; width: 100%; } \n</style>");
             StringBuilder dynamicItems = new StringBuilder();
-            StringBuilder dynamicGridItems = new StringBuilder();
             // Get directories and files
             var dirs = Directory.GetDirectories(_currentDir);
             var files = Directory.GetFiles(_currentDir);
@@ -120,13 +128,11 @@ namespace ReadingChamber
                     string sizeStr = item.IsDir ? "" : FormatSize(item.Size);
                     string dateStr = item.Modified.ToString("yyyy-MM-dd HH:mm");
                     dynamicItems.Append($"<tr class='{cls}'><td><a data-hook=\"{hook}\">{icon}</a></td><td><a data-hook=\"{hook}\">{item.Name}</a></td><td><a data-hook=\"{hook}\">{sizeStr}</a></td><td><a data-hook=\"{hook}\">{dateStr}</a></td></tr>");
-                    //dynamicGridItems.Append($"<div class=\"grid-item {cls}\" ><a data-hook=\"{hook}\"><div class=\"icon\">{icon}</div>{item.Name}</a></div>");
                 }
             }
             string currentDirEscaped = _currentDir.Replace("\\", "\\\\");
             string modifiedHtml = templateHtml.Replace("<!--CURRENT_DIR-->", currentDirEscaped).Replace("<!--DYNAMIC_ITEMS-->", dynamicItems.ToString());
             modifiedHtml = modifiedHtml.Replace("<h2>Files in <!--CURRENT_DIR--></h2>", "");
-            //modifiedHtml = modifiedHtml.Replace("<!--DYNAMIC_GRID_ITEMS-->", dynamicGridItems.ToString());
             modifiedHtml = modifiedHtml.Replace("class=\"file-table\"", $"class=\"file-table {_viewType}\"");
             _uiOverlay.LoadUI(modifiedHtml);
             var fileTableElem = _uiOverlay.FindElementById("file-table");
@@ -135,12 +141,17 @@ namespace ReadingChamber
                 fileTableElem.Style.AlignItems = "flex-start";
                 _uiOverlay.RefreshUI();
             }
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();
         }
+
         private string GetFileClass(string fileName)
         {
             string ext = Path.GetExtension(fileName).ToLowerInvariant();
             return "file" + (string.IsNullOrEmpty(ext) ? "" : ext.Replace(".", "-"));
         }
+
         private string GetIcon(string cls)
         {
             if (cls == "dir") return "📁";
@@ -150,6 +161,7 @@ namespace ReadingChamber
             if (cls == "file-json" || cls == "file-xml") return "⚙️";
             return "📄";
         }
+
         private string FormatSize(long size)
         {
             if (size < 1024) return size + " B";
@@ -157,6 +169,7 @@ namespace ReadingChamber
             if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)) + " MB";
             return (size / (1024 * 1024 * 1024)) + " GB";
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -223,6 +236,11 @@ namespace ReadingChamber
                 _sortBy = "date";
                 UpdateFileList();
             }
+        }
+
+        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
+        {
+            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
         }
     }
 }

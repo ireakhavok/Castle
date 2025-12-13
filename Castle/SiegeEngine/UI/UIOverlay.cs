@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.UI.JSParser;
+
 namespace SiegeEngine.UI
 {
     public class UIOverlay
@@ -35,6 +36,8 @@ namespace SiegeEngine.UI
         private const double InitialRepeatDelay = 0.5;
         private const double RepeatRate = 0.05;
         public HtmlElement FocusedElement => _currentFocused;
+        public float PanelWidth { get; set; }
+        public float PanelHeight { get; set; }
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, IntPtr window)
         {
             _renderContext = renderContext;
@@ -93,16 +96,7 @@ namespace SiegeEngine.UI
             _uiRoot.PrepareResources(baseDir, _controlContext, _window, _renderContext, _uiShader);
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
-            // Initial layout
-            _controlContext.GetWindowSize(_window, out int w, out int h);
-            RecomputeLayout(w, h);
-            _document = new JSDocument(this);
-            _jsContext.Evaluator.RegisterGlobal("document", _document);
-            foreach (var script in scriptBlocks)
-            {
-                _jsContext.Run(script);
-            }
-            RefreshUI();
+            // No initial RecomputeLayout here; caller handles with known size
         }
         private void InitializeElementProperties(HtmlElement root)
         {
@@ -186,8 +180,7 @@ namespace SiegeEngine.UI
             if (_uiRoot == null) return;
             _cssParser.ApplyAll(_uiRoot);
             InheritProperties(_uiRoot, null);
-            _controlContext.GetWindowSize(_window, out int w, out int h);
-            RecomputeLayout(w, h);
+            RecomputeLayout(PanelWidth, PanelHeight);
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
         }
@@ -492,18 +485,15 @@ namespace SiegeEngine.UI
             }
             return null;
         }
-        public virtual void Update(float deltaTime)
+        public virtual void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
+            PanelWidth = panelW;
+            PanelHeight = panelH;
             // UI input handling
-            Vector2 mousePos = new Vector2();
-            _controlContext.GetCursorPos(_window, out double x, out double y);
-            mousePos = new Vector2((float)x, (float)y);
-            bool currentMouseDown = _controlContext.GetMouseButton(_window, MouseButton.Left) == InputAction.Press;
             bool mousePress = !_prevMouseDown && currentMouseDown;
             bool mouseRelease = _prevMouseDown && !currentMouseDown;
-            _controlContext.GetWindowSize(_window, out int vw_int, out int vh_int);
-            float vw = vw_int;
-            float vh = vh_int;
+            float vw = PanelWidth;
+            float vh = PanelHeight;
             HtmlElement clickedElem = null;
             bool isClickOnOpenSelect = false;
             _openSelects = FindElementsByTag("select").Where(s => (s as SelectElement)?.IsOpen ?? false).Cast<SelectElement>().ToList();
@@ -511,7 +501,7 @@ namespace SiegeEngine.UI
             if (openSelect != null)
             {
                 // Check if click is on open select or descendants
-                if (openSelect.HandleClick(mousePos, vw, vh))
+                if (openSelect.HandleClick(relMousePos, vw, vh))
                 {
                     isClickOnOpenSelect = true;
                 }
@@ -524,7 +514,7 @@ namespace SiegeEngine.UI
                 }
                 bool wasHover = clickable.IsHover;
                 bool wasActive = clickable.IsActive;
-                bool over = clickable.HandleClick(mousePos, vw, vh);
+                bool over = clickable.HandleClick(relMousePos, vw, vh);
                 if (over && mousePress)
                 {
                     if (!string.IsNullOrEmpty(clickable.OnMouseDownJS))
@@ -690,7 +680,7 @@ namespace SiegeEngine.UI
                 RefreshUI();
             }
         }
-        protected void RenderUI(int w, int h)
+        protected void RenderUI(float w, float h)
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
@@ -704,13 +694,12 @@ namespace SiegeEngine.UI
         }
         public virtual void Render()
         {
-            _controlContext.GetWindowSize(_window, out int w, out int h);
             if (_uiRoot != null)
             {
-                RenderUI(w, h);
+                RenderUI(PanelWidth, PanelHeight);
             }
         }
-        public void RecomputeLayout(int w, int h)
+        public void RecomputeLayout(float w, float h)
         {
             if (_uiRoot != null)
             {
