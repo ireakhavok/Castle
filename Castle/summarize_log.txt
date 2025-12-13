@@ -1072,7 +1072,7 @@ Found 5 dependencies
 Found: CssParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
-Read 24881 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
+Read 24960 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
 Namespace: SiegeEngine.UI
 Found 5 dependencies
 Found: CssStyle.cs
@@ -1221,7 +1221,7 @@ Found 3 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
-Read 33004 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
+Read 33036 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Namespace: SiegeEngine.UI
 Found 10 dependencies
 Found: UlElement.cs

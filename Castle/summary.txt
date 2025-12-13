@@ -462,6 +462,7 @@ Folder: SiegeEngine
     - Fields:
       - string DefaultUserAgentCss
     - Methods:
+      - void Clear()
       - void Apply(string css)
         - Calls: ParseProperties, ReadUntil, SkipWhitespaceAndComments
       - void ApplyAll(HtmlElement root)
@@ -1776,7 +1777,7 @@ Folder: SiegeEngine
       - void Init()
         - Calls: ShaderProgram, TextRenderer, UIQuadRenderer, _textRenderer.Initialize
       - void LoadUI( string baseDir = "", string html)
-        - Calls: CollectClickables, HtmlParser, InheritProperties, InitializeElementProperties, JSDocument, RecomputeLayout, RefreshUI, _controlContext.GetWindowSize, _cssParser.Apply, _cssParser.ApplyAll, _cssParser.ApplyInlineStyles, _jsContext.Evaluator.RegisterGlobal, _jsContext.Run, _uiClickables.Clear, _uiRoot.PrepareResources, parser.Parse
+        - Calls: CollectClickables, HtmlParser, InheritProperties, InitializeElementProperties, JSDocument, RecomputeLayout, RefreshUI, _controlContext.GetWindowSize, _cssParser.Apply, _cssParser.ApplyAll, _cssParser.ApplyInlineStyles, _cssParser.Clear, _jsContext.Evaluator.RegisterGlobal, _jsContext.Run, _uiClickables.Clear, _uiRoot.PrepareResources, parser.Parse
       - void InitializeElementProperties(HtmlElement root)
       - void InheritProperties( HtmlElement parent, HtmlElement elem)
       - void CollectClickables(HtmlElement elem)
