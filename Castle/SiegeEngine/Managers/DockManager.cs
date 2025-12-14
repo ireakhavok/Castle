@@ -298,6 +298,8 @@ namespace SiegeEngine.Managers
         private readonly IControlContext _controlContext;
         private readonly EventBus _eventBus;
         private const float SnapDistance = 20f;
+        private int _lastWinW;
+        private int _lastWinH;
 
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
@@ -336,6 +338,20 @@ namespace SiegeEngine.Managers
 
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, EventBus eventBus, int winW, int winH)
         {
+            if (winW != _lastWinW || winH != _lastWinH)
+            {
+                foreach (var panel in _floatingPanels.ToArray())
+                {
+                    if (panel.Position == Vector2.Zero && panel.Size.X == _lastWinW && panel.Size.Y == _lastWinH)
+                    {
+                        panel.Size = new Vector2(winW, winH);
+                        panel.OnPanelResize(winW, winH);
+                    }
+                }
+                _lastWinW = winW;
+                _lastWinH = winH;
+            }
+
             _root.ComputeLayout(0, 0, winW, winH);
 
             // Update floating

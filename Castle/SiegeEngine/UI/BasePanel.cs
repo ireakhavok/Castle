@@ -68,14 +68,14 @@ namespace SiegeEngine.UI
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
 
-            if (DockState != DockState.Floating || !overPanel)
+            if (!overPanel)
             {
                 return;
             }
 
             bool overTitle = absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + TitleHeight;
 
-            if (AllowDragging && mousePressed && overTitle)
+            if (AllowDragging && DockState == DockState.Floating && mousePressed && overTitle)
             {
                 double currentTime = _controlContext.GetTime();
                 if (currentTime - _lastClickTime < DoubleClickTime)
@@ -165,13 +165,10 @@ namespace SiegeEngine.UI
 
         public virtual void OnPanelResize(float w, float h)
         {
-            if (!AllowDragging)
-            {
-                Size = new Vector2(w, h);
-                _uiOverlay.PanelWidth = Size.X;
-                _uiOverlay.PanelHeight = Size.Y;
-                _uiOverlay.RefreshUI();
-            }
+            Size = new Vector2(w, h);
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();
         }
     }
 }
