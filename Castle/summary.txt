@@ -322,9 +322,12 @@ Folder: SiegeEngine
       - int _lastH
       - bool _isDragging
       - Vector2 _dragOffset
+      - Vector2 _dragStartMousePos
       - double _lastClickTime
       - float TitleHeight
       - double DoubleClickTime
+      - float SnapDistance
+      - float MinDragDistanceForSnap
       - ScalingMode Scaling
       - float BaseWidth
       - float BaseHeight
@@ -337,7 +340,9 @@ Folder: SiegeEngine
       - void Init()
         - Calls: UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
-        - Calls: _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
+        - Calls: ApplySnap, _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
+      - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
+        - Calls: OnPanelResize
       - void Render()
         - Calls: _quadRenderer.DrawQuad, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _uiOverlay.RefreshUI
       - void Dispose()
@@ -545,12 +550,14 @@ Folder: SiegeEngine
       - IControlContext _controlContext
       - EventBus _eventBus
       - float SnapDistance
+      - int _lastWinW
+      - int _lastWinH
     - Methods:
       - constructor DockManager( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  int winH,  int winW, float deltaTime)
-        - Calls: DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, _root.FindNode, _root.HitTest
+        - Calls: DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, panel.OnPanelResize
       - DockState GetDockStateFromPosition( int winH,  int winW, Vector2 mousePos)
       - void DockPanel( DockState state, IPanel panel)
         - Calls: newTabbed.AddPanel
@@ -887,6 +894,7 @@ Folder: SiegeEngine
       - void Render()
       - void Dispose()
       - void Detach()
+      - void OnPanelResize( float h, float w)
 - File: IRenderContext.cs
   - Class: IRenderContext (Namespace: SiegeEngine.ContextManagement)
 - File: IRenderer.cs

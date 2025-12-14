@@ -273,7 +273,7 @@ Found: ..
 Found: AssetViewerPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
-Read 14783 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+Read 15666 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Namespace: ReadingChamber
 Found 12 dependencies
 Found: AssetViewerUI.html
@@ -692,7 +692,7 @@ Found 5 dependencies
 Found: IPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
-Read 666 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
+Read 753 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
 Namespace: SiegeEngine.Interfaces
 Found 1 dependencies
 Found: IRenderer.cs
@@ -720,7 +720,7 @@ Found: ..
 Found: DockManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
-Read 14632 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
+Read 15657 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
 Namespace: SiegeEngine.Managers
 Found 8 dependencies
 Found: GameModeManager.cs
@@ -1004,7 +1004,7 @@ Found 13 dependencies
 Found: SandBoxScene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
-Read 11659 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
+Read 12146 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
 Namespace: SiegeEngine.Scenes
 Found 13 dependencies
 Found: Scene.cs
@@ -1070,7 +1070,7 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
-Read 6346 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
+Read 9713 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
 Namespace: SiegeEngine.UI
 Found 7 dependencies
 Found: ButtonElement.cs
@@ -1294,7 +1294,7 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Treb
 Found: Launcher.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 6648 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 6413 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
 Found 20 dependencies
 Found: obj
