@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Definitions;
+﻿// Folder: SiegeEngine.Managers
+// File: ModManager.cs
+using SiegeEngine.Definitions;
 using SiegeEngine.Interfaces;
 using SiegeEngine.UnityAssetLoader;
 using System;
@@ -165,19 +167,24 @@ namespace SiegeEngine.Managers
             // Normalize path: trim leading backslashes, replace / with \
             relativePath = relativePath.TrimStart('\\', '/').Replace("/", "\\");
             if (Path.IsPathRooted(relativePath)) return File.Exists(relativePath) ? relativePath : null;
-            string[] textureDirs = new[]
+            string[] commonDirs = new[]
             {
                 Path.Combine("Assets", "Characters", "Adventure_Character", "Textures"),
                 Path.Combine("Assets", "Textures"),
                 Path.Combine("Assets", "Static_Images"),
+                Path.Combine("Assets", "Configs"),
                 "Textures"
             };
-            foreach (var dir in textureDirs)
+            foreach (var dir in commonDirs)
             {
-                string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dir, Path.GetFileName(relativePath));
-                Console.WriteLine($"ModManager: Checking texture path for {relativePath}: {fullPath}, Exists: {File.Exists(fullPath)}");
+                string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dir, relativePath);
+                Console.WriteLine($"ModManager: Checking common path for {relativePath}: {fullPath}, Exists: {File.Exists(fullPath)}");
                 if (File.Exists(fullPath))
                     return fullPath;
+                string solutionFullPath = Path.Combine(_solutionDirectory, dir, relativePath);
+                Console.WriteLine($"ModManager: Checking solution common path for {relativePath}: {solutionFullPath}, Exists: {File.Exists(solutionFullPath)}");
+                if (File.Exists(solutionFullPath))
+                    return solutionFullPath;
             }
             foreach (var mod in _loadedMods)
             {

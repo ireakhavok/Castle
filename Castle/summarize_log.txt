@@ -1,0 +1,1304 @@
+Log file opened successfully
+Getting current directory
+Repo path set to: C:\Users\ireak\source\repos\RealmFoundry\Castle
+Summary file opened successfully
+Starting scan
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle
+Found: .
+Found: ..
+Found: .vs
+Found: Assets
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets
+Found: .
+Found: ..
+Found: Characters
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters
+Found: .
+Found: ..
+Found: arrow_player.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\arrow_player.fbm
+Found: .
+Found: ..
+Found: arrow_player_texture.png
+Found: arrow_player_UV.png
+Found: Man_Mesh.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\Man_Mesh.fbm
+Found: .
+Found: ..
+Found: cube_test.png
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Ao.tga
+Found: Man_Body_Metallic.tga
+Found: Man_Body_Normals.tga
+Found: Man_Cloth_Down_Albedo_01.tga
+Found: Man_Cloth_Down_Albedo_02.tga
+Found: Man_Cloth_Down_Albedo_03.tga
+Found: Man_Cloth_Down_Ao.tga
+Found: Man_Cloth_Down_Metallic.tga
+Found: Man_Cloth_Down_Normals.tga
+Found: Man_Cloth_Up_Albedo_01.tga
+Found: Man_Cloth_Up_Albedo_02.tga
+Found: Man_Cloth_Up_Albedo_03.tga
+Found: Man_Cloth_Up_Ao.tga
+Found: Man_Cloth_Up_Metallic.tga
+Found: Man_Cloth_Up_Normals.tga
+Found: man_mesh.fbx
+Found: man_mesh_arrow.fbx
+Found: man_mesh_arrow_old.fbx
+Found: Configs
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs
+Found: .
+Found: ..
+Found: Archive
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs\Archive
+Found: .
+Found: ..
+Found: MainMenu.html
+Found: MainMenu_archive.html
+Found: MainMenu_new.html
+Found: MainMenu_old.html
+Found: MainMenu_production.txt
+Found: DevMenu.html
+Found: DevMenu.txt
+Found: HTML_test.html
+Found: MainMenu.html
+Found: MainMenu.txt
+Found: testing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs\testing
+Found: .
+Found: ..
+Found: test.html
+Found: UserSettingsMenu.html
+Found: Static_Images
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Static_Images
+Found: .
+Found: ..
+Found: DirtPath2.jpg
+Found: DirtPathTexture.jpg
+Found: Main_Background.jpg
+Found: main_background_grok_lol.jpg
+Found: Castle.sln
+Found: CastleBuilder
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder
+Found: .
+Found: ..
+Found: Assets
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Assets
+Found: .
+Found: ..
+Found: Configs
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Assets\Configs
+Found: .
+Found: ..
+Found: NewProject.html
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\bin
+Found: BlueprintManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Read 6566 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Namespace: CastleBuilder
+Found 7 dependencies
+Found: CastleBuilder.csproj
+Found: Events
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events
+Found: .
+Found: ..
+Found: LoadProjectEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\LoadProjectEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\LoadProjectEvent.cs
+Read 684 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\LoadProjectEvent.cs
+Namespace: CastleBuilder.Events
+Found 2 dependencies
+Found: NewProjectEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\NewProjectEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\NewProjectEvent.cs
+Read 991 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\NewProjectEvent.cs
+Namespace: CastleBuilder.Events
+Found 2 dependencies
+Found: SaveProjectEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\SaveProjectEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\SaveProjectEvent.cs
+Read 684 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\SaveProjectEvent.cs
+Namespace: CastleBuilder.Events
+Found 2 dependencies
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj
+Found: Program.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Program.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Program.cs
+Read 103 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Program.cs
+Namespace: None
+Found 0 dependencies
+Found: Citadel
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\bin
+Found: Citadel.csproj
+Found: Citadel.csproj.user
+Found: Network
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Network
+Found: .
+Found: ..
+Found: NetworkManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
+Read 1412 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
+Namespace: Citadel.Network
+Found 3 dependencies
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\obj
+Found: Properties
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Properties
+Found: .
+Found: ..
+Found: PublishProfiles
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Properties\PublishProfiles
+Found: .
+Found: ..
+Found: FolderProfile.pubxml
+Found: FolderProfile.pubxml.user
+Found: Server
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server
+Found: .
+Found: ..
+Found: EntityDeltaTracker.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\EntityDeltaTracker.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\EntityDeltaTracker.cs
+Read 1170 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\EntityDeltaTracker.cs
+Namespace: Citadel.Server
+Found 4 dependencies
+Found: GameServer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
+Read 18623 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
+Namespace: Citadel.Server
+Found 13 dependencies
+Found: ServerValidationSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\ServerValidationSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\ServerValidationSystem.cs
+Read 7232 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\ServerValidationSystem.cs
+Namespace: Citadel.Server
+Found 8 dependencies
+Found: ServerProgram.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
+Read 1964 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
+Namespace: Citadel
+Found 7 dependencies
+Found: Systems
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Systems
+Found: .
+Found: ..
+Found: PhysicsSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Systems\PhysicsSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Systems\PhysicsSystem.cs
+Read 1127 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Systems\PhysicsSystem.cs
+Namespace: Citadel.Systems
+Found 6 dependencies
+Found: Foundation
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\bin
+Found: Foundation.csproj
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\obj
+Found: Program.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
+Read 1500 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Foundation\Program.cs
+Namespace: Foundation
+Found 7 dependencies
+Found: GuildTower
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\bin
+Found: Class1.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\Class1.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\Class1.cs
+Read 65 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\Class1.cs
+Namespace: GuildTower
+Found 0 dependencies
+Found: GuildTower.csproj
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\GuildTower\obj
+Found: HeirarchySummary.exe
+Found: Libraries
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Libraries
+Found: .
+Found: ..
+Found: Citadel.exe
+Found: steam_api64.dll
+Found: steam_appid.txt
+Found: MapRoom
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\bin
+Found: Class1.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\Class1.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\Class1.cs
+Read 48 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\Class1.cs
+Namespace: MapRoom
+Found 0 dependencies
+Found: MapRoom.csproj
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj
+Found: QuestHall
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\bin
+Found: Class1.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\Class1.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\Class1.cs
+Read 64 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\Class1.cs
+Namespace: QuestHall
+Found 0 dependencies
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall\obj
+Found: QuestHall.csproj
+Found: ReadingChamber
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber
+Found: .
+Found: ..
+Found: AssetViewerPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+Read 15666 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+Namespace: ReadingChamber
+Found 12 dependencies
+Found: AssetViewerUI.html
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin
+Found: FileSelectorPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Read 10559 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Namespace: ReadingChamber
+Found 10 dependencies
+Found: FileSelectorTemplate.html
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\obj
+Found: ReadingChamber.csproj
+Found: ScriptChamber
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\bin
+Found: Class1.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\Class1.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\Class1.cs
+Read 68 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\Class1.cs
+Namespace: ScriptChamber
+Found 0 dependencies
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ScriptChamber\obj
+Found: ScriptChamber.csproj
+Found: SiegeEngine
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine
+Found: .
+Found: ..
+Found: AssetObjects
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects
+Found: .
+Found: ..
+Found: BaseNode.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\BaseNode.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\BaseNode.cs
+Read 638 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\BaseNode.cs
+Namespace: SiegeEngine.AssetObjects
+Found 5 dependencies
+Found: FBXFileForest.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\FBXFileForest.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\FBXFileForest.cs
+Read 433 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\FBXFileForest.cs
+Namespace: SiegeEngine.AssetObjects
+Found 5 dependencies
+Found: FBXNode.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\FBXNode.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\FBXNode.cs
+Read 251 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\FBXNode.cs
+Namespace: SiegeEngine.AssetObjects
+Found 5 dependencies
+Found: PropertyNode.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\PropertyNode.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\PropertyNode.cs
+Read 286 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetObjects\PropertyNode.cs
+Namespace: SiegeEngine.AssetObjects
+Found 5 dependencies
+Found: AssetParsing
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing
+Found: .
+Found: ..
+Found: FBXModel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXModel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXModel.cs
+Read 3965 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXModel.cs
+Namespace: SiegeEngine.AssetParsing
+Found 5 dependencies
+Found: FBXParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParser.cs
+Read 22090 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParser.cs
+Namespace: SiegeEngine.AssetParsing
+Found 8 dependencies
+Found: FBXParserBase.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParserBase.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParserBase.cs
+Read 2899 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\FBXParserBase.cs
+Namespace: SiegeEngine.AssetParsing
+Found 5 dependencies
+Found: MetaDataExporter.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\MetaDataExporter.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\MetaDataExporter.cs
+Read 3436 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\MetaDataExporter.cs
+Namespace: SiegeEngine.AssetParsing
+Found 9 dependencies
+Found: ModelTransformer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\ModelTransformer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\ModelTransformer.cs
+Read 1093 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\ModelTransformer.cs
+Namespace: SiegeEngine.AssetParsing
+Found 1 dependencies
+Found: NodeParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\NodeParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\NodeParser.cs
+Read 15655 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\AssetParsing\NodeParser.cs
+Namespace: SiegeEngine.AssetParsing
+Found 6 dependencies
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\bin
+Found: ContextManagement
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement
+Found: .
+Found: ..
+Found: AbstractRenderEnums.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\AbstractRenderEnums.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\AbstractRenderEnums.cs
+Read 2735 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\AbstractRenderEnums.cs
+Namespace: SiegeEngine.ContextManagement
+Found 1 dependencies
+Found: ContextManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\ContextManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\ContextManager.cs
+Read 540 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\ContextManager.cs
+Namespace: SiegeEngine.ContextManagement
+Found 1 dependencies
+Found: D3D12Native.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\D3D12Native.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\D3D12Native.cs
+Read 15801 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\D3D12Native.cs
+Namespace: SiegeEngine.ContextManagement
+Found 2 dependencies
+Found: GlfwControlContext.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\GlfwControlContext.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\GlfwControlContext.cs
+Read 15396 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\GlfwControlContext.cs
+Namespace: SiegeEngine.ContextManagement
+Found 3 dependencies
+Found: IControlContext.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\IControlContext.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\IControlContext.cs
+Read 1650 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\IControlContext.cs
+Namespace: SiegeEngine.ContextManagement
+Found 2 dependencies
+Found: IRenderContext.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\IRenderContext.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\IRenderContext.cs
+Read 3720 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\IRenderContext.cs
+Namespace: SiegeEngine.ContextManagement
+Found 0 dependencies
+Found: OpenGLContextManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\OpenGLContextManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\OpenGLContextManager.cs
+Read 1436 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\OpenGLContextManager.cs
+Namespace: SiegeEngine.ContextManagement
+Found 3 dependencies
+Found: OpenGLEnums.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\OpenGLEnums.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\OpenGLEnums.cs
+Read 3682 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\OpenGLEnums.cs
+Namespace: SiegeEngine.ContextManagement
+Found 1 dependencies
+Found: OpenGLRenderContext.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\OpenGLRenderContext.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\OpenGLRenderContext.cs
+Read 8106 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\OpenGLRenderContext.cs
+Namespace: SiegeEngine.ContextManagement
+Found 3 dependencies
+Found: VulkanNative.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\VulkanNative.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\VulkanNative.cs
+Read 8408 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\ContextManagement\VulkanNative.cs
+Namespace: SiegeEngine.ContextManagement
+Found 2 dependencies
+Found: Definitions
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions
+Found: .
+Found: ..
+Found: AnimationComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\AnimationComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\AnimationComponent.cs
+Read 302 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\AnimationComponent.cs
+Namespace: SiegeEngine.Definitions
+Found 0 dependencies
+Found: Entity.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\Entity.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\Entity.cs
+Read 1019 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\Entity.cs
+Namespace: SiegeEngine.Definitions
+Found 3 dependencies
+Found: GameMode.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\GameMode.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\GameMode.cs
+Read 149 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\GameMode.cs
+Namespace: SiegeEngine.Definitions
+Found 0 dependencies
+Found: InputEnums.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\InputEnums.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\InputEnums.cs
+Read 2225 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\InputEnums.cs
+Namespace: SiegeEngine.Definitions
+Found 1 dependencies
+Found: InventoryComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\InventoryComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\InventoryComponent.cs
+Read 1948 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\InventoryComponent.cs
+Namespace: SiegeEngine.Definitions
+Found 2 dependencies
+Found: LevelData.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\LevelData.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\LevelData.cs
+Read 811 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\LevelData.cs
+Namespace: SiegeEngine.Definitions
+Found 3 dependencies
+Found: LightComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\LightComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\LightComponent.cs
+Read 1053 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\LightComponent.cs
+Namespace: SiegeEngine.Definitions
+Found 1 dependencies
+Found: LightType.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\LightType.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\LightType.cs
+Read 155 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\LightType.cs
+Namespace: SiegeEngine.Definitions
+Found 0 dependencies
+Found: MaterialProperties.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\MaterialProperties.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\MaterialProperties.cs
+Read 156 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\MaterialProperties.cs
+Namespace: SiegeEngine.Definitions
+Found 1 dependencies
+Found: ModelComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModelComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModelComponent.cs
+Read 308 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModelComponent.cs
+Namespace: SiegeEngine.Definitions
+Found 2 dependencies
+Found: ModInfo.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModInfo.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModInfo.cs
+Read 652 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\ModInfo.cs
+Namespace: SiegeEngine.Definitions
+Found 7 dependencies
+Found: PhysicsComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\PhysicsComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\PhysicsComponent.cs
+Read 1871 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\PhysicsComponent.cs
+Namespace: SiegeEngine.Definitions
+Found 2 dependencies
+Found: PreviewComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\PreviewComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\PreviewComponent.cs
+Read 433 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\PreviewComponent.cs
+Namespace: SiegeEngine.Definitions
+Found 1 dependencies
+Found: SoundSource.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\SoundSource.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\SoundSource.cs
+Read 419 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\SoundSource.cs
+Namespace: SiegeEngine.Definitions
+Found 1 dependencies
+Found: Spawner.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\Spawner.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\Spawner.cs
+Read 1916 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\Spawner.cs
+Namespace: SiegeEngine.Definitions
+Found 6 dependencies
+Found: WallComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\WallComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\WallComponent.cs
+Read 1146 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\WallComponent.cs
+Namespace: SiegeEngine.Definitions
+Found 4 dependencies
+Found: WeatherState.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\WeatherState.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\WeatherState.cs
+Read 167 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Definitions\WeatherState.cs
+Namespace: SiegeEngine.Definitions
+Found 0 dependencies
+Found: Events
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events
+Found: .
+Found: ..
+Found: BrushRegistryUpdateEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\BrushRegistryUpdateEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\BrushRegistryUpdateEvent.cs
+Read 1075 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\BrushRegistryUpdateEvent.cs
+Namespace: SiegeEngine.Events
+Found 3 dependencies
+Found: ClosePanelEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ClosePanelEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ClosePanelEvent.cs
+Read 714 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ClosePanelEvent.cs
+Namespace: SiegeEngine.Events
+Found 3 dependencies
+No opening brace for class if in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ClosePanelEvent.cs
+Found: CustomEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\CustomEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\CustomEvent.cs
+Read 566 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\CustomEvent.cs
+Namespace: SiegeEngine.Events
+Found 3 dependencies
+Found: EntityAddedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityAddedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityAddedEvent.cs
+Read 1730 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityAddedEvent.cs
+Namespace: SiegeEngine.Events
+Found 5 dependencies
+Found: EntityMovedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityMovedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityMovedEvent.cs
+Read 1803 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityMovedEvent.cs
+Namespace: SiegeEngine.Events
+Found 4 dependencies
+Found: EntityPlacedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityPlacedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityPlacedEvent.cs
+Read 1365 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityPlacedEvent.cs
+Namespace: SiegeEngine.Events
+Found 3 dependencies
+Found: EntityRemovedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityRemovedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityRemovedEvent.cs
+Read 744 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EntityRemovedEvent.cs
+Namespace: SiegeEngine.Events
+Found 2 dependencies
+Found: EventBus.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
+Read 12065 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\EventBus.cs
+Namespace: SiegeEngine.Events
+Found 10 dependencies
+Found: ExitEditorEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ExitEditorEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ExitEditorEvent.cs
+Read 705 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ExitEditorEvent.cs
+Namespace: SiegeEngine.Events
+Found 1 dependencies
+Found: FileSelectedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\FileSelectedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\FileSelectedEvent.cs
+Read 629 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\FileSelectedEvent.cs
+Namespace: None
+Found 3 dependencies
+Found: ItemPickedUpEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ItemPickedUpEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ItemPickedUpEvent.cs
+Read 931 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ItemPickedUpEvent.cs
+Namespace: SiegeEngine.Events
+Found 2 dependencies
+Found: MovementRequestEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\MovementRequestEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\MovementRequestEvent.cs
+Read 1927 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\MovementRequestEvent.cs
+Namespace: SiegeEngine.Events
+Found 4 dependencies
+Found: OpenPanelEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\OpenPanelEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\OpenPanelEvent.cs
+Read 621 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\OpenPanelEvent.cs
+Namespace: SiegeEngine.Events
+Found 1 dependencies
+Found: PhysicsCollisionEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\PhysicsCollisionEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\PhysicsCollisionEvent.cs
+Read 1050 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\PhysicsCollisionEvent.cs
+Namespace: SiegeEngine.Events
+Found 3 dependencies
+Found: PlayerExitedEditorEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\PlayerExitedEditorEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\PlayerExitedEditorEvent.cs
+Read 780 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\PlayerExitedEditorEvent.cs
+Namespace: SiegeEngine.Events
+Found 2 dependencies
+Found: ProtectedEventAttribute.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ProtectedEventAttribute.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ProtectedEventAttribute.cs
+Read 178 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\ProtectedEventAttribute.cs
+Namespace: SiegeEngine.Events
+Found 1 dependencies
+Found: SelectBrushEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SelectBrushEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SelectBrushEvent.cs
+Read 901 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SelectBrushEvent.cs
+Namespace: SiegeEngine.Events
+Found 2 dependencies
+Found: SoundEmissionEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SoundEmissionEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SoundEmissionEvent.cs
+Read 2405 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SoundEmissionEvent.cs
+Namespace: SiegeEngine.Events
+Found 3 dependencies
+Found: SwitchSceneEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SwitchSceneEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SwitchSceneEvent.cs
+Read 660 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\SwitchSceneEvent.cs
+Namespace: None
+Found 3 dependencies
+Found: TimeOfDayChangedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\TimeOfDayChangedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\TimeOfDayChangedEvent.cs
+Read 971 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\TimeOfDayChangedEvent.cs
+Namespace: SiegeEngine.Events
+Found 3 dependencies
+Found: WeatherChangedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\WeatherChangedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\WeatherChangedEvent.cs
+Read 896 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Events\WeatherChangedEvent.cs
+Namespace: SiegeEngine.Events
+Found 5 dependencies
+Found: Interfaces
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces
+Found: .
+Found: ..
+Found: IGameServer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
+Read 879 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IGameServer.cs
+Namespace: SiegeEngine.Interfaces
+Found 5 dependencies
+Found: IPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
+Read 753 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IPanel.cs
+Namespace: SiegeEngine.Interfaces
+Found 1 dependencies
+Found: IRenderer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IRenderer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IRenderer.cs
+Read 387 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\IRenderer.cs
+Namespace: SiegeEngine.Interfaces
+Found 4 dependencies
+Found: ISoundValidator.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ISoundValidator.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ISoundValidator.cs
+Read 174 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ISoundValidator.cs
+Namespace: SiegeEngine.Interfaces
+Found 1 dependencies
+Found: ISteamEngine.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ISteamEngine.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ISteamEngine.cs
+Read 860 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Interfaces\ISteamEngine.cs
+Namespace: SiegeEngine.Interfaces
+Found 1 dependencies
+Found: Managers
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers
+Found: .
+Found: ..
+Found: DockManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
+Read 15657 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\DockManager.cs
+Namespace: SiegeEngine.Managers
+Found 8 dependencies
+Found: GameModeManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\GameModeManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\GameModeManager.cs
+Read 444 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\GameModeManager.cs
+Namespace: SiegeEngine.Managers
+Found 2 dependencies
+Found: LevelManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\LevelManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\LevelManager.cs
+Read 288 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\LevelManager.cs
+Namespace: SiegeEngine.Managers
+Found 1 dependencies
+Found: LobbyManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\LobbyManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\LobbyManager.cs
+Read 748 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\LobbyManager.cs
+Namespace: SiegeEngine.Managers
+Found 2 dependencies
+Found: ModelManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModelManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModelManager.cs
+Read 29705 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModelManager.cs
+Namespace: SiegeEngine.Managers
+Found 11 dependencies
+Found: ModManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
+Read 11500 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\ModManager.cs
+Namespace: SiegeEngine.Managers
+Found 8 dependencies
+Found: PanelManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
+Read 2660 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\PanelManager.cs
+Namespace: SiegeEngine.Managers
+Found 7 dependencies
+Found: SceneManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
+Read 4660 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
+Namespace: SiegeEngine.Managers
+Found 13 dependencies
+Found: UIManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
+Read 5271 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
+Namespace: SiegeEngine.Managers
+Found 13 dependencies
+Found: UISettingsManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UISettingsManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UISettingsManager.cs
+Read 8195 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UISettingsManager.cs
+Namespace: SiegeEngine.Managers
+Found 4 dependencies
+Found: WorkshopManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\WorkshopManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\WorkshopManager.cs
+Read 2399 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\WorkshopManager.cs
+Namespace: SiegeEngine.Managers
+Found 6 dependencies
+Found: Networking
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking
+Found: .
+Found: ..
+Found: ClientGameServerProxy.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
+Read 2501 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\ClientGameServerProxy.cs
+Namespace: SiegeEngine.Networking
+Found 6 dependencies
+Found: MovementRequest.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\MovementRequest.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\MovementRequest.cs
+Read 517 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\MovementRequest.cs
+Namespace: SiegeEngine.Networking
+Found 1 dependencies
+Found: SteamEngine.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\SteamEngine.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\SteamEngine.cs
+Read 25217 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Networking\SteamEngine.cs
+Namespace: SiegeEngine.Networking
+Found 6 dependencies
+Found: NewFolder
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\NewFolder
+Found: .
+Found: ..
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\obj
+Found: PlayerSystem
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem
+Found: .
+Found: ..
+Found: ActionConfig.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\ActionConfig.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\ActionConfig.cs
+Read 2541 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\ActionConfig.cs
+Namespace: SiegeEngine.PlayerSystem
+Found 6 dependencies
+Found: AIPlayer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\AIPlayer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\AIPlayer.cs
+Read 2517 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\AIPlayer.cs
+Namespace: SiegeEngine.PlayerSystem
+Found 3 dependencies
+Found: CameraController.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
+Read 10641 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
+Namespace: SiegeEngine.PlayerSystem
+Found 5 dependencies
+Found: InputHandler.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\InputHandler.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\InputHandler.cs
+Read 6437 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\InputHandler.cs
+Namespace: SiegeEngine.PlayerSystem
+Found 7 dependencies
+Found: Player.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\Player.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\Player.cs
+Read 2234 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\Player.cs
+Namespace: SiegeEngine.PlayerSystem
+Found 6 dependencies
+Found: PlayerMovement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
+Read 9507 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
+Namespace: SiegeEngine.PlayerSystem
+Found 7 dependencies
+Found: PositionCalculator.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PositionCalculator.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PositionCalculator.cs
+Read 1199 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PositionCalculator.cs
+Namespace: SiegeEngine.PlayerSystem
+Found 1 dependencies
+Found: Rendering
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering
+Found: .
+Found: ..
+Found: BackgroundRenderer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\BackgroundRenderer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\BackgroundRenderer.cs
+Read 7825 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\BackgroundRenderer.cs
+Namespace: SiegeEngine.Rendering
+Found 5 dependencies
+Found: EditorTextRenderer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\EditorTextRenderer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\EditorTextRenderer.cs
+Read 13423 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\EditorTextRenderer.cs
+Namespace: SiegeEngine.Rendering
+Found 4 dependencies
+Found: GameRenderer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\GameRenderer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\GameRenderer.cs
+Read 11504 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\GameRenderer.cs
+Namespace: SiegeEngine.Rendering
+Found 13 dependencies
+Found: Renderer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Renderer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Renderer.cs
+Read 643 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Renderer.cs
+Namespace: SiegeEngine.Rendering
+Found 5 dependencies
+Found: RendererDetector.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\RendererDetector.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\RendererDetector.cs
+Read 5128 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\RendererDetector.cs
+Namespace: SiegeEngine.Rendering
+Found 4 dependencies
+Found: ShaderProgram.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
+Read 8744 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderProgram.cs
+Namespace: SiegeEngine.Rendering
+Found 3 dependencies
+Found: Shaders
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders
+Found: .
+Found: ..
+Found: AssetShader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\AssetShader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\AssetShader.cs
+Read 2839 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\AssetShader.cs
+Namespace: SiegeEngine.Rendering.Shaders
+Found 0 dependencies
+Found: EditorSceneShader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\EditorSceneShader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\EditorSceneShader.cs
+Read 1045 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\EditorSceneShader.cs
+Namespace: SiegeEngine.Rendering.Shaders
+Found 0 dependencies
+Found: ModelShader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\ModelShader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\ModelShader.cs
+Read 3540 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\ModelShader.cs
+Namespace: SiegeEngine.Rendering.Shaders
+Found 0 dependencies
+Found: PointShader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\PointShader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\PointShader.cs
+Read 774 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\PointShader.cs
+Namespace: SiegeEngine.Rendering.Shaders
+Found 0 dependencies
+Found: SceneShader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\SceneShader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\SceneShader.cs
+Read 790 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\SceneShader.cs
+Namespace: SiegeEngine.Rendering.Shaders
+Found 0 dependencies
+Found: UiShader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
+Read 2748 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\UiShader.cs
+Namespace: SiegeEngine.Rendering.Shaders
+Found 0 dependencies
+Found: WaterShader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\WaterShader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\WaterShader.cs
+Read 916 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Shaders\WaterShader.cs
+Namespace: SiegeEngine.Rendering.Shaders
+Found 0 dependencies
+Found: ShaderSetup.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderSetup.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderSetup.cs
+Read 1013 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\ShaderSetup.cs
+Namespace: SiegeEngine.Rendering
+Found 3 dependencies
+Found: SystemFontRenderer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
+Read 8815 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\SystemFontRenderer.cs
+Namespace: SiegeEngine.Rendering
+Found 7 dependencies
+Found: TextRenderer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
+Read 8998 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextRenderer.cs
+Namespace: SiegeEngine.Rendering
+Found 5 dependencies
+Found: TextureLoader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextureLoader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextureLoader.cs
+Read 19777 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\TextureLoader.cs
+Namespace: SiegeEngine.Rendering
+Found 8 dependencies
+Found: UIQuadRenderer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\UIQuadRenderer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\UIQuadRenderer.cs
+Read 6127 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\UIQuadRenderer.cs
+Namespace: SiegeEngine.Rendering
+Found 6 dependencies
+Found: Vertex.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Vertex.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Vertex.cs
+Read 341 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\Vertex.cs
+Namespace: SiegeEngine.Rendering
+Found 1 dependencies
+Found: VertexBuffer.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\VertexBuffer.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\VertexBuffer.cs
+Read 8272 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\VertexBuffer.cs
+Namespace: SiegeEngine.Rendering
+Found 5 dependencies
+Found: WindowNative.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\WindowNative.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\WindowNative.cs
+Read 7453 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Rendering\WindowNative.cs
+Namespace: SiegeEngine.Rendering
+Found 2 dependencies
+Found: Scenes
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes
+Found: .
+Found: ..
+Found: EditorScene.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
+Read 1372 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
+Namespace: SiegeEngine.Scenes
+Found 13 dependencies
+Found: SandBoxScene.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
+Read 12146 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
+Namespace: SiegeEngine.Scenes
+Found 13 dependencies
+Found: Scene.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
+Read 6902 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
+Namespace: SiegeEngine.Scenes
+Found 11 dependencies
+Found: SiegeEngine.csproj
+Found: SummarizeRepo.exe
+Found: summarize_log.txt
+Found: summary.txt
+Found: Systems
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems
+Found: .
+Found: ..
+Found: AnimationSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Read 1231 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Namespace: SiegeEngine.Systems
+Found 4 dependencies
+Found: AudioSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Read 22252 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Namespace: SiegeEngine.Systems
+Found 8 dependencies
+Found: ClientPredictionSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\ClientPredictionSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\ClientPredictionSystem.cs
+Read 6047 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\ClientPredictionSystem.cs
+Namespace: SiegeEngine.Systems
+Found 8 dependencies
+Found: EnvironmentSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\EnvironmentSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\EnvironmentSystem.cs
+Read 2324 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\EnvironmentSystem.cs
+Namespace: SiegeEngine.Systems
+Found 5 dependencies
+Found: GameSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\GameSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\GameSystem.cs
+Read 319 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\GameSystem.cs
+Namespace: SiegeEngine.Systems
+Found 1 dependencies
+Found: LightingSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\LightingSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\LightingSystem.cs
+Read 1783 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\LightingSystem.cs
+Namespace: SiegeEngine.Systems
+Found 4 dependencies
+Found: PlayerControllerSystem.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\PlayerControllerSystem.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\PlayerControllerSystem.cs
+Read 2969 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\PlayerControllerSystem.cs
+Namespace: SiegeEngine.Systems
+Found 7 dependencies
+Found: UI
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI
+Found: .
+Found: ..
+Found: BasePanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
+Read 9713 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\BasePanel.cs
+Namespace: SiegeEngine.UI
+Found 7 dependencies
+Found: ButtonElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
+Read 2924 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ButtonElement.cs
+Namespace: SiegeEngine.UI
+Found 5 dependencies
+Found: CssParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
+Read 24960 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssParser.cs
+Namespace: SiegeEngine.UI
+Found 5 dependencies
+Found: CssStyle.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssStyle.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssStyle.cs
+Read 9341 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\CssStyle.cs
+Namespace: SiegeEngine.UI
+Found 2 dependencies
+Found: DivElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\DivElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\DivElement.cs
+Read 158 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\DivElement.cs
+Namespace: SiegeEngine.UI
+Found 0 dependencies
+Found: HtmlElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
+Read 64058 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlElement.cs
+Namespace: SiegeEngine.UI
+Found 8 dependencies
+Found: HtmlParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlParser.cs
+Read 9512 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\HtmlParser.cs
+Namespace: SiegeEngine.UI
+Found 4 dependencies
+Found: InputElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
+Read 6475 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\InputElement.cs
+Namespace: SiegeEngine.UI
+Found 6 dependencies
+Found: JSParser
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser
+Found: .
+Found: ..
+Found: JSBinding.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSBinding.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSBinding.cs
+Read 679 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSBinding.cs
+Namespace: SiegeEngine.UI.JSParser
+Found 2 dependencies
+Found: JSContext.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSContext.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSContext.cs
+Read 984 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSContext.cs
+Namespace: SiegeEngine.UI.JSParser
+Found 2 dependencies
+Found: JSDocument.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSDocument.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSDocument.cs
+Read 2545 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSDocument.cs
+Namespace: SiegeEngine.UI.JSParser
+Found 3 dependencies
+Found: JSElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSElement.cs
+Read 9109 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSElement.cs
+Namespace: SiegeEngine.UI.JSParser
+Found 3 dependencies
+Found: JSEvaluator.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSEvaluator.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSEvaluator.cs
+Read 28221 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSEvaluator.cs
+Namespace: SiegeEngine.UI.JSParser
+Found 5 dependencies
+Found: JSParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSParser.cs
+Read 42988 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSParser.cs
+Namespace: SiegeEngine.UI.JSParser
+Found 3 dependencies
+Unmatched braces for class JSParser in C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSParser.cs
+Found: JSStandardLibrary.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSStandardLibrary.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSStandardLibrary.cs
+Read 23927 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\JSParser\JSStandardLibrary.cs
+Namespace: SiegeEngine.UI.JSParser
+Found 6 dependencies
+Found: LiElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\LiElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\LiElement.cs
+Read 2989 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\LiElement.cs
+Namespace: SiegeEngine.UI
+Found 4 dependencies
+Found: MenuPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
+Read 6399 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\MenuPanel.cs
+Namespace: SiegeEngine.UI
+Found 9 dependencies
+Found: NavElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\NavElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\NavElement.cs
+Read 334 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\NavElement.cs
+Namespace: SiegeEngine.UI
+Found 3 dependencies
+Found: OlElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\OlElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\OlElement.cs
+Read 418 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\OlElement.cs
+Namespace: SiegeEngine.UI
+Found 3 dependencies
+Found: OptionElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\OptionElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\OptionElement.cs
+Read 1544 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\OptionElement.cs
+Namespace: SiegeEngine.UI
+Found 4 dependencies
+Found: SelectElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\SelectElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\SelectElement.cs
+Read 12811 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\SelectElement.cs
+Namespace: SiegeEngine.UI
+Found 6 dependencies
+Found: TableElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TableElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TableElement.cs
+Read 5863 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TableElement.cs
+Namespace: SiegeEngine.UI
+Found 6 dependencies
+Found: TdElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TdElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TdElement.cs
+Read 335 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TdElement.cs
+Namespace: SiegeEngine.UI
+Found 3 dependencies
+Found: TextElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TextElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TextElement.cs
+Read 4285 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TextElement.cs
+Namespace: SiegeEngine.UI
+Found 5 dependencies
+Found: ThElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ThElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ThElement.cs
+Read 414 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\ThElement.cs
+Namespace: SiegeEngine.UI
+Found 3 dependencies
+Found: TrElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TrElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TrElement.cs
+Read 884 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\TrElement.cs
+Namespace: SiegeEngine.UI
+Found 3 dependencies
+Found: UIOverlay.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
+Read 32481 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
+Namespace: SiegeEngine.UI
+Found 10 dependencies
+Found: UlElement.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UlElement.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UlElement.cs
+Read 415 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UlElement.cs
+Namespace: SiegeEngine.UI
+Found 3 dependencies
+Found: UnityAssetLoader
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader
+Found: .
+Found: ..
+Found: MetaFileParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\MetaFileParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\MetaFileParser.cs
+Read 1233 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\MetaFileParser.cs
+Namespace: SiegeEngine.UnityAssetLoader
+Found 4 dependencies
+Found: PrefabFileReader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\PrefabFileReader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\PrefabFileReader.cs
+Read 2092 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\PrefabFileReader.cs
+Namespace: SiegeEngine.UnityAssetLoader
+Found 3 dependencies
+Found: UnityAssetFileType.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\UnityAssetFileType.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\UnityAssetFileType.cs
+Read 185 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\UnityAssetFileType.cs
+Namespace: SiegeEngine.UnityAssetLoader
+Found 0 dependencies
+Found: UnityAssetScanner.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\UnityAssetScanner.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\UnityAssetScanner.cs
+Read 3137 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UnityAssetLoader\UnityAssetScanner.cs
+Namespace: SiegeEngine.UnityAssetLoader
+Found 4 dependencies
+Found: summarize_log.txt
+Found: summary.txt
+Found: ThroneRoom
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\bin
+Found: Class1.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\Class1.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\Class1.cs
+Read 51 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\Class1.cs
+Namespace: ThroneRoom
+Found 0 dependencies
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ThroneRoom\obj
+Found: ThroneRoom.csproj
+Found: Trebuchet
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\bin
+Found: Launcher.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 6413 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Namespace: Trebuchet
+Found 20 dependencies
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj
+Found: Trebuchet.csproj
+Writing output for 11 folders
+Scan complete

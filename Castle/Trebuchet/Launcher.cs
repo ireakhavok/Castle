@@ -19,6 +19,7 @@ using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Reflection;
+using CastleBuilder;
 
 namespace Trebuchet
 {
@@ -38,6 +39,7 @@ namespace Trebuchet
         private Process _serverProcess;
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
+        private BlueprintManager _blueprintManager;
 
         public void Start(string context)
         {
@@ -56,6 +58,7 @@ namespace Trebuchet
                 using (_steamEngine = new SteamEngine())
                 {
                     _eventBus = new EventBus((SteamEngine)_steamEngine);
+
                     if (!_steamEngine.Initialize())
                     {
                         Console.WriteLine("Launcher: SteamEngine initialization failed.");
@@ -64,8 +67,11 @@ namespace Trebuchet
 
                     _settingsManager = new UISettingsManager();
                     _settingsManager.LoadSettings();
+
                     if (_settingsManager.WindowWidth == 0 || _settingsManager.WindowHeight == 0)
+                    {
                         _settingsManager.UpdateWindowSize(1920, 1080, false);
+                    }
 
                     if (context == "OpenGL")
                     {
@@ -87,7 +93,13 @@ namespace Trebuchet
                     Console.WriteLine($"Launcher: Resolved MainMenu.html path: {initialHtmlPath}, Exists: {File.Exists(initialHtmlPath)}");
 
                     _menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialHtmlPath);
+                    _menuPanel.DockState = DockState.Tabbed;
+
                     _menuPanel.Init();
+
+                    _eventBus.RegisterNamespace("CastleBuilder.Events");
+
+                    _blueprintManager = new BlueprintManager(_eventBus);
 
                     _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuPanel);
 
@@ -96,15 +108,8 @@ namespace Trebuchet
 
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
-                        if (_settingsManager.AllowResize)
-                        {
-                            _settingsManager.UpdateWindowSize(width, height);
-                            Console.WriteLine($"Launcher: Window resized to: {width}x{height}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Launcher: Window resize to {width}x{height} blocked, allowResize is false");
-                        }
+                        _settingsManager.UpdateWindowSize(width, height);
+                        Console.WriteLine($"Launcher: Window resized to: {width}x{height}");
                         _sceneManager.Resize(width, height);
                     });
 
@@ -125,18 +130,15 @@ namespace Trebuchet
 
                         _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
                         _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-
                         _renderContext.Disable(_renderContext.Enums.DepthTest);
 
                         _sceneManager.Update(deltaTime);
                         _panelManager.Update(deltaTime);
 
                         _sceneManager.Render();
-
                         _panelManager.Render();
 
                         _renderContext.Enable(_renderContext.Enums.DepthTest);
-
                         _controlContext.SwapBuffers(_window);
                     }
                 }

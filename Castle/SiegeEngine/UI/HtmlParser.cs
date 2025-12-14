@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace SiegeEngine.UI
 {
@@ -10,6 +11,7 @@ namespace SiegeEngine.UI
     {
         private string _html;
         private int _index;
+
         public HtmlElement Parse(string html)
         {
             _html = html;
@@ -52,25 +54,50 @@ namespace SiegeEngine.UI
                         string tag = ReadUntil(c => char.IsWhiteSpace(c) || c == '>');
                         string lowerTag = tag.ToLower();
                         HtmlElement elem;
-                        if (lowerTag == "button")
+                        switch (lowerTag)
                         {
-                            elem = new ButtonElement();
-                        }
-                        else if (lowerTag == "div")
-                        {
-                            elem = new DivElement();
-                        }
-                        else if (lowerTag == "select")
-                        {
-                            elem = new SelectElement();
-                        }
-                        else if (lowerTag == "input")
-                        {
-                            elem = new InputElement();
-                        }
-                        else
-                        {
-                            elem = new HtmlElement { Tag = tag };
+                            case "button":
+                                elem = new ButtonElement();
+                                break;
+                            case "div":
+                                elem = new DivElement();
+                                break;
+                            case "select":
+                                elem = new SelectElement();
+                                break;
+                            case "input":
+                                elem = new InputElement();
+                                break;
+                            case "option":
+                                elem = new OptionElement();
+                                break;
+                            case "table":
+                                elem = new TableElement();
+                                break;
+                            case "tr":
+                                elem = new TrElement();
+                                break;
+                            case "th":
+                                elem = new ThElement();
+                                break;
+                            case "td":
+                                elem = new TdElement();
+                                break;
+                            case "ul":
+                                elem = new UlElement();
+                                break;
+                            case "ol":
+                                elem = new OlElement();
+                                break;
+                            case "li":
+                                elem = new LiElement();
+                                break;
+                            case "nav":
+                                elem = new NavElement();
+                                break;
+                            default:
+                                elem = new HtmlElement { Tag = tag };
+                                break;
                         }
                         elem.Parent = parent;
                         // Parse attributes
@@ -100,29 +127,64 @@ namespace SiegeEngine.UI
                             {
                                 btn.AttachHook(value);
                             }
+                            string lowerKey = key.ToLower();
+                            if (lowerKey == "onclick")
+                            {
+                                elem.OnClickJS = value;
+                            }
+                            else if (lowerKey == "onchange")
+                            {
+                                elem.OnChangeJS = value;
+                            }
+                            else if (lowerKey == "onmouseenter" || lowerKey == "onmouseover")
+                            {
+                                elem.OnMouseEnterJS = value;
+                            }
+                            else if (lowerKey == "onmouseleave" || lowerKey == "onmouseout")
+                            {
+                                elem.OnMouseLeaveJS = value;
+                            }
+                            else if (lowerKey == "onmousedown")
+                            {
+                                elem.OnMouseDownJS = value;
+                            }
+                            else if (lowerKey == "onmouseup")
+                            {
+                                elem.OnMouseUpJS = value;
+                            }
+                            else if (lowerKey == "onfocus")
+                            {
+                                elem.OnFocusJS = value;
+                            }
+                            else if (lowerKey == "onblur")
+                            {
+                                elem.OnBlurJS = value;
+                            }
                         }
                         _index++; // skip '>'
                         bool isSelfClosing = tag.EndsWith("/") || Array.Exists(new string[] { "br", "hr", "img", "input", "meta", "link" }, t => t == lowerTag);
+                        parent.Children.Add(elem);
+                        if (!isSelfClosing)
+                        {
+                            // Parse children recursively
+                            ParseChildren(elem);
+                        }
                         if (lowerTag == "include" && elem.Attributes.TryGetValue("src", out string src))
                         {
                             // Handle include
                             string incHtml = File.ReadAllText(src);
                             HtmlParser incParser = new HtmlParser();
                             HtmlElement incRoot = incParser.Parse(incHtml);
+                            parent.Children.Remove(elem);
                             foreach (var child in incRoot.Children)
                             {
                                 parent.Children.Add(child);
                                 child.Parent = parent;
                             }
                         }
-                        else
+                        else if (lowerTag == "script")
                         {
-                            parent.Children.Add(elem);
-                            if (!isSelfClosing)
-                            {
-                                // Parse children recursively
-                                ParseChildren(elem);
-                            }
+                            // Script handled in LoadUI
                         }
                     }
                 }

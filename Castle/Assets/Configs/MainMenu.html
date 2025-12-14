@@ -1,3 +1,5 @@
+<!-- Folder: Assets/Configs -->
+<!-- File: MainMenu.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -176,12 +178,12 @@
             align-items: center;
             justify-content: center;
             background: rgba(51, 51, 51, 0.8);
-            border: 1px solid rgba(128, 128, 128, 1);
             padding: 10px;
             margin: 10px auto;
             border-radius: 8px;
             width: 250px;
             cursor: pointer;
+            border: 1px solid rgba(128, 128, 128, 1);
         }
 
             .toggle input {
@@ -244,6 +246,7 @@
                 <label for="edit" class="button">Edit</label>
                 <a href="#settings" class="button">Settings</a>
                 <a href="DevMenu.html" class="button">Dev Menu</a>
+                <a href="HTML_test.html" class="button">HTML Test Menu</a>
                 <div class="button">Exit</div>
             </div>
             <div class="content-area">
@@ -251,27 +254,8 @@
                 <input type="radio" id="play" name="menu-section">
                 <input type="radio" id="edit" name="menu-section">
                 <div class="content create">
-                    <div class="button">New Project</div>
+                    <a href="NewProject.html" class="button">New Project</a>
                     <div class="button">Game Type</div>
-                    <select>
-                        <option>2D</option>
-                        <option>2D Sidescrolling</option>
-                        <option>3D FPS</option>
-                        <option>3D Isometric</option>
-                        <option>3D Over Shoulder</option>
-                        <option>3D Third Person</option>
-                        <option>3D Dynamic</option>
-                    </select>
-                    <select>
-                        <option>Single Player</option>
-                        <option>Hosted</option>
-                        <option>Server</option>
-                    </select>
-                    <div class="toggle">
-                        <label for="allow-mods">Allow Mods</label>
-                        <input type="checkbox" id="allow-mods" checked>
-                    </div>
-                    <div class="button">Create</div>
                 </div>
                 <div class="content play">
                     <div class="button">Join Game</div>

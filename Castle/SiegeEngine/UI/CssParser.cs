@@ -11,30 +11,121 @@ namespace SiegeEngine.UI
     {
         public static string DefaultUserAgentCss = @"
 * {
-    color: white;
+    box-sizing: border-box;
+}
+body {
+    color: black;
+    background-color: white;
+    margin: 8px;
+    display: block;
+}
+div {
+    display: block;
+}
+a {
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
 }
 button {
-    padding: 2px 10px;
-    min-height: 30px;
-    border: 1px solid rgba(128, 128, 128, 1);
-    border-radius: 5px;
-    background-color: rgba(200, 200, 200, 1);
-    color: black;
+    display: inline-block;
+    padding: 1px 6px;
+    min-height: 20px;
+    min-width: 50px;
+    border: 2px outset buttonface;
+    border-radius: 2px;
+    background-color: buttonface;
+    color: buttontext;
     text-align: center;
+    cursor: default;
 }
 select {
-    padding: 2px 10px;
-    min-height: 30px;
-    border: 1px solid rgba(128, 128, 128, 1);
-    border-radius: 5px;
+    display: inline-block;
+    padding: 1px 6px;
+    min-height: 20px;
+    border: 2px inset buttonface;
+    background-color: rgba(51, 51, 51, 0.8);
+    color: windowtext;
+    overflow: hidden;
+    position: relative;
+}
+input {
+    display: inline-block;
+}
+input[type=""text""] {
+    padding: 1px 2px;
+    min-height: 20px;
+    border: 2px inset;
 }
 input[type=""checkbox""] {
-    width: 16px;
-    height: 16px;
-    margin: 0 5px 0 0;
+    width: 13px;
+    height: 13px;
+    margin: 3px 3px 3px 4px;
+    border: 2px inset;
+    background-color: window;
+}
+input[type=""radio""] {
+    width: 13px;
+    height: 13px;
+    margin: 3px 3px 3px 4px;
+    border: 2px inset;
+    background-color: window;
+}
+label {
+    display: inline;
+    cursor: default;
+}
+option {
+    display: block;
+    padding: 2px 5px;
+    background-color: inherit;
+}
+option[selected] {
+    background-color: rgba(0, 128, 128, 0.8);
+}
+option:hover {
+    background-color: rgba(77, 77, 77, 0.8);
+}
+table {
+    display: table;
+    border-collapse: separate;
+    border-spacing: 2px;
+}
+thead, tbody, tfoot {
+    display: table-row-group;
+}
+tr {
+    display: table-row;
+}
+th, td {
+    display: table-cell;
+    padding: 1px;
+}
+th {
+    font-weight: bold;
+    text-align: center;
+}
+ul, ol {
+    display: block;
+    list-style-type: disc;
+    margin: 1em 0;
+    padding-left: 40px;
+}
+ol {
+    list-style-type: decimal;
+}
+li {
+    display: list-item;
+}
+nav {
+    display: block;
 }
 ";
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
+        public void Clear()
+        {
+            _allRules.Clear();
+        }
         public void Apply(string css)
         {
             int i = 0;
@@ -66,7 +157,7 @@ input[type=""checkbox""] {
                     selector = parts[0].Trim();
                     pseudo = parts[1].Trim();
                 }
-                if (pseudo != null && (pseudo == "hover" || pseudo == "active" || pseudo == "target" || pseudo == "checked"))
+                if (pseudo != null && (pseudo == "hover" || pseudo == "active" || pseudo == "target" || pseudo == "checked" || pseudo == "focus"))
                 {
                     ApplyToElements(root, selector, rule.Props, pseudo);
                 }
@@ -174,7 +265,7 @@ input[type=""checkbox""] {
                 }
             }
         }
-        private bool Matches(HtmlElement elem, string selector)
+        public bool Matches(HtmlElement elem, string selector)
         {
             if (string.IsNullOrEmpty(selector)) return true;
             selector = selector.Trim();
@@ -199,14 +290,33 @@ input[type=""checkbox""] {
             }
             else
             {
-                var parts = selector.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var parts = selector.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToArray();
                 HtmlElement current = elem;
                 for (int k = parts.Length - 1; k >= 0; k--)
                 {
                     string part = parts[k];
-                    if (!SimpleMatches(current, part)) return false;
-                    current = current.Parent;
-                    if (current == null && k > 0) return false;
+                    bool found = false;
+                    if (k == parts.Length - 1)
+                    {
+                        if (SimpleMatches(current, part))
+                        {
+                            found = true;
+                        }
+                    }
+                    else
+                    {
+                        while (current != null)
+                        {
+                            if (SimpleMatches(current, part))
+                            {
+                                found = true;
+                                break;
+                            }
+                            current = current.Parent;
+                        }
+                    }
+                    if (!found) return false;
+                    current = current?.Parent;
                 }
                 return true;
             }
@@ -214,15 +324,37 @@ input[type=""checkbox""] {
         private bool SimpleMatches(HtmlElement elem, string simple)
         {
             if (string.IsNullOrEmpty(simple)) return true;
+            simple = simple.Trim();
             string pseudo = null;
             if (simple.Contains(":"))
             {
-                var p = simple.Split(new[] { ':' }, 2);
+                var p = simple.Split(new char[] { ':' }, 2);
                 simple = p[0];
                 pseudo = p[1];
             }
             bool match = false;
-            if (simple == "*")
+            if (simple.Contains("["))
+            {
+                int bracket = simple.IndexOf('[');
+                string tag = simple.Substring(0, bracket).Trim();
+                if (!string.IsNullOrEmpty(tag) && !string.Equals(elem.Tag, tag, StringComparison.OrdinalIgnoreCase)) return false;
+                string attrStr = simple.Substring(bracket + 1, simple.Length - bracket - 2).Trim();
+                bool attrMatch = false;
+                if (attrStr.Contains("="))
+                {
+                    var parts = attrStr.Split(new char[] { '=' }, 2);
+                    string attr = parts[0].Trim();
+                    string val = parts[1].Trim().Trim('"', '\'');
+                    attrMatch = elem.Attributes.TryGetValue(attr, out string eVal) && eVal == val;
+                }
+                else
+                {
+                    string attr = attrStr.Trim();
+                    attrMatch = elem.Attributes.ContainsKey(attr);
+                }
+                match = attrMatch;
+            }
+            else if (simple == "*")
             {
                 match = true;
             }
@@ -243,24 +375,27 @@ input[type=""checkbox""] {
             }
             if (match && pseudo != null)
             {
-                if (pseudo == "target")
-                {
-                    match = elem.IsTarget;
-                }
-                else if (pseudo == "checked")
-                {
-                    match = elem.Checked;
-                }
-                else if (pseudo == "hover")
-                {
-                    match = elem.IsHover;
-                }
-                else if (pseudo == "active")
-                {
-                    match = elem.IsActive;
-                }
+                match = CheckPseudo(elem, pseudo);
             }
             return match;
+        }
+        private bool CheckPseudo(HtmlElement elem, string pseudo)
+        {
+            switch (pseudo)
+            {
+                case "hover":
+                    return elem.IsHover;
+                case "active":
+                    return elem.IsActive;
+                case "checked":
+                    return elem.Checked;
+                case "target":
+                    return elem.IsTarget;
+                case "focus":
+                    return elem.IsFocused;
+                default:
+                    return false;
+            }
         }
         private void ApplyProperties(CssStyle style, Dictionary<string, string> props)
         {
@@ -289,7 +424,8 @@ input[type=""checkbox""] {
             if (props.TryGetValue("background", out string bg) || props.TryGetValue("background-color", out bg))
             {
                 style.Background = bg;
-                style.BackgroundColor = ParseColor(bg);
+                if (bg != "inherit")
+                    style.BackgroundColor = ParseColor(bg);
             }
             if (props.TryGetValue("background-image", out string bgImg))
             {
@@ -302,16 +438,17 @@ input[type=""checkbox""] {
             if (props.TryGetValue("color", out string textColorStr))
             {
                 style.Color = textColorStr;
-                style.TextColor = ParseColor(textColorStr);
+                if (textColorStr != "inherit")
+                    style.TextColor = ParseColor(textColorStr);
             }
             if (props.TryGetValue("font-size", out string fs))
             {
                 style.FontSizeStr = fs;
             }
             if (props.TryGetValue("font-family", out string ff))
-            {
                 style.FontFamily = ff.Trim('\'', '"');
-            }
+            if (props.TryGetValue("font-weight", out string fw))
+                style.FontWeight = fw;
             if (props.TryGetValue("display", out string disp))
                 style.Display = disp;
             if (props.TryGetValue("flex-direction", out string fd))
@@ -407,12 +544,22 @@ input[type=""checkbox""] {
                     style.BorderLeftColor = ParseColor(colorStr);
                 }
             }
+            if (props.TryGetValue("border-radius", out string bradius))
+                style.BorderRadiusStr = bradius;
+            if (props.TryGetValue("border-collapse", out string bcollapse))
+                style.BorderCollapse = bcollapse;
+            if (props.TryGetValue("border-spacing", out string bspacing))
+                style.BorderSpacing = bspacing;
+            if (props.TryGetValue("list-style-type", out string lstype))
+                style.ListStyleType = lstype;
             if (props.TryGetValue("box-sizing", out string boxs))
                 style.BoxSizing = boxs;
             if (props.TryGetValue("transform", out string tr))
                 style.Transform = tr;
+            if (props.TryGetValue("overflow", out string ov))
+                style.Overflow = ov;
         }
-        private Vector4 ParseColor(string color)
+        public Vector4 ParseColor(string color)
         {
             if (string.IsNullOrEmpty(color)) return Vector4.Zero;
             color = color.Trim();
@@ -438,7 +585,35 @@ input[type=""checkbox""] {
         }
         private Vector4 ParseSingleColor(string color)
         {
-            color = color.Trim();
+            color = color.Trim().ToLower();
+            var namedColors = new Dictionary<string, Vector4>
+            {
+                { "black", new Vector4(0f, 0f, 0f, 1f) },
+                { "white", new Vector4(1f, 1f, 1f, 1f) },
+                { "red", new Vector4(1f, 0f, 0f, 1f) },
+                { "lime", new Vector4(0f, 1f, 0f, 1f) },
+                { "blue", new Vector4(0f, 0f, 1f, 1f) },
+                { "yellow", new Vector4(1f, 1f, 0f, 1f) },
+                { "cyan", new Vector4(0f, 1f, 1f, 1f) },
+                { "magenta", new Vector4(1f, 0f, 1f, 1f) },
+                { "silver", new Vector4(0.75f, 0.75f, 0.75f, 1f) },
+                { "gray", new Vector4(0.5f, 0.5f, 0.5f, 1f) },
+                { "maroon", new Vector4(0.5f, 0f, 0f, 1f) },
+                { "olive", new Vector4(0.5f, 0.5f, 0f, 1f) },
+                { "green", new Vector4(0f, 0.5f, 0f, 1f) },
+                { "purple", new Vector4(0.5f, 0f, 0.5f, 1f) },
+                { "teal", new Vector4(0f, 0.5f, 0.5f, 1f) },
+                { "navy", new Vector4(0f, 0f, 0.5f, 1f) },
+                { "transparent", new Vector4(0f, 0f, 0f, 0f) },
+                { "buttonface", new Vector4(0.867f, 0.867f, 0.867f, 1f) },
+                { "buttontext", new Vector4(0f, 0f, 0f, 1f) },
+                { "window", new Vector4(1f, 1f, 1f, 1f) },
+                { "windowtext", new Vector4(0f, 0f, 0f, 1f) }
+            };
+            if (namedColors.TryGetValue(color, out var col))
+            {
+                return col;
+            }
             if (color.StartsWith("#"))
             {
                 color = color.Substring(1);

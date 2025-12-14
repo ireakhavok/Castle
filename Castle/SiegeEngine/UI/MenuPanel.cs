@@ -5,7 +5,9 @@ using SiegeEngine.Events;
 using SiegeEngine.Interfaces;
 using SiegeEngine.Managers;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Reflection;
 
 namespace SiegeEngine.UI
@@ -49,9 +51,23 @@ namespace SiegeEngine.UI
                     //_eventBus.Publish(new SwitchSceneEvent { Hook = hook });
                     Console.WriteLine($"MenuUIOverlay: Published SwitchSceneEvent with hook {hook}");
                 }
+                else if (hook == "CastleBuilder.CreateProject")
+                {
+                    var data = new Dictionary<string, string>();
+                    var nameJs = _document.getElementById("project-name");
+                    data["name"] = nameJs.value;
+                    var typeJs = _document.getElementById("game-type");
+                    data["projectType"] = typeJs.value;
+                    var modeJs = _document.getElementById("project-mode");
+                    data["mode"] = modeJs.value;
+                    var modsJs = _document.getElementById("allow-mods");
+                    data["allowMods"] = modsJs.@checked.ToString();
+                    data["path"] = "Projects/" + data["name"];
+                    _eventBus.Publish(new GenericEvent { Hook = "CreateProject", Data = data });
+                }
                 else
                 {
-                    //_eventBus.Publish(new GenericEvent { Hook = hook });
+                    _eventBus.Publish(new GenericEvent { Hook = hook });
                     Console.WriteLine($"MenuUIOverlay: Published GenericEvent with hook {hook}");
                 }
             }
@@ -70,8 +86,7 @@ namespace SiegeEngine.UI
                 if (File.Exists(newPath))
                 {
                     LoadUI(File.ReadAllText(newPath), Path.GetDirectoryName(newPath) ?? "");
-                    _controlContext.GetWindowSize(_window, out int w, out int h);
-                    RecomputeLayout(w, h);
+                    RefreshUI();
                 }
                 else
                 {
@@ -86,6 +101,7 @@ namespace SiegeEngine.UI
         {
             _modManager = modManager;
             _initialHtmlPath = initialHtmlPath;
+            AllowDragging = false;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -99,6 +115,9 @@ namespace SiegeEngine.UI
             if (File.Exists(_initialHtmlPath))
             {
                 _uiOverlay.LoadUI(File.ReadAllText(_initialHtmlPath), Path.GetDirectoryName(_initialHtmlPath) ?? "");
+                _uiOverlay.PanelWidth = Size.X;
+                _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.RefreshUI();
             }
             else
             {
@@ -112,13 +131,24 @@ namespace SiegeEngine.UI
             if (htmlPath != null && File.Exists(htmlPath))
             {
                 _uiOverlay.LoadUI(File.ReadAllText(htmlPath), Path.GetDirectoryName(htmlPath) ?? "");
-                _controlContext.GetWindowSize(_window, out int w, out int h);
-                _uiOverlay.RecomputeLayout(w, h);
+                _uiOverlay.PanelWidth = Size.X;
+                _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.RefreshUI();
             }
             else
             {
                 Console.WriteLine($"MenuPanel: Failed to load menu {menuName}");
             }
+        }
+
+        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
+        {
+            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
+        }
+
+        public override void OnPanelResize(float w, float h)
+        {
+            base.OnPanelResize(w, h);
         }
     }
 }
