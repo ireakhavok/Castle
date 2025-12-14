@@ -96,6 +96,13 @@ namespace SiegeEngine.UI
             _uiRoot.PrepareResources(baseDir, _controlContext, _window, _renderContext, _uiShader);
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
+            _document = new JSDocument(this);
+            _jsContext.Evaluator.RegisterGlobal("document", _document);
+            foreach (var script in scriptBlocks)
+            {
+                _jsContext.Run(script);
+            }
+            RefreshUI();
             // No initial RecomputeLayout here; caller handles with known size
         }
         private void InitializeElementProperties(HtmlElement root)
