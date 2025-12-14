@@ -90,6 +90,7 @@ namespace SiegeEngine.Managers
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -149,6 +150,7 @@ namespace SiegeEngine.Managers
                 }
                 return true;
             }
+
             if (Right.RemovePanel(panel))
             {
                 if (Right is DockTabbedNode rt && rt.Panels.Count == 0)
@@ -157,6 +159,7 @@ namespace SiegeEngine.Managers
                 }
                 return true;
             }
+
             return false;
         }
 
@@ -181,6 +184,13 @@ namespace SiegeEngine.Managers
         public override void ComputeLayout(float x, float y, float w, float h)
         {
             Rect = new Vector4(x, y, w, h);
+
+            foreach (var panel in Panels)
+            {
+                panel.Position = new Vector2(x, y);
+                panel.Size = new Vector2(w, h);
+                panel.OnPanelResize(w, h);
+            }
         }
 
         public override bool HitTest(Vector2 mousePos, out IPanel hitPanel, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex)
@@ -214,6 +224,7 @@ namespace SiegeEngine.Managers
                 hitPanel = Panels[ActiveIndex];
                 return true;
             }
+
             return false;
         }
 
@@ -244,6 +255,7 @@ namespace SiegeEngine.Managers
 
             renderContext.Scissor(px, py, pw, ph);
             renderContext.Viewport(px, py, pw, ph);
+
             Panels[ActiveIndex].Render();
         }
 
@@ -300,10 +312,12 @@ namespace SiegeEngine.Managers
             if (panel.DockState == DockState.Floating)
             {
                 _floatingPanels.Add(panel);
+                panel.AllowDragging = true;
             }
             else
             {
                 _root.AddPanel(panel);
+                panel.AllowDragging = false;
             }
         }
 
@@ -313,6 +327,7 @@ namespace SiegeEngine.Managers
             {
                 return;
             }
+
             if (_root.RemovePanel(panel))
             {
                 // If root empty, reset or something
@@ -335,6 +350,7 @@ namespace SiegeEngine.Managers
             if (_draggingPanel != null)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
+
                 if (mouseReleased)
                 {
                     DockState newState = GetDockStateFromPosition(mousePos, winW, winH);
@@ -343,6 +359,7 @@ namespace SiegeEngine.Managers
                         _dragOriginNode.RemovePanel(_draggingPanel);
                         _floatingPanels.Remove(_draggingPanel);
                         _draggingPanel.DockState = newState;
+                        _draggingPanel.AllowDragging = false;
                         DockPanel(_draggingPanel, newState);
                     }
                     _draggingPanel = null;
@@ -362,6 +379,7 @@ namespace SiegeEngine.Managers
                         _floatingPanels.Add(hitPanel);
                         _dragOriginNode.RemovePanel(hitPanel);
                         hitPanel.DockState = DockState.Floating;
+                        hitPanel.AllowDragging = true;
                     }
                 }
             }
@@ -383,6 +401,7 @@ namespace SiegeEngine.Managers
             split.IsVertical = state == DockState.DockedTop || state == DockState.DockedBottom;
             DockTabbedNode newTabbed = new DockTabbedNode();
             newTabbed.AddPanel(panel);
+
             if (state == DockState.DockedLeft || state == DockState.DockedTop)
             {
                 split.Left = newTabbed;
@@ -393,6 +412,7 @@ namespace SiegeEngine.Managers
                 split.Left = _root;
                 split.Right = newTabbed;
             }
+
             _root = split;
         }
 
@@ -404,12 +424,15 @@ namespace SiegeEngine.Managers
             foreach (var panel in _floatingPanels)
             {
                 if (!panel.Visible) continue;
+
                 int px = (int)panel.Position.X;
                 int py = (int)(winH - panel.Position.Y - panel.Size.Y);
                 uint pw = (uint)panel.Size.X;
                 uint ph = (uint)panel.Size.Y;
+
                 renderContext.Scissor(px, py, pw, ph);
                 renderContext.Viewport(px, py, pw, ph);
+
                 panel.Render();
             }
         }

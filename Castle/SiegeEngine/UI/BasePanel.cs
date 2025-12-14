@@ -33,7 +33,7 @@ namespace SiegeEngine.UI
         protected ScalingMode Scaling = ScalingMode.Fill;
         protected float BaseWidth = 800f;
         protected float BaseHeight = 600f;
-        protected virtual bool AllowDragging { get; set; } = true;
+        public bool AllowDragging { get; set; } = true;
         protected UIQuadRenderer _quadRenderer;
 
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus)
@@ -111,6 +111,7 @@ namespace SiegeEngine.UI
             bool uCurrentMouseDown = mouseDown && overPanel;
             bool uMousePressed = mousePressed && overPanel;
             bool uMouseReleased = mouseReleased && overPanel;
+
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.Update(deltaTime, relMousePos, uCurrentMouseDown, Size.X, Size.Y);
@@ -137,7 +138,6 @@ namespace SiegeEngine.UI
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
 
             // Render UI (shifted down by title height? No, assume UI layout includes top margin or adjust in HTML/CSS)
-
             _uiOverlay.Render();
 
             // Render 2px border

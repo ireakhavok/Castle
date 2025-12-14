@@ -25,5 +25,7 @@ namespace SiegeEngine.Interfaces
         Vector2 Position { get; set; }
         Vector2 Size { get; set; }
         bool Visible { get; set; }
+        void OnPanelResize(float w, float h);
+        bool AllowDragging { get; set; }
     }
 }
