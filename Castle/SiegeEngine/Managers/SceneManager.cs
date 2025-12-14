@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Managers
+﻿// Folder: SiegeEngine/Managers
 // File: SceneManager.cs
 using SiegeEngine.ContextManagement;
 using SiegeEngine.Definitions;
@@ -13,6 +13,7 @@ using SiegeEngine.Systems;
 using SiegeEngine.UI;
 using System;
 using System.Numerics;
+using System.Reflection;
 
 namespace SiegeEngine.Managers
 {
@@ -32,6 +33,7 @@ namespace SiegeEngine.Managers
         private PlayerMovement _playerMovement;
         private ModelManager _modelManager;
         private IGameServer _server;
+
         public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, IntPtr window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuPanel menuPanel)
         {
             _eventBus = eventBus;
@@ -45,6 +47,7 @@ namespace SiegeEngine.Managers
             _menuPanel = menuPanel;
             _eventBus.Subscribe<SwitchSceneEvent>(OnSwitchScene);
         }
+
         public void Update(float deltaTime)
         {
             if (_currentScene != null)
@@ -52,6 +55,7 @@ namespace SiegeEngine.Managers
                 _currentScene.Update(deltaTime);
             }
         }
+
         public void Render()
         {
             if (_currentScene != null)
@@ -59,6 +63,7 @@ namespace SiegeEngine.Managers
                 _currentScene.Render(_server.GetEntities());
             }
         }
+
         public void Resize(int width, int height)
         {
             if (_currentScene != null)
@@ -66,6 +71,7 @@ namespace SiegeEngine.Managers
                 _currentScene.Resize(width, height);
             }
         }
+
         public void Dispose()
         {
             if (_currentScene != null)
@@ -74,6 +80,7 @@ namespace SiegeEngine.Managers
                 _currentScene = null;
             }
         }
+
         private void OnSwitchScene(SwitchSceneEvent e)
         {
             Console.WriteLine($"SceneManager: SwitchSceneEvent received for {e.SceneName}");
@@ -95,18 +102,36 @@ namespace SiegeEngine.Managers
             playerEntity.AddComponent(_player.Physics);
             _server.AddEntity(playerEntity);
             _playerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
-            if (e.SceneName == "Sandbox")
+            // Dynamic scene loading
+            string sceneClassName = e.SceneName.Replace(" ", "_").Replace("-", "_") + "Scene";
+            Type sceneType = Type.GetType($"SiegeEngine.Scenes.StartingPoints.{sceneClassName}");
+            if (sceneType != null && sceneType.IsSubclassOf(typeof(Scene)))
             {
-                _currentScene = new SandboxScene(_renderContext, _controlContext, _window, _player, _server, _playerMovement, _eventBus, _modelManager);
+                ConstructorInfo ctor = sceneType.GetConstructor(new Type[]
+                {
+                    typeof(IRenderContext), typeof(IControlContext), typeof(IntPtr),
+                    typeof(Player), typeof(IGameServer), typeof(PlayerMovement), typeof(EventBus), typeof(ModelManager)
+                });
+                if (ctor != null)
+                {
+                    _currentScene = (Scene)ctor.Invoke(new object[]
+                    {
+                        _renderContext, _controlContext, _window,
+                        _player, _server, _playerMovement, _eventBus, _modelManager
+                    });
+                    _currentScene.SetPlayer(_player);
+                    _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
+                    Console.WriteLine($"SceneManager: Dynamically loaded and initialized {sceneClassName}");
+                }
+                else
+                {
+                    Console.WriteLine($"SceneManager: Constructor not found for {sceneClassName}");
+                }
             }
-            // Add more scene types here for generic support, e.g., else if (e.SceneName == "Editor") { _currentScene = new EditorScene(...); }
             else
             {
-                Console.WriteLine($"SceneManager: Unknown scene {e.SceneName}, defaulting to Sandbox");
-                _currentScene = new SandboxScene(_renderContext, _controlContext, _window, _player, _server, _playerMovement, _eventBus, _modelManager);
+                Console.WriteLine($"SceneManager: Scene type not found or invalid: {sceneClassName}");
             }
-            _currentScene.SetPlayer(_player);
-            _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
         }
     }
 }

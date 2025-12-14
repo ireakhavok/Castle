@@ -14,7 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
-namespace SiegeEngine.Scenes
+namespace SiegeEngine.Scenes.StartingPoints
 {
     public unsafe class SandboxScene : Scene
     {
@@ -26,7 +26,7 @@ namespace SiegeEngine.Scenes
         private ShaderProgram _modelShader;
         private ShaderProgram _gridShader;
 
-        public SandboxScene(IRenderContext renderContext, IControlContext controlContext, IntPtr window, Player player, IGameServer server, PlayerMovement playerMovement, EventBus eventBus, ModelManager modelManager)
+        public SandboxScene(IRenderContext renderContext, IControlContext controlContext, nint window, Player player, IGameServer server, PlayerMovement playerMovement, EventBus eventBus, ModelManager modelManager)
             : base(renderContext, controlContext, window, server, eventBus)
         {
             _player = player ?? throw new ArgumentNullException(nameof(player));

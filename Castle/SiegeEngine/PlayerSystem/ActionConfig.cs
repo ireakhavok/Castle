@@ -11,31 +11,8 @@ namespace SiegeEngine.PlayerSystem
     {
         private readonly EventBus _eventBus;
         private readonly Dictionary<string, Action> _actionMap = new Dictionary<string, Action>();
-        //private readonly EditorScene _editorScene;
-        //private readonly HtmlUiSystem _uiSystem;
-        private readonly SteamEngine _steamEngine;
 
-        //public ActionConfig(EventBus eventBus, EditorScene editorScene = null, 
-        //    //HtmlUiSystem uiSystem = null, 
-        //    SteamEngine steamEngine = null)
-        //{
-        //    _eventBus = eventBus;
-        //    _editorScene = editorScene;
-        //    //_uiSystem = uiSystem;
-        //    _steamEngine = steamEngine;
-        //    _actionMap["save-level"] = () => _eventBus.Publish(new SaveLevelEvent());
-        //    _actionMap["back"] = () => _eventBus.Publish(new SwitchMenuEvent("MainMenu"));
-        //    _actionMap["test-level"] = () => _eventBus.Publish(new SwitchMenuEvent("SandboxMode"));
-        //    _actionMap["grid-snap"] = () =>
-        //    {
-        //        //if (_editorScene != null && _uiSystem != null)
-        //        //    _editorScene.ToggleGridSnap(_uiSystem._gridSnapState);
-        //    };
-        //    foreach (var brush in new[] { "Wall", "Floor", "Door", "Trap", "Light", "Fire", "Roof", "Window", "Pathway", "Road", "Bridge", "Water", "Monster", "Raise", "Lower" })
-        //    {
-        //        _actionMap[brush] = () => TriggerSelectBrush(brush);
-        //    }
-        //}
+        private readonly SteamEngine _steamEngine;
 
         public void Trigger(string actionName)
         {
