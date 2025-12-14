@@ -27,9 +27,12 @@ namespace SiegeEngine.UI
         public bool Visible { get; set; } = true;
         protected bool _isDragging;
         protected Vector2 _dragOffset;
+        protected Vector2 _dragStartMousePos;
         protected double _lastClickTime;
         protected const float TitleHeight = 20f;
         protected const double DoubleClickTime = 0.5;
+        protected const float SnapDistance = 20f;
+        protected const float MinDragDistanceForSnap = 10f;
         protected ScalingMode Scaling = ScalingMode.Fill;
         protected float BaseWidth = 800f;
         protected float BaseHeight = 600f;
@@ -93,6 +96,7 @@ namespace SiegeEngine.UI
                 {
                     _isDragging = true;
                     _dragOffset = absMousePos - Position;
+                    _dragStartMousePos = absMousePos;
                     _lastClickTime = currentTime;
                 }
             }
@@ -100,10 +104,17 @@ namespace SiegeEngine.UI
             if (_isDragging && mouseDown)
             {
                 Position = absMousePos - _dragOffset;
+
                 _controlContext.GetWindowSize(_window, out int winW, out int winH);
                 float newX = Math.Clamp(Position.X, 1 - Size.X + TitleHeight, winW - TitleHeight);
                 float newY = Math.Clamp(Position.Y, 0, winH - TitleHeight);
                 Position = new Vector2(newX, newY);
+
+                float dragDist = Vector2.Distance(absMousePos, _dragStartMousePos);
+                if (dragDist > MinDragDistanceForSnap)
+                {
+                    ApplySnapDuringDrag(absMousePos, winW, winH);
+                }
             }
 
             if (mouseReleased)
@@ -119,6 +130,74 @@ namespace SiegeEngine.UI
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.Update(deltaTime, relMousePos, uCurrentMouseDown, Size.X, Size.Y);
+        }
+
+        protected void ApplySnapDuringDrag(Vector2 absMousePos, int winW, int winH)
+        {
+            float cornerZone = winH * 0.25f;
+
+            bool nearLeft = absMousePos.X < SnapDistance;
+            bool nearRight = absMousePos.X > winW - SnapDistance;
+            bool nearTop = absMousePos.Y < SnapDistance;
+            bool nearBottom = absMousePos.Y > winH - SnapDistance;
+
+            bool inTopCornerZone = absMousePos.Y < cornerZone;
+            bool inBottomCornerZone = absMousePos.Y > winH - cornerZone;
+
+            if (nearLeft || nearRight || nearTop || nearBottom)
+            {
+                Vector2 newPosition = Position;
+                Vector2 newSize = Size;
+
+                if (nearTop && nearLeft && inTopCornerZone)
+                {
+                    newPosition = new Vector2(0, 0);
+                    newSize = new Vector2(winW / 2f, winH / 2f);
+                }
+                else if (nearTop && nearRight && inTopCornerZone)
+                {
+                    newPosition = new Vector2(winW / 2f, 0);
+                    newSize = new Vector2(winW / 2f, winH / 2f);
+                }
+                else if (nearBottom && nearLeft && inBottomCornerZone)
+                {
+                    newPosition = new Vector2(0, winH / 2f);
+                    newSize = new Vector2(winW / 2f, winH / 2f);
+                }
+                else if (nearBottom && nearRight && inBottomCornerZone)
+                {
+                    newPosition = new Vector2(winW / 2f, winH / 2f);
+                    newSize = new Vector2(winW / 2f, winH / 2f);
+                }
+                else if (nearLeft)
+                {
+                    newPosition = new Vector2(0, 0);
+                    newSize = new Vector2(winW / 2f, winH);
+                }
+                else if (nearRight)
+                {
+                    newPosition = new Vector2(winW - (winW / 2f), 0);
+                    newSize = new Vector2(winW / 2f, winH);
+                }
+                else if (nearTop)
+                {
+                    newPosition = new Vector2(0, 0);
+                    newSize = new Vector2(winW, winH);
+                }
+                else if (nearBottom)
+                {
+                    newPosition = new Vector2(0, winH - (winH / 2f));
+                    newSize = new Vector2(winW, winH / 2f);
+                }
+                else
+                {
+                    return;
+                }
+
+                Position = newPosition;
+                Size = newSize;
+                OnPanelResize(newSize.X, newSize.Y);
+            }
         }
 
         public virtual void Render()
