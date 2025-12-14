@@ -100,6 +100,10 @@ namespace SiegeEngine.UI
             if (_isDragging && mouseDown)
             {
                 Position = absMousePos - _dragOffset;
+                _controlContext.GetWindowSize(_window, out int winW, out int winH);
+                float newX = Math.Clamp(Position.X, 1 - Size.X + TitleHeight, winW - TitleHeight);
+                float newY = Math.Clamp(Position.Y, 0, winH - TitleHeight);
+                Position = new Vector2(newX, newY);
             }
 
             if (mouseReleased)
