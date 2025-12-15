@@ -1481,7 +1481,7 @@ Folder: SiegeEngine
       - List<string> DetectAvailable()
         - Calls: D3D11CreateDevice, D3D12CreateDevice, IsOpenGLSupported, Marshal.Release, VulkanNative.vkCreateInstance, VulkanNative.vkDestroyInstance
 - File: SandBoxScene.cs
-  - Class: SandboxScene (Namespace: SiegeEngine.Scenes)
+  - Class: SandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene
     
     - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Rendering.Shaders, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -1535,7 +1535,7 @@ Folder: SiegeEngine
       - void Dispose()
 - File: SceneManager.cs
   - Class: SceneManager (Namespace: SiegeEngine.Managers)
-    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, SiegeEngine.UI, System, System.Numerics
+    - Dependencies: SiegeEngine.ContextManagement, SiegeEngine.Definitions, SiegeEngine.Events, SiegeEngine.Interfaces, SiegeEngine.Managers, SiegeEngine.Networking, SiegeEngine.PlayerSystem, SiegeEngine.Rendering, SiegeEngine.Scenes, SiegeEngine.Systems, SiegeEngine.UI, System, System.Numerics, System.Reflection
     - Fields:
       - EventBus _eventBus
       - IRenderContext _renderContext
@@ -1559,7 +1559,7 @@ Folder: SiegeEngine
       - void Resize( int height, int width)
       - void Dispose()
       - void OnSwitchScene(SwitchSceneEvent e)
-        - Calls: ClientGameServerProxy, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadCharacters, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
+        - Calls: ClientGameServerProxy, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadCharacters, _player.InitializeCamera, _server.AddEntity, _server.AddSystem, ctor.Invoke
 - File: SceneShader.cs
   - Class: SceneShader (Namespace: SiegeEngine.Rendering.Shaders)
     - Fields:
@@ -1830,7 +1830,7 @@ Folder: SiegeEngine
       - void Init()
         - Calls: ShaderProgram, TextRenderer, UIQuadRenderer, _textRenderer.Initialize
       - void LoadUI( string baseDir = "", string html)
-        - Calls: CollectClickables, HtmlParser, InheritProperties, InitializeElementProperties, _cssParser.Apply, _cssParser.ApplyAll, _cssParser.ApplyInlineStyles, _cssParser.Clear, _uiClickables.Clear, _uiRoot.PrepareResources, parser.Parse
+        - Calls: CollectClickables, HtmlParser, InheritProperties, InitializeElementProperties, JSDocument, RefreshUI, _cssParser.Apply, _cssParser.ApplyAll, _cssParser.ApplyInlineStyles, _cssParser.Clear, _jsContext.Evaluator.RegisterGlobal, _jsContext.Run, _uiClickables.Clear, _uiRoot.PrepareResources, parser.Parse
       - void InitializeElementProperties(HtmlElement root)
       - void InheritProperties( HtmlElement parent, HtmlElement elem)
       - void CollectClickables(HtmlElement elem)
@@ -2176,8 +2176,8 @@ SiegeEngine.Rendering.UIQuadRenderer
 SiegeEngine.Rendering.Vertex
 SiegeEngine.Rendering.VertexBuffer
 SiegeEngine.Scenes.EditorScene
-SiegeEngine.Scenes.SandboxScene
 SiegeEngine.Scenes.Scene
+SiegeEngine.Scenes.StartingPoints.SandboxScene
 SiegeEngine.Systems.AnimationSystem
 SiegeEngine.Systems.AudioSystem
 SiegeEngine.Systems.ClientPredictionSystem

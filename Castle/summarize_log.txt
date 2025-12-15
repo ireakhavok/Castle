@@ -762,9 +762,9 @@ Found 7 dependencies
 Found: SceneManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
-Read 4660 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
+Read 5438 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\SceneManager.cs
 Namespace: SiegeEngine.Managers
-Found 13 dependencies
+Found 14 dependencies
 Found: UIManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Managers\UIManager.cs
@@ -818,7 +818,7 @@ Found: ..
 Found: ActionConfig.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\ActionConfig.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\ActionConfig.cs
-Read 2541 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\ActionConfig.cs
+Read 1288 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\ActionConfig.cs
 Namespace: SiegeEngine.PlayerSystem
 Found 6 dependencies
 Found: AIPlayer.cs
@@ -1001,18 +1001,22 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes
 Read 1372 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
 Namespace: SiegeEngine.Scenes
 Found 13 dependencies
-Found: SandBoxScene.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
-Read 12146 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SandBoxScene.cs
-Namespace: SiegeEngine.Scenes
-Found 13 dependencies
 Found: Scene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
 Read 6902 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
+Found: StartingPoints
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints
+Found: .
+Found: ..
+Found: SandBoxScene.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\SandBoxScene.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\SandBoxScene.cs
+Read 12159 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\SandBoxScene.cs
+Namespace: SiegeEngine.Scenes.StartingPoints
+Found 13 dependencies
 Found: SiegeEngine.csproj
 Found: SummarizeRepo.exe
 Found: summarize_log.txt
@@ -1231,7 +1235,7 @@ Found 3 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
-Read 32481 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
+Read 32741 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\UI\UIOverlay.cs
 Namespace: SiegeEngine.UI
 Found 10 dependencies
 Found: UlElement.cs
