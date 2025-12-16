@@ -1,17 +1,18 @@
 ﻿// Folder: ReadingChamber
 // File: AssetViewerPanel.cs
-using SiegeEngine.AssetParsing;
-using SiegeEngine.ContextManagement;
-using SiegeEngine.Definitions;
-using SiegeEngine.Events;
-using SiegeEngine.Managers;
-using SiegeEngine.Rendering;
-using SiegeEngine.Rendering.Shaders;
-using SiegeEngine.UI;
+using SiegeEngine.Core.AssetParsing;
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.Shaders;
+using SiegeEngine.Core.Events;
 using System;
 using System.IO;
 using System.Numerics;
 using System.Text;
+using SiegeEngine.Core.UI;
 
 namespace ReadingChamber
 {

@@ -1,5 +1,5 @@
-﻿using SiegeEngine.Events;
-using SiegeEngine.Networking;
+﻿using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Networking;
 using System;
 
 namespace Citadel.Network

@@ -1,7 +1,7 @@
 ﻿// SiegeEngine.PlayerSystem/AIPlayer.cs
 using System;
 using System.Numerics;
-using SiegeEngine.Definitions;
+using SiegeEngine.Core.Definitions;
 
 namespace SiegeEngine.PlayerSystem
 {

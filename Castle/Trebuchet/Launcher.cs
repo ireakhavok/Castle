@@ -1,16 +1,11 @@
 ﻿// Folder: Trebuchet
 // File: Launcher.cs
-using SiegeEngine.ContextManagement;
-using SiegeEngine.Definitions;
-using SiegeEngine.Events;
-using SiegeEngine.Interfaces;
-using SiegeEngine.Managers;
-using SiegeEngine.Networking;
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.PlayerSystem;
-using SiegeEngine.Rendering;
+using SiegeEngine.Core.Rendering;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
-using SiegeEngine.UI;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -20,6 +15,11 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Reflection;
 using CastleBuilder;
+using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Networking;
+using SiegeEngine.Core.UI;
 
 namespace Trebuchet
 {

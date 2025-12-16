@@ -3,9 +3,9 @@ using System.IO;
 using System.Media;
 using System.Numerics;
 using System.Threading.Tasks;
-using SiegeEngine.Definitions;
-using SiegeEngine.Events;
-using SiegeEngine.Interfaces;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Interfaces;
 
 namespace SiegeEngine.Systems
 {

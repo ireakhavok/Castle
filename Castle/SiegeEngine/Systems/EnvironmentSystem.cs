@@ -1,9 +1,8 @@
-﻿using SiegeEngine.Events;
-using SiegeEngine.Definitions;
-using SiegeEngine.Events;
-using SiegeEngine.Interfaces;
+﻿using SiegeEngine.Core.Events;
 using System;
 using System.Numerics;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Definitions;
 
 namespace SiegeEngine.Systems
 {

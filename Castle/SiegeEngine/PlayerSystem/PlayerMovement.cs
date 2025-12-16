@@ -1,11 +1,11 @@
 ﻿// SiegeEngine.PlayerSystem/PlayerMovement.cs
 using System;
 using System.Numerics;
-using SiegeEngine.Definitions;
 using System.Collections.Generic;
 using System.Linq;
-using SiegeEngine.Events;
 using SiegeEngine.Systems;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Definitions;
 
 namespace SiegeEngine.PlayerSystem
 {

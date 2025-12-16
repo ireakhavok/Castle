@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SiegeEngine.Definitions;
-using SiegeEngine.Events;
-using SiegeEngine.Interfaces;
-using SiegeEngine.Networking;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Networking;
 using SiegeEngine.PlayerSystem;
 
 namespace SiegeEngine.Systems

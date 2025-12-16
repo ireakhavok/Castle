@@ -1,11 +1,11 @@
 ﻿// SiegeEngine.Systems/PlayerControllerSystem.cs
 using System;
 using System.Numerics;
-using SiegeEngine.Definitions;
-using SiegeEngine.Events;
+using SiegeEngine.Core.Events;
 using SiegeEngine.PlayerSystem;
-using SiegeEngine.Interfaces;
-using SiegeEngine.ContextManagement;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
 
 namespace SiegeEngine.Systems
 {

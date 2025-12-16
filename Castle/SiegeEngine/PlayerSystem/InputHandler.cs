@@ -1,11 +1,11 @@
 ﻿// SiegeEngine.PlayerSystem/InputHandler.cs
-using SiegeEngine.ContextManagement;
-using SiegeEngine.Networking;
-using SiegeEngine.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Networking;
 
 namespace SiegeEngine.PlayerSystem
 {

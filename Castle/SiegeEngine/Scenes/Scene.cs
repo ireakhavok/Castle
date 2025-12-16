@@ -1,10 +1,10 @@
-﻿using SiegeEngine.ContextManagement;
-using SiegeEngine.Definitions;
-using SiegeEngine.Events;
-using SiegeEngine.Interfaces;
+﻿using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.PlayerSystem;
-using SiegeEngine.Rendering;
-using SiegeEngine.Rendering.Shaders;
 using SiegeEngine.Systems;
 using System;
 using System.Collections.Generic;

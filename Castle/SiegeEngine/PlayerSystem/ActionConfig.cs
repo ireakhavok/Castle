@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using SiegeEngine.Events;
-using SiegeEngine.Networking;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Networking;
+using SiegeEngine.Core.Events;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 

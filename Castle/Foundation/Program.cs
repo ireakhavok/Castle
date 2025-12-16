@@ -2,9 +2,9 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using SiegeEngine.Managers;
-using SiegeEngine.Networking;
-using SiegeEngine.Rendering;
+using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Networking;
 using Trebuchet;
 
 namespace Foundation

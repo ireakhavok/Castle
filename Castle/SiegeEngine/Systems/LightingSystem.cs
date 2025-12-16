@@ -1,5 +1,5 @@
-﻿using SiegeEngine.Definitions;
-using SiegeEngine.Interfaces;
+﻿using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Interfaces;
 using System.Collections.Generic;
 using System.Numerics;
 

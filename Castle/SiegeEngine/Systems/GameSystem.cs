@@ -1,4 +1,4 @@
-﻿using SiegeEngine.Interfaces;
+﻿using SiegeEngine.Core.Interfaces;
 
 namespace SiegeEngine.Systems
 {

@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Events;
-using SiegeEngine.Interfaces;
-using SiegeEngine.Definitions;
 using SiegeEngine.Systems;
 using SiegeEngine.PlayerSystem;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Definitions;
 
 namespace Citadel.Server
 {

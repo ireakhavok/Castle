@@ -2,9 +2,10 @@
 // File: NewProjectEvent.cs
 using System.Text.Json;
 using System.Text;
+using SiegeEngine.Core.Events;
 namespace CastleBuilder.Events
 {
-    public class NewProjectEvent : SiegeEngine.Events.IEvent
+    public class NewProjectEvent : IEvent
     {
         public string Type => "NewProject";
         public string Name { get; set; }

@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine.Systems
 // File: AnimationSystem.cs
-using SiegeEngine.Definitions;
-using SiegeEngine.Interfaces;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Interfaces;
 using System;
 using System.Numerics;
 

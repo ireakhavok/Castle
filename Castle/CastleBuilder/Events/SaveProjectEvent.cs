@@ -2,10 +2,12 @@
 // File: SaveProjectEvent.cs
 using System.Text.Json;
 using System.Text;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Interfaces;
 
 namespace CastleBuilder.Events
 {
-    public class SaveProjectEvent : SiegeEngine.Events.IEvent
+    public class SaveProjectEvent : IEvent
     {
         public string Type => "SaveProject";
         public string Path { get; set; }

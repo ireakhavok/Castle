@@ -1,9 +1,9 @@
 ﻿// SiegeEngine.PlayerSystem/CameraController.cs
 using System;
 using System.Numerics;
-using SiegeEngine.Managers;
-using SiegeEngine.ContextManagement;
-using SiegeEngine.Definitions;
+using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
 
 namespace SiegeEngine.PlayerSystem
 {

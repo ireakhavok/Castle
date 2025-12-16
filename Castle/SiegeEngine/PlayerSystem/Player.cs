@@ -1,10 +1,10 @@
 ﻿// SiegeEngine.PlayerSystem/Player.cs
-using SiegeEngine.AssetParsing;
-using SiegeEngine.Definitions;
-using SiegeEngine.Managers;
-using SiegeEngine.ContextManagement;
 using System;
 using System.Numerics;
+using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.AssetParsing;
+using SiegeEngine.Core.Definitions;
 
 namespace SiegeEngine.PlayerSystem
 {

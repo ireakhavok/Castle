@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 using Citadel.Server;
-using SiegeEngine.Definitions;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Systems;
 
 namespace Citadel.Systems
