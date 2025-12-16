@@ -7,7 +7,7 @@ using Citadel.Network;
 using Citadel.Systems;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Systems;
-using SiegeEngine.ContextManagement;
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;

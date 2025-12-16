@@ -487,7 +487,7 @@ namespace SiegeEngine.Core.Networking
         [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamFriends_GetPersonaName")]
         private static extern bool SteamAPI_ISteamFriends_GetPersonaName(nint instance, StringBuilder pchPersonaName, uint cchPersonaName);
 
-        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamGameServer_Init")]
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamGameServer_InitSafe")]
         [return: MarshalAs(UnmanagedType.I1)]
         private static extern bool SteamGameServer_Init(uint unIP, ushort usSteamPort, ushort usGamePort, uint unFlags, int nGameAppId, string pchVersionString);
 

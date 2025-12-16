@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SiegeEngine.Events;
+using SiegeEngine.Core.Events;
 using SiegeEngine.Systems;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Core.Interfaces;

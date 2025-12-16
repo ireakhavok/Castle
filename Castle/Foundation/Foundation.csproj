@@ -20,5 +20,10 @@
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
     <ProjectReference Include="..\Trebuchet\Trebuchet.csproj" />
   </ItemGroup>
+<ItemGroup>
+  <None Include="..\Libraries\steam_api64.dll">  <!-- Relative or absolute path -->
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
 
 </Project>

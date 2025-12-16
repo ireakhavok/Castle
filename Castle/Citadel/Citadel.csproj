@@ -13,6 +13,11 @@
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>  <!-- Optional: Compresses the EXE -->
     <UseAppHost>true</UseAppHost>
   </PropertyGroup>
+<ItemGroup>
+  <None Include="..\Libraries\steam_api64.dll">  <!-- Relative or absolute path -->
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
     <Exec Command="xcopy /Y &quot;$(TargetDir)$(AssemblyName).exe&quot; &quot;$(SolutionDir)Libraries\&quot;" />
