@@ -26,6 +26,16 @@ Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Character
 Found: .
 Found: ..
 Found: cube_test.png
+Found: FullRightTurn.fbx
+Found: FullRightTurn.fbx.meta
+Found: Jumping.fbx
+Found: Jumping.fbx.meta
+Found: Jumping_inAir.fbx
+Found: Jumping_inAir.fbx.meta
+Found: Jumping_Landing.fbx
+Found: Jumping_Landing.fbx.meta
+Found: LeftRunning.fbx
+Found: LeftRunning.fbx.meta
 Found: Man_Body_Albedo.tga
 Found: Man_Body_Ao.tga
 Found: Man_Body_Metallic.tga
@@ -42,6 +52,38 @@ Found: Man_Cloth_Up_Albedo_03.tga
 Found: Man_Cloth_Up_Ao.tga
 Found: Man_Cloth_Up_Metallic.tga
 Found: Man_Cloth_Up_Normals.tga
+Found: man_mesh.fbx
+Found: man_mesh.fbx.meta
+Found: player.fbx
+Found: player.fbx.meta
+Found: running.fbx
+Found: running.fbx.meta
+Found: running.fbx._metadata.json
+Found: runningRight.fbx
+Found: runningRight.fbx.meta
+Found: Stand.obj
+Found: Stand.obj.meta
+Found: Standing.anim
+Found: Standing.anim.meta
+Found: standing.fbx
+Found: standing.fbx.meta
+Found: StandingMan.fbx
+Found: StandingMan.fbx.meta
+Found: totalWalking.fbx
+Found: totalWalking.fbx.meta
+Found: totalWalking.fbx._metadata.json
+Found: Walking.anim
+Found: Walking.anim.meta
+Found: walking.fbx
+Found: walking.fbx.meta
+Found: walkingBackwards.fbx
+Found: walkingBackwards.fbx.meta
+Found: walkingLeft.fbx
+Found: walkingLeft.fbx.meta
+Found: walkingRight.fbx
+Found: walkingRight.fbx.meta
+Found: walking_backwards.fbx
+Found: walking_backwards.fbx.meta
 Found: man_mesh.fbx
 Found: man_mesh_arrow.fbx
 Found: man_mesh_arrow_old.fbx
@@ -274,9 +316,9 @@ Found: ..
 Found: AssetViewerPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
-Read 15737 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+Read 17552 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Namespace: ReadingChamber
-Found 12 dependencies
+Found 13 dependencies
 Found: AssetViewerUI.html
 Found: bin
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\bin
@@ -350,13 +392,13 @@ Found: ..
 Found: FBXModel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
-Read 3980 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
+Read 5532 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
 Namespace: SiegeEngine.Core.AssetParsing
-Found 5 dependencies
+Found 6 dependencies
 Found: FBXParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
-Read 22105 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
+Read 38036 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
 Namespace: SiegeEngine.Core.AssetParsing
 Found 8 dependencies
 Found: FBXParserBase.cs
@@ -749,7 +791,7 @@ Found 2 dependencies
 Found: ModelManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
-Read 29741 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
+Read 29831 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 11 dependencies
 Found: ModManager.cs
@@ -1224,7 +1266,7 @@ Found: ..
 Found: SandBoxScene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\SandBoxScene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\SandBoxScene.cs
-Read 12194 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\SandBoxScene.cs
+Read 12214 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\StartingPoints\SandBoxScene.cs
 Namespace: SiegeEngine.Scenes.StartingPoints
 Found 13 dependencies
 Found: SiegeEngine.csproj

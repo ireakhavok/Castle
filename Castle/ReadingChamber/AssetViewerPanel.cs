@@ -115,6 +115,10 @@ namespace ReadingChamber
                 {
                     var animForest = FBXParser.Load(animPath);
                     var animModel = FBXParser.BuildModelFromForest(animForest);
+                    foreach (var anim in animModel.Animations)
+                    {
+                        anim.Name = Path.GetFileNameWithoutExtension(animPath);
+                    }
                     _model.Animations.AddRange(animModel.Animations);
                 }
             }
@@ -134,16 +138,23 @@ namespace ReadingChamber
                 Console.WriteLine("AssetViewerPanel: Insertion point not found in HTML");
                 return;
             }
-            StringBuilder dynamicButtons = new StringBuilder();
+            StringBuilder dynamicSelect = new StringBuilder();
+            dynamicSelect.Append("<select id=\"animSelect\" style=\"position: absolute; left: 10px; top: 30px;\">");
             if (_model != null)
             {
                 foreach (var a in _model.Animations)
                 {
-                    dynamicButtons.Append($"<button class=\"ui-button\" data-hook=\"SelectAnim:{a.Name}\">{a.Name}</button>");
+                    dynamicSelect.Append($"<option value=\"{a.Name}\">{a.Name}</option>");
                 }
             }
-            string modifiedHtml = baseHtml.Insert(insertIndex, dynamicButtons.ToString());
+            dynamicSelect.Append("</select>");
+            string modifiedHtml = baseHtml.Insert(insertIndex, dynamicSelect.ToString());
             _uiOverlay.LoadUI(modifiedHtml);
+            var animSelect = _uiOverlay.FindElementById("animSelect");
+            if (animSelect != null)
+            {
+                animSelect.Attributes["data-hook"] = "SelectAnim";
+            }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
@@ -175,16 +186,28 @@ namespace ReadingChamber
             {
                 _playing = !_playing;
             }
-            else if (hook.StartsWith("SelectAnim:"))
-            {
-                _currentAnimation = hook.Substring(11);
-                _time = 0f; // Reset time on selection
-            }
             else if (hook == "LoadFBX")
             {
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
                 _eventBus.Publish(new OpenPanelEvent(fileSelector));
+            }
+            else if (elem.Tag == "option")
+            {
+                var select = elem.Parent as SelectElement;
+                if (select != null)
+                {
+                    string val = elem.Attributes.GetValueOrDefault("value", string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)));
+                    _currentAnimation = val;
+                    _time = 0f;
+                    foreach (var opt in select.Children.Where(c => c.Tag.ToLower() == "option"))
+                    {
+                        opt.Attributes.Remove("selected");
+                    }
+                    elem.Attributes["selected"] = "";
+                    select.IsOpen = false;
+                    _uiOverlay.RefreshUI();
+                }
             }
         }
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)

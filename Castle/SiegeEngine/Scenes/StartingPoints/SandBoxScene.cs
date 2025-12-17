@@ -44,7 +44,7 @@ namespace SiegeEngine.Scenes.StartingPoints
                 }
                 var sun = new LightComponent(LightType.Directional, new Vector3(1f, 1f, 1f), 1.0f, new Vector3(-0.707f, -0.707f, 0.707f));
                 lightingSystem.AddLight(sun);
-                Console.WriteLine("SandboxScene: Added directional light at direction (-0.707, -0.707, 0.707)");
+                //Console.WriteLine("SandboxScene: Added directional light at direction (-0.707, -0.707, 0.707)");
             }
         }
 
@@ -111,7 +111,7 @@ namespace SiegeEngine.Scenes.StartingPoints
                     _modelShader.SetUniform("uLightDir", lightData.Value.direction.X, lightData.Value.direction.Y, lightData.Value.direction.Z, 0.0f);
                     _modelShader.SetUniform("uLightColor", lightData.Value.color.X, lightData.Value.color.Y, lightData.Value.color.Z, 0.0f);
                     _modelShader.SetUniform("uLightIntensity", lightData.Value.intensity);
-                    Console.WriteLine($"SandboxScene: Light direction: {lightData.Value.direction}, intensity: {lightData.Value.intensity}");
+                    //Console.WriteLine($"SandboxScene: Light direction: {lightData.Value.direction}, intensity: {lightData.Value.intensity}");
                 }
             }
 
@@ -152,7 +152,7 @@ namespace SiegeEngine.Scenes.StartingPoints
                             _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[i]);
                             _modelShader.SetUniform($"uAlbedoMap[{i}]", i);
                             total_albedo_count++;
-                            //Console.WriteLine($"SandboxScene: Bound albedo texture {i} with ID {mmr.AlbedoTextures[i]}");
+                            ////Console.WriteLine($"SandboxScene: Bound albedo texture {i} with ID {mmr.AlbedoTextures[i]}");
                         }
                         // Bind normal textures (up to 4)
                         for (int i = 0; i < Math.Min(mmr.NormalTextures.Length, 4); i++)
@@ -161,7 +161,7 @@ namespace SiegeEngine.Scenes.StartingPoints
                             _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[i]);
                             _modelShader.SetUniform($"uNormalMap[{i}]", 4 + i);
                             total_normal_count++;
-                            //Console.WriteLine($"SandboxScene: Bound normal texture {i} with ID {mmr.NormalTextures[i]}");
+                            ////Console.WriteLine($"SandboxScene: Bound normal texture {i} with ID {mmr.NormalTextures[i]}");
                         }
                         // Bind metallic textures (up to 4)
                         for (int i = 0; i < Math.Min(mmr.MetallicTextures.Length, 4); i++)
@@ -170,12 +170,12 @@ namespace SiegeEngine.Scenes.StartingPoints
                             _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[i]);
                             _modelShader.SetUniform($"uMetallicMap[{i}]", 8 + i);
                             total_metallic_count++;
-                            //Console.WriteLine($"SandboxScene: Bound metallic texture {i} with ID {mmr.MetallicTextures[i]}");
+                            ////Console.WriteLine($"SandboxScene: Bound metallic texture {i} with ID {mmr.MetallicTextures[i]}");
                         }
                     }
                     catch (ArgumentException ex)
                     {
-                        Console.WriteLine($"SandboxScene: Texture binding error: {ex.Message}. Falling back to first albedo texture.");
+                        //Console.WriteLine($"SandboxScene: Texture binding error: {ex.Message}. Falling back to first albedo texture.");
                         if (mmr.AlbedoTextures.Length > 0)
                         {
                             _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
@@ -193,7 +193,7 @@ namespace SiegeEngine.Scenes.StartingPoints
                     }
                     catch (ArgumentException ex)
                     {
-                        Console.WriteLine($"SandboxScene: Debug material index error: {ex.Message}. Skipping debug pass.");
+                        //Console.WriteLine($"SandboxScene: Debug material index error: {ex.Message}. Skipping debug pass.");
                     }
 
                     // Debug texture-only pass
@@ -206,7 +206,7 @@ namespace SiegeEngine.Scenes.StartingPoints
                     }
                     catch (ArgumentException ex)
                     {
-                        Console.WriteLine($"SandboxScene: Debug texture-only error: {ex.Message}. Skipping debug pass.");
+                        //Console.WriteLine($"SandboxScene: Debug texture-only error: {ex.Message}. Skipping debug pass.");
                     }
 
                     // Normal rendering pass
@@ -215,11 +215,11 @@ namespace SiegeEngine.Scenes.StartingPoints
                     _renderContext.BindVertexArray(0);
                 }
 
-                Console.WriteLine($"SandboxScene: Rendered {total_meshes} player with {total_albedo_count} total albedo textures, {total_normal_count} normal textures, {total_metallic_count} metallic textures");//, VAO {mmr.Vao}, indices {mmr.IndexCount}");
+                //Console.WriteLine($"SandboxScene: Rendered {total_meshes} player with {total_albedo_count} total albedo textures, {total_normal_count} normal textures, {total_metallic_count} metallic textures");//, VAO {mmr.Vao}, indices {mmr.IndexCount}");
             }
             else
             {
-                Console.WriteLine($"SandboxScene: Error: Model data for {modelKey} not found or physics unavailable");
+                //Console.WriteLine($"SandboxScene: Error: Model data for {modelKey} not found or physics unavailable");
             }
 
             // Log OpenGL errors
