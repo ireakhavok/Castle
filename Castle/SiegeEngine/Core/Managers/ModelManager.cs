@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine.Managers
+// File: ModelManager.cs
+using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -218,7 +220,7 @@ namespace SiegeEngine.Core.Managers
                 {
                     ComputeTangents(mesh);
                 }
-                if (model == null || model.Meshes.Count == 0 || model.Meshes.Sum(m => m.Vertices.Count) < 3 || model.Meshes.Sum(m => m.Indices.Count) < 3)
+                if (model == null || (model.Meshes.Count == 0 && model.Animations.Count == 0) || model.Meshes.Sum(m => m.Vertices.Count) < 3 || model.Meshes.Sum(m => m.Indices.Count) < 3)
                 {
                     throw new InvalidOperationException($"ModelManager: Error: Invalid model {key}, total vertices: {model?.Meshes.Sum(m => m.Vertices.Count) ?? 0}, total indices: {model?.Meshes.Sum(m => m.Indices.Count) ?? 0}");
                 }

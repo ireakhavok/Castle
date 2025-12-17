@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -96,10 +97,34 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                 }
             }
-            var geomNodes = objectsNode.children.Where(n => n.Name == "Geometry" && n.properties.Count >= 3 && (string)n.properties[2].Value == "Mesh").ToList();
-            if (geomNodes.Count == 0)
+            // Parse skeleton
+            var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 && ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Root")).ToList();
+            Dictionary<long, int> boneIndexById = new Dictionary<long, int>();
+            int boneIndex = 0;
+            foreach (var modelNode in modelNodes)
             {
-                Console.WriteLine("BuildModelFromForest: No Geometry::Mesh nodes found");
+                long id = (long)modelNode.properties[0].Value;
+                string fullName = ((string)modelNode.properties[1].Value).Split('\0')[0];
+                string[] nameParts = fullName.Split("::");
+                string name = nameParts.Length > 1 ? nameParts[1] : nameParts[0];
+                Bone bone = new Bone { Name = name, ParentIndex = -1, BindPose = Matrix4x4.Identity };
+                model.Skeleton.Bones.Add(bone);
+                boneIndexById[id] = boneIndex++;
+            }
+            // Build hierarchy
+            foreach (var conn in conns)
+            {
+                if (conn.type == "OO" && boneIndexById.ContainsKey(conn.child) && boneIndexById.ContainsKey(conn.parent))
+                {
+                    int childIdx = boneIndexById[conn.child];
+                    int parentIdx = boneIndexById[conn.parent];
+                    model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
+                }
+            }
+            var geomNodes = objectsNode.children.Where(n => n.Name == "Geometry" && n.properties.Count >= 3 && (string)n.properties[2].Value == "Mesh").ToList();
+            if (geomNodes.Count == 0 && !objectsNode.children.Any(n => n.Name == "AnimationStack"))
+            {
+                Console.WriteLine("BuildModelFromForest: No Geometry::Mesh or AnimationStack nodes found");
                 return FBXParserBase.CreateDefaultCubeModel();
             }
             foreach (var geom in geomNodes)
@@ -121,6 +146,7 @@ namespace SiegeEngine.Core.AssetParsing
                 }
                 if (vertsD == null || pviArray == null)
                 {
+                    Console.WriteLine($"BuildModelFromForest: Skipping invalid mesh, vertsD null: {vertsD == null}, pviArray null: {pviArray == null}");
                     continue; // Skip invalid mesh
                 }
                 // Get normals layer
@@ -183,16 +209,90 @@ namespace SiegeEngine.Core.AssetParsing
                     var mappingNode = layerMat.children.FirstOrDefault(c => c.Name == "MappingInformationType");
                     matMapping = mappingNode != null ? (string)mappingNode.properties[0].Value : "";
                 }
-                // Build expanded vertices for ByPolygonVertex
+                // Prepare per-original-vertex bone data
+                int numVerts = vertsD.Length / 3;
+                List<List<(int boneIdx, float weight)>> perVertBones = Enumerable.Range(0, numVerts).Select(_ => new List<(int, float)>()).ToList();
+                // Parse skin if present
+                long geomId = (long)geom.properties[0].Value;
+                var skinConns = conns.Where(c => c.type == "OO" && c.parent == geomId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Deformer" && (string)objectsById[c.child].properties[2].Value == "Skin").ToList();
+                if (skinConns.Any())
+                {
+                    model.HasSkin = true;
+                    foreach (var skinConn in skinConns)
+                    {
+                        var skinNode = objectsById[skinConn.child];
+                        var clusterConns = conns.Where(c => c.type == "OO" && c.parent == skinConn.child && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Deformer" && (string)objectsById[c.child].properties[2].Value == "Cluster").ToList();
+                        foreach (var clusterConn in clusterConns)
+                        {
+                            var clusterNode = objectsById[clusterConn.child];
+                            var boneConn = conns.FirstOrDefault(c => c.type == "OO" && c.child == clusterConn.child && objectsById.ContainsKey(c.parent) && objectsById[c.parent].Name == "Model");
+                            if (boneConn.type == null) continue;
+                            long boneId = boneConn.parent;
+                            if (!boneIndexById.TryGetValue(boneId, out int boneIdx)) continue;
+                            var indexesNode = clusterNode.children.FirstOrDefault(c => c.Name == "Indexes");
+                            int[] indexes = indexesNode != null && indexesNode.properties[0].TypeCode == 'i' ? (int[])indexesNode.properties[0].Value : Array.Empty<int>();
+                            var weightsNode = clusterNode.children.FirstOrDefault(c => c.Name == "Weights");
+                            double[] weights = weightsNode != null && weightsNode.properties[0].TypeCode == 'd' ? (double[])weightsNode.properties[0].Value : Array.Empty<double>();
+                            var transformLinkNode = clusterNode.children.FirstOrDefault(c => c.Name == "TransformLink");
+                            double[] tl = transformLinkNode != null && transformLinkNode.properties[0].TypeCode == 'd' ? (double[])transformLinkNode.properties[0].Value : null;
+                            if (tl != null && tl.Length == 16)
+                            {
+                                Matrix4x4 tlMat = new Matrix4x4((float)tl[0], (float)tl[4], (float)tl[8], (float)tl[12],
+                                                                (float)tl[1], (float)tl[5], (float)tl[9], (float)tl[13],
+                                                                (float)tl[2], (float)tl[6], (float)tl[10], (float)tl[14],
+                                                                (float)tl[3], (float)tl[7], (float)tl[11], (float)tl[15]); // Row major to column
+                                Matrix4x4.Invert(tlMat, out var invBind);
+                                model.Skeleton.Bones[boneIdx].BindPose = invBind;
+                            }
+                            for (int i = 0; i < Math.Min(indexes.Length, weights.Length); i++)
+                            {
+                                int vertIdx = indexes[i];
+                                if (vertIdx < 0 || vertIdx >= numVerts)
+                                {
+                                    Console.WriteLine($"BuildModelFromForest: Invalid vertIdx {vertIdx} in cluster, skipping");
+                                    continue;
+                                }
+                                float w = (float)weights[i];
+                                perVertBones[vertIdx].Add((boneIdx, w));
+                            }
+                        }
+                    }
+                }
+                // Normalize weights and limit to 4 per vertex
+                for (int v = 0; v < perVertBones.Count; v++)
+                {
+                    var bw = perVertBones[v];
+                    if (bw.Count > 4)
+                    {
+                        bw = bw.OrderByDescending(b => b.weight).Take(4).ToList();
+                    }
+                    float sumW = bw.Sum(b => b.weight);
+                    if (sumW > 0)
+                    {
+                        for (int j = 0; j < bw.Count; j++)
+                        {
+                            bw[j] = (bw[j].boneIdx, bw[j].weight / sumW);
+                        }
+                    }
+                    perVertBones[v] = bw.OrderByDescending(b => b.weight).ToList(); // Sort descending weight
+                }
+                // Build expanded vertices
                 List<FBXVertex> expandedVertices = new List<FBXVertex>();
                 List<uint> newIndices = new List<uint>();
                 int currentIndex = 0;
                 List<int> tempPoly = new List<int>();
+                int polyIndex = 0;
                 for (int i = 0; i < pviArray.Length; i++)
                 {
                     int pv = pviArray[i];
                     bool end = pv < 0;
                     int vId = end ? -pv - 1 : pv;
+                    if (vId < 0 || vId >= numVerts)
+                    {
+                        Console.WriteLine($"BuildModelFromForest: Invalid vId {vId} at i={i}, skipping polygon");
+                        tempPoly.Clear();
+                        continue;
+                    }
                     tempPoly.Add(vId);
                     if (end)
                     {
@@ -219,20 +319,36 @@ namespace SiegeEngine.Core.AssetParsing
                                 {
                                     if (normRef == "IndexToDirect" && normIdx != null)
                                     {
-                                        nIdx = normIdx[i - tempPoly.Count + 1 + k];
+                                        int polyVertIdx = i - tempPoly.Count + 1 + k;
+                                        if (polyVertIdx < 0 || polyVertIdx >= normIdx.Length)
+                                        {
+                                            Console.WriteLine($"BuildModelFromForest: Invalid normIdx access at polyVertIdx={polyVertIdx}, normIdx.Length={normIdx.Length}, using default normal");
+                                            nIdx = 0;
+                                        }
+                                        else
+                                        {
+                                            nIdx = normIdx[polyVertIdx];
+                                        }
                                     }
                                     else // Direct
                                     {
                                         nIdx = i - tempPoly.Count + 1 + k;
                                     }
                                 }
-                                else // ByVertex or similar
+                                else // ByVertice
                                 {
                                     nIdx = vertIdx;
                                 }
-                                nx = (float)norms[nIdx * 3];
-                                ny = (float)norms[nIdx * 3 + 1];
-                                nz = (float)norms[nIdx * 3 + 2];
+                                if (nIdx < 0 || nIdx * 3 >= norms.Length)
+                                {
+                                    Console.WriteLine($"BuildModelFromForest: Invalid nIdx {nIdx}, norms.Length={norms.Length / 3}, using default normal");
+                                }
+                                else
+                                {
+                                    nx = (float)norms[nIdx * 3];
+                                    ny = (float)norms[nIdx * 3 + 1];
+                                    nz = (float)norms[nIdx * 3 + 2];
+                                }
                             }
                             // UV
                             float u = 0f, v = 0f;
@@ -243,45 +359,78 @@ namespace SiegeEngine.Core.AssetParsing
                                 {
                                     if (uvRef == "IndexToDirect" && uvIdx != null)
                                     {
-                                        uIdx = uvIdx[i - tempPoly.Count + 1 + k];
+                                        int polyVertIdx = i - tempPoly.Count + 1 + k;
+                                        if (polyVertIdx < 0 || polyVertIdx >= uvIdx.Length)
+                                        {
+                                            Console.WriteLine($"BuildModelFromForest: Invalid uvIdx access at polyVertIdx={polyVertIdx}, uvIdx.Length={uvIdx.Length}, using default UV");
+                                            uIdx = 0;
+                                        }
+                                        else
+                                        {
+                                            uIdx = uvIdx[polyVertIdx];
+                                        }
                                     }
                                     else // Direct
                                     {
                                         uIdx = i - tempPoly.Count + 1 + k;
                                     }
                                 }
-                                else // ByVertex
+                                else // ByVertice
                                 {
                                     uIdx = vertIdx;
                                 }
-                                u = (float)uvs[uIdx * 2];
-                                v = 1f - (float)uvs[uIdx * 2 + 1];
+                                if (uIdx < 0 || uIdx * 2 >= uvs.Length)
+                                {
+                                    Console.WriteLine($"BuildModelFromForest: Invalid uIdx {uIdx}, uvs.Length={uvs.Length / 2}, using default UV");
+                                }
+                                else
+                                {
+                                    u = (float)uvs[uIdx * 2];
+                                    v = 1f - (float)uvs[uIdx * 2 + 1]; // Flip V
+                                }
                             }
                             // Material
                             float matId = 0f;
                             if (matIndices != null)
                             {
-                                int polyIdx = (i - tempPoly.Count + 1) / tempPoly.Count; // Approximate poly index
                                 if (matMapping == "AllSame")
                                 {
                                     matId = matIndices[0];
                                 }
                                 else if (matMapping == "ByPolygon")
                                 {
-                                    matId = matIndices[polyIdx];
+                                    if (polyIndex < 0 || polyIndex >= matIndices.Length)
+                                    {
+                                        Console.WriteLine($"BuildModelFromForest: Invalid polyIndex {polyIndex}, matIndices.Length={matIndices.Length}, using matId 0");
+                                    }
+                                    else
+                                    {
+                                        matId = matIndices[polyIndex];
+                                    }
                                 }
                             }
-                            expandedVertices.Add(new FBXVertex(x, y, z, nx, ny, nz, u, v, matId));
+                            // Bones
+                            var bw = perVertBones[vertIdx];
+                            int b0 = bw.Count > 0 ? bw[0].boneIdx : 0;
+                            float w0 = bw.Count > 0 ? bw[0].weight : 0f;
+                            int b1 = bw.Count > 1 ? bw[1].boneIdx : 0;
+                            float w1 = bw.Count > 1 ? bw[1].weight : 0f;
+                            int b2 = bw.Count > 2 ? bw[2].boneIdx : 0;
+                            float w2 = bw.Count > 2 ? bw[2].weight : 0f;
+                            int b3 = bw.Count > 3 ? bw[3].boneIdx : 0;
+                            float w3 = bw.Count > 3 ? bw[3].weight : 0f;
+                            expandedVertices.Add(new FBXVertex(x, y, z, nx, ny, nz, u, v, matId, 0, 0, 0, b0, b1, b2, b3, w0, w1, w2, w3));
                         }
                         currentIndex += tempPoly.Count;
                         tempPoly.Clear();
+                        polyIndex++;
                     }
                 }
                 mesh.Vertices = expandedVertices;
                 mesh.Indices = newIndices;
                 // Extract materials (unchanged)
-                long geomId = (long)geom.properties[0].Value;
-                var modelConns = conns.Where(c => c.type == "OO" && c.child == geomId).ToList();
+                long geomIdMesh = geomId; // rename to avoid shadow
+                var modelConns = conns.Where(c => c.type == "OO" && c.child == geomIdMesh).ToList();
                 if (modelConns.Count > 0)
                 {
                     long modelId = modelConns[0].parent;
@@ -290,7 +439,10 @@ namespace SiegeEngine.Core.AssetParsing
                     foreach (var matConn in matConns)
                     {
                         var matNode = objectsById[matConn.child];
-                        Material mat = new Material { Name = ((string)matNode.properties[1].Value).Split('\0')[0] };
+                        string fullMatName = ((string)matNode.properties[1].Value).Split('\0')[0];
+                        string[] matNameParts = fullMatName.Split("::");
+                        string matName = matNameParts.Length > 1 ? matNameParts[1] : matNameParts[0];
+                        Material mat = new Material { Name = matName };
                         var props70 = matNode.children.FirstOrDefault(c => c.Name == "Properties70");
                         if (props70 != null)
                         {
@@ -307,6 +459,7 @@ namespace SiegeEngine.Core.AssetParsing
                         var texConns = conns.Where(c => c.type == "OP" && c.parent == matConn.child).ToList();
                         foreach (var texConn in texConns)
                         {
+                            if (!objectsById.ContainsKey(texConn.child)) continue;
                             var texNode = objectsById[texConn.child];
                             string texKey;
                             switch (texConn.prop)
@@ -347,7 +500,9 @@ namespace SiegeEngine.Core.AssetParsing
                                     if (contentNode != null && contentNode.properties.Count > 0 && contentNode.properties[0].TypeCode == 'R')
                                     {
                                         byte[] content = (byte[])contentNode.properties[0].Value;
-                                        string vidName = ((string)videoNode.properties[1].Value).Split("::")[1];
+                                        string fullVidName = ((string)videoNode.properties[1].Value).Split('\0')[0];
+                                        string[] vidNameParts = fullVidName.Split("::");
+                                        string vidName = vidNameParts.Length > 1 ? vidNameParts[1] : vidNameParts[0];
                                         forest.EmbeddedTextures.Add((vidName, content));
                                         texInfo.Path = "embedded_" + vidName;
                                         isEmbedded = true;
@@ -367,7 +522,9 @@ namespace SiegeEngine.Core.AssetParsing
                                     if (contentNode != null && contentNode.properties[0].TypeCode == 'R')
                                     {
                                         byte[] content = (byte[])contentNode.properties[0].Value;
-                                        string vidName = ((string)videoNode.properties[1].Value).Split('\0')[0];
+                                        string fullVidName = ((string)videoNode.properties[1].Value).Split('\0')[0];
+                                        string[] vidNameParts = fullVidName.Split("::");
+                                        string vidName = vidNameParts.Length > 1 ? vidNameParts[1] : vidNameParts[0];
                                         forest.EmbeddedTextures.Add((vidName, content));
                                         texInfo.Path = "embedded_" + vidName;
                                         isEmbedded = true;
@@ -398,6 +555,77 @@ namespace SiegeEngine.Core.AssetParsing
                 }
                 mesh.Bounds = new Vector3(maxX - minX, maxY - minY, maxZ - minZ);
                 model.Meshes.Add(mesh);
+            }
+            // Parse animations
+            var animStackNodes = objectsNode.children.Where(n => n.Name == "AnimationStack").ToList();
+            foreach (var stack in animStackNodes)
+            {
+                long stackId = (long)stack.properties[0].Value;
+                string fullAnimName = ((string)stack.properties[1].Value).Split('\0')[0];
+                string[] animNameParts = fullAnimName.Split("::");
+                string animName = animNameParts.Length > 1 ? animNameParts[1] : animNameParts[0];
+                Animation anim = new Animation { Name = animName, Keyframes = new List<Keyframe>() };
+                model.Animations.Add(anim);
+                var layerConns = conns.Where(c => c.type == "OO" && c.child == stackId && objectsById.ContainsKey(c.parent) && objectsById[c.parent].Name == "AnimationLayer").ToList();
+                if (layerConns.Count == 0) continue;
+                long layerId = layerConns[0].parent;
+                var layerNode = objectsById[layerId];
+                var curveNodeConns = conns.Where(c => c.type == "OO" && c.parent == layerId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationCurveNode").ToList();
+                foreach (var curveNodeConn in curveNodeConns)
+                {
+                    long curveNodeId = curveNodeConn.child;
+                    var boneConns = conns.Where(c => c.type == "OP" && c.child == curveNodeId && objectsById.ContainsKey(c.parent) && objectsById[c.parent].Name == "Model").ToList();
+                    if (boneConns.Count == 0) continue;
+                    var boneConn = boneConns[0];
+                    long boneId = boneConn.parent;
+                    if (!boneIndexById.TryGetValue(boneId, out int boneIdx)) continue;
+                    string trs = boneConn.prop; // "T", "R", "S"
+                    // Get X, Y, Z curves
+                    var curveXConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|X");
+                    long curveXId = curveXConn.child;
+                    var curveXNode = objectsById.GetValueOrDefault(curveXId);
+                    if (curveXNode == null) continue;
+                    long[] keyTimes = (long[])curveXNode.children.FirstOrDefault(c => c.Name == "KeyTime")?.properties[0].Value ?? Array.Empty<long>();
+                    float[] keyValuesX = (float[])curveXNode.children.FirstOrDefault(c => c.Name == "KeyValueFloat")?.properties[0].Value ?? Array.Empty<float>();
+                    var curveYConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|Y");
+                    long curveYId = curveYConn.child;
+                    var curveYNode = objectsById.GetValueOrDefault(curveYId);
+                    float[] keyValuesY = (float[])curveYNode?.children.FirstOrDefault(c => c.Name == "KeyValueFloat")?.properties[0].Value ?? Array.Empty<float>();
+                    var curveZConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|Z");
+                    long curveZId = curveZConn.child;
+                    var curveZNode = objectsById.GetValueOrDefault(curveZId);
+                    float[] keyValuesZ = (float[])curveZNode?.children.FirstOrDefault(c => c.Name == "KeyValueFloat")?.properties[0].Value ?? Array.Empty<float>();
+                    if (keyTimes.Length == 0 || keyTimes.Length != keyValuesX.Length || keyTimes.Length != keyValuesY.Length || keyTimes.Length != keyValuesZ.Length) continue;
+                    for (int k = 0; k < keyTimes.Length; k++)
+                    {
+                        float t = keyTimes[k] / 46186158000f;
+                        Keyframe kf = anim.Keyframes.FirstOrDefault(kf => kf.Time == t);
+                        if (kf == null)
+                        {
+                            kf = new Keyframe { Time = t, BoneTransforms = Enumerable.Repeat(Matrix4x4.Identity, model.Skeleton.Bones.Count).ToList() };
+                            anim.Keyframes.Add(kf);
+                        }
+                        Vector3 val = new Vector3(keyValuesX[k], keyValuesY[k], keyValuesZ[k]);
+                        Matrix4x4 matPart = Matrix4x4.Identity;
+                        if (trs == "T")
+                        {
+                            matPart = Matrix4x4.CreateTranslation(val);
+                        }
+                        else if (trs == "R")
+                        {
+                            float rx = val.X * MathF.PI / 180f;
+                            float ry = val.Y * MathF.PI / 180f;
+                            float rz = val.Z * MathF.PI / 180f;
+                            matPart = Matrix4x4.CreateRotationX(rx) * Matrix4x4.CreateRotationY(ry) * Matrix4x4.CreateRotationZ(rz);
+                        }
+                        else if (trs == "S")
+                        {
+                            matPart = Matrix4x4.CreateScale(val);
+                        }
+                        kf.BoneTransforms[boneIdx] = matPart * kf.BoneTransforms[boneIdx]; // Accumulate, assuming order T R S or parsed order
+                    }
+                }
+                anim.Keyframes = anim.Keyframes.OrderBy(kf => kf.Time).ToList();
             }
             return model;
         }

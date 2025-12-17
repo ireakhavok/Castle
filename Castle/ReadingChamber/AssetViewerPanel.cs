@@ -9,6 +9,7 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.Events;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Text;
@@ -21,18 +22,15 @@ namespace ReadingChamber
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AssetViewerPanel _parent;
-
             public AssetUIOverlay(AssetViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, IntPtr window) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
-
             protected override void HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
             }
         }
-
         private FBXModel _model;
         private ModelManager.ModelData _modelData;
         private float _time = 0f;
@@ -47,7 +45,6 @@ namespace ReadingChamber
         private bool _firstMouse = true;
         private bool _isPanning = false;
         private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx");
-
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -55,12 +52,10 @@ namespace ReadingChamber
             BaseWidth = 800f;
             BaseHeight = 600f;
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
@@ -80,6 +75,7 @@ namespace ReadingChamber
             {
                 Console.WriteLine("AssetViewerPanel: Failed to get model data");
             }
+            LoadAdditionalAnimations();
             if (_model != null)
             {
                 // Center model based on bounds
@@ -109,7 +105,20 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
+        private void LoadAdditionalAnimations()
+        {
+            string fbmDir = Path.Combine(Path.GetDirectoryName(_path), Path.GetFileNameWithoutExtension(_path) + ".fbm");
+            if (Directory.Exists(fbmDir))
+            {
+                var animFiles = Directory.GetFiles(fbmDir, "*.fbx");
+                foreach (var animPath in animFiles)
+                {
+                    var animForest = FBXParser.Load(animPath);
+                    var animModel = FBXParser.BuildModelFromForest(animForest);
+                    _model.Animations.AddRange(animModel.Animations);
+                }
+            }
+        }
         private void UpdateUIControls()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetViewerUI.html");
@@ -139,7 +148,6 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void OnFileSelected(FileSelectedEvent e)
         {
             _path = e.Path;
@@ -148,6 +156,7 @@ namespace ReadingChamber
             string key = Path.GetFileNameWithoutExtension(_path).ToLower();
             if (modelManager.TryGetModel(key, out _model) && modelManager.TryGetModelData(key, out _modelData))
             {
+                LoadAdditionalAnimations();
                 if (_model.Animations.Count > 0)
                 {
                     _currentAnimation = _model.Animations[0].Name;
@@ -159,7 +168,6 @@ namespace ReadingChamber
                 Console.WriteLine("AssetViewerPanel: Failed to load selected model");
             }
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -179,14 +187,12 @@ namespace ReadingChamber
                 _eventBus.Publish(new OpenPanelEvent(fileSelector));
             }
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
             Vector2 relMouse = absMousePos - Position;
             bool over = relMouse.X >= 0 && relMouse.X <= Size.X && relMouse.Y >= TitleHeight && relMouse.Y <= Size.Y; // Below title
             if (!over) return;
-
             // Camera control
             float mouseX = relMouse.X;
             float mouseY = relMouse.Y - TitleHeight; // Adjust for title
@@ -200,14 +206,12 @@ namespace ReadingChamber
             float deltaY = _lastMouseY - mouseY;
             _lastMouseX = mouseX;
             _lastMouseY = mouseY;
-
             if (mouseDown && !mousePressed) // Ongoing press
             {
                 Quaternion yawQuat = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -deltaX * 0.002f);
                 Quaternion pitchQuat = Quaternion.CreateFromAxisAngle(Vector3.UnitX, -deltaY * 0.002f);
                 _cameraRotation = Quaternion.Normalize(yawQuat * _cameraRotation * pitchQuat);
             }
-
             if (_controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press)
             {
                 _isPanning = true;
@@ -220,14 +224,12 @@ namespace ReadingChamber
             {
                 _isPanning = false;
             }
-
             Vector3 front = Vector3.Normalize(Vector3.Transform(new Vector3(0, 1, 0), _cameraRotation));
             _cameraUp = Vector3.Normalize(Vector3.Transform(new Vector3(0, 0, 1), _cameraRotation));
             if (!_isPanning)
             {
                 _cameraPosition = _cameraTarget + front * (_cameraPosition - _cameraTarget).Length();
             }
-
             if (_playing && _model != null)
             {
                 _time += deltaTime;
@@ -241,18 +243,15 @@ namespace ReadingChamber
                     }
                 }
             }
-
             // Handle input for animation selection, play/pause, etc. (expand with UI buttons)
             if (_controlContext.GetKey(_window, Key.Space) == InputAction.Press)
             {
                 _playing = !_playing;
             }
         }
-
         public override void Render()
         {
             if (!Visible) return;
-
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
@@ -261,18 +260,15 @@ namespace ReadingChamber
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
-
             _renderContext.ClearColor(0.118f, 0.118f, 0.118f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
             _renderContext.CullFace(_renderContext.Enums.Back);
-
             // Set matrices
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, 0.1f, 100f);
-
             _assetShader.Use();
             _assetShader.SetMatrix4("uModel", modelMatrix);
             _assetShader.SetMatrix4("uView", view);
@@ -285,13 +281,11 @@ namespace ReadingChamber
             _assetShader.SetUniform("uSpecularStrength", 0.05f);
             _assetShader.SetUniform("uShininess", 4.0f);
             _assetShader.SetUniform("uHasBones", _model.HasSkin ? 1 : 0);
-
             if (_model.Skeleton != null && _model.HasSkin)
             {
                 var transforms = _model.Skeleton.GetTransforms();
                 _assetShader.SetMatrix4Array("uBoneTransforms", transforms);
             }
-
             foreach (var mmr in _modelData.MeshRenders)
             {
                 // Bind textures
@@ -313,29 +307,23 @@ namespace ReadingChamber
                     _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[t]);
                     _assetShader.SetUniform($"uMetallicMap[{t}]", 8 + t);
                 }
-
                 _renderContext.BindVertexArray(mmr.Vao);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
-
                 int error;
                 while ((error = _renderContext.GetError()) != _renderContext.Enums.NoError)
                 {
                     Console.WriteLine($"AssetViewerPanel: OpenGL error after draw: {error}");
                 }
             }
-
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-
             // Render title bar
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
-
             // Render UI overlay
             _uiOverlay.Render();
-
             // Render 2px border
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
@@ -345,7 +333,6 @@ namespace ReadingChamber
             _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
             // Right
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
-
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
