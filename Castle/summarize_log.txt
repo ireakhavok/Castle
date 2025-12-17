@@ -173,13 +173,13 @@ Found 4 dependencies
 Found: GameServer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
-Read 18638 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
+Read 18643 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\GameServer.cs
 Namespace: Citadel.Server
 Found 13 dependencies
 Found: ServerValidationSystem.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\ServerValidationSystem.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\ServerValidationSystem.cs
-Read 7242 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\ServerValidationSystem.cs
+Read 7247 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel\Server\ServerValidationSystem.cs
 Namespace: Citadel.Server
 Found 8 dependencies
 Found: ServerProgram.cs
@@ -234,6 +234,7 @@ Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Libraries
 Found: .
 Found: ..
 Found: Citadel.exe
+Found: exports.txt
 Found: steam_api64.dll
 Found: steam_appid.txt
 Found: MapRoom
@@ -806,7 +807,7 @@ Found 1 dependencies
 Found: SteamEngine.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
-Read 25232 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
+Read 25236 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
 Namespace: SiegeEngine.Core.Networking
 Found 6 dependencies
 Found: Rendering

@@ -64,7 +64,7 @@ Folder: Citadel
   - Class: GameServer (Namespace: Citadel.Server)
     - Inherits: IGameServer
     
-    - Dependencies: Citadel.Network, Citadel.Systems, SiegeEngine.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
+    - Dependencies: Citadel.Network, Citadel.Systems, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
     - Fields:
       - List<Entity> _entities
       - List<GameSystem> _systems
@@ -151,7 +151,7 @@ Folder: Citadel
   - Class: ServerValidationSystem (Namespace: Citadel.Server)
     - Inherits: GameSystem, ISoundValidator
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, SiegeEngine.Events, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
     - Fields:
       - GameServer _server
       - float _maxSpeed
