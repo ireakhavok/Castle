@@ -41,7 +41,7 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx");
+        private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "cube.fbx");
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -111,13 +111,15 @@ namespace ReadingChamber
                 foreach (var animPath in animFiles)
                 {
                     var animForest = FBXParser.Load(animPath);
-                    var animModel = FBXParser.BuildModelFromForest(animForest);
+                    var animModel = FBXParser.BuildModelFromForest(animForest, true);
                     foreach (var anim in animModel.Animations)
                     {
-                        anim.Name = Path.GetFileNameWithoutExtension(animPath);
+                        anim.Name = Path.GetFileNameWithoutExtension(animPath) + (animModel.Animations.Count > 1 ? "_" + anim.Name : "");
+                        Console.WriteLine($"Added animation {anim.Name} with {anim.Keyframes.Count} keyframes");
                     }
                     _model.Animations.AddRange(animModel.Animations);
                 }
+                Console.WriteLine($"Total animations loaded: {_model.Animations.Count}");
             }
         }
         private void UpdateUIControls()
@@ -179,9 +181,11 @@ namespace ReadingChamber
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
+            Console.WriteLine($"Clicked on {elem.Tag}, hook: {hook}");
             if (hook == "TogglePlay")
             {
                 _playing = !_playing;
+                Console.WriteLine($"Toggled play to {_playing}");
             }
             else if (hook == "LoadFBX")
             {
@@ -204,6 +208,7 @@ namespace ReadingChamber
                     elem.Attributes["selected"] = "";
                     select.IsOpen = false;
                     _uiOverlay.RefreshUI();
+                    Console.WriteLine($"Selected animation: {val}");
                 }
             }
         }
@@ -328,7 +333,7 @@ namespace ReadingChamber
                     _assetShader.SetUniform($"uMetallicMap[{t}]", 8 + t);
                 }
                 _renderContext.BindVertexArray(mmr.Vao);
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, (void*)0);
                 int error;
                 while ((error = _renderContext.GetError()) != _renderContext.Enums.NoError)
                 {
