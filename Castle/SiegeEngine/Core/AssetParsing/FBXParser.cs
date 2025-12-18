@@ -558,6 +558,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             // Parse animations
             var animStackNodes = objectsNode.children.Where(n => n.Name == "AnimationStack").ToList();
+            Console.WriteLine($"Animation stacks found: {animStackNodes.Count}");
             foreach (var stack in animStackNodes)
             {
                 long stackId = (long)stack.properties[0].Value;
@@ -569,14 +570,17 @@ namespace SiegeEngine.Core.AssetParsing
                 Console.WriteLine($"Parsing animation stack {animName}");
                 // Find layer
                 var layerConns = conns.Where(c => c.type == "OO" && c.child == stackId && objectsById.ContainsKey(c.parent) && objectsById[c.parent].Name == "AnimationLayer").ToList();
+                Console.WriteLine($"Layers for stack: {layerConns.Count}");
                 if (layerConns.Count == 0) continue;
                 long layerId = layerConns[0].parent;
                 var layerNode = objectsById[layerId];
                 var curveNodeConns = conns.Where(c => c.type == "OO" && c.parent == layerId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationCurveNode").ToList();
+                Console.WriteLine($"Curve nodes for layer: {curveNodeConns.Count}");
                 foreach (var curveNodeConn in curveNodeConns)
                 {
                     long curveNodeId = curveNodeConn.child;
                     var boneConns = conns.Where(c => c.type == "OP" && c.child == curveNodeId && objectsById.ContainsKey(c.parent) && objectsById[c.parent].Name == "Model").ToList();
+                    Console.WriteLine($"Bone connections for curve node {curveNodeId}: {boneConns.Count}");
                     if (boneConns.Count == 0) continue;
                     var boneConn = boneConns[0];
                     long boneId = boneConn.parent;
@@ -586,18 +590,75 @@ namespace SiegeEngine.Core.AssetParsing
                     var curveXConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|X");
                     long curveXId = curveXConn.child;
                     var curveXNode = objectsById.GetValueOrDefault(curveXId);
-                    if (curveXNode == null) continue;
-                    long[] keyTimes = (long[])curveXNode.children.FirstOrDefault(c => c.Name == "KeyTime")?.properties[0].Value ?? Array.Empty<long>();
-                    float[] keyValuesX = (float[])curveXNode.children.FirstOrDefault(c => c.Name == "KeyValueFloat")?.properties[0].Value ?? Array.Empty<float>();
+                    if (curveXNode == null)
+                    {
+                        Console.WriteLine($"No curveX for {trs} on bone {boneIdx}");
+                        continue;
+                    }
+                    var keyTimeNodeX = curveXNode.children.FirstOrDefault(c => c.Name == "KeyTime");
+                    long[] keyTimes = keyTimeNodeX != null ? (long[])keyTimeNodeX.properties[0].Value : Array.Empty<long>();
+                    var keyValueNodeX = curveXNode.children.FirstOrDefault(c => c.Name == "KeyValueFloat");
+                    if (keyValueNodeX == null)
+                    {
+                        Console.WriteLine($"No KeyValueFloat for curveX {trs} on bone {boneIdx}");
+                    }
+                    var keyValuePropX = keyValueNodeX?.properties[0];
+                    char typeCodeX = keyValuePropX != null ? keyValuePropX.TypeCode : ' ';
+                    Console.WriteLine($"KeyValue type for X: {typeCodeX}");
+                    float[] keyValuesX = null;
+                    if (keyValuePropX != null)
+                    {
+                        if (keyValuePropX.TypeCode == 'f')
+                        {
+                            keyValuesX = (float[])keyValuePropX.Value;
+                        }
+                        else if (keyValuePropX.TypeCode == 'd')
+                        {
+                            double[] dvals = (double[])keyValuePropX.Value;
+                            keyValuesX = dvals.Select(d => (float)d).ToArray();
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Unexpected type for KeyValueFloat X: {keyValuePropX.TypeCode}");
+                        }
+                    }
                     var curveYConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|Y");
                     long curveYId = curveYConn.child;
                     var curveYNode = objectsById.GetValueOrDefault(curveYId);
-                    float[] keyValuesY = (float[])curveYNode?.children.FirstOrDefault(c => c.Name == "KeyValueFloat")?.properties[0].Value ?? Array.Empty<float>();
+                    float[] keyValuesY = null;
+                    var keyValueNodeY = curveYNode?.children.FirstOrDefault(c => c.Name == "KeyValueFloat");
+                    var keyValuePropY = keyValueNodeY?.properties[0];
+                    if (keyValuePropY != null)
+                    {
+                        if (keyValuePropY.TypeCode == 'f')
+                        {
+                            keyValuesY = (float[])keyValuePropY.Value;
+                        }
+                        else if (keyValuePropY.TypeCode == 'd')
+                        {
+                            double[] dvals = (double[])keyValuePropY.Value;
+                            keyValuesY = dvals.Select(d => (float)d).ToArray();
+                        }
+                    }
                     var curveZConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|Z");
                     long curveZId = curveZConn.child;
                     var curveZNode = objectsById.GetValueOrDefault(curveZId);
-                    float[] keyValuesZ = (float[])curveZNode?.children.FirstOrDefault(c => c.Name == "KeyValueFloat")?.properties[0].Value ?? Array.Empty<float>();
-                    if (keyTimes.Length == 0 || keyTimes.Length != keyValuesX.Length || keyTimes.Length != keyValuesY.Length || keyTimes.Length != keyValuesZ.Length) continue;
+                    float[] keyValuesZ = null;
+                    var keyValueNodeZ = curveZNode?.children.FirstOrDefault(c => c.Name == "KeyValueFloat");
+                    var keyValuePropZ = keyValueNodeZ?.properties[0];
+                    if (keyValuePropZ != null)
+                    {
+                        if (keyValuePropZ.TypeCode == 'f')
+                        {
+                            keyValuesZ = (float[])keyValuePropZ.Value;
+                        }
+                        else if (keyValuePropZ.TypeCode == 'd')
+                        {
+                            double[] dvals = (double[])keyValuePropZ.Value;
+                            keyValuesZ = dvals.Select(d => (float)d).ToArray();
+                        }
+                    }
+                    if (keyTimes.Length == 0 || keyTimes.Length != (keyValuesX?.Length ?? 0) || keyTimes.Length != (keyValuesY?.Length ?? 0) || keyTimes.Length != (keyValuesZ?.Length ?? 0)) continue;
                     Console.WriteLine($"Curve for bone {boneIdx} {trs} with {keyTimes.Length} keys");
                     for (int k = 0; k < keyTimes.Length; k++)
                     {

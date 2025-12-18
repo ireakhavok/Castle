@@ -88,7 +88,7 @@ namespace ReadingChamber
                 }
                 Vector3 center = (minBounds + maxBounds) / 2;
                 float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
-                _cameraPosition = center + new Vector3(0, -maxExtent * 2.5f, 0);
+                _cameraPosition = center + new Vector3(0, -maxExtent * 3.5f, 0);
                 _cameraTarget = center;
                 Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
                 if (_model.Animations.Count > 0)
@@ -150,10 +150,6 @@ namespace ReadingChamber
             string modifiedHtml = baseHtml.Insert(insertIndex, dynamicSelect.ToString());
             _uiOverlay.LoadUI(modifiedHtml);
             var animSelect = _uiOverlay.FindElementById("animSelect");
-            if (animSelect != null)
-            {
-                animSelect.Attributes["data-hook"] = "SelectAnim";
-            }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
@@ -192,6 +188,23 @@ namespace ReadingChamber
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
                 _eventBus.Publish(new OpenPanelEvent(fileSelector));
+            }
+            else if (elem.Tag == "select")
+            {
+                var select = elem as SelectElement;
+                if (select != null)
+                {
+                    var allSelects = _uiOverlay.FindElementsByTag("select");
+                    foreach (var s in allSelects)
+                    {
+                        if (s is SelectElement sel)
+                        {
+                            sel.IsOpen = false;
+                        }
+                    }
+                    select.IsOpen = !select.IsOpen;
+                    _uiOverlay.RefreshUI();
+                }
             }
             else if (elem.Tag == "option")
             {
@@ -264,7 +277,10 @@ namespace ReadingChamber
                     if (animation != null)
                     {
                         var transforms = animation.GetBoneTransforms(_time);
-                        _model.Skeleton.UpdateTransforms(transforms);
+                        if (transforms != null)
+                        {
+                            _model.Skeleton.UpdateTransforms(transforms);
+                        }
                     }
                 }
             }

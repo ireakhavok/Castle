@@ -1,12 +1,9 @@
-﻿// Folder: SiegeEngine.AssetParsing
-// File: FBXModel.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public class FBXModel
