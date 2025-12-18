@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Managers
-// File: ModelManager.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,7 +9,6 @@ using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.UnityAssetLoader;
-
 namespace SiegeEngine.Core.Managers
 {
     public class ModelManager
@@ -306,7 +303,7 @@ namespace SiegeEngine.Core.Managers
                         normals = normals.Take(4).ToList();
                         metallics = metallics.Take(4).ToList();
                     }
-                    float[] vertexData = new float[mesh.Vertices.Count * 12];
+                    float[] vertexData = new float[mesh.Vertices.Count * 20];
                     int defaultNormalCount = 0;
                     int zeroNormalCount = 0;
                     Dictionary<float, int> materialIndexCounts = new Dictionary<float, int>();
@@ -316,19 +313,27 @@ namespace SiegeEngine.Core.Managers
                     for (int i = 0; i < mesh.Vertices.Count; i++)
                     {
                         var vertex = mesh.Vertices[i];
-                        vertexData[i * 12 + 0] = vertex.X;
-                        vertexData[i * 12 + 1] = vertex.Y;
-                        vertexData[i * 12 + 2] = vertex.Z;
-                        vertexData[i * 12 + 3] = vertex.Nx;
-                        vertexData[i * 12 + 4] = vertex.Ny;
-                        vertexData[i * 12 + 5] = vertex.Nz;
-                        vertexData[i * 12 + 6] = vertex.U;
-                        vertexData[i * 12 + 7] = vertex.V;
+                        vertexData[i * 20 + 0] = vertex.X;
+                        vertexData[i * 20 + 1] = vertex.Y;
+                        vertexData[i * 20 + 2] = vertex.Z;
+                        vertexData[i * 20 + 3] = vertex.Nx;
+                        vertexData[i * 20 + 4] = vertex.Ny;
+                        vertexData[i * 20 + 5] = vertex.Nz;
+                        vertexData[i * 20 + 6] = vertex.U;
+                        vertexData[i * 20 + 7] = vertex.V;
                         float materialIndex = vertex.MatIdx;
-                        vertexData[i * 12 + 8] = materialIndex;
-                        vertexData[i * 12 + 9] = vertex.Tx;
-                        vertexData[i * 12 + 10] = vertex.Ty;
-                        vertexData[i * 12 + 11] = vertex.Tz;
+                        vertexData[i * 20 + 8] = materialIndex;
+                        vertexData[i * 20 + 9] = vertex.Tx;
+                        vertexData[i * 20 + 10] = vertex.Ty;
+                        vertexData[i * 20 + 11] = vertex.Tz;
+                        vertexData[i * 20 + 12] = vertex.BoneID0;
+                        vertexData[i * 20 + 13] = vertex.BoneID1;
+                        vertexData[i * 20 + 14] = vertex.BoneID2;
+                        vertexData[i * 20 + 15] = vertex.BoneID3;
+                        vertexData[i * 20 + 16] = vertex.Weight0;
+                        vertexData[i * 20 + 17] = vertex.Weight1;
+                        vertexData[i * 20 + 18] = vertex.Weight2;
+                        vertexData[i * 20 + 19] = vertex.Weight3;
                         materialIndexCounts.TryGetValue(materialIndex, out int count);
                         materialIndexCounts[materialIndex] = count + 1;
                         minX = Math.Min(minX, vertex.X);
@@ -362,7 +367,7 @@ namespace SiegeEngine.Core.Managers
                         _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, ebo);
                         _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(mesh.Indices.Count * sizeof(uint)), ptr, _renderContext.Enums.StaticDraw);
                     }
-                    uint stride = 12 * sizeof(float);
+                    uint stride = 20 * sizeof(float);
                     _renderContext.EnableVertexAttribArray(0); // Position
                     _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
                     _renderContext.EnableVertexAttribArray(3); // Normal
@@ -373,6 +378,10 @@ namespace SiegeEngine.Core.Managers
                     _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
                     _renderContext.EnableVertexAttribArray(5); // Tangent
                     _renderContext.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
+                    _renderContext.EnableVertexAttribArray(6); // BoneIDs
+                    _renderContext.VertexAttribPointer(6, 4, _renderContext.Enums.Float, false, stride, (void*)(12 * sizeof(float)));
+                    _renderContext.EnableVertexAttribArray(7); // BoneWeights
+                    _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
                     _renderContext.BindVertexArray(0);
                     mmr.Vao = vao;
                     mmr.Vbo = vbo;
@@ -491,7 +500,9 @@ namespace SiegeEngine.Core.Managers
                     vertex.Nx, vertex.Ny, vertex.Nz,
                     vertex.U, vertex.V,
                     vertex.MatIdx,
-                    t.X, t.Y, t.Z
+                    t.X, t.Y, t.Z,
+                    vertex.BoneID0, vertex.BoneID1, vertex.BoneID2, vertex.BoneID3,
+                    vertex.Weight0, vertex.Weight1, vertex.Weight2, vertex.Weight3
                 );
             }
         }

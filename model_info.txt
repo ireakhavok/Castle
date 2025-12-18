@@ -1,0 +1,49 @@
+Summary of FBX Parsing for Man_Mesh Model
+Based on the logs, here's a concise overview of the parsing process for the man_mesh.fbx model and its associated animation files from the .fbm folder. This should help as a starting point for troubleshooting or the next chat. The model is successfully loaded as a single entity composed of 17 sub-meshes (likely body parts like arms, legs, torso, etc., common in rigged characters). The parser handles skeleton, skinning, materials, textures, and animations, but some optimizations are needed for speed, as loading large vertex data (475k+ vertices) is slow. No critical errors in core parsing, but the "MenuUIOverlay" error is unrelated—it's an index out of range in event handling for opening a panel, possibly due to an empty list or missing data in ReadingChamber.OpenAssetViewer.
+1. File Structure and Version:
+
+All files are binary FBX version 7400 from Blender.
+Main file: man_mesh.fbx (mesh and skeleton).
+Animation files: Separate .fbx in .fbm folder (e.g., FullRightTurn.fbx, Jumping.fbx), loaded and integrated.
+Each file ends with a 175-byte footer (hex dump shown, non-essential for parsing).
+
+2. Skeleton:
+
+71 bones parsed (e.g., Armature, root, pelvis, spines, clavicles, arms, hands, fingers, legs, feet, end bones).
+Hierarchy built via connections (e.g., bone 1 to parent 0, up to bone 70 to 55).
+Bind poses set for all bones during skinning.
+
+3. Meshes (17 Sub-Meshes Making One Model):
+
+Total vertices: 475,276; triangles: 236,200.
+Each sub-mesh has unique bounds and vertex ranges (e.g., Mesh 0: Width 4.12, Height 2.91, Depth 3.96; Mesh 3: largest at Depth 18.34 for full body).
+Vertex data: Positions, normals (no defaults/zeros), UVs (flipped V for OpenGL).
+Materials: 1 per sub-mesh, with properties from "Properties70". No multi-materials.
+
+4. Textures:
+
+Loaded from .fbm folder (e.g., Man_Cloth_Down_Albedo_01.tga, Man_Body_Normals.tga).
+Albedo and normals for each sub-mesh; flipped rows for OpenGL compatibility.
+No embedded textures; all external paths resolved.
+
+5. Skinning/Deformers:
+
+1 skin deformer per geometry, 55 clusters each (one per bone).
+Weights added: Varies (0 for non-skinned parts like ends, thousands for core bones like spine/legs).
+HasSkin = True for most sub-meshes; total skinned vertices per sub-mesh: 9,147 to 19,353 (full model ~ HasSkin = True).
+Bind poses set; weights normalized (limited to 4 per vertex).
+
+6. Animations:
+
+Animations stored in separate .fbm files, not stacked. (e.g., FullRightTurn, Jumping).
+For each: Layers, curve nodes (up to 168), T/R/S properties processed for bones.
+Keyframes parsed (0-168 per animation, times converted from ticks to seconds, values to matrices).
+Accumulated in BoneTransforms (order: T, R, S).
+
+Progress and Issues:
+
+Success: Model loads with full skeleton, skinning, and animations. Sub-meshes combine into one rigged model (HasSkin = True). Ready for rendering/animation in engine.
+Performance: Slow loading due to large vertex/weight processing; suggest async or batching for numVerts (up to 77k per sub-mesh).
+Errors: "Bone ID not found" for some clusters (mismatched IDs); fixed by bidirectional connection checks. Menu error is app-side (index range in panel opening); check event data or lists in ReadingChamber.OpenAssetViewer.
+Next Steps: Test animation playback (ensure localTransforms not null in AnimationSystem). If slow, profile vertex buffer updates. Validate in Unity/Unreal to compare skin/anim behavior.
+

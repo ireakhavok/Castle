@@ -10,7 +10,6 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
-
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class GameRenderer : Renderer
@@ -143,6 +142,12 @@ namespace SiegeEngine.Core.Rendering
                         Matrix4x4 modelMatrix = rotation * Matrix4x4.CreateTranslation(physics.Position);
                         _modelShader.Use();
                         _modelShader.SetMatrix4("uModel", modelMatrix);
+                        _modelShader.SetUniform("uHasBones", modelComp.Model.HasSkin ? 1 : 0);
+                        if (modelComp.Model.HasSkin && modelComp.Model.Skeleton != null)
+                        {
+                            var transforms = modelComp.Model.Skeleton.GetTransforms();
+                            _modelShader.SetMatrix4Array("uBoneTransforms", transforms);
+                        }
                         foreach (var mmr in modelData.MeshRenders)
                         {
                             // Bind textures

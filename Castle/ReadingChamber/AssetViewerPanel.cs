@@ -1,6 +1,4 @@
-﻿// Folder: ReadingChamber
-// File: AssetViewerPanel.cs
-using SiegeEngine.Core.AssetParsing;
+﻿using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -14,7 +12,6 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
-
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel

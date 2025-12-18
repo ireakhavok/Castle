@@ -1,5 +1,4 @@
-﻿// Engine.Core.Rendering.Shaders/ModelShader.cs
-namespace SiegeEngine.Core.Rendering.Shaders
+﻿namespace SiegeEngine.Core.Rendering.Shaders
 {
     public static class ModelShader
     {
@@ -10,6 +9,8 @@ layout (location = 2) in vec2 aTexCoord;
 layout (location = 3) in vec3 aNormal;
 layout (location = 4) in float aMaterialIndex;
 layout (location = 5) in vec3 aTangent;
+layout (location = 6) in vec4 aBoneIDs;
+layout (location = 7) in vec4 aBoneWeights;
 out vec2 vTexCoord;
 out vec3 vNormal;
 out vec3 vTangent;
@@ -18,15 +19,38 @@ out float vMaterialIndex;
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
+uniform mat4 uBoneTransforms[128];
+uniform int uHasBones;
 void main()
 {
     vTexCoord = vec2(aTexCoord.x, aTexCoord.y);
+    vec4 totalPosition = vec4(aPosition, 1.0);
+    vec3 totalNormal = aNormal;
+    vec3 totalTangent = aTangent;
+    if (uHasBones == 1) {
+        totalPosition = vec4(0.0);
+        totalNormal = vec3(0.0);
+        totalTangent = vec3(0.0);
+        for (int i = 0; i < 4; i++) {
+            int id = int(aBoneIDs[i]);
+            if (id < 0) continue;
+            mat4 boneMat = uBoneTransforms[id];
+            vec4 localPos = boneMat * vec4(aPosition, 1.0);
+            totalPosition += localPos * aBoneWeights[i];
+            vec3 localNorm = mat3(boneMat) * aNormal;
+            totalNormal += localNorm * aBoneWeights[i];
+            vec3 localTan = mat3(boneMat) * aTangent;
+            totalTangent += localTan * aBoneWeights[i];
+        }
+        totalNormal = normalize(totalNormal);
+        totalTangent = normalize(totalTangent);
+    }
     mat3 normalMatrix = transpose(inverse(mat3(uModel)));
-    vNormal = normalize(normalMatrix * aNormal);
-    vTangent = normalize(normalMatrix * aTangent);
-    vPosition = vec3(uModel * vec4(aPosition, 1.0));
+    vNormal = normalize(normalMatrix * totalNormal);
+    vTangent = normalize(normalMatrix * totalTangent);
+    vPosition = vec3(uModel * totalPosition);
     vMaterialIndex = aMaterialIndex;
-    gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
+    gl_Position = uProjection * uView * uModel * totalPosition;
 }";
         public const string FragmentShaderSource = @"
 #version 330 core
