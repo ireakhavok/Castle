@@ -41,7 +41,7 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "cube.fbx");
+        private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -91,9 +91,10 @@ namespace ReadingChamber
                 _cameraPosition = center + new Vector3(0, -maxExtent * 3.5f, 0);
                 _cameraTarget = center;
                 Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
-                if (_model.Animations.Count > 0)
+                var validAnimations = _model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+                if (validAnimations.Count > 0)
                 {
-                    _currentAnimation = _model.Animations[0].Name;
+                    _currentAnimation = validAnimations[0].Name;
                 }
             }
             UpdateUIControls();
@@ -141,7 +142,7 @@ namespace ReadingChamber
             dynamicSelect.Append("<select id=\"animSelect\" style=\"position: absolute; left: 10px; top: 30px;\">");
             if (_model != null)
             {
-                foreach (var a in _model.Animations)
+                foreach (var a in _model.Animations.Where(anim => anim.Keyframes.Count > 0))
                 {
                     dynamicSelect.Append($"<option value=\"{a.Name}\">{a.Name}</option>");
                 }
@@ -149,7 +150,6 @@ namespace ReadingChamber
             dynamicSelect.Append("</select>");
             string modifiedHtml = baseHtml.Insert(insertIndex, dynamicSelect.ToString());
             _uiOverlay.LoadUI(modifiedHtml);
-            var animSelect = _uiOverlay.FindElementById("animSelect");
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
@@ -163,9 +163,10 @@ namespace ReadingChamber
             if (modelManager.TryGetModel(key, out _model) && modelManager.TryGetModelData(key, out _modelData))
             {
                 LoadAdditionalAnimations();
-                if (_model.Animations.Count > 0)
+                var validAnimations = _model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+                if (validAnimations.Count > 0)
                 {
-                    _currentAnimation = _model.Animations[0].Name;
+                    _currentAnimation = validAnimations[0].Name;
                 }
                 UpdateUIControls();
             }

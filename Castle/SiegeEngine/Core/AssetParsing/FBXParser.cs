@@ -569,10 +569,10 @@ namespace SiegeEngine.Core.AssetParsing
                 model.Animations.Add(anim);
                 Console.WriteLine($"Parsing animation stack {animName}");
                 // Find layer
-                var layerConns = conns.Where(c => c.type == "OO" && c.child == stackId && objectsById.ContainsKey(c.parent) && objectsById[c.parent].Name == "AnimationLayer").ToList();
+                var layerConns = conns.Where(c => c.type == "OO" && c.parent == stackId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationLayer").ToList();
                 Console.WriteLine($"Layers for stack: {layerConns.Count}");
                 if (layerConns.Count == 0) continue;
-                long layerId = layerConns[0].parent;
+                long layerId = layerConns[0].child;
                 var layerNode = objectsById[layerId];
                 var curveNodeConns = conns.Where(c => c.type == "OO" && c.parent == layerId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationCurveNode").ToList();
                 Console.WriteLine($"Curve nodes for layer: {curveNodeConns.Count}");
