@@ -244,7 +244,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Numerics
     - Methods:
       - void Update(float deltaTime)
-        - Calls: _server.GetEntities, animation.GetBoneTransforms, modelComp.Model.Skeleton.UpdateTransforms
+        - Calls: _server.GetEntities, animation.GetBoneTransforms, modelComp.Model.Skeleton.ComputeFinalTransforms, modelComp.Model.Skeleton.ComputeGlobalTransforms, modelComp.Model.Skeleton.UpdateTransforms
 - File: AssetShader.cs
   - Class: AssetShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
