@@ -23,16 +23,14 @@ uniform int uHasBones;
 uniform mat4 uBoneTransforms[100]; // Adjust max bones as needed
 void main()
 {
-    vec4 pos = vec4(aPosition, 1.0);
-    vec3 norm = aNormal;
-    vec3 tang = aTangent;
+    vec4 totalPosition = vec4(0.0);
+    vec3 totalNormal = vec3(0.0);
+    vec3 totalTangent = vec3(0.0);
+    float totalWeight = 0.0;
     if (uHasBones == 1) {
-        vec4 totalPosition = vec4(0.0);
-        vec3 totalNormal = vec3(0.0);
-        vec3 totalTangent = vec3(0.0);
         for (int i = 0; i < 4; i++) {
             int boneIndex = aBoneIDs[i];
-            if (boneIndex == -1) continue; // Assuming -1 means no bone
+            if (boneIndex == -1) continue;
             mat4 boneTransform = uBoneTransforms[boneIndex];
             vec4 localPosition = boneTransform * vec4(aPosition, 1.0);
             totalPosition += localPosition * aWeights[i];
@@ -40,20 +38,29 @@ void main()
             totalNormal += localNormal * aWeights[i];
             vec3 localTangent = mat3(boneTransform) * aTangent;
             totalTangent += localTangent * aWeights[i];
+            totalWeight += aWeights[i];
         }
-        pos = totalPosition;
-        norm = normalize(totalNormal);
-        tang = normalize(totalTangent);
+        if (totalWeight > 0.0) {
+            totalPosition /= totalWeight;
+            totalNormal = normalize(totalNormal / totalWeight);
+            totalTangent = normalize(totalTangent / totalWeight);
+        } else {
+            totalPosition = vec4(aPosition, 1.0);
+            totalNormal = aNormal;
+            totalTangent = aTangent;
+        }
     } else {
-        pos = vec4(aPosition, 1.0);
+        totalPosition = vec4(aPosition, 1.0);
+        totalNormal = aNormal;
+        totalTangent = aTangent;
     }
-    gl_Position = uProjection * uView * uModel * pos;
-    FragPos = vec3(uModel * pos);
-    Normal = mat3(transpose(inverse(uModel))) * norm;
+    gl_Position = uProjection * uView * uModel * totalPosition;
+    FragPos = vec3(uModel * totalPosition);
+    Normal = mat3(transpose(inverse(uModel))) * totalNormal;
     TexCoord = aTexCoord;
     MaterialIndex = aMaterialIndex;
-    vec3 T = normalize(mat3(uModel) * tang);
-    vec3 N = normalize(mat3(uModel) * norm);
+    vec3 T = normalize(mat3(uModel) * totalTangent);
+    vec3 N = normalize(mat3(uModel) * totalNormal);
     T = normalize(T - dot(T, N) * N);
     vec3 B = cross(N, T);
     TBN = mat3(T, B, N);

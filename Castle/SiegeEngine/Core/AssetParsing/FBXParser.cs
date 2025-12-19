@@ -410,13 +410,13 @@ namespace SiegeEngine.Core.AssetParsing
                                 }
                                 // Bones
                                 var bw = perVertBones[vertIdx];
-                                int b0 = bw.Count > 0 ? bw[0].boneIdx : 0;
+                                int b0 = bw.Count > 0 ? bw[0].boneIdx : -1;
                                 float w0 = bw.Count > 0 ? bw[0].weight : 0f;
-                                int b1 = bw.Count > 1 ? bw[1].boneIdx : 0;
+                                int b1 = bw.Count > 1 ? bw[1].boneIdx : -1;
                                 float w1 = bw.Count > 1 ? bw[1].weight : 0f;
-                                int b2 = bw.Count > 2 ? bw[2].boneIdx : 0;
+                                int b2 = bw.Count > 2 ? bw[2].boneIdx : -1;
                                 float w2 = bw.Count > 2 ? bw[2].weight : 0f;
-                                int b3 = bw.Count > 3 ? bw[3].boneIdx : 0;
+                                int b3 = bw.Count > 3 ? bw[3].boneIdx : -1;
                                 float w3 = bw.Count > 3 ? bw[3].weight : 0f;
                                 expandedVertices.Add(new FBXVertex(x, y, z, nx, ny, nz, u, v, matId, 0, 0, 0, b0, b1, b2, b3, w0, w1, w2, w3));
                             }
@@ -576,6 +576,7 @@ namespace SiegeEngine.Core.AssetParsing
                 var layerNode = objectsById[layerId];
                 var curveNodeConns = conns.Where(c => c.type == "OO" && c.parent == layerId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationCurveNode").ToList();
                 Console.WriteLine($"Curve nodes for layer: {curveNodeConns.Count}");
+                var timeBoneTRS = new Dictionary<float, Dictionary<int, Dictionary<string, Matrix4x4>>>();
                 foreach (var curveNodeConn in curveNodeConns)
                 {
                     long curveNodeId = curveNodeConn.child;
@@ -585,14 +586,19 @@ namespace SiegeEngine.Core.AssetParsing
                     var boneConn = boneConns[0];
                     long boneId = boneConn.parent;
                     if (!boneIndexById.TryGetValue(boneId, out int boneIdx)) continue;
-                    string trs = boneConn.prop; // "T", "R", "S"
+                    string prop = boneConn.prop; // "Lcl Translation", "Lcl Rotation", "Lcl Scaling"
+                    string trsType = "";
+                    if (prop == "Lcl Translation") trsType = "T";
+                    else if (prop == "Lcl Rotation") trsType = "R";
+                    else if (prop == "Lcl Scaling") trsType = "S";
+                    else continue;
                     // Get X, Y, Z curves
                     var curveXConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|X");
                     long curveXId = curveXConn.child;
                     var curveXNode = objectsById.GetValueOrDefault(curveXId);
                     if (curveXNode == null)
                     {
-                        Console.WriteLine($"No curveX for {trs} on bone {boneIdx}");
+                        Console.WriteLine($"No curveX for {trsType} on bone {boneIdx}");
                         continue;
                     }
                     var keyTimeNodeX = curveXNode.children.FirstOrDefault(c => c.Name == "KeyTime");
@@ -600,7 +606,7 @@ namespace SiegeEngine.Core.AssetParsing
                     var keyValueNodeX = curveXNode.children.FirstOrDefault(c => c.Name == "KeyValueFloat");
                     if (keyValueNodeX == null)
                     {
-                        Console.WriteLine($"No KeyValueFloat for curveX {trs} on bone {boneIdx}");
+                        Console.WriteLine($"No KeyValueFloat for curveX {trsType} on bone {boneIdx}");
                     }
                     var keyValuePropX = keyValueNodeX?.properties[0];
                     char typeCodeX = keyValuePropX != null ? keyValuePropX.TypeCode : ' ';
@@ -659,34 +665,58 @@ namespace SiegeEngine.Core.AssetParsing
                         }
                     }
                     if (keyTimes.Length == 0 || keyTimes.Length != (keyValuesX?.Length ?? 0) || keyTimes.Length != (keyValuesY?.Length ?? 0) || keyTimes.Length != (keyValuesZ?.Length ?? 0)) continue;
-                    Console.WriteLine($"Curve for bone {boneIdx} {trs} with {keyTimes.Length} keys");
+                    Console.WriteLine($"Curve for bone {boneIdx} {trsType} with {keyTimes.Length} keys");
                     for (int k = 0; k < keyTimes.Length; k++)
                     {
                         float t = keyTimes[k] / 46186158000f;
-                        Keyframe kf = anim.Keyframes.FirstOrDefault(kf => kf.Time == t);
-                        if (kf == null)
+                        if (!timeBoneTRS.TryGetValue(t, out var boneMats))
                         {
-                            kf = new Keyframe { Time = t, BoneTransforms = Enumerable.Repeat(Matrix4x4.Identity, model.Skeleton.Bones.Count).ToList() };
-                            anim.Keyframes.Add(kf);
+                            boneMats = new Dictionary<int, Dictionary<string, Matrix4x4>>();
+                            timeBoneTRS[t] = boneMats;
+                        }
+                        if (!boneMats.TryGetValue(boneIdx, out var trsMats))
+                        {
+                            trsMats = new Dictionary<string, Matrix4x4>();
+                            boneMats[boneIdx] = trsMats;
                         }
                         Vector3 val = new Vector3(keyValuesX[k], keyValuesY[k], keyValuesZ[k]);
                         Matrix4x4 matPart = Matrix4x4.Identity;
-                        if (trs == "T")
+                        if (trsType == "T")
                         {
                             matPart = Matrix4x4.CreateTranslation(val);
                         }
-                        else if (trs == "R")
+                        else if (trsType == "R")
                         {
                             float rx = val.X * MathF.PI / 180f;
                             float ry = val.Y * MathF.PI / 180f;
                             float rz = val.Z * MathF.PI / 180f;
                             matPart = Matrix4x4.CreateRotationX(rx) * Matrix4x4.CreateRotationY(ry) * Matrix4x4.CreateRotationZ(rz);
                         }
-                        else if (trs == "S")
+                        else if (trsType == "S")
                         {
                             matPart = Matrix4x4.CreateScale(val);
                         }
-                        kf.BoneTransforms[boneIdx] = matPart * kf.BoneTransforms[boneIdx]; // Accumulate, assuming order T R S or parsed order
+                        trsMats[trsType] = matPart;
+                    }
+                }
+                foreach (var kvTime in timeBoneTRS)
+                {
+                    float t = kvTime.Key;
+                    Keyframe kf = anim.Keyframes.FirstOrDefault(kf => kf.Time == t);
+                    if (kf == null)
+                    {
+                        kf = new Keyframe { Time = t, BoneTransforms = Enumerable.Repeat(Matrix4x4.Identity, model.Skeleton.Bones.Count).ToList() };
+                        anim.Keyframes.Add(kf);
+                    }
+                    foreach (var kvBone in kvTime.Value)
+                    {
+                        int boneIdx = kvBone.Key;
+                        var trsMats = kvBone.Value;
+                        Matrix4x4 tMat = trsMats.GetValueOrDefault("T", Matrix4x4.Identity);
+                        Matrix4x4 rMat = trsMats.GetValueOrDefault("R", Matrix4x4.Identity);
+                        Matrix4x4 sMat = trsMats.GetValueOrDefault("S", Matrix4x4.Identity);
+                        Matrix4x4 boneMat = tMat * rMat * sMat;
+                        kf.BoneTransforms[boneIdx] = boneMat;
                     }
                 }
                 anim.Keyframes = anim.Keyframes.OrderBy(kf => kf.Time).ToList();
