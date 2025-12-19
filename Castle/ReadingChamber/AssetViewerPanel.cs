@@ -42,6 +42,7 @@ namespace ReadingChamber
         private bool _firstMouse = true;
         private bool _isPanning = false;
         private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "cube.fbx");
+        private List<string> _animationFiles = new List<string>();
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -72,7 +73,7 @@ namespace ReadingChamber
             {
                 Console.WriteLine("AssetViewerPanel: Failed to get model data");
             }
-            LoadAdditionalAnimations();
+            DiscoverAnimationFiles();
             if (_model != null)
             {
                 // Center model based on bounds
@@ -91,10 +92,9 @@ namespace ReadingChamber
                 _cameraPosition = center + new Vector3(0, -maxExtent * 3.5f, 0);
                 _cameraTarget = center;
                 Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
-                var validAnimations = _model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
-                if (validAnimations.Count > 0)
+                if (_animationFiles.Count > 0)
                 {
-                    _currentAnimation = validAnimations[0].Name;
+                    _currentAnimation = Path.GetFileNameWithoutExtension(_animationFiles[0]);
                 }
             }
             UpdateUIControls();
@@ -103,24 +103,32 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-        private void LoadAdditionalAnimations()
+        private void DiscoverAnimationFiles()
         {
             string fbmDir = Path.Combine(Path.GetDirectoryName(_path), Path.GetFileNameWithoutExtension(_path) + ".fbm");
             if (Directory.Exists(fbmDir))
             {
-                var animFiles = Directory.GetFiles(fbmDir, "*.fbx");
-                foreach (var animPath in animFiles)
-                {
-                    var animForest = FBXParser.Load(animPath);
-                    var animModel = FBXParser.BuildModelFromForest(animForest, true);
-                    foreach (var anim in animModel.Animations)
-                    {
-                        anim.Name = Path.GetFileNameWithoutExtension(animPath) + (animModel.Animations.Count > 1 ? "_" + anim.Name : "");
-                        Console.WriteLine($"Added animation {anim.Name} with {anim.Keyframes.Count} keyframes");
-                    }
-                    _model.Animations.AddRange(animModel.Animations);
-                }
-                Console.WriteLine($"Total animations loaded: {_model.Animations.Count}");
+                _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
+                Console.WriteLine($"Discovered {_animationFiles.Count} animation files");
+            }
+        }
+        private void LoadAnimation(string animPath)
+        {
+            var animForest = FBXParser.Load(animPath);
+            var animModel = FBXParser.BuildModelFromForest(animForest, true);
+            var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+            if (validAnimations.Count > 0)
+            {
+                var anim = validAnimations[0];
+                anim.Name = Path.GetFileNameWithoutExtension(animPath);
+                _model.Animations.Add(anim);
+                _currentAnimation = anim.Name;
+                _time = 0f;
+                Console.WriteLine($"Loaded animation {anim.Name} with {anim.Keyframes.Count} keyframes");
+            }
+            else
+            {
+                Console.WriteLine($"No valid animations found in {animPath}");
             }
         }
         private void UpdateUIControls()
@@ -140,12 +148,10 @@ namespace ReadingChamber
             }
             StringBuilder dynamicSelect = new StringBuilder();
             dynamicSelect.Append("<select id=\"animSelect\" style=\"position: absolute; left: 10px; top: 30px;\">");
-            if (_model != null)
+            foreach (var file in _animationFiles)
             {
-                foreach (var a in _model.Animations.Where(anim => anim.Keyframes.Count > 0))
-                {
-                    dynamicSelect.Append($"<option value=\"{a.Name}\">{a.Name}</option>");
-                }
+                string name = Path.GetFileNameWithoutExtension(file);
+                dynamicSelect.Append($"<option value=\"{file}\">{name}</option>");
             }
             dynamicSelect.Append("</select>");
             string modifiedHtml = baseHtml.Insert(insertIndex, dynamicSelect.ToString());
@@ -163,12 +169,7 @@ namespace ReadingChamber
             string key = Path.GetFileNameWithoutExtension(_path).ToLower();
             if (modelManager.TryGetModel(key, out _model) && modelManager.TryGetModelData(key, out _modelData))
             {
-                LoadAdditionalAnimations();
-                var validAnimations = _model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
-                if (validAnimations.Count > 0)
-                {
-                    _currentAnimation = validAnimations[0].Name;
-                }
+                DiscoverAnimationFiles();
                 UpdateUIControls();
             }
             else
@@ -214,16 +215,10 @@ namespace ReadingChamber
                 if (select != null)
                 {
                     string val = elem.Attributes.GetValueOrDefault("value", string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)));
-                    _currentAnimation = val;
-                    _time = 0f;
-                    foreach (var opt in select.Children.Where(c => c.Tag.ToLower() == "option"))
-                    {
-                        opt.Attributes.Remove("selected");
-                    }
-                    elem.Attributes["selected"] = "";
+                    LoadAnimation(val);
                     select.IsOpen = false;
                     _uiOverlay.RefreshUI();
-                    Console.WriteLine($"Selected animation: {val}");
+                    Console.WriteLine($"Selected and loaded animation: {Path.GetFileNameWithoutExtension(val)}");
                 }
             }
         }
