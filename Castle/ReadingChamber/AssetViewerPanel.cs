@@ -41,7 +41,7 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
+        private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "cube.fbx");
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -150,6 +150,7 @@ namespace ReadingChamber
             dynamicSelect.Append("</select>");
             string modifiedHtml = baseHtml.Insert(insertIndex, dynamicSelect.ToString());
             _uiOverlay.LoadUI(modifiedHtml);
+            var animSelect = _uiOverlay.FindElementById("animSelect");
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
@@ -277,11 +278,10 @@ namespace ReadingChamber
                     var animation = _model.Animations.Find(a => a.Name == _currentAnimation);
                     if (animation != null)
                     {
-                        var transforms = animation.GetBoneTransforms(_time);
-                        if (transforms != null)
-                        {
-                            _model.Skeleton.UpdateTransforms(transforms);
-                        }
+                        var localTransforms = animation.GetBoneTransforms(_time);
+                        var globalTransforms = _model.Skeleton.ComputeGlobalTransforms(localTransforms);
+                        var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
+                        _model.Skeleton.UpdateTransforms(finalTransforms);
                     }
                 }
             }

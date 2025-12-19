@@ -69,6 +69,25 @@ namespace SiegeEngine.Core.AssetParsing
         {
             _currentTransforms = transforms;
         }
+        public Matrix4x4[] ComputeGlobalTransforms(Matrix4x4[] localTransforms)
+        {
+            var globalTransforms = new Matrix4x4[Bones.Count];
+            for (int i = 0; i < Bones.Count; i++)
+            {
+                var parentIndex = Bones[i].ParentIndex;
+                globalTransforms[i] = (parentIndex >= 0 ? globalTransforms[parentIndex] : Matrix4x4.Identity) * localTransforms[i];
+            }
+            return globalTransforms;
+        }
+        public Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
+        {
+            var finalTransforms = new Matrix4x4[Bones.Count];
+            for (int i = 0; i < Bones.Count; i++)
+            {
+                finalTransforms[i] = globalTransforms[i] * Bones[i].BindPose;
+            }
+            return finalTransforms;
+        }
     }
     public class Bone
     {
