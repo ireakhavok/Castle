@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine
+// File: FBXModel.cs
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
@@ -94,6 +96,7 @@ namespace SiegeEngine.Core.AssetParsing
         public string Name { get; set; }
         public Matrix4x4 BindPose { get; set; }
         public int ParentIndex { get; set; }
+        public Matrix4x4 LocalRest { get; set; } = Matrix4x4.Identity;
     }
     public class Animation
     {

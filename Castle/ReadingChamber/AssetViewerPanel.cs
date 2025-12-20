@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetParsing;
+﻿// Folder: ReadingChamber
+// File: AssetViewerPanel.cs
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -32,7 +34,7 @@ namespace ReadingChamber
         private ModelManager.ModelData _modelData;
         private float _time = 0f;
         private string _currentAnimation;
-        private bool _playing = true;
+        private bool _playing = false;
         private ShaderProgram _assetShader;
         private Vector3 _cameraPosition = new Vector3(0, 0, 5);
         private Vector3 _cameraTarget = Vector3.Zero;
@@ -121,6 +123,28 @@ namespace ReadingChamber
             {
                 var anim = validAnimations[0];
                 anim.Name = Path.GetFileNameWithoutExtension(animPath);
+
+                // Remap keyframes to main model's skeleton by bone name
+                Dictionary<string, int> mainBoneIndices = new Dictionary<string, int>();
+                for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+                {
+                    mainBoneIndices[_model.Skeleton.Bones[i].Name] = i;
+                }
+
+                foreach (var kf in anim.Keyframes)
+                {
+                    List<Matrix4x4> newTransforms = Enumerable.Repeat(Matrix4x4.Identity, _model.Skeleton.Bones.Count).ToList();
+                    for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
+                    {
+                        string boneName = animModel.Skeleton.Bones[i].Name;
+                        if (mainBoneIndices.TryGetValue(boneName, out int targetIdx))
+                        {
+                            newTransforms[targetIdx] = kf.BoneTransforms[i];
+                        }
+                    }
+                    kf.BoneTransforms = newTransforms;
+                }
+
                 _model.Animations.Add(anim);
                 _currentAnimation = anim.Name;
                 _time = 0f;

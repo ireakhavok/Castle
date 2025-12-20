@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Rendering;
+﻿// Folder: SiegeEngine
+// File: FBXParser.cs
+using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -95,7 +97,8 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
             // Parse skeleton
-            var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 && ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Root")).ToList();
+            var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
+                ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Root" || (string)n.properties[2].Value == "Null")).ToList();
             Dictionary<long, int> boneIndexById = new Dictionary<long, int>();
             int boneIndex = 0;
             foreach (var modelNode in modelNodes)
@@ -105,6 +108,40 @@ namespace SiegeEngine.Core.AssetParsing
                 string[] nameParts = fullName.Split("::");
                 string name = nameParts.Length > 1 ? nameParts[1] : nameParts[0];
                 Bone bone = new Bone { Name = name, ParentIndex = -1, BindPose = Matrix4x4.Identity };
+                // Parse local rest pose
+                var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
+                Vector3 lclT = Vector3.Zero;
+                Vector3 lclR = Vector3.Zero;
+                Vector3 lclS = Vector3.One;
+                if (props70 != null)
+                {
+                    foreach (var p in props70.children)
+                    {
+                        if (p.Name == "P" && p.properties.Count >= 7)
+                        {
+                            string pname = (string)p.properties[0].Value;
+                            if (pname == "Lcl Translation")
+                            {
+                                lclT = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                            else if (pname == "Lcl Rotation")
+                            {
+                                lclR = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                            else if (pname == "Lcl Scaling")
+                            {
+                                lclS = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                        }
+                    }
+                }
+                float rx = lclR.X * MathF.PI / 180f;
+                float ry = lclR.Y * MathF.PI / 180f;
+                float rz = lclR.Z * MathF.PI / 180f;
+                Matrix4x4 rMat = Matrix4x4.CreateRotationX(rx) * Matrix4x4.CreateRotationY(ry) * Matrix4x4.CreateRotationZ(rz);
+                Matrix4x4 tMat = Matrix4x4.CreateTranslation(lclT);
+                Matrix4x4 sMat = Matrix4x4.CreateScale(lclS);
+                bone.LocalRest = tMat * rMat * sMat;
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = boneIndex++;
             }
@@ -569,10 +606,10 @@ namespace SiegeEngine.Core.AssetParsing
                 model.Animations.Add(anim);
                 Console.WriteLine($"Parsing animation stack {animName}");
                 // Find layer
-                var layerConns = conns.Where(c => c.type == "OO" && c.child == stackId && objectsById.ContainsKey(c.parent) && objectsById[c.parent].Name == "AnimationLayer").ToList();
+                var layerConns = conns.Where(c => c.type == "OO" && c.parent == stackId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationLayer").ToList();
                 Console.WriteLine($"Layers for stack: {layerConns.Count}");
                 if (layerConns.Count == 0) continue;
-                long layerId = layerConns[0].parent;
+                long layerId = layerConns[0].child;
                 var layerNode = objectsById[layerId];
                 var curveNodeConns = conns.Where(c => c.type == "OO" && c.parent == layerId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationCurveNode").ToList();
                 Console.WriteLine($"Curve nodes for layer: {curveNodeConns.Count}");
@@ -705,7 +742,7 @@ namespace SiegeEngine.Core.AssetParsing
                     Keyframe kf = anim.Keyframes.FirstOrDefault(kf => kf.Time == t);
                     if (kf == null)
                     {
-                        kf = new Keyframe { Time = t, BoneTransforms = Enumerable.Repeat(Matrix4x4.Identity, model.Skeleton.Bones.Count).ToList() };
+                        kf = new Keyframe { Time = t, BoneTransforms = model.Skeleton.Bones.Select(b => b.LocalRest).ToList() };
                         anim.Keyframes.Add(kf);
                     }
                     foreach (var kvBone in kvTime.Value)
