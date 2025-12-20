@@ -33,9 +33,15 @@ namespace ReadingChamber
         private FBXModel _model;
         private ModelManager.ModelData _modelData;
         private float _time = 0f;
+        private float _duration = 0f;
         private string _currentAnimation;
         private bool _playing = false;
         private ShaderProgram _assetShader;
+        private VertexBuffer _skeletonBuffer;
+        private ShaderProgram _pointShader;
+        private EditorTextRenderer _textRenderer;
+        private ShaderProgram _textShader;
+        private Matrix4x4[] _currentGlobalTransforms;
         private Vector3 _cameraPosition = new Vector3(0, 0, 5);
         private Vector3 _cameraTarget = Vector3.Zero;
         private Vector3 _cameraUp = Vector3.UnitZ;
@@ -59,6 +65,11 @@ namespace ReadingChamber
         public override void Init()
         {
             base.Init();
+            _skeletonBuffer = new VertexBuffer(_renderContext);
+            _pointShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
+            _textShader = new ShaderProgram(_renderContext, TextShader.VertexShaderSource, TextShader.FragmentShaderSource);
+            _textRenderer = new EditorTextRenderer(_renderContext, _window);
+            _textRenderer.Initialize(_textShader);
             // Initialize shader first
             var modelManager = new ModelManager(renderContext: _renderContext);
             modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
@@ -123,14 +134,12 @@ namespace ReadingChamber
             {
                 var anim = validAnimations[0];
                 anim.Name = Path.GetFileNameWithoutExtension(animPath);
-
                 // Remap keyframes to main model's skeleton by bone name
                 Dictionary<string, int> mainBoneIndices = new Dictionary<string, int>();
                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
                     mainBoneIndices[_model.Skeleton.Bones[i].Name] = i;
                 }
-
                 foreach (var kf in anim.Keyframes)
                 {
                     List<Matrix4x4> newTransforms = Enumerable.Repeat(Matrix4x4.Identity, _model.Skeleton.Bones.Count).ToList();
@@ -144,9 +153,9 @@ namespace ReadingChamber
                     }
                     kf.BoneTransforms = newTransforms;
                 }
-
                 _model.Animations.Add(anim);
                 _currentAnimation = anim.Name;
+                _duration = anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 0f;
                 _time = 0f;
                 Console.WriteLine($"Loaded animation {anim.Name} with {anim.Keyframes.Count} keyframes");
             }
@@ -292,6 +301,10 @@ namespace ReadingChamber
             if (_playing && _model != null)
             {
                 _time += deltaTime;
+                if (_time > _duration)
+                {
+                    _time = 0f;
+                }
                 if (_model.Skeleton != null && _model.Animations.Count > 0)
                 {
                     var animation = _model.Animations.Find(a => a.Name == _currentAnimation);
@@ -299,6 +312,7 @@ namespace ReadingChamber
                     {
                         var localTransforms = animation.GetBoneTransforms(_time);
                         var globalTransforms = _model.Skeleton.ComputeGlobalTransforms(localTransforms);
+                        _currentGlobalTransforms = globalTransforms;
                         var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
                         _model.Skeleton.UpdateTransforms(finalTransforms);
                     }
@@ -309,6 +323,56 @@ namespace ReadingChamber
             {
                 _playing = !_playing;
             }
+            UpdateSkeletonVisualization();
+        }
+        private void UpdateSkeletonVisualization()
+        {
+            if (_model?.Skeleton == null || _currentGlobalTransforms == null) return;
+
+            var globalPositions = new Vector3[_model.Skeleton.Bones.Count];
+
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out _, out Vector3 trans);
+                globalPositions[i] = trans;
+            }
+
+            var vertices = new List<Vertex>();
+            var indices = new List<uint>();
+            uint idx = 0;
+
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                if (_model.Skeleton.Bones[i].ParentIndex >= 0)
+                {
+                    int parent = _model.Skeleton.Bones[i].ParentIndex;
+                    vertices.Add(new Vertex(globalPositions[parent].X, globalPositions[parent].Y, globalPositions[parent].Z, 1, 0, 0, 1));
+                    vertices.Add(new Vertex(globalPositions[i].X, globalPositions[i].Y, globalPositions[i].Z, 0, 1, 0, 1));
+                    indices.Add(idx);
+                    indices.Add(idx + 1);
+                    idx += 2;
+                }
+            }
+
+            _skeletonBuffer.UpdateCustom(vertices, indices);
+        }
+        private Vector3 ToEuler(Quaternion q)
+        {
+            Vector3 euler = new Vector3();
+
+            float sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
+            float cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
+            euler.X = MathF.Atan2(sinr_cosp, cosr_cosp);
+
+            float sinp = MathF.Sqrt(1 + 2 * (q.W * q.Y - q.X * q.Z));
+            float cosp = MathF.Sqrt(1 - 2 * (q.W * q.Y - q.X * q.Z));
+            euler.Y = 2 * MathF.Atan2(sinp, cosp) - MathF.PI / 2;
+
+            float siny_cosp = 2 * (q.W * q.Z + q.X * q.Y);
+            float cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
+            euler.Z = MathF.Atan2(siny_cosp, cosy_cosp);
+
+            return euler * (180f / MathF.PI);
         }
         public override void Render()
         {
@@ -376,6 +440,12 @@ namespace ReadingChamber
                     Console.WriteLine($"AssetViewerPanel: OpenGL error after draw: {error}");
                 }
             }
+            // Render skeleton
+            _pointShader.Use();
+            _pointShader.SetMatrix4("uView", view);
+            _pointShader.SetMatrix4("uProjection", projection);
+            _skeletonBuffer.Bind();
+            _renderContext.DrawElements(_renderContext.Enums.Lines, _skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, (void*)0);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
@@ -385,6 +455,20 @@ namespace ReadingChamber
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
             // Render UI overlay
             _uiOverlay.Render();
+            // Render bone info text
+            float currentY = TitleHeight + 10;
+            if (_model?.Skeleton != null && _currentGlobalTransforms != null)
+            {
+                for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+                {
+                    if (currentY > Size.Y - 20) break; // Prevent overflow
+                    Matrix4x4.Decompose(_currentGlobalTransforms[i], out Vector3 scale, out Quaternion rot, out Vector3 pos);
+                    Vector3 euler = ToEuler(rot);
+                    string info = $"{_model.Skeleton.Bones[i].Name}: Pos({pos.X:F2},{pos.Y:F2},{pos.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2})";
+                    _textRenderer.RenderText(info, 10, currentY, (int)Size.X, (int)Size.Y, 12f);
+                    currentY += 15;
+                }
+            }
             // Render 2px border
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);

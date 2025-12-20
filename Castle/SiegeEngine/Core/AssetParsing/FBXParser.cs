@@ -138,7 +138,7 @@ namespace SiegeEngine.Core.AssetParsing
                 float rx = lclR.X * MathF.PI / 180f;
                 float ry = lclR.Y * MathF.PI / 180f;
                 float rz = lclR.Z * MathF.PI / 180f;
-                Matrix4x4 rMat = Matrix4x4.CreateRotationX(rx) * Matrix4x4.CreateRotationY(ry) * Matrix4x4.CreateRotationZ(rz);
+                Matrix4x4 rMat = Matrix4x4.CreateRotationZ(rz) * Matrix4x4.CreateRotationY(ry) * Matrix4x4.CreateRotationX(rx);
                 Matrix4x4 tMat = Matrix4x4.CreateTranslation(lclT);
                 Matrix4x4 sMat = Matrix4x4.CreateScale(lclS);
                 bone.LocalRest = tMat * rMat * sMat;
@@ -727,7 +727,7 @@ namespace SiegeEngine.Core.AssetParsing
                             float rx = val.X * MathF.PI / 180f;
                             float ry = val.Y * MathF.PI / 180f;
                             float rz = val.Z * MathF.PI / 180f;
-                            matPart = Matrix4x4.CreateRotationX(rx) * Matrix4x4.CreateRotationY(ry) * Matrix4x4.CreateRotationZ(rz);
+                            matPart = Matrix4x4.CreateRotationZ(rz) * Matrix4x4.CreateRotationY(ry) * Matrix4x4.CreateRotationX(rx);
                         }
                         else if (trsType == "S")
                         {
@@ -757,7 +757,15 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                 }
                 anim.Keyframes = anim.Keyframes.OrderBy(kf => kf.Time).ToList();
-                Console.WriteLine($"Finished parsing animation {anim.Name} with {anim.Keyframes.Count} keyframes");
+                if (anim.Keyframes.Count > 0)
+                {
+                    float duration = anim.Keyframes.Last().Time;
+                    Console.WriteLine($"Finished parsing animation {anim.Name} with {anim.Keyframes.Count} keyframes, duration: {duration} seconds");
+                }
+                else
+                {
+                    Console.WriteLine($"Finished parsing animation {anim.Name} with 0 keyframes");
+                }
             }
             return model;
         }

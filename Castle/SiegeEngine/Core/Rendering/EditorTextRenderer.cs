@@ -1,8 +1,9 @@
-﻿using System;
+﻿// Folder: SiegeEngine
+// File: EditorTextRenderer.cs
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.ContextManagement;
-
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class EditorTextRenderer : IDisposable
@@ -192,7 +193,6 @@ namespace SiegeEngine.Core.Rendering
                     //Console.WriteLine($"EditorTextRenderer: No texture for char '{c}'");
                 }
                 _shaderProgram.SetMatrix4("uTransform", transform);
-                _shaderProgram.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
                 //Console.WriteLine($"EditorTextRenderer: Set uniforms for char '{c}', uColor: ({color.X}, {color.Y}, {color.Z}, {color.W})");
                 _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
                 int error = _renderContext.GetError();
