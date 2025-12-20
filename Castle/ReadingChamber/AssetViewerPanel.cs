@@ -329,12 +329,14 @@ namespace ReadingChamber
         {
             if (_model?.Skeleton == null || _currentGlobalTransforms == null) return;
 
+            Matrix4x4 transformation = Matrix4x4.CreateRotationZ(MathF.PI) * Matrix4x4.CreateScale(0.1f);
+
             var globalPositions = new Vector3[_model.Skeleton.Bones.Count];
 
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out _, out Vector3 trans);
-                globalPositions[i] = trans;
+                globalPositions[i] = Vector3.Transform(trans, transformation);
             }
 
             var vertices = new List<Vertex>();
