@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine
-// File: FBXParser.cs
-using SiegeEngine.Core.Rendering;
+﻿using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -96,6 +94,7 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                 }
             }
+            float modelScale = 1f;
             // Parse skeleton
             var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
                 ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Root" || (string)n.properties[2].Value == "Null")).ToList();
@@ -119,7 +118,7 @@ namespace SiegeEngine.Core.AssetParsing
                             string pname = (string)p.properties[0].Value;
                             if (pname == "Lcl Translation")
                             {
-                                bone.LclTranslation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                bone.LclTranslation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
                             }
                             else if (pname == "Lcl Rotation")
                             {
@@ -139,19 +138,19 @@ namespace SiegeEngine.Core.AssetParsing
                             }
                             else if (pname == "RotationPivot")
                             {
-                                bone.RotationPivot = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                bone.RotationPivot = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
                             }
                             else if (pname == "RotationOffset")
                             {
-                                bone.RotationOffset = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                bone.RotationOffset = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
                             }
                             else if (pname == "ScalingPivot")
                             {
-                                bone.ScalingPivot = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                bone.ScalingPivot = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
                             }
                             else if (pname == "ScalingOffset")
                             {
-                                bone.ScalingOffset = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                bone.ScalingOffset = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
                             }
                             else if (pname == "RotationOrder" && p.properties.Count >= 5)
                             {
@@ -172,6 +171,19 @@ namespace SiegeEngine.Core.AssetParsing
                     int childIdx = boneIndexById[conn.child];
                     int parentIdx = boneIndexById[conn.parent];
                     model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
+                }
+            }
+            // Add root rotation
+            Matrix4x4 rootRotX = Matrix4x4.CreateRotationX(MathF.PI / 2);
+            Matrix4x4 rootRotY = Matrix4x4.CreateRotationY(MathF.PI);
+            Matrix4x4 rootRot = rootRotX * rootRotY;
+            List<int> rootIndices = new List<int>();
+            for (int i = 0; i < model.Skeleton.Bones.Count; i++)
+            {
+                if (model.Skeleton.Bones[i].ParentIndex == -1)
+                {
+                    rootIndices.Add(i);
+                    model.Skeleton.Bones[i].LocalRest = rootRot * model.Skeleton.Bones[i].LocalRest;
                 }
             }
             if (!onlyAnimations)
@@ -362,9 +374,9 @@ namespace SiegeEngine.Core.AssetParsing
                             for (int k = 0; k < tempPoly.Count; k++)
                             {
                                 int vertIdx = tempPoly[k];
-                                float x = (float)vertsD[vertIdx * 3];
-                                float y = (float)vertsD[vertIdx * 3 + 1];
-                                float z = (float)vertsD[vertIdx * 3 + 2];
+                                float x = (float)vertsD[vertIdx * 3] * modelScale;
+                                float y = (float)vertsD[vertIdx * 3 + 1] * modelScale;
+                                float z = (float)vertsD[vertIdx * 3 + 2] * modelScale;
                                 // Normal
                                 float nx = 0f, ny = 0f, nz = 1f; // Default
                                 if (norms != null)
@@ -735,7 +747,14 @@ namespace SiegeEngine.Core.AssetParsing
                             trsVals = new Dictionary<string, Vector3>();
                             boneTRS[boneIdx] = trsVals;
                         }
-                        Vector3 val = new Vector3(keyValuesX[k], keyValuesY[k], keyValuesZ[k]);
+                        float vx = keyValuesX != null ? keyValuesX[k] : 0f;
+                        float vy = keyValuesY != null ? keyValuesY[k] : 0f;
+                        float vz = keyValuesZ != null ? keyValuesZ[k] : 0f;
+                        Vector3 val = new Vector3(vx, vy, vz);
+                        if (trsType == "T")
+                        {
+                            val *= modelScale;
+                        }
                         trsVals[trsType] = val;
                     }
                 }
@@ -760,6 +779,10 @@ namespace SiegeEngine.Core.AssetParsing
                         Vector3? animR = trsVals.ContainsKey("R") ? (Vector3?)trsVals["R"] : null;
                         Vector3? animS = trsVals.ContainsKey("S") ? (Vector3?)trsVals["S"] : null;
                         Matrix4x4 local = model.Skeleton.Bones[boneIdx].ComputeLocal(animT, animR, animS);
+                        if (rootIndices.Contains(boneIdx))
+                        {
+                            local = rootRot * local;
+                        }
                         kf.BoneTransforms[boneIdx] = local;
                     }
                 }
