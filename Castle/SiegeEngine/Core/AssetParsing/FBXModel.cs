@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public class FBXModel
@@ -112,22 +113,21 @@ namespace SiegeEngine.Core.AssetParsing
             Vector3 useT = t ?? LclTranslation;
             Vector3 useR = r ?? LclRotation;
             Vector3 useS = s ?? LclScaling;
-
-            Matrix4x4 MT = Matrix4x4.CreateTranslation(useT);
-            Matrix4x4 MRo = Matrix4x4.CreateTranslation(RotationOffset);
-            Matrix4x4 MRp = Matrix4x4.CreateTranslation(RotationPivot);
-            Matrix4x4 MIrp = Matrix4x4.CreateTranslation(-RotationPivot);
-            Matrix4x4 MSo = Matrix4x4.CreateTranslation(ScalingOffset);
-            Matrix4x4 MSp = Matrix4x4.CreateTranslation(ScalingPivot);
-            Matrix4x4 MISp = Matrix4x4.CreateTranslation(-ScalingPivot);
-            Matrix4x4 MS = Matrix4x4.CreateScale(useS);
-
-            Matrix4x4 MR = CreateFromEuler(useR, RotationOrder);
-            Matrix4x4 MPre = CreateFromEuler(PreRotation, RotationOrder);
-            Matrix4x4 MPost = CreateFromEuler(PostRotation, RotationOrder);
-
-            // Order: MISp * MS * MSp * MSo * MIrp * MPost * MR * MPre * MRp * MRo * MT
-            Matrix4x4 local = MISp * MS * MSp * MSo * MIrp * MPost * MR * MPre * MRp * MRo * MT;
+            Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
+            Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
+            Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
+            Matrix4x4 invRp = Matrix4x4.CreateTranslation(-RotationPivot);
+            Matrix4x4 Soff = Matrix4x4.CreateTranslation(ScalingOffset);
+            Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);
+            Matrix4x4 invSp = Matrix4x4.CreateTranslation(-ScalingPivot);
+            Matrix4x4 S = Matrix4x4.CreateScale(useS);
+            Matrix4x4 Pre = CreateFromEuler(PreRotation, 0); // Always XYZ
+            Matrix4x4 R = CreateFromEuler(useR, RotationOrder);
+            Matrix4x4 Post = CreateFromEuler(PostRotation, 0); // Always XYZ
+            Matrix4x4 invPost;
+            Matrix4x4.Invert(Post, out invPost);
+            // FBX order: T * Roff * Rp * Pre * R * inv(Post) * inv(Rp) * Soff * Sp * S * inv(Sp)
+            Matrix4x4 local = T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp;
             return local;
         }
         private Matrix4x4 CreateFromEuler(Vector3 degrees, int order)
@@ -135,11 +135,9 @@ namespace SiegeEngine.Core.AssetParsing
             float rx = degrees.X * MathF.PI / 180f;
             float ry = degrees.Y * MathF.PI / 180f;
             float rz = degrees.Z * MathF.PI / 180f;
-
             Matrix4x4 mx = Matrix4x4.CreateRotationX(rx);
             Matrix4x4 my = Matrix4x4.CreateRotationY(ry);
             Matrix4x4 mz = Matrix4x4.CreateRotationZ(rz);
-
             switch (order)
             {
                 case 0: // eEulerXYZ
@@ -177,18 +175,7 @@ namespace SiegeEngine.Core.AssetParsing
                 return Keyframes[0].BoneTransforms.ToArray();
             }
             time = time % duration;
-            int lowerIndex = -1;
-            for (int i = 0; i < Keyframes.Count; i++)
-            {
-                if (Keyframes[i].Time <= time)
-                {
-                    lowerIndex = i;
-                }
-                else
-                {
-                    break;
-                }
-            }
+            int lowerIndex = Keyframes.FindLastIndex(kf => kf.Time <= time);
             if (lowerIndex == -1)
             {
                 return Keyframes[0].BoneTransforms.ToArray();
@@ -204,7 +191,12 @@ namespace SiegeEngine.Core.AssetParsing
             Matrix4x4[] interpolated = new Matrix4x4[numBones];
             for (int b = 0; b < numBones; b++)
             {
-                interpolated[b] = Matrix4x4.Lerp(lower.BoneTransforms[b], upper.BoneTransforms[b], factor);
+                Matrix4x4.Decompose(lower.BoneTransforms[b], out Vector3 lScale, out Quaternion lRot, out Vector3 lTrans);
+                Matrix4x4.Decompose(upper.BoneTransforms[b], out Vector3 uScale, out Quaternion uRot, out Vector3 uTrans);
+                Vector3 iTrans = Vector3.Lerp(lTrans, uTrans, factor);
+                Quaternion iRot = Quaternion.Slerp(lRot, uRot, factor);
+                Vector3 iScale = Vector3.Lerp(lScale, uScale, factor);
+                interpolated[b] = Matrix4x4.CreateScale(iScale) * Matrix4x4.CreateFromQuaternion(iRot) * Matrix4x4.CreateTranslation(iTrans);
             }
             return interpolated;
         }

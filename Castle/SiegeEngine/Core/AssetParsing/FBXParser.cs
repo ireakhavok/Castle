@@ -429,6 +429,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 if (isRoot)
                                 {
                                     tl_remap = rootRot * tl_remap;
+                                    t_remap = rootRot * t_remap;
                                 }
                                 // Compute invBind
                                 if (Matrix4x4.Invert(tl_remap, out var invTl))
