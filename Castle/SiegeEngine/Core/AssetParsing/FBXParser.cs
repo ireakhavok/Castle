@@ -108,11 +108,8 @@ namespace SiegeEngine.Core.AssetParsing
                 string[] nameParts = fullName.Split("::");
                 string name = nameParts.Length > 1 ? nameParts[1] : nameParts[0];
                 Bone bone = new Bone { Name = name, ParentIndex = -1, BindPose = Matrix4x4.Identity };
-                // Parse local rest pose
+                // Parse properties
                 var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
-                Vector3 lclT = Vector3.Zero;
-                Vector3 lclR = Vector3.Zero;
-                Vector3 lclS = Vector3.One;
                 if (props70 != null)
                 {
                     foreach (var p in props70.children)
@@ -122,26 +119,48 @@ namespace SiegeEngine.Core.AssetParsing
                             string pname = (string)p.properties[0].Value;
                             if (pname == "Lcl Translation")
                             {
-                                lclT = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                bone.LclTranslation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
                             }
                             else if (pname == "Lcl Rotation")
                             {
-                                lclR = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                bone.LclRotation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
                             }
                             else if (pname == "Lcl Scaling")
                             {
-                                lclS = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                bone.LclScaling = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                            else if (pname == "PreRotation")
+                            {
+                                bone.PreRotation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                            else if (pname == "PostRotation")
+                            {
+                                bone.PostRotation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                            else if (pname == "RotationPivot")
+                            {
+                                bone.RotationPivot = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                            else if (pname == "RotationOffset")
+                            {
+                                bone.RotationOffset = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                            else if (pname == "ScalingPivot")
+                            {
+                                bone.ScalingPivot = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                            else if (pname == "ScalingOffset")
+                            {
+                                bone.ScalingOffset = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                            }
+                            else if (pname == "RotationOrder" && p.properties.Count >= 5)
+                            {
+                                bone.RotationOrder = Convert.ToInt32(p.properties[4].Value);
                             }
                         }
                     }
                 }
-                float rx = lclR.X * MathF.PI / 180f;
-                float ry = lclR.Y * MathF.PI / 180f;
-                float rz = lclR.Z * MathF.PI / 180f;
-                Matrix4x4 rMat = Matrix4x4.CreateRotationZ(rz) * Matrix4x4.CreateRotationY(ry) * Matrix4x4.CreateRotationX(rx);
-                Matrix4x4 tMat = Matrix4x4.CreateTranslation(lclT);
-                Matrix4x4 sMat = Matrix4x4.CreateScale(lclS);
-                bone.LocalRest = tMat * rMat * sMat;
+                bone.LocalRest = bone.ComputeLocal();
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = boneIndex++;
             }
@@ -613,7 +632,7 @@ namespace SiegeEngine.Core.AssetParsing
                 var layerNode = objectsById[layerId];
                 var curveNodeConns = conns.Where(c => c.type == "OO" && c.parent == layerId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationCurveNode").ToList();
                 Console.WriteLine($"Curve nodes for layer: {curveNodeConns.Count}");
-                var timeBoneTRS = new Dictionary<float, Dictionary<int, Dictionary<string, Matrix4x4>>>();
+                var timeBoneTRS = new Dictionary<float, Dictionary<int, Dictionary<string, Vector3>>>();
                 foreach (var curveNodeConn in curveNodeConns)
                 {
                     long curveNodeId = curveNodeConn.child;
@@ -706,54 +725,42 @@ namespace SiegeEngine.Core.AssetParsing
                     for (int k = 0; k < keyTimes.Length; k++)
                     {
                         float t = keyTimes[k] / 46186158000f;
-                        if (!timeBoneTRS.TryGetValue(t, out var boneMats))
+                        if (!timeBoneTRS.TryGetValue(t, out var boneTRS))
                         {
-                            boneMats = new Dictionary<int, Dictionary<string, Matrix4x4>>();
-                            timeBoneTRS[t] = boneMats;
+                            boneTRS = new Dictionary<int, Dictionary<string, Vector3>>();
+                            timeBoneTRS[t] = boneTRS;
                         }
-                        if (!boneMats.TryGetValue(boneIdx, out var trsMats))
+                        if (!boneTRS.TryGetValue(boneIdx, out var trsVals))
                         {
-                            trsMats = new Dictionary<string, Matrix4x4>();
-                            boneMats[boneIdx] = trsMats;
+                            trsVals = new Dictionary<string, Vector3>();
+                            boneTRS[boneIdx] = trsVals;
                         }
                         Vector3 val = new Vector3(keyValuesX[k], keyValuesY[k], keyValuesZ[k]);
-                        Matrix4x4 matPart = Matrix4x4.Identity;
-                        if (trsType == "T")
-                        {
-                            matPart = Matrix4x4.CreateTranslation(val);
-                        }
-                        else if (trsType == "R")
-                        {
-                            float rx = val.X * MathF.PI / 180f;
-                            float ry = val.Y * MathF.PI / 180f;
-                            float rz = val.Z * MathF.PI / 180f;
-                            matPart = Matrix4x4.CreateRotationZ(rz) * Matrix4x4.CreateRotationY(ry) * Matrix4x4.CreateRotationX(rx);
-                        }
-                        else if (trsType == "S")
-                        {
-                            matPart = Matrix4x4.CreateScale(val);
-                        }
-                        trsMats[trsType] = matPart;
+                        trsVals[trsType] = val;
                     }
                 }
                 foreach (var kvTime in timeBoneTRS)
                 {
                     float t = kvTime.Key;
-                    Keyframe kf = anim.Keyframes.FirstOrDefault(kf => kf.Time == t);
+                    Keyframe kf = anim.Keyframes.FirstOrDefault(existingKf => existingKf.Time == t);
                     if (kf == null)
                     {
-                        kf = new Keyframe { Time = t, BoneTransforms = model.Skeleton.Bones.Select(b => b.LocalRest).ToList() };
+                        kf = new Keyframe { Time = t, BoneTransforms = new List<Matrix4x4>() };
+                        for (int i = 0; i < model.Skeleton.Bones.Count; i++)
+                        {
+                            kf.BoneTransforms.Add(model.Skeleton.Bones[i].LocalRest);
+                        }
                         anim.Keyframes.Add(kf);
                     }
                     foreach (var kvBone in kvTime.Value)
                     {
                         int boneIdx = kvBone.Key;
-                        var trsMats = kvBone.Value;
-                        Matrix4x4 tMat = trsMats.GetValueOrDefault("T", Matrix4x4.Identity);
-                        Matrix4x4 rMat = trsMats.GetValueOrDefault("R", Matrix4x4.Identity);
-                        Matrix4x4 sMat = trsMats.GetValueOrDefault("S", Matrix4x4.Identity);
-                        Matrix4x4 boneMat = tMat * rMat * sMat;
-                        kf.BoneTransforms[boneIdx] = boneMat;
+                        var trsVals = kvBone.Value;
+                        Vector3? animT = trsVals.ContainsKey("T") ? (Vector3?)trsVals["T"] : null;
+                        Vector3? animR = trsVals.ContainsKey("R") ? (Vector3?)trsVals["R"] : null;
+                        Vector3? animS = trsVals.ContainsKey("S") ? (Vector3?)trsVals["S"] : null;
+                        Matrix4x4 local = model.Skeleton.Bones[boneIdx].ComputeLocal(animT, animR, animS);
+                        kf.BoneTransforms[boneIdx] = local;
                     }
                 }
                 anim.Keyframes = anim.Keyframes.OrderBy(kf => kf.Time).ToList();
