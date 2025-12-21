@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Rendering;
+﻿// Folder: SiegeEngine
+// File: FBXParser.cs
+using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -94,7 +96,48 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                 }
             }
-            float modelScale = 1f;
+            // Parse GlobalSettings
+            var globalSettings = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
+            int upAxis = 1; // Y
+            int upAxisSign = 1;
+            int frontAxis = 2; // Z
+            int frontAxisSign = 1;
+            int coordAxis = 0; // X
+            int coordAxisSign = 1;
+            float unitScaleFactor = 1f;
+            float originalUnitScaleFactor = 1f;
+            if (globalSettings != null)
+            {
+                var props70 = globalSettings.children.FirstOrDefault(c => c.Name == "Properties70");
+                if (props70 != null)
+                {
+                    foreach (var p in props70.children)
+                    {
+                        if (p.Name == "P" && p.properties.Count >= 5)
+                        {
+                            string pname = (string)p.properties[0].Value;
+                            if (pname == "UpAxis") upAxis = Convert.ToInt32(p.properties[4].Value);
+                            else if (pname == "UpAxisSign") upAxisSign = Convert.ToInt32(p.properties[4].Value);
+                            else if (pname == "FrontAxis") frontAxis = Convert.ToInt32(p.properties[4].Value);
+                            else if (pname == "FrontAxisSign") frontAxisSign = Convert.ToInt32(p.properties[4].Value);
+                            else if (pname == "CoordAxis") coordAxis = Convert.ToInt32(p.properties[4].Value);
+                            else if (pname == "CoordAxisSign") coordAxisSign = Convert.ToInt32(p.properties[4].Value);
+                            else if (pname == "UnitScaleFactor") unitScaleFactor = Convert.ToSingle(p.properties[4].Value);
+                            else if (pname == "OriginalUnitScaleFactor") originalUnitScaleFactor = Convert.ToSingle(p.properties[4].Value);
+                        }
+                    }
+                }
+            }
+            float modelScale = unitScaleFactor / 10f; // cm to m
+            // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Y-up Z-forward)
+            int[] sourceToTarget = new int[3];
+            sourceToTarget[coordAxis] = 0; // Source coord -> target X
+            sourceToTarget[upAxis] = 2; // Source up -> target Y
+            sourceToTarget[frontAxis] = 1; // Source front -> target Z
+            int[] signs = new int[3];
+            signs[coordAxis] = coordAxisSign;
+            signs[upAxis] = upAxisSign;
+            signs[frontAxis] = -frontAxisSign;
             // Parse skeleton
             var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
                 ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Root" || (string)n.properties[2].Value == "Null")).ToList();
@@ -118,43 +161,80 @@ namespace SiegeEngine.Core.AssetParsing
                             string pname = (string)p.properties[0].Value;
                             if (pname == "Lcl Translation")
                             {
-                                bone.LclTranslation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
+                                float tx = Convert.ToSingle(p.properties[4].Value);
+                                float ty = Convert.ToSingle(p.properties[5].Value);
+                                float tz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 t_source = new Vector3(tx, ty, tz);
+                                bone.LclTranslation = RemapVector(t_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "Lcl Rotation")
                             {
-                                bone.LclRotation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                float rx = Convert.ToSingle(p.properties[4].Value);
+                                float ry = Convert.ToSingle(p.properties[5].Value);
+                                float rz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 r_source = new Vector3(rx, ry, rz);
+                                bone.LclRotation = RemapRotation(r_source, sourceToTarget, signs);
                             }
                             else if (pname == "Lcl Scaling")
                             {
-                                bone.LclScaling = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                float sx = Convert.ToSingle(p.properties[4].Value);
+                                float sy = Convert.ToSingle(p.properties[5].Value);
+                                float sz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 s_source = new Vector3(sx, sy, sz);
+                                bone.LclScaling = RemapScale(s_source, sourceToTarget, signs);
                             }
                             else if (pname == "PreRotation")
                             {
-                                bone.PreRotation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                float prx = Convert.ToSingle(p.properties[4].Value);
+                                float pry = Convert.ToSingle(p.properties[5].Value);
+                                float prz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 pr_source = new Vector3(prx, pry, prz);
+                                bone.PreRotation = RemapRotation(pr_source, sourceToTarget, signs);
                             }
                             else if (pname == "PostRotation")
                             {
-                                bone.PostRotation = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value));
+                                float pox = Convert.ToSingle(p.properties[4].Value);
+                                float poy = Convert.ToSingle(p.properties[5].Value);
+                                float poz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 po_source = new Vector3(pox, poy, poz);
+                                bone.PostRotation = RemapRotation(po_source, sourceToTarget, signs);
                             }
                             else if (pname == "RotationPivot")
                             {
-                                bone.RotationPivot = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
+                                float rpx = Convert.ToSingle(p.properties[4].Value);
+                                float rpy = Convert.ToSingle(p.properties[5].Value);
+                                float rpz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 rp_source = new Vector3(rpx, rpy, rpz);
+                                bone.RotationPivot = RemapVector(rp_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "RotationOffset")
                             {
-                                bone.RotationOffset = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
+                                float rox = Convert.ToSingle(p.properties[4].Value);
+                                float roy = Convert.ToSingle(p.properties[5].Value);
+                                float roz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 ro_source = new Vector3(rox, roy, roz);
+                                bone.RotationOffset = RemapVector(ro_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "ScalingPivot")
                             {
-                                bone.ScalingPivot = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
+                                float spx = Convert.ToSingle(p.properties[4].Value);
+                                float spy = Convert.ToSingle(p.properties[5].Value);
+                                float spz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 sp_source = new Vector3(spx, spy, spz);
+                                bone.ScalingPivot = RemapVector(sp_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "ScalingOffset")
                             {
-                                bone.ScalingOffset = new Vector3(Convert.ToSingle(p.properties[4].Value), Convert.ToSingle(p.properties[5].Value), Convert.ToSingle(p.properties[6].Value)) * modelScale;
+                                float sox = Convert.ToSingle(p.properties[4].Value);
+                                float soy = Convert.ToSingle(p.properties[5].Value);
+                                float soz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 so_source = new Vector3(sox, soy, soz);
+                                bone.ScalingOffset = RemapVector(so_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "RotationOrder" && p.properties.Count >= 5)
                             {
-                                bone.RotationOrder = Convert.ToInt32(p.properties[4].Value);
+                                int order_source = Convert.ToInt32(p.properties[4].Value);
+                                bone.RotationOrder = RemapRotationOrder(order_source, sourceToTarget);
                             }
                         }
                     }
@@ -173,10 +253,12 @@ namespace SiegeEngine.Core.AssetParsing
                     model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
                 }
             }
-            // Add root rotation
-            Matrix4x4 rootRotX = Matrix4x4.CreateRotationX(MathF.PI / 2);
-            Matrix4x4 rootRotY = Matrix4x4.CreateRotationY(MathF.PI);
-            Matrix4x4 rootRot = rootRotX * rootRotY;
+            // Apply root rotation if source is Z-up
+            Matrix4x4 rootRot = Matrix4x4.Identity;
+            if (upAxis == 2)
+            {
+                rootRot = Matrix4x4.CreateRotationX(MathF.PI / 2);
+            }
             List<int> rootIndices = new List<int>();
             for (int i = 0; i < model.Skeleton.Bones.Count; i++)
             {
@@ -374,11 +456,13 @@ namespace SiegeEngine.Core.AssetParsing
                             for (int k = 0; k < tempPoly.Count; k++)
                             {
                                 int vertIdx = tempPoly[k];
-                                float x = (float)vertsD[vertIdx * 3] * modelScale;
-                                float y = (float)vertsD[vertIdx * 3 + 1] * modelScale;
-                                float z = (float)vertsD[vertIdx * 3 + 2] * modelScale;
+                                float x = (float)vertsD[vertIdx * 3];
+                                float y = (float)vertsD[vertIdx * 3 + 1];
+                                float z = (float)vertsD[vertIdx * 3 + 2];
+                                Vector3 pos_source = new Vector3(x, y, z);
+                                Vector3 pos = RemapVector(pos_source, sourceToTarget, signs) * modelScale;
                                 // Normal
-                                float nx = 0f, ny = 0f, nz = 1f; // Default
+                                Vector3 normal_source = new Vector3(0f, 0f, 1f); // Default
                                 if (norms != null)
                                 {
                                     int nIdx;
@@ -412,11 +496,15 @@ namespace SiegeEngine.Core.AssetParsing
                                     }
                                     else
                                     {
-                                        nx = (float)norms[nIdx * 3];
-                                        ny = (float)norms[nIdx * 3 + 1];
-                                        nz = (float)norms[nIdx * 3 + 2];
+                                        float nx = (float)norms[nIdx * 3];
+                                        float ny = (float)norms[nIdx * 3 + 1];
+                                        float nz = (float)norms[nIdx * 3 + 2];
+                                        normal_source = new Vector3(nx, ny, nz);
                                     }
                                 }
+                                Vector3 normal = RemapVector(normal_source, sourceToTarget, signs);
+                                if (normal.LengthSquared() > 0)
+                                    normal = Vector3.Normalize(normal);
                                 // UV
                                 float u = 0f, v = 0f;
                                 if (uvs != null)
@@ -486,7 +574,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 float w2 = bw.Count > 2 ? bw[2].weight : 0f;
                                 int b3 = bw.Count > 3 ? bw[3].boneIdx : -1;
                                 float w3 = bw.Count > 3 ? bw[3].weight : 0f;
-                                expandedVertices.Add(new FBXVertex(x, y, z, nx, ny, nz, u, v, matId, 0, 0, 0, b0, b1, b2, b3, w0, w1, w2, w3));
+                                expandedVertices.Add(new FBXVertex(pos.X, pos.Y, pos.Z, normal.X, normal.Y, normal.Z, u, v, matId, 0, 0, 0, b0, b1, b2, b3, w0, w1, w2, w3));
                             }
                             currentIndex += tempPoly.Count;
                             tempPoly.Clear();
@@ -750,10 +838,23 @@ namespace SiegeEngine.Core.AssetParsing
                         float vx = keyValuesX != null ? keyValuesX[k] : 0f;
                         float vy = keyValuesY != null ? keyValuesY[k] : 0f;
                         float vz = keyValuesZ != null ? keyValuesZ[k] : 0f;
-                        Vector3 val = new Vector3(vx, vy, vz);
+                        Vector3 val_source = new Vector3(vx, vy, vz);
+                        Vector3 val;
                         if (trsType == "T")
                         {
-                            val *= modelScale;
+                            val = RemapVector(val_source, sourceToTarget, signs) * modelScale;
+                        }
+                        else if (trsType == "R")
+                        {
+                            val = RemapRotation(val_source, sourceToTarget, signs);
+                        }
+                        else if (trsType == "S")
+                        {
+                            val = RemapScale(val_source, sourceToTarget, signs);
+                        }
+                        else
+                        {
+                            val = val_source;
                         }
                         trsVals[trsType] = val;
                     }
@@ -779,7 +880,7 @@ namespace SiegeEngine.Core.AssetParsing
                         Vector3? animR = trsVals.ContainsKey("R") ? (Vector3?)trsVals["R"] : null;
                         Vector3? animS = trsVals.ContainsKey("S") ? (Vector3?)trsVals["S"] : null;
                         Matrix4x4 local = model.Skeleton.Bones[boneIdx].ComputeLocal(animT, animR, animS);
-                        if (rootIndices.Contains(boneIdx))
+                        if (rootIndices.Contains(boneIdx) && upAxis == 2)
                         {
                             local = rootRot * local;
                         }
@@ -797,7 +898,101 @@ namespace SiegeEngine.Core.AssetParsing
                     Console.WriteLine($"Finished parsing animation {anim.Name} with 0 keyframes");
                 }
             }
+            // Compute bind poses if skinned
+            if (model.HasSkin)
+            {
+                var locals = new Matrix4x4[model.Skeleton.Bones.Count];
+                for (int i = 0; i < locals.Length; i++)
+                {
+                    locals[i] = model.Skeleton.Bones[i].LocalRest;
+                }
+                var globals = model.Skeleton.ComputeGlobalTransforms(locals);
+                for (int i = 0; i < globals.Length; i++)
+                {
+                    Matrix4x4.Invert(globals[i], out var inv);
+                    model.Skeleton.Bones[i].BindPose = inv;
+                }
+            }
             return model;
+        }
+        private static Vector3 RemapVector(Vector3 v, int[] sourceToTarget, int[] signs)
+        {
+            Vector3 result = Vector3.Zero;
+            float[] comps = new float[] { v.X, v.Y, v.Z };
+            for (int src = 0; src < 3; src++)
+            {
+                float val = comps[src] * signs[src];
+                int tgt = sourceToTarget[src];
+                if (tgt == 0) result.X = val;
+                else if (tgt == 1) result.Y = val;
+                else if (tgt == 2) result.Z = val;
+            }
+            return result;
+        }
+        private static Vector3 RemapScale(Vector3 v, int[] sourceToTarget, int[] signs)
+        {
+            Vector3 result = Vector3.Zero;
+            float[] comps = new float[] { v.X, v.Y, v.Z };
+            for (int src = 0; src < 3; src++)
+            {
+                float val = Math.Abs(comps[src]) * Math.Abs(signs[src]);
+                int tgt = sourceToTarget[src];
+                if (tgt == 0) result.X = val;
+                else if (tgt == 1) result.Y = val;
+                else if (tgt == 2) result.Z = val;
+            }
+            return result;
+        }
+        private static Vector3 RemapRotation(Vector3 v, int[] sourceToTarget, int[] signs)
+        {
+            Vector3 result = Vector3.Zero;
+            float[] comps = new float[] { v.X, v.Y, v.Z };
+            for (int src = 0; src < 3; src++)
+            {
+                float val = comps[src] * signs[src];
+                int tgt = sourceToTarget[src];
+                if (tgt == 0) result.X = val;
+                else if (tgt == 1) result.Y = val;
+                else if (tgt == 2) result.Z = val;
+            }
+            return result;
+        }
+        private static int RemapRotationOrder(int order, int[] sourceToTarget)
+        {
+            int[] seq_source = GetOrderSequence(order);
+            int[] seq_target = new int[3];
+            for (int i = 0; i < 3; i++)
+            {
+                seq_target[i] = sourceToTarget[seq_source[i]];
+            }
+            return GetOrderFromSequence(seq_target);
+        }
+        private static int[] GetOrderSequence(int order)
+        {
+            switch (order)
+            {
+                case 0: return new int[] { 0, 1, 2 }; // XYZ
+                case 1: return new int[] { 0, 2, 1 }; // XZY
+                case 2: return new int[] { 1, 2, 0 }; // YZX
+                case 3: return new int[] { 1, 0, 2 }; // YXZ
+                case 4: return new int[] { 2, 0, 1 }; // ZXY
+                case 5: return new int[] { 2, 1, 0 }; // ZYX
+                default: return new int[] { 0, 1, 2 };
+            }
+        }
+        private static int GetOrderFromSequence(int[] seq)
+        {
+            string s = string.Join("", seq);
+            switch (s)
+            {
+                case "012": return 0;
+                case "021": return 1;
+                case "120": return 2;
+                case "102": return 3;
+                case "201": return 4;
+                case "210": return 5;
+                default: return 0;
+            }
         }
     }
 }

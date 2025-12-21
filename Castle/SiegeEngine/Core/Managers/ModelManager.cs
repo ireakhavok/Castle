@@ -209,10 +209,7 @@ namespace SiegeEngine.Core.Managers
                 // Smooth normals for the model
                 SmoothNormals(model);
                 // Apply transformations
-                Matrix4x4 rotation = Matrix4x4.CreateRotationZ(MathF.PI); // Flip around X axis
-                Matrix4x4 scale = Matrix4x4.CreateScale(0.1f);
-                Matrix4x4 transformation = rotation * scale; // Apply rotation first, then scale
-                ModelTransformer.ApplyTransformation(model, transformation);
+
                 foreach (var mesh in model.Meshes)
                 {
                     ComputeTangents(mesh);
