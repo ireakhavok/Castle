@@ -49,7 +49,7 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "cube.fbx");
+        private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
         private List<string> _animationFiles = new List<string>();
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
@@ -204,6 +204,30 @@ namespace ReadingChamber
             {
                 DiscoverAnimationFiles();
                 UpdateUIControls();
+                _time = 0f;
+                _playing = false;
+                _cameraRotation = Quaternion.Identity;
+                _firstMouse = true;
+                // Center model based on bounds
+                Vector3 minBounds = new Vector3(float.MaxValue);
+                Vector3 maxBounds = new Vector3(float.MinValue);
+                foreach (var mesh in _model.Meshes)
+                {
+                    foreach (var v in mesh.Vertices)
+                    {
+                        minBounds = Vector3.Min(minBounds, new Vector3(v.X, v.Y, v.Z));
+                        maxBounds = Vector3.Max(maxBounds, new Vector3(v.X, v.Y, v.Z));
+                    }
+                }
+                Vector3 center = (minBounds + maxBounds) / 2;
+                float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
+                _cameraPosition = center + new Vector3(0, -maxExtent * 3.5f, 0);
+                _cameraTarget = center;
+                Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
+                if (_animationFiles.Count > 0)
+                {
+                    _currentAnimation = Path.GetFileNameWithoutExtension(_animationFiles[0]);
+                }
             }
             else
             {
@@ -328,21 +352,16 @@ namespace ReadingChamber
         private void UpdateSkeletonVisualization()
         {
             if (_model?.Skeleton == null || _currentGlobalTransforms == null) return;
-
             Matrix4x4 transformation = Matrix4x4.CreateRotationZ(MathF.PI) * Matrix4x4.CreateScale(0.1f);
-
             var globalPositions = new Vector3[_model.Skeleton.Bones.Count];
-
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out _, out Vector3 trans);
                 globalPositions[i] = Vector3.Transform(trans, transformation);
             }
-
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
             uint idx = 0;
-
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
@@ -355,25 +374,20 @@ namespace ReadingChamber
                     idx += 2;
                 }
             }
-
             _skeletonBuffer.UpdateCustom(vertices, indices);
         }
         private Vector3 ToEuler(Quaternion q)
         {
             Vector3 euler = new Vector3();
-
             float sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
             float cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
             euler.X = MathF.Atan2(sinr_cosp, cosr_cosp);
-
             float sinp = MathF.Sqrt(1 + 2 * (q.W * q.Y - q.X * q.Z));
             float cosp = MathF.Sqrt(1 - 2 * (q.W * q.Y - q.X * q.Z));
             euler.Y = 2 * MathF.Atan2(sinp, cosp) - MathF.PI / 2;
-
             float siny_cosp = 2 * (q.W * q.Z + q.X * q.Y);
             float cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
             euler.Z = MathF.Atan2(siny_cosp, cosy_cosp);
-
             return euler * (180f / MathF.PI);
         }
         public override void Render()

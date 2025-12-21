@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Rendering;
+﻿// Folder: SiegeEngine
+// File: FBXParser.cs
+using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,6 +8,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
