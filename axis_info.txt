@@ -1,0 +1,58 @@
+Coordinate System in the FBX File
+Based on the "GlobalSettings" section in the provided metadata JSON, the file uses a Z-up, left-handed coordinate system with the following axis directions:
+
+Up axis: Z (positive +Z points up).
+Front axis: Y (positive +Y points forward).
+Coord (right) axis: X (negative -X points right, contributing to left-handedness).
+
+Key Properties from GlobalSettings
+
+Property,Value,Interpretation
+UpAxis,2,"Z axis (convention: 0 = X, 1 = Y, 2 = Z)."
+UpAxisSign,1,Positive direction (+Z up).
+FrontAxis,1,Y axis.
+FrontAxisSign,1,Positive direction (+Y forward).
+CoordAxis,0,X axis.
+CoordAxisSign,-1,"Negative direction (-X right), indicating left-handed system."
+OriginalUpAxis,-1,Unspecified original (no conversion applied; data is in source system's axes).
+PropertyValueInterpretationUpAxis2Z axis (convention: 0 = X, 1 = Y, 2 = Z).UpAxisSign1Positive direction (+Z up).FrontAxis1Y axis.FrontAxisSign1Positive direction (+Y forward).CoordAxis0X axis.CoordAxisSign-1Negative direction (-X right), indicating left-handed system.OriginalUpAxis-1Unspecified original (no conversion applied; data is in source system's axes).
+
+Handedness and Implications
+
+This configuration (+Z up, +Y forward, -X right) results in a left-handed system (determinant negative when checking basis vectors).
+The source (Blender 4.1.1) uses a right-handed Z-up system internally (+X right, +Y forward, +Z up). The FBX exporter likely stores data in this left-handed convention for compatibility with other tools (e.g., some importers expect/convert from left-handed Z-up).
+Vertex data storage: Coordinates in arrays like "Vertices" are raw values in this left-handed Z-up system. Polygon winding (from "PolygonVertexIndex") assumes left-handed orientation (e.g., clockwise for front-facing in left-handed systems).
+
+Conversion Recommendations
+If parsing for a right-handed target system (e.g., Blender-like or OpenGL):
+
+Flip the X-coordinate of all vertices/normals (X = -X) to convert to right-handed (+X right, +Y forward, +Z up).
+Adjust polygon winding if needed (reverse triangle order for counter-clockwise in right-handed systems).
+Units: UnitScaleFactor = 1 (likely cm, as per Blender defaults; confirm with model scale—e.g., Z values ~95–176 suggest ~1.76m human height).
+
+This matches examples from FBX docs, forums, and Blender exports. If you provide specific vertex/polygon data, I can verify with code.
+
+==========================
+other chat
+=========================
+Yes, the conversion logic in the FBXParser.cs code matches the described source coordinate system and recommended adjustments from the metadata. Here's a breakdown confirming alignment:
+Source System Matching
+
+Up: +Z (UpAxis=2, UpAxisSign=1): Code remaps source Z to target Y with positive sign.
+Forward: +Y (FrontAxis=1, FrontAxisSign=1): Code remaps source Y to target Z with positive sign.
+Right: -X (CoordAxis=0, CoordAxisSign=-1): Code applies negative sign to source X when remapping to target X, effectively making target +X correspond to source -X (right direction).
+Left-handed: The remapping (including X flip) converts to right-handed target (determinant positive after flip).
+Scale: Fixed at 0.1f as per your instruction (applied to translations, offsets, pivots, and animation T keys).
+
+Conversion Details in Code
+
+Vectors (positions, translations, normals): RemapVector applies axis swap (X->X with sign flip, Y->Z, Z->Y) and scale—matches flipping X to convert handedness while preserving directions.
+Rotations (LclRotation, Pre/PostRotation): RemapRotation swaps axes and applies signs similarly, preserving orientation.
+Scales: RemapScale uses absolute signs to avoid negative scales distorting.
+Rotation Order: RemapRotationOrder adjusts Euler sequence (e.g., source XYZ -> target XZY if Y/Z swapped).
+Winding Order: No explicit flip in code (assumes source winding is correct for left-handed; if needed, add conditional reverse of indices when det < 0).
+Bind Poses: Computed post-remap, ensuring skinned meshes align.
+Animations: T keys scaled; R/S remapped like static properties.
+Root Adjustment: Additional rootRot (X 90° * Y 180°) may be causing backward movement—test by commenting out rootRot lines (lines 127-134) if the model faces wrong without it.
+
+If backward movement persists, provide a sample vertex/normal from the FBX and target render output for verification—I can simulate the remap.

@@ -50,7 +50,7 @@ namespace SiegeEngine.PlayerSystem
                 {
                     movement.Update(this, deltaTime, (id, pos, rotation) => { }, _camera);
                     Position = _physics.Position;
-                    Console.WriteLine($"Player: Updated, Position={Position}, Perspective={_camera.CurrentPerspective}");
+                    //Console.WriteLine($"Player: Updated, Position={Position}, Perspective={_camera.CurrentPerspective}");
                 }
             }
         }
