@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine
-// File: FBXParser.cs
-using SiegeEngine.Core.Rendering;
+﻿using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -138,6 +136,19 @@ namespace SiegeEngine.Core.AssetParsing
             signs[coordAxis] = coordAxisSign;
             signs[upAxis] = upAxisSign;
             signs[frontAxis] = -frontAxisSign;
+            // Build P4
+            Matrix4x4 P4 = Matrix4x4.Identity;
+            float[,] p3 = new float[3, 3];
+            for (int src = 0; src < 3; src++)
+            {
+                int tgt = sourceToTarget[src];
+                p3[tgt, src] = signs[src];
+            }
+            P4 = new Matrix4x4(p3[0, 0], p3[0, 1], p3[0, 2], 0,
+                               p3[1, 0], p3[1, 1], p3[1, 2], 0,
+                               p3[2, 0], p3[2, 1], p3[2, 2], 0,
+                               0, 0, 0, 1);
+            Matrix4x4 invP4 = Matrix4x4.Transpose(P4);
             // Parse skeleton
             var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
                 ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Root" || (string)n.properties[2].Value == "Null")).ToList();
@@ -384,14 +395,51 @@ namespace SiegeEngine.Core.AssetParsing
                                 double[] weights = weightsNode != null && weightsNode.properties[0].TypeCode == 'd' ? (double[])weightsNode.properties[0].Value : Array.Empty<double>();
                                 var transformLinkNode = clusterNode.children.FirstOrDefault(c => c.Name == "TransformLink");
                                 double[] tl = transformLinkNode != null && transformLinkNode.properties[0].TypeCode == 'd' ? (double[])transformLinkNode.properties[0].Value : null;
+                                var transformNode = clusterNode.children.FirstOrDefault(c => c.Name == "Transform");
+                                double[] tr = transformNode != null && transformNode.properties[0].TypeCode == 'd' ? (double[])transformNode.properties[0].Value : null;
+                                Matrix4x4 tlMat = Matrix4x4.Identity;
                                 if (tl != null && tl.Length == 16)
                                 {
-                                    Matrix4x4 tlMat = new Matrix4x4((float)tl[0], (float)tl[4], (float)tl[8], (float)tl[12],
-                                                                    (float)tl[1], (float)tl[5], (float)tl[9], (float)tl[13],
-                                                                    (float)tl[2], (float)tl[6], (float)tl[10], (float)tl[14],
-                                                                    (float)tl[3], (float)tl[7], (float)tl[11], (float)tl[15]); // Row major to column
-                                    Matrix4x4.Invert(tlMat, out var invBind);
+                                    tlMat = new Matrix4x4((float)tl[0], (float)tl[4], (float)tl[8], (float)tl[12],
+                                                          (float)tl[1], (float)tl[5], (float)tl[9], (float)tl[13],
+                                                          (float)tl[2], (float)tl[6], (float)tl[10], (float)tl[14],
+                                                          (float)tl[3], (float)tl[7], (float)tl[11], (float)tl[15]);
+                                }
+                                Matrix4x4 tMat = Matrix4x4.Identity;
+                                if (tr != null && tr.Length == 16)
+                                {
+                                    tMat = new Matrix4x4((float)tr[0], (float)tr[4], (float)tr[8], (float)tr[12],
+                                                         (float)tr[1], (float)tr[5], (float)tr[9], (float)tr[13],
+                                                         (float)tr[2], (float)tr[6], (float)tr[10], (float)tr[14],
+                                                         (float)tr[3], (float)tr[7], (float)tr[11], (float)tr[15]);
+                                }
+                                // Remap matrices
+                                Matrix4x4 tl_remap = P4 * tlMat * invP4;
+                                tl_remap = new Matrix4x4(tl_remap.M11, tl_remap.M12, tl_remap.M13, tl_remap.M14,
+                                                         tl_remap.M21, tl_remap.M22, tl_remap.M23, tl_remap.M24,
+                                                         tl_remap.M31, tl_remap.M32, tl_remap.M33, tl_remap.M34,
+                                                         tl_remap.M41 * modelScale, tl_remap.M42 * modelScale, tl_remap.M43 * modelScale, tl_remap.M44);
+                                Matrix4x4 t_remap = P4 * tMat * invP4;
+                                t_remap = new Matrix4x4(t_remap.M11, t_remap.M12, t_remap.M13, t_remap.M14,
+                                                        t_remap.M21, t_remap.M22, t_remap.M23, t_remap.M24,
+                                                        t_remap.M31, t_remap.M32, t_remap.M33, t_remap.M34,
+                                                        t_remap.M41 * modelScale, t_remap.M42 * modelScale, t_remap.M43 * modelScale, t_remap.M44);
+                                // Apply rootRot if root
+                                bool isRoot = model.Skeleton.Bones[boneIdx].ParentIndex == -1;
+                                if (isRoot)
+                                {
+                                    tl_remap = rootRot * tl_remap;
+                                }
+                                // Compute invBind
+                                if (Matrix4x4.Invert(tl_remap, out var invTl))
+                                {
+                                    Matrix4x4 invBind = invTl * t_remap;
                                     model.Skeleton.Bones[boneIdx].BindPose = invBind;
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"BuildModelFromForest: Failed to invert tl_remap for bone {boneIdx}, using identity");
+                                    model.Skeleton.Bones[boneIdx].BindPose = Matrix4x4.Identity;
                                 }
                                 for (int i = 0; i < Math.Min(indexes.Length, weights.Length); i++)
                                 {
@@ -896,21 +944,6 @@ namespace SiegeEngine.Core.AssetParsing
                 else
                 {
                     Console.WriteLine($"Finished parsing animation {anim.Name} with 0 keyframes");
-                }
-            }
-            // Compute bind poses if skinned
-            if (model.HasSkin)
-            {
-                var locals = new Matrix4x4[model.Skeleton.Bones.Count];
-                for (int i = 0; i < locals.Length; i++)
-                {
-                    locals[i] = model.Skeleton.Bones[i].LocalRest;
-                }
-                var globals = model.Skeleton.ComputeGlobalTransforms(locals);
-                for (int i = 0; i < globals.Length; i++)
-                {
-                    Matrix4x4.Invert(globals[i], out var inv);
-                    model.Skeleton.Bones[i].BindPose = inv;
                 }
             }
             return model;
