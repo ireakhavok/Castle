@@ -132,8 +132,8 @@ namespace SiegeEngine.Core.AssetParsing
             // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Y-up Z-forward)
             int[] sourceToTarget = new int[3];
             sourceToTarget[coordAxis] = 0; // Source coord -> target X
-            sourceToTarget[upAxis] = 2; // Source up -> target Y
-            sourceToTarget[frontAxis] = 1; // Source front -> target Z
+            sourceToTarget[upAxis] = 2; // Source up -> target Z
+            sourceToTarget[frontAxis] = 1; // Source front -> target Y
             int[] signs = new int[3];
             signs[coordAxis] = coordAxisSign;
             signs[upAxis] = upAxisSign;
