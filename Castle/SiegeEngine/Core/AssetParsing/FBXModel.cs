@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public class FBXModel
@@ -60,7 +59,7 @@ namespace SiegeEngine.Core.AssetParsing
         private Matrix4x4[] _currentTransforms;
         public Matrix4x4[] GetTransforms()
         {
-            if (_currentTransforms == null)
+            if (_currentTransforms == null || _currentTransforms.Length != Bones.Count)
             {
                 _currentTransforms = new Matrix4x4[Bones.Count];
                 for (int i = 0; i < Bones.Count; i++)

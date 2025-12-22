@@ -4,16 +4,17 @@ using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;
-using SiegeEngine.Core.Events;
+using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Text;
-using SiegeEngine.Core.UI;
+using static SiegeEngine.Core.Managers.ModelManager;
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -70,23 +71,46 @@ namespace ReadingChamber
             _textShader = new ShaderProgram(_renderContext, TextShader.VertexShaderSource, TextShader.FragmentShaderSource);
             _textRenderer = new EditorTextRenderer(_renderContext, _window);
             _textRenderer.Initialize(_textShader);
-            // Initialize shader first
+            LoadModel(_path);
+            DiscoverAnimationFiles();
+            UpdateUIControls();
+            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();
+        }
+        private void LoadModel(string path)
+        {
+            DisposeModelResources();
             var modelManager = new ModelManager(renderContext: _renderContext);
-            modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
-            string key = Path.GetFileNameWithoutExtension(_path).ToLower();
-            if (!modelManager.TryGetModel(key, out _model))
-            {
-                Console.WriteLine("AssetViewerPanel: Failed to load or parse model");
-            }
-            else
+            modelManager.LoadModel(path, new HashSet<string>(), new Dictionary<string, string>());
+            string key = Path.GetFileNameWithoutExtension(path).ToLower();
+            if (modelManager.TryGetModel(key, out _model) && modelManager.TryGetModelData(key, out _modelData))
             {
                 Console.WriteLine($"AssetViewerPanel: Loaded model with {_model.Meshes.Count} meshes");
             }
-            if (!modelManager.TryGetModelData(key, out _modelData))
+            else
             {
-                Console.WriteLine("AssetViewerPanel: Failed to get model data");
+                Console.WriteLine("AssetViewerPanel: Failed to load or parse model");
+                _model = FBXParserBase.CreateDefaultCubeModel();
+                // Create dummy model data for default cube
+                _modelData = new ModelManager.ModelData { MeshRenders = new List<ModelMeshRender>() };
+                var mmr = new ModelMeshRender();
+                // Assume default cube has one mesh
+                mmr.AlbedoTextures = new uint[0];
+                mmr.NormalTextures = new uint[0];
+                mmr.MetallicTextures = new uint[0];
+                mmr.IndexCount = (uint)_model.Meshes[0].Indices.Count;
+                mmr.Vao = _renderContext.GenVertexArray();
+                mmr.Vbo = _renderContext.GenBuffer();
+                mmr.Ebo = _renderContext.GenBuffer();
+                // Setup buffers for default cube
+                _renderContext.BindVertexArray(mmr.Vao);
+                _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, mmr.Vbo);
+                // Convert FBXVertex to float array or something, but assume it's done in ModelManager normally
+                // For now, skip detailed setup, as it's default
+                _modelData.MeshRenders.Add(mmr);
             }
-            DiscoverAnimationFiles();
             if (_model != null)
             {
                 // Center model based on bounds
@@ -104,18 +128,48 @@ namespace ReadingChamber
                 float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
                 _cameraPosition = center + new Vector3(0, 0, maxExtent * 3.5f);
                 _cameraTarget = center;
-                _cameraUp = Vector3.UnitY;
+                _cameraUp = Vector3.UnitZ;
                 Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
-                if (_animationFiles.Count > 0)
+                if (_model.Animations.Count > 0)
                 {
-                    _currentAnimation = Path.GetFileNameWithoutExtension(_animationFiles[0]);
+                    _currentAnimation = _model.Animations[0].Name;
+                    _duration = _model.Animations[0].Keyframes.LastOrDefault()?.Time ?? 0f;
                 }
+                else
+                {
+                    _currentAnimation = null;
+                    _duration = 0f;
+                }
+                _time = 0f;
+                _playing = false;
             }
-            UpdateUIControls();
-            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
-            _uiOverlay.PanelWidth = Size.X;
-            _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.RefreshUI();
+            _currentGlobalTransforms = null; // Reset to force reinitialization
+        }
+        private void DisposeModelResources()
+        {
+            if (_modelData != null)
+            {
+                foreach (var mmr in _modelData.MeshRenders)
+                {
+                    _renderContext.DeleteVertexArray(mmr.Vao);
+                    _renderContext.DeleteBuffer(mmr.Vbo);
+                    _renderContext.DeleteBuffer(mmr.Ebo);
+                    foreach (var tex in mmr.AlbedoTextures ?? new uint[0])
+                    {
+                        if (tex != 0) _renderContext.DeleteTexture(tex);
+                    }
+                    foreach (var tex in mmr.NormalTextures ?? new uint[0])
+                    {
+                        if (tex != 0) _renderContext.DeleteTexture(tex);
+                    }
+                    foreach (var tex in mmr.MetallicTextures ?? new uint[0])
+                    {
+                        if (tex != 0) _renderContext.DeleteTexture(tex);
+                    }
+                }
+                _modelData = null;
+            }
+            _model = null;
         }
         private void DiscoverAnimationFiles()
         {
@@ -201,43 +255,10 @@ namespace ReadingChamber
         private void OnFileSelected(FileSelectedEvent e)
         {
             _path = e.Path;
-            var modelManager = new ModelManager(renderContext: _renderContext);
-            modelManager.LoadModel(_path, new HashSet<string>(), new Dictionary<string, string>());
-            string key = Path.GetFileNameWithoutExtension(_path).ToLower();
-            if (modelManager.TryGetModel(key, out _model) && modelManager.TryGetModelData(key, out _modelData))
-            {
-                DiscoverAnimationFiles();
-                UpdateUIControls();
-                _time = 0f;
-                _playing = false;
-                _cameraRotation = Quaternion.Identity;
-                _firstMouse = true;
-                // Center model based on bounds
-                Vector3 minBounds = new Vector3(float.MaxValue);
-                Vector3 maxBounds = new Vector3(float.MinValue);
-                foreach (var mesh in _model.Meshes)
-                {
-                    foreach (var v in mesh.Vertices)
-                    {
-                        minBounds = Vector3.Min(minBounds, new Vector3(v.X, v.Y, v.Z));
-                        maxBounds = Vector3.Max(maxBounds, new Vector3(v.X, v.Y, v.Z));
-                    }
-                }
-                Vector3 center = (minBounds + maxBounds) / 2;
-                float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
-                _cameraPosition = center + new Vector3(0, -maxExtent * 3.5f, 0);
-                _cameraTarget = center;
-                _cameraUp = Vector3.UnitZ;
-                Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
-                if (_animationFiles.Count > 0)
-                {
-                    _currentAnimation = Path.GetFileNameWithoutExtension(_animationFiles[0]);
-                }
-            }
-            else
-            {
-                Console.WriteLine("AssetViewerPanel: Failed to load selected model");
-            }
+            LoadModel(_path);
+            DiscoverAnimationFiles();
+            UpdateUIControls();
+            _firstMouse = true;
         }
         public void HandleUIClick(HtmlElement elem)
         {
@@ -356,7 +377,7 @@ namespace ReadingChamber
         }
         private void UpdateSkeletonVisualization()
         {
-            if (_model?.Skeleton == null || _currentGlobalTransforms == null) return;
+            if (_model?.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
             var globalPositions = new Vector3[_model.Skeleton.Bones.Count];
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
@@ -431,33 +452,45 @@ namespace ReadingChamber
                 var transforms = _model.Skeleton.GetTransforms();
                 _assetShader.SetMatrix4Array("uBoneTransforms", transforms);
             }
-            foreach (var mmr in _modelData.MeshRenders)
+            if (_modelData != null && _modelData.MeshRenders != null)
             {
-                // Bind textures
-                for (int t = 0; t < Math.Min(mmr.AlbedoTextures.Length, 4); t++)
+                foreach (var mmr in _modelData.MeshRenders)
                 {
-                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + t);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[t]);
-                    _assetShader.SetUniform($"uAlbedoMap[{t}]", t);
-                }
-                for (int t = 0; t < Math.Min(mmr.NormalTextures.Length, 4); t++)
-                {
-                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + t);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[t]);
-                    _assetShader.SetUniform($"uNormalMap[{t}]", 4 + t);
-                }
-                for (int t = 0; t < Math.Min(mmr.MetallicTextures.Length, 4); t++)
-                {
-                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + t);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[t]);
-                    _assetShader.SetUniform($"uMetallicMap[{t}]", 8 + t);
-                }
-                _renderContext.BindVertexArray(mmr.Vao);
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, (void*)0);
-                int error;
-                while ((error = _renderContext.GetError()) != _renderContext.Enums.NoError)
-                {
-                    Console.WriteLine($"AssetViewerPanel: OpenGL error after draw: {error}");
+                    // Bind textures
+                    if (mmr.AlbedoTextures != null)
+                    {
+                        for (int t = 0; t < Math.Min(mmr.AlbedoTextures.Length, 4); t++)
+                        {
+                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + t);
+                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[t]);
+                            _assetShader.SetUniform($"uAlbedoMap[{t}]", t);
+                        }
+                    }
+                    if (mmr.NormalTextures != null)
+                    {
+                        for (int t = 0; t < Math.Min(mmr.NormalTextures.Length, 4); t++)
+                        {
+                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + t);
+                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[t]);
+                            _assetShader.SetUniform($"uNormalMap[{t}]", 4 + t);
+                        }
+                    }
+                    if (mmr.MetallicTextures != null)
+                    {
+                        for (int t = 0; t < Math.Min(mmr.MetallicTextures.Length, 4); t++)
+                        {
+                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + t);
+                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[t]);
+                            _assetShader.SetUniform($"uMetallicMap[{t}]", 8 + t);
+                        }
+                    }
+                    _renderContext.BindVertexArray(mmr.Vao);
+                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, (void*)0);
+                    int error;
+                    while ((error = _renderContext.GetError()) != _renderContext.Enums.NoError)
+                    {
+                        Console.WriteLine($"AssetViewerPanel: OpenGL error after draw: {error}");
+                    }
                 }
             }
             // Render skeleton
@@ -477,12 +510,12 @@ namespace ReadingChamber
             _uiOverlay.Render();
             // Render bone info text
             float currentY = TitleHeight + 10;
-            if (_model?.Skeleton != null && _currentGlobalTransforms != null)
+            if (_model?.Skeleton != null && _currentGlobalTransforms != null && _currentGlobalTransforms.Length == _model.Skeleton.Bones.Count)
             {
                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
                     if (currentY > Size.Y - 20) break; // Prevent overflow
-                    Matrix4x4.Decompose(_currentGlobalTransforms[i], out Vector3 scale, out Quaternion rot, out Vector3 pos);
+                    Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out Quaternion rot, out Vector3 pos);
                     Vector3 euler = ToEuler(rot);
                     string info = $"{_model.Skeleton.Bones[i].Name}: Pos({pos.X:F2},{pos.Y:F2},{pos.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2})";
                     _textRenderer.RenderText(info, 10, currentY, (int)Size.X, (int)Size.Y, 12f);
@@ -501,6 +534,16 @@ namespace ReadingChamber
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
+        }
+        public override void Dispose()
+        {
+            base.Dispose();
+            DisposeModelResources();
+            _assetShader.Dispose();
+            _skeletonBuffer.Dispose();
+            _pointShader.Dispose();
+            _textRenderer.Dispose();
+            _textShader.Dispose();
         }
     }
 }
