@@ -8,7 +8,6 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -130,15 +129,15 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
             float modelScale = unitScaleFactor / 10f; // cm to m
-            // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Y-up Z-forward)
+            // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Z-up Y-forward)
             int[] sourceToTarget = new int[3];
             sourceToTarget[coordAxis] = 0; // Source coord -> target X
-            sourceToTarget[upAxis] = 2; // Source up -> target Z
             sourceToTarget[frontAxis] = 1; // Source front -> target Y
+            sourceToTarget[upAxis] = 2; // Source up -> target Z
             int[] signs = new int[3];
             signs[coordAxis] = coordAxisSign;
-            signs[upAxis] = upAxisSign;
             signs[frontAxis] = -frontAxisSign;
+            signs[upAxis] = upAxisSign;
             // Build P4
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
@@ -267,12 +266,8 @@ namespace SiegeEngine.Core.AssetParsing
                     model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
                 }
             }
-            // Apply root rotation if source is Z-up
+            // No root rotation for Z-up
             Matrix4x4 rootRot = Matrix4x4.Identity;
-            if (upAxis == 2)
-            {
-                rootRot = Matrix4x4.CreateRotationX(MathF.PI / 2);
-            }
             List<int> rootIndices = new List<int>();
             for (int i = 0; i < model.Skeleton.Bones.Count; i++)
             {
@@ -919,9 +914,7 @@ namespace SiegeEngine.Core.AssetParsing
                     {
                         kf = new Keyframe { Time = t, BoneTransforms = new List<Matrix4x4>() };
                         for (int i = 0; i < model.Skeleton.Bones.Count; i++)
-                        {
                             kf.BoneTransforms.Add(model.Skeleton.Bones[i].LocalRest);
-                        }
                         anim.Keyframes.Add(kf);
                     }
                     foreach (var kvBone in kvTime.Value)

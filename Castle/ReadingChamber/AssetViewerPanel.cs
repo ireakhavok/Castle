@@ -102,8 +102,9 @@ namespace ReadingChamber
                 }
                 Vector3 center = (minBounds + maxBounds) / 2;
                 float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
-                _cameraPosition = center + new Vector3(0, -maxExtent * 3.5f, 0);
+                _cameraPosition = center + new Vector3(0, 0, maxExtent * 3.5f);
                 _cameraTarget = center;
+                _cameraUp = Vector3.UnitY;
                 Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
                 if (_animationFiles.Count > 0)
                 {
@@ -140,6 +141,7 @@ namespace ReadingChamber
                 {
                     mainBoneIndices[_model.Skeleton.Bones[i].Name] = i;
                 }
+                int mappedCount = 0;
                 foreach (var kf in anim.Keyframes)
                 {
                     List<Matrix4x4> newTransforms = Enumerable.Repeat(Matrix4x4.Identity, _model.Skeleton.Bones.Count).ToList();
@@ -149,10 +151,12 @@ namespace ReadingChamber
                         if (mainBoneIndices.TryGetValue(boneName, out int targetIdx))
                         {
                             newTransforms[targetIdx] = kf.BoneTransforms[i];
+                            mappedCount++;
                         }
                     }
                     kf.BoneTransforms = newTransforms;
                 }
+                Console.WriteLine($"Mapped {mappedCount} bones for animation {anim.Name}");
                 _model.Animations.Add(anim);
                 _currentAnimation = anim.Name;
                 _duration = anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 0f;
@@ -223,6 +227,7 @@ namespace ReadingChamber
                 float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
                 _cameraPosition = center + new Vector3(0, -maxExtent * 3.5f, 0);
                 _cameraTarget = center;
+                _cameraUp = Vector3.UnitZ;
                 Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
                 if (_animationFiles.Count > 0)
                 {
@@ -352,12 +357,11 @@ namespace ReadingChamber
         private void UpdateSkeletonVisualization()
         {
             if (_model?.Skeleton == null || _currentGlobalTransforms == null) return;
-            Matrix4x4 transformation = Matrix4x4.CreateRotationZ(MathF.PI) * Matrix4x4.CreateScale(0.1f);
             var globalPositions = new Vector3[_model.Skeleton.Bones.Count];
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out _, out Vector3 trans);
-                globalPositions[i] = Vector3.Transform(trans, transformation);
+                globalPositions[i] = trans;
             }
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
