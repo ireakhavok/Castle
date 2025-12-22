@@ -718,8 +718,14 @@ Folder: SiegeEngine
     - Methods:
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, MetaDataExporter.ExportMetadata, NodeParser.ParseNodes
-      - FBXModel BuildModelFromForest( bool onlyAnimations = false, FBXFileForest forest)
-        - Calls: ComputeLocal, FBXModel, FBXParserBase.CreateDefaultCubeModel, FBXVertex, bone.ComputeLocal, tempPoly.Clear
+      - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
+      - Vector3 RemapScale( int[] signs,  int[] sourceToTarget, Vector3 v)
+      - Vector3 RemapRotation( int[] signs,  int[] sourceToTarget, Vector3 v)
+      - int RemapRotationOrder( int[] sourceToTarget, int order)
+        - Calls: GetOrderFromSequence, GetOrderSequence
+      - return GetOrderFromSequence()
+      - int[] GetOrderSequence(int order)
+      - int GetOrderFromSequence(int[] seq)
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics

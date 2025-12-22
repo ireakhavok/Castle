@@ -128,6 +128,7 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                 }
             }
+            // LEAVE THIS CODE ALONE: It converts units from FBX to SiegeEngine's internal units (meters) and remaps axes to Z-up Y-forward
             float modelScale = unitScaleFactor / 10f; // cm to m
             // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Z-up Y-forward)
             int[] sourceToTarget = new int[3];
@@ -138,6 +139,7 @@ namespace SiegeEngine.Core.AssetParsing
             signs[coordAxis] = coordAxisSign;
             signs[frontAxis] = -frontAxisSign;
             signs[upAxis] = upAxisSign;
+            // DONT TOUCH THIS CODE ABOVE
             // Build P4
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
@@ -158,6 +160,7 @@ namespace SiegeEngine.Core.AssetParsing
             int boneIndex = 0;
             foreach (var modelNode in modelNodes)
             {
+                // Get bone ID and name
                 long id = (long)modelNode.properties[0].Value;
                 string fullName = ((string)modelNode.properties[1].Value).Split('\0')[0];
                 string[] nameParts = fullName.Split("::");
@@ -171,6 +174,7 @@ namespace SiegeEngine.Core.AssetParsing
                     {
                         if (p.Name == "P" && p.properties.Count >= 7)
                         {
+                            // Parse relevant bone properties
                             string pname = (string)p.properties[0].Value;
                             if (pname == "Lcl Translation")
                             {
