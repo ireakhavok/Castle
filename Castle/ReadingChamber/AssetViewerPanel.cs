@@ -144,7 +144,7 @@ namespace ReadingChamber
                 {
                     mainBoneIndices[_model.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
                 }
-                int mappedCount = 0;
+                HashSet<int> mappedBones = new HashSet<int>();
                 foreach (var kf in anim.Keyframes)
                 {
                     List<Matrix4x4> newTransforms = new List<Matrix4x4>();
@@ -158,12 +158,21 @@ namespace ReadingChamber
                         if (mainBoneIndices.TryGetValue(boneName, out int targetIdx))
                         {
                             newTransforms[targetIdx] = kf.BoneTransforms[i];
-                            mappedCount++;
+                            mappedBones.Add(targetIdx);
                         }
+                        else
+                        {
+                            Console.WriteLine($"Warning: Bone {boneName} from animation not found in main model");
+                        }
+                            
                     }
                     kf.BoneTransforms = newTransforms;
                 }
-                Console.WriteLine($"Mapped {mappedCount} bones for animation {anim.Name}");
+                Console.WriteLine($"Mapped {mappedBones.Count} unique bones for animation {anim.Name}");
+                if (mappedBones.Count < _model.Skeleton.Bones.Count)
+                {
+                    Console.WriteLine($"Warning: Not all bones mapped for animation {anim.Name} ({mappedBones.Count}/{_model.Skeleton.Bones.Count})");
+                }
                 _model.Animations.Add(anim);
                 _currentAnimation = anim.Name;
                 _duration = anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 0f;
