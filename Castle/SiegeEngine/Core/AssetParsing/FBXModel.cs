@@ -59,7 +59,7 @@ namespace SiegeEngine.Core.AssetParsing
         private Matrix4x4[] _currentTransforms;
         public Matrix4x4[] GetTransforms()
         {
-            if (_currentTransforms == null || _currentTransforms.Length != Bones.Count)
+            if (_currentTransforms == null)
             {
                 _currentTransforms = new Matrix4x4[Bones.Count];
                 for (int i = 0; i < Bones.Count; i++)
@@ -107,11 +107,17 @@ namespace SiegeEngine.Core.AssetParsing
         public Vector3 ScalingPivot { get; set; } = Vector3.Zero;
         public Vector3 ScalingOffset { get; set; } = Vector3.Zero;
         public int RotationOrder { get; set; } = 0; // Default eEulerXYZ
+        public string BoneType { get; set; }
+        public float Size { get; set; } = 1f;
         public Matrix4x4 ComputeLocal(Vector3? t = null, Vector3? r = null, Vector3? s = null)
         {
             Vector3 useT = t ?? LclTranslation;
             Vector3 useR = r ?? LclRotation;
             Vector3 useS = s ?? LclScaling;
+            if (BoneType == "Limb")
+            {
+                useT = new Vector3(0, 0, Size / 2); // Adjust for bone length, assuming Z axis
+            }
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);

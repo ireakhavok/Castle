@@ -129,7 +129,7 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
             // LEAVE THIS CODE ALONE: It converts units from FBX to SiegeEngine's internal units (meters) and remaps axes to Z-up Y-forward
-            float modelScale = unitScaleFactor / 10f; // cm to m
+            float modelScale = unitScaleFactor / 10f; // Assuming FBX in cm, to m
             // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Z-up Y-forward)
             int[] sourceToTarget = new int[3];
             sourceToTarget[coordAxis] = 0; // Source coord -> target X
@@ -137,7 +137,7 @@ namespace SiegeEngine.Core.AssetParsing
             sourceToTarget[upAxis] = 2; // Source up -> target Z
             int[] signs = new int[3];
             signs[coordAxis] = coordAxisSign;
-            signs[frontAxis] = -frontAxisSign;
+            signs[frontAxis] = -frontAxisSign; // Flip forward if needed
             signs[upAxis] = upAxisSign;
             // DONT TOUCH THIS CODE ABOVE
             // Build P4
@@ -155,7 +155,7 @@ namespace SiegeEngine.Core.AssetParsing
             Matrix4x4 invP4 = Matrix4x4.Transpose(P4);
             // Parse skeleton
             var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
-                ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Root" || (string)n.properties[2].Value == "Null")).ToList();
+                ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Limb" || (string)n.properties[2].Value == "Root")).ToList();
             Dictionary<long, int> boneIndexById = new Dictionary<long, int>();
             int boneIndex = 0;
             foreach (var modelNode in modelNodes)
@@ -166,6 +166,7 @@ namespace SiegeEngine.Core.AssetParsing
                 string[] nameParts = fullName.Split("::");
                 string name = nameParts.Length > 1 ? nameParts[1] : nameParts[0];
                 Bone bone = new Bone { Name = name, ParentIndex = -1, BindPose = Matrix4x4.Identity };
+                string boneType = (string)modelNode.properties[2].Value;
                 // Parse properties
                 var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
@@ -871,15 +872,24 @@ namespace SiegeEngine.Core.AssetParsing
                             keyValuesZ = dvals.Select(d => (float)d).ToArray();
                         }
                     }
-                    int maxKeys = Math.Max(keyTimes.Length, Math.Max(keyValuesX?.Length ?? 0, Math.Max(keyValuesY?.Length ?? 0, keyValuesZ?.Length ?? 0)));
-                    if (maxKeys == 0) continue;
-                    Console.WriteLine($"Curve for bone {boneIdx} {trsType} with {maxKeys} keys");
-                    for (int k = 0; k < maxKeys; k++)
+                    if (keyTimes.Length == 0 || keyTimes.Length != (keyValuesX?.Length ?? 0) || keyTimes.Length != (keyValuesY?.Length ?? 0) || keyTimes.Length != (keyValuesZ?.Length ?? 0)) continue;
+                    Console.WriteLine($"Curve for bone {boneIdx} {trsType} with {keyTimes.Length} keys");
+                    for (int k = 0; k < keyTimes.Length; k++)
                     {
-                        float t = (k < keyTimes.Length) ? keyTimes[k] / 46186158000f : 0f;
-                        float vx = (k < (keyValuesX?.Length ?? 0)) ? keyValuesX[k] : 0f;
-                        float vy = (k < (keyValuesY?.Length ?? 0)) ? keyValuesY[k] : 0f;
-                        float vz = (k < (keyValuesZ?.Length ?? 0)) ? keyValuesZ[k] : 0f;
+                        float t = keyTimes[k] / 46186158000f;
+                        if (!timeBoneTRS.TryGetValue(t, out var boneTRS))
+                        {
+                            boneTRS = new Dictionary<int, Dictionary<string, Vector3>>();
+                            timeBoneTRS[t] = boneTRS;
+                        }
+                        if (!boneTRS.TryGetValue(boneIdx, out var trsVals))
+                        {
+                            trsVals = new Dictionary<string, Vector3>();
+                            boneTRS[boneIdx] = trsVals;
+                        }
+                        float vx = keyValuesX != null ? keyValuesX[k] : 0f;
+                        float vy = keyValuesY != null ? keyValuesY[k] : 0f;
+                        float vz = keyValuesZ != null ? keyValuesZ[k] : 0f;
                         Vector3 val_source = new Vector3(vx, vy, vz);
                         Vector3 val;
                         if (trsType == "T")
@@ -897,21 +907,6 @@ namespace SiegeEngine.Core.AssetParsing
                         else
                         {
                             val = val_source;
-                        }
-                        if (!timeBoneTRS.TryGetValue(t, out var boneTRS))
-                        {
-                            boneTRS = new Dictionary<int, Dictionary<string, Vector3>>();
-                            timeBoneTRS[t] = boneTRS;
-                        }
-                        if (!boneTRS.TryGetValue(boneIdx, out var trsVals))
-                        {
-                            trsVals = new Dictionary<string, Vector3>();
-                            boneTRS[boneIdx] = trsVals;
-                        }
-                        if (trsVals.ContainsKey(trsType))
-                        {
-                            // Merge with existing, but since per-curve, perhaps average or something, but for now overwrite
-                            Console.WriteLine($"Duplicate TRS {trsType} for bone {boneIdx} at time {t}, overwriting");
                         }
                         trsVals[trsType] = val;
                     }
