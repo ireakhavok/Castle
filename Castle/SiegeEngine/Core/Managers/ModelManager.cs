@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine
+// File: Core/Managers/ModelManager.cs
+using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -206,190 +208,7 @@ namespace SiegeEngine.Core.Managers
             {
                 FBXFileForest forest = FBXParser.Load(filePath);
                 FBXModel model = FBXParser.BuildModelFromForest(forest);
-                // Smooth normals for the model
-                SmoothNormals(model);
-                // Apply transformations
-
-                foreach (var mesh in model.Meshes)
-                {
-                    ComputeTangents(mesh);
-                }
-                if (model == null || (model.Meshes.Count == 0 && model.Animations.Count == 0) || model.Meshes.Sum(m => m.Vertices.Count) < 3 || model.Meshes.Sum(m => m.Indices.Count) < 3)
-                {
-                    throw new InvalidOperationException($"ModelManager: Error: Invalid model {key}, total vertices: {model?.Meshes.Sum(m => m.Vertices.Count) ?? 0}, total indices: {model?.Meshes.Sum(m => m.Indices.Count) ?? 0}");
-                }
-                var modelData = new ModelData();
-                int meshIndex = 0;
-                foreach (var mesh in model.Meshes.Where(m => m.Indices.Count > 0))
-                {
-                    var mmr = new ModelMeshRender();
-                    List<uint> albedos = new List<uint>();
-                    List<uint> normals = new List<uint>();
-                    List<uint> metallics = new List<uint>();
-                    foreach (var mat in mesh.Materials)
-                    {
-                        var albedoInfo = mat.Textures.GetValueOrDefault("albedo");
-                        uint albedo = 0;
-                        byte depth;
-                        if (albedoInfo != null)
-                        {
-                            int glWrapU = albedoInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
-                            int glWrapV = albedoInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
-                            if (albedoInfo.Path?.StartsWith("embedded_") == true)
-                            {
-                                string embName = albedoInfo.Path.Substring(9);
-                                var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
-                                if (data != null)
-                                {
-                                    (albedo, depth) = LoadEmbeddedTexture(data, embName, glWrapU, glWrapV);
-                                }
-                            }
-                            else
-                            {
-                                (albedo, depth) = LoadExternalTexture(albedoInfo.Path ?? "", fbxDir, glWrapU, glWrapV);
-                            }
-                        }
-                        albedos.Add(albedo);
-                        var normalInfo = mat.Textures.GetValueOrDefault("normal");
-                        uint normalTex = 0;
-                        if (normalInfo != null)
-                        {
-                            int glNormalWrapU = normalInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
-                            int glNormalWrapV = normalInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
-                            if (normalInfo.Path?.StartsWith("embedded_") == true)
-                            {
-                                string embName = normalInfo.Path.Substring(9);
-                                var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
-                                if (data != null)
-                                {
-                                    (normalTex, _) = LoadEmbeddedTexture(data, embName, glNormalWrapU, glNormalWrapV);
-                                }
-                            }
-                            else
-                            {
-                                (normalTex, depth) = LoadExternalTexture(normalInfo.Path ?? "", fbxDir, glNormalWrapU, glNormalWrapV);
-                            }
-                        }
-                        normals.Add(normalTex);
-                        var metallicInfo = mat.Textures.GetValueOrDefault("metallic");
-                        uint metallicTex = 0;
-                        if (metallicInfo != null)
-                        {
-                            int glMetallicWrapU = metallicInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
-                            int glMetallicWrapV = metallicInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
-                            if (metallicInfo.Path?.StartsWith("embedded_") == true)
-                            {
-                                string embName = metallicInfo.Path.Substring(9);
-                                var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
-                                if (data != null)
-                                {
-                                    (metallicTex, _) = LoadEmbeddedTexture(data, embName, glMetallicWrapU, glMetallicWrapV);
-                                }
-                            }
-                            else
-                            {
-                                (metallicTex, depth) = LoadExternalTexture(metallicInfo.Path ?? "", fbxDir, glMetallicWrapU, glMetallicWrapV);
-                            }
-                        }
-                        metallics.Add(metallicTex);
-                    }
-                    if (albedos.Count > 4)
-                    {
-                        Console.WriteLine($"ModelManager: Warning: {albedos.Count} materials for mesh {meshIndex} in {key}, limiting to 4");
-                        albedos = albedos.Take(4).ToList();
-                        normals = normals.Take(4).ToList();
-                        metallics = metallics.Take(4).ToList();
-                    }
-                    float[] vertexData = new float[mesh.Vertices.Count * 20];
-                    int defaultNormalCount = 0;
-                    int zeroNormalCount = 0;
-                    Dictionary<float, int> materialIndexCounts = new Dictionary<float, int>();
-                    float minX = float.MaxValue, maxX = float.MinValue;
-                    float minY = float.MaxValue, maxY = float.MinValue;
-                    float minZ = float.MaxValue, maxZ = float.MinValue;
-                    for (int i = 0; i < mesh.Vertices.Count; i++)
-                    {
-                        var vertex = mesh.Vertices[i];
-                        vertexData[i * 20 + 0] = vertex.X;
-                        vertexData[i * 20 + 1] = vertex.Y;
-                        vertexData[i * 20 + 2] = vertex.Z;
-                        vertexData[i * 20 + 3] = vertex.Nx;
-                        vertexData[i * 20 + 4] = vertex.Ny;
-                        vertexData[i * 20 + 5] = vertex.Nz;
-                        vertexData[i * 20 + 6] = vertex.U;
-                        vertexData[i * 20 + 7] = vertex.V;
-                        float materialIndex = vertex.MatIdx;
-                        vertexData[i * 20 + 8] = materialIndex;
-                        vertexData[i * 20 + 9] = vertex.Tx;
-                        vertexData[i * 20 + 10] = vertex.Ty;
-                        vertexData[i * 20 + 11] = vertex.Tz;
-                        vertexData[i * 20 + 12] = vertex.BoneID0;
-                        vertexData[i * 20 + 13] = vertex.BoneID1;
-                        vertexData[i * 20 + 14] = vertex.BoneID2;
-                        vertexData[i * 20 + 15] = vertex.BoneID3;
-                        vertexData[i * 20 + 16] = vertex.Weight0;
-                        vertexData[i * 20 + 17] = vertex.Weight1;
-                        vertexData[i * 20 + 18] = vertex.Weight2;
-                        vertexData[i * 20 + 19] = vertex.Weight3;
-                        materialIndexCounts.TryGetValue(materialIndex, out int count);
-                        materialIndexCounts[materialIndex] = count + 1;
-                        minX = Math.Min(minX, vertex.X);
-                        maxX = Math.Max(maxX, vertex.X);
-                        minY = Math.Min(minY, vertex.Y);
-                        maxY = Math.Max(maxY, vertex.Y);
-                        minZ = Math.Min(minZ, vertex.Z);
-                        maxZ = Math.Max(maxZ, vertex.Z);
-                        if (vertex.Nx == 0f && vertex.Ny == 0f && vertex.Nz == 1f)
-                            defaultNormalCount++;
-                        if (vertex.Nx == 0f && vertex.Ny == 0f && vertex.Nz == 0f)
-                            zeroNormalCount++;
-                    }
-                    Console.WriteLine($"ModelManager: Loaded mesh {meshIndex} for {key} with {mesh.Materials.Count} materials");
-                    Console.WriteLine($"ModelManager: Vertex ranges: X=({minX}, {maxX}), Y=({minY}, {maxY}), Z=({minZ}, {maxZ})");
-                    Console.WriteLine($"ModelManager: Bounds: Width={maxX - minX:F2}, Height={maxY - minY:F2}, Depth={maxZ - minZ:F2}");
-                    Console.WriteLine($"ModelManager: {defaultNormalCount} of {mesh.Vertices.Count} vertices have default normals (0, 0, 1)");
-                    Console.WriteLine($"ModelManager: {zeroNormalCount} of {mesh.Vertices.Count} vertices have zero normals (0, 0, 0)");
-                    Console.WriteLine($"ModelManager: Material index distribution: {string.Join(", ", materialIndexCounts.Select(kv => $"Index {kv.Key}: {kv.Value} vertices"))}");
-                    uint vao = _renderContext.GenVertexArray();
-                    uint vbo = _renderContext.GenBuffer();
-                    uint ebo = _renderContext.GenBuffer();
-                    _renderContext.BindVertexArray(vao);
-                    fixed (float* ptr = vertexData)
-                    {
-                        _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, vbo);
-                        _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
-                    }
-                    fixed (uint* ptr = mesh.Indices.ToArray())
-                    {
-                        _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, ebo);
-                        _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(mesh.Indices.Count * sizeof(uint)), ptr, _renderContext.Enums.StaticDraw);
-                    }
-                    uint stride = 20 * sizeof(float);
-                    _renderContext.EnableVertexAttribArray(0); // Position
-                    _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
-                    _renderContext.EnableVertexAttribArray(3); // Normal
-                    _renderContext.VertexAttribPointer(3, 3, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
-                    _renderContext.EnableVertexAttribArray(2); // UV
-                    _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(6 * sizeof(float)));
-                    _renderContext.EnableVertexAttribArray(4); // MaterialIndex
-                    _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
-                    _renderContext.EnableVertexAttribArray(5); // Tangent
-                    _renderContext.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
-                    _renderContext.EnableVertexAttribArray(6); // BoneIDs
-                    _renderContext.VertexAttribPointer(6, 4, _renderContext.Enums.Float, false, stride, (void*)(12 * sizeof(float)));
-                    _renderContext.EnableVertexAttribArray(7); // BoneWeights
-                    _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
-                    _renderContext.BindVertexArray(0);
-                    mmr.Vao = vao;
-                    mmr.Vbo = vbo;
-                    mmr.Ebo = ebo;
-                    mmr.IndexCount = (uint)mesh.Indices.Count;
-                    mmr.AlbedoTextures = albedos.ToArray();
-                    mmr.NormalTextures = normals.ToArray();
-                    mmr.MetallicTextures = metallics.ToArray();
-                    modelData.MeshRenders.Add(mmr);
-                    meshIndex++;
-                }
+                ModelData modelData = SetupModelData(model, fbxDir, forest);
                 _models[key] = model;
                 _modelData[key] = modelData;
                 Console.WriteLine($"ModelManager: Loaded {key} with {modelData.MeshRenders.Count} meshes, total vertices: {model.Meshes.Sum(m => m.Vertices.Count)}, total triangles: {model.Meshes.Sum(m => m.Indices.Count / 3)}");
@@ -400,7 +219,194 @@ namespace SiegeEngine.Core.Managers
                 throw;
             }
         }
-        private static void SmoothNormals(FBXModel model)
+        public unsafe ModelData SetupModelData(FBXModel model, string fbxDir, FBXFileForest forest)
+        {
+            // Smooth normals for the model
+            SmoothNormals(model);
+            // Apply transformations
+            foreach (var mesh in model.Meshes)
+            {
+                ComputeTangents(mesh);
+            }
+            if (model == null || (model.Meshes.Count == 0 && model.Animations.Count == 0) || model.Meshes.Sum(m => m.Vertices.Count) < 3 || model.Meshes.Sum(m => m.Indices.Count) < 3)
+            {
+                throw new InvalidOperationException($"ModelManager: Error: Invalid model, total vertices: {model?.Meshes.Sum(m => m.Vertices.Count) ?? 0}, total indices: {model?.Meshes.Sum(m => m.Indices.Count) ?? 0}");
+            }
+            var modelData = new ModelData();
+            int meshIndex = 0;
+            foreach (var mesh in model.Meshes.Where(m => m.Indices.Count > 0))
+            {
+                var mmr = new ModelMeshRender();
+                List<uint> albedos = new List<uint>();
+                List<uint> normals = new List<uint>();
+                List<uint> metallics = new List<uint>();
+                foreach (var mat in mesh.Materials)
+                {
+                    var albedoInfo = mat.Textures.GetValueOrDefault("albedo");
+                    uint albedo = 0;
+                    byte depth;
+                    if (albedoInfo != null)
+                    {
+                        int glWrapU = albedoInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
+                        int glWrapV = albedoInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
+                        if (albedoInfo.Path?.StartsWith("embedded_") == true)
+                        {
+                            string embName = albedoInfo.Path.Substring(9);
+                            var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
+                            if (data != null)
+                            {
+                                (albedo, depth) = LoadEmbeddedTexture(data, embName, glWrapU, glWrapV);
+                            }
+                        }
+                        else
+                        {
+                            (albedo, depth) = LoadExternalTexture(albedoInfo.Path ?? "", fbxDir, glWrapU, glWrapV);
+                        }
+                    }
+                    albedos.Add(albedo);
+                    var normalInfo = mat.Textures.GetValueOrDefault("normal");
+                    uint normalTex = 0;
+                    if (normalInfo != null)
+                    {
+                        int glNormalWrapU = normalInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
+                        int glNormalWrapV = normalInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
+                        if (normalInfo.Path?.StartsWith("embedded_") == true)
+                        {
+                            string embName = normalInfo.Path.Substring(9);
+                            var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
+                            if (data != null)
+                            {
+                                (normalTex, _) = LoadEmbeddedTexture(data, embName, glNormalWrapU, glNormalWrapV);
+                            }
+                        }
+                        else
+                        {
+                            (normalTex, depth) = LoadExternalTexture(normalInfo.Path ?? "", fbxDir, glNormalWrapU, glNormalWrapV);
+                        }
+                    }
+                    normals.Add(normalTex);
+                    var metallicInfo = mat.Textures.GetValueOrDefault("metallic");
+                    uint metallicTex = 0;
+                    if (metallicInfo != null)
+                    {
+                        int glMetallicWrapU = metallicInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
+                        int glMetallicWrapV = metallicInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
+                        if (metallicInfo.Path?.StartsWith("embedded_") == true)
+                        {
+                            string embName = metallicInfo.Path.Substring(9);
+                            var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
+                            if (data != null)
+                            {
+                                (metallicTex, _) = LoadEmbeddedTexture(data, embName, glMetallicWrapU, glMetallicWrapV);
+                            }
+                        }
+                        else
+                        {
+                            (metallicTex, depth) = LoadExternalTexture(metallicInfo.Path ?? "", fbxDir, glMetallicWrapU, glMetallicWrapV);
+                        }
+                    }
+                    metallics.Add(metallicTex);
+                }
+                if (albedos.Count > 4)
+                {
+                    Console.WriteLine($"ModelManager: Warning: {albedos.Count} materials for mesh {meshIndex}, limiting to 4");
+                    albedos = albedos.Take(4).ToList();
+                    normals = normals.Take(4).ToList();
+                    metallics = metallics.Take(4).ToList();
+                }
+                float[] vertexData = new float[mesh.Vertices.Count * 20];
+                int defaultNormalCount = 0;
+                int zeroNormalCount = 0;
+                Dictionary<float, int> materialIndexCounts = new Dictionary<float, int>();
+                float minX = float.MaxValue, maxX = float.MinValue;
+                float minY = float.MaxValue, maxY = float.MinValue;
+                float minZ = float.MaxValue, maxZ = float.MinValue;
+                for (int i = 0; i < mesh.Vertices.Count; i++)
+                {
+                    var vertex = mesh.Vertices[i];
+                    vertexData[i * 20 + 0] = vertex.X;
+                    vertexData[i * 20 + 1] = vertex.Y;
+                    vertexData[i * 20 + 2] = vertex.Z;
+                    vertexData[i * 20 + 3] = vertex.Nx;
+                    vertexData[i * 20 + 4] = vertex.Ny;
+                    vertexData[i * 20 + 5] = vertex.Nz;
+                    vertexData[i * 20 + 6] = vertex.U;
+                    vertexData[i * 20 + 7] = vertex.V;
+                    float materialIndex = vertex.MatIdx;
+                    vertexData[i * 20 + 8] = materialIndex;
+                    vertexData[i * 20 + 9] = vertex.Tx;
+                    vertexData[i * 20 + 10] = vertex.Ty;
+                    vertexData[i * 20 + 11] = vertex.Tz;
+                    vertexData[i * 20 + 12] = vertex.BoneID0;
+                    vertexData[i * 20 + 13] = vertex.BoneID1;
+                    vertexData[i * 20 + 14] = vertex.BoneID2;
+                    vertexData[i * 20 + 15] = vertex.BoneID3;
+                    vertexData[i * 20 + 16] = vertex.Weight0;
+                    vertexData[i * 20 + 17] = vertex.Weight1;
+                    vertexData[i * 20 + 18] = vertex.Weight2;
+                    vertexData[i * 20 + 19] = vertex.Weight3;
+                    materialIndexCounts.TryGetValue(materialIndex, out int count);
+                    materialIndexCounts[materialIndex] = count + 1;
+                    minX = Math.Min(minX, vertex.X);
+                    maxX = Math.Max(maxX, vertex.X);
+                    minY = Math.Min(minY, vertex.Y);
+                    maxY = Math.Max(maxY, vertex.Y);
+                    minZ = Math.Min(minZ, vertex.Z);
+                    maxZ = Math.Max(maxZ, vertex.Z);
+                    if (vertex.Nx == 0f && vertex.Ny == 0f && vertex.Nz == 1f)
+                        defaultNormalCount++;
+                    if (vertex.Nx == 0f && vertex.Ny == 0f && vertex.Nz == 0f)
+                        zeroNormalCount++;
+                }
+                Console.WriteLine($"ModelManager: Loaded mesh {meshIndex} with {mesh.Materials.Count} materials");
+                Console.WriteLine($"ModelManager: Vertex ranges: X=({minX}, {maxX}), Y=({minY}, {maxY}), Z=({minZ}, {maxZ})");
+                Console.WriteLine($"ModelManager: Bounds: Width={maxX - minX:F2}, Height={maxY - minY:F2}, Depth={maxZ - minZ:F2}");
+                Console.WriteLine($"ModelManager: {defaultNormalCount} of {mesh.Vertices.Count} vertices have default normals (0, 0, 1)");
+                Console.WriteLine($"ModelManager: {zeroNormalCount} of {mesh.Vertices.Count} vertices have zero normals (0, 0, 0)");
+                Console.WriteLine($"ModelManager: Material index distribution: {string.Join(", ", materialIndexCounts.Select(kv => $"Index {kv.Key}: {kv.Value} vertices"))}");
+                uint vao = _renderContext.GenVertexArray();
+                uint vbo = _renderContext.GenBuffer();
+                uint ebo = _renderContext.GenBuffer();
+                _renderContext.BindVertexArray(vao);
+                fixed (float* ptr = vertexData)
+                {
+                    _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, vbo);
+                    _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
+                }
+                fixed (uint* ptr = mesh.Indices.ToArray())
+                {
+                    _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, ebo);
+                    _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(mesh.Indices.Count * sizeof(uint)), ptr, _renderContext.Enums.StaticDraw);
+                }
+                uint stride = 20 * sizeof(float);
+                _renderContext.EnableVertexAttribArray(0); // Position
+                _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
+                _renderContext.EnableVertexAttribArray(3); // Normal
+                _renderContext.VertexAttribPointer(3, 3, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(2); // UV
+                _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(6 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(4); // MaterialIndex
+                _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(5); // Tangent
+                _renderContext.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(6); // BoneIDs
+                _renderContext.VertexAttribPointer(6, 4, _renderContext.Enums.Float, false, stride, (void*)(12 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(7); // BoneWeights
+                _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
+                _renderContext.BindVertexArray(0);
+                mmr.Vao = vao;
+                mmr.Vbo = vbo;
+                mmr.Ebo = ebo;
+                mmr.IndexCount = (uint)mesh.Indices.Count;
+                mmr.AlbedoTextures = albedos.ToArray();
+                mmr.NormalTextures = normals.ToArray();
+                mmr.MetallicTextures = metallics.ToArray();
+                modelData.MeshRenders.Add(mmr);
+                meshIndex++;
+            }
+            return modelData;
+        }
+        public static void SmoothNormals(FBXModel model)
         {
             foreach (var mesh in model.Meshes)
             {
@@ -444,7 +450,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
-        private static void ComputeTangents(MeshData mesh)
+        public static void ComputeTangents(MeshData mesh)
         {
             List<Vector3> tangents = new List<Vector3>(new Vector3[mesh.Vertices.Count]);
             List<Vector3> bitangents = new List<Vector3>(new Vector3[mesh.Vertices.Count]);

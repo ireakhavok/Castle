@@ -1,5 +1,5 @@
 ﻿// Folder: SiegeEngine
-// File: FBXParser.cs
+// File: Core/AssetParsing/FBXParser.cs
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,6 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -184,7 +183,7 @@ namespace SiegeEngine.Core.AssetParsing
             foreach (var modelNode in modelNodes)
             {
                 long id = (long)modelNode.properties[0].Value;
-                if (!onlyAnimations && !allUsedBoneIds.Contains(id)) continue; // Skip unused bones when not onlyAnimations
+                // Removed the skip condition to always parse bones
                 string fullName = ((string)modelNode.properties[1].Value).Split('\0')[0];
                 string[] nameParts = fullName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
                 string name = nameParts[nameParts.Length - 1].Trim();
@@ -192,7 +191,6 @@ namespace SiegeEngine.Core.AssetParsing
                 Bone bone = new Bone { Name = name, ParentIndex = -1, BindPose = Matrix4x4.Identity };
                 string boneType = (string)modelNode.properties[2].Value;
                 bone.BoneType = boneType;
-
                 // Parse properties
                 var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
@@ -1087,7 +1085,7 @@ namespace SiegeEngine.Core.AssetParsing
             if (keyValueNode == null) return null;
             var prop = keyValueNode.properties[0];
             char typeCode = prop.TypeCode;
-            Console.WriteLine($"KeyValue type: {typeCode}");
+            //Console.WriteLine($"KeyValue type: {typeCode}");
             float[] keyValues = null;
             if (typeCode == 'f')
             {
