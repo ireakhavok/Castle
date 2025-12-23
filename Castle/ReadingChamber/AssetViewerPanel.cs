@@ -7,7 +7,6 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;
-using SiegeEngine.Core.Events;
 using System;
 using System.Collections.Generic;
 using System.IO;

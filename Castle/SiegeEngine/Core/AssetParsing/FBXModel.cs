@@ -1,7 +1,6 @@
 ﻿// Folder: SiegeEngine
 // File: FBXModel.cs
 using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,8 +40,8 @@ namespace SiegeEngine.Core.AssetParsing
         public int BoneID0, BoneID1, BoneID2, BoneID3;
         public float Weight0, Weight1, Weight2, Weight3;
         public FBXVertex(float x, float y, float z, float nx, float ny, float nz, float u, float v, float matIdx, float tx = 0, float ty = 0, float tz = 0,
-                         int boneID0 = 0, int boneID1 = 0, int boneID2 = 0, int boneID3 = 0,
-                         float weight0 = 0, float weight1 = 0, float weight2 = 0, float weight3 = 0)
+        int boneID0 = 0, int boneID1 = 0, int boneID2 = 0, int boneID3 = 0,
+        float weight0 = 0, float weight1 = 0, float weight2 = 0, float weight3 = 0)
         {
             X = x; Y = y; Z = z;
             Nx = nx; Ny = ny; Nz = nz;
@@ -113,8 +112,8 @@ namespace SiegeEngine.Core.AssetParsing
         public Vector3 GeometricRotation { get; set; } = Vector3.Zero;
         public Vector3 GeometricScaling { get; set; } = Vector3.One;
         public Matrix4x4 Geo => Matrix4x4.CreateScale(GeometricScaling) *
-                                CreateFromEuler(GeometricRotation, 0) *
-                                Matrix4x4.CreateTranslation(GeometricTranslation);
+        CreateFromEuler(GeometricRotation, 0) *
+        Matrix4x4.CreateTranslation(GeometricTranslation);
         public Matrix4x4 ComputeLocal(Vector3? t = null, Vector3? r = null, Vector3? s = null)
         {
             Vector3 useT = t ?? LclTranslation;
@@ -206,12 +205,20 @@ namespace SiegeEngine.Core.AssetParsing
             Matrix4x4[] interpolated = new Matrix4x4[numBones];
             for (int b = 0; b < numBones; b++)
             {
-                Matrix4x4.Decompose(lower.BoneTransforms[b], out Vector3 lScale, out Quaternion lRot, out Vector3 lTrans);
-                Matrix4x4.Decompose(upper.BoneTransforms[b], out Vector3 uScale, out Quaternion uRot, out Vector3 uTrans);
-                Vector3 iTrans = Vector3.Lerp(lTrans, uTrans, factor);
-                Quaternion iRot = Quaternion.Slerp(lRot, uRot, factor);
-                Vector3 iScale = Vector3.Lerp(lScale, uScale, factor);
-                interpolated[b] = Matrix4x4.CreateScale(iScale) * Matrix4x4.CreateFromQuaternion(iRot) * Matrix4x4.CreateTranslation(iTrans);
+                bool lowerDecomposed = Matrix4x4.Decompose(lower.BoneTransforms[b], out Vector3 lScale, out Quaternion lRot, out Vector3 lTrans);
+                bool upperDecomposed = Matrix4x4.Decompose(upper.BoneTransforms[b], out Vector3 uScale, out Quaternion uRot, out Vector3 uTrans);
+                if (lowerDecomposed && upperDecomposed)
+                {
+                    Vector3 iTrans = Vector3.Lerp(lTrans, uTrans, factor);
+                    Quaternion iRot = Quaternion.Slerp(lRot, uRot, factor);
+                    Vector3 iScale = Vector3.Lerp(lScale, uScale, factor);
+                    interpolated[b] = Matrix4x4.CreateScale(iScale) * Matrix4x4.CreateFromQuaternion(iRot) * Matrix4x4.CreateTranslation(iTrans);
+                }
+                else
+                {
+                    interpolated[b] = lower.BoneTransforms[b];
+                    Console.WriteLine($"Animation {Name}: Failed to decompose matrices for bone {b} at time {time} (lower: {lowerDecomposed}, upper: {upperDecomposed}). Using lower keyframe.");
+                }
             }
             return interpolated;
         }

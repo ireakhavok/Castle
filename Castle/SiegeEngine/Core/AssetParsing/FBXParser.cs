@@ -8,6 +8,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -186,11 +187,12 @@ namespace SiegeEngine.Core.AssetParsing
                 if (!onlyAnimations && !allUsedBoneIds.Contains(id)) continue; // Skip unused bones when not onlyAnimations
                 string fullName = ((string)modelNode.properties[1].Value).Split('\0')[0];
                 string[] nameParts = fullName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
-                string name = nameParts[nameParts.Length - 1];
+                string name = nameParts[nameParts.Length - 1].Trim();
                 if (name.EndsWith("_end")) continue; // Skip Blender end bones
                 Bone bone = new Bone { Name = name, ParentIndex = -1, BindPose = Matrix4x4.Identity };
                 string boneType = (string)modelNode.properties[2].Value;
                 bone.BoneType = boneType;
+
                 // Parse properties
                 var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
@@ -941,7 +943,7 @@ namespace SiegeEngine.Core.AssetParsing
                     allKeyTimesSet.UnionWith(keyTimesZ);
                     List<long> allKeyTimes = allKeyTimesSet.OrderBy(t => t).ToList();
                     if (allKeyTimes.Count == 0) continue;
-                    Console.WriteLine($"Curve for bone {boneIdx} {trsType} with {allKeyTimes.Count} unique keys");
+                    Console.WriteLine($"Curve for bone {model.Skeleton.Bones[boneIdx].Name} {trsType} with {allKeyTimes.Count} unique keys");
                     Bone bone = model.Skeleton.Bones[boneIdx];
                     Vector3 defaultVal = trsType switch
                     {
