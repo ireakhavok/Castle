@@ -158,26 +158,49 @@ namespace SiegeEngine.Core.AssetParsing
                 ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Limb" || (string)n.properties[2].Value == "Root")).ToList();
             Dictionary<long, int> boneIndexById = new Dictionary<long, int>();
             int boneIndex = 0;
+            HashSet<long> usedBoneIds = new HashSet<long>();
+            // First, collect used bone IDs from clusters
+            var deformerNodes = objectsNode.children.Where(n => n.Name == "Deformer" && n.properties.Count >= 3 && (string)n.properties[2].Value == "Cluster").ToList();
+            foreach (var deformer in deformerNodes)
+            {
+                long deformerId = (long)deformer.properties[0].Value;
+                var boneConn = conns.FirstOrDefault(c => c.type == "OO" && c.child == deformerId);
+                if (boneConn.type != null)
+                {
+                    long boneId = boneConn.parent;
+                    if (objectsById.ContainsKey(boneId) && objectsById[boneId].Name == "Model")
+                    {
+                        usedBoneIds.Add(boneId);
+                    }
+                }
+            }
+            // Recursively add ancestors and descendants to usedBoneIds
+            HashSet<long> allUsedBoneIds = new HashSet<long>(usedBoneIds);
+            foreach (var boneId in usedBoneIds.ToList())
+            {
+                AddAncestorsAndDescendants(boneId, allUsedBoneIds, conns, objectsById);
+            }
             foreach (var modelNode in modelNodes)
             {
-                // Get bone ID and name
                 long id = (long)modelNode.properties[0].Value;
+                if (!onlyAnimations && !allUsedBoneIds.Contains(id)) continue; // Skip unused bones when not onlyAnimations
                 string fullName = ((string)modelNode.properties[1].Value).Split('\0')[0];
-                string[] nameParts = fullName.Split("::");
-                string name = nameParts.Length > 1 ? nameParts[1] : nameParts[0];
+                string[] nameParts = fullName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
+                string name = nameParts[nameParts.Length - 1];
+                if (name.EndsWith("_end")) continue; // Skip Blender end bones
                 Bone bone = new Bone { Name = name, ParentIndex = -1, BindPose = Matrix4x4.Identity };
                 string boneType = (string)modelNode.properties[2].Value;
+                bone.BoneType = boneType;
                 // Parse properties
                 var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
                 {
                     foreach (var p in props70.children)
                     {
-                        if (p.Name == "P" && p.properties.Count >= 7)
+                        if (p.Name == "P" && p.properties.Count >= 5)
                         {
-                            // Parse relevant bone properties
                             string pname = (string)p.properties[0].Value;
-                            if (pname == "Lcl Translation")
+                            if (pname == "Lcl Translation" && p.properties.Count >= 7)
                             {
                                 float tx = Convert.ToSingle(p.properties[4].Value);
                                 float ty = Convert.ToSingle(p.properties[5].Value);
@@ -185,7 +208,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 Vector3 t_source = new Vector3(tx, ty, tz);
                                 bone.LclTranslation = RemapVector(t_source, sourceToTarget, signs) * modelScale;
                             }
-                            else if (pname == "Lcl Rotation")
+                            else if (pname == "Lcl Rotation" && p.properties.Count >= 7)
                             {
                                 float rx = Convert.ToSingle(p.properties[4].Value);
                                 float ry = Convert.ToSingle(p.properties[5].Value);
@@ -193,7 +216,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 Vector3 r_source = new Vector3(rx, ry, rz);
                                 bone.LclRotation = RemapRotation(r_source, sourceToTarget, signs);
                             }
-                            else if (pname == "Lcl Scaling")
+                            else if (pname == "Lcl Scaling" && p.properties.Count >= 7)
                             {
                                 float sx = Convert.ToSingle(p.properties[4].Value);
                                 float sy = Convert.ToSingle(p.properties[5].Value);
@@ -201,7 +224,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 Vector3 s_source = new Vector3(sx, sy, sz);
                                 bone.LclScaling = RemapScale(s_source, sourceToTarget, signs);
                             }
-                            else if (pname == "PreRotation")
+                            else if (pname == "PreRotation" && p.properties.Count >= 7)
                             {
                                 float prx = Convert.ToSingle(p.properties[4].Value);
                                 float pry = Convert.ToSingle(p.properties[5].Value);
@@ -209,7 +232,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 Vector3 pr_source = new Vector3(prx, pry, prz);
                                 bone.PreRotation = RemapRotation(pr_source, sourceToTarget, signs);
                             }
-                            else if (pname == "PostRotation")
+                            else if (pname == "PostRotation" && p.properties.Count >= 7)
                             {
                                 float pox = Convert.ToSingle(p.properties[4].Value);
                                 float poy = Convert.ToSingle(p.properties[5].Value);
@@ -217,7 +240,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 Vector3 po_source = new Vector3(pox, poy, poz);
                                 bone.PostRotation = RemapRotation(po_source, sourceToTarget, signs);
                             }
-                            else if (pname == "RotationPivot")
+                            else if (pname == "RotationPivot" && p.properties.Count >= 7)
                             {
                                 float rpx = Convert.ToSingle(p.properties[4].Value);
                                 float rpy = Convert.ToSingle(p.properties[5].Value);
@@ -225,7 +248,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 Vector3 rp_source = new Vector3(rpx, rpy, rpz);
                                 bone.RotationPivot = RemapVector(rp_source, sourceToTarget, signs) * modelScale;
                             }
-                            else if (pname == "RotationOffset")
+                            else if (pname == "RotationOffset" && p.properties.Count >= 7)
                             {
                                 float rox = Convert.ToSingle(p.properties[4].Value);
                                 float roy = Convert.ToSingle(p.properties[5].Value);
@@ -233,7 +256,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 Vector3 ro_source = new Vector3(rox, roy, roz);
                                 bone.RotationOffset = RemapVector(ro_source, sourceToTarget, signs) * modelScale;
                             }
-                            else if (pname == "ScalingPivot")
+                            else if (pname == "ScalingPivot" && p.properties.Count >= 7)
                             {
                                 float spx = Convert.ToSingle(p.properties[4].Value);
                                 float spy = Convert.ToSingle(p.properties[5].Value);
@@ -241,7 +264,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 Vector3 sp_source = new Vector3(spx, spy, spz);
                                 bone.ScalingPivot = RemapVector(sp_source, sourceToTarget, signs) * modelScale;
                             }
-                            else if (pname == "ScalingOffset")
+                            else if (pname == "ScalingOffset" && p.properties.Count >= 7)
                             {
                                 float sox = Convert.ToSingle(p.properties[4].Value);
                                 float soy = Convert.ToSingle(p.properties[5].Value);
@@ -253,6 +276,34 @@ namespace SiegeEngine.Core.AssetParsing
                             {
                                 int order_source = Convert.ToInt32(p.properties[4].Value);
                                 bone.RotationOrder = RemapRotationOrder(order_source, sourceToTarget);
+                            }
+                            else if (pname == "Size" && p.properties.Count >= 5)
+                            {
+                                bone.Size = Convert.ToSingle(p.properties[4].Value) * modelScale;
+                            }
+                            else if (pname == "GeometricTranslation" && p.properties.Count >= 7)
+                            {
+                                float gtx = Convert.ToSingle(p.properties[4].Value);
+                                float gty = Convert.ToSingle(p.properties[5].Value);
+                                float gtz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 gt_source = new Vector3(gtx, gty, gtz);
+                                bone.GeometricTranslation = RemapVector(gt_source, sourceToTarget, signs) * modelScale;
+                            }
+                            else if (pname == "GeometricRotation" && p.properties.Count >= 7)
+                            {
+                                float grx = Convert.ToSingle(p.properties[4].Value);
+                                float gry = Convert.ToSingle(p.properties[5].Value);
+                                float grz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 gr_source = new Vector3(grx, gry, grz);
+                                bone.GeometricRotation = RemapRotation(gr_source, sourceToTarget, signs);
+                            }
+                            else if (pname == "GeometricScaling" && p.properties.Count >= 7)
+                            {
+                                float gsx = Convert.ToSingle(p.properties[4].Value);
+                                float gsy = Convert.ToSingle(p.properties[5].Value);
+                                float gsz = Convert.ToSingle(p.properties[6].Value);
+                                Vector3 gs_source = new Vector3(gsx, gsy, gsz);
+                                bone.GeometricScaling = RemapScale(gs_source, sourceToTarget, signs);
                             }
                         }
                     }
@@ -372,11 +423,70 @@ namespace SiegeEngine.Core.AssetParsing
                         var mappingNode = layerMat.children.FirstOrDefault(c => c.Name == "MappingInformationType");
                         matMapping = mappingNode != null ? (string)mappingNode.properties[0].Value : "";
                     }
+                    long geomId = (long)geom.properties[0].Value;
+                    // Parse geometric transform for the mesh node
+                    Matrix4x4 geoMat = Matrix4x4.Identity;
+                    var modelConnsGeom = conns.Where(c => c.type == "OO" && c.child == geomId).ToList();
+                    if (modelConnsGeom.Count > 0)
+                    {
+                        long modelId = modelConnsGeom[0].parent;
+                        var modelNode = objectsById.GetValueOrDefault(modelId);
+                        if (modelNode != null)
+                        {
+                            Vector3 geoT = Vector3.Zero;
+                            Vector3 geoR = Vector3.Zero;
+                            Vector3 geoS = Vector3.One;
+                            var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
+                            if (props70 != null)
+                            {
+                                foreach (var p in props70.children)
+                                {
+                                    if (p.Name == "P" && p.properties.Count >= 7)
+                                    {
+                                        string pname = (string)p.properties[0].Value;
+                                        if (pname == "GeometricTranslation")
+                                        {
+                                            float gtx = Convert.ToSingle(p.properties[4].Value);
+                                            float gty = Convert.ToSingle(p.properties[5].Value);
+                                            float gtz = Convert.ToSingle(p.properties[6].Value);
+                                            Vector3 gt_source = new Vector3(gtx, gty, gtz);
+                                            geoT = RemapVector(gt_source, sourceToTarget, signs) * modelScale;
+                                        }
+                                        else if (pname == "GeometricRotation")
+                                        {
+                                            float grx = Convert.ToSingle(p.properties[4].Value);
+                                            float gry = Convert.ToSingle(p.properties[5].Value);
+                                            float grz = Convert.ToSingle(p.properties[6].Value);
+                                            Vector3 gr_source = new Vector3(grx, gry, grz);
+                                            geoR = RemapRotation(gr_source, sourceToTarget, signs);
+                                        }
+                                        else if (pname == "GeometricScaling")
+                                        {
+                                            float gsx = Convert.ToSingle(p.properties[4].Value);
+                                            float gsy = Convert.ToSingle(p.properties[5].Value);
+                                            float gsz = Convert.ToSingle(p.properties[6].Value);
+                                            Vector3 gs_source = new Vector3(gsx, gsy, gsz);
+                                            geoS = RemapScale(gs_source, sourceToTarget, signs);
+                                        }
+                                    }
+                                }
+                            }
+                            float rx = geoR.X * MathF.PI / 180f;
+                            float ry = geoR.Y * MathF.PI / 180f;
+                            float rz = geoR.Z * MathF.PI / 180f;
+                            Matrix4x4 mx = Matrix4x4.CreateRotationX(rx);
+                            Matrix4x4 my = Matrix4x4.CreateRotationY(ry);
+                            Matrix4x4 mz = Matrix4x4.CreateRotationZ(rz);
+                            Matrix4x4 R = mx * my * mz;
+                            Matrix4x4 S = Matrix4x4.CreateScale(geoS);
+                            Matrix4x4 T = Matrix4x4.CreateTranslation(geoT);
+                            geoMat = S * R * T;
+                        }
+                    }
                     // Prepare per-original-vertex bone data
                     int numVerts = vertsD.Length / 3;
                     List<List<(int boneIdx, float weight)>> perVertBones = Enumerable.Range(0, numVerts).Select(_ => new List<(int, float)>()).ToList();
                     // Parse skin if present
-                    long geomId = (long)geom.properties[0].Value;
                     var skinConns = conns.Where(c => c.type == "OO" && c.parent == geomId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Deformer" && (string)objectsById[c.child].properties[2].Value == "Skin").ToList();
                     if (skinConns.Any())
                     {
@@ -512,6 +622,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 float y = (float)vertsD[vertIdx * 3 + 1];
                                 float z = (float)vertsD[vertIdx * 3 + 2];
                                 Vector3 pos_source = new Vector3(x, y, z);
+                                pos_source = Vector3.Transform(pos_source, geoMat);
                                 Vector3 pos = RemapVector(pos_source, sourceToTarget, signs) * modelScale;
                                 // Normal
                                 Vector3 normal_source = new Vector3(0f, 0f, 1f); // Default
@@ -554,6 +665,7 @@ namespace SiegeEngine.Core.AssetParsing
                                         normal_source = new Vector3(nx, ny, nz);
                                     }
                                 }
+                                normal_source = Vector3.TransformNormal(normal_source, geoMat);
                                 Vector3 normal = RemapVector(normal_source, sourceToTarget, signs);
                                 if (normal.LengthSquared() > 0)
                                     normal = Vector3.Normalize(normal);
@@ -636,7 +748,7 @@ namespace SiegeEngine.Core.AssetParsing
                     mesh.Vertices = expandedVertices;
                     mesh.Indices = newIndices;
                     // Extract materials (unchanged)
-                    long geomIdMesh = geomId; // rename to avoid shadow
+                    long geomIdMesh = geomId;
                     var modelConns = conns.Where(c => c.type == "OO" && c.child == geomIdMesh).ToList();
                     if (modelConns.Count > 0)
                     {
@@ -771,8 +883,8 @@ namespace SiegeEngine.Core.AssetParsing
             {
                 long stackId = (long)stack.properties[0].Value;
                 string fullAnimName = ((string)stack.properties[1].Value).Split('\0')[0];
-                string[] animNameParts = fullAnimName.Split("::");
-                string animName = animNameParts.Length > 1 ? animNameParts[1] : animNameParts[0];
+                string[] animNameParts = fullAnimName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
+                string animName = animNameParts[animNameParts.Length - 1];
                 Animation anim = new Animation { Name = animName, Keyframes = new List<Keyframe>() };
                 model.Animations.Add(anim);
                 Console.WriteLine($"Parsing animation stack {animName}");
@@ -802,94 +914,49 @@ namespace SiegeEngine.Core.AssetParsing
                     else continue;
                     // Get X, Y, Z curves
                     var curveXConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|X");
-                    long curveXId = curveXConn.child;
-                    var curveXNode = objectsById.GetValueOrDefault(curveXId);
-                    if (curveXNode == null)
-                    {
-                        Console.WriteLine($"No curveX for {trsType} on bone {boneIdx}");
-                        continue;
-                    }
-                    var keyTimeNodeX = curveXNode.children.FirstOrDefault(c => c.Name == "KeyTime");
-                    long[] keyTimes = keyTimeNodeX != null ? (long[])keyTimeNodeX.properties[0].Value : Array.Empty<long>();
-                    var keyValueNodeX = curveXNode.children.FirstOrDefault(c => c.Name == "KeyValueFloat");
-                    if (keyValueNodeX == null)
-                    {
-                        Console.WriteLine($"No KeyValueFloat for curveX {trsType} on bone {boneIdx}");
-                    }
-                    var keyValuePropX = keyValueNodeX?.properties[0];
-                    char typeCodeX = keyValuePropX != null ? keyValuePropX.TypeCode : ' ';
-                    Console.WriteLine($"KeyValue type for X: {typeCodeX}");
-                    float[] keyValuesX = null;
-                    if (keyValuePropX != null)
-                    {
-                        if (keyValuePropX.TypeCode == 'f')
-                        {
-                            keyValuesX = (float[])keyValuePropX.Value;
-                        }
-                        else if (keyValuePropX.TypeCode == 'd')
-                        {
-                            double[] dvals = (double[])keyValuePropX.Value;
-                            keyValuesX = dvals.Select(d => (float)d).ToArray();
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Unexpected type for KeyValueFloat X: {keyValuePropX.TypeCode}");
-                        }
-                    }
+                    long curveXId = curveXConn.type != null ? curveXConn.child : 0;
+                    var curveXNode = curveXId != 0 ? objectsById.GetValueOrDefault(curveXId) : null;
+                    var keyTimeNodeX = curveXNode?.children.FirstOrDefault(c => c.Name == "KeyTime");
+                    long[] keyTimesX = keyTimeNodeX != null ? (long[])keyTimeNodeX.properties[0].Value : new long[0];
+                    var keyValueNodeX = curveXNode?.children.FirstOrDefault(c => c.Name == "KeyValueFloat");
+                    float[] keyValuesX = ParseKeyValues(keyValueNodeX, keyTimesX.Length);
                     var curveYConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|Y");
-                    long curveYId = curveYConn.child;
-                    var curveYNode = objectsById.GetValueOrDefault(curveYId);
-                    float[] keyValuesY = null;
+                    long curveYId = curveYConn.type != null ? curveYConn.child : 0;
+                    var curveYNode = curveYId != 0 ? objectsById.GetValueOrDefault(curveYId) : null;
+                    var keyTimeNodeY = curveYNode?.children.FirstOrDefault(c => c.Name == "KeyTime");
+                    long[] keyTimesY = keyTimeNodeY != null ? (long[])keyTimeNodeY.properties[0].Value : new long[0];
                     var keyValueNodeY = curveYNode?.children.FirstOrDefault(c => c.Name == "KeyValueFloat");
-                    var keyValuePropY = keyValueNodeY?.properties[0];
-                    if (keyValuePropY != null)
-                    {
-                        if (keyValuePropY.TypeCode == 'f')
-                        {
-                            keyValuesY = (float[])keyValuePropY.Value;
-                        }
-                        else if (keyValuePropY.TypeCode == 'd')
-                        {
-                            double[] dvals = (double[])keyValuePropY.Value;
-                            keyValuesY = dvals.Select(d => (float)d).ToArray();
-                        }
-                    }
+                    float[] keyValuesY = ParseKeyValues(keyValueNodeY, keyTimesY.Length);
                     var curveZConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == "d|Z");
-                    long curveZId = curveZConn.child;
-                    var curveZNode = objectsById.GetValueOrDefault(curveZId);
-                    float[] keyValuesZ = null;
+                    long curveZId = curveZConn.type != null ? curveZConn.child : 0;
+                    var curveZNode = curveZId != 0 ? objectsById.GetValueOrDefault(curveZId) : null;
+                    var keyTimeNodeZ = curveZNode?.children.FirstOrDefault(c => c.Name == "KeyTime");
+                    long[] keyTimesZ = keyTimeNodeZ != null ? (long[])keyTimeNodeZ.properties[0].Value : new long[0];
                     var keyValueNodeZ = curveZNode?.children.FirstOrDefault(c => c.Name == "KeyValueFloat");
-                    var keyValuePropZ = keyValueNodeZ?.properties[0];
-                    if (keyValuePropZ != null)
+                    float[] keyValuesZ = ParseKeyValues(keyValueNodeZ, keyTimesZ.Length);
+                    // Collect unique times
+                    HashSet<long> allKeyTimesSet = new HashSet<long>();
+                    allKeyTimesSet.UnionWith(keyTimesX);
+                    allKeyTimesSet.UnionWith(keyTimesY);
+                    allKeyTimesSet.UnionWith(keyTimesZ);
+                    List<long> allKeyTimes = allKeyTimesSet.OrderBy(t => t).ToList();
+                    if (allKeyTimes.Count == 0) continue;
+                    Console.WriteLine($"Curve for bone {boneIdx} {trsType} with {allKeyTimes.Count} unique keys");
+                    Bone bone = model.Skeleton.Bones[boneIdx];
+                    Vector3 defaultVal = trsType switch
                     {
-                        if (keyValuePropZ.TypeCode == 'f')
-                        {
-                            keyValuesZ = (float[])keyValuePropZ.Value;
-                        }
-                        else if (keyValuePropZ.TypeCode == 'd')
-                        {
-                            double[] dvals = (double[])keyValuePropZ.Value;
-                            keyValuesZ = dvals.Select(d => (float)d).ToArray();
-                        }
-                    }
-                    if (keyTimes.Length == 0 || keyTimes.Length != (keyValuesX?.Length ?? 0) || keyTimes.Length != (keyValuesY?.Length ?? 0) || keyTimes.Length != (keyValuesZ?.Length ?? 0)) continue;
-                    Console.WriteLine($"Curve for bone {boneIdx} {trsType} with {keyTimes.Length} keys");
-                    for (int k = 0; k < keyTimes.Length; k++)
+                        "T" => bone.LclTranslation,
+                        "R" => bone.LclRotation,
+                        "S" => bone.LclScaling,
+                        _ => Vector3.Zero
+                    };
+                    for (int k = 0; k < allKeyTimes.Count; k++)
                     {
-                        float t = keyTimes[k] / 46186158000f;
-                        if (!timeBoneTRS.TryGetValue(t, out var boneTRS))
-                        {
-                            boneTRS = new Dictionary<int, Dictionary<string, Vector3>>();
-                            timeBoneTRS[t] = boneTRS;
-                        }
-                        if (!boneTRS.TryGetValue(boneIdx, out var trsVals))
-                        {
-                            trsVals = new Dictionary<string, Vector3>();
-                            boneTRS[boneIdx] = trsVals;
-                        }
-                        float vx = keyValuesX != null ? keyValuesX[k] : 0f;
-                        float vy = keyValuesY != null ? keyValuesY[k] : 0f;
-                        float vz = keyValuesZ != null ? keyValuesZ[k] : 0f;
+                        long kt = allKeyTimes[k];
+                        float t = kt / 46186158000f;
+                        float vx = GetValueAtTime(keyTimesX, keyValuesX, kt, defaultVal.X);
+                        float vy = GetValueAtTime(keyTimesY, keyValuesY, kt, defaultVal.Y);
+                        float vz = GetValueAtTime(keyTimesZ, keyValuesZ, kt, defaultVal.Z);
                         Vector3 val_source = new Vector3(vx, vy, vz);
                         Vector3 val;
                         if (trsType == "T")
@@ -908,19 +975,26 @@ namespace SiegeEngine.Core.AssetParsing
                         {
                             val = val_source;
                         }
+                        if (!timeBoneTRS.TryGetValue(t, out var boneTRS))
+                        {
+                            boneTRS = new Dictionary<int, Dictionary<string, Vector3>>();
+                            timeBoneTRS[t] = boneTRS;
+                        }
+                        if (!boneTRS.TryGetValue(boneIdx, out var trsVals))
+                        {
+                            trsVals = new Dictionary<string, Vector3>();
+                            boneTRS[boneIdx] = trsVals;
+                        }
                         trsVals[trsType] = val;
                     }
                 }
-                foreach (var kvTime in timeBoneTRS)
+                foreach (var kvTime in timeBoneTRS.OrderBy(kv => kv.Key))
                 {
                     float t = kvTime.Key;
-                    Keyframe kf = anim.Keyframes.FirstOrDefault(existingKf => existingKf.Time == t);
-                    if (kf == null)
+                    Keyframe kf = new Keyframe { Time = t, BoneTransforms = new List<Matrix4x4>() };
+                    for (int i = 0; i < model.Skeleton.Bones.Count; i++)
                     {
-                        kf = new Keyframe { Time = t, BoneTransforms = new List<Matrix4x4>() };
-                        for (int i = 0; i < model.Skeleton.Bones.Count; i++)
-                            kf.BoneTransforms.Add(model.Skeleton.Bones[i].LocalRest);
-                        anim.Keyframes.Add(kf);
+                        kf.BoneTransforms.Add(model.Skeleton.Bones[i].LocalRest);
                     }
                     foreach (var kvBone in kvTime.Value)
                     {
@@ -936,8 +1010,18 @@ namespace SiegeEngine.Core.AssetParsing
                         }
                         kf.BoneTransforms[boneIdx] = local;
                     }
+                    anim.Keyframes.Add(kf);
                 }
-                anim.Keyframes = anim.Keyframes.OrderBy(kf => kf.Time).ToList();
+                if (anim.Keyframes.Count == 0 && curveNodeConns.Count > 0)
+                {
+                    Keyframe defaultKf = new Keyframe { Time = 0, BoneTransforms = new List<Matrix4x4>() };
+                    for (int i = 0; i < model.Skeleton.Bones.Count; i++)
+                    {
+                        defaultKf.BoneTransforms.Add(model.Skeleton.Bones[i].LocalRest);
+                    }
+                    anim.Keyframes.Add(defaultKf);
+                    Console.WriteLine($"Added default keyframe for animation {anim.Name} since no keys parsed");
+                }
                 if (anim.Keyframes.Count > 0)
                 {
                     float duration = anim.Keyframes.Last().Time;
@@ -949,6 +1033,101 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
             return model;
+        }
+        private static void AddAncestorsAndDescendants(long boneId, HashSet<long> usedIds, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById)
+        {
+            // Add ancestors
+            var parentConn = conns.FirstOrDefault(c => c.type == "OO" && c.child == boneId);
+            if (parentConn.type != null)
+            {
+                long parentId = parentConn.parent;
+                if (objectsById.ContainsKey(parentId) && objectsById[parentId].Name == "Model")
+                {
+                    if (usedIds.Add(parentId))
+                    {
+                        AddAncestorsAndDescendants(parentId, usedIds, conns, objectsById);
+                    }
+                }
+            }
+            // Add descendants
+            var childConns = conns.Where(c => c.type == "OO" && c.parent == boneId).ToList();
+            foreach (var childConn in childConns)
+            {
+                long childId = childConn.child;
+                if (objectsById.ContainsKey(childId) && objectsById[childId].Name == "Model")
+                {
+                    if (usedIds.Add(childId))
+                    {
+                        AddAncestorsAndDescendants(childId, usedIds, conns, objectsById);
+                    }
+                }
+            }
+        }
+        private static float GetValueAtTime(long[] times, float[] values, long time, float defaultVal)
+        {
+            if (times == null || times.Length == 0 || values == null || values.Length == 0) return defaultVal;
+            int len = Math.Min(times.Length, values.Length);
+            int idx = Array.BinarySearch(times, 0, len, time);
+            if (idx >= 0) return values[idx];
+            idx = ~idx;
+            if (idx == 0) return values[0];
+            if (idx == len) return values[len - 1];
+            // Interpolate
+            long t0 = times[idx - 1];
+            long t1 = times[idx];
+            float v0 = values[idx - 1];
+            float v1 = values[idx];
+            float factor = (float)(time - t0) / (t1 - t0);
+            return v0 + factor * (v1 - v0);
+        }
+        private static float[] ParseKeyValues(BaseNode keyValueNode, int expectedLength)
+        {
+            if (keyValueNode == null) return null;
+            var prop = keyValueNode.properties[0];
+            char typeCode = prop.TypeCode;
+            Console.WriteLine($"KeyValue type: {typeCode}");
+            float[] keyValues = null;
+            if (typeCode == 'f')
+            {
+                keyValues = (float[])prop.Value;
+            }
+            else if (typeCode == 'd')
+            {
+                double[] dvals = (double[])prop.Value;
+                keyValues = dvals.Select(d => (float)d).ToArray();
+            }
+            else if (typeCode == 'R')
+            {
+                byte[] raw = (byte[])prop.Value;
+                if (raw.Length % 4 == 0)
+                {
+                    int actualLength = raw.Length / 4;
+                    keyValues = new float[actualLength];
+                    Buffer.BlockCopy(raw, 0, keyValues, 0, raw.Length);
+                    if (actualLength != expectedLength)
+                        Console.WriteLine($"Warning: Key value length {actualLength} vs expected {expectedLength}, using {actualLength}");
+                }
+                else if (raw.Length % 8 == 0)
+                {
+                    int actualLength = raw.Length / 8;
+                    double[] dvals = new double[actualLength];
+                    Buffer.BlockCopy(raw, 0, dvals, 0, raw.Length);
+                    keyValues = dvals.Select(d => (float)d).ToArray();
+                    if (actualLength != expectedLength)
+                        Console.WriteLine($"Warning: Key value length {actualLength} vs expected {expectedLength}, using {actualLength}");
+                }
+                else
+                {
+                    Console.WriteLine($"Unexpected raw length {raw.Length} for expected {expectedLength}, skipping");
+                    return null;
+                }
+            }
+            else
+            {
+                Console.WriteLine($"Unexpected type for KeyValueFloat: {typeCode}");
+                return null;
+            }
+            return keyValues;
         }
         private static Vector3 RemapVector(Vector3 v, int[] sourceToTarget, int[] signs)
         {

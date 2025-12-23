@@ -143,7 +143,7 @@ namespace ReadingChamber
                 Dictionary<string, int> mainBoneIndices = new Dictionary<string, int>();
                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
-                    mainBoneIndices[_model.Skeleton.Bones[i].Name] = i;
+                    mainBoneIndices[_model.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
                 }
                 int mappedCount = 0;
                 foreach (var kf in anim.Keyframes)
@@ -155,7 +155,7 @@ namespace ReadingChamber
                     }
                     for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
                     {
-                        string boneName = animModel.Skeleton.Bones[i].Name;
+                        string boneName = animModel.Skeleton.Bones[i].Name.ToLowerInvariant();
                         if (mainBoneIndices.TryGetValue(boneName, out int targetIdx))
                         {
                             newTransforms[targetIdx] = kf.BoneTransforms[i];
@@ -334,23 +334,37 @@ namespace ReadingChamber
         }
         private void UpdateSkeletonVisualization()
         {
-            if (_model?.Skeleton == null || _currentGlobalTransforms == null) return;
-            var globalPositions = new Vector3[_model.Skeleton.Bones.Count];
-            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-            {
-                Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out _, out Vector3 trans);
-                globalPositions[i] = trans;
-            }
+            if (_model?.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
             uint idx = 0;
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
-                if (_model.Skeleton.Bones[i].ParentIndex >= 0)
+                Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out _, out Vector3 pos);
+                bool hasChild = false;
+                for (int j = 0; j < _model.Skeleton.Bones.Count; j++)
                 {
-                    int parent = _model.Skeleton.Bones[i].ParentIndex;
-                    vertices.Add(new Vertex(globalPositions[parent].X, globalPositions[parent].Y, globalPositions[parent].Z, 1, 0, 0, 1));
-                    vertices.Add(new Vertex(globalPositions[i].X, globalPositions[i].Y, globalPositions[i].Z, 0, 1, 0, 1));
+                    if (_model.Skeleton.Bones[j].ParentIndex == i)
+                    {
+                        hasChild = true;
+                        Matrix4x4.Decompose(_currentGlobalTransforms[j], out _, out _, out Vector3 childPos);
+                        vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1));
+                        vertices.Add(new Vertex(childPos.X, childPos.Y, childPos.Z, 0, 1, 0, 1));
+                        indices.Add(idx);
+                        indices.Add(idx + 1);
+                        idx += 2;
+                    }
+                }
+                if (!hasChild && _model.Skeleton.Bones[i].BoneType == "LimbNode")
+                {
+                    // Draw a line for leaf bones using Size
+                    Vector3 dir = new Vector3(0, 0, _model.Skeleton.Bones[i].Size); // along Z up
+                    Matrix4x4 rotScale = _currentGlobalTransforms[i];
+                    rotScale.Translation = Vector3.Zero;
+                    Vector3 tailDir = Vector3.Transform(dir, rotScale);
+                    Vector3 tail = pos + tailDir;
+                    vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1));
+                    vertices.Add(new Vertex(tail.X, tail.Y, tail.Z, 0, 1, 0, 1));
                     indices.Add(idx);
                     indices.Add(idx + 1);
                     idx += 2;

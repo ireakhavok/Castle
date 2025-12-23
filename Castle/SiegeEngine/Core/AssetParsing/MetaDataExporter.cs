@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SiegeEngine.Core.AssetParsing
 {
-    internal class MetaDataExporter
+    public class MetaDataExporter
     {
         public static void ExportMetadata(FBXFileForest forest, string filePath)
         {
