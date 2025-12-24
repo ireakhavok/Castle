@@ -1,0 +1,620 @@
+diff --git a/Castle/ReadingChamber/AssetViewerPanel.cs b/Castle/ReadingChamber/AssetViewerPanel.cs
+index 88f7670..8b7da48 100644
+--- a/Castle/ReadingChamber/AssetViewerPanel.cs
++++ b/Castle/ReadingChamber/AssetViewerPanel.cs
+@@ -41,6 +41,7 @@ namespace ReadingChamber
+         private EditorTextRenderer _textRenderer;
+         private ShaderProgram _textShader;
+         private Matrix4x4[] _currentGlobalTransforms;
++        private Matrix4x4[] _currentFinalTransforms;
+         private Vector3 _cameraPosition = new Vector3(0, 0, 5);
+         private Vector3 _cameraTarget = Vector3.Zero;
+         private Vector3 _cameraUp = Vector3.UnitZ;
+@@ -114,6 +115,7 @@ namespace ReadingChamber
+                 _time = 0f;
+                 _playing = false;
+                 _currentGlobalTransforms = null;
++                _currentFinalTransforms = null;
+             }
+             else
+             {
+@@ -132,7 +134,7 @@ namespace ReadingChamber
+         private void LoadAnimation(string animPath)
+         {
+             var animForest = FBXParser.Load(animPath);
+-            var animModel = FBXParser.BuildModelFromForest(animForest, true);
++            var animModel = FBXParser.BuildModelFromForest(animForest, false); // Parse full model to get meshes and weights
+             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+             if (validAnimations.Count > 0)
+             {
+@@ -144,7 +146,7 @@ namespace ReadingChamber
+                 {
+                     mainBoneIndices[_model.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
+                 }
+-                int mappedCount = 0;
++                HashSet<int> mappedBones = new HashSet<int>();
+                 foreach (var kf in anim.Keyframes)
+                 {
+                     List<Matrix4x4> newTransforms = new List<Matrix4x4>();
+@@ -158,23 +160,47 @@ namespace ReadingChamber
+                         if (mainBoneIndices.TryGetValue(boneName, out int targetIdx))
+                         {
+                             newTransforms[targetIdx] = kf.BoneTransforms[i];
+-                            mappedCount++;
++                            mappedBones.Add(targetIdx);
++                        }
++                        else
++                        {
++                            Console.WriteLine($"Warning: Bone {boneName} from animation not found in main model");
+                         }
+                     }
+                     kf.BoneTransforms = newTransforms;
+                 }
+-                Console.WriteLine($"Mapped {mappedCount} bones for animation {anim.Name}");
++                Console.WriteLine($"Mapped {mappedBones.Count} unique bones for animation {anim.Name}");
++                if (mappedBones.Count < _model.Skeleton.Bones.Count)
++                {
++                    Console.WriteLine($"Warning: Not all bones mapped for animation {anim.Name} ({mappedBones.Count}/{_model.Skeleton.Bones.Count})");
++                }
+                 _model.Animations.Add(anim);
+                 _currentAnimation = anim.Name;
+                 _duration = anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 0f;
+                 _time = 0f;
+                 Console.WriteLine($"Loaded animation {anim.Name} with {anim.Keyframes.Count} keyframes");
++                if (HasUnweightedVertices() && !animModel.HasUnweightedVertices())
++                {
++                    CopyWeightsFrom(animModel);
++                    Console.WriteLine($"Copied weights from animation model to main model for {anim.Name}");
++                    string fbxDir = Path.GetDirectoryName(animPath);
++                    ModelManager temp_manager = new ModelManager(renderContext: _renderContext);
++                    _modelData = temp_manager.SetupModelData(_model, fbxDir, animForest);
++                }
+             }
+             else
+             {
+                 Console.WriteLine($"No valid animations found in {animPath}");
+             }
+         }
++        private bool HasUnweightedVertices()
++        {
++            return _model.HasUnweightedVertices();
++        }
++        private void CopyWeightsFrom(FBXModel other)
++        {
++            _model.CopyWeightsFrom(other);
++        }
+         private void UpdateUIControls()
+         {
+             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetViewerUI.html");
+@@ -320,6 +346,7 @@ namespace ReadingChamber
+                         var globalTransforms = _model.Skeleton.ComputeGlobalTransforms(localTransforms);
+                         _currentGlobalTransforms = globalTransforms;
+                         var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
++                        _currentFinalTransforms = finalTransforms;
+                         _model.Skeleton.UpdateTransforms(finalTransforms);
+                     }
+                 }
+@@ -333,37 +360,47 @@ namespace ReadingChamber
+         }
+         private void UpdateSkeletonVisualization()
+         {
+-            if (_model?.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
++            if (_model?.Skeleton == null || _currentFinalTransforms == null || _currentFinalTransforms.Length != _model.Skeleton.Bones.Count) return;
+             var vertices = new List<Vertex>();
+             var indices = new List<uint>();
+             uint idx = 0;
++            // Build a list of children for each bone
++            var children = new List<List<int>>(_model.Skeleton.Bones.Count);
++            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
++            {
++                children.Add(new List<int>());
++            }
+             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+             {
+-                Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out _, out Vector3 pos);
+-                bool hasChild = false;
+-                for (int j = 0; j < _model.Skeleton.Bones.Count; j++)
++                int parent = _model.Skeleton.Bones[i].ParentIndex;
++                if (parent >= 0)
+                 {
+-                    if (_model.Skeleton.Bones[j].ParentIndex == i)
+-                    {
+-                        hasChild = true;
+-                        Matrix4x4.Decompose(_currentGlobalTransforms[j], out _, out _, out Vector3 childPos);
+-                        vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1));
+-                        vertices.Add(new Vertex(childPos.X, childPos.Y, childPos.Z, 0, 1, 0, 1));
+-                        indices.Add(idx);
+-                        indices.Add(idx + 1);
+-                        idx += 2;
+-                    }
++                    children[parent].Add(i);
++                }
++            }
++            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
++            {
++                Matrix4x4.Decompose(_currentFinalTransforms[i], out _, out _, out Vector3 pos);
++                // Draw lines to children
++                foreach (int childIdx in children[i])
++                {
++                    Matrix4x4.Decompose(_currentFinalTransforms[childIdx], out _, out _, out Vector3 childPos);
++                    vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1));
++                    vertices.Add(new Vertex(childPos.X, childPos.Y, childPos.Z, 0, 1, 0, 1));
++                    indices.Add(idx);
++                    indices.Add(idx + 1);
++                    idx += 2;
+                 }
+-                if (!hasChild && _model.Skeleton.Bones[i].BoneType == "LimbNode")
++                // For leaf nodes without children, draw a short line along local forward if Size > 0
++                if (children[i].Count == 0 && _model.Skeleton.Bones[i].Size > 0)
+                 {
+-                    // Draw a line for leaf bones using Size
+-                    Vector3 dir = new Vector3(0, 0, _model.Skeleton.Bones[i].Size); // along Z up
+-                    Matrix4x4 rotScale = _currentGlobalTransforms[i];
+-                    rotScale.Translation = Vector3.Zero;
+-                    Vector3 tailDir = Vector3.Transform(dir, rotScale);
+-                    Vector3 tail = pos + tailDir;
++                    // Get local forward direction from rotation
++                    Matrix4x4 rot = _currentFinalTransforms[i];
++                    rot.Translation = Vector3.Zero;
++                    Vector3 forward = Vector3.Normalize(Vector3.Transform(Vector3.UnitY, rot)); // Assuming Y-forward
++                    Vector3 endPos = pos + forward * _model.Skeleton.Bones[i].Size;
+                     vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1));
+-                    vertices.Add(new Vertex(tail.X, tail.Y, tail.Z, 0, 1, 0, 1));
++                    vertices.Add(new Vertex(endPos.X, endPos.Y, endPos.Z, 0, 1, 0, 1));
+                     indices.Add(idx);
+                     indices.Add(idx + 1);
+                     idx += 2;
+@@ -468,12 +505,12 @@ namespace ReadingChamber
+             _uiOverlay.Render();
+             // Render bone info text
+             float currentY = TitleHeight + 10;
+-            if (_model?.Skeleton != null && _currentGlobalTransforms != null && _currentGlobalTransforms.Length == _model.Skeleton.Bones.Count)
++            if (_model?.Skeleton != null && _currentFinalTransforms != null && _currentFinalTransforms.Length == _model.Skeleton.Bones.Count)
+             {
+                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+                 {
+                     if (currentY > Size.Y - 20) break; // Prevent overflow
+-                    Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out Quaternion rot, out Vector3 pos);
++                    Matrix4x4.Decompose(_currentFinalTransforms[i], out _, out Quaternion rot, out Vector3 pos);
+                     Vector3 euler = ToEuler(rot);
+                     string info = $"{_model.Skeleton.Bones[i].Name}: Pos({pos.X:F2},{pos.Y:F2},{pos.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2})";
+                     _textRenderer.RenderText(info, 10, currentY, (int)Size.X, (int)Size.Y, 12f);
+diff --git a/Castle/SiegeEngine/Core/AssetParsing/FBXModel.cs b/Castle/SiegeEngine/Core/AssetParsing/FBXModel.cs
+index 59ccb72..e385e67 100644
+--- a/Castle/SiegeEngine/Core/AssetParsing/FBXModel.cs
++++ b/Castle/SiegeEngine/Core/AssetParsing/FBXModel.cs
+@@ -1,5 +1,5 @@
+ ﻿// Folder: SiegeEngine
+-// File: FBXModel.cs
++// File: Core/AssetParsing/FBXModel.cs
+ using SiegeEngine.Core.Definitions;
+ using System;
+ using System.Collections.Generic;
+@@ -21,6 +21,120 @@ namespace SiegeEngine.Core.AssetParsing
+             Animations = new List<Animation>();
+             Materials = new List<Material>();
+         }
++        public bool HasUnweightedVertices()
++        {
++            return Meshes.Any(m => m.Vertices.Any(v => v.Weight0 == 0 && v.Weight1 == 0 && v.Weight2 == 0 && v.Weight3 == 0));
++        }
++        public void CopyWeightsFrom(FBXModel other)
++        {
++            if (Meshes.Count != other.Meshes.Count)
++            {
++                Console.WriteLine($"CopyWeightsFrom: Mismatch in mesh count ({Meshes.Count} vs {other.Meshes.Count}), skipping");
++                return;
++            }
++            // Create bone name to index maps for both models
++            var mainBoneMap = new Dictionary<string, int>();
++            for (int i = 0; i < Skeleton.Bones.Count; i++)
++            {
++                mainBoneMap[Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
++            }
++            var otherBoneMap = new Dictionary<string, int>();
++            for (int i = 0; i < other.Skeleton.Bones.Count; i++)
++            {
++                otherBoneMap[other.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
++            }
++            int totalCopied = 0;
++            for (int mi = 0; mi < Meshes.Count; mi++)
++            {
++                var mainMesh = Meshes[mi];
++                var otherMesh = other.Meshes[mi];
++                if (mainMesh.Vertices.Count != otherMesh.Vertices.Count)
++                {
++                    Console.WriteLine($"CopyWeightsFrom: Mismatch in vertex count for mesh {mi} ({mainMesh.Vertices.Count} vs {otherMesh.Vertices.Count}), skipping mesh");
++                    continue;
++                }
++                int meshCopied = 0;
++                bool positionsMatch = true;
++                const float epsilon = 1e-5f;
++                for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
++                {
++                    var mv = mainMesh.Vertices[vi];
++                    var ov = otherMesh.Vertices[vi];
++                    // Check position match
++                    if (Math.Abs(mv.X - ov.X) > epsilon || Math.Abs(mv.Y - ov.Y) > epsilon || Math.Abs(mv.Z - ov.Z) > epsilon)
++                    {
++                        positionsMatch = false;
++                        break;
++                    }
++                    // If main vertex unweighted and other weighted, copy with remapped bone IDs
++                    if (mv.Weight0 == 0 && mv.Weight1 == 0 && mv.Weight2 == 0 && mv.Weight3 == 0 &&
++                        (ov.Weight0 > 0 || ov.Weight1 > 0 || ov.Weight2 > 0 || ov.Weight3 > 0))
++                    {
++                        int[] otherBoneIDs = new int[] { ov.BoneID0, ov.BoneID1, ov.BoneID2, ov.BoneID3 };
++                        float[] weights = new float[] { ov.Weight0, ov.Weight1, ov.Weight2, ov.Weight3 };
++                        int validCount = 0;
++                        for (int wi = 0; wi < 4; wi++)
++                        {
++                            if (otherBoneIDs[wi] >= 0 && weights[wi] > 0)
++                            {
++                                string otherBoneName = other.Skeleton.Bones[otherBoneIDs[wi]].Name.ToLowerInvariant();
++                                if (mainBoneMap.TryGetValue(otherBoneName, out int mainBoneIdx))
++                                {
++                                    // Assign to main
++                                    switch (validCount)
++                                    {
++                                        case 0:
++                                            mv.BoneID0 = mainBoneIdx;
++                                            mv.Weight0 = weights[wi];
++                                            break;
++                                        case 1:
++                                            mv.BoneID1 = mainBoneIdx;
++                                            mv.Weight1 = weights[wi];
++                                            break;
++                                        case 2:
++                                            mv.BoneID2 = mainBoneIdx;
++                                            mv.Weight2 = weights[wi];
++                                            break;
++                                        case 3:
++                                            mv.BoneID3 = mainBoneIdx;
++                                            mv.Weight3 = weights[wi];
++                                            break;
++                                    }
++                                    validCount++;
++                                }
++                                else
++                                {
++                                    Console.WriteLine($"CopyWeightsFrom: Bone {otherBoneName} from other model not found in main model, skipping weight");
++                                }
++                            }
++                        }
++                        // Normalize weights again if needed
++                        float sumW = mv.Weight0 + mv.Weight1 + mv.Weight2 + mv.Weight3;
++                        if (sumW > 0)
++                        {
++                            mv.Weight0 /= sumW;
++                            mv.Weight1 /= sumW;
++                            mv.Weight2 /= sumW;
++                            mv.Weight3 /= sumW;
++                        }
++                        mainMesh.Vertices[vi] = mv;
++                        meshCopied++;
++                    }
++                }
++                if (!positionsMatch)
++                {
++                    Console.WriteLine($"CopyWeightsFrom: Positions do not match for mesh {mi}, skipping copy to avoid tearing");
++                    continue;
++                }
++                totalCopied += meshCopied;
++                Console.WriteLine($"CopyWeightsFrom: Copied and remapped weights for {meshCopied} vertices in mesh {mi}");
++            }
++            if (totalCopied > 0)
++            {
++                HasSkin = true;
++            }
++            Console.WriteLine($"CopyWeightsFrom: Total copied vertices: {totalCopied}");
++        }
+     }
+     public class MeshData
+     {
+@@ -94,6 +208,7 @@ namespace SiegeEngine.Core.AssetParsing
+     {
+         public string Name { get; set; }
+         public Matrix4x4 BindPose { get; set; }
++        public Matrix4x4 BindPoseInverse { get; set; }
+         public int ParentIndex { get; set; }
+         public Matrix4x4 LocalRest { get; set; } = Matrix4x4.Identity;
+         public Vector3 LclTranslation { get; set; } = Vector3.Zero;
+@@ -119,14 +234,6 @@ namespace SiegeEngine.Core.AssetParsing
+             Vector3 useT = t ?? LclTranslation;
+             Vector3 useR = r ?? LclRotation;
+             Vector3 useS = s ?? LclScaling;
+-            if (BoneType == "LimbNode")
+-            {
+-                useT += new Vector3(0, 0, Size / 2); // along Z up
+-            }
+-            else if (BoneType == "Limb")
+-            {
+-                useT += new Vector3(0, Size / 2, 0); // along Y forward
+-            }
+             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
+             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
+             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
+diff --git a/Castle/SiegeEngine/Core/AssetParsing/FBXParser.cs b/Castle/SiegeEngine/Core/AssetParsing/FBXParser.cs
+index 028abab..f85af43 100644
+--- a/Castle/SiegeEngine/Core/AssetParsing/FBXParser.cs
++++ b/Castle/SiegeEngine/Core/AssetParsing/FBXParser.cs
+@@ -129,7 +129,7 @@ namespace SiegeEngine.Core.AssetParsing
+                 }
+             }
+             // LEAVE THIS CODE ALONE: It converts units from FBX to SiegeEngine's internal units (meters) and remaps axes to Z-up Y-forward
+-            float modelScale = unitScaleFactor / 10f; // Assuming FBX in cm, to m
++            float modelScale = unitScaleFactor / 100f; // Assuming FBX in cm, to m
+             // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Z-up Y-forward)
+             int[] sourceToTarget = new int[3];
+             sourceToTarget[coordAxis] = 0; // Source coord -> target X
+@@ -137,7 +137,7 @@ namespace SiegeEngine.Core.AssetParsing
+             sourceToTarget[upAxis] = 2; // Source up -> target Z
+             int[] signs = new int[3];
+             signs[coordAxis] = coordAxisSign;
+-            signs[frontAxis] = -frontAxisSign; // Flip forward if needed
++            signs[frontAxis] = -frontAxisSign;
+             signs[upAxis] = upAxisSign;
+             // DONT TOUCH THIS CODE ABOVE
+             // Build P4
+@@ -188,6 +188,7 @@ namespace SiegeEngine.Core.AssetParsing
+                 string[] nameParts = fullName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
+                 string name = nameParts[nameParts.Length - 1].Trim();
+                 if (name.EndsWith("_end")) continue; // Skip Blender end bones
++                if (name == "Armature" || (string)modelNode.properties[2].Value == "Null") continue; // Exclude armature containers and null nodes
+                 Bone bone = new Bone { Name = name, ParentIndex = -1, BindPose = Matrix4x4.Identity };
+                 string boneType = (string)modelNode.properties[2].Value;
+                 bone.BoneType = boneType;
+@@ -570,9 +571,11 @@ namespace SiegeEngine.Core.AssetParsing
+                         }
+                     }
+                     // Normalize weights and limit to 4 per vertex
++                    int unweightedCount = 0;
+                     for (int v = 0; v < perVertBones.Count; v++)
+                     {
+                         var bw = perVertBones[v];
++                        if (bw.Count == 0) unweightedCount++;
+                         if (bw.Count > 4)
+                         {
+                             bw = bw.OrderByDescending(b => b.weight).Take(4).ToList();
+@@ -587,6 +590,7 @@ namespace SiegeEngine.Core.AssetParsing
+                         }
+                         perVertBones[v] = bw.OrderByDescending(b => b.weight).ToList(); // Sort descending weight
+                     }
++                    Console.WriteLine($"BuildModelFromForest: {unweightedCount} of {perVertBones.Count} vertices have no weights assigned");
+                     // Build expanded vertices
+                     List<FBXVertex> expandedVertices = new List<FBXVertex>();
+                     List<uint> newIndices = new List<uint>();
+diff --git a/Castle/SiegeEngine/PlayerSystem/CameraController.cs b/Castle/SiegeEngine/PlayerSystem/CameraController.cs
+index fc5c507..8a8143c 100644
+--- a/Castle/SiegeEngine/PlayerSystem/CameraController.cs
++++ b/Castle/SiegeEngine/PlayerSystem/CameraController.cs
+@@ -23,19 +23,19 @@ namespace SiegeEngine.PlayerSystem
+         private Perspective _perspective = Perspective.ThirdPerson;
+         private float _yaw = 0f;
+         private float _pitch = 0f;
+-        private float _distance = 50.0f;
+-        private readonly float _minDistance = 10.0f;
+-        private readonly float _maxDistance = 200.0f;
+-        private readonly float _zoomSpeed = 50.0f;
+-        private readonly float _xSpeed = 2.0f;
+-        private readonly float _ySpeed = 2.0f;
++        private float _distance = 20.0f;
++        private readonly float _minDistance = 1.0f;
++        private readonly float _maxDistance = 80.0f;
++        private readonly float _zoomSpeed = 100.0f;
++        private readonly float _xSpeed = 3.0f;
++        private readonly float _ySpeed = 3.0f;
+         private readonly float _pitchMinLimit = -89f;
+         private readonly float _pitchMaxLimit = 89f;
+         private Vector2 _lastMousePos = Vector2.Zero;
+         private bool _firstMouseMove = true;
+         private bool _isRightShoulder = true;
+-        private readonly float _shoulderShiftAmount = 5.0f;
+-        private readonly float _playerHeight = 10.0f;
++        private readonly float _shoulderShiftAmount = .5f;
++        private readonly float _playerHeight = 2.0f;
+         private bool _isPPressed = false;
+         private bool _wasPPressedLastFrame = false;
+         private bool _wasShiftPressedLastFrame = false;
+@@ -158,7 +158,7 @@ namespace SiegeEngine.PlayerSystem
+         {
+             if (_player != null) // Player mode only
+             {
+-                Vector3 target = _player.Position + new Vector3(0, 0, _playerHeight / 2);
++                Vector3 target = _player.Position + new Vector3(0, 0, _playerHeight);
+                 float yawRad = _yaw * (float)(Math.PI / 180);
+                 float pitchRad = _pitch * (float)(Math.PI / 180);
+                 if (_perspective == Perspective.FirstPerson)
+diff --git a/Castle/SiegeEngine/PlayerSystem/Player.cs b/Castle/SiegeEngine/PlayerSystem/Player.cs
+index 69d3377..5a6003e 100644
+--- a/Castle/SiegeEngine/PlayerSystem/Player.cs
++++ b/Castle/SiegeEngine/PlayerSystem/Player.cs
+@@ -22,7 +22,7 @@ namespace SiegeEngine.PlayerSystem
+             Position = position;
+             _physics = new PhysicsComponent();
+             _physics.Position = position;
+-            _physics.Size = new Vector3(10f, 10f, 10f);
++            _physics.Size = new Vector3(.5f, .5f, 2f);
+             SteamId = steamId;
+             if (modelLoader != null && modelLoader.TryGetModel("man_mesh", out var model))
+             {
+diff --git a/Castle/SiegeEngine/PlayerSystem/PlayerMovement.cs b/Castle/SiegeEngine/PlayerSystem/PlayerMovement.cs
+index 22efd18..0b8278d 100644
+--- a/Castle/SiegeEngine/PlayerSystem/PlayerMovement.cs
++++ b/Castle/SiegeEngine/PlayerSystem/PlayerMovement.cs
+@@ -11,9 +11,9 @@ namespace SiegeEngine.PlayerSystem
+ {
+     public class PlayerMovement
+     {
+-        private readonly float _speed = 20.0f;
+-        private readonly float _gridWidth = 128.0f;
+-        private readonly float _gridHeight = 72.0f;
++        private readonly float _speed = 8.0f;
++        private readonly float _gridWidth = 125.0f;
++        private readonly float _gridHeight = 75.0f;
+         private readonly ClientPredictionSystem _predictionSystem;
+         private readonly InputHandler _inputHandler;
+         private readonly EventBus _eventBus;
+diff --git a/Castle/SiegeEngine/Systems/AnimationSystem.cs b/Castle/SiegeEngine/Systems/AnimationSystem.cs
+index a83209c..a4d2101 100644
+--- a/Castle/SiegeEngine/Systems/AnimationSystem.cs
++++ b/Castle/SiegeEngine/Systems/AnimationSystem.cs
+@@ -1,4 +1,6 @@
+-﻿using SiegeEngine.Core.Definitions;
++﻿// Folder: SiegeEngine
++// File: Systems/AnimationSystem.cs
++using SiegeEngine.Core.Definitions;
+ using SiegeEngine.Core.Interfaces;
+ using System;
+ using System.Numerics;
+diff --git a/Castle/summarize_log.txt b/Castle/summarize_log.txt
+index 0e8f6a3..ac8dc98 100644
+--- a/Castle/summarize_log.txt
++++ b/Castle/summarize_log.txt
+@@ -329,7 +329,7 @@ Found: ..
+ Found: AssetViewerPanel.cs
+ Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+-Read 23965 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
++Read 25739 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+ Namespace: ReadingChamber
+ Found 13 dependencies
+ Found: AssetViewerUI.html
+@@ -405,13 +405,13 @@ Found: ..
+ Found: FBXModel.cs
+ Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
+ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
+-Read 10011 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
++Read 10709 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
+ Namespace: SiegeEngine.Core.AssetParsing
+-Found 6 dependencies
++Found 5 dependencies
+ Found: FBXParser.cs
+ Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
+ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
+-Read 62177 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
++Read 73521 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
+ Namespace: SiegeEngine.Core.AssetParsing
+ Found 8 dependencies
+ Found: FBXParserBase.cs
+@@ -423,7 +423,7 @@ Found 5 dependencies
+ Found: MetaDataExporter.cs
+ Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\MetaDataExporter.cs
+ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\MetaDataExporter.cs
+-Read 3446 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\MetaDataExporter.cs
++Read 3444 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\MetaDataExporter.cs
+ Namespace: SiegeEngine.Core.AssetParsing
+ Found 9 dependencies
+ Found: ModelTransformer.cs
+@@ -805,7 +805,7 @@ Found 2 dependencies
+ Found: ModelManager.cs
+ Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
+ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
+-Read 30557 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
++Read 30086 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
+ Namespace: SiegeEngine.Core.Managers
+ Found 11 dependencies
+ Found: ModManager.cs
+@@ -1234,7 +1234,7 @@ Found 3 dependencies
+ Found: CameraController.cs
+ Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
+ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
+-Read 10656 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
++Read 10649 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
+ Namespace: SiegeEngine.PlayerSystem
+ Found 5 dependencies
+ Found: InputHandler.cs
+@@ -1246,13 +1246,13 @@ Found 7 dependencies
+ Found: Player.cs
+ Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\Player.cs
+ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\Player.cs
+-Read 2256 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\Player.cs
++Read 2255 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\Player.cs
+ Namespace: SiegeEngine.PlayerSystem
+ Found 6 dependencies
+ Found: PlayerMovement.cs
+ Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
+ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
+-Read 9517 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
++Read 9516 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
+ Namespace: SiegeEngine.PlayerSystem
+ Found 7 dependencies
+ Found: PositionCalculator.cs
+@@ -1295,7 +1295,7 @@ Found: ..
+ Found: AnimationSystem.cs
+ Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+-Read 1417 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
++Read 1476 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+ Namespace: SiegeEngine.Systems
+ Found 4 dependencies
+ Found: AudioSystem.cs
+diff --git a/Castle/summary.txt b/Castle/summary.txt
+index a24c13f..c8c4365 100644
+--- a/Castle/summary.txt
++++ b/Castle/summary.txt
+@@ -704,7 +704,7 @@ Folder: SiegeEngine
+     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
+ - File: FBXModel.cs
+   - Class: Material (Namespace: SiegeEngine.Core.AssetParsing)
+-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
++    - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
+     - Methods:
+       - constructor Material()
+ - File: FBXNode.cs
+@@ -718,6 +718,8 @@ Folder: SiegeEngine
+     - Methods:
+       - FBXFileForest Load(string path)
+         - Calls: FBXParserBase.Log, MetaDataExporter.ExportMetadata, NodeParser.ParseNodes
++      - float GetValueAtTime( float defaultVal,  float[] values,  long time, long[] times)
++      - float[] ParseKeyValues( int expectedLength, BaseNode keyValueNode)
+       - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
+       - Vector3 RemapScale( int[] signs,  int[] sourceToTarget, Vector3 v)
+       - Vector3 RemapRotation( int[] signs,  int[] sourceToTarget, Vector3 v)
+diff --git a/animation_progress.txt b/animation_progress.txt
+new file mode 100644
+index 0000000..8c5d2bb
+--- /dev/null
++++ b/animation_progress.txt
+@@ -0,0 +1,40 @@
++High-Level Suggestions for Fixing the Animation System
++After reviewing the provided files (FBXParser.cs, NodeParser.cs, FBXNode.cs, ModelComponent.cs, AnimationSystem.cs, FBXParserBase.cs, and related classes like FBXModel.cs, AssetViewerPanel.cs, and ModelManager.cs), I've synthesized the issues with the current implementation. The core problems stem from parsing inaccuracies (e.g., extraneous "armature" node treated as a bone), flawed hierarchy building (limbnodes misinterpreted as bones with incorrect lengths/positions), axis/scaling remapping errors, and incomplete animation application (e.g., no proper skinning in rendering, mismatched hierarchies for external animations). The visualization in AssetViewerPanel confirms keyframes are parsed but transforms are misapplied, leading to non-humanoid results.
++These suggestions prioritize modular, iterative fixes to align with engines like Unity (which uses Avatar for bone mapping) or Godot (joint-based skeletons with AnimationPlayer). We'll treat limbnodes as joints (not bones), compute bone visuals from joint positions, ensure Z-up Y-forward consistency, and enable animation blending on static skeletons. Changes will be minimal per iteration, focusing on stability.
++1. Exclude Extraneous Nodes like "Armature" During Skeleton Parsing
++
++Rationale: In FBXParser.BuildModelFromForest, modelNodes includes nodes with type "Root", which often captures container nodes like "Armature" (common in Blender exports). This adds an extra root bone, offsetting the hierarchy. UsedBoneIds filtering helps but doesn't exclude containers.
++Proposal: Add a name/type filter in modelNodes LINQ: exclude if Name.Contains("Armature") or type == "Null"/"Root" unless it's a true root (no parent, has limb children). Recursively build hierarchy only from valid LimbNode/Limb. This ensures skeleton.Bones starts from the actual root joint.
++Impact: Fixes extra bone; verify with a sample Blender FBX (e.g., humanoid armature).
++Verification: Log skeleton.Bones.Count and names; visualize in AssetViewerPanel should show correct hierarchy start.
++
++2. Refactor Bone vs. LimbNode Logic: Treat as Joints with Computed Lengths
++
++Rationale: Current Bone.ComputeLocal adds arbitrary offsets (e.g., Size/2 along Z for LimbNode), assuming bones have length, but FBX limbnodes are joints (positions only). Visualized "bones" are wrong because lengths are guessed, not derived from child joints. Animations move joints but not in humanoid proportions due to this.
++Proposal: Rename Bone to Joint; remove BoneType-specific offsets in ComputeLocal. Compute visual "bone" lengths dynamically in UpdateSkeletonVisualization (AssetViewerPanel) or a new SkeletonVisualizer class: for each joint, draw lines to children using global positions (from _currentGlobalTransforms). If no child, use Size property or default (e.g., 0.1f) along local forward. For rendering, apply skinning in shader (already in AssetShader) using finalTransforms.
++Impact: Aligns with joint-based systems; fixes non-humanoid visuals.
++Verification: Load a humanoid FBX; check if visualized skeleton matches expected armature (e.g., arms/legs proportional).
++
++3. Improve Axis Remapping and Scaling Consistency
++
++Rationale: RemapVector/RemapRotation apply sourceToTarget/signs, but globalSettings parsing assumes defaults (e.g., upAxis=1), ignoring file-specific coords. ModelScale = unitScaleFactor/10 assumes cm-to-m, but FBX can vary. Positions are scaled, but rotations/orders may flip incorrectly, causing distorted animations in Z-up space.
++Proposal: Make remapping functions take globalSettings params dynamically. Add post-parse normalization: compute scene scale from OriginalUnitScaleFactor, apply uniformly. For rotations, use Quaternion for remapping instead of Euler to avoid gimbal issues. Test with known FBX exports (e.g., Blender Y-up vs. engine Z-up).
++Impact: Fixes mismatched positions/lengths; ensures animations play correctly in engine coords.
++Verification: Compare bone positions before/after animation frame; they should match a reference tool like Blender.
++
++4. Enable Applying External Animations to Static Models
++
++Rationale: AnimationSystem assumes model.Animations are loaded with the mesh, but static models lack them. LoadAnimation (in AssetViewerPanel) remaps by name but doesn't validate hierarchy, leading to partial mapping (e.g., missing bones). No blending or state machine.
++Proposal: Add Skeleton.MatchAndApplyAnimation(Animation externalAnim) to map by bone name, fallback to index if names mismatch, log unmapped bones. In ModelManager, separate LoadMesh and LoadAnimations methods. Add AnimationComponent properties for blending (e.g., float blendFactor). In AnimationSystem.Update, interpolate between current/ target anim if blending.
++Impact: Allows static model + external FBX anim; modular like Godot's AnimationPlayer.
++Verification: Load static humanoid, apply walk anim; check if all bones animate (log unmapped).
++
++5. Enhance Debugging and UX in AssetViewerPanel
++
++Rationale: Current visualization draws lines but uses guessed directions (e.g., Z-up for LimbNode), ignoring actual child positions. No controls for bone selection/debug info.
++Proposal: In UpdateSkeletonVisualization, iterate hierarchy: for each joint, get global pos, draw sphere (add point rendering), and lines to children. Add UI dropdown for anim selection, sliders for time/ speed. Log decompose failures in GetBoneTransforms.
++Impact: Makes debugging intuitive, like Unity's preview window.
++Verification: Play anim; skeleton should deform human-like, with text overlays showing pos/rot.
++
++Next Steps
++These are prioritized: Start with 1-2 for parsing fixes, then 3 for coord accuracy, 4 for application, 5 for UX. Each can be iterated separately to avoid breaking the system. Which ones do you want to pursue first? Say "go" with selected numbers and any tweaks, and I'll provide full updated files. If needed, request more files (e.g., Shader sources for skinning verification).
+\ No newline at end of file
