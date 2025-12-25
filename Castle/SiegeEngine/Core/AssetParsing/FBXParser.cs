@@ -1,11 +1,14 @@
-﻿using SiegeEngine.Core.Rendering;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/FBXParser.cs
+using SiegeEngine.Core.AssetObjects;
+using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-using SiegeEngine.Core.AssetObjects;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -15,7 +18,7 @@ namespace SiegeEngine.Core.AssetParsing
             if (!File.Exists(path))
             {
                 FBXParserBase.Log($"FBXParser: File not found at {path}");
-                return new FBXFileForest(); //, new ParsingContext();
+                return new FBXFileForest();
             }
             var context = new FBXFileForest();
             try
@@ -46,10 +49,7 @@ namespace SiegeEngine.Core.AssetParsing
                         return new FBXFileForest();
                     }
                     long fileLength = stream.Length;
-                    NodeParser.ParseNodes(reader, //model, context,
-                        version,// 0,
-                        fileLength, fileLength, //nodeContext,
-                        null, context);
+                    NodeParser.ParseNodes(reader, version, fileLength, fileLength, null, context);
                     MetaDataExporter.ExportMetadata(context, $"{path}._metadata.json");
                 }
             }
@@ -183,7 +183,6 @@ namespace SiegeEngine.Core.AssetParsing
             foreach (var modelNode in modelNodes)
             {
                 long id = (long)modelNode.properties[0].Value;
-                // Removed the skip condition to always parse bones
                 string fullName = ((string)modelNode.properties[1].Value).Split('\0')[0];
                 string[] nameParts = fullName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
                 string name = nameParts[nameParts.Length - 1].Trim();
@@ -333,7 +332,6 @@ namespace SiegeEngine.Core.AssetParsing
                     model.Skeleton.Bones[i].LocalRest = rootRot * model.Skeleton.Bones[i].LocalRest;
                 }
             }
-
             var geomNodes = objectsNode.children.Where(n => n.Name == "Geometry" && n.properties.Count >= 3 && (string)n.properties[2].Value == "Mesh").ToList();
             if (geomNodes.Count == 0 && !objectsNode.children.Any(n => n.Name == "AnimationStack"))
             {
@@ -346,9 +344,19 @@ namespace SiegeEngine.Core.AssetParsing
                 // Get vertices (unique positions)
                 var vertsNode = geom.children.FirstOrDefault(c => c.Name == "Vertices");
                 double[] vertsD = null;
-                if (vertsNode != null && vertsNode.properties.Count > 0 && vertsNode.properties[0].TypeCode == 'd')
+                if (vertsNode != null && vertsNode.properties.Count > 0)
                 {
-                    vertsD = (double[])vertsNode.properties[0].Value;
+                    var prop = vertsNode.properties[0];
+                    if (prop.TypeCode == 'd')
+                    {
+                        vertsD = (double[])prop.Value;
+                    }
+                    else if (prop.TypeCode == 'f')
+                    {
+                        float[] fvals = (float[])prop.Value;
+                        vertsD = new double[fvals.Length];
+                        for (int vi = 0; vi < fvals.Length; vi++) vertsD[vi] = fvals[vi];
+                    }
                 }
                 // Get polygon vertex indices
                 var indicesNode = geom.children.FirstOrDefault(c => c.Name == "PolygonVertexIndex");
@@ -375,9 +383,19 @@ namespace SiegeEngine.Core.AssetParsing
                     var refNode = layerNorm.children.FirstOrDefault(c => c.Name == "ReferenceInformationType");
                     normRef = refNode != null ? (string)refNode.properties[0].Value : "";
                     var normalsNode = layerNorm.children.FirstOrDefault(c => c.Name == "Normals");
-                    if (normalsNode != null && normalsNode.properties[0].TypeCode == 'd')
+                    if (normalsNode != null)
                     {
-                        norms = (double[])normalsNode.properties[0].Value;
+                        var prop = normalsNode.properties[0];
+                        if (prop.TypeCode == 'd')
+                        {
+                            norms = (double[])prop.Value;
+                        }
+                        else if (prop.TypeCode == 'f')
+                        {
+                            float[] fvals = (float[])prop.Value;
+                            norms = new double[fvals.Length];
+                            for (int ni = 0; ni < fvals.Length; ni++) norms[ni] = fvals[ni];
+                        }
                     }
                     var normalsIndexNode = layerNorm.children.FirstOrDefault(c => c.Name == "NormalsIndex");
                     if (normalsIndexNode != null && normalsIndexNode.properties[0].TypeCode == 'i')
@@ -398,9 +416,19 @@ namespace SiegeEngine.Core.AssetParsing
                     var refNode = layerUV.children.FirstOrDefault(c => c.Name == "ReferenceInformationType");
                     uvRef = refNode != null ? (string)refNode.properties[0].Value : "";
                     var uvNode = layerUV.children.FirstOrDefault(c => c.Name == "UV");
-                    if (uvNode != null && uvNode.properties[0].TypeCode == 'd')
+                    if (uvNode != null)
                     {
-                        uvs = (double[])uvNode.properties[0].Value;
+                        var prop = uvNode.properties[0];
+                        if (prop.TypeCode == 'd')
+                        {
+                            uvs = (double[])prop.Value;
+                        }
+                        else if (prop.TypeCode == 'f')
+                        {
+                            float[] fvals = (float[])prop.Value;
+                            uvs = new double[fvals.Length];
+                            for (int ui = 0; ui < fvals.Length; ui++) uvs[ui] = fvals[ui];
+                        }
                     }
                     var uvIndexNode = layerUV.children.FirstOrDefault(c => c.Name == "UVIndex");
                     if (uvIndexNode != null && uvIndexNode.properties[0].TypeCode == 'i')
@@ -507,7 +535,25 @@ namespace SiegeEngine.Core.AssetParsing
                             var indexesNode = clusterNode.children.FirstOrDefault(c => c.Name == "Indexes");
                             int[] indexes = indexesNode != null && indexesNode.properties[0].TypeCode == 'i' ? (int[])indexesNode.properties[0].Value : Array.Empty<int>();
                             var weightsNode = clusterNode.children.FirstOrDefault(c => c.Name == "Weights");
-                            double[] weights = weightsNode != null && weightsNode.properties[0].TypeCode == 'd' ? (double[])weightsNode.properties[0].Value : Array.Empty<double>();
+                            double[] weights = null;
+                            if (weightsNode != null)
+                            {
+                                var prop = weightsNode.properties[0];
+                                if (prop.TypeCode == 'd')
+                                {
+                                    weights = (double[])prop.Value;
+                                }
+                                else if (prop.TypeCode == 'f')
+                                {
+                                    float[] fvals = (float[])prop.Value;
+                                    weights = new double[fvals.Length];
+                                    for (int wi = 0; wi < fvals.Length; wi++) weights[wi] = fvals[wi];
+                                }
+                            }
+                            else
+                            {
+                                weights = Array.Empty<double>();
+                            }
                             var transformLinkNode = clusterNode.children.FirstOrDefault(c => c.Name == "TransformLink");
                             double[] tl = transformLinkNode != null && transformLinkNode.properties[0].TypeCode == 'd' ? (double[])transformLinkNode.properties[0].Value : null;
                             var transformNode = clusterNode.children.FirstOrDefault(c => c.Name == "Transform");
@@ -890,7 +936,7 @@ namespace SiegeEngine.Core.AssetParsing
                 mesh.Bounds = new Vector3(maxX - minX, maxY - minY, maxZ - minZ);
                 model.Meshes.Add(mesh);
             }
-            
+
             // Parse animations
             var animStackNodes = objectsNode.children.Where(n => n.Name == "AnimationStack").ToList();
             Console.WriteLine($"Animation stacks found: {animStackNodes.Count}");

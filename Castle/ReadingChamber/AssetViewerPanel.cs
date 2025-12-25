@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetParsing;
+﻿// Folder: ReadingChamber
+// File: AssetViewerPanel.cs
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -11,6 +13,7 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
+
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -77,6 +80,7 @@ namespace ReadingChamber
         }
         private void LoadModel(string path)
         {
+            _animationFiles.Clear();
             var modelManager = new ModelManager(renderContext: _renderContext);
             modelManager.LoadModel(path, new HashSet<string>(), new Dictionary<string, string>());
             string key = Path.GetFileNameWithoutExtension(path).ToLower();
@@ -113,6 +117,8 @@ namespace ReadingChamber
                 _time = 0f;
                 _playing = false;
                 _currentGlobalTransforms = null;
+                _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
+                _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
             }
             else
             {
@@ -163,7 +169,6 @@ namespace ReadingChamber
                         {
                             Console.WriteLine($"Warning: Bone {boneName} from animation not found in main model");
                         }
-
                     }
                     kf.BoneTransforms = newTransforms;
                 }
@@ -185,6 +190,12 @@ namespace ReadingChamber
                     // Update VBOs with new vertex data (weights updated)
                     UpdateModelBuffers();
                 }
+                // Switch to animation shader if skin present
+                if (_model.HasSkin)
+                {
+                    _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
+                }
+                _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
             }
             else
             {

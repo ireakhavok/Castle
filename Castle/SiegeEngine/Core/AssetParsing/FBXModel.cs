@@ -1,8 +1,11 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/FBXModel.cs
+using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public class FBXModel
@@ -30,7 +33,28 @@ namespace SiegeEngine.Core.AssetParsing
             var otherMeshes = other.Meshes.OrderBy(m => m.Vertices.Count).ToList();
             if (mainMeshes.Count != otherMeshes.Count)
             {
-                Console.WriteLine($"CopyWeightsFrom: Mismatch in mesh count ({mainMeshes.Count} vs {otherMeshes.Count}), skipping");
+                if (otherMeshes.Count == 0)
+                {
+                    // Animation-only file, assign synthetic weights using closest bone
+                    if (other.Skeleton != null && other.Skeleton.Bones.Count > 0)
+                    {
+                        Skeleton = other.Skeleton; // Assign skeleton from animation model
+                        foreach (var mainMesh in mainMeshes)
+                        {
+                            AssignToClosestBone(mainMesh);
+                        }
+                        HasSkin = true;
+                        Console.WriteLine("CopyWeightsFrom: Assigned synthetic weights using closest bone from animation model's skeleton");
+                    }
+                    else
+                    {
+                        Console.WriteLine("CopyWeightsFrom: Animation model has no skeleton, cannot assign weights");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"CopyWeightsFrom: Mismatch in mesh count ({mainMeshes.Count} vs {otherMeshes.Count}), skipping");
+                }
                 return;
             }
             // Create bone name to index maps for both models
