@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine
-// File: Core/Managers/ModelManager.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.IO;

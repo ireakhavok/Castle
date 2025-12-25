@@ -19,6 +19,123 @@ namespace SiegeEngine.Core.AssetParsing
             Animations = new List<Animation>();
             Materials = new List<Material>();
         }
+        public bool HasUnweightedVertices()
+        {
+            return Meshes.Any(m => m.Vertices.Any(v => v.Weight0 == 0 && v.Weight1 == 0 && v.Weight2 == 0 && v.Weight3 == 0));
+        }
+        public void CopyWeightsFrom(FBXModel other)
+        {
+            // Sort meshes by vertex count to match out-of-order meshes (assuming unique counts)
+            var mainMeshes = Meshes.OrderBy(m => m.Vertices.Count).ToList();
+            var otherMeshes = other.Meshes.OrderBy(m => m.Vertices.Count).ToList();
+            if (mainMeshes.Count != otherMeshes.Count)
+            {
+                Console.WriteLine($"CopyWeightsFrom: Mismatch in mesh count ({mainMeshes.Count} vs {otherMeshes.Count}), skipping");
+                return;
+            }
+            // Create bone name to index maps for both models
+            var mainBoneMap = new Dictionary<string, int>();
+            for (int i = 0; i < Skeleton.Bones.Count; i++)
+            {
+                mainBoneMap[Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
+            }
+            var otherBoneMap = new Dictionary<string, int>();
+            for (int i = 0; i < other.Skeleton.Bones.Count; i++)
+            {
+                otherBoneMap[other.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
+            }
+            int totalCopied = 0;
+            for (int mi = 0; mi < mainMeshes.Count; mi++)
+            {
+                var mainMesh = mainMeshes[mi];
+                var otherMesh = otherMeshes[mi];
+                if (mainMesh.Vertices.Count != otherMesh.Vertices.Count)
+                {
+                    Console.WriteLine($"CopyWeightsFrom: Mismatch in vertex count for sorted mesh {mi} ({mainMesh.Vertices.Count} vs {otherMesh.Vertices.Count}), skipping mesh");
+                    continue;
+                }
+                int meshCopied = 0;
+                bool positionsMatch = true;
+                const float epsilon = 1e-5f;
+                for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
+                {
+                    var mv = mainMesh.Vertices[vi];
+                    var ov = otherMesh.Vertices[vi];
+                    // Check position match
+                    if (Math.Abs(mv.X - ov.X) > epsilon || Math.Abs(mv.Y - ov.Y) > epsilon || Math.Abs(mv.Z - ov.Z) > epsilon)
+                    {
+                        positionsMatch = false;
+                        break;
+                    }
+                    // If main vertex unweighted and other weighted, copy with remapped bone IDs
+                    if (mv.Weight0 == 0 && mv.Weight1 == 0 && mv.Weight2 == 0 && mv.Weight3 == 0 &&
+                        (ov.Weight0 > 0 || ov.Weight1 > 0 || ov.Weight2 > 0 || ov.Weight3 > 0))
+                    {
+                        int[] otherBoneIDs = new int[] { ov.BoneID0, ov.BoneID1, ov.BoneID2, ov.BoneID3 };
+                        float[] weights = new float[] { ov.Weight0, ov.Weight1, ov.Weight2, ov.Weight3 };
+                        int validCount = 0;
+                        for (int wi = 0; wi < 4; wi++)
+                        {
+                            if (otherBoneIDs[wi] >= 0 && weights[wi] > 0)
+                            {
+                                string otherBoneName = other.Skeleton.Bones[otherBoneIDs[wi]].Name.ToLowerInvariant();
+                                if (mainBoneMap.TryGetValue(otherBoneName, out int mainBoneIdx))
+                                {
+                                    // Assign to main
+                                    switch (validCount)
+                                    {
+                                        case 0:
+                                            mv.BoneID0 = mainBoneIdx;
+                                            mv.Weight0 = weights[wi];
+                                            break;
+                                        case 1:
+                                            mv.BoneID1 = mainBoneIdx;
+                                            mv.Weight1 = weights[wi];
+                                            break;
+                                        case 2:
+                                            mv.BoneID2 = mainBoneIdx;
+                                            mv.Weight2 = weights[wi];
+                                            break;
+                                        case 3:
+                                            mv.BoneID3 = mainBoneIdx;
+                                            mv.Weight3 = weights[wi];
+                                            break;
+                                    }
+                                    validCount++;
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"CopyWeightsFrom: Bone {otherBoneName} from other model not found in main model, skipping weight");
+                                }
+                            }
+                        }
+                        // Normalize weights again if needed
+                        float sumW = mv.Weight0 + mv.Weight1 + mv.Weight2 + mv.Weight3;
+                        if (sumW > 0)
+                        {
+                            mv.Weight0 /= sumW;
+                            mv.Weight1 /= sumW;
+                            mv.Weight2 /= sumW;
+                            mv.Weight3 /= sumW;
+                        }
+                        mainMesh.Vertices[vi] = mv;
+                        meshCopied++;
+                    }
+                }
+                if (!positionsMatch)
+                {
+                    Console.WriteLine($"CopyWeightsFrom: Positions do not match for sorted mesh {mi}, skipping copy to avoid tearing");
+                    continue;
+                }
+                totalCopied += meshCopied;
+                Console.WriteLine($"CopyWeightsFrom: Copied and remapped weights for {meshCopied} vertices in sorted mesh {mi}");
+            }
+            if (totalCopied > 0)
+            {
+                HasSkin = true;
+            }
+            Console.WriteLine($"CopyWeightsFrom: Total copied vertices: {totalCopied}");
+        }
     }
     public class MeshData
     {
@@ -117,6 +234,14 @@ namespace SiegeEngine.Core.AssetParsing
             Vector3 useT = t ?? LclTranslation;
             Vector3 useR = r ?? LclRotation;
             Vector3 useS = s ?? LclScaling;
+            if (BoneType == "LimbNode")
+            {
+                useT += new Vector3(0, 0, Size / 2); // along Z up
+            }
+            else if (BoneType == "Limb")
+            {
+                useT += new Vector3(0, Size / 2, 0); // along Y forward
+            }
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);

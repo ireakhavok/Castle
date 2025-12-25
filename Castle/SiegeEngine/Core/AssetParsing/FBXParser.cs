@@ -508,43 +508,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 var indexesNode = clusterNode.children.FirstOrDefault(c => c.Name == "Indexes");
                                 int[] indexes = indexesNode != null && indexesNode.properties[0].TypeCode == 'i' ? (int[])indexesNode.properties[0].Value : Array.Empty<int>();
                                 var weightsNode = clusterNode.children.FirstOrDefault(c => c.Name == "Weights");
-                                double[] weights = Array.Empty<double>();
-                                if (weightsNode != null && weightsNode.properties.Count > 0)
-                                {
-                                    var prop = weightsNode.properties[0];
-                                    if (prop.TypeCode == 'd')
-                                    {
-                                        weights = (double[])prop.Value;
-                                    }
-                                    else if (prop.TypeCode == 'f')
-                                    {
-                                        float[] fvals = (float[])prop.Value;
-                                        weights = fvals.Select(f => (double)f).ToArray();
-                                    }
-                                    else if (prop.TypeCode == 'R')
-                                    {
-                                        byte[] raw = (byte[])prop.Value;
-                                        if (raw.Length % 8 == 0)
-                                        {
-                                            weights = new double[raw.Length / 8];
-                                            Buffer.BlockCopy(raw, 0, weights, 0, raw.Length);
-                                        }
-                                        else if (raw.Length % 4 == 0)
-                                        {
-                                            float[] fvals = new float[raw.Length / 4];
-                                            Buffer.BlockCopy(raw, 0, fvals, 0, raw.Length);
-                                            weights = fvals.Select(f => (double)f).ToArray();
-                                        }
-                                        else
-                                        {
-                                            Console.WriteLine($"Unexpected raw length {raw.Length} for weights, skipping");
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Console.WriteLine($"Unexpected type {prop.TypeCode} for weights, skipping");
-                                    }
-                                }
+                                double[] weights = weightsNode != null && weightsNode.properties[0].TypeCode == 'd' ? (double[])weightsNode.properties[0].Value : Array.Empty<double>();
                                 var transformLinkNode = clusterNode.children.FirstOrDefault(c => c.Name == "TransformLink");
                                 double[] tl = transformLinkNode != null && transformLinkNode.properties[0].TypeCode == 'd' ? (double[])transformLinkNode.properties[0].Value : null;
                                 var transformNode = clusterNode.children.FirstOrDefault(c => c.Name == "Transform");
@@ -562,7 +526,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 {
                                     tMat = new Matrix4x4((float)tr[0], (float)tr[4], (float)tr[8], (float)tr[12],
                                                          (float)tr[1], (float)tr[5], (float)tr[9], (float)tr[13],
-                                                         (float)tr[2], (float)tr[6], (float)tr[10], (float)tr[14],
+                                                         (float)tl[2], (float)tr[6], (float)tr[10], (float)tr[14],
                                                          (float)tr[3], (float)tr[7], (float)tr[11], (float)tr[15]);
                                 }
                                 // Remap matrices

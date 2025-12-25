@@ -412,7 +412,7 @@ namespace ReadingChamber
             // Set matrices
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, 0.001f, 100f);
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, 0.1f, 100f);
             _assetShader.Use();
             _assetShader.SetMatrix4("uModel", modelMatrix);
             _assetShader.SetMatrix4("uView", view);
