@@ -28,35 +28,6 @@ namespace SiegeEngine.Core.AssetParsing
         }
         public void CopyWeightsFrom(FBXModel other)
         {
-            // Sort meshes by vertex count to match out-of-order meshes (assuming unique counts)
-            var mainMeshes = Meshes.OrderBy(m => m.Vertices.Count).ToList();
-            var otherMeshes = other.Meshes.OrderBy(m => m.Vertices.Count).ToList();
-            if (mainMeshes.Count != otherMeshes.Count)
-            {
-                if (otherMeshes.Count == 0)
-                {
-                    // Animation-only file, assign synthetic weights using closest bone
-                    if (other.Skeleton != null && other.Skeleton.Bones.Count > 0)
-                    {
-                        Skeleton = other.Skeleton; // Assign skeleton from animation model
-                        foreach (var mainMesh in mainMeshes)
-                        {
-                            AssignToClosestBone(mainMesh);
-                        }
-                        HasSkin = true;
-                        Console.WriteLine("CopyWeightsFrom: Assigned synthetic weights using closest bone from animation model's skeleton");
-                    }
-                    else
-                    {
-                        Console.WriteLine("CopyWeightsFrom: Animation model has no skeleton, cannot assign weights");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"CopyWeightsFrom: Mismatch in mesh count ({mainMeshes.Count} vs {otherMeshes.Count}), skipping");
-                }
-                return;
-            }
             // Create bone name to index maps for both models
             var mainBoneMap = new Dictionary<string, int>();
             for (int i = 0; i < Skeleton.Bones.Count; i++)
@@ -68,29 +39,52 @@ namespace SiegeEngine.Core.AssetParsing
             {
                 otherBoneMap[other.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
             }
+
             int totalCopied = 0;
-            for (int mi = 0; mi < mainMeshes.Count; mi++)
+            const float epsilon = 1e-5f;
+            foreach (var mainMesh in Meshes)
             {
-                var mainMesh = mainMeshes[mi];
-                var otherMesh = otherMeshes[mi];
-                if (mainMesh.Vertices.Count != otherMesh.Vertices.Count)
+                MeshData matchingOtherMesh = null;
+                List<MeshData> candidates = other.Meshes.Where(om => om.Vertices.Count == mainMesh.Vertices.Count).ToList();
+                if (candidates.Count == 0)
                 {
-                    Console.WriteLine($"CopyWeightsFrom: Mismatch in vertex count for sorted mesh {mi} ({mainMesh.Vertices.Count} vs {otherMesh.Vertices.Count}), skipping mesh");
+                    Console.WriteLine($"CopyWeightsFrom: No matching mesh by vertex count ({mainMesh.Vertices.Count}), assigning to closest bone");
+                    AssignToClosestBone(mainMesh);
                     continue;
                 }
+                foreach (var candidate in candidates)
+                {
+                    bool positionsMatch = true;
+                    // Sample first, middle, last vertices
+                    int[] sampleIndices = { 0, mainMesh.Vertices.Count / 2, mainMesh.Vertices.Count - 1 };
+                    foreach (int vi in sampleIndices)
+                    {
+                        var mv = mainMesh.Vertices[vi];
+                        var ov = candidate.Vertices[vi];
+                        if (Math.Abs(mv.X - ov.X) > epsilon || Math.Abs(mv.Y - ov.Y) > epsilon || Math.Abs(mv.Z - ov.Z) > epsilon)
+                        {
+                            positionsMatch = false;
+                            break;
+                        }
+                    }
+                    if (positionsMatch)
+                    {
+                        matchingOtherMesh = candidate;
+                        break;
+                    }
+                }
+                if (matchingOtherMesh == null)
+                {
+                    Console.WriteLine($"CopyWeightsFrom: No position-matching mesh found for mesh with {mainMesh.Vertices.Count} vertices, assigning to closest bone");
+                    AssignToClosestBone(mainMesh);
+                    continue;
+                }
+
                 int meshCopied = 0;
-                bool positionsMatch = true;
-                const float epsilon = 1e-5f;
                 for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
                 {
                     var mv = mainMesh.Vertices[vi];
-                    var ov = otherMesh.Vertices[vi];
-                    // Check position match
-                    if (Math.Abs(mv.X - ov.X) > epsilon || Math.Abs(mv.Y - ov.Y) > epsilon || Math.Abs(mv.Z - ov.Z) > epsilon)
-                    {
-                        positionsMatch = false;
-                        break;
-                    }
+                    var ov = matchingOtherMesh.Vertices[vi];
                     // If main vertex unweighted and other weighted, copy with remapped bone IDs
                     if (mv.Weight0 == 0 && mv.Weight1 == 0 && mv.Weight2 == 0 && mv.Weight3 == 0 &&
                         (ov.Weight0 > 0 || ov.Weight1 > 0 || ov.Weight2 > 0 || ov.Weight3 > 0))
@@ -133,7 +127,15 @@ namespace SiegeEngine.Core.AssetParsing
                                 }
                             }
                         }
-                        // Normalize weights again if needed
+                        // Set unused slots to -1 and 0 weight
+                        if (validCount < 4)
+                        {
+                            if (validCount <= 0) mv.BoneID0 = -1; mv.Weight0 = 0f;
+                            if (validCount <= 1) mv.BoneID1 = -1; mv.Weight1 = 0f;
+                            if (validCount <= 2) mv.BoneID2 = -1; mv.Weight2 = 0f;
+                            if (validCount <= 3) mv.BoneID3 = -1; mv.Weight3 = 0f;
+                        }
+                        // Normalize weights
                         float sumW = mv.Weight0 + mv.Weight1 + mv.Weight2 + mv.Weight3;
                         if (sumW > 0)
                         {
@@ -146,25 +148,42 @@ namespace SiegeEngine.Core.AssetParsing
                         meshCopied++;
                     }
                 }
-                if (mainMesh.Vertices.Count > 0)
-                {
-                    var sampleMv = mainMesh.Vertices[0];
-                    Console.WriteLine($"Sample vertex after copy: BoneIDs ({sampleMv.BoneID0}, {sampleMv.BoneID1}, ...), Weights ({sampleMv.Weight0:F2}, {sampleMv.Weight1:F2}, ...)");
-                }
-                if (!positionsMatch)
-                {
-                    Console.WriteLine($"CopyWeightsFrom: Positions do not match for sorted mesh {mi}, assigning to closest bone");
-                    AssignToClosestBone(mainMesh);
-                    continue;
-                }
                 totalCopied += meshCopied;
-                Console.WriteLine($"CopyWeightsFrom: Copied and remapped weights for {meshCopied} vertices in sorted mesh {mi}");
+                Console.WriteLine($"CopyWeightsFrom: Copied and remapped weights for {meshCopied} vertices in mesh with {mainMesh.Vertices.Count} vertices");
             }
-            if (totalCopied > 0)
+            // For any remaining unweighted meshes/vertices, assign to root bone (index 0, assuming 0 is root)
+            foreach (var mainMesh in Meshes)
+            {
+                if (mainMesh.Vertices.Any(v => v.Weight0 == 0 && v.Weight1 == 0 && v.Weight2 == 0 && v.Weight3 == 0))
+                {
+                    AssignToRootBone(mainMesh);
+                }
+            }
+            if (totalCopied > 0 || other.Meshes.Count == 0)
             {
                 HasSkin = true;
             }
             Console.WriteLine($"CopyWeightsFrom: Total copied vertices: {totalCopied}");
+        }
+        private void AssignToRootBone(MeshData mainMesh)
+        {
+            int rootBone = 0; // Assuming bone 0 is root
+            int assigned = 0;
+            for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
+            {
+                var mv = mainMesh.Vertices[vi];
+                if (mv.Weight0 == 0 && mv.Weight1 == 0 && mv.Weight2 == 0 && mv.Weight3 == 0)
+                {
+                    mv.BoneID0 = rootBone;
+                    mv.Weight0 = 1f;
+                    mv.BoneID1 = -1;
+                    mv.BoneID2 = -1;
+                    mv.BoneID3 = -1;
+                    mainMesh.Vertices[vi] = mv;
+                    assigned++;
+                }
+            }
+            Console.WriteLine($"Assigned {assigned} unweighted vertices to root bone");
         }
         private void AssignToClosestBone(MeshData mainMesh)
         {
@@ -196,6 +215,9 @@ namespace SiegeEngine.Core.AssetParsing
                     {
                         mv.BoneID0 = closestBone;
                         mv.Weight0 = 1f;
+                        mv.BoneID1 = -1;
+                        mv.BoneID2 = -1;
+                        mv.BoneID3 = -1;
                         mainMesh.Vertices[vi] = mv;
                         assigned++;
                     }
@@ -222,7 +244,7 @@ namespace SiegeEngine.Core.AssetParsing
         public int BoneID0, BoneID1, BoneID2, BoneID3;
         public float Weight0, Weight1, Weight2, Weight3;
         public FBXVertex(float x, float y, float z, float nx, float ny, float nz, float u, float v, float matIdx, float tx = 0, float ty = 0, float tz = 0,
-        int boneID0 = 0, int boneID1 = 0, int boneID2 = 0, int boneID3 = 0,
+        int boneID0 = -1, int boneID1 = -1, int boneID2 = -1, int boneID3 = -1,
         float weight0 = 0, float weight1 = 0, float weight2 = 0, float weight3 = 0)
         {
             X = x; Y = y; Z = z;
