@@ -131,7 +131,7 @@ namespace ReadingChamber
         private void LoadAnimation(string animPath)
         {
             var animForest = FBXParser.Load(animPath);
-            var animModel = FBXParser.BuildModelFromForest(animForest, true);
+            var animModel = FBXParser.BuildModelFromForest(animForest); // Parse full model to get meshes/weights
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {
@@ -177,11 +177,67 @@ namespace ReadingChamber
                 _duration = anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 0f;
                 _time = 0f;
                 Console.WriteLine($"Loaded animation {anim.Name} with {anim.Keyframes.Count} keyframes");
+                // Copy weights if main model has unweighted vertices
+                if (_model.HasUnweightedVertices())
+                {
+                    _model.CopyWeightsFrom(animModel);
+                    Console.WriteLine($"Copied weights from animation model to main model for {anim.Name}");
+                    // Update VBOs with new vertex data (weights updated)
+                    UpdateModelBuffers();
+                }
             }
             else
             {
                 Console.WriteLine($"No valid animations found in {animPath}");
             }
+        }
+        private void UpdateModelBuffers()
+        {
+            if (_model == null || _modelData == null || _modelData.MeshRenders.Count != _model.Meshes.Count)
+            {
+                Console.WriteLine("UpdateModelBuffers: Mismatch in mesh/render count, skipping update");
+                return;
+            }
+            for (int mi = 0; mi < _model.Meshes.Count; mi++)
+            {
+                var mesh = _model.Meshes[mi];
+                var mmr = _modelData.MeshRenders[mi];
+                float[] vertexData = new float[mesh.Vertices.Count * 20];
+                for (int vi = 0; vi < mesh.Vertices.Count; vi++)
+                {
+                    var vertex = mesh.Vertices[vi];
+                    int offset = vi * 20;
+                    vertexData[offset + 0] = vertex.X;
+                    vertexData[offset + 1] = vertex.Y;
+                    vertexData[offset + 2] = vertex.Z;
+                    vertexData[offset + 3] = vertex.Nx;
+                    vertexData[offset + 4] = vertex.Ny;
+                    vertexData[offset + 5] = vertex.Nz;
+                    vertexData[offset + 6] = vertex.U;
+                    vertexData[offset + 7] = vertex.V;
+                    vertexData[offset + 8] = vertex.MatIdx;
+                    vertexData[offset + 9] = vertex.Tx;
+                    vertexData[offset + 10] = vertex.Ty;
+                    vertexData[offset + 11] = vertex.Tz;
+                    vertexData[offset + 12] = (float)vertex.BoneID0;
+                    vertexData[offset + 13] = (float)vertex.BoneID1;
+                    vertexData[offset + 14] = (float)vertex.BoneID2;
+                    vertexData[offset + 15] = (float)vertex.BoneID3;
+                    vertexData[offset + 16] = vertex.Weight0;
+                    vertexData[offset + 17] = vertex.Weight1;
+                    vertexData[offset + 18] = vertex.Weight2;
+                    vertexData[offset + 19] = vertex.Weight3;
+                }
+                _renderContext.BindVertexArray(mmr.Vao);
+                _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, mmr.Vbo);
+                fixed (float* ptr = vertexData)
+                {
+                    _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
+                }
+                _renderContext.BindVertexArray(0);
+                Console.WriteLine($"Updated VBO for mesh {mi} with new weights");
+            }
+            _model.HasSkin = true;
         }
         private void UpdateUIControls()
         {

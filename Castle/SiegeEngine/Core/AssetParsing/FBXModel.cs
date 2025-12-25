@@ -122,9 +122,15 @@ namespace SiegeEngine.Core.AssetParsing
                         meshCopied++;
                     }
                 }
+                if (mainMesh.Vertices.Count > 0)
+                {
+                    var sampleMv = mainMesh.Vertices[0];
+                    Console.WriteLine($"Sample vertex after copy: BoneIDs ({sampleMv.BoneID0}, {sampleMv.BoneID1}, ...), Weights ({sampleMv.Weight0:F2}, {sampleMv.Weight1:F2}, ...)");
+                }
                 if (!positionsMatch)
                 {
-                    Console.WriteLine($"CopyWeightsFrom: Positions do not match for sorted mesh {mi}, skipping copy to avoid tearing");
+                    Console.WriteLine($"CopyWeightsFrom: Positions do not match for sorted mesh {mi}, assigning to closest bone");
+                    AssignToClosestBone(mainMesh);
                     continue;
                 }
                 totalCopied += meshCopied;
@@ -135,6 +141,43 @@ namespace SiegeEngine.Core.AssetParsing
                 HasSkin = true;
             }
             Console.WriteLine($"CopyWeightsFrom: Total copied vertices: {totalCopied}");
+        }
+        private void AssignToClosestBone(MeshData mainMesh)
+        {
+            // Get bone positions from LocalRest translation
+            var bonePositions = new Vector3[Skeleton.Bones.Count];
+            for (int bi = 0; bi < Skeleton.Bones.Count; bi++)
+            {
+                bonePositions[bi] = Skeleton.Bones[bi].LocalRest.Translation;
+            }
+            int assigned = 0;
+            for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
+            {
+                var mv = mainMesh.Vertices[vi];
+                if (mv.Weight0 == 0 && mv.Weight1 == 0 && mv.Weight2 == 0 && mv.Weight3 == 0)
+                {
+                    Vector3 vertPos = new Vector3(mv.X, mv.Y, mv.Z);
+                    int closestBone = -1;
+                    float minDistSq = float.MaxValue;
+                    for (int bi = 0; bi < bonePositions.Length; bi++)
+                    {
+                        float distSq = Vector3.DistanceSquared(vertPos, bonePositions[bi]);
+                        if (distSq < minDistSq)
+                        {
+                            minDistSq = distSq;
+                            closestBone = bi;
+                        }
+                    }
+                    if (closestBone >= 0)
+                    {
+                        mv.BoneID0 = closestBone;
+                        mv.Weight0 = 1f;
+                        mainMesh.Vertices[vi] = mv;
+                        assigned++;
+                    }
+                }
+            }
+            Console.WriteLine($"Assigned {assigned} unweighted vertices to closest bones");
         }
     }
     public class MeshData
@@ -234,14 +277,6 @@ namespace SiegeEngine.Core.AssetParsing
             Vector3 useT = t ?? LclTranslation;
             Vector3 useR = r ?? LclRotation;
             Vector3 useS = s ?? LclScaling;
-            if (BoneType == "LimbNode")
-            {
-                useT += new Vector3(0, 0, Size / 2); // along Z up
-            }
-            else if (BoneType == "Limb")
-            {
-                useT += new Vector3(0, Size / 2, 0); // along Y forward
-            }
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);

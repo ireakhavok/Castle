@@ -329,7 +329,7 @@ Found: ..
 Found: AssetViewerPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
-Read 25319 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+Read 28313 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Namespace: ReadingChamber
 Found 13 dependencies
 Found: AssetViewerUI.html
@@ -405,13 +405,13 @@ Found: ..
 Found: FBXModel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
-Read 10923 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
+Read 18707 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXModel.cs
 Namespace: SiegeEngine.Core.AssetParsing
 Found 5 dependencies
 Found: FBXParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
-Read 73399 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
+Read 72826 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXParser.cs
 Namespace: SiegeEngine.Core.AssetParsing
 Found 8 dependencies
 Found: FBXParserBase.cs
@@ -435,7 +435,7 @@ Found 1 dependencies
 Found: NodeParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\NodeParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\NodeParser.cs
-Read 15665 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\NodeParser.cs
+Read 15847 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\NodeParser.cs
 Namespace: SiegeEngine.Core.AssetParsing
 Found 6 dependencies
 Found: ContextManagement
@@ -805,7 +805,7 @@ Found 2 dependencies
 Found: ModelManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
-Read 30086 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
+Read 30024 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 11 dependencies
 Found: ModManager.cs
@@ -910,6 +910,12 @@ Found: Shaders
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders
 Found: .
 Found: ..
+Found: AnimationShader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\AnimationShader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\AnimationShader.cs
+Read 3688 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\AnimationShader.cs
+Namespace: SiegeEngine.Core.Rendering.Shaders
+Found 0 dependencies
 Found: AssetShader.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\AssetShader.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\AssetShader.cs
@@ -1235,7 +1241,7 @@ Found 3 dependencies
 Found: CameraController.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
-Read 10656 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
+Read 10845 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\CameraController.cs
 Namespace: SiegeEngine.PlayerSystem
 Found 5 dependencies
 Found: InputHandler.cs
@@ -1253,7 +1259,7 @@ Found 6 dependencies
 Found: PlayerMovement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
-Read 9517 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
+Read 9516 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\PlayerMovement.cs
 Namespace: SiegeEngine.PlayerSystem
 Found 7 dependencies
 Found: PositionCalculator.cs

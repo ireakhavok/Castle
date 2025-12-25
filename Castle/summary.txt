@@ -237,6 +237,14 @@ Folder: SiegeEngine
   - Class: AnimationComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
     
+- File: AnimationShader.cs
+  - Class: AnimationShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+    - Fields:
+      - string VertexShaderSource
+      - string FragmentShaderSource
+    - Methods:
+      - void main()
+      - void main()
 - File: AnimationSystem.cs
   - Class: AnimationSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
@@ -728,6 +736,7 @@ Folder: SiegeEngine
       - return GetOrderFromSequence()
       - int[] GetOrderSequence(int order)
       - int GetOrderFromSequence(int[] seq)
+      - float CalculateDeterminant(Matrix4x4 m)
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -2175,6 +2184,7 @@ SiegeEngine.Core.Rendering.Renderer
 SiegeEngine.Core.Rendering.RendererDetector
 SiegeEngine.Core.Rendering.ShaderProgram
 SiegeEngine.Core.Rendering.ShaderSetup
+SiegeEngine.Core.Rendering.Shaders.AnimationShader
 SiegeEngine.Core.Rendering.Shaders.AssetShader
 SiegeEngine.Core.Rendering.Shaders.EditorSceneShader
 SiegeEngine.Core.Rendering.Shaders.ModelShader
