@@ -491,6 +491,9 @@ namespace SiegeEngine.Core.AssetParsing
                     if (skinConns.Any())
                     {
                         model.HasSkin = true;
+                        int totalClusters = 0;
+                        long totalIndexes = 0;
+                        long totalWeights = 0;
                         foreach (var skinConn in skinConns)
                         {
                             var skinNode = objectsById[skinConn.child];
@@ -505,7 +508,43 @@ namespace SiegeEngine.Core.AssetParsing
                                 var indexesNode = clusterNode.children.FirstOrDefault(c => c.Name == "Indexes");
                                 int[] indexes = indexesNode != null && indexesNode.properties[0].TypeCode == 'i' ? (int[])indexesNode.properties[0].Value : Array.Empty<int>();
                                 var weightsNode = clusterNode.children.FirstOrDefault(c => c.Name == "Weights");
-                                double[] weights = weightsNode != null && weightsNode.properties[0].TypeCode == 'd' ? (double[])weightsNode.properties[0].Value : Array.Empty<double>();
+                                double[] weights = Array.Empty<double>();
+                                if (weightsNode != null && weightsNode.properties.Count > 0)
+                                {
+                                    var prop = weightsNode.properties[0];
+                                    if (prop.TypeCode == 'd')
+                                    {
+                                        weights = (double[])prop.Value;
+                                    }
+                                    else if (prop.TypeCode == 'f')
+                                    {
+                                        float[] fvals = (float[])prop.Value;
+                                        weights = fvals.Select(f => (double)f).ToArray();
+                                    }
+                                    else if (prop.TypeCode == 'R')
+                                    {
+                                        byte[] raw = (byte[])prop.Value;
+                                        if (raw.Length % 8 == 0)
+                                        {
+                                            weights = new double[raw.Length / 8];
+                                            Buffer.BlockCopy(raw, 0, weights, 0, raw.Length);
+                                        }
+                                        else if (raw.Length % 4 == 0)
+                                        {
+                                            float[] fvals = new float[raw.Length / 4];
+                                            Buffer.BlockCopy(raw, 0, fvals, 0, raw.Length);
+                                            weights = fvals.Select(f => (double)f).ToArray();
+                                        }
+                                        else
+                                        {
+                                            Console.WriteLine($"Unexpected raw length {raw.Length} for weights, skipping");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine($"Unexpected type {prop.TypeCode} for weights, skipping");
+                                    }
+                                }
                                 var transformLinkNode = clusterNode.children.FirstOrDefault(c => c.Name == "TransformLink");
                                 double[] tl = transformLinkNode != null && transformLinkNode.properties[0].TypeCode == 'd' ? (double[])transformLinkNode.properties[0].Value : null;
                                 var transformNode = clusterNode.children.FirstOrDefault(c => c.Name == "Transform");
@@ -566,8 +605,12 @@ namespace SiegeEngine.Core.AssetParsing
                                     float w = (float)weights[i];
                                     perVertBones[vertIdx].Add((boneIdx, w));
                                 }
+                                totalClusters++;
+                                totalIndexes += indexes.Length;
+                                totalWeights += weights.Length;
                             }
                         }
+                        Console.WriteLine($"Total clusters parsed: {totalClusters}, Total indexes: {totalIndexes}, Total weights: {totalWeights}");
                     }
                     // Normalize weights and limit to 4 per vertex
                     for (int v = 0; v < perVertBones.Count; v++)
