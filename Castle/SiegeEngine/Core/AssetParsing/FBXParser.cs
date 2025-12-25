@@ -151,6 +151,8 @@ namespace SiegeEngine.Core.AssetParsing
                                p3[2, 0], p3[2, 1], p3[2, 2], 0,
                                0, 0, 0, 1);
             Matrix4x4 invP4 = Matrix4x4.Transpose(P4);
+            float det = CalculateDeterminant(P4);
+            bool reverseWinding = det < 0;
             // Parse skeleton
             var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
                 ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Limb" || (string)n.properties[2].Value == "Root")).ToList();
@@ -501,63 +503,9 @@ namespace SiegeEngine.Core.AssetParsing
                                 long boneId = boneConn.parent;
                                 if (!boneIndexById.TryGetValue(boneId, out int boneIdx)) continue;
                                 var indexesNode = clusterNode.children.FirstOrDefault(c => c.Name == "Indexes");
-                                int[] indexes = Array.Empty<int>();
-                                if (indexesNode != null && indexesNode.properties.Count > 0)
-                                {
-                                    var prop = indexesNode.properties[0];
-                                    if (prop.TypeCode == 'i')
-                                    {
-                                        indexes = (int[])prop.Value;
-                                    }
-                                    else if (prop.TypeCode == 'l')
-                                    {
-                                        indexes = ((long[])prop.Value).Select(l => (int)l).ToArray();
-                                    }
-                                    else if (prop.TypeCode == 'R')
-                                    {
-                                        byte[] raw = (byte[])prop.Value;
-                                        if (raw.Length % 4 == 0)
-                                        {
-                                            indexes = new int[raw.Length / 4];
-                                            Buffer.BlockCopy(raw, 0, indexes, 0, raw.Length);
-                                        }
-                                        else if (raw.Length % 8 == 0)
-                                        {
-                                            long[] lvals = new long[raw.Length / 8];
-                                            Buffer.BlockCopy(raw, 0, lvals, 0, raw.Length);
-                                            indexes = lvals.Select(l => (int)l).ToArray();
-                                        }
-                                    }
-                                }
+                                int[] indexes = indexesNode != null && indexesNode.properties[0].TypeCode == 'i' ? (int[])indexesNode.properties[0].Value : Array.Empty<int>();
                                 var weightsNode = clusterNode.children.FirstOrDefault(c => c.Name == "Weights");
-                                float[] weights = Array.Empty<float>();
-                                if (weightsNode != null && weightsNode.properties.Count > 0)
-                                {
-                                    var prop = weightsNode.properties[0];
-                                    if (prop.TypeCode == 'd')
-                                    {
-                                        weights = ((double[])prop.Value).Select(d => (float)d).ToArray();
-                                    }
-                                    else if (prop.TypeCode == 'f')
-                                    {
-                                        weights = (float[])prop.Value;
-                                    }
-                                    else if (prop.TypeCode == 'R')
-                                    {
-                                        byte[] raw = (byte[])prop.Value;
-                                        if (raw.Length % 4 == 0)
-                                        {
-                                            weights = new float[raw.Length / 4];
-                                            Buffer.BlockCopy(raw, 0, weights, 0, raw.Length);
-                                        }
-                                        else if (raw.Length % 8 == 0)
-                                        {
-                                            double[] dvals = new double[raw.Length / 8];
-                                            Buffer.BlockCopy(raw, 0, dvals, 0, raw.Length);
-                                            weights = dvals.Select(d => (float)d).ToArray();
-                                        }
-                                    }
-                                }
+                                double[] weights = weightsNode != null && weightsNode.properties[0].TypeCode == 'd' ? (double[])weightsNode.properties[0].Value : Array.Empty<double>();
                                 var transformLinkNode = clusterNode.children.FirstOrDefault(c => c.Name == "TransformLink");
                                 double[] tl = transformLinkNode != null && transformLinkNode.properties[0].TypeCode == 'd' ? (double[])transformLinkNode.properties[0].Value : null;
                                 var transformNode = clusterNode.children.FirstOrDefault(c => c.Name == "Transform");
@@ -615,7 +563,7 @@ namespace SiegeEngine.Core.AssetParsing
                                         Console.WriteLine($"BuildModelFromForest: Invalid vertIdx {vertIdx} in cluster, skipping");
                                         continue;
                                     }
-                                    float w = weights[i];
+                                    float w = (float)weights[i];
                                     perVertBones[vertIdx].Add((boneIdx, w));
                                 }
                             }
@@ -662,9 +610,18 @@ namespace SiegeEngine.Core.AssetParsing
                             // Triangulate polygon
                             for (int j = 1; j < tempPoly.Count - 1; j++)
                             {
-                                newIndices.Add((uint)currentIndex);
-                                newIndices.Add((uint)(currentIndex + j));
-                                newIndices.Add((uint)(currentIndex + j + 1));
+                                if (reverseWinding)
+                                {
+                                    newIndices.Add((uint)currentIndex);
+                                    newIndices.Add((uint)(currentIndex + j + 1));
+                                    newIndices.Add((uint)(currentIndex + j));
+                                }
+                                else
+                                {
+                                    newIndices.Add((uint)currentIndex);
+                                    newIndices.Add((uint)(currentIndex + j));
+                                    newIndices.Add((uint)(currentIndex + j + 1));
+                                }
                             }
                             // Add vertices for the polygon
                             for (int k = 0; k < tempPoly.Count; k++)
@@ -1259,6 +1216,14 @@ namespace SiegeEngine.Core.AssetParsing
                 case "210": return 5;
                 default: return 0;
             }
+        }
+        private static float CalculateDeterminant(Matrix4x4 m)
+        {
+            float a = m.M22 * (m.M33 * m.M44 - m.M34 * m.M43) - m.M23 * (m.M32 * m.M44 - m.M34 * m.M42) + m.M24 * (m.M32 * m.M43 - m.M33 * m.M42);
+            float b = m.M21 * (m.M33 * m.M44 - m.M34 * m.M43) - m.M23 * (m.M31 * m.M44 - m.M34 * m.M41) + m.M24 * (m.M31 * m.M43 - m.M33 * m.M41);
+            float c = m.M21 * (m.M32 * m.M44 - m.M34 * m.M42) - m.M22 * (m.M31 * m.M44 - m.M34 * m.M41) + m.M24 * (m.M31 * m.M42 - m.M32 * m.M41);
+            float d = m.M21 * (m.M32 * m.M43 - m.M33 * m.M42) - m.M22 * (m.M31 * m.M43 - m.M33 * m.M41) + m.M23 * (m.M31 * m.M42 - m.M32 * m.M41);
+            return m.M11 * a - m.M12 * b + m.M13 * c - m.M14 * d;
         }
     }
 }

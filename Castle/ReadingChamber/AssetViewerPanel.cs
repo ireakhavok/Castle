@@ -1,6 +1,4 @@
-﻿// Folder: ReadingChamber
-// File: AssetViewerPanel.cs
-using SiegeEngine.Core.AssetParsing;
+﻿using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -97,7 +95,8 @@ namespace ReadingChamber
                 }
                 Vector3 center = (minBounds + maxBounds) / 2;
                 float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
-                _cameraPosition = center + new Vector3(0, 0, maxExtent * 3.5f);
+                float cameraDist = Math.Max(maxExtent * 3.5f, 0.1f);
+                _cameraPosition = center + new Vector3(0, 0, cameraDist);
                 _cameraTarget = center;
                 _cameraUp = Vector3.UnitZ;
                 Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
@@ -164,7 +163,7 @@ namespace ReadingChamber
                         {
                             Console.WriteLine($"Warning: Bone {boneName} from animation not found in main model");
                         }
-                            
+
                     }
                     kf.BoneTransforms = newTransforms;
                 }
@@ -413,7 +412,7 @@ namespace ReadingChamber
             // Set matrices
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, 0.1f, 100f);
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, 0.001f, 100f);
             _assetShader.Use();
             _assetShader.SetMatrix4("uModel", modelMatrix);
             _assetShader.SetMatrix4("uView", view);
