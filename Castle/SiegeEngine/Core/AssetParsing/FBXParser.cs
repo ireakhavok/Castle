@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine
-// File: Core/AssetParsing/FBXParser.cs
-using SiegeEngine.Core.Rendering;
+﻿using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -129,7 +127,7 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
             // LEAVE THIS CODE ALONE: It converts units from FBX to SiegeEngine's internal units (meters) and remaps axes to Z-up Y-forward
-            float modelScale = unitScaleFactor / 10f; // Assuming FBX in cm, to m
+            float modelScale = unitScaleFactor / 100f; // Assuming FBX in cm, to m
             // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Z-up Y-forward)
             int[] sourceToTarget = new int[3];
             sourceToTarget[coordAxis] = 0; // Source coord -> target X
@@ -503,9 +501,63 @@ namespace SiegeEngine.Core.AssetParsing
                                 long boneId = boneConn.parent;
                                 if (!boneIndexById.TryGetValue(boneId, out int boneIdx)) continue;
                                 var indexesNode = clusterNode.children.FirstOrDefault(c => c.Name == "Indexes");
-                                int[] indexes = indexesNode != null && indexesNode.properties[0].TypeCode == 'i' ? (int[])indexesNode.properties[0].Value : Array.Empty<int>();
+                                int[] indexes = Array.Empty<int>();
+                                if (indexesNode != null && indexesNode.properties.Count > 0)
+                                {
+                                    var prop = indexesNode.properties[0];
+                                    if (prop.TypeCode == 'i')
+                                    {
+                                        indexes = (int[])prop.Value;
+                                    }
+                                    else if (prop.TypeCode == 'l')
+                                    {
+                                        indexes = ((long[])prop.Value).Select(l => (int)l).ToArray();
+                                    }
+                                    else if (prop.TypeCode == 'R')
+                                    {
+                                        byte[] raw = (byte[])prop.Value;
+                                        if (raw.Length % 4 == 0)
+                                        {
+                                            indexes = new int[raw.Length / 4];
+                                            Buffer.BlockCopy(raw, 0, indexes, 0, raw.Length);
+                                        }
+                                        else if (raw.Length % 8 == 0)
+                                        {
+                                            long[] lvals = new long[raw.Length / 8];
+                                            Buffer.BlockCopy(raw, 0, lvals, 0, raw.Length);
+                                            indexes = lvals.Select(l => (int)l).ToArray();
+                                        }
+                                    }
+                                }
                                 var weightsNode = clusterNode.children.FirstOrDefault(c => c.Name == "Weights");
-                                double[] weights = weightsNode != null && weightsNode.properties[0].TypeCode == 'd' ? (double[])weightsNode.properties[0].Value : Array.Empty<double>();
+                                float[] weights = Array.Empty<float>();
+                                if (weightsNode != null && weightsNode.properties.Count > 0)
+                                {
+                                    var prop = weightsNode.properties[0];
+                                    if (prop.TypeCode == 'd')
+                                    {
+                                        weights = ((double[])prop.Value).Select(d => (float)d).ToArray();
+                                    }
+                                    else if (prop.TypeCode == 'f')
+                                    {
+                                        weights = (float[])prop.Value;
+                                    }
+                                    else if (prop.TypeCode == 'R')
+                                    {
+                                        byte[] raw = (byte[])prop.Value;
+                                        if (raw.Length % 4 == 0)
+                                        {
+                                            weights = new float[raw.Length / 4];
+                                            Buffer.BlockCopy(raw, 0, weights, 0, raw.Length);
+                                        }
+                                        else if (raw.Length % 8 == 0)
+                                        {
+                                            double[] dvals = new double[raw.Length / 8];
+                                            Buffer.BlockCopy(raw, 0, dvals, 0, raw.Length);
+                                            weights = dvals.Select(d => (float)d).ToArray();
+                                        }
+                                    }
+                                }
                                 var transformLinkNode = clusterNode.children.FirstOrDefault(c => c.Name == "TransformLink");
                                 double[] tl = transformLinkNode != null && transformLinkNode.properties[0].TypeCode == 'd' ? (double[])transformLinkNode.properties[0].Value : null;
                                 var transformNode = clusterNode.children.FirstOrDefault(c => c.Name == "Transform");
@@ -563,7 +615,7 @@ namespace SiegeEngine.Core.AssetParsing
                                         Console.WriteLine($"BuildModelFromForest: Invalid vertIdx {vertIdx} in cluster, skipping");
                                         continue;
                                     }
-                                    float w = (float)weights[i];
+                                    float w = weights[i];
                                     perVertBones[vertIdx].Add((boneIdx, w));
                                 }
                             }

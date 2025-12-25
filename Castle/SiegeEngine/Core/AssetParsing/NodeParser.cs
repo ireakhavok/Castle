@@ -44,19 +44,21 @@ namespace SiegeEngine.Core.AssetParsing
                     if (endOffset == 0 && numProperties == 0 && propertyListLen == 0 && tempNameLen == 0)
                     {
                         if (parentNode == null) {
-                            long remainingBytes = fileLength - reader.BaseStream.Position;
-                            if (remainingBytes > 0)
-                            {
-                                byte[] remainingData = reader.ReadBytes((int)remainingBytes);
-                                Console.WriteLine("Remaining file content as hex dump:");
-                                PrintHexDump(remainingData);
+                            Console.WriteLine("End of content found, hex dump disabled.");
+                            break;
+                            //long remainingBytes = fileLength - reader.BaseStream.Position;
+                            //if (remainingBytes > 0)
+                            //{
+                            //    byte[] remainingData = reader.ReadBytes((int)remainingBytes);
+                            //    Console.WriteLine("Remaining file content as hex dump:");
+                            //    PrintHexDump(remainingData);
 
-                                // Optional: Still print as ASCII if desired
-                                // string asciiContent = Encoding.ASCII.GetString(remainingData);
-                                // Console.WriteLine("Remaining file content as ASCII:");
-                                // Console.WriteLine(asciiContent);
-                            }
-                            break; // Stop parsing since we've reached the end
+                            //    // Optional: Still print as ASCII if desired
+                            //    // string asciiContent = Encoding.ASCII.GetString(remainingData);
+                            //    // Console.WriteLine("Remaining file content as ASCII:");
+                            //    // Console.WriteLine(asciiContent);
+                            //}
+                            //break; // Stop parsing since we've reached the end
                         }
                         else
                         {
@@ -152,7 +154,7 @@ namespace SiegeEngine.Core.AssetParsing
                 }
                 Console.WriteLine();
             }
-            Console.WriteLine($"Total remaining bytes: {data.Length}");
+            Console.WriteLine($"Total remaining bytes in footer (ending tag + buffer): {data.Length}");
         }
 
         private static void ParseProperties(BinaryReader reader, FBXNode node, long propStart, long propEnd, long numProperties, uint version)

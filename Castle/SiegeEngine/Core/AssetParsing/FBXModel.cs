@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine
-// File: FBXModel.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -119,14 +117,6 @@ namespace SiegeEngine.Core.AssetParsing
             Vector3 useT = t ?? LclTranslation;
             Vector3 useR = r ?? LclRotation;
             Vector3 useS = s ?? LclScaling;
-            if (BoneType == "LimbNode")
-            {
-                useT += new Vector3(0, 0, Size / 2); // along Z up
-            }
-            else if (BoneType == "Limb")
-            {
-                useT += new Vector3(0, Size / 2, 0); // along Y forward
-            }
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
