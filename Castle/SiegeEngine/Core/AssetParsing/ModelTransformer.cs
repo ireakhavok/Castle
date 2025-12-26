@@ -1,4 +1,5 @@
 ﻿// Engine.Core.AssetParsing/ModelTransformer.cs
+using SiegeEngine.Core.AssetParsing.Model;
 using System.Numerics;
 
 namespace SiegeEngine.Core.AssetParsing

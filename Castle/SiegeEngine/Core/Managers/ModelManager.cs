@@ -9,6 +9,7 @@ using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.UnityAssetLoader;
+using SiegeEngine.Core.AssetParsing.Model;
 namespace SiegeEngine.Core.Managers
 {
     public class ModelManager

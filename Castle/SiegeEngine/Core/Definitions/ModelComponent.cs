@@ -1,5 +1,5 @@
 ﻿// Engine.Core/Definitions/ModelComponent.cs
-using SiegeEngine.Core.AssetParsing;
+using SiegeEngine.Core.AssetParsing.Model;
 using System;
 
 namespace SiegeEngine.Core.Definitions

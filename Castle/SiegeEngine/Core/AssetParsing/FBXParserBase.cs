@@ -1,4 +1,5 @@
 ﻿// Engine.Core.AssetParsing/FBXParserBase.cs
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;

@@ -13,6 +13,7 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
+using SiegeEngine.Core.AssetParsing.Model;
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel

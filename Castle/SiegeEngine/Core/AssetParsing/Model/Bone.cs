@@ -1,0 +1,85 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace SiegeEngine.Core.AssetParsing.Model
+{
+    public class Bone
+    {
+        public string Name { get; set; }
+        public Matrix4x4 BindPose { get; set; }
+        public int ParentIndex { get; set; }
+        public Matrix4x4 LocalRest { get; set; } = Matrix4x4.Identity;
+        public Vector3 LclTranslation { get; set; } = Vector3.Zero;
+        public Vector3 LclRotation { get; set; } = Vector3.Zero;
+        public Vector3 LclScaling { get; set; } = Vector3.One;
+        public Vector3 PreRotation { get; set; } = Vector3.Zero;
+        public Vector3 PostRotation { get; set; } = Vector3.Zero;
+        public Vector3 RotationPivot { get; set; } = Vector3.Zero;
+        public Vector3 RotationOffset { get; set; } = Vector3.Zero;
+        public Vector3 ScalingPivot { get; set; } = Vector3.Zero;
+        public Vector3 ScalingOffset { get; set; } = Vector3.Zero;
+        public int RotationOrder { get; set; } = 0; // Default eEulerXYZ
+        public string BoneType { get; set; }
+        public float Size { get; set; } = 1f;
+        public Vector3 GeometricTranslation { get; set; } = Vector3.Zero;
+        public Vector3 GeometricRotation { get; set; } = Vector3.Zero;
+        public Vector3 GeometricScaling { get; set; } = Vector3.One;
+        public Matrix4x4 Geo => Matrix4x4.CreateScale(GeometricScaling) *
+        CreateFromEuler(GeometricRotation, 0) *
+        Matrix4x4.CreateTranslation(GeometricTranslation);
+        public Matrix4x4 ComputeLocal(Vector3? t = null, Vector3? r = null, Vector3? s = null)
+        {
+            Vector3 useT = t ?? LclTranslation;
+            Vector3 useR = r ?? LclRotation;
+            Vector3 useS = s ?? LclScaling;
+            Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
+            Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
+            Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
+            Matrix4x4 invRp = Matrix4x4.CreateTranslation(-RotationPivot);
+            Matrix4x4 Soff = Matrix4x4.CreateTranslation(ScalingOffset);
+            Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);
+            Matrix4x4 invSp = Matrix4x4.CreateTranslation(-ScalingPivot);
+            Matrix4x4 S = Matrix4x4.CreateScale(useS);
+            Matrix4x4 Pre = CreateFromEuler(PreRotation, 0); // Always XYZ
+            Matrix4x4 R = CreateFromEuler(useR, RotationOrder);
+            Matrix4x4 Post = CreateFromEuler(PostRotation, 0); // Always XYZ
+            Matrix4x4 invPost;
+            Matrix4x4.Invert(Post, out invPost);
+            // FBX order: T * Roff * Rp * Pre * R * inv(Post) * inv(Rp) * Soff * Sp * S * inv(Sp)
+            Matrix4x4 local = T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp;
+            return local;
+        }
+        private Matrix4x4 CreateFromEuler(Vector3 degrees, int order)
+        {
+            float rx = degrees.X * MathF.PI / 180f;
+            float ry = degrees.Y * MathF.PI / 180f;
+            float rz = degrees.Z * MathF.PI / 180f;
+            Matrix4x4 mx = Matrix4x4.CreateRotationX(rx);
+            Matrix4x4 my = Matrix4x4.CreateRotationY(ry);
+            Matrix4x4 mz = Matrix4x4.CreateRotationZ(rz);
+            switch (order)
+            {
+                case 0: // eEulerXYZ
+                    return mx * my * mz;
+                case 1: // eEulerXZY
+                    return mx * mz * my;
+                case 2: // eEulerYZX
+                    return my * mz * mx;
+                case 3: // eEulerYXZ
+                    return my * mx * mz;
+                case 4: // eEulerZXY
+                    return mz * mx * my;
+                case 5: // eEulerZYX
+                    return mz * my * mx;
+                case 6: // eSphericXYZ, approximate as XYZ
+                    return mx * my * mz;
+                default:
+                    return mx * my * mz;
+            }
+        }
+    }
+}
