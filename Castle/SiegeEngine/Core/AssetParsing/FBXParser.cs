@@ -135,7 +135,7 @@ namespace SiegeEngine.Core.AssetParsing
             sourceToTarget[upAxis] = 2; // Source up -> target Z
             int[] signs = new int[3];
             signs[coordAxis] = coordAxisSign;
-            signs[frontAxis] = -frontAxisSign; // Flip forward if needed
+            signs[frontAxis] = frontAxisSign; 
             signs[upAxis] = upAxisSign;
             // DONT TOUCH THIS CODE ABOVE
             // Build P4
@@ -530,21 +530,53 @@ namespace SiegeEngine.Core.AssetParsing
                             long boneId = boneConn.parent;
                             if (!boneIndexById.TryGetValue(boneId, out int boneIdx)) continue;
                             var indexesNode = clusterNode.children.FirstOrDefault(c => c.Name == "Indexes");
-                            int[] indexes = indexesNode != null && indexesNode.properties[0].TypeCode == 'i' ? (int[])indexesNode.properties[0].Value : Array.Empty<int>();
+                            int[] indexes = null;
+                            if (indexesNode != null)
+                            {
+                                var prop = indexesNode.properties[0];
+                                char typeCode = prop.TypeCode;
+                                if (typeCode == 'i')
+                                {
+                                    indexes = (int[])prop.Value;
+                                }
+                                else if (typeCode == 'R')
+                                {
+                                    indexes = ParseRawArrayAsInt(prop.Value as byte[]);
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Unexpected type for Indexes: {typeCode}");
+                                    indexes = Array.Empty<int>();
+                                }
+                            }
+                            else
+                            {
+                                indexes = Array.Empty<int>();
+                            }
                             var weightsNode = clusterNode.children.FirstOrDefault(c => c.Name == "Weights");
                             double[] weights = null;
                             if (weightsNode != null)
                             {
                                 var prop = weightsNode.properties[0];
-                                if (prop.TypeCode == 'd')
+                                char typeCode = prop.TypeCode;
+                                if (typeCode == 'd')
                                 {
                                     weights = (double[])prop.Value;
                                 }
-                                else if (prop.TypeCode == 'f')
+                                else if (typeCode == 'f')
                                 {
                                     float[] fvals = (float[])prop.Value;
                                     weights = new double[fvals.Length];
                                     for (int wi = 0; wi < fvals.Length; wi++) weights[wi] = fvals[wi];
+                                }
+                                else if (typeCode == 'R')
+                                {
+                                    weights = ParseRawArrayAsDouble(prop.Value as byte[]);
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Unexpected type for Weights: {typeCode}");
+                                    weights = Array.Empty<double>();
                                 }
                             }
                             else
@@ -609,7 +641,10 @@ namespace SiegeEngine.Core.AssetParsing
                                     continue;
                                 }
                                 float w = (float)weights[i];
-                                perVertBones[vertIdx].Add((boneIdx, w));
+                                if (w > 0)
+                                {
+                                    perVertBones[vertIdx].Add((boneIdx, w));
+                                }
                             }
                             totalClusters++;
                             totalIndexes += indexes.Length;

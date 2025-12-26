@@ -138,8 +138,8 @@ namespace ReadingChamber
             var animForest = FBXParser.Load(animPath);
             var animModel = FBXParser.BuildModelFromForest(animForest); // Parse full model to get meshes/weights
 
-            // Scale animation model's vertex positions and keyframe translations by 100 to match main model
-            float scaleFactor = .01f;
+            // Scale animation model's vertex positions and keyframe translations by 0.01 to match main model
+            float scaleFactor = 0.01f;
             foreach (var mesh in animModel.Meshes)
             {
                 for (int vi = 0; vi < mesh.Vertices.Count; vi++)
@@ -148,6 +148,8 @@ namespace ReadingChamber
                     v.X *= scaleFactor;
                     v.Y *= scaleFactor;
                     v.Z *= scaleFactor;
+                    v.X = -v.X; // Flip x to make positive
+                    v.Y = -v.Y; // Flip y to make negative
                     mesh.Vertices[vi] = v;
                 }
             }
@@ -158,7 +160,12 @@ namespace ReadingChamber
                     for (int i = 0; i < kf.BoneTransforms.Count; i++)
                     {
                         var bt = kf.BoneTransforms[i];
-                        bt.Translation *= scaleFactor;
+                        Vector3 translation = bt.Translation * scaleFactor;
+                        translation.X = -translation.X;
+                        translation.Y = -translation.Y;
+                        // Recompose matrix with flipped translation
+                        Matrix4x4.Decompose(bt, out Vector3 scale, out Quaternion rotation, out _);
+                        bt = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateFromQuaternion(rotation) * Matrix4x4.CreateTranslation(translation);
                         kf.BoneTransforms[i] = bt;
                     }
                 }
