@@ -1,10 +1,11 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/NodeParser.cs
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class NodeParser
@@ -43,20 +44,20 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                     if (endOffset == 0 && numProperties == 0 && propertyListLen == 0 && tempNameLen == 0)
                     {
-                        if (parentNode == null) {
+                        if (parentNode == null)
+                        {
                             Console.WriteLine("End of content found, hex dump disabled.");
                             break;
                             //long remainingBytes = fileLength - reader.BaseStream.Position;
                             //if (remainingBytes > 0)
                             //{
-                            //    byte[] remainingData = reader.ReadBytes((int)remainingBytes);
-                            //    Console.WriteLine("Remaining file content as hex dump:");
-                            //    PrintHexDump(remainingData);
-
-                            //    // Optional: Still print as ASCII if desired
-                            //    // string asciiContent = Encoding.ASCII.GetString(remainingData);
-                            //    // Console.WriteLine("Remaining file content as ASCII:");
-                            //    // Console.WriteLine(asciiContent);
+                            // byte[] remainingData = reader.ReadBytes((int)remainingBytes);
+                            // Console.WriteLine("Remaining file content as hex dump:");
+                            // PrintHexDump(remainingData);
+                            // // Optional: Still print as ASCII if desired
+                            // // string asciiContent = Encoding.ASCII.GetString(remainingData);
+                            // // Console.WriteLine("Remaining file content as ASCII:");
+                            // // Console.WriteLine(asciiContent);
                             //}
                             //break; // Stop parsing since we've reached the end
                         }
@@ -65,12 +66,10 @@ namespace SiegeEngine.Core.AssetParsing
                             reader.BaseStream.Seek(nodeStart + nullRecordSize, SeekOrigin.Begin);
                             continue;
                         }
-
                     }
                     string nodeName = tempName;
                     long propStart = reader.BaseStream.Position;
                     long propEnd = propStart + propertyListLen;
-
                     FBXNode newNode = new FBXNode
                     {
                         endOffset = endOffset,
@@ -88,14 +87,11 @@ namespace SiegeEngine.Core.AssetParsing
                     {
                         forest.TreeList.Add(newNode);
                     }
-
                     ParseProperties(reader, newNode, propStart, propEnd, numProperties, version);
-
                     if (endOffset != 0 && endOffset <= fileLength && reader.BaseStream.Position < endOffset)
                     {
                         ParseNodes(reader, version, fileLength, endOffset, newNode, forest);
                     }
-
                     if (reader.BaseStream.Position != endOffset)
                     {
                         reader.BaseStream.Seek(endOffset, SeekOrigin.Begin);
@@ -121,8 +117,7 @@ namespace SiegeEngine.Core.AssetParsing
             for (int i = 0; i < data.Length; i += bytesPerLine)
             {
                 // Print offset
-                Console.Write($"{i:X8}  ");
-
+                Console.Write($"{i:X8} ");
                 // Print hex bytes
                 for (int j = 0; j < bytesPerLine; j++)
                 {
@@ -132,11 +127,10 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                     else
                     {
-                        Console.Write("   "); // Padding for incomplete lines
+                        Console.Write(" "); // Padding for incomplete lines
                     }
                     if (j == 7) Console.Write(" "); // Mid-line separator
                 }
-
                 // Print ASCII representation
                 Console.Write(" | ");
                 for (int j = 0; j < bytesPerLine; j++)
@@ -156,7 +150,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             Console.WriteLine($"Total remaining bytes in footer (ending tag + buffer): {data.Length}");
         }
-
         private static void ParseProperties(BinaryReader reader, FBXNode node, long propStart, long propEnd, long numProperties, uint version)
         {
             reader.BaseStream.Seek(propStart, SeekOrigin.Begin);
@@ -174,7 +167,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             reader.BaseStream.Seek(propEnd, SeekOrigin.Begin);
         }
-
         private static PropertyNode ParseProperty(BinaryReader reader)
         {
             long startPos = reader.BaseStream.Position;
@@ -182,7 +174,6 @@ namespace SiegeEngine.Core.AssetParsing
             {
                 char typeCode = reader.ReadChar();
                 PropertyNode prop = new PropertyNode { TypeCode = typeCode };
-
                 switch (typeCode)
                 {
                     case 'C':
@@ -300,7 +291,6 @@ namespace SiegeEngine.Core.AssetParsing
                 return null;
             }
         }
-
         private static int GetTypeSize(char typeCode)
         {
             switch (typeCode)
@@ -313,15 +303,15 @@ namespace SiegeEngine.Core.AssetParsing
                 default: return 0;
             }
         }
-
         private static byte[] DecompressData(byte[] compressed, int expectedLen)
         {
             try
             {
                 MemoryStream ms = new MemoryStream(compressed);
-                if (compressed.Length >= 2 && compressed[0] == 0x78 && (compressed[1] == 0x01 || compressed[1] == 0x9C || compressed[1] == 0xDA))
+                // Check for zlib header
+                if (compressed.Length >= 2 && compressed[0] == 0x78 && (compressed[1] == 0x01 || compressed[1] == 0x5E || compressed[1] == 0x9C || compressed[1] == 0xDA))
                 {
-                    ms.Seek(2, SeekOrigin.Begin);
+                    ms.Seek(2, SeekOrigin.Begin); // Skip zlib header
                 }
                 using (var deflate = new DeflateStream(ms, CompressionMode.Decompress))
                 using (var decomMs = new MemoryStream())
@@ -342,7 +332,6 @@ namespace SiegeEngine.Core.AssetParsing
                 return null;
             }
         }
-
         private static object ConvertRawToArray(byte[] rawData, char typeCode, uint arrayLen)
         {
             switch (typeCode)

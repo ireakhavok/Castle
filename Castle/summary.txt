@@ -722,7 +722,7 @@ Folder: SiegeEngine
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
 - File: FBXParser.cs
   - Class: FBXParser (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Linq, System.Numerics, System.Text
     - Methods:
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, MetaDataExporter.ExportMetadata, NodeParser.ParseNodes
@@ -737,6 +737,12 @@ Folder: SiegeEngine
       - int[] GetOrderSequence(int order)
       - int GetOrderFromSequence(int[] seq)
       - float CalculateDeterminant(Matrix4x4 m)
+      - int[] ParseRawArrayAsInt(byte[] raw)
+        - Calls: DecompressData
+      - double[] ParseRawArrayAsDouble(byte[] raw)
+        - Calls: DecompressData
+      - byte[] DecompressData( int expectedLen, byte[] compressed)
+        - Calls: FBXParserBase.Log
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
