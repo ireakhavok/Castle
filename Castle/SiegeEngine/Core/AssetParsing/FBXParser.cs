@@ -135,7 +135,7 @@ namespace SiegeEngine.Core.AssetParsing
             sourceToTarget[upAxis] = 2; // Source up -> target Z
             int[] signs = new int[3];
             signs[coordAxis] = coordAxisSign;
-            signs[frontAxis] = frontAxisSign; 
+            signs[frontAxis] = frontAxisSign;
             signs[upAxis] = upAxisSign;
             // DONT TOUCH THIS CODE ABOVE
             // Build P4
@@ -164,10 +164,10 @@ namespace SiegeEngine.Core.AssetParsing
             foreach (var deformer in deformerNodes)
             {
                 long deformerId = (long)deformer.properties[0].Value;
-                var boneConn = conns.FirstOrDefault(c => c.type == "OO" && c.child == deformerId);
+                var boneConn = conns.FirstOrDefault(c => c.type == "OO" && (c.child == deformerId || c.parent == deformerId));
                 if (boneConn.type != null)
                 {
-                    long boneId = boneConn.parent;
+                    long boneId = (boneConn.child == deformerId) ? boneConn.parent : boneConn.child;
                     if (objectsById.ContainsKey(boneId) && objectsById[boneId].Name == "Model")
                     {
                         usedBoneIds.Add(boneId);
@@ -525,9 +525,9 @@ namespace SiegeEngine.Core.AssetParsing
                         foreach (var clusterConn in clusterConns)
                         {
                             var clusterNode = objectsById[clusterConn.child];
-                            var boneConn = conns.FirstOrDefault(c => c.type == "OO" && c.child == clusterConn.child && objectsById.ContainsKey(c.parent) && objectsById[c.parent].Name == "Model");
+                            var boneConn = conns.FirstOrDefault(c => c.type == "OO" && (c.child == clusterConn.child || c.parent == clusterConn.child) && objectsById.ContainsKey(c.parent == clusterConn.child ? c.child : c.parent) && objectsById[c.parent == clusterConn.child ? c.child : c.parent].Name == "Model");
                             if (boneConn.type == null) continue;
-                            long boneId = boneConn.parent;
+                            long boneId = (boneConn.child == clusterConn.child) ? boneConn.parent : boneConn.child;
                             if (!boneIndexById.TryGetValue(boneId, out int boneIdx)) continue;
                             var indexesNode = clusterNode.children.FirstOrDefault(c => c.Name == "Indexes");
                             int[] indexes = null;
@@ -1129,10 +1129,10 @@ namespace SiegeEngine.Core.AssetParsing
         private static void AddAncestorsAndDescendants(long boneId, HashSet<long> usedIds, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById)
         {
             // Add ancestors
-            var parentConn = conns.FirstOrDefault(c => c.type == "OO" && c.child == boneId);
+            var parentConn = conns.FirstOrDefault(c => c.type == "OO" && (c.child == boneId || c.parent == boneId));
             if (parentConn.type != null)
             {
-                long parentId = parentConn.parent;
+                long parentId = (parentConn.child == boneId) ? parentConn.parent : parentConn.child;
                 if (objectsById.ContainsKey(parentId) && objectsById[parentId].Name == "Model")
                 {
                     if (usedIds.Add(parentId))
@@ -1142,10 +1142,10 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
             // Add descendants
-            var childConns = conns.Where(c => c.type == "OO" && c.parent == boneId).ToList();
+            var childConns = conns.Where(c => c.type == "OO" && (c.parent == boneId || c.child == boneId)).ToList();
             foreach (var childConn in childConns)
             {
-                long childId = childConn.child;
+                long childId = (childConn.parent == boneId) ? childConn.child : childConn.parent;
                 if (objectsById.ContainsKey(childId) && objectsById[childId].Name == "Model")
                 {
                     if (usedIds.Add(childId))
