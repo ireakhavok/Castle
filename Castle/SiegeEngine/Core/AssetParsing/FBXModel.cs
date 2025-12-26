@@ -56,17 +56,17 @@ namespace SiegeEngine.Core.AssetParsing
                 {
                     bool positionsMatch = true;
                     //Sample first, middle, last vertices
-                    //int[] sampleIndices = { 0, mainMesh.Vertices.Count / 2, mainMesh.Vertices.Count - 1 };
-                    //foreach (int vi in sampleIndices)
-                    //{
-                    //    var mv = mainMesh.Vertices[vi];
-                    //    var ov = candidate.Vertices[vi];
-                    //    if (Math.Abs(mv.X - ov.X) > epsilon || Math.Abs(mv.Y - ov.Y) > epsilon || Math.Abs(mv.Z - ov.Z) > epsilon)
-                    //    {
-                    //        positionsMatch = false;
-                    //        break;
-                    //    }
-                    //}
+                    int[] sampleIndices = { 0, mainMesh.Vertices.Count / 2, mainMesh.Vertices.Count - 1 };
+                    foreach (int vi in sampleIndices)
+                    {
+                        var mv = mainMesh.Vertices[vi];
+                        var ov = candidate.Vertices[vi];
+                        if (Math.Abs(mv.X - ov.X) > epsilon || Math.Abs(mv.Y - ov.Y) > epsilon || Math.Abs(mv.Z - ov.Z) > epsilon)
+                        {
+                            positionsMatch = false;
+                            break;
+                        }
+                    }
                     if (positionsMatch)
                     {
                         matchingOtherMesh = candidate;

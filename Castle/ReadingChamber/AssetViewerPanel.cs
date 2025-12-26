@@ -139,7 +139,7 @@ namespace ReadingChamber
             var animModel = FBXParser.BuildModelFromForest(animForest); // Parse full model to get meshes/weights
 
             // Scale animation model's vertex positions and keyframe translations by 100 to match main model
-            float scaleFactor = 100f;
+            float scaleFactor = .01f;
             foreach (var mesh in animModel.Meshes)
             {
                 for (int vi = 0; vi < mesh.Vertices.Count; vi++)
