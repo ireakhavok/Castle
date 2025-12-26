@@ -117,7 +117,7 @@ namespace ReadingChamber
                 _playing = false;
                 _currentGlobalTransforms = null;
                 _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
-                _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
+                _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
             }
             else
             {
@@ -136,41 +136,17 @@ namespace ReadingChamber
         private void LoadAnimation(string animPath)
         {
             var animForest = FBXParser.Load(animPath);
-            var animModel = FBXParser.BuildModelFromForest(animForest); // Parse full model to get meshes/weights
-
-            // Scale animation model's vertex positions and keyframe translations by 0.01 to match main model
-            float scaleFactor = 0.01f;
-            foreach (var mesh in animModel.Meshes)
-            {
-                for (int vi = 0; vi < mesh.Vertices.Count; vi++)
-                {
-                    var v = mesh.Vertices[vi];
-                    v.X *= scaleFactor;
-                    v.Y *= scaleFactor;
-                    v.Z *= scaleFactor;
-                    v.X = -v.X; // Flip x to make positive
-                    v.Y = -v.Y; // Flip y to make negative
-                    mesh.Vertices[vi] = v;
-                }
-            }
-            foreach (var anim in animModel.Animations)
-            {
-                foreach (var kf in anim.Keyframes)
-                {
-                    for (int i = 0; i < kf.BoneTransforms.Count; i++)
-                    {
-                        var bt = kf.BoneTransforms[i];
-                        Vector3 translation = bt.Translation * scaleFactor;
-                        translation.X = -translation.X;
-                        translation.Y = -translation.Y;
-                        // Recompose matrix with flipped translation
-                        Matrix4x4.Decompose(bt, out Vector3 scale, out Quaternion rotation, out _);
-                        bt = Matrix4x4.CreateScale(scale) * Matrix4x4.CreateFromQuaternion(rotation) * Matrix4x4.CreateTranslation(translation);
-                        kf.BoneTransforms[i] = bt;
-                    }
-                }
-            }
-
+            var (sourceToTarget, signs, modelScale, P4, invP4, _) = FBXParser.ParseGlobalSettingsAndRemapping(animForest);
+            var objectsNode = animForest.TreeList.FirstOrDefault(n => n.Name == "Objects");
+            var objectsById = FBXParser.GatherObjectsById(objectsNode);
+            var conns = FBXParser.GatherConnections(animForest);
+            var animModel = new FBXModel();
+            var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(animModel, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
+            FBXSkeletonParser.BuildHierarchy(animModel, conns, boneIndexById);
+            Matrix4x4 rootRot = Matrix4x4.Identity;
+            FBXSkeletonParser.ApplyRootRotation(animModel, rootRot, rootIndices);
+            FBXAnimationParser.ParseAnimations(animModel, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootRot, rootIndices, P4, invP4);
+            FBXMeshParser.ParseMeshes(animModel, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, false, boneIndexById, rootRot, rootIndices, P4, invP4, animForest);
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {

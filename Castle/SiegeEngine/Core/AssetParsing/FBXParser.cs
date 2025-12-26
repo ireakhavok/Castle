@@ -92,7 +92,7 @@ namespace SiegeEngine.Core.AssetParsing
             return model;
         }
 
-        private static Dictionary<long, BaseNode> GatherObjectsById(BaseNode objectsNode)
+        public static Dictionary<long, BaseNode> GatherObjectsById(BaseNode objectsNode)
         {
             var objectsById = new Dictionary<long, BaseNode>();
             foreach (var child in objectsNode.children)
@@ -106,7 +106,7 @@ namespace SiegeEngine.Core.AssetParsing
             return objectsById;
         }
 
-        private static List<(string type, long child, long parent, string prop)> GatherConnections(FBXFileForest forest)
+        public static List<(string type, long child, long parent, string prop)> GatherConnections(FBXFileForest forest)
         {
             var connectionsNode = forest.TreeList.FirstOrDefault(n => n.Name == "Connections");
             var conns = new List<(string type, long child, long parent, string prop)>();
@@ -127,7 +127,7 @@ namespace SiegeEngine.Core.AssetParsing
             return conns;
         }
 
-        private static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4, bool reverseWinding) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
+        public static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4, bool reverseWinding) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
         {
             var globalSettings = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
             int upAxis = 1; // Y
@@ -169,7 +169,7 @@ namespace SiegeEngine.Core.AssetParsing
             sourceToTarget[upAxis] = 2; // Source up -> target Z
             int[] signs = new int[3];
             signs[coordAxis] = coordAxisSign;
-            signs[frontAxis] = -frontAxisSign;
+            signs[frontAxis] = -frontAxisSign; // User's fix for inversion
             signs[upAxis] = upAxisSign;
             // DONT TOUCH THIS CODE ABOVE
             // Build P4
