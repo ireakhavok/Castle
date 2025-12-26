@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
+using SiegeEngine.Core.AssetParsing.Model;
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class FBXModel
@@ -16,6 +16,12 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public Entity Entity { get; set; }
         public List<Material> Materials { get; set; }
         public bool HasSkin { get; set; }
+        public int[] SourceToTarget { get; set; }
+        public int[] Signs { get; set; }
+        public float ModelScale { get; set; }
+        public Matrix4x4 P4 { get; set; }
+        public Matrix4x4 InvP4 { get; set; }
+        public bool ReverseWinding { get; set; }
         public FBXModel()
         {
             Skeleton = new Skeleton { Bones = new List<Bone>() };
@@ -39,7 +45,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             {
                 otherBoneMap[other.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
             }
-
             int totalCopied = 0;
             const float epsilon = 1e-5f;
             foreach (var mainMesh in Meshes)
@@ -79,7 +84,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
                     AssignToClosestBone(mainMesh);
                     continue;
                 }
-
                 int meshCopied = 0;
                 for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
                 {

@@ -10,7 +10,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -62,37 +61,32 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return context;
         }
-
         public static FBXModel BuildModelFromForest(FBXFileForest forest)
         {
             FBXModel model = new FBXModel();
-
             var objectsNode = forest.TreeList.FirstOrDefault(n => n.Name == "Objects");
             if (objectsNode == null)
             {
                 Console.WriteLine("BuildModelFromForest: No Objects node found");
                 return FBXParserBase.CreateDefaultCubeModel();
             }
-
             var objectsById = GatherObjectsById(objectsNode);
             var conns = GatherConnections(forest);
-
             var (sourceToTarget, signs, modelScale, P4, invP4, reverseWinding) = ParseGlobalSettingsAndRemapping(forest);
-
+            model.SourceToTarget = sourceToTarget;
+            model.Signs = signs;
+            model.ModelScale = modelScale;
+            model.P4 = P4;
+            model.InvP4 = invP4;
+            model.ReverseWinding = reverseWinding;
             var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
-
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
-
             Matrix4x4 rootRot = Matrix4x4.Identity;
             FBXSkeletonParser.ApplyRootRotation(model, rootRot, rootIndices);
-
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, reverseWinding, boneIndexById, rootRot, rootIndices, P4, invP4, forest);
-
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootRot, rootIndices, P4, invP4);
-
             return model;
         }
-
         public static Dictionary<long, BaseNode> GatherObjectsById(BaseNode objectsNode)
         {
             var objectsById = new Dictionary<long, BaseNode>();
@@ -106,7 +100,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return objectsById;
         }
-
         public static List<(string type, long child, long parent, string prop)> GatherConnections(FBXFileForest forest)
         {
             var connectionsNode = forest.TreeList.FirstOrDefault(n => n.Name == "Connections");
@@ -127,7 +120,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return conns;
         }
-
         public static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4, bool reverseWinding) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
         {
             var globalSettings = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");

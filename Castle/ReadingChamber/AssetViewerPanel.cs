@@ -137,7 +137,11 @@ namespace ReadingChamber
         private void LoadAnimation(string animPath)
         {
             var animForest = FBXParser.Load(animPath);
-            var (sourceToTarget, signs, modelScale, P4, invP4, _) = FBXParser.ParseGlobalSettingsAndRemapping(animForest);
+            int[] sourceToTarget = _model.SourceToTarget;
+            int[] signs = _model.Signs;
+            float modelScale = _model.ModelScale;
+            Matrix4x4 P4 = _model.P4;
+            Matrix4x4 invP4 = _model.InvP4;
             var objectsNode = animForest.TreeList.FirstOrDefault(n => n.Name == "Objects");
             var objectsById = FBXParser.GatherObjectsById(objectsNode);
             var conns = FBXParser.GatherConnections(animForest);
@@ -199,6 +203,39 @@ namespace ReadingChamber
                     Console.WriteLine($"Copied weights from animation model to main model for {anim.Name}");
                     // Update VBOs with new vertex data (weights updated)
                     UpdateModelBuffers();
+                }
+                // Copy bone properties from animModel to _model
+                Dictionary<string, int> otherBoneMap = new Dictionary<string, int>();
+                for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
+                {
+                    otherBoneMap[animModel.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
+                }
+                foreach (var pair in mainBoneIndices)
+                {
+                    string boneName = pair.Key;
+                    int mainIdx = pair.Value;
+                    if (otherBoneMap.TryGetValue(boneName, out int otherIdx))
+                    {
+                        var mainBone = _model.Skeleton.Bones[mainIdx];
+                        var otherBone = animModel.Skeleton.Bones[otherIdx];
+                        mainBone.LclTranslation = otherBone.LclTranslation;
+                        mainBone.LclRotation = otherBone.LclRotation;
+                        mainBone.LclScaling = otherBone.LclScaling;
+                        mainBone.PreRotation = otherBone.PreRotation;
+                        mainBone.PostRotation = otherBone.PostRotation;
+                        mainBone.RotationPivot = otherBone.RotationPivot;
+                        mainBone.RotationOffset = otherBone.RotationOffset;
+                        mainBone.ScalingPivot = otherBone.ScalingPivot;
+                        mainBone.ScalingOffset = otherBone.ScalingOffset;
+                        mainBone.GeometricTranslation = otherBone.GeometricTranslation;
+                        mainBone.GeometricRotation = otherBone.GeometricRotation;
+                        mainBone.GeometricScaling = otherBone.GeometricScaling;
+                        mainBone.RotationOrder = otherBone.RotationOrder;
+                        mainBone.Size = otherBone.Size;
+                        mainBone.BoneType = otherBone.BoneType;
+                        mainBone.BindPose = otherBone.BindPose;
+                        mainBone.LocalRest = mainBone.ComputeLocal();
+                    }
                 }
                 // Switch to animation shader if skin present
                 if (_model.HasSkin)
