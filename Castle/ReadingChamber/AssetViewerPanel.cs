@@ -13,7 +13,6 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
-
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -138,6 +137,33 @@ namespace ReadingChamber
         {
             var animForest = FBXParser.Load(animPath);
             var animModel = FBXParser.BuildModelFromForest(animForest); // Parse full model to get meshes/weights
+
+            // Scale animation model's vertex positions and keyframe translations by 100 to match main model
+            float scaleFactor = 100f;
+            foreach (var mesh in animModel.Meshes)
+            {
+                for (int vi = 0; vi < mesh.Vertices.Count; vi++)
+                {
+                    var v = mesh.Vertices[vi];
+                    v.X *= scaleFactor;
+                    v.Y *= scaleFactor;
+                    v.Z *= scaleFactor;
+                    mesh.Vertices[vi] = v;
+                }
+            }
+            foreach (var anim in animModel.Animations)
+            {
+                foreach (var kf in anim.Keyframes)
+                {
+                    for (int i = 0; i < kf.BoneTransforms.Count; i++)
+                    {
+                        var bt = kf.BoneTransforms[i];
+                        bt.Translation *= scaleFactor;
+                        kf.BoneTransforms[i] = bt;
+                    }
+                }
+            }
+
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {

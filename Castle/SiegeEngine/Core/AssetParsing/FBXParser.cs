@@ -5,10 +5,10 @@ using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -457,58 +457,55 @@ namespace SiegeEngine.Core.AssetParsing
                 if (modelConnsGeom.Count > 0)
                 {
                     long modelId = modelConnsGeom[0].parent;
-                    var modelNode = objectsById.GetValueOrDefault(modelId);
-                    if (modelNode != null)
+                    var modelNode = objectsById[modelId];
+                    Vector3 geoT = Vector3.Zero;
+                    Vector3 geoR = Vector3.Zero;
+                    Vector3 geoS = Vector3.One;
+                    var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
+                    if (props70 != null)
                     {
-                        Vector3 geoT = Vector3.Zero;
-                        Vector3 geoR = Vector3.Zero;
-                        Vector3 geoS = Vector3.One;
-                        var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
-                        if (props70 != null)
+                        foreach (var p in props70.children)
                         {
-                            foreach (var p in props70.children)
+                            if (p.Name == "P" && p.properties.Count >= 7)
                             {
-                                if (p.Name == "P" && p.properties.Count >= 7)
+                                string pname = (string)p.properties[0].Value;
+                                if (pname == "GeometricTranslation")
                                 {
-                                    string pname = (string)p.properties[0].Value;
-                                    if (pname == "GeometricTranslation")
-                                    {
-                                        float gtx = Convert.ToSingle(p.properties[4].Value);
-                                        float gty = Convert.ToSingle(p.properties[5].Value);
-                                        float gtz = Convert.ToSingle(p.properties[6].Value);
-                                        Vector3 gt_source = new Vector3(gtx, gty, gtz);
-                                        geoT = RemapVector(gt_source, sourceToTarget, signs) * modelScale;
-                                    }
-                                    else if (pname == "GeometricRotation")
-                                    {
-                                        float grx = Convert.ToSingle(p.properties[4].Value);
-                                        float gry = Convert.ToSingle(p.properties[5].Value);
-                                        float grz = Convert.ToSingle(p.properties[6].Value);
-                                        Vector3 gr_source = new Vector3(grx, gry, grz);
-                                        geoR = RemapRotation(gr_source, sourceToTarget, signs);
-                                    }
-                                    else if (pname == "GeometricScaling")
-                                    {
-                                        float gsx = Convert.ToSingle(p.properties[4].Value);
-                                        float gsy = Convert.ToSingle(p.properties[5].Value);
-                                        float gsz = Convert.ToSingle(p.properties[6].Value);
-                                        Vector3 gs_source = new Vector3(gsx, gsy, gsz);
-                                        geoS = RemapScale(gs_source, sourceToTarget, signs);
-                                    }
+                                    float gtx = Convert.ToSingle(p.properties[4].Value);
+                                    float gty = Convert.ToSingle(p.properties[5].Value);
+                                    float gtz = Convert.ToSingle(p.properties[6].Value);
+                                    Vector3 gt_source = new Vector3(gtx, gty, gtz);
+                                    geoT = RemapVector(gt_source, sourceToTarget, signs) * modelScale;
+                                }
+                                else if (pname == "GeometricRotation")
+                                {
+                                    float grx = Convert.ToSingle(p.properties[4].Value);
+                                    float gry = Convert.ToSingle(p.properties[5].Value);
+                                    float grz = Convert.ToSingle(p.properties[6].Value);
+                                    Vector3 gr_source = new Vector3(grx, gry, grz);
+                                    geoR = RemapRotation(gr_source, sourceToTarget, signs);
+                                }
+                                else if (pname == "GeometricScaling")
+                                {
+                                    float gsx = Convert.ToSingle(p.properties[4].Value);
+                                    float gsy = Convert.ToSingle(p.properties[5].Value);
+                                    float gsz = Convert.ToSingle(p.properties[6].Value);
+                                    Vector3 gs_source = new Vector3(gsx, gsy, gsz);
+                                    geoS = RemapScale(gs_source, sourceToTarget, signs);
                                 }
                             }
                         }
-                        float rx = geoR.X * MathF.PI / 180f;
-                        float ry = geoR.Y * MathF.PI / 180f;
-                        float rz = geoR.Z * MathF.PI / 180f;
-                        Matrix4x4 mx = Matrix4x4.CreateRotationX(rx);
-                        Matrix4x4 my = Matrix4x4.CreateRotationY(ry);
-                        Matrix4x4 mz = Matrix4x4.CreateRotationZ(rz);
-                        Matrix4x4 R = mx * my * mz;
-                        Matrix4x4 S = Matrix4x4.CreateScale(geoS);
-                        Matrix4x4 T = Matrix4x4.CreateTranslation(geoT);
-                        geoMat = S * R * T;
                     }
+                    float rx = geoR.X * MathF.PI / 180f;
+                    float ry = geoR.Y * MathF.PI / 180f;
+                    float rz = geoR.Z * MathF.PI / 180f;
+                    Matrix4x4 mx = Matrix4x4.CreateRotationX(rx);
+                    Matrix4x4 my = Matrix4x4.CreateRotationY(ry);
+                    Matrix4x4 mz = Matrix4x4.CreateRotationZ(rz);
+                    Matrix4x4 R = mx * my * mz;
+                    Matrix4x4 S = Matrix4x4.CreateScale(geoS);
+                    Matrix4x4 T = Matrix4x4.CreateTranslation(geoT);
+                    geoMat = S * R * T;
                 }
                 // Prepare per-original-vertex bone data
                 int numVerts = vertsD.Length / 3;
@@ -936,7 +933,6 @@ namespace SiegeEngine.Core.AssetParsing
                 mesh.Bounds = new Vector3(maxX - minX, maxY - minY, maxZ - minZ);
                 model.Meshes.Add(mesh);
             }
-
             // Parse animations
             var animStackNodes = objectsNode.children.Where(n => n.Name == "AnimationStack").ToList();
             Console.WriteLine($"Animation stacks found: {animStackNodes.Count}");
@@ -1276,6 +1272,118 @@ namespace SiegeEngine.Core.AssetParsing
             float c = m.M21 * (m.M32 * m.M44 - m.M34 * m.M42) - m.M22 * (m.M31 * m.M44 - m.M34 * m.M41) + m.M24 * (m.M31 * m.M42 - m.M32 * m.M41);
             float d = m.M21 * (m.M32 * m.M43 - m.M33 * m.M42) - m.M22 * (m.M31 * m.M43 - m.M33 * m.M41) + m.M23 * (m.M31 * m.M42 - m.M32 * m.M41);
             return m.M11 * a - m.M12 * b + m.M13 * c - m.M14 * d;
+        }
+        private static int[] ParseRawArrayAsInt(byte[] raw)
+        {
+            if (raw.Length < 12)
+            {
+                Console.WriteLine("Raw too short for array header");
+                return null;
+            }
+            using (MemoryStream ms = new MemoryStream(raw))
+            using (BinaryReader r = new BinaryReader(ms))
+            {
+                uint arrayLen = r.ReadUInt32();
+                uint encoding = r.ReadUInt32();
+                uint compressedLen = r.ReadUInt32();
+                byte[] data;
+                if (encoding == 0)
+                {
+                    if (raw.Length - 12 < arrayLen * 4)
+                    {
+                        Console.WriteLine("Raw size too small for uncompressed int array");
+                        return null;
+                    }
+                    data = r.ReadBytes((int)(arrayLen * 4));
+                }
+                else if (encoding == 1)
+                {
+                    if (raw.Length - 12 < compressedLen)
+                    {
+                        Console.WriteLine("Raw size too small for compressed data");
+                        return null;
+                    }
+                    byte[] compressed = r.ReadBytes((int)compressedLen);
+                    data = DecompressData(compressed, (int)arrayLen * 4);
+                    if (data == null) return null;
+                }
+                else
+                {
+                    Console.WriteLine($"Unknown encoding {encoding} for raw array");
+                    return null;
+                }
+                int[] kv = new int[arrayLen];
+                Buffer.BlockCopy(data, 0, kv, 0, data.Length);
+                return kv;
+            }
+        }
+        private static double[] ParseRawArrayAsDouble(byte[] raw)
+        {
+            if (raw.Length < 12)
+            {
+                Console.WriteLine("Raw too short for array header");
+                return null;
+            }
+            using (MemoryStream ms = new MemoryStream(raw))
+            using (BinaryReader r = new BinaryReader(ms))
+            {
+                uint arrayLen = r.ReadUInt32();
+                uint encoding = r.ReadUInt32();
+                uint compressedLen = r.ReadUInt32();
+                byte[] data;
+                if (encoding == 0)
+                {
+                    if (raw.Length - 12 < arrayLen * 8)
+                    {
+                        Console.WriteLine("Raw size too small for uncompressed double array");
+                        return null;
+                    }
+                    data = r.ReadBytes((int)(arrayLen * 8));
+                }
+                else if (encoding == 1)
+                {
+                    if (raw.Length - 12 < compressedLen)
+                    {
+                        Console.WriteLine("Raw size too small for compressed data");
+                        return null;
+                    }
+                    byte[] compressed = r.ReadBytes((int)compressedLen);
+                    data = DecompressData(compressed, (int)arrayLen * 8);
+                    if (data == null) return null;
+                }
+                else
+                {
+                    Console.WriteLine($"Unknown encoding {encoding} for raw array");
+                    return null;
+                }
+                double[] kv = new double[arrayLen];
+                Buffer.BlockCopy(data, 0, kv, 0, data.Length);
+                return kv;
+            }
+        }
+        private static byte[] DecompressData(byte[] compressed, int expectedLen)
+        {
+            try
+            {
+                using (var ms = new MemoryStream(compressed))
+                using (var deflate = new DeflateStream(ms, CompressionMode.Decompress))
+                using (var decomMs = new MemoryStream())
+                {
+                    deflate.CopyTo(decomMs);
+                    byte[] decompressed = decomMs.ToArray();
+                    if (decompressed.Length != expectedLen)
+                    {
+                        FBXParserBase.Log($"Decompression error: Expected {expectedLen} bytes, got {decompressed.Length}");
+                        return null;
+                    }
+                    return decompressed;
+                }
+            }
+            catch (Exception ex)
+            {
+                FBXParserBase.Log($"Decompression exception: {ex.Message}");
+                return null;
+            }
         }
     }
 }
