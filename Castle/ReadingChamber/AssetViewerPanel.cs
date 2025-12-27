@@ -169,21 +169,32 @@ namespace ReadingChamber
             if (Math.Sign(modelDet) != Math.Sign(animDet))
                 Console.WriteLine("Handedness mismatch detected (potential inversion)");
 
-            // If model has no settings, use anim's; else force model's to ensure consistency
-            if (sourceToTarget.Length == 0 || sourceToTarget.All(x => x == 0))
+            // Always use animation's own settings for parsing its data
+            sourceToTarget = animSourceToTarget;
+            signs = animSigns;
+            modelScale = animScale;
+            P4 = animP4;
+            invP4 = animInvP4;
+            reverseWinding = animReverseWinding;
+            // If no settings in anim, fallback to model's (rare)
+            if (sourceToTarget.All(x => x == 0))
             {
-                sourceToTarget = animSourceToTarget;
-                signs = animSigns;
-                modelScale = animScale;
-                P4 = animP4;
-                invP4 = animInvP4;
-                reverseWinding = animReverseWinding;
+                sourceToTarget = _model.SourceToTarget; // Assuming _model is accessible here
+                signs = _model.Signs;
+                modelScale = _model.ModelScale;
+                P4 = _model.P4;
+                invP4 = _model.InvP4;
+                reverseWinding = _model.ReverseWinding;
+                Console.WriteLine("Animation has no global settings; using model's.");
             }
-            else
+            // Optional: Handle handedness mismatch by flipping a sign and adjusting winding
+            if (Math.Sign(modelDet) != Math.Sign(animDet))
             {
-                Console.WriteLine("Forcing model's global settings for animation parsing to ensure consistency.");
+                // Flip a non-critical axis (e.g., coord/X) to match handedness without altering up/front much
+                signs[0] = -signs[0];
+                reverseWinding = !reverseWinding; // Compensate for flip
+                Console.WriteLine("Adjusted animation signs and winding to match model handedness.");
             }
-
             var objectsNode = animForest.TreeList.FirstOrDefault(n => n.Name == "Objects");
             var objectsById = FBXParser.GatherObjectsById(objectsNode);
             var conns = FBXParser.GatherConnections(animForest);
