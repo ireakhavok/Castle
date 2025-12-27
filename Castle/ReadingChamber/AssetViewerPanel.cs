@@ -562,7 +562,7 @@ namespace ReadingChamber
                 if (!hasChild && _model.Skeleton.Bones[i].BoneType == "LimbNode")
                 {
                     // Draw a line for leaf bones using Size
-                    Vector3 dir = new Vector3(0, _model.Skeleton.Bones[i].Size, 0); // assume along Y
+                    Vector3 dir = new Vector3(0, 0, _model.Skeleton.Bones[i].Size); // along Z up
                     Matrix4x4 rotScale = _currentGlobalTransforms[i];
                     rotScale.Translation = Vector3.Zero;
                     Vector3 tailDir = Vector3.Transform(dir, rotScale);
