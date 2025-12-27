@@ -137,19 +137,29 @@ namespace ReadingChamber
         private void LoadAnimation(string animPath)
         {
             var animForest = FBXParser.Load(animPath);
-            int[] sourceToTarget = _model.SourceToTarget;
-            int[] signs = _model.Signs;
+            int[] sourceToTarget = _model.SourceToTarget ?? new int[3];
+            int[] signs = _model.Signs ?? new int[3];
             float modelScale = _model.ModelScale;
             Matrix4x4 P4 = _model.P4;
             Matrix4x4 invP4 = _model.InvP4;
+            bool reverseWinding = _model.ReverseWinding;
+            if (sourceToTarget.Length == 0)
+            {
+                (sourceToTarget, signs, modelScale, P4, invP4, reverseWinding) = FBXParser.ParseGlobalSettingsAndRemapping(animForest);
+            }
             var objectsNode = animForest.TreeList.FirstOrDefault(n => n.Name == "Objects");
             var objectsById = FBXParser.GatherObjectsById(objectsNode);
             var conns = FBXParser.GatherConnections(animForest);
             var animModel = new FBXModel();
+            animModel.SourceToTarget = sourceToTarget;
+            animModel.Signs = signs;
+            animModel.ModelScale = modelScale;
+            animModel.P4 = P4;
+            animModel.InvP4 = invP4;
+            animModel.ReverseWinding = reverseWinding;
             var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(animModel, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
             FBXSkeletonParser.BuildHierarchy(animModel, conns, boneIndexById);
             Matrix4x4 rootRot = Matrix4x4.Identity;
-            // Find root indices for model and animModel
             List<int> modelRootIndices = new List<int>();
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
@@ -162,7 +172,6 @@ namespace ReadingChamber
                 if (animModel.Skeleton.Bones[i].ParentIndex == -1)
                     animRootIndices.Add(i);
             }
-            // Assume first root is main root, compute alignment transform
             int modelRootIdx = modelRootIndices.FirstOrDefault(-1);
             int animRootIdx = animRootIndices.FirstOrDefault(-1);
             if (modelRootIdx >= 0 && animRootIdx >= 0)
@@ -181,13 +190,45 @@ namespace ReadingChamber
             }
             FBXSkeletonParser.ApplyRootRotation(animModel, rootRot, animRootIndices);
             FBXAnimationParser.ParseAnimations(animModel, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootRot, animRootIndices, P4, invP4);
-            FBXMeshParser.ParseMeshes(animModel, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, false, boneIndexById, rootRot, animRootIndices, P4, invP4, animForest);
+            FBXMeshParser.ParseMeshes(animModel, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, reverseWinding, boneIndexById, rootRot, animRootIndices, P4, invP4, animForest);
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {
                 var anim = validAnimations[0];
                 anim.Name = Path.GetFileNameWithoutExtension(animPath);
-                // Remap keyframes to main model's skeleton by bone name with retargeting
+                if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0)
+                {
+                    _model.Skeleton = new Skeleton();
+                    _model.Skeleton.Bones = new List<Bone>();
+                    for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
+                    {
+                        var copiedBone = new Bone
+                        {
+                            Name = animModel.Skeleton.Bones[i].Name,
+                            BindPose = animModel.Skeleton.Bones[i].BindPose,
+                            ParentIndex = animModel.Skeleton.Bones[i].ParentIndex,
+                            LocalRest = animModel.Skeleton.Bones[i].LocalRest,
+                            LclTranslation = animModel.Skeleton.Bones[i].LclTranslation,
+                            LclRotation = animModel.Skeleton.Bones[i].LclRotation,
+                            LclScaling = animModel.Skeleton.Bones[i].LclScaling,
+                            PreRotation = animModel.Skeleton.Bones[i].PreRotation,
+                            PostRotation = animModel.Skeleton.Bones[i].PostRotation,
+                            RotationPivot = animModel.Skeleton.Bones[i].RotationPivot,
+                            RotationOffset = animModel.Skeleton.Bones[i].RotationOffset,
+                            ScalingPivot = animModel.Skeleton.Bones[i].ScalingPivot,
+                            ScalingOffset = animModel.Skeleton.Bones[i].ScalingOffset,
+                            RotationOrder = animModel.Skeleton.Bones[i].RotationOrder,
+                            BoneType = animModel.Skeleton.Bones[i].BoneType,
+                            Size = animModel.Skeleton.Bones[i].Size,
+                            GeometricTranslation = animModel.Skeleton.Bones[i].GeometricTranslation,
+                            GeometricRotation = animModel.Skeleton.Bones[i].GeometricRotation,
+                            GeometricScaling = animModel.Skeleton.Bones[i].GeometricScaling
+                        };
+                        _model.Skeleton.Bones.Add(copiedBone);
+                    }
+                    Console.WriteLine("Copied skeleton from animation model to main model");
+                }
+                // Remap keyframes to main model's skeleton by name with retargeting
                 Dictionary<string, int> mainBoneIndices = new Dictionary<string, int>();
                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
@@ -521,7 +562,7 @@ namespace ReadingChamber
                 if (!hasChild && _model.Skeleton.Bones[i].BoneType == "LimbNode")
                 {
                     // Draw a line for leaf bones using Size
-                    Vector3 dir = new Vector3(0, 0, _model.Skeleton.Bones[i].Size); // along Z up
+                    Vector3 dir = new Vector3(0, _model.Skeleton.Bones[i].Size, 0); // assume along Y
                     Matrix4x4 rotScale = _currentGlobalTransforms[i];
                     rotScale.Translation = Vector3.Zero;
                     Vector3 tailDir = Vector3.Transform(dir, rotScale);

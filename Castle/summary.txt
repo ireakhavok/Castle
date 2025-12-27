@@ -755,8 +755,10 @@ Folder: SiegeEngine
       - bool HasUnweightedVertices()
       - void CopyWeightsFrom(FBXModel other)
         - Calls: AssignToClosestBone, AssignToRootBone
+      - else AssignToClosestBone()
       - void AssignToRootBone(MeshData mainMesh)
       - void AssignToClosestBone(MeshData mainMesh)
+        - Calls: Skeleton.ComputeGlobalTransforms
 - File: FBXNode.cs
   - Class: FBXNode (Namespace: SiegeEngine.Core.AssetObjects)
     - Inherits: BaseNode

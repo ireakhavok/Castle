@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXMeshParser
@@ -29,33 +28,24 @@ namespace SiegeEngine.Core.AssetParsing
                     Console.WriteLine($"BuildModelFromForest: Skipping invalid mesh");
                     continue;
                 }
-
                 var (norms, normIdx, normMapping, normRef) = ParseNormals(geom);
                 var (uvs, uvIdx, uvMapping, uvRef) = ParseUVs(geom);
                 var (matIndices, matMapping) = ParseMaterials(geom);
-
                 var geoMat = ParseGeometricTransform(geomId, conns, objectsById, sourceToTarget, signs, modelScale);
-
                 int numVerts = vertsD.Length / 3;
-                var perVertBones = ParseSkin(geomId, conns, objectsById, boneIndexById, model, rootRot, rootIndices, P4, invP4, modelScale, numVerts);
-
+                var perVertBones = ParseSkin(geomId, conns, objectsById, boneIndexById, model, rootRot, rootIndices, P4, invP4, modelScale, numVerts, geoMat);
                 NormalizeWeights(perVertBones);
-
-                var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, geoMat, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, matIndices, matMapping, perVertBones, reverseWinding, numVerts);
-
+                var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, matIndices, matMapping, perVertBones, reverseWinding, numVerts);
                 MeshData mesh = new MeshData
                 {
                     Vertices = expandedVertices,
                     Indices = newIndices,
                     Materials = ExtractMaterials(geomId, objectsNode, conns, objectsById, forest)
                 };
-
                 mesh.Bounds = CalculateBounds(expandedVertices);
-
                 model.Meshes.Add(mesh);
             }
         }
-
         private static double[] ParseVertices(BaseNode geom)
         {
             var vertsNode = geom.children.FirstOrDefault(c => c.Name == "Vertices");
@@ -76,7 +66,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return vertsD;
         }
-
         private static int[] ParsePolygonVertexIndices(BaseNode geom)
         {
             var indicesNode = geom.children.FirstOrDefault(c => c.Name == "PolygonVertexIndex");
@@ -87,7 +76,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return pviArray;
         }
-
         private static (double[] norms, int[] normIdx, string normMapping, string normRef) ParseNormals(BaseNode geom)
         {
             var layerNorm = geom.children.FirstOrDefault(c => c.Name == "LayerElementNormal");
@@ -124,7 +112,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (norms, normIdx, normMapping, normRef);
         }
-
         private static (double[] uvs, int[] uvIdx, string uvMapping, string uvRef) ParseUVs(BaseNode geom)
         {
             var layerUV = geom.children.FirstOrDefault(c => c.Name == "LayerElementUV");
@@ -161,7 +148,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (uvs, uvIdx, uvMapping, uvRef);
         }
-
         private static (int[] matIndices, string matMapping) ParseMaterials(BaseNode geom)
         {
             var layerMat = geom.children.FirstOrDefault(c => c.Name == "LayerElementMaterial");
@@ -179,7 +165,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (matIndices, matMapping);
         }
-
         private static Matrix4x4 ParseGeometricTransform(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale)
         {
             Matrix4x4 geoMat = Matrix4x4.Identity;
@@ -226,21 +211,14 @@ namespace SiegeEngine.Core.AssetParsing
                         }
                     }
                 }
-                float rx = geoR.X * MathF.PI / 180f;
-                float ry = geoR.Y * MathF.PI / 180f;
-                float rz = geoR.Z * MathF.PI / 180f;
-                Matrix4x4 mx = Matrix4x4.CreateRotationX(rx);
-                Matrix4x4 my = Matrix4x4.CreateRotationY(ry);
-                Matrix4x4 mz = Matrix4x4.CreateRotationZ(rz);
-                Matrix4x4 R = mx * my * mz;
-                Matrix4x4 S = Matrix4x4.CreateScale(geoS);
                 Matrix4x4 T = Matrix4x4.CreateTranslation(geoT);
-                geoMat = S * R * T;
+                Matrix4x4 R = new Bone().CreateFromEuler(geoR, 0);
+                Matrix4x4 S = Matrix4x4.CreateScale(geoS);
+                geoMat = T * R * S;
             }
             return geoMat;
         }
-
-        private static List<List<(int boneIdx, float weight)>> ParseSkin(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, FBXModel model, Matrix4x4 rootRot, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, float modelScale, int numVerts)
+        private static List<List<(int boneIdx, float weight)>> ParseSkin(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, FBXModel model, Matrix4x4 rootRot, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, float modelScale, int numVerts, Matrix4x4 geoMat)
         {
             var perVertBones = Enumerable.Range(0, numVerts).Select(_ => new List<(int, float)>()).ToList();
             var skinConns = conns.Where(c => c.type == "OO" && c.parent == geomId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Deformer" && (string)objectsById[c.child].properties[2].Value == "Skin").ToList();
@@ -353,10 +331,10 @@ namespace SiegeEngine.Core.AssetParsing
                             tl_remap = rootRot * tl_remap;
                             t_remap = rootRot * t_remap;
                         }
-                        // Compute invBind
+                        // Compute invBind including geoMat
                         if (Matrix4x4.Invert(tl_remap, out var invTl))
                         {
-                            Matrix4x4 invBind = invTl * t_remap;
+                            Matrix4x4 invBind = invTl * t_remap * geoMat;
                             model.Skeleton.Bones[boneIdx].BindPose = invBind;
                         }
                         else
@@ -387,7 +365,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return perVertBones;
         }
-
         private static void NormalizeWeights(List<List<(int boneIdx, float weight)>> perVertBones)
         {
             for (int v = 0; v < perVertBones.Count; v++)
@@ -408,8 +385,7 @@ namespace SiegeEngine.Core.AssetParsing
                 perVertBones[v] = bw.OrderByDescending(b => b.weight).ToList(); // Sort descending weight
             }
         }
-
-        private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, Matrix4x4 geoMat, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, bool reverseWinding, int numVerts)
+        private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, bool reverseWinding, int numVerts)
         {
             List<FBXVertex> expandedVertices = new List<FBXVertex>();
             List<uint> newIndices = new List<uint>();
@@ -454,7 +430,6 @@ namespace SiegeEngine.Core.AssetParsing
                         float y = (float)vertsD[vertIdx * 3 + 1];
                         float z = (float)vertsD[vertIdx * 3 + 2];
                         Vector3 pos_source = new Vector3(x, y, z);
-                        pos_source = Vector3.Transform(pos_source, geoMat);
                         Vector3 pos = FBXCoordinateUtils.RemapVector(pos_source, sourceToTarget, signs) * modelScale;
                         // Normal
                         Vector3 normal_source = new Vector3(0f, 0f, 1f); // Default
@@ -497,7 +472,6 @@ namespace SiegeEngine.Core.AssetParsing
                                 normal_source = new Vector3(nx, ny, nz);
                             }
                         }
-                        normal_source = Vector3.TransformNormal(normal_source, geoMat);
                         Vector3 normal = FBXCoordinateUtils.RemapVector(normal_source, sourceToTarget, signs);
                         if (normal.LengthSquared() > 0)
                             normal = Vector3.Normalize(normal);
@@ -579,7 +553,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (expandedVertices, newIndices);
         }
-
         private static List<Material> ExtractMaterials(long geomId, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, FBXFileForest forest)
         {
             List<Material> materials = new List<Material>();
@@ -697,7 +670,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return materials;
         }
-
         private static Vector3 CalculateBounds(List<FBXVertex> vertices)
         {
             float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;

@@ -53,7 +53,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4 local = T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp;
             return local;
         }
-        private Matrix4x4 CreateFromEuler(Vector3 degrees, int order)
+        public Matrix4x4 CreateFromEuler(Vector3 degrees, int order)
         {
             float rx = degrees.X * MathF.PI / 180f;
             float ry = degrees.Y * MathF.PI / 180f;

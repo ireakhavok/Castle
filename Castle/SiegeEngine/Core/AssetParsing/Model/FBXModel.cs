@@ -1,233 +1,119 @@
 ﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXModel.cs
+// File: AssetParsing/Model/FBXModel.cs
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using SiegeEngine.Core.AssetParsing.Model;
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class FBXModel
     {
         public List<MeshData> Meshes { get; set; } = new List<MeshData>();
-        public Skeleton Skeleton { get; set; }
-        public List<Animation> Animations { get; set; }
-        public Entity Entity { get; set; }
-        public List<Material> Materials { get; set; }
-        public bool HasSkin { get; set; }
+        public Skeleton Skeleton { get; set; } = new Skeleton();
+        public List<Animation> Animations { get; set; } = new List<Animation>();
         public int[] SourceToTarget { get; set; }
         public int[] Signs { get; set; }
         public float ModelScale { get; set; }
         public Matrix4x4 P4 { get; set; }
         public Matrix4x4 InvP4 { get; set; }
         public bool ReverseWinding { get; set; }
+        public bool HasSkin { get; set; } = false;
         public FBXModel()
         {
-            Skeleton = new Skeleton { Bones = new List<Bone>() };
-            Animations = new List<Animation>();
-            Materials = new List<Material>();
         }
         public bool HasUnweightedVertices()
         {
-            return Meshes.Any(m => m.Vertices.Any(v => v.Weight0 == 0 && v.Weight1 == 0 && v.Weight2 == 0 && v.Weight3 == 0));
+            return Meshes.Any(m => m.Vertices.Any(v => v.Weight0 + v.Weight1 + v.Weight2 + v.Weight3 == 0));
         }
         public void CopyWeightsFrom(FBXModel other)
         {
-            // Create bone name to index maps for both models
-            var mainBoneMap = new Dictionary<string, int>();
-            for (int i = 0; i < Skeleton.Bones.Count; i++)
+            if (Meshes.Count != 1)
+                return;
+            var mainMesh = Meshes[0];
+            if (other.Meshes.Count == 0)
             {
-                mainBoneMap[Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
-            }
-            var otherBoneMap = new Dictionary<string, int>();
-            for (int i = 0; i < other.Skeleton.Bones.Count; i++)
-            {
-                otherBoneMap[other.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
-            }
-            int totalCopied = 0;
-            const float epsilon = 1e-5f;
-            foreach (var mainMesh in Meshes)
-            {
-                MeshData matchingOtherMesh = null;
-                List<MeshData> candidates = other.Meshes.Where(om => om.Vertices.Count == mainMesh.Vertices.Count).ToList();
-                if (candidates.Count == 0)
-                {
-                    Console.WriteLine($"CopyWeightsFrom: No matching mesh by vertex count ({mainMesh.Vertices.Count}), assigning to closest bone");
-                    AssignToClosestBone(mainMesh);
-                    continue;
-                }
-                foreach (var candidate in candidates)
-                {
-                    bool positionsMatch = true;
-                    //Sample first, middle, last vertices
-                    int[] sampleIndices = { 0, mainMesh.Vertices.Count / 2, mainMesh.Vertices.Count - 1 };
-                    foreach (int vi in sampleIndices)
-                    {
-                        var mv = mainMesh.Vertices[vi];
-                        var ov = candidate.Vertices[vi];
-                        if (Math.Abs(mv.X - ov.X) > epsilon || Math.Abs(mv.Y - ov.Y) > epsilon || Math.Abs(mv.Z - ov.Z) > epsilon)
-                        {
-                            positionsMatch = false;
-                            break;
-                        }
-                    }
-                    if (positionsMatch)
-                    {
-                        matchingOtherMesh = candidate;
-                        break;
-                    }
-                }
-                if (matchingOtherMesh == null)
-                {
-                    Console.WriteLine($"CopyWeightsFrom: No position-matching mesh found for mesh with {mainMesh.Vertices.Count} vertices, assigning to closest bone");
-                    AssignToClosestBone(mainMesh);
-                    continue;
-                }
-                int meshCopied = 0;
-                for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
-                {
-                    var mv = mainMesh.Vertices[vi];
-                    var ov = matchingOtherMesh.Vertices[vi];
-                    // If main vertex unweighted and other weighted, copy with remapped bone IDs
-                    if (mv.Weight0 == 0 && mv.Weight1 == 0 && mv.Weight2 == 0 && mv.Weight3 == 0 &&
-                        (ov.Weight0 > 0 || ov.Weight1 > 0 || ov.Weight2 > 0 || ov.Weight3 > 0))
-                    {
-                        int[] otherBoneIDs = new int[] { ov.BoneID0, ov.BoneID1, ov.BoneID2, ov.BoneID3 };
-                        float[] weights = new float[] { ov.Weight0, ov.Weight1, ov.Weight2, ov.Weight3 };
-                        int validCount = 0;
-                        for (int wi = 0; wi < 4; wi++)
-                        {
-                            if (otherBoneIDs[wi] >= 0 && weights[wi] > 0)
-                            {
-                                string otherBoneName = other.Skeleton.Bones[otherBoneIDs[wi]].Name.ToLowerInvariant();
-                                if (mainBoneMap.TryGetValue(otherBoneName, out int mainBoneIdx))
-                                {
-                                    // Assign to main
-                                    switch (validCount)
-                                    {
-                                        case 0:
-                                            mv.BoneID0 = mainBoneIdx;
-                                            mv.Weight0 = weights[wi];
-                                            break;
-                                        case 1:
-                                            mv.BoneID1 = mainBoneIdx;
-                                            mv.Weight1 = weights[wi];
-                                            break;
-                                        case 2:
-                                            mv.BoneID2 = mainBoneIdx;
-                                            mv.Weight2 = weights[wi];
-                                            break;
-                                        case 3:
-                                            mv.BoneID3 = mainBoneIdx;
-                                            mv.Weight3 = weights[wi];
-                                            break;
-                                    }
-                                    validCount++;
-                                }
-                                else
-                                {
-                                    Console.WriteLine($"CopyWeightsFrom: Bone {otherBoneName} from other model not found in main model, skipping weight");
-                                }
-                            }
-                        }
-                        // Set unused slots to -1 and 0 weight
-                        if (validCount < 4)
-                        {
-                            if (validCount <= 0) mv.BoneID0 = -1; mv.Weight0 = 0f;
-                            if (validCount <= 1) mv.BoneID1 = -1; mv.Weight1 = 0f;
-                            if (validCount <= 2) mv.BoneID2 = -1; mv.Weight2 = 0f;
-                            if (validCount <= 3) mv.BoneID3 = -1; mv.Weight3 = 0f;
-                        }
-                        // Normalize weights
-                        float sumW = mv.Weight0 + mv.Weight1 + mv.Weight2 + mv.Weight3;
-                        if (sumW > 0)
-                        {
-                            mv.Weight0 /= sumW;
-                            mv.Weight1 /= sumW;
-                            mv.Weight2 /= sumW;
-                            mv.Weight3 /= sumW;
-                        }
-                        mainMesh.Vertices[vi] = mv;
-                        meshCopied++;
-                    }
-                }
-                totalCopied += meshCopied;
-                Console.WriteLine($"CopyWeightsFrom: Copied and remapped weights for {meshCopied} vertices in mesh with {mainMesh.Vertices.Count} vertices");
-            }
-            // For any remaining unweighted meshes/vertices, assign to root bone (index 0, assuming 0 is root)
-            foreach (var mainMesh in Meshes)
-            {
-                if (mainMesh.Vertices.Any(v => v.Weight0 == 0 && v.Weight1 == 0 && v.Weight2 == 0 && v.Weight3 == 0))
-                {
-                    AssignToRootBone(mainMesh);
-                }
-            }
-            if (totalCopied > 0 || other.Meshes.Count == 0)
-            {
+                AssignToClosestBone(mainMesh);
                 HasSkin = true;
+                return;
             }
-            Console.WriteLine($"CopyWeightsFrom: Total copied vertices: {totalCopied}");
+            if (other.Meshes.Count != 1)
+                return;
+            var otherMesh = other.Meshes[0];
+            if (mainMesh.Vertices.Count != otherMesh.Vertices.Count)
+            {
+                if (mainMesh.Vertices.Count > otherMesh.Vertices.Count)
+                    AssignToRootBone(mainMesh);
+                else
+                    AssignToClosestBone(mainMesh);
+                return;
+            }
+            for (int i = 0; i < mainMesh.Vertices.Count; i++)
+            {
+                mainMesh.Vertices[i].BoneID0 = otherMesh.Vertices[i].BoneID0;
+                mainMesh.Vertices[i].BoneID1 = otherMesh.Vertices[i].BoneID1;
+                mainMesh.Vertices[i].BoneID2 = otherMesh.Vertices[i].BoneID2;
+                mainMesh.Vertices[i].BoneID3 = otherMesh.Vertices[i].BoneID3;
+                mainMesh.Vertices[i].Weight0 = otherMesh.Vertices[i].Weight0;
+                mainMesh.Vertices[i].Weight1 = otherMesh.Vertices[i].Weight1;
+                mainMesh.Vertices[i].Weight2 = otherMesh.Vertices[i].Weight2;
+                mainMesh.Vertices[i].Weight3 = otherMesh.Vertices[i].Weight3;
+            }
+            HasSkin = true;
         }
         private void AssignToRootBone(MeshData mainMesh)
         {
-            int rootBone = 0; // Assuming bone 0 is root
-            int assigned = 0;
-            for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
+            int rootIdx = Skeleton.Bones.FindIndex(b => b.ParentIndex == -1);
+            if (rootIdx == -1) return;
+            for (int i = 0; i < mainMesh.Vertices.Count; i++)
             {
-                var mv = mainMesh.Vertices[vi];
-                if (mv.Weight0 == 0 && mv.Weight1 == 0 && mv.Weight2 == 0 && mv.Weight3 == 0)
-                {
-                    mv.BoneID0 = rootBone;
-                    mv.Weight0 = 1f;
-                    mv.BoneID1 = -1;
-                    mv.BoneID2 = -1;
-                    mv.BoneID3 = -1;
-                    mainMesh.Vertices[vi] = mv;
-                    assigned++;
-                }
+                mainMesh.Vertices[i].BoneID0 = rootIdx;
+                mainMesh.Vertices[i].Weight0 = 1f;
+                mainMesh.Vertices[i].BoneID1 = -1;
+                mainMesh.Vertices[i].Weight1 = 0f;
+                mainMesh.Vertices[i].BoneID2 = -1;
+                mainMesh.Vertices[i].Weight2 = 0f;
+                mainMesh.Vertices[i].BoneID3 = -1;
+                mainMesh.Vertices[i].Weight3 = 0f;
             }
-            Console.WriteLine($"Assigned {assigned} unweighted vertices to root bone");
+            Console.WriteLine("Assigned all vertices to root bone");
         }
         private void AssignToClosestBone(MeshData mainMesh)
         {
-            // Get bone positions from LocalRest translation
-            var bonePositions = new Vector3[Skeleton.Bones.Count];
-            for (int bi = 0; bi < Skeleton.Bones.Count; bi++)
+            if (Skeleton.Bones.Count == 0) return;
+            var restLocals = Skeleton.Bones.Select(b => b.LocalRest).ToArray();
+            var globals = Skeleton.ComputeGlobalTransforms(restLocals);
+            var bonePos = globals.Select(g => g.Translation).ToArray();
+            for (int i = 0; i < mainMesh.Vertices.Count; i++)
             {
-                bonePositions[bi] = Skeleton.Bones[bi].LocalRest.Translation;
-            }
-            int assigned = 0;
-            for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
-            {
-                var mv = mainMesh.Vertices[vi];
-                if (mv.Weight0 == 0 && mv.Weight1 == 0 && mv.Weight2 == 0 && mv.Weight3 == 0)
+                var v = mainMesh.Vertices[i];
+                Vector3 vpos = new Vector3(v.X, v.Y, v.Z);
+                int closest = -1;
+                float minDist = float.MaxValue;
+                for (int j = 0; j < bonePos.Length; j++)
                 {
-                    Vector3 vertPos = new Vector3(mv.X, mv.Y, mv.Z);
-                    int closestBone = -1;
-                    float minDistSq = float.MaxValue;
-                    for (int bi = 0; bi < bonePositions.Length; bi++)
+                    float dist = (vpos - bonePos[j]).LengthSquared();
+                    if (dist < minDist)
                     {
-                        float distSq = Vector3.DistanceSquared(vertPos, bonePositions[bi]);
-                        if (distSq < minDistSq)
-                        {
-                            minDistSq = distSq;
-                            closestBone = bi;
-                        }
-                    }
-                    if (closestBone >= 0)
-                    {
-                        mv.BoneID0 = closestBone;
-                        mv.Weight0 = 1f;
-                        mv.BoneID1 = -1;
-                        mv.BoneID2 = -1;
-                        mv.BoneID3 = -1;
-                        mainMesh.Vertices[vi] = mv;
-                        assigned++;
+                        minDist = dist;
+                        closest = j;
                     }
                 }
+                if (closest != -1)
+                {
+                    v.BoneID0 = closest;
+                    v.Weight0 = 1f;
+                    v.BoneID1 = -1;
+                    v.Weight1 = 0f;
+                    v.BoneID2 = -1;
+                    v.Weight2 = 0f;
+                    v.BoneID3 = -1;
+                    v.Weight3 = 0f;
+                    mainMesh.Vertices[i] = v;
+                }
             }
-            Console.WriteLine($"Assigned {assigned} unweighted vertices to closest bones");
+            Console.WriteLine("Assigned vertices to closest bones");
         }
     }
 }

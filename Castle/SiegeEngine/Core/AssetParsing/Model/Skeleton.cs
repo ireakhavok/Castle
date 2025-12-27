@@ -1,4 +1,5 @@
-﻿
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/Model/Skeleton.cs
 using SiegeEngine.Core.AssetParsing.Model;
 using System.Collections.Generic;
 using System.Numerics;
@@ -6,7 +7,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class Skeleton
     {
-        public List<Bone> Bones { get; set; }
+        public List<Bone> Bones { get; set; } = new List<Bone>();
         private Matrix4x4[] _currentTransforms;
         public Matrix4x4[] GetTransforms()
         {
