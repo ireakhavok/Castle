@@ -46,7 +46,7 @@ namespace SiegeEngine.Core.Managers
             _windowWidth = 1280;
             _windowHeight = 720;
             _isFullscreen = false;
-            _allowResize = false;
+            _allowResize = true;
             _iconIndices = new Dictionary<string, int>
             {
                 { "MMO Mode", 0 },

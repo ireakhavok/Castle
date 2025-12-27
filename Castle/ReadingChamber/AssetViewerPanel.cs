@@ -139,16 +139,51 @@ namespace ReadingChamber
         private void LoadAnimation(string animPath)
         {
             var animForest = FBXParser.Load(animPath);
+
+            // Step 1: Use model's global settings, log and detect mismatches
             int[] sourceToTarget = _model.SourceToTarget ?? new int[3];
             int[] signs = _model.Signs ?? new int[3];
             float modelScale = _model.ModelScale;
             Matrix4x4 P4 = _model.P4;
             Matrix4x4 invP4 = _model.InvP4;
             bool reverseWinding = _model.ReverseWinding;
-            if (sourceToTarget.Length == 0)
+
+            // Parse anim's globals
+            var (animSourceToTarget, animSigns, animScale, animP4, animInvP4, animReverseWinding) = FBXParser.ParseGlobalSettingsAndRemapping(animForest);
+
+            // Log detailed differences
+            if (!sourceToTarget.SequenceEqual(animSourceToTarget))
+                Console.WriteLine($"SourceToTarget mismatch: Model {string.Join(",", sourceToTarget)}, Anim {string.Join(",", animSourceToTarget)}");
+            if (!signs.SequenceEqual(animSigns))
+                Console.WriteLine($"Signs mismatch: Model {string.Join(",", signs)}, Anim {string.Join(",", animSigns)}");
+            if (modelScale != animScale)
+                Console.WriteLine($"Scale mismatch: Model {modelScale}, Anim {animScale}");
+            if (P4 != animP4)
+                Console.WriteLine("P4 matrix mismatch");
+            if (reverseWinding != animReverseWinding)
+                Console.WriteLine($"Winding mismatch: Model {reverseWinding}, Anim {animReverseWinding}");
+
+            // Detect handedness flip
+            float modelDet = FBXCoordinateUtils.CalculateDeterminant(P4);
+            float animDet = FBXCoordinateUtils.CalculateDeterminant(animP4);
+            if (Math.Sign(modelDet) != Math.Sign(animDet))
+                Console.WriteLine("Handedness mismatch detected (potential inversion)");
+
+            // If model has no settings, use anim's; else force model's to ensure consistency
+            if (sourceToTarget.Length == 0 || sourceToTarget.All(x => x == 0))
             {
-                (sourceToTarget, signs, modelScale, P4, invP4, reverseWinding) = FBXParser.ParseGlobalSettingsAndRemapping(animForest);
+                sourceToTarget = animSourceToTarget;
+                signs = animSigns;
+                modelScale = animScale;
+                P4 = animP4;
+                invP4 = animInvP4;
+                reverseWinding = animReverseWinding;
             }
+            else
+            {
+                Console.WriteLine("Forcing model's global settings for animation parsing to ensure consistency.");
+            }
+
             var objectsNode = animForest.TreeList.FirstOrDefault(n => n.Name == "Objects");
             var objectsById = FBXParser.GatherObjectsById(objectsNode);
             var conns = FBXParser.GatherConnections(animForest);
@@ -346,7 +381,7 @@ namespace ReadingChamber
                 return;
             }
             string baseHtml = File.ReadAllText(htmlPath);
-            int insertIndex = baseHtml.IndexOf("<!-- Animation buttons will be added here dynamically -->");
+            int insertIndex = baseHtml.IndexOf(""); //"<!-- Animation buttons will be added here dynamically -->");
             if (insertIndex == -1)
             {
                 Console.WriteLine("AssetViewerPanel: Insertion point not found in HTML");
