@@ -149,15 +149,45 @@ namespace ReadingChamber
             var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(animModel, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
             FBXSkeletonParser.BuildHierarchy(animModel, conns, boneIndexById);
             Matrix4x4 rootRot = Matrix4x4.Identity;
-            FBXSkeletonParser.ApplyRootRotation(animModel, rootRot, rootIndices);
-            FBXAnimationParser.ParseAnimations(animModel, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootRot, rootIndices, P4, invP4);
-            FBXMeshParser.ParseMeshes(animModel, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, false, boneIndexById, rootRot, rootIndices, P4, invP4, animForest);
+            // Find root indices for model and animModel
+            List<int> modelRootIndices = new List<int>();
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                if (_model.Skeleton.Bones[i].ParentIndex == -1)
+                    modelRootIndices.Add(i);
+            }
+            List<int> animRootIndices = new List<int>();
+            for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
+            {
+                if (animModel.Skeleton.Bones[i].ParentIndex == -1)
+                    animRootIndices.Add(i);
+            }
+            // Assume first root is main root, compute alignment transform
+            int modelRootIdx = modelRootIndices.FirstOrDefault(-1);
+            int animRootIdx = animRootIndices.FirstOrDefault(-1);
+            if (modelRootIdx >= 0 && animRootIdx >= 0)
+            {
+                Matrix4x4 modelRootLocal = _model.Skeleton.Bones[modelRootIdx].LocalRest;
+                Matrix4x4 animRootLocal = animModel.Skeleton.Bones[animRootIdx].LocalRest;
+                if (Matrix4x4.Invert(animRootLocal, out Matrix4x4 invAnimRoot))
+                {
+                    rootRot = modelRootLocal * invAnimRoot;
+                    Console.WriteLine("Applied root alignment transform");
+                }
+                else
+                {
+                    Console.WriteLine("Failed to invert anim root local for alignment");
+                }
+            }
+            FBXSkeletonParser.ApplyRootRotation(animModel, rootRot, animRootIndices);
+            FBXAnimationParser.ParseAnimations(animModel, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootRot, animRootIndices, P4, invP4);
+            FBXMeshParser.ParseMeshes(animModel, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, false, boneIndexById, rootRot, animRootIndices, P4, invP4, animForest);
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {
                 var anim = validAnimations[0];
                 anim.Name = Path.GetFileNameWithoutExtension(animPath);
-                // Remap keyframes to main model's skeleton by bone name
+                // Remap keyframes to main model's skeleton by bone name with retargeting
                 Dictionary<string, int> mainBoneIndices = new Dictionary<string, int>();
                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
@@ -176,7 +206,19 @@ namespace ReadingChamber
                         string boneName = animModel.Skeleton.Bones[i].Name.ToLowerInvariant();
                         if (mainBoneIndices.TryGetValue(boneName, out int targetIdx))
                         {
-                            newTransforms[targetIdx] = kf.BoneTransforms[i];
+                            Matrix4x4 local = kf.BoneTransforms[i];
+                            if (Matrix4x4.Invert(animModel.Skeleton.Bones[i].LocalRest, out Matrix4x4 invAnimRest))
+                            {
+                                Matrix4x4 delta = invAnimRest * local;
+                                Matrix4x4 modelRest = _model.Skeleton.Bones[targetIdx].LocalRest;
+                                Matrix4x4 newLocal = modelRest * delta;
+                                newTransforms[targetIdx] = newLocal;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Failed to invert anim rest for bone {boneName}, using anim local directly");
+                                newTransforms[targetIdx] = local;
+                            }
                             mappedBones.Add(targetIdx);
                         }
                         else

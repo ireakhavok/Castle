@@ -199,7 +199,7 @@ Folder: ReadingChamber
   - Class: AssetUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
     - Fields:
       - AssetViewerPanel _parent
     - Methods:
@@ -233,6 +233,11 @@ Folder: SiegeEngine
 - File: ActionConfig.cs
   - Class: SwitchMenuEvent (Namespace: SiegeEngine.PlayerSystem)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic
+- File: Animation.cs
+  - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - Matrix4x4[] GetBoneTransforms(float time)
 - File: AnimationComponent.cs
   - Class: AnimationComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -360,6 +365,15 @@ Folder: SiegeEngine
       - void Detach()
       - void OnPanelResize( float h, float w)
         - Calls: _uiOverlay.RefreshUI
+- File: Bone.cs
+  - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Threading.Tasks
+    - Fields:
+      - Matrix4x4 Geo
+    - Methods:
+      - Matrix4x4 ComputeLocal()
+        - Calls: CreateFromEuler
+      - Matrix4x4 CreateFromEuler( int order, Vector3 degrees)
 - File: BrushRegistryUpdateEvent.cs
   - Class: BrushRegistryUpdateEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -707,27 +721,13 @@ Folder: SiegeEngine
     - Methods:
       - byte[] Serialize()
       - void Deserialize(byte[] data)
-- File: FBXFileForest.cs
-  - Class: FBXFileForest (Namespace: SiegeEngine.Core.AssetObjects)
-    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
-- File: FBXModel.cs
-  - Class: Material (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
+- File: FBXAnimationParser.cs
+  - Class: FBXAnimationParser (Namespace: SiegeEngine.Core.AssetParsing)
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+- File: FBXCoordinateUtils.cs
+  - Class: FBXCoordinateUtils (Namespace: SiegeEngine.Core.AssetParsing)
+    - Dependencies: System, System.Numerics
     - Methods:
-      - constructor Material()
-- File: FBXNode.cs
-  - Class: FBXNode (Namespace: SiegeEngine.Core.AssetObjects)
-    - Inherits: BaseNode
-    
-    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
-- File: FBXParser.cs
-  - Class: FBXParser (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Linq, System.Numerics, System.Text
-    - Methods:
-      - FBXFileForest Load(string path)
-        - Calls: FBXParserBase.Log, MetaDataExporter.ExportMetadata, NodeParser.ParseNodes
-      - float GetValueAtTime( float defaultVal,  float[] values,  long time, long[] times)
-      - float[] ParseKeyValues( int expectedLength, BaseNode keyValueNode)
       - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
       - Vector3 RemapScale( int[] signs,  int[] sourceToTarget, Vector3 v)
       - Vector3 RemapRotation( int[] signs,  int[] sourceToTarget, Vector3 v)
@@ -737,15 +737,44 @@ Folder: SiegeEngine
       - int[] GetOrderSequence(int order)
       - int GetOrderFromSequence(int[] seq)
       - float CalculateDeterminant(Matrix4x4 m)
-      - int[] ParseRawArrayAsInt(byte[] raw)
-        - Calls: DecompressData
-      - double[] ParseRawArrayAsDouble(byte[] raw)
-        - Calls: DecompressData
-      - byte[] DecompressData( int expectedLen, byte[] compressed)
-        - Calls: FBXParserBase.Log
+- File: FBXFileForest.cs
+  - Class: FBXFileForest (Namespace: SiegeEngine.Core.AssetObjects)
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
+- File: FBXMeshParser.cs
+  - Class: FBXMeshParser (Namespace: SiegeEngine.Core.AssetParsing)
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - double[] ParseVertices(BaseNode geom)
+      - int[] ParsePolygonVertexIndices(BaseNode geom)
+      - Vector3 CalculateBounds(List<FBXVertex> vertices)
+- File: FBXModel.cs
+  - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - constructor FBXModel()
+      - bool HasUnweightedVertices()
+      - void CopyWeightsFrom(FBXModel other)
+        - Calls: AssignToClosestBone, AssignToRootBone
+      - void AssignToRootBone(MeshData mainMesh)
+      - void AssignToClosestBone(MeshData mainMesh)
+- File: FBXNode.cs
+  - Class: FBXNode (Namespace: SiegeEngine.Core.AssetObjects)
+    - Inherits: BaseNode
+    
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
+- File: FBXParser.cs
+  - Class: FBXParser (Namespace: SiegeEngine.Core.AssetParsing)
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Linq, System.Numerics, System.Text
+    - Methods:
+      - FBXFileForest Load(string path)
+        - Calls: FBXParserBase.Log, MetaDataExporter.ExportMetadata, NodeParser.ParseNodes
+      - FBXModel BuildModelFromForest(FBXFileForest forest)
+        - Calls: FBXModel, FBXParserBase.CreateDefaultCubeModel, FBXSkeletonParser.ApplyRootRotation, GatherConnections, GatherObjectsById
+      - BaseNode> GatherObjectsById(BaseNode objectsNode)
+      - > GatherConnections(FBXFileForest forest)
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - int totalLogCount
       - int MaxTotalLogs
@@ -754,6 +783,31 @@ Folder: SiegeEngine
       - bool IsValidNodeName(string name)
       - FBXModel CreateDefaultCubeModel()
         - Calls: FBXVertex, Log
+- File: FBXParserUtils.cs
+  - Class: FBXParserUtils (Namespace: SiegeEngine.Core.AssetParsing)
+    - Dependencies: SiegeEngine.Core.AssetObjects, System, System.IO, System.IO.Compression, System.Linq
+    - Methods:
+      - int[] ParseRawArrayAsInt(byte[] raw)
+        - Calls: DecompressData
+      - double[] ParseRawArrayAsDouble(byte[] raw)
+        - Calls: DecompressData
+      - byte[] DecompressData( int expectedLen, byte[] compressed)
+        - Calls: FBXParserBase.Log
+      - float GetValueAtTime( float defaultVal,  float[] values,  long time, long[] times)
+      - float[] ParseKeyValues( int expectedLength, BaseNode keyValueNode)
+- File: FBXSkeletonParser.cs
+  - Class: FBXSkeletonParser (Namespace: SiegeEngine.Core.AssetParsing)
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - void ApplyRootRotation( List<int> rootIndices,  Matrix4x4 rootRot, FBXModel model)
+- File: FBXVertex.cs
+  - Class: FBXVertex (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Fields:
+      - float MatIdx
+    - Methods:
+      - constructor FBXVertex(
+        float weight0 = 0, 
+        int boneID0 = -1,  float matIdx,  float nx,  float ny,  float nz,  float tx = 0,  float ty = 0,  float tz = 0,  float u,  float v,  float weight1 = 0,  float weight2 = 0,  float weight3 = 0,  float y,  float z,  int boneID1 = -1,  int boneID2 = -1,  int boneID3 = -1, float x)
 - File: FileSelectedEvent.cs
   - Class: FileSelectedEvent (Namespace: None)
     - Inherits: IEvent
@@ -1084,6 +1138,9 @@ Folder: SiegeEngine
       - constructor JSDate(double ms)
       - constructor JSDate(DateTime dt)
       - string ToString()
+- File: Keyframe.cs
+  - Class: Keyframe (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics
 - File: LevelData.cs
   - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
@@ -1136,6 +1193,11 @@ Folder: SiegeEngine
         - Calls: _steamEngine.RunCallbacks
       - bool IsLobbyCreated()
       - bool IsLobbyJoined()
+- File: Material.cs
+  - Class: Material (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
+    - Methods:
+      - constructor Material()
 - File: MaterialProperties.cs
   - Class: MaterialProperties (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System
@@ -1153,6 +1215,9 @@ Folder: SiegeEngine
         - Calls: OpenPanelEvent, SwitchSceneEvent, _document.getElementById, checked.ToString
       - void HandleLink(string href)
         - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
+- File: MeshData.cs
+  - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics
 - File: MetaDataExporter.cs
   - Class: MetaDataExporter (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.Linq, System.Text, System.Text.Json, System.Text.Json.Serialization, System.Threading.Tasks
@@ -1198,10 +1263,10 @@ Folder: SiegeEngine
   - Class: ModelComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
     
-    - Dependencies: SiegeEngine.Core.AssetParsing, System
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System
 - File: ModelManager.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
 - File: ModelShader.cs
   - Class: ModelShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1212,7 +1277,7 @@ Folder: SiegeEngine
       - void main()
 - File: ModelTransformer.cs
   - Class: ModelTransformer (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Numerics
     - Methods:
       - void ApplyTransformation( Matrix4x4 transformation, FBXModel model)
         - Calls: FBXVertex
@@ -1373,7 +1438,7 @@ Folder: SiegeEngine
   - Class: Player (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: IComponent
     
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, System, System.Numerics
     - Fields:
       - CameraController _camera
       - PhysicsComponent _physics
@@ -1652,6 +1717,16 @@ Folder: SiegeEngine
 - File: ShaderSetup.cs
   - Class: ShaderSetup (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering.Shaders, Silk.NET.OpenGL
+- File: Skeleton.cs
+  - Class: Skeleton (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics
+    - Fields:
+      - Matrix4x4[] _currentTransforms
+    - Methods:
+      - Matrix4x4[] GetTransforms()
+      - void UpdateTransforms(Matrix4x4[] transforms)
+      - Matrix4x4[] ComputeGlobalTransforms(Matrix4x4[] localTransforms)
+      - Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
@@ -1764,6 +1839,9 @@ Folder: SiegeEngine
     - Methods:
       - void main()
       - void main()
+- File: TextureInfo.cs
+  - Class: TextureInfo (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
 - File: TextureLoader.cs
   - Class: TextureLoader (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Linq
@@ -2110,10 +2188,23 @@ SiegeEngine.Core.AssetObjects.BaseNode
 SiegeEngine.Core.AssetObjects.FBXFileForest
 SiegeEngine.Core.AssetObjects.FBXNode
 SiegeEngine.Core.AssetObjects.PropertyNode
+SiegeEngine.Core.AssetParsing.FBXAnimationParser
+SiegeEngine.Core.AssetParsing.FBXCoordinateUtils
+SiegeEngine.Core.AssetParsing.FBXMeshParser
 SiegeEngine.Core.AssetParsing.FBXParser
 SiegeEngine.Core.AssetParsing.FBXParserBase
-SiegeEngine.Core.AssetParsing.Material
+SiegeEngine.Core.AssetParsing.FBXParserUtils
+SiegeEngine.Core.AssetParsing.FBXSkeletonParser
 SiegeEngine.Core.AssetParsing.MetaDataExporter
+SiegeEngine.Core.AssetParsing.Model.Animation
+SiegeEngine.Core.AssetParsing.Model.Bone
+SiegeEngine.Core.AssetParsing.Model.FBXModel
+SiegeEngine.Core.AssetParsing.Model.FBXVertex
+SiegeEngine.Core.AssetParsing.Model.Keyframe
+SiegeEngine.Core.AssetParsing.Model.Material
+SiegeEngine.Core.AssetParsing.Model.MeshData
+SiegeEngine.Core.AssetParsing.Model.Skeleton
+SiegeEngine.Core.AssetParsing.Model.TextureInfo
 SiegeEngine.Core.AssetParsing.ModelTransformer
 SiegeEngine.Core.AssetParsing.NodeParser
 SiegeEngine.Core.ContextManagement.AbstractRenderEnums
