@@ -1,6 +1,4 @@
-﻿// Folder: ReadingChamber
-// File: AssetViewerPanel.cs
-using SiegeEngine.Core.AssetParsing;
+﻿using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -14,6 +12,7 @@ using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.AssetParsing.Model;
+
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -119,6 +118,9 @@ namespace ReadingChamber
                 _currentGlobalTransforms = null;
                 _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
                 _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
+
+                // Compute bind poses after loading the model
+                _model.ComputeBindPoses();
             }
             else
             {
@@ -159,38 +161,16 @@ namespace ReadingChamber
             animModel.ReverseWinding = reverseWinding;
             var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(animModel, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
             FBXSkeletonParser.BuildHierarchy(animModel, conns, boneIndexById);
-            Matrix4x4 rootRot = Matrix4x4.Identity;
-            List<int> modelRootIndices = new List<int>();
-            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-            {
-                if (_model.Skeleton.Bones[i].ParentIndex == -1)
-                    modelRootIndices.Add(i);
-            }
+            Matrix4x4 rootRot = Matrix4x4.Identity; // Simplified: No root alignment computation
             List<int> animRootIndices = new List<int>();
             for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
             {
                 if (animModel.Skeleton.Bones[i].ParentIndex == -1)
                     animRootIndices.Add(i);
             }
-            int modelRootIdx = modelRootIndices.FirstOrDefault(-1);
-            int animRootIdx = animRootIndices.FirstOrDefault(-1);
-            if (modelRootIdx >= 0 && animRootIdx >= 0)
-            {
-                Matrix4x4 modelRootLocal = _model.Skeleton.Bones[modelRootIdx].LocalRest;
-                Matrix4x4 animRootLocal = animModel.Skeleton.Bones[animRootIdx].LocalRest;
-                if (Matrix4x4.Invert(animRootLocal, out Matrix4x4 invAnimRoot))
-                {
-                    rootRot = modelRootLocal * invAnimRoot;
-                    Console.WriteLine("Applied root alignment transform");
-                }
-                else
-                {
-                    Console.WriteLine("Failed to invert anim root local for alignment");
-                }
-            }
-            FBXSkeletonParser.ApplyRootRotation(animModel, rootRot, animRootIndices);
+            // Removed ApplyRootRotation call
             FBXAnimationParser.ParseAnimations(animModel, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootRot, animRootIndices, P4, invP4);
-            FBXMeshParser.ParseMeshes(animModel, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, reverseWinding, boneIndexById, rootRot, animRootIndices, P4, invP4, animForest);
+            // Moved ParseMeshes inside the weight copy check below
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {
@@ -227,6 +207,8 @@ namespace ReadingChamber
                         _model.Skeleton.Bones.Add(copiedBone);
                     }
                     Console.WriteLine("Copied skeleton from animation model to main model");
+                    // Compute bind poses after copying skeleton
+                    _model.ComputeBindPoses();
                 }
                 // Remap keyframes to main model's skeleton by name with retargeting
                 Dictionary<string, int> mainBoneIndices = new Dictionary<string, int>();
@@ -274,6 +256,12 @@ namespace ReadingChamber
                 {
                     Console.WriteLine($"Warning: Not all bones mapped for animation {anim.Name} ({mappedBones.Count}/{_model.Skeleton.Bones.Count})");
                 }
+                // Add mapping threshold check
+                if (mappedBones.Count < (int)(_model.Skeleton.Bones.Count * 0.8f))
+                {
+                    Console.WriteLine($"Error: Insufficient bone mapping for animation {anim.Name} ({mappedBones.Count}/{_model.Skeleton.Bones.Count}), skipping");
+                    return;
+                }
                 _model.Animations.Add(anim);
                 _currentAnimation = anim.Name;
                 _duration = anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 0f;
@@ -282,43 +270,12 @@ namespace ReadingChamber
                 // Copy weights if main model has unweighted vertices
                 if (_model.HasUnweightedVertices())
                 {
+                    // Parse meshes only if needed for weights
+                    FBXMeshParser.ParseMeshes(animModel, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, reverseWinding, boneIndexById, rootRot, animRootIndices, P4, invP4, animForest);
                     _model.CopyWeightsFrom(animModel);
                     Console.WriteLine($"Copied weights from animation model to main model for {anim.Name}");
                     // Update VBOs with new vertex data (weights updated)
                     UpdateModelBuffers();
-                }
-                // Copy bone properties from animModel to _model
-                Dictionary<string, int> otherBoneMap = new Dictionary<string, int>();
-                for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
-                {
-                    otherBoneMap[animModel.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
-                }
-                foreach (var pair in mainBoneIndices)
-                {
-                    string boneName = pair.Key;
-                    int mainIdx = pair.Value;
-                    if (otherBoneMap.TryGetValue(boneName, out int otherIdx))
-                    {
-                        var mainBone = _model.Skeleton.Bones[mainIdx];
-                        var otherBone = animModel.Skeleton.Bones[otherIdx];
-                        mainBone.LclTranslation = otherBone.LclTranslation;
-                        mainBone.LclRotation = otherBone.LclRotation;
-                        mainBone.LclScaling = otherBone.LclScaling;
-                        mainBone.PreRotation = otherBone.PreRotation;
-                        mainBone.PostRotation = otherBone.PostRotation;
-                        mainBone.RotationPivot = otherBone.RotationPivot;
-                        mainBone.RotationOffset = otherBone.RotationOffset;
-                        mainBone.ScalingPivot = otherBone.ScalingPivot;
-                        mainBone.ScalingOffset = otherBone.ScalingOffset;
-                        mainBone.GeometricTranslation = otherBone.GeometricTranslation;
-                        mainBone.GeometricRotation = otherBone.GeometricRotation;
-                        mainBone.GeometricScaling = otherBone.GeometricScaling;
-                        mainBone.RotationOrder = otherBone.RotationOrder;
-                        mainBone.Size = otherBone.Size;
-                        mainBone.BoneType = otherBone.BoneType;
-                        mainBone.BindPose = otherBone.BindPose;
-                        mainBone.LocalRest = mainBone.ComputeLocal();
-                    }
                 }
                 // Switch to animation shader if skin present
                 if (_model.HasSkin)
