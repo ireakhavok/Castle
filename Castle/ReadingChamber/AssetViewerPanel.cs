@@ -12,7 +12,6 @@ using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.AssetParsing.Model;
-
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -118,7 +117,6 @@ namespace ReadingChamber
                 _currentGlobalTransforms = null;
                 _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
                 _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
-
                 // Compute bind poses after loading the model
                 _model.ComputeBindPoses();
             }
@@ -139,84 +137,10 @@ namespace ReadingChamber
         private void LoadAnimation(string animPath)
         {
             var animForest = FBXParser.Load(animPath);
-
-            // Step 1: Use model's global settings, log and detect mismatches
-            int[] sourceToTarget = _model.SourceToTarget ?? new int[3];
-            int[] signs = _model.Signs ?? new int[3];
-            float modelScale = _model.ModelScale;
-            Matrix4x4 P4 = _model.P4;
-            Matrix4x4 invP4 = _model.InvP4;
-            bool reverseWinding = _model.ReverseWinding;
-
-            // Parse anim's globals
-            var (animSourceToTarget, animSigns, animScale, animP4, animInvP4, animReverseWinding) = FBXParser.ParseGlobalSettingsAndRemapping(animForest);
-
-            // Log detailed differences
-            if (!sourceToTarget.SequenceEqual(animSourceToTarget))
-                Console.WriteLine($"SourceToTarget mismatch: Model {string.Join(",", sourceToTarget)}, Anim {string.Join(",", animSourceToTarget)}");
-            if (!signs.SequenceEqual(animSigns))
-                Console.WriteLine($"Signs mismatch: Model {string.Join(",", signs)}, Anim {string.Join(",", animSigns)}");
-            if (modelScale != animScale)
-                Console.WriteLine($"Scale mismatch: Model {modelScale}, Anim {animScale}");
-            if (P4 != animP4)
-                Console.WriteLine("P4 matrix mismatch");
-            if (reverseWinding != animReverseWinding)
-                Console.WriteLine($"Winding mismatch: Model {reverseWinding}, Anim {animReverseWinding}");
-
-            // Detect handedness flip
-            float modelDet = FBXCoordinateUtils.CalculateDeterminant(P4);
-            float animDet = FBXCoordinateUtils.CalculateDeterminant(animP4);
-            if (Math.Sign(modelDet) != Math.Sign(animDet))
-                Console.WriteLine("Handedness mismatch detected (potential inversion)");
-
-            // Always use animation's own settings for parsing its data
-            sourceToTarget = animSourceToTarget;
-            signs = animSigns;
-            modelScale = animScale;
-            P4 = animP4;
-            invP4 = animInvP4;
-            reverseWinding = animReverseWinding;
-            // If no settings in anim, fallback to model's (rare)
-            if (sourceToTarget.All(x => x == 0))
-            {
-                sourceToTarget = _model.SourceToTarget; // Assuming _model is accessible here
-                signs = _model.Signs;
-                modelScale = _model.ModelScale;
-                P4 = _model.P4;
-                invP4 = _model.InvP4;
-                reverseWinding = _model.ReverseWinding;
-                Console.WriteLine("Animation has no global settings; using model's.");
-            }
-            // Optional: Handle handedness mismatch by flipping a sign and adjusting winding
-            if (Math.Sign(modelDet) != Math.Sign(animDet))
-            {
-                // Flip a non-critical axis (e.g., coord/X) to match handedness without altering up/front much
-                signs[0] = -signs[0];
-                reverseWinding = !reverseWinding; // Compensate for flip
-                Console.WriteLine("Adjusted animation signs and winding to match model handedness.");
-            }
             var objectsNode = animForest.TreeList.FirstOrDefault(n => n.Name == "Objects");
             var objectsById = FBXParser.GatherObjectsById(objectsNode);
             var conns = FBXParser.GatherConnections(animForest);
-            var animModel = new FBXModel();
-            animModel.SourceToTarget = sourceToTarget;
-            animModel.Signs = signs;
-            animModel.ModelScale = modelScale;
-            animModel.P4 = P4;
-            animModel.InvP4 = invP4;
-            animModel.ReverseWinding = reverseWinding;
-            var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(animModel, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
-            FBXSkeletonParser.BuildHierarchy(animModel, conns, boneIndexById);
-            Matrix4x4 rootRot = Matrix4x4.Identity; // Simplified: No root alignment computation
-            List<int> animRootIndices = new List<int>();
-            for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
-            {
-                if (animModel.Skeleton.Bones[i].ParentIndex == -1)
-                    animRootIndices.Add(i);
-            }
-            // Removed ApplyRootRotation call
-            FBXAnimationParser.ParseAnimations(animModel, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootRot, animRootIndices, P4, invP4);
-            // Moved ParseMeshes inside the weight copy check below
+            var animModel = FBXParser.BuildModelFromForest(animForest);
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {
@@ -224,34 +148,7 @@ namespace ReadingChamber
                 anim.Name = Path.GetFileNameWithoutExtension(animPath);
                 if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0)
                 {
-                    _model.Skeleton = new Skeleton();
-                    _model.Skeleton.Bones = new List<Bone>();
-                    for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
-                    {
-                        var copiedBone = new Bone
-                        {
-                            Name = animModel.Skeleton.Bones[i].Name,
-                            BindPose = animModel.Skeleton.Bones[i].BindPose,
-                            ParentIndex = animModel.Skeleton.Bones[i].ParentIndex,
-                            LocalRest = animModel.Skeleton.Bones[i].LocalRest,
-                            LclTranslation = animModel.Skeleton.Bones[i].LclTranslation,
-                            LclRotation = animModel.Skeleton.Bones[i].LclRotation,
-                            LclScaling = animModel.Skeleton.Bones[i].LclScaling,
-                            PreRotation = animModel.Skeleton.Bones[i].PreRotation,
-                            PostRotation = animModel.Skeleton.Bones[i].PostRotation,
-                            RotationPivot = animModel.Skeleton.Bones[i].RotationPivot,
-                            RotationOffset = animModel.Skeleton.Bones[i].RotationOffset,
-                            ScalingPivot = animModel.Skeleton.Bones[i].ScalingPivot,
-                            ScalingOffset = animModel.Skeleton.Bones[i].ScalingOffset,
-                            RotationOrder = animModel.Skeleton.Bones[i].RotationOrder,
-                            BoneType = animModel.Skeleton.Bones[i].BoneType,
-                            Size = animModel.Skeleton.Bones[i].Size,
-                            GeometricTranslation = animModel.Skeleton.Bones[i].GeometricTranslation,
-                            GeometricRotation = animModel.Skeleton.Bones[i].GeometricRotation,
-                            GeometricScaling = animModel.Skeleton.Bones[i].GeometricScaling
-                        };
-                        _model.Skeleton.Bones.Add(copiedBone);
-                    }
+                    _model.Skeleton = animModel.Skeleton;
                     Console.WriteLine("Copied skeleton from animation model to main model");
                     // Compute bind poses after copying skeleton
                     _model.ComputeBindPoses();
@@ -316,8 +213,6 @@ namespace ReadingChamber
                 // Copy weights if main model has unweighted vertices
                 if (_model.HasUnweightedVertices())
                 {
-                    // Parse meshes only if needed for weights
-                    FBXMeshParser.ParseMeshes(animModel, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, reverseWinding, boneIndexById, rootRot, animRootIndices, P4, invP4, animForest);
                     _model.CopyWeightsFrom(animModel);
                     Console.WriteLine($"Copied weights from animation model to main model for {anim.Name}");
                     // Update VBOs with new vertex data (weights updated)
