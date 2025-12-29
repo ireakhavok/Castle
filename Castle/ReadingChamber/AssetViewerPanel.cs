@@ -40,7 +40,7 @@ namespace ReadingChamber
         private EditorTextRenderer _textRenderer;
         private ShaderProgram _textShader;
         private Matrix4x4[] _currentGlobalTransforms;
-        private Vector3 _cameraPosition = new Vector3(0, 0, 5);
+        private Vector3 _cameraPosition = new Vector3(0, 500, 0);
         private Vector3 _cameraTarget = Vector3.Zero;
         private Vector3 _cameraUp = Vector3.UnitZ;
         private Quaternion _cameraRotation = Quaternion.Identity;
@@ -49,12 +49,14 @@ namespace ReadingChamber
         private bool _isPanning = false;
         private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
         private List<string> _animationFiles = new List<string>();
+        private float _cameraDistance;
+        private float _maxExtent;
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
             Scaling = ScalingMode.BestFit;
-            BaseWidth = 800f;
-            BaseHeight = 600f;
+            BaseWidth = 1280f;
+            BaseHeight = 720f;
         }
         protected override UIOverlay CreateUIOverlay()
         {
@@ -96,12 +98,13 @@ namespace ReadingChamber
                     }
                 }
                 Vector3 center = (minBounds + maxBounds) / 2;
-                float maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
-                float cameraDist = Math.Max(maxExtent * 3.5f, 0.1f);
-                _cameraPosition = center + new Vector3(0, 0, cameraDist);
+                _maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
+                _cameraDistance = Math.Max(_maxExtent * 3.5f, 0.1f);
                 _cameraTarget = center;
+                Vector3 initialFront = new Vector3(0, 1, 0);
+                _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
                 _cameraUp = Vector3.UnitZ;
-                Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {maxExtent}, cameraPosition: {_cameraPosition}");
+                Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {_maxExtent}, cameraDistance: {_cameraDistance}, cameraPosition: {_cameraPosition}");
                 if (_model.Animations.Count > 0)
                 {
                     _currentAnimation = _model.Animations[0].Name;
@@ -405,7 +408,7 @@ namespace ReadingChamber
             _cameraUp = Vector3.Normalize(Vector3.Transform(new Vector3(0, 0, 1), _cameraRotation));
             if (!_isPanning)
             {
-                _cameraPosition = _cameraTarget + front * (_cameraPosition - _cameraTarget).Length();
+                _cameraPosition = _cameraTarget + front * _cameraDistance;
             }
             if (_playing && _model != null)
             {
@@ -507,7 +510,10 @@ namespace ReadingChamber
             // Set matrices
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, 0.1f, 100f);
+            float currentDist = Vector3.Distance(_cameraPosition, _cameraTarget);
+            float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
+            float far = currentDist + _maxExtent * 2f;
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, near, far);
             _assetShader.Use();
             _assetShader.SetMatrix4("uModel", modelMatrix);
             _assetShader.SetMatrix4("uView", view);

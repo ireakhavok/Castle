@@ -23,10 +23,10 @@ namespace SiegeEngine.PlayerSystem
         private Perspective _perspective = Perspective.ThirdPerson;
         private float _yaw = 0f;
         private float _pitch = 0f;
-        private float _distance = 20.0f;
-        private readonly float _minDistance = 10.0f;
-        private readonly float _maxDistance = 80.0f;
-        private readonly float _zoomSpeed = 100.0f;
+        private float _distance = 200.0f;
+        private readonly float _minDistance = 50.0f;
+        private readonly float _maxDistance = 8000.0f;
+        private readonly float _zoomSpeed = 10000.0f;
         private readonly float _xSpeed = 2.0f;
         private readonly float _ySpeed = 2.0f;
         private readonly float _pitchMinLimit = -89f;
@@ -34,8 +34,8 @@ namespace SiegeEngine.PlayerSystem
         private Vector2 _lastMousePos = Vector2.Zero;
         private bool _firstMouseMove = true;
         private bool _isRightShoulder = true;
-        private readonly float _shoulderShiftAmount = .3f;
-        private readonly float _playerHeight = 1.9f;
+        private readonly float _shoulderShiftAmount = 300f;
+        private readonly float _playerHeight = 190f;
         private bool _isPPressed = false;
         private bool _wasPPressedLastFrame = false;
         private bool _wasShiftPressedLastFrame = false;

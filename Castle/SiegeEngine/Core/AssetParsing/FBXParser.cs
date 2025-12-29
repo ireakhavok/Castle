@@ -154,7 +154,7 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
             // LEAVE THIS CODE ALONE: It converts units from FBX to SiegeEngine's internal units (meters) and remaps axes to Z-up Y-forward
-            float modelScale = unitScaleFactor / 100f; // Assuming FBX in cm, to m
+            float modelScale = unitScaleFactor; // this is where it was originally divided by 100.0f to convert cm to m
             // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Z-up Y-forward)
             int[] sourceToTarget = new int[3];
             sourceToTarget[coordAxis] = 0; // Source coord -> target X
@@ -162,7 +162,7 @@ namespace SiegeEngine.Core.AssetParsing
             sourceToTarget[upAxis] = 2; // Source up -> target Z
             int[] signs = new int[3];
             signs[coordAxis] = coordAxisSign;
-            signs[frontAxis] = -frontAxisSign; // User's fix for inversion
+            signs[frontAxis] = -frontAxisSign; //this is required for some reason, because I'm getting a mirrored image instead of a rotation?
             signs[upAxis] = upAxisSign;
             // DONT TOUCH THIS CODE ABOVE
             // Build P4

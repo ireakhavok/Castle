@@ -11,9 +11,9 @@ namespace SiegeEngine.PlayerSystem
 {
     public class PlayerMovement
     {
-        private readonly float _speed = 8.0f;
-        private readonly float _gridWidth = 125.0f;
-        private readonly float _gridHeight = 75.0f;
+        private readonly float _speed = 80.0f;
+        private readonly float _gridWidth = 12500.0f;
+        private readonly float _gridHeight = 7500.0f;
         private readonly ClientPredictionSystem _predictionSystem;
         private readonly InputHandler _inputHandler;
         private readonly EventBus _eventBus;
