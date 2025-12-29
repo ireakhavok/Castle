@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetParsing;
+﻿// Folder: ReadingChamber
+// File: AssetViewerPanel.cs
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -12,6 +14,7 @@ using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.AssetParsing.Model;
+using System.Linq;
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -122,11 +125,33 @@ namespace ReadingChamber
                 _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
                 // Compute bind poses after loading the model
                 _model.ComputeBindPoses();
+                // Log bone info for debugging
+                LogBoneHierarchy(_model.Skeleton, "Main Model");
+                LogWeightsSummary();
             }
             else
             {
                 Console.WriteLine("AssetViewerPanel: Failed to load selected model");
             }
+        }
+        private void LogBoneHierarchy(Skeleton skeleton, string label)
+        {
+            if (skeleton == null) return;
+            Console.WriteLine($"{label} Bone Hierarchy (sorted by name for comparison):");
+            var sortedBones = skeleton.Bones.OrderBy(b => b.Name.ToLowerInvariant()).ToList();
+            for (int i = 0; i < sortedBones.Count; i++)
+            {
+                var bone = sortedBones[i];
+                int originalIdx = skeleton.Bones.IndexOf(bone);
+                Console.WriteLine($"Sorted {i} (orig {originalIdx}): {bone.Name}, Parent: {bone.ParentIndex}, Type: {bone.BoneType}, Size: {bone.Size}");
+            }
+        }
+        private void LogWeightsSummary()
+        {
+            if (_model.Meshes.Count == 0) return;
+            var mesh = _model.Meshes[0];
+            int unweighted = mesh.Vertices.Count(v => v.Weight0 + v.Weight1 + v.Weight2 + v.Weight3 == 0);
+            Console.WriteLine($"Weights Summary: Total verts {mesh.Vertices.Count}, Unweighted {unweighted}");
         }
         private void DiscoverAnimationFiles()
         {
@@ -144,6 +169,7 @@ namespace ReadingChamber
             var objectsById = FBXParser.GatherObjectsById(objectsNode);
             var conns = FBXParser.GatherConnections(animForest);
             var animModel = FBXParser.BuildModelFromForest(animForest);
+            LogBoneHierarchy(animModel.Skeleton, "Animation File");
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {
@@ -151,29 +177,49 @@ namespace ReadingChamber
                 anim.Name = Path.GetFileNameWithoutExtension(animPath);
                 if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0)
                 {
-                    _model.Skeleton = animModel.Skeleton;
-                    Console.WriteLine("Copied skeleton from animation model to main model");
-                    // Compute bind poses after copying skeleton
-                    _model.ComputeBindPoses();
+                    Console.WriteLine("Main model has no skeleton, skipping animation load to avoid mismatches");
+                    return;
                 }
-                // Remap keyframes to main model's skeleton by name with retargeting
-                Dictionary<string, int> mainBoneIndices = new Dictionary<string, int>();
-                for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+                // Build hierarchy trees for matching
+                var mainTree = BuildBoneTree(_model.Skeleton);
+                var animTree = BuildBoneTree(animModel.Skeleton);
+                // Adjust for potential extra root in main (e.g., "Armature")
+                int mainRoot = mainTree.Keys.FirstOrDefault(k => !mainTree.Values.Any(children => children.Contains(k)));
+                if (_model.Skeleton.Bones[mainRoot].Name.ToLowerInvariant() == "armature")
                 {
-                    mainBoneIndices[_model.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
+                    // Assume next is effective root
+                    if (mainTree[mainRoot].Count == 1)
+                    {
+                        mainRoot = mainTree[mainRoot][0];
+                        Console.WriteLine("Detected extra 'Armature' root in main model, using child as effective root for matching");
+                    }
                 }
+                int animRoot = animTree.Keys.FirstOrDefault(k => !animTree.Values.Any(children => children.Contains(k)));
+                if (animRoot == -1)
+                {
+                    Console.WriteLine("No root found in anim hierarchy, skipping");
+                    return;
+                }
+                // Match hierarchies
+                var boneMap = MatchBoneHierarchies(mainTree, animTree, mainRoot, animRoot, animModel);
+                if (boneMap.Count < _model.Skeleton.Bones.Count * 0.8f)
+                {
+                    Console.WriteLine($"Insufficient hierarchy matching ({boneMap.Count}/{_model.Skeleton.Bones.Count}), skipping animation");
+                    return;
+                }
+                // Remap keyframes using hierarchy-matched indices
                 HashSet<int> mappedBones = new HashSet<int>();
                 foreach (var kf in anim.Keyframes)
                 {
-                    List<Matrix4x4> newTransforms = new List<Matrix4x4>();
+                    List<Matrix4x4> newTransforms = new List<Matrix4x4>(_model.Skeleton.Bones.Count);
                     for (int j = 0; j < _model.Skeleton.Bones.Count; j++)
                     {
                         newTransforms.Add(_model.Skeleton.Bones[j].LocalRest);
                     }
                     for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
                     {
-                        string boneName = animModel.Skeleton.Bones[i].Name.ToLowerInvariant();
-                        if (mainBoneIndices.TryGetValue(boneName, out int targetIdx))
+                        string boneName = NormalizeBoneName(animModel.Skeleton.Bones[i].Name);
+                        if (boneMap.TryGetValue(boneName, out int targetIdx))
                         {
                             Matrix4x4 local = kf.BoneTransforms[i];
                             if (Matrix4x4.Invert(animModel.Skeleton.Bones[i].LocalRest, out Matrix4x4 invAnimRest))
@@ -192,12 +238,12 @@ namespace ReadingChamber
                         }
                         else
                         {
-                            Console.WriteLine($"Warning: Bone {boneName} from animation not found in main model");
+                            Console.WriteLine($"Warning: Bone {animModel.Skeleton.Bones[i].Name} (norm: {boneName}) from animation not matched in main hierarchy");
                         }
                     }
                     kf.BoneTransforms = newTransforms;
                 }
-                Console.WriteLine($"Mapped {mappedBones.Count} unique bones for animation {anim.Name}");
+                Console.WriteLine($"Mapped {mappedBones.Count} unique bones for animation {anim.Name} via hierarchy matching");
                 if (mappedBones.Count < _model.Skeleton.Bones.Count)
                 {
                     Console.WriteLine($"Warning: Not all bones mapped for animation {anim.Name} ({mappedBones.Count}/{_model.Skeleton.Bones.Count})");
@@ -216,10 +262,55 @@ namespace ReadingChamber
                 // Copy weights if main model has unweighted vertices
                 if (_model.HasUnweightedVertices())
                 {
-                    _model.CopyWeightsFrom(animModel);
-                    Console.WriteLine($"Copied weights from animation model to main model for {anim.Name}");
-                    // Update VBOs with new vertex data (weights updated)
-                    UpdateModelBuffers();
+                    // Remap bone IDs in weights using boneMap
+                    var idMap = new Dictionary<int, int>(); // anim bone idx to main bone idx
+                    for (int animI = 0; animI < animModel.Skeleton.Bones.Count; animI++)
+                    {
+                        string name = NormalizeBoneName(animModel.Skeleton.Bones[animI].Name);
+                        if (boneMap.TryGetValue(name, out int mainI))
+                        {
+                            idMap[animI] = mainI;
+                        }
+                    }
+                    if (idMap.Count < animModel.Skeleton.Bones.Count * 0.8f)
+                    {
+                        Console.WriteLine("Insufficient bone ID mapping for weight copy, skipping");
+                    }
+                    else
+                    {
+                        for (int mi = 0; mi < _model.Meshes.Count && mi < animModel.Meshes.Count; mi++)
+                        {
+                            var mainMesh = _model.Meshes[mi];
+                            var animMesh = animModel.Meshes[mi];
+                            if (mainMesh.Vertices.Count != animMesh.Vertices.Count)
+                            {
+                                Console.WriteLine($"Vertex count mismatch for mesh {mi}, skipping weight copy");
+                                continue;
+                            }
+                            for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
+                            {
+                                var animV = animMesh.Vertices[vi];
+                                var mainV = mainMesh.Vertices[vi];
+                                mainV.BoneID0 = idMap.GetValueOrDefault(animV.BoneID0, -1);
+                                mainV.BoneID1 = idMap.GetValueOrDefault(animV.BoneID1, -1);
+                                mainV.BoneID2 = idMap.GetValueOrDefault(animV.BoneID2, -1);
+                                mainV.BoneID3 = idMap.GetValueOrDefault(animV.BoneID3, -1);
+                                mainV.Weight0 = animV.Weight0;
+                                mainV.Weight1 = animV.Weight1;
+                                mainV.Weight2 = animV.Weight2;
+                                mainV.Weight3 = animV.Weight3;
+                                mainMesh.Vertices[vi] = mainV;
+                            }
+                        }
+                        Console.WriteLine($"Copied and remapped weights from animation model to main model for {anim.Name}");
+                        // Update VBOs with new vertex data (weights updated)
+                        UpdateModelBuffers();
+                        _model.HasSkin = true;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("No weight copy needed: Main model already weighted");
                 }
                 // Switch to animation shader if skin present
                 if (_model.HasSkin)
@@ -232,6 +323,107 @@ namespace ReadingChamber
             {
                 Console.WriteLine($"No valid animations found in {animPath}");
             }
+        }
+        private Dictionary<int, List<int>> BuildBoneTree(Skeleton skeleton)
+        {
+            var tree = new Dictionary<int, List<int>>();
+            for (int i = 0; i < skeleton.Bones.Count; i++)
+            {
+                tree[i] = new List<int>();
+            }
+            for (int i = 0; i < skeleton.Bones.Count; i++)
+            {
+                int parent = skeleton.Bones[i].ParentIndex;
+                if (parent != -1)
+                {
+                    tree[parent].Add(i);
+                }
+            }
+            return tree;
+        }
+        private Dictionary<string, int> MatchBoneHierarchies(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainRoot, int animRoot, FBXModel animModel)
+        {
+            var boneMap = new Dictionary<string, int>();
+            // Check if roots match, if not try fallback
+            string mainRootName = NormalizeBoneName(_model.Skeleton.Bones[mainRoot].Name);
+            string animRootName = NormalizeBoneName(animModel.Skeleton.Bones[animRoot].Name);
+            if (mainRootName != animRootName)
+            {
+                Console.WriteLine($"Root names don't match: Main {mainRootName} vs Anim {animRootName}. Attempting fallback matching.");
+                // Fallback: Match main root's children to anim root's children if structures align
+                var mainRootChildren = mainTree[mainRoot];
+                if (mainRootChildren.Count == 1)
+                {
+                    int mainEffectiveRoot = mainRootChildren[0];
+                    if (MatchStructures(mainTree, animTree, mainEffectiveRoot, animRoot, animModel))
+                    {
+                        mainRoot = mainEffectiveRoot;
+                        Console.WriteLine("Fallback successful: Using main's effective root for matching.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Fallback failed: Structures don't align.");
+                        return boneMap;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Fallback not possible: Main root has multiple children.");
+                    return boneMap;
+                }
+            }
+            // Recursive match from roots
+            MatchBoneSubtree(mainRoot, animRoot, mainTree, animTree, _model.Skeleton, animModel.Skeleton, boneMap);
+            return boneMap;
+        }
+        private bool MatchStructures(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainIdx, int animIdx, FBXModel animModel)
+        {
+            var mainChildren = mainTree[mainIdx];
+            var animChildren = animTree[animIdx];
+            if (mainChildren.Count != animChildren.Count) return false;
+            var sortedMainChildren = mainChildren.OrderBy(c => NormalizeBoneName(_model.Skeleton.Bones[c].Name)).ToList();
+            var sortedAnimChildren = animChildren.OrderBy(c => NormalizeBoneName(animModel.Skeleton.Bones[c].Name)).ToList();
+            for (int i = 0; i < sortedMainChildren.Count; i++)
+            {
+                if (!MatchStructures(mainTree, animTree, sortedMainChildren[i], sortedAnimChildren[i], animModel)) return false;
+            }
+            return true;
+        }
+        private void MatchBoneSubtree(int mainIdx, int animIdx, Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, Skeleton mainSkeleton, Skeleton animSkeleton, Dictionary<string, int> boneMap)
+        {
+            string mainName = NormalizeBoneName(mainSkeleton.Bones[mainIdx].Name);
+            string animName = NormalizeBoneName(animSkeleton.Bones[animIdx].Name);
+            Console.WriteLine($"Matching bone: Main {mainSkeleton.Bones[mainIdx].Name} (norm: {mainName}) vs Anim {animSkeleton.Bones[animIdx].Name} (norm: {animName})");
+            if (mainName == animName)
+            {
+                boneMap[animName] = mainIdx;
+                Console.WriteLine("Match successful.");
+            }
+            else
+            {
+                Console.WriteLine("Name mismatch.");
+            }
+            var mainChildren = mainTree[mainIdx];
+            var animChildren = animTree[animIdx];
+            Console.WriteLine($"Child count: Main {mainChildren.Count} vs Anim {animChildren.Count}");
+            if (mainChildren.Count == animChildren.Count)
+            {
+                // Sort children by normalized name for order-independent matching
+                var sortedMainChildren = mainChildren.OrderBy(c => NormalizeBoneName(mainSkeleton.Bones[c].Name)).ToList();
+                var sortedAnimChildren = animChildren.OrderBy(c => NormalizeBoneName(animSkeleton.Bones[c].Name)).ToList();
+                for (int i = 0; i < sortedMainChildren.Count; i++)
+                {
+                    MatchBoneSubtree(sortedMainChildren[i], sortedAnimChildren[i], mainTree, animTree, mainSkeleton, animSkeleton, boneMap);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Child count mismatch, skipping subtree matching.");
+            }
+        }
+        private string NormalizeBoneName(string name)
+        {
+            return name.ToLowerInvariant().Replace("_", "").Replace("l", "left").Replace("r", "right");
         }
         private void UpdateModelBuffers()
         {

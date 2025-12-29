@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXSkeletonParser
@@ -72,7 +71,8 @@ namespace SiegeEngine.Core.AssetParsing
                                 float ry = Convert.ToSingle(p.properties[5].Value);
                                 float rz = Convert.ToSingle(p.properties[6].Value);
                                 Vector3 r_source = new Vector3(rx, ry, rz);
-                                bone.LclRotation = FBXCoordinateUtils.RemapRotation(r_source, sourceToTarget, signs);
+                                Vector3 remapped = FBXCoordinateUtils.RemapRotation(r_source, sourceToTarget, signs);
+                                bone.LclRotationDegrees = remapped; // Store as degrees, syncs radians
                             }
                             else if (pname == "Lcl Scaling" && p.properties.Count >= 7)
                             {
@@ -88,7 +88,8 @@ namespace SiegeEngine.Core.AssetParsing
                                 float pry = Convert.ToSingle(p.properties[5].Value);
                                 float prz = Convert.ToSingle(p.properties[6].Value);
                                 Vector3 pr_source = new Vector3(prx, pry, prz);
-                                bone.PreRotation = FBXCoordinateUtils.RemapRotation(pr_source, sourceToTarget, signs);
+                                Vector3 remapped = FBXCoordinateUtils.RemapRotation(pr_source, sourceToTarget, signs);
+                                bone.PreRotationDegrees = remapped;
                             }
                             else if (pname == "PostRotation" && p.properties.Count >= 7)
                             {
@@ -96,7 +97,8 @@ namespace SiegeEngine.Core.AssetParsing
                                 float poy = Convert.ToSingle(p.properties[5].Value);
                                 float poz = Convert.ToSingle(p.properties[6].Value);
                                 Vector3 po_source = new Vector3(pox, poy, poz);
-                                bone.PostRotation = FBXCoordinateUtils.RemapRotation(po_source, sourceToTarget, signs);
+                                Vector3 remapped = FBXCoordinateUtils.RemapRotation(po_source, sourceToTarget, signs);
+                                bone.PostRotationDegrees = remapped;
                             }
                             else if (pname == "RotationPivot" && p.properties.Count >= 7)
                             {
@@ -137,7 +139,7 @@ namespace SiegeEngine.Core.AssetParsing
                             }
                             else if (pname == "Size" && p.properties.Count >= 5)
                             {
-                                bone.Size = Convert.ToSingle(p.properties[4].Value) * modelScale;
+                                bone.Size = Convert.ToSingle(p.properties[4].Value) * modelScale; // Ensure scaling
                             }
                             else if (pname == "GeometricTranslation" && p.properties.Count >= 7)
                             {
@@ -153,7 +155,8 @@ namespace SiegeEngine.Core.AssetParsing
                                 float gry = Convert.ToSingle(p.properties[5].Value);
                                 float grz = Convert.ToSingle(p.properties[6].Value);
                                 Vector3 gr_source = new Vector3(grx, gry, grz);
-                                bone.GeometricRotation = FBXCoordinateUtils.RemapRotation(gr_source, sourceToTarget, signs);
+                                Vector3 remapped = FBXCoordinateUtils.RemapRotation(gr_source, sourceToTarget, signs);
+                                bone.GeometricRotationDegrees = remapped;
                             }
                             else if (pname == "GeometricScaling" && p.properties.Count >= 7)
                             {
@@ -170,7 +173,6 @@ namespace SiegeEngine.Core.AssetParsing
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = boneIndex++;
             }
-
             List<int> rootIndices = new List<int>();
             for (int i = 0; i < model.Skeleton.Bones.Count; i++)
             {
@@ -179,10 +181,8 @@ namespace SiegeEngine.Core.AssetParsing
                     rootIndices.Add(i);
                 }
             }
-
             return (boneIndexById, rootIndices);
         }
-
         public static void BuildHierarchy(FBXModel model, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById)
         {
             foreach (var conn in conns)
@@ -195,7 +195,6 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
         }
-
         public static void ApplyRootRotation(FBXModel model, Matrix4x4 rootRot, List<int> rootIndices)
         {
             for (int i = 0; i < model.Skeleton.Bones.Count; i++)
@@ -206,7 +205,6 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
         }
-
         private static void AddAncestorsAndDescendants(long boneId, HashSet<long> usedIds, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById)
         {
             // Add ancestors

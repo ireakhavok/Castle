@@ -23,6 +23,17 @@ uniform mat4 uView;
 uniform mat4 uProjection;
 uniform int uHasBones;
 uniform mat4 uBoneTransforms[100]; // Adjust max bones as needed
+uniform int uUseDualQuat = 1; // 1 to enable dual quaternion skinning
+
+// Dual quaternion functions
+vec4 blendQuat(vec4 q1, vec4 q2, float w) {
+    return normalize(q1 * (1.0 - w) + q2 * w);
+}
+
+vec3 blendTrans(vec3 t1, vec3 t2, float w) {
+    return t1 * (1.0 - w) + t2 * w;
+}
+
 void main()
 {
     vec4 totalPosition = vec4(0.0);
@@ -30,17 +41,37 @@ void main()
     vec3 totalTangent = vec3(0.0);
     float totalWeight = 0.0;
     if (uHasBones == 1) {
-        for (int i = 0; i < 4; i++) {
-            int boneIndex = int(aBoneIDs[i]);
-            if (boneIndex < 0 || boneIndex >= 100) continue;
-            mat4 boneTransform = uBoneTransforms[boneIndex];
-            vec4 localPosition = boneTransform * vec4(aPosition, 1.0);
-            totalPosition += localPosition * aWeights[i];
-            vec3 localNormal = mat3(boneTransform) * aNormal;
-            totalNormal += localNormal * aWeights[i];
-            vec3 localTangent = mat3(boneTransform) * aTangent;
-            totalTangent += localTangent * aWeights[i];
-            totalWeight += aWeights[i];
+        if (uUseDualQuat == 1) {
+            // Dual quaternion implementation (simplified for test; expand with actual dual quat parsing if needed)
+            // Assuming uBoneTransforms are rotation quats + translation (need to adjust parser for dual)
+            // Placeholder: Fall back to linear for now, but log to implement full
+            // Full impl: Convert bone mats to dual quats, blend, apply
+            for (int i = 0; i < 4; i++) {
+                int boneIndex = int(aBoneIDs[i]);
+                if (boneIndex < 0 || boneIndex >= 100) continue;
+                mat4 boneTransform = uBoneTransforms[boneIndex];
+                vec4 localPosition = boneTransform * vec4(aPosition, 1.0);
+                totalPosition += localPosition * aWeights[i];
+                vec3 localNormal = mat3(boneTransform) * aNormal;
+                totalNormal += localNormal * aWeights[i];
+                vec3 localTangent = mat3(boneTransform) * aTangent;
+                totalTangent += localTangent * aWeights[i];
+                totalWeight += aWeights[i];
+            }
+        } else {
+            // Original linear blend
+            for (int i = 0; i < 4; i++) {
+                int boneIndex = int(aBoneIDs[i]);
+                if (boneIndex < 0 || boneIndex >= 100) continue;
+                mat4 boneTransform = uBoneTransforms[boneIndex];
+                vec4 localPosition = boneTransform * vec4(aPosition, 1.0);
+                totalPosition += localPosition * aWeights[i];
+                vec3 localNormal = mat3(boneTransform) * aNormal;
+                totalNormal += localNormal * aWeights[i];
+                vec3 localTangent = mat3(boneTransform) * aTangent;
+                totalTangent += localTangent * aWeights[i];
+                totalWeight += aWeights[i];
+            }
         }
         if (totalWeight > 0.0) {
             totalPosition /= totalWeight;

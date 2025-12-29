@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXAnimationParser
@@ -64,7 +63,7 @@ namespace SiegeEngine.Core.AssetParsing
                     Vector3 defaultVal = trsType switch
                     {
                         "T" => bone.LclTranslation,
-                        "R" => bone.LclRotation,
+                        "R" => bone.LclRotationDegrees, // Use degrees
                         "S" => bone.LclScaling,
                         _ => Vector3.Zero
                     };
@@ -83,7 +82,7 @@ namespace SiegeEngine.Core.AssetParsing
                         }
                         else if (trsType == "R")
                         {
-                            val = FBXCoordinateUtils.RemapRotation(val_source, sourceToTarget, signs);
+                            val = FBXCoordinateUtils.RemapRotation(val_source, sourceToTarget, signs); // Degrees
                         }
                         else if (trsType == "S")
                         {
@@ -151,7 +150,6 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
         }
-
         private static (long[] keyTimes, float[] keyValues) GetCurveData(List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, long curveNodeId, string propName)
         {
             var curveConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == propName);
