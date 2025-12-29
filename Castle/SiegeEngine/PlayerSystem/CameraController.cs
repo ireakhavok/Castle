@@ -26,7 +26,7 @@ namespace SiegeEngine.PlayerSystem
         private float _distance = 200.0f;
         private readonly float _minDistance = 50.0f;
         private readonly float _maxDistance = 8000.0f;
-        private readonly float _zoomSpeed = 10000.0f;
+        private readonly float _zoomSpeed = 1000.0f;
         private readonly float _xSpeed = 2.0f;
         private readonly float _ySpeed = 2.0f;
         private readonly float _pitchMinLimit = -89f;
