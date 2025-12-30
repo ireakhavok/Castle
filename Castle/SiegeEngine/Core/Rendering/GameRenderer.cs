@@ -143,10 +143,11 @@ namespace SiegeEngine.Core.Rendering
                         _modelShader.Use();
                         _modelShader.SetMatrix4("uModel", modelMatrix);
                         _modelShader.SetUniform("uHasBones", modelComp.Model.HasSkin ? 1 : 0);
-                        if (modelComp.Model.HasSkin && modelComp.Model.Skeleton != null)
+                        if (modelComp.Model.HasSkin && modelComp.Model.Skeleton != null && modelComp.NormalBoneTransforms != null)
                         {
                             var transforms = modelComp.Model.Skeleton.GetTransforms();
                             _modelShader.SetMatrix4Array("uBoneTransforms", transforms);
+                            _modelShader.SetMatrix3Array("uNormalBoneTransforms", modelComp.NormalBoneTransforms);
                         }
                         foreach (var mmr in modelData.MeshRenders)
                         {

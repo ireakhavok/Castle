@@ -92,6 +92,7 @@ namespace SiegeEngine.Core.ContextManagement
         public void Uniform3(int location, float x, float y, float z) => _gl.Uniform3(location, x, y, z);
         public void Uniform4(int location, float x, float y, float z, float w) => _gl.Uniform4(location, x, y, z, w);
         public void UniformMatrix4(int location, uint count, bool transpose, float* value) => _gl.UniformMatrix4(location, count, transpose, value);
+        public void UniformMatrix3(int location, uint count, bool transpose, float* value) => _gl.UniformMatrix3(location, count, transpose, value);
         public int GetError() => (int)_gl.GetError();
         public bool IsVertexArray(uint array) => _gl.IsVertexArray(array);
         public bool IsBuffer(uint buffer) => _gl.IsBuffer(buffer);

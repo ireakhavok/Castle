@@ -1,4 +1,5 @@
-﻿namespace SiegeEngine.Core.ContextManagement
+﻿using System;
+namespace SiegeEngine.Core.ContextManagement
 {
     public unsafe interface IRenderContext
     {
@@ -64,6 +65,7 @@
         void Uniform3(int location, float x, float y, float z);
         void Uniform4(int location, float x, float y, float z, float w);
         void UniformMatrix4(int location, uint count, bool transpose, float* value);
+        void UniformMatrix3(int location, uint count, bool transpose, float* value);
         int GetError();
         bool IsVertexArray(uint array);
         bool IsBuffer(uint buffer);
