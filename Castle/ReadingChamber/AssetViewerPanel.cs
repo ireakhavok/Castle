@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetParsing;
+﻿// Folder: ReadingChamber
+// File: AssetViewerPanel.cs
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -468,8 +470,24 @@ namespace ReadingChamber
                 {
                     _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
                 }
+                // Re-set vertex attribute pointers to ensure correct setup
+                uint stride = 20 * (uint)sizeof(float);
+                _renderContext.EnableVertexAttribArray(0); // Position
+                _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
+                _renderContext.EnableVertexAttribArray(3); // Normal
+                _renderContext.VertexAttribPointer(3, 3, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(2); // UV
+                _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(6 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(4); // MaterialIndex
+                _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(5); // Tangent
+                _renderContext.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(6); // BoneIDs (as float)
+                _renderContext.VertexAttribPointer(6, 4, _renderContext.Enums.Float, false, stride, (void*)(12 * sizeof(float)));
+                _renderContext.EnableVertexAttribArray(7); // BoneWeights
+                _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
                 _renderContext.BindVertexArray(0);
-                Console.WriteLine($"Updated VBO for mesh {mi} with new weights");
+                Console.WriteLine($"Updated VBO for mesh {mi} with new weights and reset attribute pointers");
             }
             _model.HasSkin = true;
         }
