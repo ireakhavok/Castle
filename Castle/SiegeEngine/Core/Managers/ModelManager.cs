@@ -199,7 +199,7 @@ namespace SiegeEngine.Core.Managers
                 return (0, 0);
             }
         }
-        public unsafe void LoadModel(string filePath, HashSet<string> referencedGuids, Dictionary<string, string> guidToPath)
+        public void LoadModel(string filePath, HashSet<string> referencedGuids, Dictionary<string, string> guidToPath)
         {
             string key = Path.GetFileNameWithoutExtension(filePath).ToLower();
             string fbxDir = Path.GetDirectoryName(filePath);
@@ -207,6 +207,8 @@ namespace SiegeEngine.Core.Managers
             {
                 FBXFileForest forest = FBXParser.Load(filePath);
                 FBXModel model = FBXParser.BuildModelFromForest(forest);
+                model.FixUnweightedVertices();
+                model.ComputeBindPoses();
                 ModelData modelData = SetupModelData(model, fbxDir, forest);
                 _models[key] = model;
                 _modelData[key] = modelData;
@@ -389,7 +391,7 @@ namespace SiegeEngine.Core.Managers
                 _renderContext.EnableVertexAttribArray(5); // Tangent
                 _renderContext.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
                 _renderContext.EnableVertexAttribArray(6); // BoneIDs
-                _renderContext.VertexAttribPointer(6, 4, _renderContext.Enums.Float, false, stride, (void*)(12 * sizeof(float)));
+                _renderContext.VertexAttribIPointer(6, 4, _renderContext.Enums.Int, stride, (void*)(12 * sizeof(float)));
                 _renderContext.EnableVertexAttribArray(7); // BoneWeights
                 _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
                 _renderContext.BindVertexArray(0);

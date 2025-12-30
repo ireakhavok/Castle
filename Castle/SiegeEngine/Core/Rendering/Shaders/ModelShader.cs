@@ -9,7 +9,7 @@ layout (location = 2) in vec2 aTexCoord;
 layout (location = 3) in vec3 aNormal;
 layout (location = 4) in float aMaterialIndex;
 layout (location = 5) in vec3 aTangent;
-layout (location = 6) in vec4 aBoneIDs;
+layout (location = 6) in ivec4 aBoneIDs;
 layout (location = 7) in vec4 aBoneWeights;
 out vec2 vTexCoord;
 out vec3 vNormal;
@@ -24,26 +24,28 @@ uniform int uHasBones;
 void main()
 {
     vTexCoord = vec2(aTexCoord.x, aTexCoord.y);
-    vec4 totalPosition = vec4(aPosition, 1.0);
-    vec3 totalNormal = aNormal;
-    vec3 totalTangent = aTangent;
+    vec4 totalPosition = vec4(0.0);
+    vec3 totalNormal = vec3(0.0);
+    vec3 totalTangent = vec3(0.0);
     if (uHasBones == 1) {
-        totalPosition = vec4(0.0);
-        totalNormal = vec3(0.0);
-        totalTangent = vec3(0.0);
         for (int i = 0; i < 4; i++) {
-            int id = int(aBoneIDs[i]);
-            if (id < 0) continue;
+            int id = aBoneIDs[i];
+            if (id < 0 || id >= 128) continue;
             mat4 boneMat = uBoneTransforms[id];
             vec4 localPos = boneMat * vec4(aPosition, 1.0);
             totalPosition += localPos * aBoneWeights[i];
-            vec3 localNorm = mat3(boneMat) * aNormal;
+            mat3 normalMat = transpose(inverse(mat3(boneMat)));
+            vec3 localNorm = normalMat * aNormal;
             totalNormal += localNorm * aBoneWeights[i];
-            vec3 localTan = mat3(boneMat) * aTangent;
+            vec3 localTan = normalMat * aTangent;
             totalTangent += localTan * aBoneWeights[i];
         }
         totalNormal = normalize(totalNormal);
         totalTangent = normalize(totalTangent);
+    } else {
+        totalPosition = vec4(aPosition, 1.0);
+        totalNormal = aNormal;
+        totalTangent = aTangent;
     }
     mat3 normalMatrix = transpose(inverse(mat3(uModel)));
     vNormal = normalize(normalMatrix * totalNormal);
@@ -98,7 +100,8 @@ void main()
     vec3 norm = N;
     if (textureSize(uNormalMap[matIdx], 0).x > 0) {
         vec3 T = normalize(vTangent);
-        vec3 B = normalize(cross(N, T));
+        T = normalize(T - dot(T, N) * N);
+        vec3 B = cross(N, T);
         mat3 TBN = mat3(T, B, N);
         vec3 tangentNormal = texture(uNormalMap[matIdx], vTexCoord).rgb * 2.0 - 1.0;
         norm = normalize(TBN * tangentNormal);

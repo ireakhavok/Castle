@@ -1,5 +1,7 @@
 ﻿using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Interfaces;
+using Silk.NET.Maths;
 using System;
 using System.Numerics;
 namespace SiegeEngine.Systems
@@ -24,7 +26,18 @@ namespace SiegeEngine.Systems
                         var localTransforms = animation.GetBoneTransforms(animComp.Time);
                         var globalTransforms = modelComp.Model.Skeleton.ComputeGlobalTransforms(localTransforms);
                         var finalTransforms = modelComp.Model.Skeleton.ComputeFinalTransforms(globalTransforms);
+                        var normalTransforms = new Matrix3x3[finalTransforms.Length];
+                        for (int i = 0; i < finalTransforms.Length; i++)
+                        {
+                            Matrix4x4 mat = finalTransforms[i];
+                            normalTransforms[i] = new Matrix3x3(
+                                mat.M11, mat.M12, mat.M13,
+                                mat.M21, mat.M22, mat.M23,
+                                mat.M31, mat.M32, mat.M33
+                            ).Transpose().Inverse();
+                        }
                         modelComp.Model.Skeleton.UpdateTransforms(finalTransforms);
+                        modelComp.NormalBoneTransforms = normalTransforms;
                     }
                 }
             }

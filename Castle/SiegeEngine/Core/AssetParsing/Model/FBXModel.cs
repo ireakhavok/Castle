@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/Model/FBXModel.cs
-using SiegeEngine.Core.AssetParsing.Model;
+﻿using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
@@ -26,6 +24,16 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public bool HasUnweightedVertices()
         {
             return Meshes.Any(m => m.Vertices.Any(v => v.Weight0 + v.Weight1 + v.Weight2 + v.Weight3 == 0));
+        }
+        public void FixUnweightedVertices()
+        {
+            if (!HasUnweightedVertices()) return;
+            Console.WriteLine("Fixing unweighted vertices");
+            foreach (var mesh in Meshes)
+            {
+                AssignToClosestBone(mesh);
+            }
+            HasSkin = true;
         }
         public void CopyWeightsFrom(FBXModel other)
         {
