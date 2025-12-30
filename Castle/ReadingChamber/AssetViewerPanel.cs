@@ -1,6 +1,4 @@
-﻿// Folder: ReadingChamber
-// File: AssetViewerPanel.cs
-using SiegeEngine.Core.AssetParsing;
+﻿using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -43,6 +41,7 @@ namespace ReadingChamber
         private EditorTextRenderer _textRenderer;
         private ShaderProgram _textShader;
         private Matrix4x4[] _currentGlobalTransforms;
+        private Matrix3x3[] _currentNormalTransforms;
         private Vector3 _cameraPosition = new Vector3(0, 500, 0);
         private Vector3 _cameraTarget = Vector3.Zero;
         private Vector3 _cameraUp = Vector3.UnitZ;
@@ -121,6 +120,7 @@ namespace ReadingChamber
                 _time = 0f;
                 _playing = false;
                 _currentGlobalTransforms = null;
+                _currentNormalTransforms = null;
                 _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
                 _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
                 // Compute bind poses after loading the model
@@ -618,6 +618,17 @@ namespace ReadingChamber
                         var globalTransforms = _model.Skeleton.ComputeGlobalTransforms(localTransforms);
                         _currentGlobalTransforms = globalTransforms;
                         var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
+                        var normalTransforms = new Matrix3x3[finalTransforms.Length];
+                        for (int i = 0; i < finalTransforms.Length; i++)
+                        {
+                            Matrix4x4 mat = finalTransforms[i];
+                            normalTransforms[i] = new Matrix3x3(
+                                mat.M11, mat.M12, mat.M13,
+                                mat.M21, mat.M22, mat.M23,
+                                mat.M31, mat.M32, mat.M33
+                            ).Transpose().Inverse();
+                        }
+                        _currentNormalTransforms = normalTransforms;
                         _model.Skeleton.UpdateTransforms(finalTransforms);
                     }
                 }
@@ -718,10 +729,11 @@ namespace ReadingChamber
             _assetShader.SetUniform("uSpecularStrength", 0.05f);
             _assetShader.SetUniform("uShininess", 4.0f);
             _assetShader.SetUniform("uHasBones", _model.HasSkin ? 1 : 0);
-            if (_model.Skeleton != null && _model.HasSkin)
+            if (_model.HasSkin && _model.Skeleton != null && _currentNormalTransforms != null)
             {
                 var transforms = _model.Skeleton.GetTransforms();
                 _assetShader.SetMatrix4Array("uBoneTransforms", transforms);
+                _assetShader.SetMatrix3Array("uNormalBoneTransforms", _currentNormalTransforms);
             }
             foreach (var mmr in _modelData.MeshRenders)
             {

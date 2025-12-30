@@ -199,7 +199,7 @@ Folder: ReadingChamber
   - Class: AssetUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - AssetViewerPanel _parent
     - Methods:
@@ -234,10 +234,10 @@ Folder: SiegeEngine
   - Class: SwitchMenuEvent (Namespace: SiegeEngine.PlayerSystem)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic
 - File: Animation.cs
-  - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
+  - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
-      - Matrix4x4[] GetBoneTransforms(float time)
+      - constructor Matrix3x3( float m12,  float m13,  float m21,  float m22,  float m23,  float m31,  float m32,  float m33, float m11)
 - File: AnimationComponent.cs
   - Class: AnimationComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -254,10 +254,10 @@ Folder: SiegeEngine
   - Class: AnimationSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Numerics
     - Methods:
       - void Update(float deltaTime)
-        - Calls: _server.GetEntities, animation.GetBoneTransforms, modelComp.Model.Skeleton.ComputeFinalTransforms, modelComp.Model.Skeleton.ComputeGlobalTransforms, modelComp.Model.Skeleton.UpdateTransforms
+        - Calls: Inverse, Matrix3x3, Transpose, _server.GetEntities, animation.GetBoneTransforms, modelComp.Model.Skeleton.ComputeFinalTransforms, modelComp.Model.Skeleton.ComputeGlobalTransforms, modelComp.Model.Skeleton.UpdateTransforms
 - File: AssetShader.cs
   - Class: AssetShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -369,6 +369,14 @@ Folder: SiegeEngine
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Threading.Tasks
     - Fields:
+      - Vector3 _lclRotationDegrees
+      - Vector3 _lclRotationRadians
+      - Vector3 _preRotationDegrees
+      - Vector3 _preRotationRadians
+      - Vector3 _postRotationDegrees
+      - Vector3 _postRotationRadians
+      - Vector3 _geometricRotationDegrees
+      - Vector3 _geometricRotationRadians
       - Matrix4x4 Geo
     - Methods:
       - Matrix4x4 ComputeLocal()
@@ -753,6 +761,8 @@ Folder: SiegeEngine
     - Methods:
       - constructor FBXModel()
       - bool HasUnweightedVertices()
+      - void FixUnweightedVertices()
+        - Calls: AssignToClosestBone, HasUnweightedVertices
       - void CopyWeightsFrom(FBXModel other)
         - Calls: AssignToClosestBone, AssignToRootBone
       - else AssignToClosestBone()
@@ -853,7 +863,7 @@ Folder: SiegeEngine
       - void SetViewport( int height, int width)
         - Calls: _renderContext.Viewport
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: Clear, PlayerMovement, _gridShader.SetMatrix4, _gridShader.Use, _modelManager.TryGetModelData, _modelShader.SetMatrix4, _modelShader.SetMatrix4Array, _modelShader.SetUniform, _modelShader.Use, _player.Update, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawArrays, _renderContext.DrawElements, _waterShader.SetMatrix4, _waterShader.Use, modelComp.Model.Skeleton.GetTransforms
+        - Calls: Clear, PlayerMovement, _gridShader.SetMatrix4, _gridShader.Use, _modelManager.TryGetModelData, _modelShader.SetMatrix3Array, _modelShader.SetMatrix4, _modelShader.SetMatrix4Array, _modelShader.SetUniform, _modelShader.Use, _player.Update, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawArrays, _renderContext.DrawElements, _waterShader.SetMatrix4, _waterShader.Use, modelComp.Model.Skeleton.GetTransforms
       - void Resize( int height, int width)
         - Calls: SetViewport
       - void Dispose()
@@ -981,6 +991,7 @@ Folder: SiegeEngine
       - void OnPanelResize( float h, float w)
 - File: IRenderContext.cs
   - Class: IRenderContext (Namespace: SiegeEngine.Core.ContextManagement)
+    - Dependencies: System
 - File: IRenderer.cs
   - Class: IRenderer (Namespace: SiegeEngine.Core.Interfaces)
     - Inherits: IDisposable
@@ -1205,6 +1216,19 @@ Folder: SiegeEngine
 - File: MaterialProperties.cs
   - Class: MaterialProperties (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System
+- File: Matrix3x3.cs
+  - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Numerics
+    - Methods:
+      - constructor Matrix3x3(
+            float m11, 
+            float m21, 
+            float m31,  float m12,  float m13,  float m22,  float m23,  float m32,  float m33)
+      - Matrix3x3 Transpose()
+        - Calls: Matrix3x3
+      - constructor Matrix3x3()
+      - Matrix3x3 Inverse()
+        - Calls: Matrix3x3
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
@@ -1267,7 +1291,7 @@ Folder: SiegeEngine
   - Class: ModelComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, Silk.NET.Maths, System, System.Numerics
 - File: ModelManager.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
@@ -1694,7 +1718,7 @@ Folder: SiegeEngine
   - Class: ShaderProgram (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, System, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - uint _program
@@ -1716,6 +1740,8 @@ Folder: SiegeEngine
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
       - void SetMatrix4Array( Matrix4x4[] matrices, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
+      - void SetMatrix3Array( Matrix3x3[] matrices, string name)
+        - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix3
       - void Dispose()
         - Calls: _renderContext.DeleteProgram
 - File: ShaderSetup.cs
@@ -2200,12 +2226,12 @@ SiegeEngine.Core.AssetParsing.FBXParserBase
 SiegeEngine.Core.AssetParsing.FBXParserUtils
 SiegeEngine.Core.AssetParsing.FBXSkeletonParser
 SiegeEngine.Core.AssetParsing.MetaDataExporter
-SiegeEngine.Core.AssetParsing.Model.Animation
 SiegeEngine.Core.AssetParsing.Model.Bone
 SiegeEngine.Core.AssetParsing.Model.FBXModel
 SiegeEngine.Core.AssetParsing.Model.FBXVertex
 SiegeEngine.Core.AssetParsing.Model.Keyframe
 SiegeEngine.Core.AssetParsing.Model.Material
+SiegeEngine.Core.AssetParsing.Model.Matrix3x3
 SiegeEngine.Core.AssetParsing.Model.MeshData
 SiegeEngine.Core.AssetParsing.Model.Skeleton
 SiegeEngine.Core.AssetParsing.Model.TextureInfo
