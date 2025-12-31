@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetParsing.Model;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/Model/FBXModel.cs
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;

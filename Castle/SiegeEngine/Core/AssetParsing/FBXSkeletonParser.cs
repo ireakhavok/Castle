@@ -97,6 +97,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 float poy = Convert.ToSingle(p.properties[5].Value);
                                 float poz = Convert.ToSingle(p.properties[6].Value);
                                 Vector3 po_source = new Vector3(pox, poy, poz);
+                                po_source = -po_source; // Negate angles to correct directionality
                                 Vector3 remapped = FBXCoordinateUtils.RemapRotation(po_source, sourceToTarget, signs);
                                 bone.PostRotationDegrees = remapped;
                             }

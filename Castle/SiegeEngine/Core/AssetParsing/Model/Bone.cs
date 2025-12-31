@@ -118,16 +118,15 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
             Matrix4x4 invRp = Matrix4x4.CreateTranslation(-RotationPivot);
             Matrix4x4 Soff = Matrix4x4.CreateTranslation(ScalingOffset);
+            Matrix4x4 invSoff = Matrix4x4.CreateTranslation(-ScalingOffset);
             Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);
             Matrix4x4 invSp = Matrix4x4.CreateTranslation(-ScalingPivot);
             Matrix4x4 S = Matrix4x4.CreateScale(useS);
             Matrix4x4 Pre = CreateFromEuler(PreRotationDegrees, 0); // Always XYZ
             Matrix4x4 R = CreateFromEuler(useR, RotationOrder);
             Matrix4x4 Post = CreateFromEuler(PostRotationDegrees, 0); // Always XYZ
-            Matrix4x4 invPost;
-            Matrix4x4.Invert(Post, out invPost);
-            // FBX order: T * Roff * Rp * Pre * R * inv(Post) * inv(Rp) * Soff * Sp * S * inv(Sp)
-            Matrix4x4 local = T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp;
+            // Standard FBX order: T * Roff * Rp * Pre * R * Post * invRp * Soff * Sp * S * invSp * invSoff
+            Matrix4x4 local = T * Roff * Rp * Pre * R * Post * invRp * Soff * Sp * S * invSp * invSoff;
             return local;
         }
         public Matrix4x4 CreateFromEuler(Vector3 degrees, int order)

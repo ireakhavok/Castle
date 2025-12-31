@@ -2,7 +2,6 @@
 // File: AssetParsing/FBXCoordinateUtils.cs
 using System;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXCoordinateUtils
@@ -21,7 +20,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return result;
         }
-
         public static Vector3 RemapScale(Vector3 v, int[] sourceToTarget, int[] signs)
         {
             Vector3 result = Vector3.Zero;
@@ -36,7 +34,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return result;
         }
-
         public static Vector3 RemapRotation(Vector3 v, int[] sourceToTarget, int[] signs)
         {
             Vector3 result = Vector3.Zero;
@@ -51,7 +48,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return result;
         }
-
         public static int RemapRotationOrder(int order, int[] sourceToTarget)
         {
             int[] seq_source = GetOrderSequence(order);
@@ -62,7 +58,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return GetOrderFromSequence(seq_target);
         }
-
         private static int[] GetOrderSequence(int order)
         {
             switch (order)
@@ -76,7 +71,6 @@ namespace SiegeEngine.Core.AssetParsing
                 default: return new int[] { 0, 1, 2 };
             }
         }
-
         private static int GetOrderFromSequence(int[] seq)
         {
             string s = string.Join("", seq);
@@ -91,7 +85,6 @@ namespace SiegeEngine.Core.AssetParsing
                 default: return 0;
             }
         }
-
         public static float CalculateDeterminant(Matrix4x4 m)
         {
             float a = m.M22 * (m.M33 * m.M44 - m.M34 * m.M43) - m.M23 * (m.M32 * m.M44 - m.M34 * m.M42) + m.M24 * (m.M32 * m.M43 - m.M33 * m.M42);

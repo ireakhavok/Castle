@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine.Core
+// File: Systems/AnimationSystem.cs
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Interfaces;
 using Silk.NET.Maths;
