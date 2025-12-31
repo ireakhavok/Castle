@@ -37,11 +37,11 @@ namespace SiegeEngine.Core.AssetParsing
             }
 
             var nodeSummary = new Dictionary<string, object>
-    {
-        { "name", node.Name ?? "Unnamed" },
-        { "numProperties", node.numProperties },
-        { "childrenCount", node.children.Count }
-    };
+            {
+                { "name", node.Name ?? "Unnamed" },
+                { "numProperties", node.numProperties },
+                { "childrenCount", node.children.Count }
+            };
 
             var propSummaries = new List<Dictionary<string, object>>();
             foreach (var prop in node.properties)

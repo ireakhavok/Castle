@@ -5,12 +5,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class Animation
     {
         public string Name { get; set; }
         public List<Keyframe> Keyframes { get; set; } = new List<Keyframe>();
+
         public Matrix4x4[] GetBoneTransforms(float time)
         {
             if (Keyframes.Count == 0)
@@ -56,37 +58,21 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return interpolated;
         }
+
         private static bool DecomposeRobust(Matrix4x4 matrix, out Vector3 scale, out Quaternion rotation, out Vector3 translation)
         {
             translation = new Vector3(matrix.M41, matrix.M42, matrix.M43);
             var c0 = new Vector3(matrix.M11, matrix.M12, matrix.M13);
             var c1 = new Vector3(matrix.M21, matrix.M22, matrix.M23);
             var c2 = new Vector3(matrix.M31, matrix.M32, matrix.M33);
+            float det = MatrixDeterminant(new Matrix3x3(c0.X, c0.Y, c0.Z, c1.X, c1.Y, c1.Z, c2.X, c2.Y, c2.Z));
+            if (det < 0)
+            {
+                c2 = -c2;
+            }
             float sx = c0.Length();
             float sy = c1.Length();
             float sz = c2.Length();
-            // Compute determinant of the 3x3 part
-            Matrix3x3 m3 = new Matrix3x3(c0.X, c0.Y, c0.Z, c1.X, c1.Y, c1.Z, c2.X, c2.Y, c2.Z);
-            float det = MatrixDeterminant(m3);
-            if (det < 0)
-            {
-                // Flip the scale with the largest magnitude to make det positive
-                if (sx >= sy && sx >= sz)
-                {
-                    sx = -sx;
-                    c0 = -c0;
-                }
-                else if (sy >= sx && sy >= sz)
-                {
-                    sy = -sy;
-                    c1 = -c1;
-                }
-                else
-                {
-                    sz = -sz;
-                    c2 = -c2;
-                }
-            }
             scale = new Vector3(sx, sy, sz);
             if (Math.Abs(sx) < 1e-6f || Math.Abs(sy) < 1e-6f || Math.Abs(sz) < 1e-6f)
             {
@@ -106,6 +92,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             rotation = Quaternion.CreateFromRotationMatrix(rotMatrix);
             return true;
         }
+
         private struct Matrix3x3
         {
             public float M11, M12, M13;
@@ -118,6 +105,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 M31 = m31; M32 = m32; M33 = m33;
             }
         }
+
         private static float MatrixDeterminant(Matrix3x3 m)
         {
             return m.M11 * (m.M22 * m.M33 - m.M23 * m.M32) -

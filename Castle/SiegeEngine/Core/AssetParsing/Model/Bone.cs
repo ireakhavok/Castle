@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/Model/Bone.cs
+﻿// Folder: SiegeEngine
+// File: Core/AssetParsing/Model/Bone.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -125,7 +125,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4 Pre = CreateFromEuler(PreRotationDegrees, 0); // Always XYZ
             Matrix4x4 R = CreateFromEuler(useR, RotationOrder);
             Matrix4x4 Post = CreateFromEuler(PostRotationDegrees, 0); // Always XYZ
-            // Standard FBX order: T * Roff * Rp * Pre * R * Post * invRp * Soff * Sp * S * invSp * invSoff
+            // Standard FBX order: T * Roff * Rp * Pre * R * Post * inv(Rp) * Soff * Sp * S * inv(Sp) * inv(Soff)
             Matrix4x4 local = T * Roff * Rp * Pre * R * Post * invRp * Soff * Sp * S * invSp * invSoff;
             return local;
         }
@@ -156,6 +156,16 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 default:
                     return mx * my * mz;
             }
+        }
+        public Vector3 GetRotationPivotGlobal(Matrix4x4 parentGlobal)
+        {
+            Matrix4x4 T = Matrix4x4.CreateTranslation(LclTranslation);
+            Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
+            Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
+            Matrix4x4 partial = T * Roff * Rp;
+            Vector3 localPivot = new Vector3(0, 0, 0); // The origin after partial
+            Vector4 transformed = Vector4.Transform(new Vector4(localPivot, 1), parentGlobal * partial);
+            return new Vector3(transformed.X, transformed.Y, transformed.Z);
         }
     }
 }
