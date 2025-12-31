@@ -1,13 +1,21 @@
 Folder: Model
 - File: Animation.cs
-  - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
+  - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
-      - Matrix4x4[] GetBoneTransforms(float time)
+      - constructor Matrix3x3( float m12,  float m13,  float m21,  float m22,  float m23,  float m31,  float m32,  float m33, float m11)
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Threading.Tasks
     - Fields:
+      - Vector3 _lclRotationDegrees
+      - Vector3 _lclRotationRadians
+      - Vector3 _preRotationDegrees
+      - Vector3 _preRotationRadians
+      - Vector3 _postRotationDegrees
+      - Vector3 _postRotationRadians
+      - Vector3 _geometricRotationDegrees
+      - Vector3 _geometricRotationRadians
       - Matrix4x4 Geo
     - Methods:
       - Matrix4x4 ComputeLocal()
@@ -19,6 +27,8 @@ Folder: Model
     - Methods:
       - constructor FBXModel()
       - bool HasUnweightedVertices()
+      - void FixUnweightedVertices()
+        - Calls: AssignToClosestBone, HasUnweightedVertices
       - void CopyWeightsFrom(FBXModel other)
         - Calls: AssignToClosestBone, AssignToRootBone
       - else AssignToClosestBone()
@@ -43,6 +53,19 @@ Folder: Model
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
     - Methods:
       - constructor Material()
+- File: Matrix3x3.cs
+  - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Numerics
+    - Methods:
+      - constructor Matrix3x3(
+            float m11, 
+            float m21, 
+            float m31,  float m12,  float m13,  float m22,  float m23,  float m32,  float m33)
+      - Matrix3x3 Transpose()
+        - Calls: Matrix3x3
+      - constructor Matrix3x3()
+      - Matrix3x3 Inverse()
+        - Calls: Matrix3x3
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics
@@ -160,12 +183,12 @@ SiegeEngine.Core.AssetParsing.FBXParserBase
 SiegeEngine.Core.AssetParsing.FBXParserUtils
 SiegeEngine.Core.AssetParsing.FBXSkeletonParser
 SiegeEngine.Core.AssetParsing.MetaDataExporter
-SiegeEngine.Core.AssetParsing.Model.Animation
 SiegeEngine.Core.AssetParsing.Model.Bone
 SiegeEngine.Core.AssetParsing.Model.FBXModel
 SiegeEngine.Core.AssetParsing.Model.FBXVertex
 SiegeEngine.Core.AssetParsing.Model.Keyframe
 SiegeEngine.Core.AssetParsing.Model.Material
+SiegeEngine.Core.AssetParsing.Model.Matrix3x3
 SiegeEngine.Core.AssetParsing.Model.MeshData
 SiegeEngine.Core.AssetParsing.Model.Skeleton
 SiegeEngine.Core.AssetParsing.Model.TextureInfo
