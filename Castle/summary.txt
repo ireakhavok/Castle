@@ -382,6 +382,7 @@ Folder: SiegeEngine
       - Matrix4x4 ComputeLocal()
         - Calls: CreateFromEuler
       - Matrix4x4 CreateFromEuler( int order, Vector3 degrees)
+      - Vector3 GetRotationPivotGlobal(Matrix4x4 parentGlobal)
 - File: BrushRegistryUpdateEvent.cs
   - Class: BrushRegistryUpdateEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
