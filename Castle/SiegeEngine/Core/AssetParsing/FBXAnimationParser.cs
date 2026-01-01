@@ -83,6 +83,7 @@ namespace SiegeEngine.Core.AssetParsing
                         else if (trsType == "R")
                         {
                             val = FBXCoordinateUtils.RemapRotation(val_source, sourceToTarget, signs); // Degrees
+                            if (model.ReverseWinding) val = -val;
                         }
                         else if (trsType == "S")
                         {
