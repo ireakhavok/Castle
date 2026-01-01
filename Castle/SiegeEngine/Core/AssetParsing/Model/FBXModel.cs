@@ -136,13 +136,14 @@ namespace SiegeEngine.Core.AssetParsing.Model
             var restGlobals = Skeleton.ComputeGlobalTransforms(restLocals);
             for (int i = 0; i < Skeleton.Bones.Count; i++)
             {
-                if (!Matrix4x4.Invert(restGlobals[i], out Matrix4x4 invRestGlobal))
+                Matrix4x4 global = Matrix4x4.Transpose(restGlobals[i]);
+                if (!Matrix4x4.Invert(global, out Matrix4x4 invRestGlobal))
                 {
                     Console.WriteLine($"Failed to invert rest global for bone {i} ({Skeleton.Bones[i].Name})");
                     Skeleton.Bones[i].BindPose = Matrix4x4.Identity;
                     continue;
                 }
-                Skeleton.Bones[i].BindPose = invRestGlobal;
+                Skeleton.Bones[i].BindPose = Matrix4x4.Transpose(invRestGlobal);
             }
             Console.WriteLine("Computed bind poses for skeleton");
         }
