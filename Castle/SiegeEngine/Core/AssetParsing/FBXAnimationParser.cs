@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXAnimationParser
@@ -75,24 +76,8 @@ namespace SiegeEngine.Core.AssetParsing
                         float vy = FBXParserUtils.GetValueAtTime(keyTimesY, keyValuesY, kt, defaultVal.Y);
                         float vz = FBXParserUtils.GetValueAtTime(keyTimesZ, keyValuesZ, kt, defaultVal.Z);
                         Vector3 val_source = new Vector3(vx, vy, vz);
-                        Vector3 val;
-                        if (trsType == "T")
-                        {
-                            val = FBXCoordinateUtils.RemapVector(val_source, sourceToTarget, signs) * modelScale;
-                        }
-                        else if (trsType == "R")
-                        {
-                            val = FBXCoordinateUtils.RemapRotation(val_source, sourceToTarget, signs); // Degrees
-                            if (model.ReverseWinding) val = -val;
-                        }
-                        else if (trsType == "S")
-                        {
-                            val = FBXCoordinateUtils.RemapScale(val_source, sourceToTarget, signs);
-                        }
-                        else
-                        {
-                            val = val_source;
-                        }
+                        Vector3 val = val_source;
+                        if (trsType == "T") val *= modelScale;
                         if (!timeBoneTRS.TryGetValue(t, out var boneTRS))
                         {
                             boneTRS = new Dictionary<int, Dictionary<string, Vector3>>();
@@ -122,6 +107,7 @@ namespace SiegeEngine.Core.AssetParsing
                         Vector3? animR = trsVals.ContainsKey("R") ? (Vector3?)trsVals["R"] : null;
                         Vector3? animS = trsVals.ContainsKey("S") ? (Vector3?)trsVals["S"] : null;
                         Matrix4x4 local = model.Skeleton.Bones[boneIdx].ComputeLocal(animT, animR, animS);
+                        local = model.P4 * local * model.InvP4;
                         if (rootIndices.Contains(boneIdx))
                         {
                             local = rootRot * local;

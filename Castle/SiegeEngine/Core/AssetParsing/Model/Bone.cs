@@ -126,7 +126,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4 R = CreateFromEuler(useR, RotationOrder);
             Matrix4x4 Post = CreateFromEuler(PostRotationDegrees, 0); // Always XYZ
             // Standard FBX order: T * Roff * Rp * Pre * R * Post * inv(Rp) * Soff * Sp * S * inv(Sp) * inv(Soff)
-            Matrix4x4 local = T * Roff * Rp * Pre * R * Post * invRp * Soff * Sp * S * invSp * invSoff;
+            Matrix4x4 local = T * Roff * Rp * Pre * R * Post * invRp * Soff * Sp * S * invSp; // * invSoff;
             return local;
         }
         public Matrix4x4 CreateFromEuler(Vector3 degrees, int order)
