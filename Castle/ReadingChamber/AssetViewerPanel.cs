@@ -573,7 +573,7 @@ namespace ReadingChamber
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
             Vector2 relMouse = absMousePos - Position;
             bool over = relMouse.X >= 0 && relMouse.X <= Size.X && relMouse.Y >= TitleHeight && relMouse.Y <= Size.Y; // Below title
-            if (!over) return;
+            //if (!over) return;
             // Camera control
             float mouseX = relMouse.X;
             float mouseY = relMouse.Y - TitleHeight; // Adjust for title
@@ -769,6 +769,7 @@ namespace ReadingChamber
             float currentY = TitleHeight + 10;
             if (_model?.Skeleton != null && _currentGlobalTransforms != null && _currentGlobalTransforms.Length == _model.Skeleton.Bones.Count)
             {
+                Console.WriteLine($"New frame.");
                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
                     if (currentY > Size.Y - 20) break; // Prevent overflow
@@ -777,6 +778,7 @@ namespace ReadingChamber
                     string info = $"{_model.Skeleton.Bones[i].Name}: Pos({pos.X:F2},{pos.Y:F2},{pos.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2})";
                     _textRenderer.RenderText(info, 10, currentY, (int)Size.X, (int)Size.Y, 12f);
                     currentY += 15;
+                    Console.WriteLine(info);
                 }
             }
             // Render 2px border

@@ -116,17 +116,19 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
-            Matrix4x4 invRp = Matrix4x4.CreateTranslation(-RotationPivot);
+            Matrix4x4.Invert(Rp, out Matrix4x4 invRp); // More robust than negation
             Matrix4x4 Soff = Matrix4x4.CreateTranslation(ScalingOffset);
-            Matrix4x4 invSoff = Matrix4x4.CreateTranslation(-ScalingOffset);
+            Matrix4x4.Invert(Soff, out Matrix4x4 invSoff); // More robust than negation
             Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);
-            Matrix4x4 invSp = Matrix4x4.CreateTranslation(-ScalingPivot);
+            Matrix4x4.Invert(Sp, out Matrix4x4 invSp); // More robust than negation
             Matrix4x4 S = Matrix4x4.CreateScale(useS);
             Matrix4x4 Pre = CreateFromEuler(PreRotationDegrees, 0); // Always XYZ
             Matrix4x4 R = CreateFromEuler(useR, RotationOrder);
             Matrix4x4 Post = CreateFromEuler(PostRotationDegrees, 0); // Always XYZ
-            // Standard FBX order: T * Roff * Rp * Pre * R * Post * inv(Rp) * Soff * Sp * S * inv(Sp) * inv(Soff)
-            Matrix4x4 local = T * Roff * Rp * Pre * R * Post * invRp * Soff * Sp * S * invSp; // * invSoff;
+            Matrix4x4.Invert(Post, out Matrix4x4 invPost); // More robust than negation
+            // Standard FBX order: T * Roff * Rp * Pre * R * Post * inv(Rp) * Soff * Sp * S * inv(Sp) 
+            // originally was the values listed above. after looking at autodesk FBX below is accurate
+            Matrix4x4 local = T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp;
             return local;
         }
         public Matrix4x4 CreateFromEuler(Vector3 degrees, int order)
@@ -140,19 +142,19 @@ namespace SiegeEngine.Core.AssetParsing.Model
             switch (order)
             {
                 case 0: // eEulerXYZ
-                    return mz * my * mx;
-                case 1: // eEulerXZY
-                    return my * mz * mx;
-                case 2: // eEulerYZX
-                    return mx * mz * my;
-                case 3: // eEulerYXZ
-                    return mz * mx * my;
-                case 4: // eEulerZXY
-                    return my * mx * mz;
-                case 5: // eEulerZYX
                     return mx * my * mz;
-                case 6: // eSphericXYZ, approximate as XYZ
+                case 1: // eEulerXZY
+                    return mx * mz * my;
+                case 2: // eEulerYZX
+                    return my * mz * mx;
+                case 3: // eEulerYXZ
+                    return my * mx * mz;
+                case 4: // eEulerZXY
+                    return mz * mx * my;
+                case 5: // eEulerZYX
                     return mz * my * mx;
+                case 6: // eSphericXYZ, approximate as XYZ
+                    return mx * my * mz;
                 default:
                     return mz * my * mx;
             }
