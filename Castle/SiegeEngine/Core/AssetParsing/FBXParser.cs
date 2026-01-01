@@ -153,14 +153,15 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                 }
             }
-            // LEAVE THIS CODE ALONE: It converts units from FBX to SiegeEngine's internal units (meters) and remaps axes to Z-up Y-forward
-            float modelScale = unitScaleFactor; // this is where it was originally divided by 100.0f to convert cm to m
-            // Define axis remapping: source axis index to target axis index (0=X, 1=Y, 2=Z in target Z-up Y-forward)
-            int[] sourceToTarget = new int[3] { 0, 1, 2 };
-            int[] signs = new int[3] { 1, 1, 1 };
-            bool reverseWinding = false;
-            // DONT TOUCH THIS CODE ABOVE
-            // Build P4
+            float modelScale = unitScaleFactor;
+            int[] sourceToTarget = new int[3];
+            sourceToTarget[coordAxis] = 0;
+            sourceToTarget[frontAxis] = 1;
+            sourceToTarget[upAxis] = 2;
+            int[] signs = new int[3];
+            signs[coordAxis] = coordAxisSign;
+            signs[frontAxis] = -frontAxisSign; // Flip for Blender forward
+            signs[upAxis] = upAxisSign;
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
             for (int src = 0; src < 3; src++)
@@ -174,6 +175,7 @@ namespace SiegeEngine.Core.AssetParsing
                                0, 0, 0, 1);
             Matrix4x4 invP4 = Matrix4x4.Transpose(P4);
             float det = FBXCoordinateUtils.CalculateDeterminant(P4);
+            bool reverseWinding = det < 0;
             return (sourceToTarget, signs, modelScale, P4, invP4, reverseWinding);
         }
     }
