@@ -220,8 +220,7 @@ namespace ReadingChamber
                     }
                     for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
                     {
-                        string boneName = NormalizeBoneName(animModel.Skeleton.Bones[i].Name);
-                        if (boneMap.TryGetValue(boneName, out int targetIdx))
+                        if (boneMap.TryGetValue(i, out int targetIdx))
                         {
                             Matrix4x4 local = kf.BoneTransforms[i];
                             if (Matrix4x4.Invert(animModel.Skeleton.Bones[i].LocalRest, out Matrix4x4 invAnimRest))
@@ -233,14 +232,14 @@ namespace ReadingChamber
                             }
                             else
                             {
-                                Console.WriteLine($"Failed to invert anim rest for bone {boneName}, using anim local directly");
+                                Console.WriteLine($"Failed to invert anim rest for bone index {i} ({animModel.Skeleton.Bones[i].Name}), using anim local directly");
                                 newTransforms[targetIdx] = local;
                             }
                             mappedBones.Add(targetIdx);
                         }
                         else
                         {
-                            Console.WriteLine($"Warning: Bone {animModel.Skeleton.Bones[i].Name} (norm: {boneName}) from animation not matched in main hierarchy");
+                            Console.WriteLine($"Warning: Bone index {i} ({animModel.Skeleton.Bones[i].Name}) from animation not matched in main hierarchy");
                         }
                     }
                     kf.BoneTransforms = newTransforms;
@@ -268,8 +267,7 @@ namespace ReadingChamber
                     var idMap = new Dictionary<int, int>(); // anim bone idx to main bone idx
                     for (int animI = 0; animI < animModel.Skeleton.Bones.Count; animI++)
                     {
-                        string name = NormalizeBoneName(animModel.Skeleton.Bones[animI].Name);
-                        if (boneMap.TryGetValue(name, out int mainI))
+                        if (boneMap.TryGetValue(animI, out int mainI))
                         {
                             idMap[animI] = mainI;
                         }
@@ -343,9 +341,9 @@ namespace ReadingChamber
             }
             return tree;
         }
-        private Dictionary<string, int> MatchBoneHierarchies(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainRoot, int animRoot, FBXModel animModel)
+        private Dictionary<int, int> MatchBoneHierarchies(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainRoot, int animRoot, FBXModel animModel)
         {
-            var boneMap = new Dictionary<string, int>();
+            var boneMap = new Dictionary<int, int>();
             // Check if roots match, if not try fallback
             string mainRootName = NormalizeBoneName(_model.Skeleton.Bones[mainRoot].Name);
             string animRootName = NormalizeBoneName(animModel.Skeleton.Bones[animRoot].Name);
@@ -391,20 +389,13 @@ namespace ReadingChamber
             }
             return true;
         }
-        private void MatchBoneSubtree(int mainIdx, int animIdx, Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, Skeleton mainSkeleton, Skeleton animSkeleton, Dictionary<string, int> boneMap)
+        private void MatchBoneSubtree(int mainIdx, int animIdx, Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, Skeleton mainSkeleton, Skeleton animSkeleton, Dictionary<int, int> boneMap)
         {
             string mainName = NormalizeBoneName(mainSkeleton.Bones[mainIdx].Name);
             string animName = NormalizeBoneName(animSkeleton.Bones[animIdx].Name);
             Console.WriteLine($"Matching bone: Main {mainSkeleton.Bones[mainIdx].Name} (norm: {mainName}) vs Anim {animSkeleton.Bones[animIdx].Name} (norm: {animName})");
-            if (mainName == animName)
-            {
-                boneMap[animName] = mainIdx;
-                Console.WriteLine("Match successful.");
-            }
-            else
-            {
-                Console.WriteLine("Name mismatch.");
-            }
+            boneMap[animIdx] = mainIdx;
+            Console.WriteLine("Mapped by structure.");
             var mainChildren = mainTree[mainIdx];
             var animChildren = animTree[animIdx];
             Console.WriteLine($"Child count: Main {mainChildren.Count} vs Anim {animChildren.Count}");
@@ -425,7 +416,7 @@ namespace ReadingChamber
         }
         private string NormalizeBoneName(string name)
         {
-            return name.ToLowerInvariant().Replace("_", "").Replace("l", "left").Replace("r", "right");
+            return name.ToLowerInvariant().Replace("_", "");
         }
         private void UpdateModelBuffers()
         {
