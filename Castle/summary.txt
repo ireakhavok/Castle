@@ -771,7 +771,7 @@ Folder: SiegeEngine
       - void AssignToClosestBone(MeshData mainMesh)
         - Calls: Skeleton.ComputeGlobalTransforms
       - void ComputeBindPoses()
-        - Calls: Skeleton.ComputeGlobalTransforms
+        - Calls: Matrix4x4.Transpose, Skeleton.ComputeGlobalTransforms
 - File: FBXNode.cs
   - Class: FBXNode (Namespace: SiegeEngine.Core.AssetObjects)
     - Inherits: BaseNode
