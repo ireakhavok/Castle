@@ -1,11 +1,10 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/NodeParser.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class NodeParser
@@ -48,18 +47,6 @@ namespace SiegeEngine.Core.AssetParsing
                         {
                             Console.WriteLine("End of content found, hex dump disabled.");
                             break;
-                            //long remainingBytes = fileLength - reader.BaseStream.Position;
-                            //if (remainingBytes > 0)
-                            //{
-                            // byte[] remainingData = reader.ReadBytes((int)remainingBytes);
-                            // Console.WriteLine("Remaining file content as hex dump:");
-                            // PrintHexDump(remainingData);
-                            // // Optional: Still print as ASCII if desired
-                            // // string asciiContent = Encoding.ASCII.GetString(remainingData);
-                            // // Console.WriteLine("Remaining file content as ASCII:");
-                            // // Console.WriteLine(asciiContent);
-                            //}
-                            //break; // Stop parsing since we've reached the end
                         }
                         else
                         {
@@ -100,55 +87,10 @@ namespace SiegeEngine.Core.AssetParsing
                 catch (Exception ex)
                 {
                     FBXParserBase.Log($"FBXParser: Error reading node at position {nodeStart}: {ex.Message}");
-                    reader.BaseStream.Seek(nodeStart + Math.Min(nullRecordSize, fileLength - nodeStart), SeekOrigin.Begin);
-                    if (reader.BaseStream.Position < parentEndOffset)
-                    {
-                        FBXParserBase.Log($"FBXParser: Error: Excessive errors detected, seeking to parentEndOffset {parentEndOffset}");
-                        reader.BaseStream.Seek(parentEndOffset, SeekOrigin.Begin);
-                        break;
-                    }
+                    reader.BaseStream.Seek(nodeStart + nullRecordSize, SeekOrigin.Begin);
                     continue;
                 }
             }
-        }
-        private static void PrintHexDump(byte[] data)
-        {
-            const int bytesPerLine = 16;
-            for (int i = 0; i < data.Length; i += bytesPerLine)
-            {
-                // Print offset
-                Console.Write($"{i:X8} ");
-                // Print hex bytes
-                for (int j = 0; j < bytesPerLine; j++)
-                {
-                    if (i + j < data.Length)
-                    {
-                        Console.Write($"{data[i + j]:X2} ");
-                    }
-                    else
-                    {
-                        Console.Write(" "); // Padding for incomplete lines
-                    }
-                    if (j == 7) Console.Write(" "); // Mid-line separator
-                }
-                // Print ASCII representation
-                Console.Write(" | ");
-                for (int j = 0; j < bytesPerLine; j++)
-                {
-                    if (i + j < data.Length)
-                    {
-                        byte b = data[i + j];
-                        char c = b >= 32 && b <= 126 ? (char)b : '.';
-                        Console.Write(c);
-                    }
-                    else
-                    {
-                        Console.Write(" ");
-                    }
-                }
-                Console.WriteLine();
-            }
-            Console.WriteLine($"Total remaining bytes in footer (ending tag + buffer): {data.Length}");
         }
         private static void ParseProperties(BinaryReader reader, FBXNode node, long propStart, long propEnd, long numProperties, uint version)
         {
@@ -162,7 +104,7 @@ namespace SiegeEngine.Core.AssetParsing
                 }
                 else
                 {
-                    Console.WriteLine("pause");
+                    // Removed the Console.WriteLine("pause");
                 }
             }
             reader.BaseStream.Seek(propEnd, SeekOrigin.Begin);
@@ -307,23 +249,25 @@ namespace SiegeEngine.Core.AssetParsing
         {
             try
             {
-                MemoryStream ms = new MemoryStream(compressed);
-                // Check for zlib header
-                if (compressed.Length >= 2 && compressed[0] == 0x78 && (compressed[1] == 0x01 || compressed[1] == 0x5E || compressed[1] == 0x9C || compressed[1] == 0xDA))
+                using (var ms = new MemoryStream(compressed))
                 {
-                    ms.Seek(2, SeekOrigin.Begin); // Skip zlib header
-                }
-                using (var deflate = new DeflateStream(ms, CompressionMode.Decompress))
-                using (var decomMs = new MemoryStream())
-                {
-                    deflate.CopyTo(decomMs);
-                    byte[] decompressed = decomMs.ToArray();
-                    if (decompressed.Length != expectedLen)
+                    // Check for zlib header
+                    if (compressed.Length >= 2 && compressed[0] == 0x78 && (compressed[1] == 0x01 || compressed[1] == 0x5E || compressed[1] == 0x9C || compressed[1] == 0xDA))
                     {
-                        FBXParserBase.Log($"Decompression error: Expected {expectedLen} bytes, got {decompressed.Length}");
-                        return null;
+                        ms.Seek(2, SeekOrigin.Begin); // Skip zlib header
                     }
-                    return decompressed;
+                    using (var deflate = new DeflateStream(ms, CompressionMode.Decompress))
+                    using (var decomMs = new MemoryStream())
+                    {
+                        deflate.CopyTo(decomMs);
+                        byte[] decompressed = decomMs.ToArray();
+                        if (decompressed.Length != expectedLen)
+                        {
+                            FBXParserBase.Log($"Decompression error: Expected {expectedLen} bytes, got {decompressed.Length}");
+                            return null;
+                        }
+                        return decompressed;
+                    }
                 }
             }
             catch (Exception ex)

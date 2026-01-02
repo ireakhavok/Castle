@@ -1,10 +1,9 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXParserUtils.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using System;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Globalization;
 
 namespace SiegeEngine.Core.AssetParsing
 {
@@ -54,7 +53,6 @@ namespace SiegeEngine.Core.AssetParsing
                 return kv;
             }
         }
-
         public static double[] ParseRawArrayAsDouble(byte[] raw)
         {
             if (raw.Length < 12)
@@ -99,7 +97,6 @@ namespace SiegeEngine.Core.AssetParsing
                 return kv;
             }
         }
-
         public static byte[] DecompressData(byte[] compressed, int expectedLen)
         {
             try
@@ -124,7 +121,6 @@ namespace SiegeEngine.Core.AssetParsing
                 return null;
             }
         }
-
         public static float GetValueAtTime(long[] times, float[] values, long time, float defaultVal)
         {
             if (times == null || times.Length == 0 || values == null || values.Length == 0) return defaultVal;
@@ -134,7 +130,6 @@ namespace SiegeEngine.Core.AssetParsing
             idx = ~idx;
             if (idx == 0) return values[0];
             if (idx == len) return values[len - 1];
-            // Interpolate
             long t0 = times[idx - 1];
             long t1 = times[idx];
             float v0 = values[idx - 1];
@@ -142,13 +137,11 @@ namespace SiegeEngine.Core.AssetParsing
             float factor = (float)(time - t0) / (t1 - t0);
             return v0 + factor * (v1 - v0);
         }
-
         public static float[] ParseKeyValues(BaseNode keyValueNode, int expectedLength)
         {
             if (keyValueNode == null) return null;
             var prop = keyValueNode.properties[0];
             char typeCode = prop.TypeCode;
-            //Console.WriteLine($"KeyValue type: {typeCode}");
             float[] keyValues = null;
             if (typeCode == 'f')
             {
@@ -191,6 +184,33 @@ namespace SiegeEngine.Core.AssetParsing
                 return null;
             }
             return keyValues;
+        }
+        public static float GetPropertyFloat(object value)
+        {
+            if (value is float f) return f;
+            if (value is double d) return (float)d;
+            if (value is int i) return i;
+            if (value is long l) return (float)l;
+            if (value is string s) return float.Parse(s, CultureInfo.InvariantCulture);
+            throw new FormatException($"Invalid property value type for float: {value?.GetType()}");
+        }
+        public static int GetPropertyInt(object value)
+        {
+            if (value is int i) return i;
+            if (value is long l) return (int)l;
+            if (value is float f) return (int)f;
+            if (value is double d) return (int)d;
+            if (value is string s) return int.Parse(s, CultureInfo.InvariantCulture);
+            throw new FormatException($"Invalid property value type for int: {value?.GetType()}");
+        }
+        public static double GetPropertyDouble(object value)
+        {
+            if (value is double d) return d;
+            if (value is float f) return f;
+            if (value is int i) return i;
+            if (value is long l) return l;
+            if (value is string s) return double.Parse(s, CultureInfo.InvariantCulture);
+            throw new FormatException($"Invalid property value type for double: {value?.GetType()}");
         }
     }
 }

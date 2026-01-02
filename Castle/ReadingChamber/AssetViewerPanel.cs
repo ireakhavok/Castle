@@ -1,6 +1,4 @@
-﻿// Folder: ReadingChamber
-// File: AssetViewerPanel.cs
-using SiegeEngine.Core.AssetParsing;
+﻿using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -15,6 +13,7 @@ using System.Text;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.AssetParsing.Model;
 using System.Linq;
+
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -209,6 +208,23 @@ namespace ReadingChamber
                     Console.WriteLine($"Insufficient hierarchy matching ({boneMap.Count}/{_model.Skeleton.Bones.Count}), skipping animation");
                     return;
                 }
+                // Compute transformation to align coordinate systems if different
+                Matrix4x4 trans = Matrix4x4.Identity;
+                Matrix4x4 invTrans = Matrix4x4.Identity;
+                bool axisMismatch = !_model.SourceToTarget.SequenceEqual(animModel.SourceToTarget) ||
+                                    !_model.Signs.SequenceEqual(animModel.Signs);
+                if (axisMismatch)
+                {
+                    Console.WriteLine("Different axis systems detected between main model and animation, applying correction");
+                    trans = _model.InvP4 * animModel.P4;
+                    invTrans = animModel.InvP4 * _model.P4;
+                }
+                float scaleFactor = _model.ModelScale / animModel.ModelScale;
+                bool scaleMismatch = Math.Abs(scaleFactor - 1f) > 1e-6f;
+                if (scaleMismatch)
+                {
+                    Console.WriteLine($"Different scale factors: main {_model.ModelScale}, anim {animModel.ModelScale}, applying factor {scaleFactor}");
+                }
                 // Remap keyframes using hierarchy-matched indices
                 HashSet<int> mappedBones = new HashSet<int>();
                 foreach (var kf in anim.Keyframes)
@@ -226,14 +242,39 @@ namespace ReadingChamber
                             if (Matrix4x4.Invert(animModel.Skeleton.Bones[i].LocalRest, out Matrix4x4 invAnimRest))
                             {
                                 Matrix4x4 delta = invAnimRest * local;
+                                if (axisMismatch)
+                                {
+                                    delta = trans * delta * invTrans;
+                                }
+                                if (scaleMismatch)
+                                {
+                                    if (Matrix4x4.Decompose(delta, out Vector3 s, out Quaternion r, out Vector3 t))
+                                    {
+                                        t *= scaleFactor;
+                                        delta = Matrix4x4.CreateScale(s) * Matrix4x4.CreateFromQuaternion(r) * Matrix4x4.CreateTranslation(t);
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine($"Failed to decompose delta for scale adjustment at time {kf.Time}");
+                                    }
+                                }
                                 Matrix4x4 modelRest = _model.Skeleton.Bones[targetIdx].LocalRest;
                                 Matrix4x4 newLocal = modelRest * delta;
                                 newTransforms[targetIdx] = newLocal;
                             }
                             else
                             {
-                                Console.WriteLine($"Failed to invert anim rest for bone index {i} ({animModel.Skeleton.Bones[i].Name}), using anim local directly");
-                                newTransforms[targetIdx] = local;
+                                Console.WriteLine($"Failed to invert anim rest for bone index {i} ({animModel.Skeleton.Bones[i].Name}), attempting direct conversion");
+                                Matrix4x4 localAdjusted = axisMismatch ? trans * local * invTrans : local;
+                                if (scaleMismatch)
+                                {
+                                    if (Matrix4x4.Decompose(localAdjusted, out Vector3 s, out Quaternion r, out Vector3 t))
+                                    {
+                                        t *= scaleFactor;
+                                        localAdjusted = Matrix4x4.CreateScale(s) * Matrix4x4.CreateFromQuaternion(r) * Matrix4x4.CreateTranslation(t);
+                                    }
+                                }
+                                newTransforms[targetIdx] = localAdjusted;
                             }
                             mappedBones.Add(targetIdx);
                         }
@@ -344,13 +385,11 @@ namespace ReadingChamber
         private Dictionary<int, int> MatchBoneHierarchies(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainRoot, int animRoot, FBXModel animModel)
         {
             var boneMap = new Dictionary<int, int>();
-            // Check if roots match, if not try fallback
             string mainRootName = NormalizeBoneName(_model.Skeleton.Bones[mainRoot].Name);
             string animRootName = NormalizeBoneName(animModel.Skeleton.Bones[animRoot].Name);
             if (mainRootName != animRootName)
             {
                 Console.WriteLine($"Root names don't match: Main {mainRootName} vs Anim {animRootName}. Attempting fallback matching.");
-                // Fallback: Match main root's children to anim root's children if structures align
                 var mainRootChildren = mainTree[mainRoot];
                 if (mainRootChildren.Count == 1)
                 {

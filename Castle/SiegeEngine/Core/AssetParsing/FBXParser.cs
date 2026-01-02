@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXParser.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Rendering;
 using System;
@@ -10,6 +8,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -129,8 +128,13 @@ namespace SiegeEngine.Core.AssetParsing
             int frontAxisSign = 1;
             int coordAxis = 0; // X
             int coordAxisSign = 1;
+            int coordSystem = 0; // 0: right-handed, 1: left-handed (assumed)
+            int coordSystemSign = 1;
             float unitScaleFactor = 1f;
             float originalUnitScaleFactor = 1f;
+            double frameRate = 30.0;
+            int timeMode = 0;
+            int snapOnFrameMode = 0;
             if (globalSettings != null)
             {
                 var props70 = globalSettings.children.FirstOrDefault(c => c.Name == "Properties70");
@@ -141,27 +145,48 @@ namespace SiegeEngine.Core.AssetParsing
                         if (p.Name == "P" && p.properties.Count >= 5)
                         {
                             string pname = (string)p.properties[0].Value;
-                            if (pname == "UpAxis") upAxis = Convert.ToInt32(p.properties[4].Value);
-                            else if (pname == "UpAxisSign") upAxisSign = Convert.ToInt32(p.properties[4].Value);
-                            else if (pname == "FrontAxis") frontAxis = Convert.ToInt32(p.properties[4].Value);
-                            else if (pname == "FrontAxisSign") frontAxisSign = Convert.ToInt32(p.properties[4].Value);
-                            else if (pname == "CoordAxis") coordAxis = Convert.ToInt32(p.properties[4].Value);
-                            else if (pname == "CoordAxisSign") coordAxisSign = Convert.ToInt32(p.properties[4].Value);
-                            else if (pname == "UnitScaleFactor") unitScaleFactor = Convert.ToSingle(p.properties[4].Value);
-                            else if (pname == "OriginalUnitScaleFactor") originalUnitScaleFactor = Convert.ToSingle(p.properties[4].Value);
+                            try
+                            {
+                                if (pname == "UpAxis") upAxis = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                else if (pname == "UpAxisSign") upAxisSign = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                else if (pname == "FrontAxis") frontAxis = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                else if (pname == "FrontAxisSign") frontAxisSign = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                else if (pname == "CoordAxis") coordAxis = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                else if (pname == "CoordAxisSign") coordAxisSign = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                else if (pname == "CoordSystem") coordSystem = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                else if (pname == "CoordSystemSign") coordSystemSign = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                else if (pname == "UnitScaleFactor") unitScaleFactor = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
+                                else if (pname == "OriginalUnitScaleFactor") originalUnitScaleFactor = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
+                                else if (pname == "FrameRate") frameRate = FBXParserUtils.GetPropertyDouble(p.properties[4].Value);
+                                else if (pname == "TimeMode") timeMode = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                else if (pname == "SnapOnFrameMode") snapOnFrameMode = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error parsing global setting '{pname}': {ex.Message}");
+                            }
                         }
                     }
                 }
             }
-            float modelScale = unitScaleFactor;
+            float modelScale = unitScaleFactor / originalUnitScaleFactor;
             int[] sourceToTarget = new int[3];
-            sourceToTarget[coordAxis] = 0;
-            sourceToTarget[frontAxis] = 1;
-            sourceToTarget[upAxis] = 2;
+            sourceToTarget[coordAxis] = 0; // Map to engine X
+            sourceToTarget[frontAxis] = 1; // Map to engine Y (forward)
+            sourceToTarget[upAxis] = 2; // Map to engine Z (up)
             int[] signs = new int[3];
             signs[coordAxis] = coordAxisSign;
-            signs[frontAxis] = -frontAxisSign; // Flip for Blender forward
+            signs[frontAxis] = frontAxisSign;
             signs[upAxis] = upAxisSign;
+            // Handle handedness
+            int handedness = (coordSystem == 0 ? 1 : -1) * coordSystemSign; // Assume 0 right, positive
+            if (handedness < 0)
+            {
+                signs[coordAxis] = -signs[coordAxis]; // Flip X to change handedness
+            }
+            // Engine-specific adjustment (e.g., flip forward if needed)
+            signs[frontAxis] = -signs[frontAxis]; // Assuming engine needs positive Y forward, flip if FBX has positive
+            Console.WriteLine($"Parsed global settings: UpAxis={upAxis} Sign={upAxisSign}, FrontAxis={frontAxis} Sign={frontAxisSign}, CoordAxis={coordAxis} Sign={coordAxisSign}, CoordSystem={coordSystem} Sign={coordSystemSign}, Scale={modelScale}, FrameRate={frameRate}");
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
             for (int src = 0; src < 3; src++)
@@ -173,7 +198,12 @@ namespace SiegeEngine.Core.AssetParsing
                                p3[1, 0], p3[1, 1], p3[1, 2], 0,
                                p3[2, 0], p3[2, 1], p3[2, 2], 0,
                                0, 0, 0, 1);
-            Matrix4x4 invP4 = Matrix4x4.Transpose(P4);
+            Matrix4x4 invP4;
+            if (!Matrix4x4.Invert(P4, out invP4))
+            {
+                Console.WriteLine("Failed to invert P4, using transpose as approximation");
+                invP4 = Matrix4x4.Transpose(P4);
+            }
             float det = FBXCoordinateUtils.CalculateDeterminant(P4);
             bool reverseWinding = det < 0;
             return (sourceToTarget, signs, modelScale, P4, invP4, reverseWinding);

@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXAnimationParser.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;

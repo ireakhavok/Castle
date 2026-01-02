@@ -1,11 +1,10 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXMeshParser.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXMeshParser
@@ -186,25 +185,25 @@ namespace SiegeEngine.Core.AssetParsing
                             string pname = (string)p.properties[0].Value;
                             if (pname == "GeometricTranslation")
                             {
-                                float gtx = Convert.ToSingle(p.properties[4].Value);
-                                float gty = Convert.ToSingle(p.properties[5].Value);
-                                float gtz = Convert.ToSingle(p.properties[6].Value);
+                                float gtx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
+                                float gty = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
+                                float gtz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
                                 Vector3 gt_source = new Vector3(gtx, gty, gtz);
                                 geoT = FBXCoordinateUtils.RemapVector(gt_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "GeometricRotation")
                             {
-                                float grx = Convert.ToSingle(p.properties[4].Value);
-                                float gry = Convert.ToSingle(p.properties[5].Value);
-                                float grz = Convert.ToSingle(p.properties[6].Value);
+                                float grx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
+                                float gry = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
+                                float grz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
                                 Vector3 gr_source = new Vector3(grx, gry, grz);
                                 geoR = FBXCoordinateUtils.RemapRotation(gr_source, sourceToTarget, signs);
                             }
                             else if (pname == "GeometricScaling")
                             {
-                                float gsx = Convert.ToSingle(p.properties[4].Value);
-                                float gsy = Convert.ToSingle(p.properties[5].Value);
-                                float gsz = Convert.ToSingle(p.properties[6].Value);
+                                float gsx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
+                                float gsy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
+                                float gsz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
                                 Vector3 gs_source = new Vector3(gsx, gsy, gsz);
                                 geoS = FBXCoordinateUtils.RemapScale(gs_source, sourceToTarget, signs);
                             }
@@ -606,12 +605,12 @@ namespace SiegeEngine.Core.AssetParsing
                             var wrapUP = texProps70.children.FirstOrDefault(p => p.Name == "P" && (string)p.properties[0].Value == "WrapModeU");
                             if (wrapUP != null && wrapUP.properties.Count >= 5)
                             {
-                                texInfo.WrapU = (int)wrapUP.properties[4].Value;
+                                texInfo.WrapU = FBXParserUtils.GetPropertyInt(wrapUP.properties[4].Value);
                             }
                             var wrapVP = texProps70.children.FirstOrDefault(p => p.Name == "P" && (string)p.properties[0].Value == "WrapModeV");
                             if (wrapVP != null && wrapVP.properties.Count >= 5)
                             {
-                                texInfo.WrapV = (int)wrapVP.properties[4].Value;
+                                texInfo.WrapV = FBXParserUtils.GetPropertyInt(wrapVP.properties[4].Value);
                             }
                         }
                         bool isEmbedded = false;
