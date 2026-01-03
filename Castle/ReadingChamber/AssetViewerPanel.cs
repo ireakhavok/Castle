@@ -89,16 +89,7 @@ namespace ReadingChamber
             _meshPath = path;
             var forest = FBXParser.Load(path);
             var parsedModel = FBXParser.BuildModelFromForest(forest);
-            _model = new FBXModel
-            {
-                Meshes = parsedModel.Meshes,
-                SourceToTarget = parsedModel.SourceToTarget,
-                Signs = parsedModel.Signs,
-                ModelScale = parsedModel.ModelScale,
-                P4 = parsedModel.P4,
-                InvP4 = parsedModel.InvP4,
-                ReverseWinding = parsedModel.ReverseWinding
-            };
+            _model = parsedModel;
             if (_model.HasUnweightedVertices())
             {
                 _model.FixUnweightedVertices();
@@ -118,14 +109,9 @@ namespace ReadingChamber
             }
             var oldSkeleton = _model.Skeleton;
             _model.Skeleton = parsedModel.Skeleton;
-            _model.SourceToTarget = parsedModel.SourceToTarget;
-            _model.Signs = parsedModel.Signs;
-            _model.ModelScale = parsedModel.ModelScale;
-            _model.P4 = parsedModel.P4;
-            _model.InvP4 = parsedModel.InvP4;
-            _model.ReverseWinding = parsedModel.ReverseWinding;
             if (oldSkeleton != null && _model.Meshes.Count > 0)
             {
+                // Create name to index maps
                 var nameToNewIndex = new Dictionary<string, int>();
                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
@@ -144,6 +130,34 @@ namespace ReadingChamber
                         oldToNewMap[kv.Value] = newI;
                     }
                 }
+                // Adjust armature coordinate system to match mesh
+                Matrix4x4 adjust = parsedModel.InvP4 * _model.P4;
+                float scaleAdjust = _model.ModelScale / parsedModel.ModelScale;
+                for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+                {
+                    var bone = _model.Skeleton.Bones[i];
+                    bone.LocalRest = adjust * bone.LocalRest;
+                    if (Matrix4x4.Decompose(bone.LocalRest, out Vector3 s, out Quaternion r, out Vector3 t))
+                    {
+                        t *= scaleAdjust;
+                        bone.LocalRest = Matrix4x4.CreateScale(s) * Matrix4x4.CreateFromQuaternion(r) * Matrix4x4.CreateTranslation(t);
+                    }
+                    bone.LclTranslation = FBXCoordinateUtils.RemapVector(bone.LclTranslation, _model.SourceToTarget, _model.Signs) * scaleAdjust;
+                    bone.LclRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.LclRotationDegrees, _model.SourceToTarget, _model.Signs);
+                    bone.LclScaling = FBXCoordinateUtils.RemapScale(bone.LclScaling, _model.SourceToTarget, _model.Signs);
+                    bone.PreRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.PreRotationDegrees, _model.SourceToTarget, _model.Signs);
+                    bone.PostRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.PostRotationDegrees, _model.SourceToTarget, _model.Signs);
+                    bone.RotationPivot = FBXCoordinateUtils.RemapVector(bone.RotationPivot, _model.SourceToTarget, _model.Signs) * scaleAdjust;
+                    bone.RotationOffset = FBXCoordinateUtils.RemapVector(bone.RotationOffset, _model.SourceToTarget, _model.Signs) * scaleAdjust;
+                    bone.ScalingPivot = FBXCoordinateUtils.RemapVector(bone.ScalingPivot, _model.SourceToTarget, _model.Signs) * scaleAdjust;
+                    bone.ScalingOffset = FBXCoordinateUtils.RemapVector(bone.ScalingOffset, _model.SourceToTarget, _model.Signs) * scaleAdjust;
+                    bone.GeometricTranslation = FBXCoordinateUtils.RemapVector(bone.GeometricTranslation, _model.SourceToTarget, _model.Signs) * scaleAdjust;
+                    bone.GeometricRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.GeometricRotationDegrees, _model.SourceToTarget, _model.Signs);
+                    bone.GeometricScaling = FBXCoordinateUtils.RemapScale(bone.GeometricScaling, _model.SourceToTarget, _model.Signs);
+                    bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(bone.RotationOrder, _model.SourceToTarget);
+                    bone.Size *= scaleAdjust;
+                }
+                // Remap bone IDs in meshes
                 foreach (var mesh in _model.Meshes)
                 {
                     for (int vi = 0; vi < mesh.Vertices.Count; vi++)
