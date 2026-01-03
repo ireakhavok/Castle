@@ -10,6 +10,7 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.UnityAssetLoader;
 using SiegeEngine.Core.AssetParsing.Model;
+
 namespace SiegeEngine.Core.Managers
 {
     public class ModelManager
@@ -219,6 +220,10 @@ namespace SiegeEngine.Core.Managers
                 Console.WriteLine($"ModelManager: Error: Failed to load {filePath}: {ex.Message}");
                 throw;
             }
+        }
+        public void AddModel(string key, FBXModel model)
+        {
+            _models[key.ToLower()] = model;
         }
         public unsafe ModelData SetupModelData(FBXModel model, string fbxDir, FBXFileForest forest)
         {

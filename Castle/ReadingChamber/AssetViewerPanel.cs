@@ -13,6 +13,7 @@ using System.Text;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.AssetParsing.Model;
 using System.Linq;
+using SiegeEngine.Core.AssetObjects;
 
 namespace ReadingChamber
 {
@@ -50,7 +51,9 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private string _path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
+        private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
+        private string _armaturePath = "";
+        private string _animationPath = "";
         private List<string> _animationFiles = new List<string>();
         private float _cameraDistance;
         private float _maxExtent;
@@ -73,7 +76,7 @@ namespace ReadingChamber
             _textShader = new ShaderProgram(_renderContext, TextShader.VertexShaderSource, TextShader.FragmentShaderSource);
             _textRenderer = new EditorTextRenderer(_renderContext, _window);
             _textRenderer.Initialize(_textShader);
-            LoadModel(_path);
+            LoadMesh(_meshPath);
             DiscoverAnimationFiles();
             UpdateUIControls();
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
@@ -81,87 +84,88 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-        private void LoadModel(string path)
+        private void LoadMesh(string path)
         {
-            _animationFiles.Clear();
-            var modelManager = new ModelManager(renderContext: _renderContext);
-            modelManager.LoadModel(path, new HashSet<string>(), new Dictionary<string, string>());
-            string key = Path.GetFileNameWithoutExtension(path).ToLower();
-            if (modelManager.TryGetModel(key, out _model) && modelManager.TryGetModelData(key, out _modelData))
+            _meshPath = path;
+            var forest = FBXParser.Load(path);
+            var parsedModel = FBXParser.BuildModelFromForest(forest);
+            _model = new FBXModel
             {
-                // Center model based on bounds
-                Vector3 minBounds = new Vector3(float.MaxValue);
-                Vector3 maxBounds = new Vector3(float.MinValue);
-                foreach (var mesh in _model.Meshes)
+                Meshes = parsedModel.Meshes,
+                SourceToTarget = parsedModel.SourceToTarget,
+                Signs = parsedModel.Signs,
+                ModelScale = parsedModel.ModelScale,
+                P4 = parsedModel.P4,
+                InvP4 = parsedModel.InvP4,
+                ReverseWinding = parsedModel.ReverseWinding
+            };
+            if (_model.HasUnweightedVertices())
+            {
+                _model.FixUnweightedVertices();
+            }
+            UpdateModelData();
+            CenterCamera();
+            Console.WriteLine($"AssetViewerPanel: Loaded mesh from {path}");
+        }
+        private void LoadArmature(string path)
+        {
+            _armaturePath = path;
+            var forest = FBXParser.Load(path);
+            var parsedModel = FBXParser.BuildModelFromForest(forest);
+            if (_model == null)
+            {
+                _model = new FBXModel();
+            }
+            var oldSkeleton = _model.Skeleton;
+            _model.Skeleton = parsedModel.Skeleton;
+            _model.SourceToTarget = parsedModel.SourceToTarget;
+            _model.Signs = parsedModel.Signs;
+            _model.ModelScale = parsedModel.ModelScale;
+            _model.P4 = parsedModel.P4;
+            _model.InvP4 = parsedModel.InvP4;
+            _model.ReverseWinding = parsedModel.ReverseWinding;
+            if (oldSkeleton != null && _model.Meshes.Count > 0)
+            {
+                var nameToNewIndex = new Dictionary<string, int>();
+                for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
-                    foreach (var v in mesh.Vertices)
+                    nameToNewIndex[_model.Skeleton.Bones[i].Name.ToLowerInvariant()] = i;
+                }
+                var nameToOldIndex = new Dictionary<string, int>();
+                for (int i = 0; i < oldSkeleton.Bones.Count; i++)
+                {
+                    nameToOldIndex[oldSkeleton.Bones[i].Name.ToLowerInvariant()] = i;
+                }
+                var oldToNewMap = new Dictionary<int, int>();
+                foreach (var kv in nameToOldIndex)
+                {
+                    if (nameToNewIndex.TryGetValue(kv.Key, out int newI))
                     {
-                        minBounds = Vector3.Min(minBounds, new Vector3(v.X, v.Y, v.Z));
-                        maxBounds = Vector3.Max(maxBounds, new Vector3(v.X, v.Y, v.Z));
+                        oldToNewMap[kv.Value] = newI;
                     }
                 }
-                Vector3 center = (minBounds + maxBounds) / 2;
-                _maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
-                _cameraDistance = Math.Max(_maxExtent * 3.5f, 0.1f);
-                _cameraTarget = center;
-                Vector3 initialFront = new Vector3(0, 1, 0);
-                _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
-                _cameraUp = Vector3.UnitZ;
-                Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {_maxExtent}, cameraDistance: {_cameraDistance}, cameraPosition: {_cameraPosition}");
-                if (_model.Animations.Count > 0)
+                foreach (var mesh in _model.Meshes)
                 {
-                    _currentAnimation = _model.Animations[0].Name;
-                    _duration = _model.Animations[0].Keyframes.LastOrDefault()?.Time ?? 0f;
+                    for (int vi = 0; vi < mesh.Vertices.Count; vi++)
+                    {
+                        var v = mesh.Vertices[vi];
+                        v.BoneID0 = oldToNewMap.GetValueOrDefault(v.BoneID0, -1);
+                        v.BoneID1 = oldToNewMap.GetValueOrDefault(v.BoneID1, -1);
+                        v.BoneID2 = oldToNewMap.GetValueOrDefault(v.BoneID2, -1);
+                        v.BoneID3 = oldToNewMap.GetValueOrDefault(v.BoneID3, -1);
+                        mesh.Vertices[vi] = v;
+                    }
                 }
-                else
-                {
-                    _currentAnimation = null;
-                    _duration = 0f;
-                }
-                _time = 0f;
-                _playing = false;
-                _currentGlobalTransforms = null;
-                _currentNormalTransforms = null;
-                _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
-                _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
-                // Compute bind poses after loading the model
-                _model.ComputeBindPoses();
-                // Log bone info for debugging
-                LogBoneHierarchy(_model.Skeleton, "Main Model");
-                LogWeightsSummary();
             }
-            else
+            _model.ComputeBindPoses();
+            LogBoneHierarchy(_model.Skeleton, "Loaded Armature");
+            if (_model.Meshes.Count > 0 && _model.HasUnweightedVertices())
             {
-                Console.WriteLine("AssetViewerPanel: Failed to load selected model");
+                _model.FixUnweightedVertices();
             }
-        }
-        private void LogBoneHierarchy(Skeleton skeleton, string label)
-        {
-            if (skeleton == null) return;
-            Console.WriteLine($"{label} Bone Hierarchy (sorted by name for comparison):");
-            var sortedBones = skeleton.Bones.OrderBy(b => b.Name.ToLowerInvariant()).ToList();
-            for (int i = 0; i < sortedBones.Count; i++)
-            {
-                var bone = sortedBones[i];
-                int originalIdx = skeleton.Bones.IndexOf(bone);
-                Console.WriteLine($"Sorted {i} (orig {originalIdx}): {bone.Name}, Parent: {bone.ParentIndex}, Type: {bone.BoneType}, Size: {bone.Size}");
-            }
-        }
-        private void LogWeightsSummary()
-        {
-            if (_model.Meshes.Count == 0) return;
-            var mesh = _model.Meshes[0];
-            int unweighted = mesh.Vertices.Count(v => v.Weight0 + v.Weight1 + v.Weight2 + v.Weight3 == 0);
-            Console.WriteLine($"Weights Summary: Total verts {mesh.Vertices.Count}, Unweighted {unweighted}");
-        }
-        private void DiscoverAnimationFiles()
-        {
-            string fbmDir = Path.Combine(Path.GetDirectoryName(_path), Path.GetFileNameWithoutExtension(_path) + ".fbm");
-            if (Directory.Exists(fbmDir))
-            {
-                _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
-                Console.WriteLine($"Discovered {_animationFiles.Count} animation files");
-            }
+            UpdateModelData();
+            CenterCamera();
+            Console.WriteLine($"AssetViewerPanel: Loaded armature from {path}");
         }
         private void LoadAnimation(string animPath)
         {
@@ -365,97 +369,75 @@ namespace ReadingChamber
                 Console.WriteLine($"No valid animations found in {animPath}");
             }
         }
-        private Dictionary<int, List<int>> BuildBoneTree(Skeleton skeleton)
+        private void UpdateModelData()
         {
-            var tree = new Dictionary<int, List<int>>();
-            for (int i = 0; i < skeleton.Bones.Count; i++)
+            if (_model == null) return;
+            var modelManager = new ModelManager(renderContext: _renderContext);
+            string key = "temp";
+            modelManager.AddModel(key, _model);
+            _modelData = modelManager.SetupModelData(_model, Path.GetDirectoryName(_meshPath), new FBXFileForest());
+            if (_model.HasSkin)
             {
-                tree[i] = new List<int>();
-            }
-            for (int i = 0; i < skeleton.Bones.Count; i++)
-            {
-                int parent = skeleton.Bones[i].ParentIndex;
-                if (parent != -1)
-                {
-                    tree[parent].Add(i);
-                }
-            }
-            return tree;
-        }
-        private Dictionary<int, int> MatchBoneHierarchies(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainRoot, int animRoot, FBXModel animModel)
-        {
-            var boneMap = new Dictionary<int, int>();
-            string mainRootName = NormalizeBoneName(_model.Skeleton.Bones[mainRoot].Name);
-            string animRootName = NormalizeBoneName(animModel.Skeleton.Bones[animRoot].Name);
-            if (mainRootName != animRootName)
-            {
-                Console.WriteLine($"Root names don't match: Main {mainRootName} vs Anim {animRootName}. Attempting fallback matching.");
-                var mainRootChildren = mainTree[mainRoot];
-                if (mainRootChildren.Count == 1)
-                {
-                    int mainEffectiveRoot = mainRootChildren[0];
-                    if (MatchStructures(mainTree, animTree, mainEffectiveRoot, animRoot, animModel))
-                    {
-                        mainRoot = mainEffectiveRoot;
-                        Console.WriteLine("Fallback successful: Using main's effective root for matching.");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Fallback failed: Structures don't align.");
-                        return boneMap;
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Fallback not possible: Main root has multiple children.");
-                    return boneMap;
-                }
-            }
-            // Recursive match from roots
-            MatchBoneSubtree(mainRoot, animRoot, mainTree, animTree, _model.Skeleton, animModel.Skeleton, boneMap);
-            return boneMap;
-        }
-        private bool MatchStructures(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainIdx, int animIdx, FBXModel animModel)
-        {
-            var mainChildren = mainTree[mainIdx];
-            var animChildren = animTree[animIdx];
-            if (mainChildren.Count != animChildren.Count) return false;
-            var sortedMainChildren = mainChildren.OrderBy(c => NormalizeBoneName(_model.Skeleton.Bones[c].Name)).ToList();
-            var sortedAnimChildren = animChildren.OrderBy(c => NormalizeBoneName(animModel.Skeleton.Bones[c].Name)).ToList();
-            for (int i = 0; i < sortedMainChildren.Count; i++)
-            {
-                if (!MatchStructures(mainTree, animTree, sortedMainChildren[i], sortedAnimChildren[i], animModel)) return false;
-            }
-            return true;
-        }
-        private void MatchBoneSubtree(int mainIdx, int animIdx, Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, Skeleton mainSkeleton, Skeleton animSkeleton, Dictionary<int, int> boneMap)
-        {
-            string mainName = NormalizeBoneName(mainSkeleton.Bones[mainIdx].Name);
-            string animName = NormalizeBoneName(animSkeleton.Bones[animIdx].Name);
-            Console.WriteLine($"Matching bone: Main {mainSkeleton.Bones[mainIdx].Name} (norm: {mainName}) vs Anim {animSkeleton.Bones[animIdx].Name} (norm: {animName})");
-            boneMap[animIdx] = mainIdx;
-            Console.WriteLine("Mapped by structure.");
-            var mainChildren = mainTree[mainIdx];
-            var animChildren = animTree[animIdx];
-            Console.WriteLine($"Child count: Main {mainChildren.Count} vs Anim {animChildren.Count}");
-            if (mainChildren.Count == animChildren.Count)
-            {
-                // Sort children by normalized name for order-independent matching
-                var sortedMainChildren = mainChildren.OrderBy(c => NormalizeBoneName(mainSkeleton.Bones[c].Name)).ToList();
-                var sortedAnimChildren = animChildren.OrderBy(c => NormalizeBoneName(animSkeleton.Bones[c].Name)).ToList();
-                for (int i = 0; i < sortedMainChildren.Count; i++)
-                {
-                    MatchBoneSubtree(sortedMainChildren[i], sortedAnimChildren[i], mainTree, animTree, mainSkeleton, animSkeleton, boneMap);
-                }
+                _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
             }
             else
             {
-                Console.WriteLine("Child count mismatch, skipping subtree matching.");
+                _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
+            }
+            _model.ComputeBindPoses();
+            LogBoneHierarchy(_model.Skeleton, "Current Model");
+            LogWeightsSummary();
+            _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
+        }
+        private void CenterCamera()
+        {
+            if (_model == null || _model.Meshes.Count == 0) return;
+            Vector3 minBounds = new Vector3(float.MaxValue);
+            Vector3 maxBounds = new Vector3(float.MinValue);
+            foreach (var mesh in _model.Meshes)
+            {
+                foreach (var v in mesh.Vertices)
+                {
+                    minBounds = Vector3.Min(minBounds, new Vector3(v.X, v.Y, v.Z));
+                    maxBounds = Vector3.Max(maxBounds, new Vector3(v.X, v.Y, v.Z));
+                }
+            }
+            Vector3 center = (minBounds + maxBounds) / 2;
+            _maxExtent = Math.Max(maxBounds.X - minBounds.X, Math.Max(maxBounds.Y - minBounds.Y, maxBounds.Z - minBounds.Z)) / 2;
+            _cameraDistance = Math.Max(_maxExtent * 3.5f, 0.1f);
+            _cameraTarget = center;
+            Vector3 initialFront = new Vector3(0, 1, 0);
+            _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
+            _cameraUp = Vector3.UnitZ;
+            Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {_maxExtent}, cameraDistance: {_cameraDistance}, cameraPosition: {_cameraPosition}");
+        }
+        private void LogBoneHierarchy(Skeleton skeleton, string label)
+        {
+            if (skeleton == null) return;
+            Console.WriteLine($"{label} Bone Hierarchy (sorted by name for comparison):");
+            var sortedBones = skeleton.Bones.OrderBy(b => b.Name.ToLowerInvariant()).ToList();
+            for (int i = 0; i < sortedBones.Count; i++)
+            {
+                var bone = sortedBones[i];
+                int originalIdx = skeleton.Bones.IndexOf(bone);
+                Console.WriteLine($"Sorted {i} (orig {originalIdx}): {bone.Name}, Parent: {bone.ParentIndex}, Type: {bone.BoneType}, Size: {bone.Size}");
             }
         }
-        private string NormalizeBoneName(string name)
+        private void LogWeightsSummary()
         {
-            return name.ToLowerInvariant().Replace("_", "");
+            if (_model.Meshes.Count == 0) return;
+            var mesh = _model.Meshes[0];
+            int unweighted = mesh.Vertices.Count(v => v.Weight0 + v.Weight1 + v.Weight2 + v.Weight3 == 0);
+            Console.WriteLine($"Weights Summary: Total verts {mesh.Vertices.Count}, Unweighted {unweighted}");
+        }
+        private void DiscoverAnimationFiles()
+        {
+            string fbmDir = Path.Combine(Path.GetDirectoryName(_meshPath), Path.GetFileNameWithoutExtension(_meshPath) + ".fbm");
+            if (Directory.Exists(fbmDir))
+            {
+                _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
+                Console.WriteLine($"Discovered {_animationFiles.Count} animation files");
+            }
         }
         private void UpdateModelBuffers()
         {
@@ -530,14 +512,14 @@ namespace ReadingChamber
                 return;
             }
             string baseHtml = File.ReadAllText(htmlPath);
-            int insertIndex = baseHtml.IndexOf(""); //"<!-- Animation buttons will be added here dynamically -->");
+            int insertIndex = baseHtml.IndexOf("<!-- Animation buttons will be added here dynamically -->");
             if (insertIndex == -1)
             {
                 Console.WriteLine("AssetViewerPanel: Insertion point not found in HTML");
                 return;
             }
             StringBuilder dynamicSelect = new StringBuilder();
-            dynamicSelect.Append("<select id=\"animSelect\" style=\"position: absolute; left: 10px; top: 30px;\">");
+            dynamicSelect.Append("<select id=\"animSelect\" style=\"\">");
             foreach (var file in _animationFiles)
             {
                 string name = Path.GetFileNameWithoutExtension(file);
@@ -553,10 +535,19 @@ namespace ReadingChamber
         }
         private void OnFileSelected(FileSelectedEvent e)
         {
-            _path = e.Path;
-            LoadModel(e.Path);
-            DiscoverAnimationFiles();
-            UpdateUIControls();
+            string hook = e.UserData as string;
+            if (hook == "LoadMesh")
+            {
+                LoadMesh(e.Path);
+            }
+            else if (hook == "LoadArmature")
+            {
+                LoadArmature(e.Path);
+            }
+            else if (hook == "LoadAnimation")
+            {
+                LoadAnimation(e.Path);
+            }
             _time = 0f;
             _playing = false;
             _cameraRotation = Quaternion.Identity;
@@ -571,10 +562,25 @@ namespace ReadingChamber
                 _playing = !_playing;
                 Console.WriteLine($"Toggled play to {_playing}");
             }
-            else if (hook == "LoadFBX")
+            else if (hook == "LoadMesh")
             {
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
+                fileSelector.UserData = "LoadMesh";
+                _eventBus.Publish(new OpenPanelEvent(fileSelector));
+            }
+            else if (hook == "LoadArmature")
+            {
+                string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
+                fileSelector.UserData = "LoadArmature";
+                _eventBus.Publish(new OpenPanelEvent(fileSelector));
+            }
+            else if (hook == "LoadAnimation")
+            {
+                string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
+                fileSelector.UserData = "LoadAnimation";
                 _eventBus.Publish(new OpenPanelEvent(fileSelector));
             }
             else if (elem.Tag == "select")
@@ -832,6 +838,98 @@ namespace ReadingChamber
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
+        }
+        private Dictionary<int, List<int>> BuildBoneTree(Skeleton skeleton)
+        {
+            var tree = new Dictionary<int, List<int>>();
+            for (int i = 0; i < skeleton.Bones.Count; i++)
+            {
+                tree[i] = new List<int>();
+            }
+            for (int i = 0; i < skeleton.Bones.Count; i++)
+            {
+                int parent = skeleton.Bones[i].ParentIndex;
+                if (parent != -1)
+                {
+                    tree[parent].Add(i);
+                }
+            }
+            return tree;
+        }
+        private Dictionary<int, int> MatchBoneHierarchies(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainRoot, int animRoot, FBXModel animModel)
+        {
+            var boneMap = new Dictionary<int, int>();
+            string mainRootName = NormalizeBoneName(_model.Skeleton.Bones[mainRoot].Name);
+            string animRootName = NormalizeBoneName(animModel.Skeleton.Bones[animRoot].Name);
+            if (mainRootName != animRootName)
+            {
+                Console.WriteLine($"Root names don't match: Main {mainRootName} vs Anim {animRootName}. Attempting fallback matching.");
+                var mainRootChildren = mainTree[mainRoot];
+                if (mainRootChildren.Count == 1)
+                {
+                    int mainEffectiveRoot = mainRootChildren[0];
+                    if (MatchStructures(mainTree, animTree, mainEffectiveRoot, animRoot, animModel))
+                    {
+                        mainRoot = mainEffectiveRoot;
+                        Console.WriteLine("Fallback successful: Using main's effective root for matching.");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Fallback failed: Structures don't align.");
+                        return boneMap;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Fallback not possible: Main root has multiple children.");
+                    return boneMap;
+                }
+            }
+            // Recursive match from roots
+            MatchBoneSubtree(mainRoot, animRoot, mainTree, animTree, _model.Skeleton, animModel.Skeleton, boneMap);
+            return boneMap;
+        }
+        private bool MatchStructures(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainIdx, int animIdx, FBXModel animModel)
+        {
+            var mainChildren = mainTree[mainIdx];
+            var animChildren = animTree[animIdx];
+            if (mainChildren.Count != animChildren.Count) return false;
+            var sortedMainChildren = mainChildren.OrderBy(c => NormalizeBoneName(_model.Skeleton.Bones[c].Name)).ToList();
+            var sortedAnimChildren = animChildren.OrderBy(c => NormalizeBoneName(animModel.Skeleton.Bones[c].Name)).ToList();
+            for (int i = 0; i < sortedMainChildren.Count; i++)
+            {
+                if (!MatchStructures(mainTree, animTree, sortedMainChildren[i], sortedAnimChildren[i], animModel)) return false;
+            }
+            return true;
+        }
+        private void MatchBoneSubtree(int mainIdx, int animIdx, Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, Skeleton mainSkeleton, Skeleton animSkeleton, Dictionary<int, int> boneMap)
+        {
+            string mainName = NormalizeBoneName(mainSkeleton.Bones[mainIdx].Name);
+            string animName = NormalizeBoneName(animSkeleton.Bones[animIdx].Name);
+            Console.WriteLine($"Matching bone: Main {mainSkeleton.Bones[mainIdx].Name} (norm: {mainName}) vs Anim {animSkeleton.Bones[animIdx].Name} (norm: {animName})");
+            boneMap[animIdx] = mainIdx;
+            Console.WriteLine("Mapped by structure.");
+            var mainChildren = mainTree[mainIdx];
+            var animChildren = animTree[animIdx];
+            Console.WriteLine($"Child count: Main {mainChildren.Count} vs Anim {animChildren.Count}");
+            if (mainChildren.Count == animChildren.Count)
+            {
+                // Sort children by normalized name for order-independent matching
+                var sortedMainChildren = mainChildren.OrderBy(c => NormalizeBoneName(mainSkeleton.Bones[c].Name)).ToList();
+                var sortedAnimChildren = animChildren.OrderBy(c => NormalizeBoneName(animSkeleton.Bones[c].Name)).ToList();
+                for (int i = 0; i < sortedMainChildren.Count; i++)
+                {
+                    MatchBoneSubtree(sortedMainChildren[i], sortedAnimChildren[i], mainTree, animTree, mainSkeleton, animSkeleton, boneMap);
+                }
+            }
+            else
+            {
+                Console.WriteLine("Child count mismatch, skipping subtree matching.");
+            }
+        }
+        private string NormalizeBoneName(string name)
+        {
+            return name.ToLowerInvariant().Replace("_", "");
         }
     }
 }

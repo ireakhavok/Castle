@@ -6,6 +6,7 @@ public class FileSelectedEvent : IEvent
 {
     public string Type => "FileSelected";
     public string Path { get; private set; }
+    public object UserData { get; set; }
     public FileSelectedEvent(string path)
     {
         Path = path;

@@ -1,6 +1,4 @@
-﻿// Folder: ReadingChamber
-// File: FileSelectorPanel.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
 using System;
@@ -34,19 +32,17 @@ namespace ReadingChamber
         private string _sortBy = "name";
         private bool _sortAscending = true;
         private readonly string[] _allowedExtensions;
-
+        public object UserData { get; set; } // To pass context like hook
         public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, string initialDir, params string[] allowedExtensions) : base(renderContext, controlContext, window, eventBus)
         {
             _currentDir = initialDir;
             _allowedExtensions = allowedExtensions?.Select(ext => ext.ToLowerInvariant()).ToArray();
             Scaling = ScalingMode.Fill;
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new FileSelectorUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
@@ -55,7 +51,6 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void NavigateTo(string dir, bool addToHistory = true)
         {
             if (addToHistory)
@@ -70,7 +65,6 @@ namespace ReadingChamber
             _currentDir = dir;
             UpdateFileList();
         }
-
         private void UpdateFileList()
         {
             string templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FileSelectorTemplate.html");
@@ -145,13 +139,11 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private string GetFileClass(string fileName)
         {
             string ext = Path.GetExtension(fileName).ToLowerInvariant();
             return "file" + (string.IsNullOrEmpty(ext) ? "" : ext.Replace(".", "-"));
         }
-
         private string GetIcon(string cls)
         {
             if (cls == "dir") return "📁";
@@ -161,7 +153,6 @@ namespace ReadingChamber
             if (cls == "file-json" || cls == "file-xml") return "⚙️";
             return "📄";
         }
-
         private string FormatSize(long size)
         {
             if (size < 1024) return size + " B";
@@ -169,7 +160,6 @@ namespace ReadingChamber
             if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)) + " MB";
             return (size / (1024 * 1024 * 1024)) + " GB";
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -181,7 +171,7 @@ namespace ReadingChamber
             else if (hook.StartsWith("SelectFile:"))
             {
                 string path = hook.Substring(11);
-                _eventBus.Publish(new FileSelectedEvent(path));
+                _eventBus.Publish(new FileSelectedEvent(path) { UserData = this.UserData });
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
             else if (hook == "back")
@@ -237,7 +227,6 @@ namespace ReadingChamber
                 UpdateFileList();
             }
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
