@@ -59,6 +59,7 @@ namespace ReadingChamber
         private float _cameraDistance;
         private float _maxExtent;
         private float _lastLogTime = -1f;
+        private readonly string[] _debugBones = { "root", "pelvis", "head", "foot_l", "thigh_l", "thigh_r" };
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -97,6 +98,10 @@ namespace ReadingChamber
                 _model.FixUnweightedVertices();
             }
             UpdateModelData();
+            if (_model.HasSkin)
+            {
+                LogBindPose();
+            }
             CenterCamera();
             Console.WriteLine($"AssetViewerPanel: Loaded mesh from {path}");
         }
@@ -189,8 +194,35 @@ namespace ReadingChamber
                 _model.FixUnweightedVertices();
             }
             UpdateModelData();
+            LogBindPose();
             CenterCamera();
             Console.WriteLine($"AssetViewerPanel: Loaded armature from {path}");
+        }
+        private void LogBindPose()
+        {
+            var restLocals = _model.Skeleton.Bones.Select(b => b.LocalRest).ToArray();
+            var restGlobals = _model.Skeleton.ComputeGlobalTransforms(restLocals);
+            Console.WriteLine("Bind Pose transforms:");
+            foreach (var boneName in _debugBones)
+            {
+                int idx = _model.Skeleton.Bones.FindIndex(b => string.Equals(b.Name, boneName, StringComparison.OrdinalIgnoreCase));
+                if (idx != -1)
+                {
+                    Matrix4x4.Decompose(restLocals[idx], out Vector3 lScale, out Quaternion lRot, out Vector3 lTrans);
+                    Vector3 lEuler = ToEuler(lRot);
+                    float lDet = restLocals[idx].GetDeterminant();
+                    Console.WriteLine($"{boneName} Local Bind: Pos({lTrans.X:F2},{lTrans.Y:F2},{lTrans.Z:F2}) Rot({lEuler.X:F2},{lEuler.Y:F2},{lEuler.Z:F2}) Scale({lScale.X:F2},{lScale.Y:F2},{lScale.Z:F2}) Det({lDet:F2})");
+
+                    Matrix4x4.Decompose(restGlobals[idx], out Vector3 gScale, out Quaternion gRot, out Vector3 gPos);
+                    Vector3 gEuler = ToEuler(gRot);
+                    float gDet = restGlobals[idx].GetDeterminant();
+                    Console.WriteLine($"{boneName} Global Bind: Pos({gPos.X:F2},{gPos.Y:F2},{gPos.Z:F2}) Rot({gEuler.X:F2},{gEuler.Y:F2},{gEuler.Z:F2}) Scale({gScale.X:F2},{gScale.Y:F2},{gScale.Z:F2}) Det({gDet:F2})");
+                }
+                else
+                {
+                    Console.WriteLine($"{boneName} not found in skeleton");
+                }
+            }
         }
         private void LoadAnimation(string animPath)
         {
@@ -200,6 +232,8 @@ namespace ReadingChamber
             var conns = FBXParser.GatherConnections(animForest);
             var animModel = FBXParser.BuildModelFromForest(animForest);
             LogBoneHierarchy(animModel.Skeleton, "Animation File");
+            Console.WriteLine($"Model axis: SourceToTarget [{string.Join(",", _model.SourceToTarget)}], Signs [{string.Join(",", _model.Signs)}]");
+            Console.WriteLine($"Anim axis: SourceToTarget [{string.Join(",", animModel.SourceToTarget)}], Signs [{string.Join(",", animModel.Signs)}]");
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {
@@ -247,6 +281,8 @@ namespace ReadingChamber
                     Console.WriteLine("Different axis systems detected between main model and animation, applying correction");
                     trans = _model.InvP4 * animModel.P4;
                     invTrans = animModel.InvP4 * _model.P4;
+                    Console.WriteLine($"Transformation matrix: {trans}");
+                    Console.WriteLine($"Inverse transformation matrix: {invTrans}");
                 }
                 float scaleFactor = _model.ModelScale / animModel.ModelScale;
                 bool scaleMismatch = Math.Abs(scaleFactor - 1f) > 1e-6f;
@@ -271,10 +307,12 @@ namespace ReadingChamber
                             if (Matrix4x4.Invert(animModel.Skeleton.Bones[i].LocalRest, out Matrix4x4 invAnimRest))
                             {
                                 Matrix4x4 delta = invAnimRest * local;
+                                LogDelta(i, targetIdx, delta, "Before adjustment");
                                 if (axisMismatch)
                                 {
-                                    delta = invTrans * delta * trans;
+                                    delta = trans * delta * invTrans;
                                 }
+                                LogDelta(i, targetIdx, delta, "After axis adjustment");
                                 if (scaleMismatch)
                                 {
                                     if (Matrix4x4.Decompose(delta, out Vector3 s, out Quaternion r, out Vector3 t))
@@ -287,6 +325,7 @@ namespace ReadingChamber
                                         Console.WriteLine($"Failed to decompose delta for scale adjustment at time {kf.Time}");
                                     }
                                 }
+                                LogDelta(i, targetIdx, delta, "After scale adjustment");
                                 Matrix4x4 modelRest = _model.Skeleton.Bones[targetIdx].LocalRest;
                                 Matrix4x4 newLocal = modelRest * delta;
                                 newTransforms[targetIdx] = newLocal;
@@ -330,6 +369,15 @@ namespace ReadingChamber
                 _duration = anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 0f;
                 _time = 0f;
                 Console.WriteLine($"Loaded animation {anim.Name} with {anim.Keyframes.Count} keyframes");
+                LogKeyframeTransforms(anim, 0f);
+                LogKeyframeTransforms(anim, 0.25f);
+                LogKeyframeTransforms(anim, .75f);
+                LogKeyframeTransforms(anim, 1f);
+                LogKeyframeTransforms(anim, 1.25f);
+                LogKeyframeTransforms(anim, 1.5f);
+                LogKeyframeTransforms(anim, 1.75f);
+                LogKeyframeTransforms(anim, 2f);
+                LogKeyframeTransforms(anim, anim.Keyframes.Last().Time);
                 // Copy weights if main model has unweighted vertices
                 if (_model.HasUnweightedVertices())
                 {
@@ -400,6 +448,43 @@ namespace ReadingChamber
             else
             {
                 Console.WriteLine($"No valid animations found in {animPath}");
+            }
+        }
+        private void LogDelta(int animIdx, int mainIdx, Matrix4x4 delta, string stage)
+        {
+            string animBone = _model.Skeleton.Bones[mainIdx].Name; // Using main name for consistency
+            if (animBone == "thigh_l" || animBone == "thigh_r" || animBone == "calf_l" || animBone == "calf_r")
+            {
+                Matrix4x4.Decompose(delta, out Vector3 scale, out Quaternion rot, out Vector3 trans);
+                Vector3 euler = ToEuler(rot);
+                Console.WriteLine($"Delta for {animBone} at {stage}: Pos({trans.X:F2},{trans.Y:F2},{trans.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2}) Scale({scale.X:F2},{scale.Y:F2},{scale.Z:F2})");
+            }
+        }
+        private void LogKeyframeTransforms(Animation anim, float targetTime)
+        {
+            var transforms = anim.GetBoneTransforms(targetTime);
+            if (transforms == null) return;
+            var globals = _model.Skeleton.ComputeGlobalTransforms(transforms);
+            Console.WriteLine($"Keyframe transforms near time {targetTime}:");
+            foreach (var boneName in _debugBones)
+            {
+                int idx = _model.Skeleton.Bones.FindIndex(b => string.Equals(b.Name, boneName, StringComparison.OrdinalIgnoreCase));
+                if (idx != -1)
+                {
+                    Matrix4x4.Decompose(transforms[idx], out Vector3 lScale, out Quaternion lRot, out Vector3 lTrans);
+                    Vector3 lEuler = ToEuler(lRot);
+                    float lDet = transforms[idx].GetDeterminant();
+                    Console.WriteLine($"{boneName} Local: Pos({lTrans.X:F2},{lTrans.Y:F2},{lTrans.Z:F2}) Rot({lEuler.X:F2},{lEuler.Y:F2},{lEuler.Z:F2}) Scale({lScale.X:F2},{lScale.Y:F2},{lScale.Z:F2}) Det({lDet:F2})");
+
+                    Matrix4x4.Decompose(globals[idx], out Vector3 gScale, out Quaternion gRot, out Vector3 gPos);
+                    Vector3 gEuler = ToEuler(gRot);
+                    float gDet = globals[idx].GetDeterminant();
+                    Console.WriteLine($"{boneName} Global: Pos({gPos.X:F2},{gPos.Y:F2},{gPos.Z:F2}) Rot({gEuler.X:F2},{gEuler.Y:F2},{gEuler.Z:F2}) Scale({gScale.X:F2},{gScale.Y:F2},{gScale.Z:F2}) Det({gDet:F2})");
+                }
+                else
+                {
+                    Console.WriteLine($"{boneName} not found in skeleton");
+                }
             }
         }
         private void UpdateModelData()
@@ -720,7 +805,7 @@ namespace ReadingChamber
                         if (_time - _lastLogTime > 1f)
                         {
                             _lastLogTime = _time;
-                            LogCurrentBonePositions();
+                            LogDebugBoneTransforms(localTransforms, globalTransforms);
                         }
                     }
                 }
@@ -731,6 +816,30 @@ namespace ReadingChamber
                 _playing = !_playing;
             }
             UpdateSkeletonVisualization();
+        }
+        private void LogDebugBoneTransforms(Matrix4x4[] localTransforms, Matrix4x4[] globalTransforms)
+        {
+            Console.WriteLine($"Debug bone transforms at time {_time}:");
+            foreach (var boneName in _debugBones)
+            {
+                int idx = _model.Skeleton.Bones.FindIndex(b => string.Equals(b.Name, boneName, StringComparison.OrdinalIgnoreCase));
+                if (idx != -1)
+                {
+                    Matrix4x4.Decompose(localTransforms[idx], out Vector3 lScale, out Quaternion lRot, out Vector3 lTrans);
+                    Vector3 lEuler = ToEuler(lRot);
+                    float lDet = localTransforms[idx].GetDeterminant();
+                    Console.WriteLine($"{boneName} Local: Pos({lTrans.X:F2},{lTrans.Y:F2},{lTrans.Z:F2}) Rot({lEuler.X:F2},{lEuler.Y:F2},{lEuler.Z:F2}) Scale({lScale.X:F2},{lScale.Y:F2},{lScale.Z:F2}) Det({lDet:F2})");
+
+                    Matrix4x4.Decompose(globalTransforms[idx], out Vector3 gScale, out Quaternion gRot, out Vector3 gPos);
+                    Vector3 gEuler = ToEuler(gRot);
+                    float gDet = globalTransforms[idx].GetDeterminant();
+                    Console.WriteLine($"{boneName} Global: Pos({gPos.X:F2},{gPos.Y:F2},{gPos.Z:F2}) Rot({gEuler.X:F2},{gEuler.Y:F2},{gEuler.Z:F2}) Scale({gScale.X:F2},{gScale.Y:F2},{gScale.Z:F2}) Det({gDet:F2})");
+                }
+                else
+                {
+                    Console.WriteLine($"{boneName} not found in skeleton");
+                }
+            }
         }
         private void UpdateSkeletonVisualization()
         {
@@ -761,17 +870,6 @@ namespace ReadingChamber
             float cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
             euler.Z = MathF.Atan2(siny_cosp, cosy_cosp);
             return euler * (180f / MathF.PI);
-        }
-        private void LogCurrentBonePositions()
-        {
-            Console.WriteLine($"Logging positions at time {_time}");
-            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-            {
-                Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out Quaternion rot, out Vector3 pos);
-                Vector3 euler = ToEuler(rot);
-                string info = $"{_model.Skeleton.Bones[i].Name}: Pos({pos.X:F2},{pos.Y:F2},{pos.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2})";
-                Console.WriteLine(info);
-            }
         }
         public override void Render()
         {
