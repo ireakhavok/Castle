@@ -58,6 +58,7 @@ namespace ReadingChamber
         private List<string> _animationFiles = new List<string>();
         private float _cameraDistance;
         private float _maxExtent;
+        private float _lastLogTime = -1f;
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -716,6 +717,11 @@ namespace ReadingChamber
                         }
                         _currentNormalTransforms = normalTransforms;
                         _model.Skeleton.UpdateTransforms(finalTransforms);
+                        if (_time - _lastLogTime > 1f)
+                        {
+                            _lastLogTime = _time;
+                            LogCurrentBonePositions();
+                        }
                     }
                 }
             }
@@ -755,6 +761,17 @@ namespace ReadingChamber
             float cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
             euler.Z = MathF.Atan2(siny_cosp, cosy_cosp);
             return euler * (180f / MathF.PI);
+        }
+        private void LogCurrentBonePositions()
+        {
+            Console.WriteLine($"Logging positions at time {_time}");
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out Quaternion rot, out Vector3 pos);
+                Vector3 euler = ToEuler(rot);
+                string info = $"{_model.Skeleton.Bones[i].Name}: Pos({pos.X:F2},{pos.Y:F2},{pos.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2})";
+                Console.WriteLine(info);
+            }
         }
         public override void Render()
         {
@@ -846,7 +863,6 @@ namespace ReadingChamber
             float currentY = TitleHeight + 10;
             if (_model?.Skeleton != null && _currentGlobalTransforms != null && _currentGlobalTransforms.Length == _model.Skeleton.Bones.Count)
             {
-                Console.WriteLine($"New frame.");
                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
                     if (currentY > Size.Y - 20) break; // Prevent overflow
@@ -855,7 +871,6 @@ namespace ReadingChamber
                     string info = $"{_model.Skeleton.Bones[i].Name}: Pos({pos.X:F2},{pos.Y:F2},{pos.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2})";
                     _textRenderer.RenderText(info, 10, currentY, (int)Size.X, (int)Size.Y, 12f);
                     currentY += 15;
-                    Console.WriteLine(info);
                 }
             }
             // Render 2px border
@@ -939,6 +954,10 @@ namespace ReadingChamber
             string mainName = NormalizeBoneName(mainSkeleton.Bones[mainIdx].Name);
             string animName = NormalizeBoneName(animSkeleton.Bones[animIdx].Name);
             Console.WriteLine($"Matching bone: Main {mainSkeleton.Bones[mainIdx].Name} (norm: {mainName}) vs Anim {animSkeleton.Bones[animIdx].Name} (norm: {animName})");
+            if (mainName != animName)
+            {
+                Console.WriteLine($"Warning: Mapping despite name mismatch: {mainName} != {animName}");
+            }
             boneMap[animIdx] = mainIdx;
             Console.WriteLine("Mapped by structure.");
             var mainChildren = mainTree[mainIdx];
