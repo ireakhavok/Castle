@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine
-// File: Core/AssetParsing/Model/Bone.cs
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/Model/Bone.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -118,7 +118,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
             Matrix4x4.Invert(Rp, out Matrix4x4 invRp); // More robust than negation
             Matrix4x4 Soff = Matrix4x4.CreateTranslation(ScalingOffset);
-            Matrix4x4.Invert(Soff, out Matrix4x4 invSoff); // More robust than negation
             Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);
             Matrix4x4.Invert(Sp, out Matrix4x4 invSp); // More robust than negation
             Matrix4x4 S = Matrix4x4.CreateScale(useS);
@@ -126,8 +125,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4 R = CreateFromEuler(useR, RotationOrder);
             Matrix4x4 Post = CreateFromEuler(PostRotationDegrees, 0); // Always XYZ
             Matrix4x4.Invert(Post, out Matrix4x4 invPost); // More robust than negation
-            // Standard FBX order: T * Roff * Rp * Pre * R * Post * inv(Rp) * Soff * Sp * S * inv(Sp) 
-            // originally was the values listed above. after looking at autodesk FBX below is accurate
+            // Standard FBX order: T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp
+            // DO NOT TOUCH THIS EQUATION. ONLINE REFERENCES MAY BE WRONG. THIS HAS BEEN VERIFIED IN TEXTBOOKS.
             Matrix4x4 local = T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp;
             return local;
         }

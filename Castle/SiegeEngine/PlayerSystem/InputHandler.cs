@@ -152,7 +152,7 @@ namespace SiegeEngine.PlayerSystem
             string message = $"Input:Key:{(int)key}:{(int)action}:{_steamEngine.GetSteamId()}";
             byte[] data = Encoding.UTF8.GetBytes(message);
             _steamEngine.SendP2PMessage(data);
-            Console.WriteLine($"InputHandler: Sent key input over Steam network: {message}");
+            //Console.WriteLine($"InputHandler: Sent key input over Steam network: {message}");
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// Folder: ReadingChamber
+// Class: AssetViewerPanel
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -14,7 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -128,7 +129,6 @@ namespace ReadingChamber
                 bone.GeometricScaling = FBXCoordinateUtils.UnremapScale(bone.GeometricScaling, parsedModel.SourceToTarget, parsedModel.Signs);
                 bone.RotationOrder = FBXCoordinateUtils.UnremapRotationOrder(bone.RotationOrder, parsedModel.SourceToTarget);
                 bone.Size *= _model.ModelScale / parsedModel.ModelScale;
-
                 // Remap to mesh's engine
                 bone.LclTranslation = FBXCoordinateUtils.RemapVector(bone.LclTranslation, _model.SourceToTarget, _model.Signs);
                 bone.LclRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.LclRotationDegrees, _model.SourceToTarget, _model.Signs);
@@ -143,7 +143,6 @@ namespace ReadingChamber
                 bone.GeometricRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.GeometricRotationDegrees, _model.SourceToTarget, _model.Signs);
                 bone.GeometricScaling = FBXCoordinateUtils.RemapScale(bone.GeometricScaling, _model.SourceToTarget, _model.Signs);
                 bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(bone.RotationOrder, _model.SourceToTarget);
-
                 // Recompute LocalRest
                 bone.LocalRest = bone.ComputeLocal();
             }
@@ -369,10 +368,18 @@ namespace ReadingChamber
                                 mainV.Weight1 = animV.Weight1;
                                 mainV.Weight2 = animV.Weight2;
                                 mainV.Weight3 = animV.Weight3;
+                                float sum = mainV.Weight0 + mainV.Weight1 + mainV.Weight2 + mainV.Weight3;
+                                if (sum > 0)
+                                {
+                                    mainV.Weight0 /= sum;
+                                    mainV.Weight1 /= sum;
+                                    mainV.Weight2 /= sum;
+                                    mainV.Weight3 /= sum;
+                                }
                                 mainMesh.Vertices[vi] = mainV;
                             }
                         }
-                        Console.WriteLine($"Copied and remapped weights from animation model to main model for {anim.Name}");
+                        Console.WriteLine($"Copied, remapped, and normalized weights from animation model to main model for {anim.Name}");
                         // Update VBOs with new vertex data (weights updated)
                         UpdateModelBuffers();
                         _model.HasSkin = true;
@@ -537,7 +544,7 @@ namespace ReadingChamber
                 return;
             }
             string baseHtml = File.ReadAllText(htmlPath);
-            int insertIndex = baseHtml.IndexOf("<!-- Animation buttons will be added here dynamically -->");
+            int insertIndex = baseHtml.IndexOf("");
             if (insertIndex == -1)
             {
                 Console.WriteLine("AssetViewerPanel: Insertion point not found in HTML");

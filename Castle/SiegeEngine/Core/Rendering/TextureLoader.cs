@@ -108,7 +108,7 @@ namespace SiegeEngine.Core.Rendering
                     ushort height = reader.ReadUInt16();
                     byte pixelDepth = reader.ReadByte();
                     byte imageDescriptor = reader.ReadByte();
-                    Console.WriteLine($"TGA Header: Type={imageType}, Width={width}, Height={height}, PixelDepth={pixelDepth}, ImageDescriptor={imageDescriptor}");
+                    //Console.WriteLine($"TGA Header: Type={imageType}, Width={width}, Height={height}, PixelDepth={pixelDepth}, ImageDescriptor={imageDescriptor}");
                     if (width == 0 || height == 0 || width > 16384 || height > 16384)
                     {
                         Console.WriteLine("TextureLoader: Invalid TGA dimensions or exceeds max size (16384)");
@@ -187,7 +187,7 @@ namespace SiegeEngine.Core.Rendering
                             Array.Copy(pixelData, y * rowSize, flippedData, (height - 1 - y) * rowSize, rowSize);
                         }
                         pixelData = flippedData;
-                        Console.WriteLine("TextureLoader: Flipped TGA pixel data rows (bottom-up to top-down)");
+                        //Console.WriteLine("TextureLoader: Flipped TGA pixel data rows (bottom-up to top-down)");
                     }
                     else
                     {
@@ -216,7 +216,7 @@ namespace SiegeEngine.Core.Rendering
                         renderContext.TexParameterf(renderContext.Enums.Texture2D, renderContext.Enums.TextureMaxAnisotropyExt, Math.Min(16.0f, maxAniso));
                     }
                     renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
-                    Console.WriteLine($"TGA texture loaded: {texture}");
+                    //Console.WriteLine($"TGA texture loaded: {texture}");
                     return (texture, pixelDepth);
                 }
             }
@@ -231,7 +231,7 @@ namespace SiegeEngine.Core.Rendering
             try
             {
                 byte pixelDepth;
-                Console.WriteLine($"TextureLoader: Processing bitmap {bitmap.Width}x{bitmap.Height}, PixelFormat: {bitmap.PixelFormat}");
+                //Console.WriteLine($"TextureLoader: Processing bitmap {bitmap.Width}x{bitmap.Height}, PixelFormat: {bitmap.PixelFormat}");
                 int internalFormat;
                 int pixelFormat;
                 switch (bitmap.PixelFormat)
@@ -257,7 +257,7 @@ namespace SiegeEngine.Core.Rendering
                                 g.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
                             }
                             (uint textureId, pixelDepth) = LoadTextureFromBitmap(renderContext, convertedBitmap, wrapS, wrapT);
-                            Console.WriteLine($"TextureLoader: Converted bitmap load result: Texture ID {textureId}");
+                            //Console.WriteLine($"TextureLoader: Converted bitmap load result: Texture ID {textureId}");
                             return (textureId, pixelDepth);
                         }
                 }
@@ -318,7 +318,7 @@ namespace SiegeEngine.Core.Rendering
                             renderContext.TexParameterf(renderContext.Enums.Texture2D, renderContext.Enums.TextureMaxAnisotropyExt, Math.Min(16.0f, maxAniso));
                         }
                         renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
-                        Console.WriteLine($"Texture loaded: {texture}");
+                        //Console.WriteLine($"Texture loaded: {texture}");
                         return (texture, pixelDepth);
                     }
                     catch (Exception ex)

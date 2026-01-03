@@ -118,7 +118,7 @@ namespace SiegeEngine.Core.Managers
                 (uint textureId, byte pixelDepth) = TextureLoader.LoadEmbeddedTexture(_renderContext, textureData, textureName, 1, wrapS, wrapT);
                 if (textureId != 0)
                 {
-                    Console.WriteLine($"ModelManager: Loaded embedded texture '{textureName}' with {textureData.Length} bytes, assumed PixelDepth={pixelDepth}");
+                    //Console.WriteLine($"ModelManager: Loaded embedded texture '{textureName}' with {textureData.Length} bytes, assumed PixelDepth={pixelDepth}");
                 }
                 else
                 {
@@ -152,7 +152,7 @@ namespace SiegeEngine.Core.Managers
                     (textureId, pixelDepth) = TextureLoader.LoadTgaTexture(_renderContext, tgaPath, wrapS, wrapT);
                     if (textureId != 0)
                     {
-                        Console.WriteLine($"ModelManager: Loaded external TGA texture from {tgaPath}");
+                        //Console.WriteLine($"ModelManager: Loaded external TGA texture from {tgaPath}");
                         return (textureId, pixelDepth);
                     }
                 }
@@ -161,7 +161,7 @@ namespace SiegeEngine.Core.Managers
                     (textureId, pixelDepth) = TextureLoader.LoadTexture(_renderContext, pngPath, 1, wrapS, wrapT);
                     if (textureId != 0)
                     {
-                        Console.WriteLine($"ModelManager: Loaded external PNG texture from {pngPath}");
+                        //Console.WriteLine($"ModelManager: Loaded external PNG texture from {pngPath}");
                         return (textureId, pixelDepth);
                     }
                 }
@@ -176,7 +176,7 @@ namespace SiegeEngine.Core.Managers
                             (textureId, pixelDepth) = TextureLoader.LoadTexture(_renderContext, fallbackPng, 1, wrapS, wrapT);
                             if (textureId != 0)
                             {
-                                Console.WriteLine($"ModelManager: Loaded exact match PNG texture from {fallbackPng}");
+                                //Console.WriteLine($"ModelManager: Loaded exact match PNG texture from {fallbackPng}");
                                 return (textureId, pixelDepth);
                             }
                         }
@@ -186,7 +186,7 @@ namespace SiegeEngine.Core.Managers
                         (textureId, pixelDepth) = TextureLoader.LoadTexture(_renderContext, fallbackPng, 1, wrapS, wrapT);
                         if (textureId != 0)
                         {
-                            Console.WriteLine($"ModelManager: Loaded fallback PNG texture from {fallbackPng}");
+                            //Console.WriteLine($"ModelManager: Loaded fallback PNG texture from {fallbackPng}");
                             return (textureId, pixelDepth);
                         }
                     }
@@ -246,6 +246,7 @@ namespace SiegeEngine.Core.Managers
                 List<uint> albedos = new List<uint>();
                 List<uint> normals = new List<uint>();
                 List<uint> metallics = new List<uint>();
+                Console.WriteLine($"loading textures for {mesh.Materials.Count} Materials.");
                 foreach (var mat in mesh.Materials)
                 {
                     var albedoInfo = mat.Textures.GetValueOrDefault("albedo");
@@ -365,11 +366,11 @@ namespace SiegeEngine.Core.Managers
                         zeroNormalCount++;
                 }
                 Console.WriteLine($"ModelManager: Loaded mesh {meshIndex} with {mesh.Materials.Count} materials");
-                Console.WriteLine($"ModelManager: Vertex ranges: X=({minX}, {maxX}), Y=({minY}, {maxY}), Z=({minZ}, {maxZ})");
-                Console.WriteLine($"ModelManager: Bounds: Width={maxX - minX:F2}, Height={maxY - minY:F2}, Depth={maxZ - minZ:F2}");
-                Console.WriteLine($"ModelManager: {defaultNormalCount} of {mesh.Vertices.Count} vertices have default normals (0, 0, 1)");
-                Console.WriteLine($"ModelManager: {zeroNormalCount} of {mesh.Vertices.Count} vertices have zero normals (0, 0, 0)");
-                Console.WriteLine($"ModelManager: Material index distribution: {string.Join(", ", materialIndexCounts.Select(kv => $"Index {kv.Key}: {kv.Value} vertices"))}");
+                //Console.WriteLine($"ModelManager: Vertex ranges: X=({minX}, {maxX}), Y=({minY}, {maxY}), Z=({minZ}, {maxZ})");
+                //Console.WriteLine($"ModelManager: Bounds: Width={maxX - minX:F2}, Height={maxY - minY:F2}, Depth={maxZ - minZ:F2}");
+                //Console.WriteLine($"ModelManager: {defaultNormalCount} of {mesh.Vertices.Count} vertices have default normals (0, 0, 1)");
+                //Console.WriteLine($"ModelManager: {zeroNormalCount} of {mesh.Vertices.Count} vertices have zero normals (0, 0, 0)");
+                //Console.WriteLine($"ModelManager: Material index distribution: {string.Join(", ", materialIndexCounts.Select(kv => $"Index {kv.Key}: {kv.Value} vertices"))}");
                 uint vao = _renderContext.GenVertexArray();
                 uint vbo = _renderContext.GenBuffer();
                 uint ebo = _renderContext.GenBuffer();
