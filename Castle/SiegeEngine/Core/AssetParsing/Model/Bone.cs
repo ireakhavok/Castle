@@ -108,6 +108,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public Matrix4x4 Geo => Matrix4x4.CreateScale(GeometricScaling) *
             CreateFromEuler(GeometricRotationDegrees, 0) *
             Matrix4x4.CreateTranslation(GeometricTranslation);
+        public List<Bone> Children { get; set; } = new List<Bone>();
         public Matrix4x4 ComputeLocal(Vector3? t = null, Vector3? r = null, Vector3? s = null)
         {
             Vector3 useT = t ?? LclTranslation;

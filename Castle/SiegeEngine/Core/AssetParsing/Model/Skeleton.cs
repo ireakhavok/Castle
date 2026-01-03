@@ -26,12 +26,27 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public Matrix4x4[] ComputeGlobalTransforms(Matrix4x4[] localTransforms)
         {
             var globalTransforms = new Matrix4x4[Bones.Count];
+            // Find roots
             for (int i = 0; i < Bones.Count; i++)
             {
-                var parentIndex = Bones[i].ParentIndex;
-                globalTransforms[i] = (parentIndex >= 0 ? globalTransforms[parentIndex] : Matrix4x4.Identity) * localTransforms[i];
+                if (Bones[i].ParentIndex == -1)
+                {
+                    ComputeGlobalRecursive(i, localTransforms, globalTransforms, Matrix4x4.Identity);
+                }
             }
             return globalTransforms;
+        }
+        private void ComputeGlobalRecursive(int idx, Matrix4x4[] localTransforms, Matrix4x4[] globalTransforms, Matrix4x4 parentGlobal)
+        {
+            globalTransforms[idx] = parentGlobal * localTransforms[idx];
+            foreach (var child in Bones[idx].Children)
+            {
+                int childIdx = Bones.IndexOf(child);
+                if (childIdx != -1)
+                {
+                    ComputeGlobalRecursive(childIdx, localTransforms, globalTransforms, globalTransforms[idx]);
+                }
+            }
         }
         public Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
         {

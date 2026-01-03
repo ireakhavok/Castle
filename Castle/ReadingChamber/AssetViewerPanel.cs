@@ -272,7 +272,7 @@ namespace ReadingChamber
                                 Matrix4x4 delta = invAnimRest * local;
                                 if (axisMismatch)
                                 {
-                                    delta = trans * delta * invTrans;
+                                    delta = invTrans * delta * trans;
                                 }
                                 if (scaleMismatch)
                                 {

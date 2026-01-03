@@ -1,10 +1,11 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/FBXSkeletonParser.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXSkeletonParser
@@ -176,6 +177,7 @@ namespace SiegeEngine.Core.AssetParsing
                     int childIdx = boneIndexById[conn.child];
                     int parentIdx = boneIndexById[conn.parent];
                     model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
+                    model.Skeleton.Bones[parentIdx].Children.Add(model.Skeleton.Bones[childIdx]);
                 }
             }
         }
