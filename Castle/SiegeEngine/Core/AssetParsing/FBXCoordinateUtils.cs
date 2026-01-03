@@ -1,7 +1,6 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXCoordinateUtils.cs
-using System;
+﻿using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXCoordinateUtils
@@ -92,6 +91,31 @@ namespace SiegeEngine.Core.AssetParsing
             float c = m.M21 * (m.M32 * m.M44 - m.M34 * m.M42) - m.M22 * (m.M31 * m.M44 - m.M34 * m.M41) + m.M24 * (m.M31 * m.M42 - m.M32 * m.M41);
             float d = m.M21 * (m.M32 * m.M43 - m.M33 * m.M42) - m.M22 * (m.M31 * m.M43 - m.M33 * m.M41) + m.M23 * (m.M31 * m.M42 - m.M32 * m.M41);
             return m.M11 * a - m.M12 * b + m.M13 * c - m.M14 * d;
+        }
+        public static int[] GetInversePermutation(int[] perm)
+        {
+            int[] inv = new int[perm.Length];
+            for (int i = 0; i < perm.Length; i++)
+            {
+                inv[perm[i]] = i;
+            }
+            return inv;
+        }
+        public static Vector3 UnremapVector(Vector3 v, int[] sourceToTarget, int[] signs)
+        {
+            return RemapVector(v, GetInversePermutation(sourceToTarget), signs);
+        }
+        public static Vector3 UnremapScale(Vector3 v, int[] sourceToTarget, int[] signs)
+        {
+            return RemapScale(v, GetInversePermutation(sourceToTarget), signs);
+        }
+        public static Vector3 UnremapRotation(Vector3 v, int[] sourceToTarget, int[] signs)
+        {
+            return RemapRotation(v, GetInversePermutation(sourceToTarget), signs);
+        }
+        public static int UnremapRotationOrder(int order, int[] sourceToTarget)
+        {
+            return RemapRotationOrder(order, GetInversePermutation(sourceToTarget));
         }
     }
 }
