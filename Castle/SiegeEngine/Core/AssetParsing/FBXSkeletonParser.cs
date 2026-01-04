@@ -13,7 +13,8 @@ namespace SiegeEngine.Core.AssetParsing
         public static (Dictionary<long, int> boneIndexById, List<int> rootIndices) ParseSkeleton(FBXModel model, BaseNode objectsNode, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, int[] sourceToTarget, int[] signs, float modelScale)
         {
             var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
-                ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Limb" || (string)n.properties[2].Value == "Root")).ToList();
+                ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Limb" ||
+                 (string)n.properties[2].Value == "Root" || (string)n.properties[2].Value == "Null")).ToList();
             Dictionary<long, int> boneIndexById = new Dictionary<long, int>();
             int boneIndex = 0;
             HashSet<long> usedBoneIds = new HashSet<long>();
