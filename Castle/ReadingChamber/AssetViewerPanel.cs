@@ -14,7 +14,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -59,6 +58,7 @@ namespace ReadingChamber
         private float _maxExtent;
         private float _lastLogTime = -1f;
         private readonly string[] _debugBones = { "root", "pelvis", "head", "foot_l", "thigh_l", "thigh_r" };
+        private readonly string[] _testbones = { "l_appendage_upper", "l_appendage_mid", "lappendagetip", "rappendageupper", "rappendagemid", "rappendagetip" };
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -201,8 +201,17 @@ namespace ReadingChamber
         {
             var restLocals = _model.Skeleton.Bones.Select(b => b.LocalRest).ToArray();
             var restGlobals = _model.Skeleton.ComputeGlobalTransforms(restLocals);
+            string[] debugBones = [];
             Console.WriteLine("Bind Pose transforms:");
-            foreach (var boneName in _debugBones)
+            if (_meshPath.Contains("man_mesh"))  //TODO fix this
+            {
+                debugBones = _debugBones;
+            }
+            else if (_meshPath.Contains("test_man"))
+            {
+                debugBones = _testbones;
+            }
+            foreach (var boneName in debugBones)
             {
                 int idx = _model.Skeleton.Bones.FindIndex(b => string.Equals(b.Name, boneName, StringComparison.OrdinalIgnoreCase));
                 if (idx != -1)
@@ -247,15 +256,6 @@ namespace ReadingChamber
                 var animTree = BuildBoneTree(animModel.Skeleton);
                 // Adjust for potential extra root in main (e.g., "Armature")
                 int mainRoot = mainTree.Keys.FirstOrDefault(k => !mainTree.Values.Any(children => children.Contains(k)));
-                if (_model.Skeleton.Bones[mainRoot].Name.ToLowerInvariant() == "armature")
-                {
-                    // Assume next is effective root
-                    if (mainTree[mainRoot].Count == 1)
-                    {
-                        mainRoot = mainTree[mainRoot][0];
-                        Console.WriteLine("Detected extra 'Armature' root in main model, using child as effective root for matching");
-                    }
-                }
                 int animRoot = animTree.Keys.FirstOrDefault(k => !animTree.Values.Any(children => children.Contains(k)));
                 if (animRoot == -1)
                 {
@@ -450,13 +450,13 @@ namespace ReadingChamber
         }
         //private void LogDelta(int animIdx, int mainIdx, Matrix4x4 delta, string stage)
         //{
-        //    string animBone = _model.Skeleton.Bones[mainIdx].Name; // Using main name for consistency
-        //    if (animBone == "thigh_l" || animBone == "thigh_r" || animBone == "calf_l" || animBone == "calf_r")
-        //    {
-        //        Matrix4x4.Decompose(delta, out Vector3 scale, out Quaternion rot, out Vector3 trans);
-        //        Vector3 euler = ToEuler(rot);
-        //        Console.WriteLine($"Delta for {animBone} at {stage}: Pos({trans.X:F2},{trans.Y:F2},{trans.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2}) Scale({scale.X:F2},{scale.Y:F2},{scale.Z:F2})");
-        //    }
+        // string animBone = _model.Skeleton.Bones[mainIdx].Name; // Using main name for consistency
+        // if (animBone == "thigh_l" || animBone == "thigh_r" || animBone == "calf_l" || animBone == "calf_r")
+        // {
+        // Matrix4x4.Decompose(delta, out Vector3 scale, out Quaternion rot, out Vector3 trans);
+        // Vector3 euler = ToEuler(rot);
+        // Console.WriteLine($"Delta for {animBone} at {stage}: Pos({trans.X:F2},{trans.Y:F2},{trans.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2}) Scale({scale.X:F2},{scale.Y:F2},{scale.Z:F2})");
+        // }
         //}
         private void LogKeyframeTransforms(Animation anim, float targetTime)
         {
