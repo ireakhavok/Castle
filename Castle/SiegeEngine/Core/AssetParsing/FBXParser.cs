@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/FBXParser.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Rendering;
 using System;
@@ -8,7 +10,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -169,7 +170,9 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                 }
             }
+
             float modelScale = unitScaleFactor / originalUnitScaleFactor;
+            Console.WriteLine($"Parsed global settings: UpAxis={upAxis} Sign={upAxisSign}, FrontAxis={frontAxis} Sign={frontAxisSign}, CoordAxis={coordAxis} Sign={coordAxisSign}, CoordSystem={coordSystem} Sign={coordSystemSign}, Scale={modelScale}, FrameRate={frameRate}");
             int[] sourceToTarget = new int[3];
             sourceToTarget[coordAxis] = 0; // Map to engine X
             sourceToTarget[frontAxis] = 1; // Map to engine Y (forward)
@@ -186,7 +189,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             // Engine-specific adjustment (e.g., flip forward if needed)
             signs[frontAxis] = -signs[frontAxis]; // Assuming engine needs positive Y forward, flip if FBX has positive
-            Console.WriteLine($"Parsed global settings: UpAxis={upAxis} Sign={upAxisSign}, FrontAxis={frontAxis} Sign={frontAxisSign}, CoordAxis={coordAxis} Sign={coordAxisSign}, CoordSystem={coordSystem} Sign={coordSystemSign}, Scale={modelScale}, FrameRate={frameRate}");
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
             for (int src = 0; src < 3; src++)

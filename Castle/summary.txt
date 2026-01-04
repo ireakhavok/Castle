@@ -1235,7 +1235,10 @@ Folder: SiegeEngine
 - File: Matrix3x3.cs
   - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Numerics
+    - Fields:
+      - Matrix3x3 Identity
     - Methods:
+      - constructor Matrix3x3()
       - constructor Matrix3x3(
             float m11, 
             float m21, 
