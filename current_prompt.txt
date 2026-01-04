@@ -1,10 +1,747 @@
-You are an expert in 3D animation, computer graphics, and mathematical principals like Euler transformations. We are trying to side-load a static skinned and skeletonized FBX model with a matching animation, we have created the majority of it, but there are bugs in the transformations. Visually there are bones that are rotating the incorrect direction in relation to other bones, for example the limbnodes surrounding the femur are supposed to be properly connected, but the top limbnode, by the hip in this example goes backwards when it should go forward during a jumping motion. the nodes below the knees do move in the correct direction in relation to the root node, kind of forward an up during the jumping motion, but because the hip joints are moving the mesh in the opposite direction, the mesh becomes stretched. I don't know if the issue is in relation to a parent child relationship, if there is a negative sign that is missing, or an absolute value when there shouldn't be. I have tried removing absolute value calls, adding negative signs (which did invert the bone to the correct part of the y axis, but then inverted all of them, which is equally incorrect), and lastly I've tried creating purely euler transformations and matrices (which made it worse). I don't fully understand the issue and the mathematics so I think we should analyze the issue before we proceed, and create a prompt that will help direct us in our next chat. 
+I am trying to fix the animation system, and In order for the mesh to render in the correct orientation in the video game (negative y forward and z-up) there are some signs that have to be flipped, which is quite confusing, despite having outputted them in blender correctly. It seems like there is some shearing that is occurring that is not due to scale changes, and is purely from translation and rotation errors in the mathematics. Below is the list of logs and I would like you to first validate that you can indeed see that there are shearing issues and then from there we can move on to the code behind, starting with the assetviewerpanel, so we can diagnose it from there. Currently there is a flip, I believe to account for handedness in openGL, that may cause some issues, but for the most part the model is rotating and mostly moving in the correct relative directions. when the axis don't match it is supposed to swap the orientation of the newly parsed file to match the game engine, but that clearly isn't working 100% correctly, no doubt because the system currently isn't handling rotation of the euler rotations / quaternions entirely, that being said after converting these FBX files to be in the exact same coordinate system as the FBX file (minus the handedness?) the animation looks much better, but there is still some very evident shearing occurring. so first we need to see the problem. then I will send you the main file that I am using to view the animation system functioning, and we can add more files from there to add to your understanding of what is going on. I can also send you a summary file, but it is extremely large and may need me to reduce the scope of the summary file to just the folder area that you would like to see. the summary file just says what variables are in the file, the methods, and classes, but no internal logic of the methods themselves. 
 
-	This project is inspired by multiplayer game engines, but extended for real-time multiplayer with hundreds of players. The goal is to empower solo hobbyists, small teams, and larger communities to build, mod, share, and play custom games without steep learning curves, mod conflicts, or poor multiplayer support. Treat game creation as a rewarding experience itself, like playing a meta-game where builders feel engaged through intuitive tools, previews, and seamless testing. The app should function as a professional game creator tool—intuitive, modular, and extensible—rather than a hacked-together prototype lacking proper editor features.
+man_mesh orientation: 
 
-One of the concepts that is quite cool is that the IDE itself will utilize the video game systems, UI objects, and event bus. The IDE itself uses the video game creator, and thus, itself can be modded, with new hooks, etc.
+Parsed global settings: UpAxis=2 Sign=1, FrontAxis=1 Sign=1, CoordAxis=0 Sign=-1, CoordSystem=0 Sign=1, Scale=1, FrameRate=30
 
-You need to also understand how all the subsystems tie in, how the modding system and scene system works. So right now, what I need you to do is understand the summary of the repository in its entirety and make minimalistic changes that are iterative in nature to fix the issues in the game. In order for you to systematically and methodically update the repository to fix these issues, you’ll need to keep the information regarding the repo in its entirety safe. I only want you to provide code when I say go. Right now you need to provide me a list of files to look at, and iteratively add more files to your memory. As you do so you’ll need to handle a large amount of code and adopt good practices to keeping the information safe, and updated as I say we reached a checkpoint. Don’t ask me questions you’ll be able to answer after asking for the files in question, waiting for them, and then proceeding once there are no more questions.
+man_mesh armature:
 
-Rules:
-the summary file is your life line to succeed and understand the repository from a class - call perspective, so keep that information safe and silently update it accordingly when I confirm something worked. 2) Output the full and entire files you modify and only the files you modify 3) Output the files in-line and in folder/class labelled c-sharp code blocks. 4) Do not nominally log 5) do not add anything extra. do not change the name of variables 6) understand the entire scope of the changes you make 7) Make methodical and ITERATIVE changes (don't make a ton of changes at once.) 8) when a class or context is un-clear, stop. ask for the files. wait for them. and inspect the files before continuing with the solution 9) do not output snippets of code. 10) Know the solution definitively, but be concise in your explanations unless explicitly told to explain something. 11) Given the complexity, adopt an iterative approach, requesting files in stages to build understanding
+Parsed global settings: UpAxis=2 Sign=1, FrontAxis=1 Sign=1, CoordAxis=0 Sign=-1, CoordSystem=0 Sign=1, Scale=1, FrameRate=30
+
+jumping_v2:
+
+Parsed global settings: UpAxis=2 Sign=1, FrontAxis=1 Sign=1, CoordAxis=0 Sign=-1, CoordSystem=0 Sign=1, Scale=1, FrameRate=30
+
+Animation stacks found: 1
+Parsing animation stack ArmatureAction
+Layers for stack: 1
+Curve nodes for layer: 213
+Bone connections for curve node 630699023: 1
+Curve for bone middle_02_r T with 2 unique keys
+Bone connections for curve node 486130862: 1
+Curve for bone middle_02_r R with 2 unique keys
+Bone connections for curve node 805246272: 1
+Curve for bone middle_02_r S with 2 unique keys
+Bone connections for curve node 135008713: 1
+Bone connections for curve node 375579386: 1
+Bone connections for curve node 145389739: 1
+Bone connections for curve node 977075668: 1
+Curve for bone middle_03_r T with 2 unique keys
+Bone connections for curve node 793890387: 1
+Curve for bone middle_03_r R with 2 unique keys
+Bone connections for curve node 70145314: 1
+Curve for bone middle_03_r S with 2 unique keys
+Bone connections for curve node 562079466: 1
+Curve for bone middle_02_l T with 2 unique keys
+Bone connections for curve node 255066407: 1
+Curve for bone middle_02_l R with 2 unique keys
+Bone connections for curve node 57830604: 1
+Curve for bone middle_02_l S with 2 unique keys
+Bone connections for curve node 966698221: 1
+Bone connections for curve node 498551192: 1
+Bone connections for curve node 833096140: 1
+Bone connections for curve node 552419131: 1
+Curve for bone foot_r T with 2 unique keys
+Bone connections for curve node 991865097: 1
+Curve for bone foot_r R with 76 unique keys
+Bone connections for curve node 797976249: 1
+Curve for bone foot_r S with 2 unique keys
+Bone connections for curve node 904884715: 1
+Curve for bone Armature T with 2 unique keys
+Bone connections for curve node 367288354: 1
+Curve for bone Armature R with 2 unique keys
+Bone connections for curve node 917251118: 1
+Curve for bone Armature S with 2 unique keys
+Bone connections for curve node 87088449: 1
+Bone connections for curve node 27102682: 1
+Bone connections for curve node 566806804: 1
+Bone connections for curve node 246097797: 1
+Curve for bone lowerarm_twist_01_l T with 2 unique keys
+Bone connections for curve node 637098978: 1
+Curve for bone lowerarm_twist_01_l R with 2 unique keys
+Bone connections for curve node 688197187: 1
+Curve for bone lowerarm_twist_01_l S with 2 unique keys
+Bone connections for curve node 28094846: 1
+Curve for bone index_01_r T with 2 unique keys
+Bone connections for curve node 418967750: 1
+Curve for bone index_01_r R with 2 unique keys
+Bone connections for curve node 843037079: 1
+Curve for bone index_01_r S with 2 unique keys
+Bone connections for curve node 587933649: 1
+Curve for bone ring_01_r T with 2 unique keys
+Bone connections for curve node 319185676: 1
+Curve for bone ring_01_r R with 2 unique keys
+Bone connections for curve node 271897770: 1
+Curve for bone ring_01_r S with 2 unique keys
+Bone connections for curve node 436519329: 1
+Curve for bone middle_01_l T with 2 unique keys
+Bone connections for curve node 581051226: 1
+Curve for bone middle_01_l R with 2 unique keys
+Bone connections for curve node 581836316: 1
+Curve for bone middle_01_l S with 2 unique keys
+Bone connections for curve node 677983570: 1
+Bone connections for curve node 673844800: 1
+Bone connections for curve node 257825554: 1
+Bone connections for curve node 822461150: 1
+Curve for bone thigh_l T with 2 unique keys
+Bone connections for curve node 623350830: 1
+Curve for bone thigh_l R with 74 unique keys
+Bone connections for curve node 763250118: 1
+Curve for bone thigh_l S with 2 unique keys
+Bone connections for curve node 241378007: 1
+Curve for bone index_03_r T with 2 unique keys
+Bone connections for curve node 979157917: 1
+Curve for bone index_03_r R with 2 unique keys
+Bone connections for curve node 261245786: 1
+Curve for bone index_03_r S with 2 unique keys
+Bone connections for curve node 534643910: 1
+Curve for bone index_02_l T with 2 unique keys
+Bone connections for curve node 948083526: 1
+Curve for bone index_02_l R with 2 unique keys
+Bone connections for curve node 196271706: 1
+Curve for bone index_02_l S with 2 unique keys
+Bone connections for curve node 770479732: 1
+Curve for bone thumb_01_r T with 2 unique keys
+Bone connections for curve node 692016150: 1
+Curve for bone thumb_01_r R with 2 unique keys
+Bone connections for curve node 364008870: 1
+Curve for bone thumb_01_r S with 2 unique keys
+Bone connections for curve node 959905147: 1
+Curve for bone clavicle_r T with 2 unique keys
+Bone connections for curve node 834405370: 1
+Curve for bone clavicle_r R with 2 unique keys
+Bone connections for curve node 709002810: 1
+Curve for bone clavicle_r S with 2 unique keys
+Bone connections for curve node 449742683: 1
+Curve for bone thumb_02_r T with 2 unique keys
+Bone connections for curve node 609749435: 1
+Curve for bone thumb_02_r R with 2 unique keys
+Bone connections for curve node 439401773: 1
+Curve for bone thumb_02_r S with 2 unique keys
+Bone connections for curve node 813309497: 1
+Bone connections for curve node 194124296: 1
+Bone connections for curve node 83774090: 1
+Bone connections for curve node 378285997: 1
+Curve for bone root T with 2 unique keys
+Bone connections for curve node 273580574: 1
+Curve for bone root R with 2 unique keys
+Bone connections for curve node 675400971: 1
+Curve for bone root S with 2 unique keys
+Bone connections for curve node 759947678: 1
+Curve for bone pinky_03_r T with 2 unique keys
+Bone connections for curve node 311737421: 1
+Curve for bone pinky_03_r R with 2 unique keys
+Bone connections for curve node 787068635: 1
+Curve for bone pinky_03_r S with 2 unique keys
+Bone connections for curve node 842159008: 1
+Bone connections for curve node 743194786: 1
+Bone connections for curve node 865678426: 1
+Bone connections for curve node 226575873: 1
+Curve for bone pinky_01_l T with 2 unique keys
+Bone connections for curve node 92731233: 1
+Curve for bone pinky_01_l R with 2 unique keys
+Bone connections for curve node 779783387: 1
+Curve for bone pinky_01_l S with 2 unique keys
+Bone connections for curve node 225297540: 1
+Curve for bone pinky_01_r T with 2 unique keys
+Bone connections for curve node 889329390: 1
+Curve for bone pinky_01_r R with 2 unique keys
+Bone connections for curve node 995771156: 1
+Curve for bone pinky_01_r S with 2 unique keys
+Bone connections for curve node 540003405: 1
+Curve for bone pinky_03_l T with 2 unique keys
+Bone connections for curve node 858569159: 1
+Curve for bone pinky_03_l R with 2 unique keys
+Bone connections for curve node 642950472: 1
+Curve for bone pinky_03_l S with 2 unique keys
+Bone connections for curve node 670697121: 1
+Curve for bone foot_l T with 2 unique keys
+Bone connections for curve node 464060434: 1
+Curve for bone foot_l R with 76 unique keys
+Bone connections for curve node 145984683: 1
+Curve for bone foot_l S with 2 unique keys
+Bone connections for curve node 330897634: 1
+Curve for bone calf_r T with 2 unique keys
+Bone connections for curve node 503565279: 1
+Curve for bone calf_r R with 76 unique keys
+Bone connections for curve node 454539025: 1
+Curve for bone calf_r S with 2 unique keys
+Bone connections for curve node 259056522: 1
+Curve for bone hand_r T with 2 unique keys
+Bone connections for curve node 402838085: 1
+Curve for bone hand_r R with 2 unique keys
+Bone connections for curve node 143411497: 1
+Curve for bone hand_r S with 2 unique keys
+Bone connections for curve node 82134994: 1
+Curve for bone ring_03_l T with 2 unique keys
+Bone connections for curve node 33677868: 1
+Curve for bone ring_03_l R with 2 unique keys
+Bone connections for curve node 197867663: 1
+Curve for bone ring_03_l S with 2 unique keys
+Bone connections for curve node 750092812: 1
+Curve for bone thumb_02_l T with 2 unique keys
+Bone connections for curve node 157321457: 1
+Curve for bone thumb_02_l R with 2 unique keys
+Bone connections for curve node 913359084: 1
+Curve for bone thumb_02_l S with 2 unique keys
+Bone connections for curve node 32945560: 1
+Curve for bone middle_01_r T with 2 unique keys
+Bone connections for curve node 4321430: 1
+Curve for bone middle_01_r R with 2 unique keys
+Bone connections for curve node 299582311: 1
+Curve for bone middle_01_r S with 2 unique keys
+Bone connections for curve node 644215945: 1
+Curve for bone index_02_r T with 2 unique keys
+Bone connections for curve node 246020513: 1
+Curve for bone index_02_r R with 2 unique keys
+Bone connections for curve node 180882641: 1
+Curve for bone index_02_r S with 2 unique keys
+Bone connections for curve node 822720328: 1
+Bone connections for curve node 141132649: 1
+Bone connections for curve node 284615320: 1
+Bone connections for curve node 186330013: 1
+Curve for bone clavicle_l T with 2 unique keys
+Bone connections for curve node 873140250: 1
+Curve for bone clavicle_l R with 2 unique keys
+Bone connections for curve node 269942713: 1
+Curve for bone clavicle_l S with 2 unique keys
+Bone connections for curve node 729758424: 1
+Curve for bone spine_03 T with 2 unique keys
+Bone connections for curve node 813961863: 1
+Curve for bone spine_03 R with 2 unique keys
+Bone connections for curve node 882667349: 1
+Curve for bone spine_03 S with 2 unique keys
+Bone connections for curve node 437305015: 1
+Curve for bone index_03_l T with 2 unique keys
+Bone connections for curve node 839519710: 1
+Curve for bone index_03_l R with 2 unique keys
+Bone connections for curve node 853561400: 1
+Curve for bone index_03_l S with 2 unique keys
+Bone connections for curve node 580246602: 1
+Curve for bone pinky_02_r T with 2 unique keys
+Bone connections for curve node 734636349: 1
+Curve for bone pinky_02_r R with 2 unique keys
+Bone connections for curve node 501531829: 1
+Curve for bone pinky_02_r S with 2 unique keys
+Bone connections for curve node 608781579: 1
+Curve for bone ring_03_r T with 2 unique keys
+Bone connections for curve node 725436170: 1
+Curve for bone ring_03_r R with 2 unique keys
+Bone connections for curve node 456292706: 1
+Curve for bone ring_03_r S with 2 unique keys
+Bone connections for curve node 257323791: 1
+Bone connections for curve node 318198787: 1
+Bone connections for curve node 25441258: 1
+Bone connections for curve node 421938016: 1
+Curve for bone lowerarm_l T with 2 unique keys
+Bone connections for curve node 613943832: 1
+Curve for bone lowerarm_l R with 58 unique keys
+Bone connections for curve node 573169141: 1
+Curve for bone lowerarm_l S with 2 unique keys
+Bone connections for curve node 413909850: 1
+Bone connections for curve node 632341394: 1
+Bone connections for curve node 361369241: 1
+Bone connections for curve node 116154734: 1
+Curve for bone pelvis T with 76 unique keys
+Bone connections for curve node 361524579: 1
+Curve for bone pelvis R with 2 unique keys
+Bone connections for curve node 732838490: 1
+Curve for bone pelvis S with 2 unique keys
+Bone connections for curve node 900235360: 1
+Curve for bone pinky_02_l T with 2 unique keys
+Bone connections for curve node 179662536: 1
+Curve for bone pinky_02_l R with 2 unique keys
+Bone connections for curve node 876562252: 1
+Curve for bone pinky_02_l S with 2 unique keys
+Bone connections for curve node 630798231: 1
+Curve for bone index_01_l T with 2 unique keys
+Bone connections for curve node 34563438: 1
+Curve for bone index_01_l R with 2 unique keys
+Bone connections for curve node 750023313: 1
+Curve for bone index_01_l S with 2 unique keys
+Bone connections for curve node 563018275: 1
+Curve for bone ball_l T with 2 unique keys
+Bone connections for curve node 384744703: 1
+Curve for bone ball_l R with 40 unique keys
+Bone connections for curve node 522705896: 1
+Curve for bone ball_l S with 2 unique keys
+Bone connections for curve node 844550299: 1
+Curve for bone thigh_r T with 2 unique keys
+Bone connections for curve node 955848760: 1
+Curve for bone thigh_r R with 75 unique keys
+Bone connections for curve node 641123136: 1
+Curve for bone thigh_r S with 2 unique keys
+Bone connections for curve node 178713117: 1
+Curve for bone spine_02 T with 2 unique keys
+Bone connections for curve node 182101142: 1
+Curve for bone spine_02 R with 2 unique keys
+Bone connections for curve node 2066066: 1
+Curve for bone spine_02 S with 2 unique keys
+Bone connections for curve node 530826571: 1
+Curve for bone head T with 2 unique keys
+Bone connections for curve node 677610274: 1
+Curve for bone head R with 31 unique keys
+Bone connections for curve node 28968131: 1
+Curve for bone head S with 2 unique keys
+Bone connections for curve node 237901984: 1
+Bone connections for curve node 187182510: 1
+Bone connections for curve node 472116925: 1
+Bone connections for curve node 373085965: 1
+Bone connections for curve node 638601811: 1
+Bone connections for curve node 653870585: 1
+Bone connections for curve node 593796889: 1
+Bone connections for curve node 546314004: 1
+Bone connections for curve node 864067657: 1
+Bone connections for curve node 897912868: 1
+Curve for bone spine_01 T with 2 unique keys
+Bone connections for curve node 166483213: 1
+Curve for bone spine_01 R with 67 unique keys
+Bone connections for curve node 544161804: 1
+Curve for bone spine_01 S with 2 unique keys
+Bone connections for curve node 470351504: 1
+Bone connections for curve node 383851328: 1
+Bone connections for curve node 354442837: 1
+Bone connections for curve node 545574439: 1
+Bone connections for curve node 983804359: 1
+Bone connections for curve node 340835279: 1
+Bone connections for curve node 947893079: 1
+Curve for bone middle_03_l T with 2 unique keys
+Bone connections for curve node 969953193: 1
+Curve for bone middle_03_l R with 2 unique keys
+Bone connections for curve node 544172274: 1
+Curve for bone middle_03_l S with 2 unique keys
+Bone connections for curve node 275416653: 1
+Curve for bone ring_02_r T with 2 unique keys
+Bone connections for curve node 546997221: 1
+Curve for bone ring_02_r R with 2 unique keys
+Bone connections for curve node 811472942: 1
+Curve for bone ring_02_r S with 2 unique keys
+Bone connections for curve node 989775574: 1
+Curve for bone thumb_03_r T with 2 unique keys
+Bone connections for curve node 596971401: 1
+Curve for bone thumb_03_r R with 2 unique keys
+Bone connections for curve node 212201559: 1
+Curve for bone thumb_03_r S with 2 unique keys
+Bone connections for curve node 275078132: 1
+Curve for bone thumb_01_l T with 2 unique keys
+Bone connections for curve node 180273674: 1
+Curve for bone thumb_01_l R with 2 unique keys
+Bone connections for curve node 448215698: 1
+Curve for bone thumb_01_l S with 2 unique keys
+Bone connections for curve node 258482325: 1
+Curve for bone ring_01_l T with 2 unique keys
+Bone connections for curve node 803815843: 1
+Curve for bone ring_01_l R with 2 unique keys
+Bone connections for curve node 637812716: 1
+Curve for bone ring_01_l S with 2 unique keys
+Bone connections for curve node 940772961: 1
+Curve for bone hand_l T with 2 unique keys
+Bone connections for curve node 155278072: 1
+Curve for bone hand_l R with 2 unique keys
+Bone connections for curve node 863973031: 1
+Curve for bone hand_l S with 2 unique keys
+Bone connections for curve node 85590579: 1
+Curve for bone lowerarm_twist_01_r T with 2 unique keys
+Bone connections for curve node 584685966: 1
+Curve for bone lowerarm_twist_01_r R with 2 unique keys
+Bone connections for curve node 324670332: 1
+Curve for bone lowerarm_twist_01_r S with 2 unique keys
+Bone connections for curve node 10104365: 1
+Curve for bone neck_01 T with 2 unique keys
+Bone connections for curve node 932411090: 1
+Curve for bone neck_01 R with 2 unique keys
+Bone connections for curve node 278843680: 1
+Curve for bone neck_01 S with 2 unique keys
+Bone connections for curve node 288216838: 1
+Bone connections for curve node 627909184: 1
+Bone connections for curve node 38458482: 1
+Bone connections for curve node 38494417: 1
+Curve for bone ball_r T with 2 unique keys
+Bone connections for curve node 51552390: 1
+Curve for bone ball_r R with 57 unique keys
+Bone connections for curve node 422070814: 1
+Curve for bone ball_r S with 2 unique keys
+Bone connections for curve node 336537536: 1
+Curve for bone lowerarm_r T with 2 unique keys
+Bone connections for curve node 505375144: 1
+Curve for bone lowerarm_r R with 58 unique keys
+Bone connections for curve node 387435854: 1
+Curve for bone lowerarm_r S with 2 unique keys
+Bone connections for curve node 308734513: 1
+Curve for bone upperarm_r T with 2 unique keys
+Bone connections for curve node 297363901: 1
+Curve for bone upperarm_r R with 76 unique keys
+Bone connections for curve node 183858040: 1
+Curve for bone upperarm_r S with 2 unique keys
+Bone connections for curve node 849937147: 1
+Curve for bone ring_02_l T with 2 unique keys
+Bone connections for curve node 604599962: 1
+Curve for bone ring_02_l R with 2 unique keys
+Bone connections for curve node 666647009: 1
+Curve for bone ring_02_l S with 2 unique keys
+Bone connections for curve node 993367962: 1
+Curve for bone calf_l T with 2 unique keys
+Bone connections for curve node 705479636: 1
+Curve for bone calf_l R with 76 unique keys
+Bone connections for curve node 69396857: 1
+Curve for bone calf_l S with 2 unique keys
+Bone connections for curve node 278342472: 1
+Curve for bone upperarm_l T with 2 unique keys
+Bone connections for curve node 151609306: 1
+Curve for bone upperarm_l R with 76 unique keys
+Bone connections for curve node 596802332: 1
+Curve for bone upperarm_l S with 2 unique keys
+Bone connections for curve node 138655175: 1
+Curve for bone thumb_03_l T with 2 unique keys
+Bone connections for curve node 525972691: 1
+Curve for bone thumb_03_l R with 2 unique keys
+Bone connections for curve node 726396582: 1
+Curve for bone thumb_03_l S with 2 unique keys
+Finished parsing animation ArmatureAction with 76 keyframes, duration: 2.4833333 seconds
+Animation File Bone Hierarchy (sorted by name for comparison):
+Sorted 0 (orig 0): Armature, Parent: -1, Type: Null, Size: 1
+Sorted 1 (orig 51): ball_l, Parent: 50, Type: LimbNode, Size: 1
+Sorted 2 (orig 55): ball_r, Parent: 54, Type: LimbNode, Size: 1
+Sorted 3 (orig 49): calf_l, Parent: 48, Type: LimbNode, Size: 1
+Sorted 4 (orig 53): calf_r, Parent: 52, Type: LimbNode, Size: 1
+Sorted 5 (orig 6): clavicle_l, Parent: 5, Type: LimbNode, Size: 1
+Sorted 6 (orig 26): clavicle_r, Parent: 5, Type: LimbNode, Size: 1
+Sorted 7 (orig 50): foot_l, Parent: 49, Type: LimbNode, Size: 1
+Sorted 8 (orig 54): foot_r, Parent: 53, Type: LimbNode, Size: 1
+Sorted 9 (orig 9): hand_l, Parent: 8, Type: LimbNode, Size: 1
+Sorted 10 (orig 29): hand_r, Parent: 28, Type: LimbNode, Size: 1
+Sorted 11 (orig 47): head, Parent: 46, Type: LimbNode, Size: 1
+Sorted 12 (orig 10): index_01_l, Parent: 9, Type: LimbNode, Size: 1
+Sorted 13 (orig 30): index_01_r, Parent: 29, Type: LimbNode, Size: 1
+Sorted 14 (orig 11): index_02_l, Parent: 10, Type: LimbNode, Size: 1
+Sorted 15 (orig 31): index_02_r, Parent: 30, Type: LimbNode, Size: 1
+Sorted 16 (orig 12): index_03_l, Parent: 11, Type: LimbNode, Size: 1
+Sorted 17 (orig 32): index_03_r, Parent: 31, Type: LimbNode, Size: 1
+Sorted 18 (orig 8): lowerarm_l, Parent: 7, Type: LimbNode, Size: 1
+Sorted 19 (orig 28): lowerarm_r, Parent: 27, Type: LimbNode, Size: 1
+Sorted 20 (orig 25): lowerarm_twist_01_l, Parent: 8, Type: LimbNode, Size: 1
+Sorted 21 (orig 45): lowerarm_twist_01_r, Parent: 28, Type: LimbNode, Size: 1
+Sorted 22 (orig 13): middle_01_l, Parent: 9, Type: LimbNode, Size: 1
+Sorted 23 (orig 33): middle_01_r, Parent: 29, Type: LimbNode, Size: 1
+Sorted 24 (orig 14): middle_02_l, Parent: 13, Type: LimbNode, Size: 1
+Sorted 25 (orig 34): middle_02_r, Parent: 33, Type: LimbNode, Size: 1
+Sorted 26 (orig 15): middle_03_l, Parent: 14, Type: LimbNode, Size: 1
+Sorted 27 (orig 35): middle_03_r, Parent: 34, Type: LimbNode, Size: 1
+Sorted 28 (orig 46): neck_01, Parent: 5, Type: LimbNode, Size: 1
+Sorted 29 (orig 2): pelvis, Parent: 1, Type: LimbNode, Size: 1
+Sorted 30 (orig 16): pinky_01_l, Parent: 9, Type: LimbNode, Size: 1
+Sorted 31 (orig 36): pinky_01_r, Parent: 29, Type: LimbNode, Size: 1
+Sorted 32 (orig 17): pinky_02_l, Parent: 16, Type: LimbNode, Size: 1
+Sorted 33 (orig 37): pinky_02_r, Parent: 36, Type: LimbNode, Size: 1
+Sorted 34 (orig 18): pinky_03_l, Parent: 17, Type: LimbNode, Size: 1
+Sorted 35 (orig 38): pinky_03_r, Parent: 37, Type: LimbNode, Size: 1
+Sorted 36 (orig 19): ring_01_l, Parent: 9, Type: LimbNode, Size: 1
+Sorted 37 (orig 39): ring_01_r, Parent: 29, Type: LimbNode, Size: 1
+Sorted 38 (orig 20): ring_02_l, Parent: 19, Type: LimbNode, Size: 1
+Sorted 39 (orig 40): ring_02_r, Parent: 39, Type: LimbNode, Size: 1
+Sorted 40 (orig 21): ring_03_l, Parent: 20, Type: LimbNode, Size: 1
+Sorted 41 (orig 41): ring_03_r, Parent: 40, Type: LimbNode, Size: 1
+Sorted 42 (orig 1): root, Parent: 0, Type: LimbNode, Size: 1
+Sorted 43 (orig 3): spine_01, Parent: 2, Type: LimbNode, Size: 1
+Sorted 44 (orig 4): spine_02, Parent: 3, Type: LimbNode, Size: 1
+Sorted 45 (orig 5): spine_03, Parent: 4, Type: LimbNode, Size: 1
+Sorted 46 (orig 48): thigh_l, Parent: 2, Type: LimbNode, Size: 1
+Sorted 47 (orig 52): thigh_r, Parent: 2, Type: LimbNode, Size: 1
+Sorted 48 (orig 22): thumb_01_l, Parent: 9, Type: LimbNode, Size: 1
+Sorted 49 (orig 42): thumb_01_r, Parent: 29, Type: LimbNode, Size: 1
+Sorted 50 (orig 23): thumb_02_l, Parent: 22, Type: LimbNode, Size: 1
+Sorted 51 (orig 43): thumb_02_r, Parent: 42, Type: LimbNode, Size: 1
+Sorted 52 (orig 24): thumb_03_l, Parent: 23, Type: LimbNode, Size: 1
+Sorted 53 (orig 44): thumb_03_r, Parent: 43, Type: LimbNode, Size: 1
+Sorted 54 (orig 7): upperarm_l, Parent: 6, Type: LimbNode, Size: 1
+Sorted 55 (orig 27): upperarm_r, Parent: 26, Type: LimbNode, Size: 1
+Model axis: SourceToTarget [0,1,2], Signs [-1,-1,1]
+Anim axis: SourceToTarget [0,1,2], Signs [-1,-1,1]
+Matching bone: Main Armature (norm: armature) vs Anim Armature (norm: armature)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main root (norm: root) vs Anim root (norm: root)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main pelvis (norm: pelvis) vs Anim pelvis (norm: pelvis)
+Mapped by structure.
+Child count: Main 3 vs Anim 3
+Matching bone: Main spine_01 (norm: spine01) vs Anim spine_01 (norm: spine01)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main spine_02 (norm: spine02) vs Anim spine_02 (norm: spine02)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main spine_03 (norm: spine03) vs Anim spine_03 (norm: spine03)
+Mapped by structure.
+Child count: Main 3 vs Anim 3
+Matching bone: Main clavicle_l (norm: claviclel) vs Anim clavicle_l (norm: claviclel)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main upperarm_l (norm: upperarml) vs Anim upperarm_l (norm: upperarml)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main lowerarm_l (norm: lowerarml) vs Anim lowerarm_l (norm: lowerarml)
+Mapped by structure.
+Child count: Main 2 vs Anim 2
+Matching bone: Main hand_l (norm: handl) vs Anim hand_l (norm: handl)
+Mapped by structure.
+Child count: Main 5 vs Anim 5
+Matching bone: Main index_01_l (norm: index01l) vs Anim index_01_l (norm: index01l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main index_02_l (norm: index02l) vs Anim index_02_l (norm: index02l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main index_03_l (norm: index03l) vs Anim index_03_l (norm: index03l)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main middle_01_l (norm: middle01l) vs Anim middle_01_l (norm: middle01l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main middle_02_l (norm: middle02l) vs Anim middle_02_l (norm: middle02l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main middle_03_l (norm: middle03l) vs Anim middle_03_l (norm: middle03l)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main pinky_01_l (norm: pinky01l) vs Anim pinky_01_l (norm: pinky01l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main pinky_02_l (norm: pinky02l) vs Anim pinky_02_l (norm: pinky02l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main pinky_03_l (norm: pinky03l) vs Anim pinky_03_l (norm: pinky03l)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main ring_01_l (norm: ring01l) vs Anim ring_01_l (norm: ring01l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main ring_02_l (norm: ring02l) vs Anim ring_02_l (norm: ring02l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main ring_03_l (norm: ring03l) vs Anim ring_03_l (norm: ring03l)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main thumb_01_l (norm: thumb01l) vs Anim thumb_01_l (norm: thumb01l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main thumb_02_l (norm: thumb02l) vs Anim thumb_02_l (norm: thumb02l)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main thumb_03_l (norm: thumb03l) vs Anim thumb_03_l (norm: thumb03l)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main lowerarm_twist_01_l (norm: lowerarmtwist01l) vs Anim lowerarm_twist_01_l (norm: lowerarmtwist01l)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main clavicle_r (norm: clavicler) vs Anim clavicle_r (norm: clavicler)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main upperarm_r (norm: upperarmr) vs Anim upperarm_r (norm: upperarmr)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main lowerarm_r (norm: lowerarmr) vs Anim lowerarm_r (norm: lowerarmr)
+Mapped by structure.
+Child count: Main 2 vs Anim 2
+Matching bone: Main hand_r (norm: handr) vs Anim hand_r (norm: handr)
+Mapped by structure.
+Child count: Main 5 vs Anim 5
+Matching bone: Main index_01_r (norm: index01r) vs Anim index_01_r (norm: index01r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main index_02_r (norm: index02r) vs Anim index_02_r (norm: index02r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main index_03_r (norm: index03r) vs Anim index_03_r (norm: index03r)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main middle_01_r (norm: middle01r) vs Anim middle_01_r (norm: middle01r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main middle_02_r (norm: middle02r) vs Anim middle_02_r (norm: middle02r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main middle_03_r (norm: middle03r) vs Anim middle_03_r (norm: middle03r)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main pinky_01_r (norm: pinky01r) vs Anim pinky_01_r (norm: pinky01r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main pinky_02_r (norm: pinky02r) vs Anim pinky_02_r (norm: pinky02r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main pinky_03_r (norm: pinky03r) vs Anim pinky_03_r (norm: pinky03r)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main ring_01_r (norm: ring01r) vs Anim ring_01_r (norm: ring01r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main ring_02_r (norm: ring02r) vs Anim ring_02_r (norm: ring02r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main ring_03_r (norm: ring03r) vs Anim ring_03_r (norm: ring03r)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main thumb_01_r (norm: thumb01r) vs Anim thumb_01_r (norm: thumb01r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main thumb_02_r (norm: thumb02r) vs Anim thumb_02_r (norm: thumb02r)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main thumb_03_r (norm: thumb03r) vs Anim thumb_03_r (norm: thumb03r)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main lowerarm_twist_01_r (norm: lowerarmtwist01r) vs Anim lowerarm_twist_01_r (norm: lowerarmtwist01r)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main neck_01 (norm: neck01) vs Anim neck_01 (norm: neck01)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main head (norm: head) vs Anim head (norm: head)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main thigh_l (norm: thighl) vs Anim thigh_l (norm: thighl)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main calf_l (norm: calfl) vs Anim calf_l (norm: calfl)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main foot_l (norm: footl) vs Anim foot_l (norm: footl)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main ball_l (norm: balll) vs Anim ball_l (norm: balll)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Matching bone: Main thigh_r (norm: thighr) vs Anim thigh_r (norm: thighr)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main calf_r (norm: calfr) vs Anim calf_r (norm: calfr)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main foot_r (norm: footr) vs Anim foot_r (norm: footr)
+Mapped by structure.
+Child count: Main 1 vs Anim 1
+Matching bone: Main ball_r (norm: ballr) vs Anim ball_r (norm: ballr)
+Mapped by structure.
+Child count: Main 0 vs Anim 0
+Mapped 56 unique bones for animation Jumping_v2 via hierarchy matching
+Loaded animation Jumping_v2 with 76 keyframes
+Keyframe transforms near time 0:
+root Local: Pos(0.00,0.00,0.00) Rot(0.00,0.00,0.00) Scale(1.00,1.00,1.00) Det(1.00)
+root Global: Pos(0.00,0.00,0.00) Rot(0.00,0.00,-180.00) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Local: Pos(-96.75,-1.41,0.00) Rot(90.00,89.97,-89.64) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Global: Pos(-96.75,-1.41,0.00) Rot(-89.82,-89.97,90.00) Scale(1.00,1.00,1.00) Det(1.00)
+head Local: Pos(11.90,2.59,-0.00) Rot(0.00,0.00,15.35) Scale(1.00,1.00,1.00) Det(1.00)
+head Global: Pos(-26.13,1.10,0.00) Rot(-90.00,-90.00,91.82) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Local: Pos(-39.72,-5.62,2.61) Rot(0.11,3.73,8.05) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Global: Pos(-179.91,-4.80,-6.83) Rot(134.74,-86.78,-136.01) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Local: Pos(-0.35,0.87,-9.09) Rot(8.81,-6.72,-2.56) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Global: Pos(-96.37,3.77,-20.63) Rot(127.82,-78.94,-129.65) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Local: Pos(0.35,-0.87,9.09) Rot(-8.81,6.72,177.44) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Global: Pos(96.37,-3.77,20.63) Rot(-52.21,-78.93,-129.63) Scale(1.00,1.00,1.00) Det(1.00)
+Keyframe transforms near time 0.25:
+root Local: Pos(0.00,0.00,0.00) Rot(0.00,0.00,0.00) Scale(1.00,1.00,1.00) Det(1.00)
+root Global: Pos(0.00,0.00,0.00) Rot(0.00,0.00,-180.00) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Local: Pos(-121.34,-2.06,-0.74) Rot(90.00,89.97,-89.64) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Global: Pos(-121.34,-2.06,-0.74) Rot(-89.82,-89.97,90.00) Scale(1.00,1.00,1.00) Det(1.00)
+head Local: Pos(9.99,6.97,0.13) Rot(0.69,-0.65,37.96) Scale(1.00,1.00,1.00) Det(1.00)
+head Global: Pos(-57.53,25.17,-2.99) Rot(161.39,-88.48,-161.12) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Local: Pos(-30.69,-25.82,2.65) Rot(-2.42,3.78,40.07) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Global: Pos(-182.34,19.28,11.95) Rot(17.51,-81.00,-25.29) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Local: Pos(-1.98,1.47,-8.80) Rot(18.69,-5.34,38.42) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Global: Pos(-95.46,-74.87,-21.44) Rot(106.46,-70.59,-66.95) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Local: Pos(2.28,-0.85,8.81) Rot(-16.64,1.11,-142.17) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Global: Pos(96.77,75.27,11.04) Rot(-85.91,-73.32,-55.89) Scale(1.00,1.00,1.00) Det(1.00)
+Keyframe transforms near time 0.75:
+root Local: Pos(0.00,0.00,0.00) Rot(0.00,0.00,0.00) Scale(1.00,1.00,1.00) Det(1.00)
+root Global: Pos(0.00,0.00,0.00) Rot(0.00,0.00,-180.00) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Local: Pos(-114.70,-2.66,-0.17) Rot(90.00,89.97,-89.64) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Global: Pos(-114.70,-2.66,-0.17) Rot(-89.82,-89.97,90.00) Scale(1.00,1.00,1.00) Det(1.00)
+head Local: Pos(11.90,2.59,-0.00) Rot(0.00,0.00,15.35) Scale(1.00,1.00,1.00) Det(1.00)
+head Global: Pos(-44.23,5.67,0.17) Rot(-19.11,-89.80,17.38) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Local: Pos(-39.17,-8.03,4.09) Rot(2.61,5.84,11.58) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Global: Pos(-149.48,68.07,59.05) Rot(27.82,-58.09,-51.29) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Local: Pos(-2.95,0.64,-8.62) Rot(21.43,-2.11,55.68) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Global: Pos(-65.56,-95.34,-13.97) Rot(95.96,-68.48,-39.68) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Local: Pos(2.83,-0.72,8.66) Rot(-21.27,3.59,-122.48) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Global: Pos(62.13,97.17,16.64) Rot(-79.99,-68.44,-41.61) Scale(1.00,1.00,1.00) Det(1.00)
+Keyframe transforms near time 1:
+root Local: Pos(0.00,0.00,0.00) Rot(0.00,0.00,0.00) Scale(1.00,1.00,1.00) Det(1.00)
+root Global: Pos(0.00,0.00,0.00) Rot(0.00,0.00,-180.00) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Local: Pos(-117.10,-3.02,-0.80) Rot(90.00,89.97,-89.64) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Global: Pos(-117.10,-3.02,-0.80) Rot(-89.82,-89.97,90.00) Scale(1.00,1.00,1.00) Det(1.00)
+head Local: Pos(11.90,2.59,-0.00) Rot(0.00,0.00,15.35) Scale(1.00,1.00,1.00) Det(1.00)
+head Global: Pos(-44.22,28.26,0.57) Rot(-37.01,-89.10,22.86) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Local: Pos(-39.76,-4.51,3.82) Rot(3.18,5.46,6.47) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Global: Pos(-170.30,25.16,56.76) Rot(54.40,-48.23,-57.39) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Local: Pos(-3.25,0.47,-8.53) Rot(23.44,-2.32,62.12) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Global: Pos(-55.75,-104.04,-15.19) Rot(96.02,-66.45,-33.20) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Local: Pos(3.04,-0.53,8.60) Rot(-22.72,4.51,-114.34) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Global: Pos(48.31,107.08,18.24) Rot(-78.25,-66.85,-34.97) Scale(1.00,1.00,1.00) Det(1.00)
+Keyframe transforms near time 1.25:
+root Local: Pos(0.00,0.00,0.00) Rot(0.00,0.00,0.00) Scale(1.00,1.00,1.00) Det(1.00)
+root Global: Pos(0.00,0.00,0.00) Rot(0.00,0.00,-180.00) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Local: Pos(-96.75,-1.41,0.00) Rot(90.12,89.97,-89.46) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Global: Pos(-96.75,-1.41,0.00) Rot(-89.82,-89.97,90.00) Scale(1.00,1.00,1.00) Det(1.00)
+head Local: Pos(11.90,2.59,-0.00) Rot(0.00,0.00,15.35) Scale(1.00,1.00,1.00) Det(1.00)
+head Global: Pos(-26.13,1.10,0.00) Rot(-90.24,-90.00,91.94) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Local: Pos(-39.72,-5.62,2.61) Rot(0.11,3.73,8.05) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Global: Pos(-179.91,-4.81,-6.83) Rot(134.95,-86.79,-136.21) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Local: Pos(-0.35,0.87,-9.09) Rot(8.79,-6.72,-2.56) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Global: Pos(-96.37,3.77,-20.63) Rot(127.87,-78.95,-129.70) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Local: Pos(0.35,-0.87,9.09) Rot(-8.81,6.72,177.44) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Global: Pos(96.37,-3.77,20.63) Rot(-52.21,-78.93,-129.63) Scale(1.00,1.00,1.00) Det(1.00)
+Keyframe transforms near time 1.5:
+root Local: Pos(0.00,0.00,0.00) Rot(0.00,0.00,0.00) Scale(1.00,1.00,1.00) Det(1.00)
+root Global: Pos(0.00,0.00,0.00) Rot(0.00,0.00,-180.00) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Local: Pos(-96.75,-1.41,0.00) Rot(90.12,89.97,-89.46) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Global: Pos(-96.75,-1.41,0.00) Rot(-89.82,-89.97,90.00) Scale(1.00,1.00,1.00) Det(1.00)
+head Local: Pos(11.90,2.59,-0.00) Rot(0.00,0.00,15.35) Scale(1.00,1.00,1.00) Det(1.00)
+head Global: Pos(-26.13,1.10,0.00) Rot(-90.24,-90.00,91.94) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Local: Pos(-39.72,-5.62,2.61) Rot(0.11,3.73,8.05) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Global: Pos(-179.91,-4.81,-6.83) Rot(134.91,-86.79,-136.17) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Local: Pos(-0.35,0.87,-9.09) Rot(8.79,-6.72,-2.56) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Global: Pos(-96.37,3.77,-20.63) Rot(127.86,-78.95,-129.69) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Local: Pos(0.35,-0.87,9.09) Rot(-8.81,6.72,177.44) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Global: Pos(96.37,-3.77,20.63) Rot(-52.21,-78.93,-129.63) Scale(1.00,1.00,1.00) Det(1.00)
+Keyframe transforms near time 1.75:
+root Local: Pos(0.00,0.00,0.00) Rot(0.00,0.00,0.00) Scale(1.00,1.00,1.00) Det(1.00)
+root Global: Pos(0.00,0.00,0.00) Rot(0.00,0.00,-180.00) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Local: Pos(-96.75,-1.41,0.00) Rot(90.12,89.97,-89.46) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Global: Pos(-96.75,-1.41,0.00) Rot(-89.82,-89.97,90.00) Scale(1.00,1.00,1.00) Det(1.00)
+head Local: Pos(11.90,2.59,-0.00) Rot(0.00,0.00,15.35) Scale(1.00,1.00,1.00) Det(1.00)
+head Global: Pos(-26.13,1.10,0.00) Rot(-90.36,NaN,92.06) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Local: Pos(-39.72,-5.62,2.61) Rot(0.11,3.73,8.05) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Global: Pos(-179.91,-4.81,-6.83) Rot(134.87,-86.79,-136.13) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Local: Pos(-0.35,0.87,-9.09) Rot(8.80,-6.72,-2.56) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Global: Pos(-96.37,3.77,-20.63) Rot(127.85,-78.95,-129.68) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Local: Pos(0.35,-0.87,9.09) Rot(-8.81,6.72,177.44) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Global: Pos(96.37,-3.77,20.63) Rot(-52.21,-78.93,-129.63) Scale(1.00,1.00,1.00) Det(1.00)
+Keyframe transforms near time 2:
+root Local: Pos(0.00,0.00,0.00) Rot(0.00,0.00,0.00) Scale(1.00,1.00,1.00) Det(1.00)
+root Global: Pos(0.00,0.00,0.00) Rot(0.00,0.00,-180.00) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Local: Pos(-96.75,-1.41,0.00) Rot(90.12,89.97,-89.46) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Global: Pos(-96.75,-1.41,0.00) Rot(-89.82,-89.97,90.00) Scale(1.00,1.00,1.00) Det(1.00)
+head Local: Pos(11.90,2.59,-0.00) Rot(0.00,0.00,15.35) Scale(1.00,1.00,1.00) Det(1.00)
+head Global: Pos(-26.13,1.10,0.00) Rot(-90.24,-90.00,91.94) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Local: Pos(-39.72,-5.62,2.61) Rot(0.11,3.73,8.05) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Global: Pos(-179.91,-4.80,-6.83) Rot(134.82,-86.79,-136.09) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Local: Pos(-0.35,0.87,-9.09) Rot(8.80,-6.72,-2.56) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Global: Pos(-96.37,3.77,-20.63) Rot(127.84,-78.94,-129.67) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Local: Pos(0.35,-0.87,9.09) Rot(-8.81,6.72,177.44) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Global: Pos(96.37,-3.77,20.63) Rot(-52.21,-78.93,-129.63) Scale(1.00,1.00,1.00) Det(1.00)
+Keyframe transforms near time 2.4833333:
+root Local: Pos(0.00,0.00,0.00) Rot(0.00,0.00,0.00) Scale(1.00,1.00,1.00) Det(1.00)
+root Global: Pos(0.00,0.00,0.00) Rot(0.00,0.00,-180.00) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Local: Pos(-96.75,-1.41,0.00) Rot(90.00,89.97,-89.64) Scale(1.00,1.00,1.00) Det(1.00)
+pelvis Global: Pos(-96.75,-1.41,0.00) Rot(-89.82,-89.97,90.00) Scale(1.00,1.00,1.00) Det(1.00)
+head Local: Pos(11.90,2.59,-0.00) Rot(0.00,0.00,15.35) Scale(1.00,1.00,1.00) Det(1.00)
+head Global: Pos(-26.13,1.10,0.00) Rot(-90.00,-90.00,91.82) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Local: Pos(-39.72,-5.62,2.61) Rot(0.11,3.73,8.05) Scale(1.00,1.00,1.00) Det(1.00)
+foot_l Global: Pos(-179.91,-4.80,-6.83) Rot(134.74,-86.78,-136.01) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Local: Pos(-0.35,0.87,-9.09) Rot(8.81,-6.72,-2.56) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_l Global: Pos(-96.37,3.77,-20.63) Rot(127.82,-78.94,-129.65) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Local: Pos(0.35,-0.87,9.09) Rot(-8.81,6.72,177.44) Scale(1.00,1.00,1.00) Det(1.00)
+thigh_r Global: Pos(96.37,-3.77,20.63) Rot(-52.21,-78.93,-129.63) Scale(1.00,1.00,1.00) Det(1.00)
+No weight copy needed: Main model already weighted
