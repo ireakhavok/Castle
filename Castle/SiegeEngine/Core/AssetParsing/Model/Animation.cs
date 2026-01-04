@@ -5,14 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class Animation
     {
         public string Name { get; set; }
         public List<Keyframe> Keyframes { get; set; } = new List<Keyframe>();
-
         public Matrix4x4[] GetBoneTransforms(float time)
         {
             if (Keyframes.Count == 0)
@@ -46,7 +44,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 if (lowerDecomposed && upperDecomposed)
                 {
                     Vector3 iTrans = Vector3.Lerp(lTrans, uTrans, factor);
-                    Quaternion iRot = Quaternion.Slerp(lRot, uRot, factor);
+                    Quaternion iRot = Quaternion.Slerp(Quaternion.Normalize(lRot), Quaternion.Normalize(uRot), factor);
                     Vector3 iScale = Vector3.Lerp(lScale, uScale, factor);
                     interpolated[b] = Matrix4x4.CreateScale(iScale) * Matrix4x4.CreateFromQuaternion(iRot) * Matrix4x4.CreateTranslation(iTrans);
                 }
@@ -58,7 +56,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return interpolated;
         }
-
         private static bool DecomposeRobust(Matrix4x4 matrix, out Vector3 scale, out Quaternion rotation, out Vector3 translation)
         {
             translation = new Vector3(matrix.M41, matrix.M42, matrix.M43);
@@ -89,10 +86,9 @@ namespace SiegeEngine.Core.AssetParsing.Model
                                                 c2.X, c2.Y, c2.Z, 0,
                                                 0, 0, 0, 1);
             // Convert to quaternion
-            rotation = Quaternion.CreateFromRotationMatrix(rotMatrix);
+            rotation = Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(rotMatrix));
             return true;
         }
-
         private struct Matrix3x3
         {
             public float M11, M12, M13;
@@ -105,7 +101,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 M31 = m31; M32 = m32; M33 = m33;
             }
         }
-
         private static float MatrixDeterminant(Matrix3x3 m)
         {
             return m.M11 * (m.M22 * m.M33 - m.M23 * m.M32) -

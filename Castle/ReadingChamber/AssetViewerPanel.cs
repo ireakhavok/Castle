@@ -803,7 +803,7 @@ namespace ReadingChamber
                                 invMat.M11, invMat.M12, invMat.M13,
                                 invMat.M21, invMat.M22, invMat.M23,
                                 invMat.M31, invMat.M32, invMat.M33
-                            ).Inverse().Transpose();
+                            ).Transpose();
                             normalTransforms[i] = normalMat;
                         }
                         _currentNormalTransforms = normalTransforms;
@@ -866,20 +866,26 @@ namespace ReadingChamber
         {
             q = Quaternion.Normalize(q);
             Vector3 euler = new Vector3();
-            // roll (x-axis rotation)
-            float sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
-            float cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
-            euler.X = MathF.Atan2(sinr_cosp, cosr_cosp);
             // pitch (y-axis rotation)
             float sinp = 2 * (q.W * q.Y - q.Z * q.X);
-            if (MathF.Abs(sinp) >= 1)
-                euler.Y = MathF.CopySign(MathF.PI / 2, sinp); // use 90 degrees if out of range
+            if (MathF.Abs(sinp) > 0.999f)
+            {
+                euler.Y = MathF.CopySign(MathF.PI / 2, sinp);
+                euler.X = 2 * MathF.Atan2(q.X, q.W) * MathF.CopySign(1, sinp);
+                euler.Z = 0;
+            }
             else
+            {
                 euler.Y = MathF.Asin(sinp);
-            // yaw (z-axis rotation)
-            float siny_cosp = 2 * (q.W * q.Z + q.X * q.Y);
-            float cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
-            euler.Z = MathF.Atan2(siny_cosp, cosy_cosp);
+                // roll (x-axis rotation)
+                float sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
+                float cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
+                euler.X = MathF.Atan2(sinr_cosp, cosr_cosp);
+                // yaw (z-axis rotation)
+                float siny_cosp = 2 * (q.W * q.Z + q.X * q.Y);
+                float cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
+                euler.Z = MathF.Atan2(siny_cosp, cosy_cosp);
+            }
             return euler * (180f / MathF.PI);
         }
         public override void Render()
