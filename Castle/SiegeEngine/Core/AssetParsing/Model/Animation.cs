@@ -44,7 +44,9 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 if (lowerDecomposed && upperDecomposed)
                 {
                     Vector3 iTrans = Vector3.Lerp(lTrans, uTrans, factor);
-                    Quaternion iRot = Quaternion.Slerp(Quaternion.Normalize(lRot), Quaternion.Normalize(uRot), factor);
+                    float dot = Quaternion.Dot(lRot, uRot);
+                    if (dot < 0) uRot = -uRot;
+                    Quaternion iRot = Quaternion.Normalize(Quaternion.Slerp(Quaternion.Normalize(lRot), Quaternion.Normalize(uRot), factor));
                     Vector3 iScale = Vector3.Lerp(lScale, uScale, factor);
                     interpolated[b] = Matrix4x4.CreateScale(iScale) * Matrix4x4.CreateFromQuaternion(iRot) * Matrix4x4.CreateTranslation(iTrans);
                 }

@@ -376,6 +376,11 @@ namespace ReadingChamber
                 LogKeyframeTransforms(anim, 1.5f);
                 LogKeyframeTransforms(anim, 1.75f);
                 LogKeyframeTransforms(anim, 2f);
+                LogKeyframeTransforms(anim, 2.2f);
+                LogKeyframeTransforms(anim, 2.4f);
+                LogKeyframeTransforms(anim, 2.6f);
+                LogKeyframeTransforms(anim, 2.8f);
+                LogKeyframeTransforms(anim, 2.9f);
                 LogKeyframeTransforms(anim, anim.Keyframes.Last().Time);
                 // Copy weights if main model has unweighted vertices
                 if (_model.HasUnweightedVertices())
