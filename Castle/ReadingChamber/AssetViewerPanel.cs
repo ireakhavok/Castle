@@ -1,6 +1,4 @@
-﻿// Folder: ReadingChamber
-// Class: AssetViewerPanel
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -16,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -212,7 +211,6 @@ namespace ReadingChamber
                     Vector3 lEuler = ToEuler(lRot);
                     float lDet = restLocals[idx].GetDeterminant();
                     Console.WriteLine($"{boneName} Local Bind: Pos({lTrans.X:F2},{lTrans.Y:F2},{lTrans.Z:F2}) Rot({lEuler.X:F2},{lEuler.Y:F2},{lEuler.Z:F2}) Scale({lScale.X:F2},{lScale.Y:F2},{lScale.Z:F2}) Det({lDet:F2})");
-
                     Matrix4x4.Decompose(restGlobals[idx], out Vector3 gScale, out Quaternion gRot, out Vector3 gPos);
                     Vector3 gEuler = ToEuler(gRot);
                     float gDet = restGlobals[idx].GetDeterminant();
@@ -307,12 +305,12 @@ namespace ReadingChamber
                             if (Matrix4x4.Invert(animModel.Skeleton.Bones[i].LocalRest, out Matrix4x4 invAnimRest))
                             {
                                 Matrix4x4 delta = invAnimRest * local;
-                                LogDelta(i, targetIdx, delta, "Before adjustment");
+                                //LogDelta(i, targetIdx, delta, "Before adjustment");
                                 if (axisMismatch)
                                 {
                                     delta = trans * delta * invTrans;
                                 }
-                                LogDelta(i, targetIdx, delta, "After axis adjustment");
+                                //LogDelta(i, targetIdx, delta, "After axis adjustment");
                                 if (scaleMismatch)
                                 {
                                     if (Matrix4x4.Decompose(delta, out Vector3 s, out Quaternion r, out Vector3 t))
@@ -325,7 +323,7 @@ namespace ReadingChamber
                                         Console.WriteLine($"Failed to decompose delta for scale adjustment at time {kf.Time}");
                                     }
                                 }
-                                LogDelta(i, targetIdx, delta, "After scale adjustment");
+                                //LogDelta(i, targetIdx, delta, "After scale adjustment");
                                 Matrix4x4 modelRest = _model.Skeleton.Bones[targetIdx].LocalRest;
                                 Matrix4x4 newLocal = modelRest * delta;
                                 newTransforms[targetIdx] = newLocal;
@@ -450,16 +448,16 @@ namespace ReadingChamber
                 Console.WriteLine($"No valid animations found in {animPath}");
             }
         }
-        private void LogDelta(int animIdx, int mainIdx, Matrix4x4 delta, string stage)
-        {
-            string animBone = _model.Skeleton.Bones[mainIdx].Name; // Using main name for consistency
-            if (animBone == "thigh_l" || animBone == "thigh_r" || animBone == "calf_l" || animBone == "calf_r")
-            {
-                Matrix4x4.Decompose(delta, out Vector3 scale, out Quaternion rot, out Vector3 trans);
-                Vector3 euler = ToEuler(rot);
-                Console.WriteLine($"Delta for {animBone} at {stage}: Pos({trans.X:F2},{trans.Y:F2},{trans.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2}) Scale({scale.X:F2},{scale.Y:F2},{scale.Z:F2})");
-            }
-        }
+        //private void LogDelta(int animIdx, int mainIdx, Matrix4x4 delta, string stage)
+        //{
+        //    string animBone = _model.Skeleton.Bones[mainIdx].Name; // Using main name for consistency
+        //    if (animBone == "thigh_l" || animBone == "thigh_r" || animBone == "calf_l" || animBone == "calf_r")
+        //    {
+        //        Matrix4x4.Decompose(delta, out Vector3 scale, out Quaternion rot, out Vector3 trans);
+        //        Vector3 euler = ToEuler(rot);
+        //        Console.WriteLine($"Delta for {animBone} at {stage}: Pos({trans.X:F2},{trans.Y:F2},{trans.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2}) Scale({scale.X:F2},{scale.Y:F2},{scale.Z:F2})");
+        //    }
+        //}
         private void LogKeyframeTransforms(Animation anim, float targetTime)
         {
             var transforms = anim.GetBoneTransforms(targetTime);
@@ -475,7 +473,6 @@ namespace ReadingChamber
                     Vector3 lEuler = ToEuler(lRot);
                     float lDet = transforms[idx].GetDeterminant();
                     Console.WriteLine($"{boneName} Local: Pos({lTrans.X:F2},{lTrans.Y:F2},{lTrans.Z:F2}) Rot({lEuler.X:F2},{lEuler.Y:F2},{lEuler.Z:F2}) Scale({lScale.X:F2},{lScale.Y:F2},{lScale.Z:F2}) Det({lDet:F2})");
-
                     Matrix4x4.Decompose(globals[idx], out Vector3 gScale, out Quaternion gRot, out Vector3 gPos);
                     Vector3 gEuler = ToEuler(gRot);
                     float gDet = globals[idx].GetDeterminant();
@@ -794,11 +791,19 @@ namespace ReadingChamber
                         for (int i = 0; i < finalTransforms.Length; i++)
                         {
                             Matrix4x4 mat = finalTransforms[i];
-                            normalTransforms[i] = new Matrix3x3(
-                                mat.M11, mat.M12, mat.M13,
-                                mat.M21, mat.M22, mat.M23,
-                                mat.M31, mat.M32, mat.M33
-                            ).Transpose().Inverse();
+                            // Compute inverse then transpose for transpose(inverse)
+                            if (!Matrix4x4.Invert(mat, out Matrix4x4 invMat))
+                            {
+                                Console.WriteLine($"Failed to invert final transform for bone {i}, using identity for normal");
+                                normalTransforms[i] = Matrix3x3.Identity;
+                                continue;
+                            }
+                            Matrix3x3 normalMat = new Matrix3x3(
+                                invMat.M11, invMat.M12, invMat.M13,
+                                invMat.M21, invMat.M22, invMat.M23,
+                                invMat.M31, invMat.M32, invMat.M33
+                            ).Inverse().Transpose();
+                            normalTransforms[i] = normalMat;
                         }
                         _currentNormalTransforms = normalTransforms;
                         _model.Skeleton.UpdateTransforms(finalTransforms);
@@ -829,7 +834,6 @@ namespace ReadingChamber
                     Vector3 lEuler = ToEuler(lRot);
                     float lDet = localTransforms[idx].GetDeterminant();
                     Console.WriteLine($"{boneName} Local: Pos({lTrans.X:F2},{lTrans.Y:F2},{lTrans.Z:F2}) Rot({lEuler.X:F2},{lEuler.Y:F2},{lEuler.Z:F2}) Scale({lScale.X:F2},{lScale.Y:F2},{lScale.Z:F2}) Det({lDet:F2})");
-
                     Matrix4x4.Decompose(globalTransforms[idx], out Vector3 gScale, out Quaternion gRot, out Vector3 gPos);
                     Vector3 gEuler = ToEuler(gRot);
                     float gDet = globalTransforms[idx].GetDeterminant();

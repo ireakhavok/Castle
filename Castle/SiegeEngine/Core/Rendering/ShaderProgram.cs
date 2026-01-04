@@ -2,6 +2,7 @@
 using System;
 using System.Numerics;
 using SiegeEngine.Core.AssetParsing.Model;
+
 namespace SiegeEngine.Core.Rendering
 {
     public class ShaderProgram : IDisposable

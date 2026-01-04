@@ -142,19 +142,19 @@ namespace SiegeEngine.Core.AssetParsing.Model
             switch (order)
             {
                 case 0: // eEulerXYZ
-                    return mx * my * mz;
-                case 1: // eEulerXZY
-                    return mx * mz * my;
-                case 2: // eEulerYZX
-                    return my * mz * mx;
-                case 3: // eEulerYXZ
-                    return my * mx * mz;
-                case 4: // eEulerZXY
-                    return mz * mx * my;
-                case 5: // eEulerZYX
                     return mz * my * mx;
-                case 6: // eSphericXYZ, approximate as XYZ
+                case 1: // eEulerXZY
+                    return my * mz * mx;
+                case 2: // eEulerYZX
+                    return mx * mz * my;
+                case 3: // eEulerYXZ
+                    return mz * mx * my;
+                case 4: // eEulerZXY
+                    return my * mx * mz;
+                case 5: // eEulerZYX
                     return mx * my * mz;
+                case 6: // eSphericXYZ, approximate as XYZ
+                    return mz * my * mx;
                 default:
                     return mz * my * mx;
             }

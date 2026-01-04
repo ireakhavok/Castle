@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine
-// File: Rendering/Shaders/AnimationShader.cs
-namespace SiegeEngine.Core.Rendering.Shaders
+﻿namespace SiegeEngine.Core.Rendering.Shaders
 {
     public static class AnimationShader
     {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public struct Matrix3x3
@@ -7,6 +8,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public float M11, M12, M13;
         public float M21, M22, M23;
         public float M31, M32, M33;
+
+        public static Matrix3x3 Identity => new Matrix3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
 
         public Matrix3x3(
             float m11, float m12, float m13,
@@ -34,7 +37,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
 
             if (Math.Abs(det) < 1e-6f)
             {
-                return new Matrix3x3(1, 0, 0, 0, 1, 0, 0, 0, 1); // Identity as fallback
+                return Identity; // Identity as fallback
             }
 
             float invDet = 1f / det;
