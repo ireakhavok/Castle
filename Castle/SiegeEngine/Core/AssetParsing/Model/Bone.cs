@@ -128,6 +128,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4.Invert(Post, out Matrix4x4 invPost); // More robust than negation
             // Standard FBX order: T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp
             // DO NOT TOUCH THIS EQUATION. ONLINE REFERENCES MAY BE WRONG. THIS HAS BEEN VERIFIED IN TEXTBOOKS.
+            //The official Autodesk FBX SDK documentation (2020 version) specifies the transformation formula as:
+            //WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R * Rpost⁻¹ * Rp⁻¹ * Soff * Sp * S * Sp⁻¹
             Matrix4x4 local = T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp;
             return local;
         }
