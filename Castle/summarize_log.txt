@@ -57,12 +57,14 @@ Found: ..
 Found: cube_test.png
 Found: FullRightTurn.fbx
 Found: FullRightTurn.fbx.meta
+Found: FullRightTurn_v2.fbx
 Found: Jumping.fbx
 Found: Jumping.fbx.meta
 Found: Jumping_inAir.fbx
 Found: Jumping_inAir.fbx.meta
 Found: Jumping_Landing.fbx
 Found: Jumping_Landing.fbx.meta
+Found: Jumping_v2.fbx
 Found: LeftRunning.fbx
 Found: LeftRunning.fbx.meta
 Found: Man_Body_Albedo.tga
@@ -356,7 +358,7 @@ Found: ..
 Found: AssetViewerPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
-Read 60910 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
+Read 61544 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AssetViewerPanel.cs
 Namespace: ReadingChamber
 Found 16 dependencies
 Found: AssetViewerUI.html
@@ -472,6 +474,7 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\A
 Read 13760 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXSkeletonParser.cs
 Namespace: SiegeEngine.Core.AssetParsing
 Found 6 dependencies
+Found: HeirarchySummary.exe
 Found: MetaDataExporter.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\MetaDataExporter.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\MetaDataExporter.cs
@@ -485,7 +488,7 @@ Found: ..
 Found: Animation.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Animation.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Animation.cs
-Read 4950 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Animation.cs
+Read 5140 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Animation.cs
 Namespace: SiegeEngine.Core.AssetParsing.Model
 Found 5 dependencies
 Found: Bone.cs
@@ -554,6 +557,8 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\A
 Read 13321 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\NodeParser.cs
 Namespace: SiegeEngine.Core.AssetParsing
 Found 6 dependencies
+Found: summarize_log.txt
+Found: summary.txt
 Found: ContextManagement
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\ContextManagement
 Found: .
