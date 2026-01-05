@@ -1,10 +1,11 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/FBXMeshParser.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXMeshParser

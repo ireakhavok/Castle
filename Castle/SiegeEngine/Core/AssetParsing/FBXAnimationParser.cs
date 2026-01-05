@@ -1,10 +1,11 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/FBXAnimationParser.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXAnimationParser
@@ -74,8 +75,23 @@ namespace SiegeEngine.Core.AssetParsing
                         float vy = FBXParserUtils.GetValueAtTime(keyTimesY, keyValuesY, kt, defaultVal.Y);
                         float vz = FBXParserUtils.GetValueAtTime(keyTimesZ, keyValuesZ, kt, defaultVal.Z);
                         Vector3 val_source = new Vector3(vx, vy, vz);
-                        Vector3 val = val_source;
-                        if (trsType == "T") val *= modelScale;
+                        Vector3 val;
+                        if (trsType == "T")
+                        {
+                            val = FBXCoordinateUtils.RemapVector(val_source, sourceToTarget, signs) * modelScale;
+                        }
+                        else if (trsType == "R")
+                        {
+                            val = FBXCoordinateUtils.RemapRotation(val_source, sourceToTarget, signs);
+                        }
+                        else if (trsType == "S")
+                        {
+                            val = FBXCoordinateUtils.RemapScale(val_source, sourceToTarget, signs);
+                        }
+                        else
+                        {
+                            val = val_source;
+                        }
                         if (!timeBoneTRS.TryGetValue(t, out var boneTRS))
                         {
                             boneTRS = new Dictionary<int, Dictionary<string, Vector3>>();

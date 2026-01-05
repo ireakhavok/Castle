@@ -63,68 +63,77 @@ namespace SiegeEngine.Core.AssetParsing
                                 float tx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float ty = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float tz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.LclTranslation = new Vector3(tx, ty, tz) * modelScale;
+                                Vector3 t_source = new Vector3(tx, ty, tz);
+                                bone.LclTranslation = FBXCoordinateUtils.RemapVector(t_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "Lcl Rotation" && p.properties.Count >= 7)
                             {
                                 float rx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float ry = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float rz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.LclRotationDegrees = new Vector3(rx, ry, rz);
+                                Vector3 r_source = new Vector3(rx, ry, rz);
+                                bone.LclRotationDegrees = FBXCoordinateUtils.RemapRotation(r_source, sourceToTarget, signs);
                             }
                             else if (pname == "Lcl Scaling" && p.properties.Count >= 7)
                             {
                                 float sx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float sy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float sz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.LclScaling = new Vector3(sx, sy, sz);
+                                Vector3 s_source = new Vector3(sx, sy, sz);
+                                bone.LclScaling = FBXCoordinateUtils.RemapScale(s_source, sourceToTarget, signs);
                             }
                             else if (pname == "PreRotation" && p.properties.Count >= 7)
                             {
                                 float prx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float pry = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float prz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.PreRotationDegrees = new Vector3(prx, pry, prz);
+                                Vector3 pr_source = new Vector3(prx, pry, prz);
+                                bone.PreRotationDegrees = FBXCoordinateUtils.RemapRotation(pr_source, sourceToTarget, signs);
                             }
                             else if (pname == "PostRotation" && p.properties.Count >= 7)
                             {
                                 float pox = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float poy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float poz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.PostRotationDegrees = new Vector3(pox, poy, poz);
+                                Vector3 po_source = new Vector3(pox, poy, poz);
+                                bone.PostRotationDegrees = FBXCoordinateUtils.RemapRotation(po_source, sourceToTarget, signs);
                             }
                             else if (pname == "RotationPivot" && p.properties.Count >= 7)
                             {
                                 float rpx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float rpy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float rpz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.RotationPivot = new Vector3(rpx, rpy, rpz) * modelScale;
+                                Vector3 rp_source = new Vector3(rpx, rpy, rpz);
+                                bone.RotationPivot = FBXCoordinateUtils.RemapVector(rp_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "RotationOffset" && p.properties.Count >= 7)
                             {
                                 float rox = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float roy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float roz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.RotationOffset = new Vector3(rox, roy, roz) * modelScale;
+                                Vector3 ro_source = new Vector3(rox, roy, roz);
+                                bone.RotationOffset = FBXCoordinateUtils.RemapVector(ro_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "ScalingPivot" && p.properties.Count >= 7)
                             {
                                 float spx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float spy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float spz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.ScalingPivot = new Vector3(spx, spy, spz) * modelScale;
+                                Vector3 sp_source = new Vector3(spx, spy, spz);
+                                bone.ScalingPivot = FBXCoordinateUtils.RemapVector(sp_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "ScalingOffset" && p.properties.Count >= 7)
                             {
                                 float sox = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float soy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float soz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.ScalingOffset = new Vector3(sox, soy, soz) * modelScale;
+                                Vector3 so_source = new Vector3(sox, soy, soz);
+                                bone.ScalingOffset = FBXCoordinateUtils.RemapVector(so_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "RotationOrder" && p.properties.Count >= 5)
                             {
                                 int order_source = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                bone.RotationOrder = order_source;
+                                bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(order_source, sourceToTarget);
                             }
                             else if (pname == "Size" && p.properties.Count >= 5)
                             {
@@ -135,21 +144,24 @@ namespace SiegeEngine.Core.AssetParsing
                                 float gtx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float gty = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float gtz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.GeometricTranslation = new Vector3(gtx, gty, gtz) * modelScale;
+                                Vector3 gt_source = new Vector3(gtx, gty, gtz);
+                                bone.GeometricTranslation = FBXCoordinateUtils.RemapVector(gt_source, sourceToTarget, signs) * modelScale;
                             }
                             else if (pname == "GeometricRotation" && p.properties.Count >= 7)
                             {
                                 float grx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float gry = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float grz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.GeometricRotationDegrees = new Vector3(grx, gry, grz);
+                                Vector3 gr_source = new Vector3(grx, gry, grz);
+                                bone.GeometricRotationDegrees = FBXCoordinateUtils.RemapRotation(gr_source, sourceToTarget, signs);
                             }
                             else if (pname == "GeometricScaling" && p.properties.Count >= 7)
                             {
                                 float gsx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
                                 float gsy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
                                 float gsz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                bone.GeometricScaling = new Vector3(gsx, gsy, gsz);
+                                Vector3 gs_source = new Vector3(gsx, gsy, gsz);
+                                bone.GeometricScaling = FBXCoordinateUtils.RemapScale(gs_source, sourceToTarget, signs);
                             }
                         }
                     }
