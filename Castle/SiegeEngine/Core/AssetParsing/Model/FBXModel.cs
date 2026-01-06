@@ -1,11 +1,14 @@
-﻿// Folder: SiegeEngine.Core
+﻿
+// Folder: SiegeEngine.Core
 // File: AssetParsing/Model/FBXModel.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class FBXModel
@@ -30,7 +33,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public void FixUnweightedVertices()
         {
             if (!HasUnweightedVertices()) return;
-            Console.WriteLine("Fixing unweighted vertices");
             foreach (var mesh in Meshes)
             {
                 AssignToClosestBone(mesh);
@@ -41,7 +43,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
         {
             if (Meshes.Count != 1 || other.Meshes.Count != 1)
             {
-                Console.WriteLine("Mesh count mismatch for weight copy, using heuristic");
                 AssignToClosestBone(Meshes[0]);
                 HasSkin = true;
                 return;
@@ -50,7 +51,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             var otherMesh = other.Meshes[0];
             if (mainMesh.Vertices.Count != otherMesh.Vertices.Count)
             {
-                Console.WriteLine("Vertex count mismatch for weight copy, using heuristic");
                 if (mainMesh.Vertices.Count > otherMesh.Vertices.Count)
                     AssignToRootBone(mainMesh);
                 else
@@ -86,7 +86,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 mainMesh.Vertices[i].BoneID3 = -1;
                 mainMesh.Vertices[i].Weight3 = 0f;
             }
-            Console.WriteLine("Assigned all vertices to root bone");
         }
         private void AssignToClosestBone(MeshData mainMesh)
         {
@@ -127,7 +126,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
                     unassigned++;
                 }
             }
-            Console.WriteLine($"Assigned vertices to closest bones, unassigned: {unassigned}");
         }
         public void ComputeBindPoses()
         {
@@ -139,13 +137,11 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 Matrix4x4 global = Matrix4x4.Transpose(restGlobals[i]);
                 if (!Matrix4x4.Invert(global, out Matrix4x4 invRestGlobal))
                 {
-                    Console.WriteLine($"Failed to invert rest global for bone {i} ({Skeleton.Bones[i].Name})");
                     Skeleton.Bones[i].BindPose = Matrix4x4.Identity;
                     continue;
                 }
                 Skeleton.Bones[i].BindPose = Matrix4x4.Transpose(invRestGlobal);
             }
-            Console.WriteLine("Computed bind poses for skeleton");
         }
     }
 }

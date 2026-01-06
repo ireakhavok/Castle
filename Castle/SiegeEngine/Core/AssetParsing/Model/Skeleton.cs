@@ -1,8 +1,13 @@
-﻿// Folder: SiegeEngine.Core
+﻿
+// Folder: SiegeEngine.Core
 // File: AssetParsing/Model/Skeleton.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class Skeleton

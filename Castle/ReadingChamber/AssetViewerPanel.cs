@@ -15,6 +15,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
@@ -57,9 +58,6 @@ namespace ReadingChamber
         private List<string> _animationFiles = new List<string>();
         private float _cameraDistance;
         private float _maxExtent;
-        private float _lastLogTime = -1f;
-        private readonly string[] _debugBones = { "root", "pelvis", "head", "foot_l", "thigh_l", "thigh_r" };
-        private readonly string[] _testbones = { "l_appendage_upper", "l_appendage_mid", "lappendagetip", "rappendageupper", "rappendagemid", "rappendagetip" };
         public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -100,10 +98,8 @@ namespace ReadingChamber
             UpdateModelData();
             if (_model.HasSkin)
             {
-                LogBindPose();
             }
             CenterCamera();
-            Console.WriteLine($"AssetViewerPanel: Loaded mesh from {path}");
         }
         private void LoadArmature(string path)
         {
@@ -122,31 +118,47 @@ namespace ReadingChamber
                 var bone = tempSkeleton.Bones[i];
                 // Unremap to source
                 bone.LclTranslation = FBXCoordinateUtils.UnremapVector(bone.LclTranslation, parsedModel.SourceToTarget, parsedModel.Signs);
-                bone.LclRotationDegrees = FBXCoordinateUtils.UnremapRotation(bone.LclRotationDegrees, parsedModel.SourceToTarget, parsedModel.Signs);
+                Vector3 lclRotDegUn = bone.ToEuler(bone.LclRotation);
+                lclRotDegUn = FBXCoordinateUtils.UnremapRotation(lclRotDegUn, parsedModel.SourceToTarget, parsedModel.Signs);
+                bone.LclRotation = bone.ToQuaternion(lclRotDegUn, bone.RotationOrder);
                 bone.LclScaling = FBXCoordinateUtils.UnremapScale(bone.LclScaling, parsedModel.SourceToTarget, parsedModel.Signs);
-                bone.PreRotationDegrees = FBXCoordinateUtils.UnremapRotation(bone.PreRotationDegrees, parsedModel.SourceToTarget, parsedModel.Signs);
-                bone.PostRotationDegrees = FBXCoordinateUtils.UnremapRotation(bone.PostRotationDegrees, parsedModel.SourceToTarget, parsedModel.Signs);
+                Vector3 preDegUn = bone.ToEuler(bone.PreRotation);
+                preDegUn = FBXCoordinateUtils.UnremapRotation(preDegUn, parsedModel.SourceToTarget, parsedModel.Signs);
+                bone.PreRotation = bone.ToQuaternion(preDegUn, 0);
+                Vector3 postDegUn = bone.ToEuler(bone.PostRotation);
+                postDegUn = FBXCoordinateUtils.UnremapRotation(postDegUn, parsedModel.SourceToTarget, parsedModel.Signs);
+                bone.PostRotation = bone.ToQuaternion(postDegUn, 0);
                 bone.RotationPivot = FBXCoordinateUtils.UnremapVector(bone.RotationPivot, parsedModel.SourceToTarget, parsedModel.Signs);
                 bone.RotationOffset = FBXCoordinateUtils.UnremapVector(bone.RotationOffset, parsedModel.SourceToTarget, parsedModel.Signs);
                 bone.ScalingPivot = FBXCoordinateUtils.UnremapVector(bone.ScalingPivot, parsedModel.SourceToTarget, parsedModel.Signs);
                 bone.ScalingOffset = FBXCoordinateUtils.UnremapVector(bone.ScalingOffset, parsedModel.SourceToTarget, parsedModel.Signs);
                 bone.GeometricTranslation = FBXCoordinateUtils.UnremapVector(bone.GeometricTranslation, parsedModel.SourceToTarget, parsedModel.Signs);
-                bone.GeometricRotationDegrees = FBXCoordinateUtils.UnremapRotation(bone.GeometricRotationDegrees, parsedModel.SourceToTarget, parsedModel.Signs);
+                Vector3 geoRotDegUn = bone.ToEuler(bone.GeometricRotation);
+                geoRotDegUn = FBXCoordinateUtils.UnremapRotation(geoRotDegUn, parsedModel.SourceToTarget, parsedModel.Signs);
+                bone.GeometricRotation = bone.ToQuaternion(geoRotDegUn, 0);
                 bone.GeometricScaling = FBXCoordinateUtils.UnremapScale(bone.GeometricScaling, parsedModel.SourceToTarget, parsedModel.Signs);
                 bone.RotationOrder = FBXCoordinateUtils.UnremapRotationOrder(bone.RotationOrder, parsedModel.SourceToTarget);
                 bone.Size *= _model.ModelScale / parsedModel.ModelScale;
                 // Remap to mesh's engine
                 bone.LclTranslation = FBXCoordinateUtils.RemapVector(bone.LclTranslation, _model.SourceToTarget, _model.Signs);
-                bone.LclRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.LclRotationDegrees, _model.SourceToTarget, _model.Signs);
+                Vector3 lclRotDegRe = bone.ToEuler(bone.LclRotation);
+                lclRotDegRe = FBXCoordinateUtils.RemapRotation(lclRotDegRe, _model.SourceToTarget, _model.Signs);
+                bone.LclRotation = bone.ToQuaternion(lclRotDegRe, bone.RotationOrder);
                 bone.LclScaling = FBXCoordinateUtils.RemapScale(bone.LclScaling, _model.SourceToTarget, _model.Signs);
-                bone.PreRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.PreRotationDegrees, _model.SourceToTarget, _model.Signs);
-                bone.PostRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.PostRotationDegrees, _model.SourceToTarget, _model.Signs);
+                Vector3 preDegRe = bone.ToEuler(bone.PreRotation);
+                preDegRe = FBXCoordinateUtils.RemapRotation(preDegRe, _model.SourceToTarget, _model.Signs);
+                bone.PreRotation = bone.ToQuaternion(preDegRe, 0);
+                Vector3 postDegRe = bone.ToEuler(bone.PostRotation);
+                postDegRe = FBXCoordinateUtils.RemapRotation(postDegRe, _model.SourceToTarget, _model.Signs);
+                bone.PostRotation = bone.ToQuaternion(postDegRe, 0);
                 bone.RotationPivot = FBXCoordinateUtils.RemapVector(bone.RotationPivot, _model.SourceToTarget, _model.Signs);
                 bone.RotationOffset = FBXCoordinateUtils.RemapVector(bone.RotationOffset, _model.SourceToTarget, _model.Signs);
                 bone.ScalingPivot = FBXCoordinateUtils.RemapVector(bone.ScalingPivot, _model.SourceToTarget, _model.Signs);
                 bone.ScalingOffset = FBXCoordinateUtils.RemapVector(bone.ScalingOffset, _model.SourceToTarget, _model.Signs);
                 bone.GeometricTranslation = FBXCoordinateUtils.RemapVector(bone.GeometricTranslation, _model.SourceToTarget, _model.Signs);
-                bone.GeometricRotationDegrees = FBXCoordinateUtils.RemapRotation(bone.GeometricRotationDegrees, _model.SourceToTarget, _model.Signs);
+                Vector3 geoRotDegRe = bone.ToEuler(bone.GeometricRotation);
+                geoRotDegRe = FBXCoordinateUtils.RemapRotation(geoRotDegRe, _model.SourceToTarget, _model.Signs);
+                bone.GeometricRotation = bone.ToQuaternion(geoRotDegRe, 0);
                 bone.GeometricScaling = FBXCoordinateUtils.RemapScale(bone.GeometricScaling, _model.SourceToTarget, _model.Signs);
                 bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(bone.RotationOrder, _model.SourceToTarget);
                 // Recompute LocalRest
@@ -188,49 +200,12 @@ namespace ReadingChamber
                 }
             }
             _model.ComputeBindPoses();
-            LogBoneHierarchy(_model.Skeleton, "Loaded Armature");
             if (_model.Meshes.Count > 0 && _model.HasUnweightedVertices())
             {
                 _model.FixUnweightedVertices();
             }
             UpdateModelData();
-            LogBindPose();
             CenterCamera();
-            Console.WriteLine($"AssetViewerPanel: Loaded armature from {path}");
-        }
-        private void LogBindPose()
-        {
-            var restLocals = _model.Skeleton.Bones.Select(b => b.LocalRest).ToArray();
-            var restGlobals = _model.Skeleton.ComputeGlobalTransforms(restLocals);
-            string[] debugBones = [];
-            Console.WriteLine("Bind Pose transforms:");
-            if (_meshPath.Contains("man_mesh")) //TODO fix this
-            {
-                debugBones = _debugBones;
-            }
-            else if (_meshPath.Contains("test_man"))
-            {
-                debugBones = _testbones;
-            }
-            foreach (var boneName in debugBones)
-            {
-                int idx = _model.Skeleton.Bones.FindIndex(b => string.Equals(b.Name, boneName, StringComparison.OrdinalIgnoreCase));
-                if (idx != -1)
-                {
-                    Matrix4x4.Decompose(restLocals[idx], out Vector3 lScale, out Quaternion lRot, out Vector3 lTrans);
-                    Vector3 lEuler = ToEuler(lRot);
-                    float lDet = restLocals[idx].GetDeterminant();
-                    Console.WriteLine($"{boneName} Local Bind: Pos({lTrans.X:F2},{lTrans.Y:F2},{lTrans.Z:F2}) Rot({lEuler.X:F2},{lEuler.Y:F2},{lEuler.Z:F2}) Scale({lScale.X:F2},{lScale.Y:F2},{lScale.Z:F2}) Det({lDet:F2})");
-                    Matrix4x4.Decompose(restGlobals[idx], out Vector3 gScale, out Quaternion gRot, out Vector3 gPos);
-                    Vector3 gEuler = ToEuler(gRot);
-                    float gDet = restGlobals[idx].GetDeterminant();
-                    Console.WriteLine($"{boneName} Global Bind: Pos({gPos.X:F2},{gPos.Y:F2},{gPos.Z:F2}) Rot({gEuler.X:F2},{gEuler.Y:F2},{gEuler.Z:F2}) Scale({gScale.X:F2},{gScale.Y:F2},{gScale.Z:F2}) Det({gDet:F2})");
-                }
-                else
-                {
-                    Console.WriteLine($"{boneName} not found in skeleton");
-                }
-            }
         }
         private void LoadAnimation(string animPath)
         {
@@ -239,9 +214,6 @@ namespace ReadingChamber
             var objectsById = FBXParser.GatherObjectsById(objectsNode);
             var conns = FBXParser.GatherConnections(animForest);
             var animModel = FBXParser.BuildModelFromForest(animForest);
-            LogBoneHierarchy(animModel.Skeleton, "Animation File");
-            Console.WriteLine($"Model axis: SourceToTarget [{string.Join(",", _model.SourceToTarget)}], Signs [{string.Join(",", _model.Signs)}]");
-            Console.WriteLine($"Anim axis: SourceToTarget [{string.Join(",", animModel.SourceToTarget)}], Signs [{string.Join(",", animModel.Signs)}]");
             var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (validAnimations.Count > 0)
             {
@@ -249,7 +221,6 @@ namespace ReadingChamber
                 anim.Name = Path.GetFileNameWithoutExtension(animPath);
                 if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0)
                 {
-                    Console.WriteLine("Main model has no skeleton, skipping animation load to avoid mismatches");
                     return;
                 }
                 // Build hierarchy trees for matching
@@ -260,14 +231,12 @@ namespace ReadingChamber
                 int animRoot = animTree.Keys.FirstOrDefault(k => !animTree.Values.Any(children => children.Contains(k)));
                 if (animRoot == -1)
                 {
-                    Console.WriteLine("No root found in anim hierarchy, skipping");
                     return;
                 }
                 // Match hierarchies
                 var boneMap = MatchBoneHierarchies(mainTree, animTree, mainRoot, animRoot, animModel);
                 if (boneMap.Count < _model.Skeleton.Bones.Count * 0.8f)
                 {
-                    Console.WriteLine($"Insufficient hierarchy matching ({boneMap.Count}/{_model.Skeleton.Bones.Count}), skipping animation");
                     return;
                 }
                 // Compute transformation to align coordinate systems if different
@@ -277,18 +246,11 @@ namespace ReadingChamber
                                     !_model.Signs.SequenceEqual(animModel.Signs);
                 if (axisMismatch)
                 {
-                    Console.WriteLine("Different axis systems detected between main model and animation, applying correction");
                     trans = _model.P4 * animModel.InvP4;
                     invTrans = animModel.P4 * _model.InvP4;
-                    Console.WriteLine($"Transformation matrix: {trans}");
-                    Console.WriteLine($"Inverse transformation matrix: {invTrans}");
                 }
                 float scaleFactor = _model.ModelScale / animModel.ModelScale;
                 bool scaleMismatch = Math.Abs(scaleFactor - 1f) > 1e-6f;
-                if (scaleMismatch)
-                {
-                    Console.WriteLine($"Different scale factors: main {_model.ModelScale}, anim {animModel.ModelScale}, applying factor {scaleFactor}");
-                }
                 // Remap keyframes using hierarchy-matched indices
                 HashSet<int> mappedBones = new HashSet<int>();
                 foreach (var kf in anim.Keyframes)
@@ -306,12 +268,10 @@ namespace ReadingChamber
                             if (Matrix4x4.Invert(animModel.Skeleton.Bones[i].LocalRest, out Matrix4x4 invAnimRest))
                             {
                                 Matrix4x4 delta = invAnimRest * local;
-                                //LogDelta(i, targetIdx, delta, "Before adjustment");
                                 if (axisMismatch)
                                 {
                                     delta = trans * delta * invTrans;
                                 }
-                                //LogDelta(i, targetIdx, delta, "After axis adjustment");
                                 if (scaleMismatch)
                                 {
                                     if (Matrix4x4.Decompose(delta, out Vector3 s, out Quaternion r, out Vector3 t))
@@ -319,19 +279,13 @@ namespace ReadingChamber
                                         t *= scaleFactor;
                                         delta = Matrix4x4.CreateScale(s) * Matrix4x4.CreateFromQuaternion(r) * Matrix4x4.CreateTranslation(t);
                                     }
-                                    else
-                                    {
-                                        Console.WriteLine($"Failed to decompose delta for scale adjustment at time {kf.Time}");
-                                    }
                                 }
-                                //LogDelta(i, targetIdx, delta, "After scale adjustment");
                                 Matrix4x4 modelRest = _model.Skeleton.Bones[targetIdx].LocalRest;
                                 Matrix4x4 newLocal = modelRest * delta;
                                 newTransforms[targetIdx] = newLocal;
                             }
                             else
                             {
-                                Console.WriteLine($"Failed to invert anim rest for bone index {i} ({animModel.Skeleton.Bones[i].Name}), attempting direct conversion");
                                 Matrix4x4 localAdjusted = axisMismatch ? trans * local * invTrans : local;
                                 if (scaleMismatch)
                                 {
@@ -345,43 +299,17 @@ namespace ReadingChamber
                             }
                             mappedBones.Add(targetIdx);
                         }
-                        else
-                        {
-                            Console.WriteLine($"Warning: Bone index {i} ({animModel.Skeleton.Bones[i].Name}) from animation not matched in main hierarchy");
-                        }
                     }
                     kf.BoneTransforms = newTransforms;
                 }
-                Console.WriteLine($"Mapped {mappedBones.Count} unique bones for animation {anim.Name} via hierarchy matching");
-                if (mappedBones.Count < _model.Skeleton.Bones.Count)
-                {
-                    Console.WriteLine($"Warning: Not all bones mapped for animation {anim.Name} ({mappedBones.Count}/{_model.Skeleton.Bones.Count})");
-                }
-                // Add mapping threshold check
                 if (mappedBones.Count < (int)(_model.Skeleton.Bones.Count * 0.8f))
                 {
-                    Console.WriteLine($"Error: Insufficient bone mapping for animation {anim.Name} ({mappedBones.Count}/{_model.Skeleton.Bones.Count}), skipping");
                     return;
                 }
                 _model.Animations.Add(anim);
                 _currentAnimation = anim.Name;
                 _duration = anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 0f;
                 _time = 0f;
-                Console.WriteLine($"Loaded animation {anim.Name} with {anim.Keyframes.Count} keyframes");
-                LogKeyframeTransforms(anim, 0f);
-                LogKeyframeTransforms(anim, 0.25f);
-                LogKeyframeTransforms(anim, .75f);
-                LogKeyframeTransforms(anim, 1f);
-                LogKeyframeTransforms(anim, 1.25f);
-                LogKeyframeTransforms(anim, 1.5f);
-                LogKeyframeTransforms(anim, 1.75f);
-                LogKeyframeTransforms(anim, 2f);
-                LogKeyframeTransforms(anim, 2.2f);
-                LogKeyframeTransforms(anim, 2.4f);
-                LogKeyframeTransforms(anim, 2.6f);
-                LogKeyframeTransforms(anim, 2.8f);
-                LogKeyframeTransforms(anim, 2.9f);
-                LogKeyframeTransforms(anim, anim.Keyframes.Last().Time);
                 // Copy weights if main model has unweighted vertices
                 if (_model.HasUnweightedVertices())
                 {
@@ -396,7 +324,6 @@ namespace ReadingChamber
                     }
                     if (idMap.Count < animModel.Skeleton.Bones.Count * 0.8f)
                     {
-                        Console.WriteLine("Insufficient bone ID mapping for weight copy, skipping");
                     }
                     else
                     {
@@ -406,7 +333,6 @@ namespace ReadingChamber
                             var animMesh = animModel.Meshes[mi];
                             if (mainMesh.Vertices.Count != animMesh.Vertices.Count)
                             {
-                                Console.WriteLine($"Vertex count mismatch for mesh {mi}, skipping weight copy");
                                 continue;
                             }
                             for (int vi = 0; vi < mainMesh.Vertices.Count; vi++)
@@ -432,15 +358,10 @@ namespace ReadingChamber
                                 mainMesh.Vertices[vi] = mainV;
                             }
                         }
-                        Console.WriteLine($"Copied, remapped, and normalized weights from animation model to main model for {anim.Name}");
                         // Update VBOs with new vertex data (weights updated)
                         UpdateModelBuffers();
                         _model.HasSkin = true;
                     }
-                }
-                else
-                {
-                    Console.WriteLine("No weight copy needed: Main model already weighted");
                 }
                 // Switch to animation shader if skin present
                 if (_model.HasSkin)
@@ -448,46 +369,6 @@ namespace ReadingChamber
                     _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
                 }
                 _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
-            }
-            else
-            {
-                Console.WriteLine($"No valid animations found in {animPath}");
-            }
-        }
-        //private void LogDelta(int animIdx, int mainIdx, Matrix4x4 delta, string stage)
-        //{
-        // string animBone = _model.Skeleton.Bones[mainIdx].Name; // Using main name for consistency
-        // if (animBone == "thigh_l" || animBone == "thigh_r" || animBone == "calf_l" || animBone == "calf_r")
-        // {
-        // Matrix4x4.Decompose(delta, out Vector3 scale, out Quaternion rot, out Vector3 trans);
-        // Vector3 euler = ToEuler(rot);
-        // Console.WriteLine($"Delta for {animBone} at {stage}: Pos({trans.X:F2},{trans.Y:F2},{trans.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2}) Scale({scale.X:F2},{scale.Y:F2},{scale.Z:F2})");
-        // }
-        //}
-        private void LogKeyframeTransforms(Animation anim, float targetTime)
-        {
-            var transforms = anim.GetBoneTransforms(targetTime);
-            if (transforms == null) return;
-            var globals = _model.Skeleton.ComputeGlobalTransforms(transforms);
-            Console.WriteLine($"Keyframe transforms near time {targetTime}:");
-            foreach (var boneName in _debugBones)
-            {
-                int idx = _model.Skeleton.Bones.FindIndex(b => string.Equals(b.Name, boneName, StringComparison.OrdinalIgnoreCase));
-                if (idx != -1)
-                {
-                    Matrix4x4.Decompose(transforms[idx], out Vector3 lScale, out Quaternion lRot, out Vector3 lTrans);
-                    Vector3 lEuler = ToEuler(lRot);
-                    float lDet = transforms[idx].GetDeterminant();
-                    Console.WriteLine($"{boneName} Local: Pos({lTrans.X:F2},{lTrans.Y:F2},{lTrans.Z:F2}) Rot({lEuler.X:F2},{lEuler.Y:F2},{lEuler.Z:F2}) Scale({lScale.X:F2},{lScale.Y:F2},{lScale.Z:F2}) Det({lDet:F2})");
-                    Matrix4x4.Decompose(globals[idx], out Vector3 gScale, out Quaternion gRot, out Vector3 gPos);
-                    Vector3 gEuler = ToEuler(gRot);
-                    float gDet = globals[idx].GetDeterminant();
-                    Console.WriteLine($"{boneName} Global: Pos({gPos.X:F2},{gPos.Y:F2},{gPos.Z:F2}) Rot({gEuler.X:F2},{gEuler.Y:F2},{gEuler.Z:F2}) Scale({gScale.X:F2},{gScale.Y:F2},{gScale.Z:F2}) Det({gDet:F2})");
-                }
-                else
-                {
-                    Console.WriteLine($"{boneName} not found in skeleton");
-                }
             }
         }
         private void UpdateModelData()
@@ -506,8 +387,6 @@ namespace ReadingChamber
                 _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
             }
             _model.ComputeBindPoses();
-            LogBoneHierarchy(_model.Skeleton, "Current Model");
-            LogWeightsSummary();
             _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
         }
         private void CenterCamera()
@@ -530,26 +409,6 @@ namespace ReadingChamber
             Vector3 initialFront = new Vector3(0, 1, 0);
             _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
             _cameraUp = Vector3.UnitZ;
-            Console.WriteLine($"AssetViewerPanel: Model center: {center}, maxExtent: {_maxExtent}, cameraDistance: {_cameraDistance}, cameraPosition: {_cameraPosition}");
-        }
-        private void LogBoneHierarchy(Skeleton skeleton, string label)
-        {
-            if (skeleton == null) return;
-            Console.WriteLine($"{label} Bone Hierarchy (sorted by name for comparison):");
-            var sortedBones = skeleton.Bones.OrderBy(b => b.Name.ToLowerInvariant()).ToList();
-            for (int i = 0; i < sortedBones.Count; i++)
-            {
-                var bone = sortedBones[i];
-                int originalIdx = skeleton.Bones.IndexOf(bone);
-                Console.WriteLine($"Sorted {i} (orig {originalIdx}): {bone.Name}, Parent: {bone.ParentIndex}, Type: {bone.BoneType}, Size: {bone.Size}");
-            }
-        }
-        private void LogWeightsSummary()
-        {
-            if (_model.Meshes.Count == 0) return;
-            var mesh = _model.Meshes[0];
-            int unweighted = mesh.Vertices.Count(v => v.Weight0 + v.Weight1 + v.Weight2 + v.Weight3 == 0);
-            Console.WriteLine($"Weights Summary: Total verts {mesh.Vertices.Count}, Unweighted {unweighted}");
         }
         private void DiscoverAnimationFiles()
         {
@@ -557,14 +416,12 @@ namespace ReadingChamber
             if (Directory.Exists(fbmDir))
             {
                 _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
-                Console.WriteLine($"Discovered {_animationFiles.Count} animation files");
             }
         }
         private void UpdateModelBuffers()
         {
             if (_model == null || _modelData == null || _modelData.MeshRenders.Count != _model.Meshes.Count)
             {
-                Console.WriteLine("UpdateModelBuffers: Mismatch in mesh/render count, skipping update");
                 return;
             }
             for (int mi = 0; mi < _model.Meshes.Count; mi++)
@@ -603,7 +460,6 @@ namespace ReadingChamber
                 {
                     _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertexData.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
                 }
-                // Re-set vertex attribute pointers to ensure correct setup
                 uint stride = 20 * (uint)sizeof(float);
                 _renderContext.EnableVertexAttribArray(0); // Position
                 _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
@@ -620,7 +476,6 @@ namespace ReadingChamber
                 _renderContext.EnableVertexAttribArray(7); // BoneWeights
                 _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
                 _renderContext.BindVertexArray(0);
-                Console.WriteLine($"Updated VBO for mesh {mi} with new weights and reset attribute pointers");
             }
             _model.HasSkin = true;
         }
@@ -629,14 +484,12 @@ namespace ReadingChamber
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetViewerUI.html");
             if (!File.Exists(htmlPath))
             {
-                Console.WriteLine($"AssetViewerPanel: UI HTML file not found at {htmlPath}");
                 return;
             }
             string baseHtml = File.ReadAllText(htmlPath);
             int insertIndex = baseHtml.IndexOf("");
             if (insertIndex == -1)
             {
-                Console.WriteLine("AssetViewerPanel: Insertion point not found in HTML");
                 return;
             }
             StringBuilder dynamicSelect = new StringBuilder();
@@ -677,11 +530,9 @@ namespace ReadingChamber
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
-            Console.WriteLine($"Clicked on {elem.Tag}, hook: {hook}");
             if (hook == "TogglePlay")
             {
                 _playing = !_playing;
-                Console.WriteLine($"Toggled play to {_playing}");
             }
             else if (hook == "LoadMesh")
             {
@@ -730,7 +581,6 @@ namespace ReadingChamber
                     LoadAnimation(val);
                     select.IsOpen = false;
                     _uiOverlay.RefreshUI();
-                    Console.WriteLine($"Selected and loaded animation: {Path.GetFileNameWithoutExtension(val)}");
                 }
             }
         }
@@ -797,10 +647,8 @@ namespace ReadingChamber
                         for (int i = 0; i < finalTransforms.Length; i++)
                         {
                             Matrix4x4 mat = finalTransforms[i];
-                            // Compute inverse then transpose for transpose(inverse)
                             if (!Matrix4x4.Invert(mat, out Matrix4x4 invMat))
                             {
-                                Console.WriteLine($"Failed to invert final transform for bone {i}, using identity for normal");
                                 normalTransforms[i] = Matrix3x3.Identity;
                                 continue;
                             }
@@ -813,43 +661,14 @@ namespace ReadingChamber
                         }
                         _currentNormalTransforms = normalTransforms;
                         _model.Skeleton.UpdateTransforms(finalTransforms);
-                        if (_time - _lastLogTime > 1f)
-                        {
-                            _lastLogTime = _time;
-                            LogDebugBoneTransforms(localTransforms, globalTransforms);
-                        }
                     }
                 }
             }
-            // Handle input for animation selection, play/pause, etc. (expand with UI buttons)
             if (_controlContext.GetKey(_window, Key.Space) == InputAction.Press)
             {
                 _playing = !_playing;
             }
             UpdateSkeletonVisualization();
-        }
-        private void LogDebugBoneTransforms(Matrix4x4[] localTransforms, Matrix4x4[] globalTransforms)
-        {
-            Console.WriteLine($"Debug bone transforms at time {_time}:");
-            foreach (var boneName in _debugBones)
-            {
-                int idx = _model.Skeleton.Bones.FindIndex(b => string.Equals(b.Name, boneName, StringComparison.OrdinalIgnoreCase));
-                if (idx != -1)
-                {
-                    Matrix4x4.Decompose(localTransforms[idx], out Vector3 lScale, out Quaternion lRot, out Vector3 lTrans);
-                    Vector3 lEuler = ToEuler(lRot);
-                    float lDet = localTransforms[idx].GetDeterminant();
-                    Console.WriteLine($"{boneName} Local: Pos({lTrans.X:F2},{lTrans.Y:F2},{lTrans.Z:F2}) Rot({lEuler.X:F2},{lEuler.Y:F2},{lEuler.Z:F2}) Scale({lScale.X:F2},{lScale.Y:F2},{lScale.Z:F2}) Det({lDet:F2})");
-                    Matrix4x4.Decompose(globalTransforms[idx], out Vector3 gScale, out Quaternion gRot, out Vector3 gPos);
-                    Vector3 gEuler = ToEuler(gRot);
-                    float gDet = globalTransforms[idx].GetDeterminant();
-                    Console.WriteLine($"{boneName} Global: Pos({gPos.X:F2},{gPos.Y:F2},{gPos.Z:F2}) Rot({gEuler.X:F2},{gEuler.Y:F2},{gEuler.Z:F2}) Scale({gScale.X:F2},{gScale.Y:F2},{gScale.Z:F2}) Det({gDet:F2})");
-                }
-                else
-                {
-                    Console.WriteLine($"{boneName} not found in skeleton");
-                }
-            }
         }
         private void UpdateSkeletonVisualization()
         {
@@ -866,32 +685,6 @@ namespace ReadingChamber
                 indices.Add(idx++);
             }
             _skeletonBuffer.UpdateCustom(vertices, indices);
-        }
-        private Vector3 ToEuler(Quaternion q)
-        {
-            q = Quaternion.Normalize(q);
-            Vector3 euler = new Vector3();
-            // pitch (y-axis rotation)
-            float sinp = 2 * (q.W * q.Y - q.Z * q.X);
-            if (MathF.Abs(sinp) > 0.999f)
-            {
-                euler.Y = MathF.CopySign(MathF.PI / 2, sinp);
-                euler.X = 2 * MathF.Atan2(q.X, q.W) * MathF.CopySign(1, sinp);
-                euler.Z = 0;
-            }
-            else
-            {
-                euler.Y = MathF.Asin(sinp);
-                // roll (x-axis rotation)
-                float sinr_cosp = 2 * (q.W * q.X + q.Y * q.Z);
-                float cosr_cosp = 1 - 2 * (q.X * q.X + q.Y * q.Y);
-                euler.X = MathF.Atan2(sinr_cosp, cosr_cosp);
-                // yaw (z-axis rotation)
-                float siny_cosp = 2 * (q.W * q.Z + q.X * q.Y);
-                float cosy_cosp = 1 - 2 * (q.Y * q.Y + q.Z * q.Z);
-                euler.Z = MathF.Atan2(siny_cosp, cosy_cosp);
-            }
-            return euler * (180f / MathF.PI);
         }
         public override void Render()
         {
@@ -957,11 +750,6 @@ namespace ReadingChamber
                 }
                 _renderContext.BindVertexArray(mmr.Vao);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
-                int error;
-                while ((error = _renderContext.GetError()) != _renderContext.Enums.NoError)
-                {
-                    Console.WriteLine($"AssetViewerPanel: OpenGL error after draw: {error}");
-                }
             }
             // Render skeleton
             _pointShader.Use();
@@ -987,7 +775,7 @@ namespace ReadingChamber
                 {
                     if (currentY > Size.Y - 20) break; // Prevent overflow
                     Matrix4x4.Decompose(_currentGlobalTransforms[i], out _, out Quaternion rot, out Vector3 pos);
-                    Vector3 euler = ToEuler(rot);
+                    Vector3 euler = _model.Skeleton.Bones[i].ToEuler(rot);
                     string info = $"{_model.Skeleton.Bones[i].Name}: Pos({pos.X:F2},{pos.Y:F2},{pos.Z:F2}) Rot({euler.X:F2},{euler.Y:F2},{euler.Z:F2})";
                     _textRenderer.RenderText(info, 10, currentY, (int)Size.X, (int)Size.Y, 12f);
                     currentY += 15;
@@ -1030,7 +818,6 @@ namespace ReadingChamber
             string animRootName = NormalizeBoneName(animModel.Skeleton.Bones[animRoot].Name);
             if (mainRootName != animRootName)
             {
-                Console.WriteLine($"Root names don't match: Main {mainRootName} vs Anim {animRootName}. Attempting fallback matching.");
                 var mainRootChildren = mainTree[mainRoot];
                 if (mainRootChildren.Count == 1)
                 {
@@ -1038,17 +825,14 @@ namespace ReadingChamber
                     if (MatchStructures(mainTree, animTree, mainEffectiveRoot, animRoot, animModel))
                     {
                         mainRoot = mainEffectiveRoot;
-                        Console.WriteLine("Fallback successful: Using main's effective root for matching.");
                     }
                     else
                     {
-                        Console.WriteLine("Fallback failed: Structures don't align.");
                         return boneMap;
                     }
                 }
                 else
                 {
-                    Console.WriteLine("Fallback not possible: Main root has multiple children.");
                     return boneMap;
                 }
             }
@@ -1073,29 +857,17 @@ namespace ReadingChamber
         {
             string mainName = NormalizeBoneName(mainSkeleton.Bones[mainIdx].Name);
             string animName = NormalizeBoneName(animSkeleton.Bones[animIdx].Name);
-            Console.WriteLine($"Matching bone: Main {mainSkeleton.Bones[mainIdx].Name} (norm: {mainName}) vs Anim {animSkeleton.Bones[animIdx].Name} (norm: {animName})");
-            if (mainName != animName)
-            {
-                Console.WriteLine($"Warning: Mapping despite name mismatch: {mainName} != {animName}");
-            }
             boneMap[animIdx] = mainIdx;
-            Console.WriteLine("Mapped by structure.");
             var mainChildren = mainTree[mainIdx];
             var animChildren = animTree[animIdx];
-            Console.WriteLine($"Child count: Main {mainChildren.Count} vs Anim {animChildren.Count}");
             if (mainChildren.Count == animChildren.Count)
             {
-                // Sort children by normalized name for order-independent matching
                 var sortedMainChildren = mainChildren.OrderBy(c => NormalizeBoneName(mainSkeleton.Bones[c].Name)).ToList();
                 var sortedAnimChildren = animChildren.OrderBy(c => NormalizeBoneName(animSkeleton.Bones[c].Name)).ToList();
                 for (int i = 0; i < sortedMainChildren.Count; i++)
                 {
                     MatchBoneSubtree(sortedMainChildren[i], sortedAnimChildren[i], mainTree, animTree, mainSkeleton, animSkeleton, boneMap);
                 }
-            }
-            else
-            {
-                Console.WriteLine("Child count mismatch, skipping subtree matching.");
             }
         }
         private string NormalizeBoneName(string name)

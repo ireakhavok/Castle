@@ -1,10 +1,13 @@
-﻿// Folder: SiegeEngine.Core
+﻿
+// Folder: SiegeEngine.Core
 // File: AssetParsing/Model/Animation.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class Animation
@@ -53,7 +56,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 else
                 {
                     interpolated[b] = lower.BoneTransforms[b];
-                    Console.WriteLine($"Animation {Name}: Failed to decompose matrices for bone {b} at time {time} (lower: {lowerDecomposed}, upper: {upperDecomposed}). Using lower keyframe.");
                 }
             }
             return interpolated;

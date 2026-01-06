@@ -1,11 +1,10 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXAnimationParser.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXAnimationParser
@@ -13,7 +12,6 @@ namespace SiegeEngine.Core.AssetParsing
         public static void ParseAnimations(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 rootRot, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4)
         {
             var animStackNodes = objectsNode.children.Where(n => n.Name == "AnimationStack").ToList();
-            Console.WriteLine($"Animation stacks found: {animStackNodes.Count}");
             foreach (var stack in animStackNodes)
             {
                 long stackId = (long)stack.properties[0].Value;
@@ -22,21 +20,17 @@ namespace SiegeEngine.Core.AssetParsing
                 string animName = animNameParts[animNameParts.Length - 1];
                 Animation anim = new Animation { Name = animName, Keyframes = new List<Keyframe>() };
                 model.Animations.Add(anim);
-                Console.WriteLine($"Parsing animation stack {animName}");
                 // Find layer
                 var layerConns = conns.Where(c => c.type == "OO" && c.parent == stackId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationLayer").ToList();
-                Console.WriteLine($"Layers for stack: {layerConns.Count}");
                 if (layerConns.Count == 0) continue;
                 long layerId = layerConns[0].child;
                 var layerNode = objectsById[layerId];
                 var curveNodeConns = conns.Where(c => c.type == "OO" && c.parent == layerId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "AnimationCurveNode").ToList();
-                Console.WriteLine($"Curve nodes for layer: {curveNodeConns.Count}");
                 var timeBoneTRS = new Dictionary<float, Dictionary<int, Dictionary<string, Vector3>>>();
                 foreach (var curveNodeConn in curveNodeConns)
                 {
                     long curveNodeId = curveNodeConn.child;
                     var boneConns = conns.Where(c => c.type == "OP" && c.child == curveNodeId && objectsById.ContainsKey(c.parent) && objectsById[c.parent].Name == "Model").ToList();
-                    Console.WriteLine($"Bone connections for curve node {curveNodeId}: {boneConns.Count}");
                     if (boneConns.Count == 0) continue;
                     var boneConn = boneConns[0];
                     long boneId = boneConn.parent;
@@ -58,12 +52,11 @@ namespace SiegeEngine.Core.AssetParsing
                     allKeyTimesSet.UnionWith(keyTimesZ);
                     List<long> allKeyTimes = allKeyTimesSet.OrderBy(t => t).ToList();
                     if (allKeyTimes.Count == 0) continue;
-                    Console.WriteLine($"Curve for bone {model.Skeleton.Bones[boneIdx].Name} {trsType} with {allKeyTimes.Count} unique keys");
                     Bone bone = model.Skeleton.Bones[boneIdx];
                     Vector3 defaultVal = trsType switch
                     {
                         "T" => bone.LclTranslation,
-                        "R" => bone.LclRotationDegrees, // Use degrees
+                        "R" => Vector3.Zero, // Since we use quats, but default is identity, Euler 0
                         "S" => bone.LclScaling,
                         _ => Vector3.Zero
                     };
@@ -118,7 +111,8 @@ namespace SiegeEngine.Core.AssetParsing
                         int boneIdx = kvBone.Key;
                         var trsVals = kvBone.Value;
                         Vector3? animT = trsVals.ContainsKey("T") ? (Vector3?)trsVals["T"] : null;
-                        Vector3? animR = trsVals.ContainsKey("R") ? (Vector3?)trsVals["R"] : null;
+                        Vector3? animRDeg = trsVals.ContainsKey("R") ? (Vector3?)trsVals["R"] : null;
+                        Quaternion? animR = animRDeg.HasValue ? (Quaternion?)model.Skeleton.Bones[boneIdx].ToQuaternion(animRDeg.Value, model.Skeleton.Bones[boneIdx].RotationOrder) : null;
                         Vector3? animS = trsVals.ContainsKey("S") ? (Vector3?)trsVals["S"] : null;
                         Matrix4x4 local = model.Skeleton.Bones[boneIdx].ComputeLocal(animT, animR, animS);
                         local = model.P4 * local * model.InvP4;
@@ -138,16 +132,6 @@ namespace SiegeEngine.Core.AssetParsing
                         defaultKf.BoneTransforms.Add(model.Skeleton.Bones[i].LocalRest);
                     }
                     anim.Keyframes.Add(defaultKf);
-                    Console.WriteLine($"Added default keyframe for animation {anim.Name} since no keys parsed");
-                }
-                if (anim.Keyframes.Count > 0)
-                {
-                    float duration = anim.Keyframes.Last().Time;
-                    Console.WriteLine($"Finished parsing animation {anim.Name} with {anim.Keyframes.Count} keyframes, duration: {duration} seconds");
-                }
-                else
-                {
-                    Console.WriteLine($"Finished parsing animation {anim.Name} with 0 keyframes");
                 }
             }
         }
