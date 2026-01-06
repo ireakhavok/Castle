@@ -1,30 +1,24 @@
 Folder: Model
 - File: Animation.cs
   - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - constructor Matrix3x3( float m12,  float m13,  float m21,  float m22,  float m23,  float m31,  float m32,  float m33, float m11)
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Threading.Tasks
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Threading.Tasks
     - Fields:
-      - Vector3 _lclRotationDegrees
-      - Vector3 _lclRotationRadians
-      - Vector3 _preRotationDegrees
-      - Vector3 _preRotationRadians
-      - Vector3 _postRotationDegrees
-      - Vector3 _postRotationRadians
-      - Vector3 _geometricRotationDegrees
-      - Vector3 _geometricRotationRadians
       - Matrix4x4 Geo
     - Methods:
       - Matrix4x4 ComputeLocal()
+      - Quaternion ToQuaternion( int order, Vector3 degrees)
         - Calls: CreateFromEuler
+      - Vector3 ToEuler(Quaternion q)
       - Matrix4x4 CreateFromEuler( int order, Vector3 degrees)
       - Vector3 GetRotationPivotGlobal(Matrix4x4 parentGlobal)
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - constructor FBXModel()
       - bool HasUnweightedVertices()
@@ -75,7 +69,7 @@ Folder: Model
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics
 - File: Skeleton.cs
   - Class: Skeleton (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - Matrix4x4[] _currentTransforms
     - Methods:
