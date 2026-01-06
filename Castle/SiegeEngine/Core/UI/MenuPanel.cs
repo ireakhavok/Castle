@@ -47,6 +47,21 @@ namespace SiegeEngine.Core.UI
                         Console.WriteLine($"MenuUIOverlay: Failed to open ReadingChamber panel: {ex.Message}");
                     }
                 }
+                else if (hook == "ReadingChamber.OpenAnimationViewer")
+                {
+                    try
+                    {
+                        string dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ReadingChamber.dll");
+                        Assembly ass = Assembly.LoadFrom(dllPath);
+                        Type type = ass.GetType("ReadingChamber.AnimationViewerPanel");
+                        IPanel panel = (IPanel)Activator.CreateInstance(type, _renderContext, _controlContext, _window, _eventBus);
+                        _eventBus.Publish(new OpenPanelEvent(panel));
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"MenuUIOverlay: Failed to open ReadingChamber panel: {ex.Message}");
+                    }
+                }
                 else if (hook.Contains("Scene"))
                 {
                     //_eventBus.Publish(new SwitchSceneEvent { Hook = hook });
