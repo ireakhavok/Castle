@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXParser.cs
+﻿// Folder: Root
+// File: FBXParser.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Rendering;
@@ -170,7 +170,6 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                 }
             }
-
             float modelScale = unitScaleFactor / originalUnitScaleFactor;
             Console.WriteLine($"Parsed global settings: UpAxis={upAxis} Sign={upAxisSign}, FrontAxis={frontAxis} Sign={frontAxisSign}, CoordAxis={coordAxis} Sign={coordAxisSign}, CoordSystem={coordSystem} Sign={coordSystemSign}, Scale={modelScale}, FrameRate={frameRate}");
             int[] sourceToTarget = new int[3];
@@ -183,10 +182,6 @@ namespace SiegeEngine.Core.AssetParsing
             signs[upAxis] = upAxisSign;
             // Handle handedness
             int handedness = (coordSystem == 0 ? 1 : -1) * coordSystemSign; // Assume 0 right, positive
-            if (handedness < 0)
-            {
-                signs[coordAxis] = -signs[coordAxis]; // Flip X to change handedness
-            }
             // Engine-specific adjustment (e.g., flip forward if needed)
             signs[frontAxis] = -signs[frontAxis]; // Assuming engine needs positive Y forward, flip if FBX has positive
             Matrix4x4 P4 = Matrix4x4.Identity;
