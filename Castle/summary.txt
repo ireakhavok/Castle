@@ -195,6 +195,15 @@ Folder: QuestHall
   - Class: Class1 (Namespace: QuestHall)
 
 Folder: ReadingChamber
+- File: AnimationViewerPanel.cs
+  - Class: AssetUIOverlay (Namespace: ReadingChamber)
+    - Inherits: UIOverlay
+        
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
+    - Fields:
+      - AnimationViewerPanel _parent
+    - Methods:
+      - void HandleUIClick(HtmlElement elem)
 - File: AssetViewerPanel.cs
   - Class: AssetUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
@@ -235,7 +244,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic
 - File: Animation.cs
   - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - constructor Matrix3x3( float m12,  float m13,  float m21,  float m22,  float m23,  float m31,  float m32,  float m33, float m11)
 - File: AnimationComponent.cs
@@ -257,7 +266,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Numerics
     - Methods:
       - void Update(float deltaTime)
-        - Calls: Inverse, Matrix3x3, Transpose, _server.GetEntities, animation.GetBoneTransforms, modelComp.Model.Skeleton.ComputeFinalTransforms, modelComp.Model.Skeleton.ComputeGlobalTransforms, modelComp.Model.Skeleton.UpdateTransforms
+        - Calls: Inverse, Matrix3x3, _server.GetEntities, animation.GetBoneTransforms, modelComp.Model.Skeleton.ComputeFinalTransforms, modelComp.Model.Skeleton.ComputeGlobalTransforms, modelComp.Model.Skeleton.UpdateTransforms
 - File: AssetShader.cs
   - Class: AssetShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -367,20 +376,14 @@ Folder: SiegeEngine
         - Calls: _uiOverlay.RefreshUI
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Threading.Tasks
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text, System.Threading.Tasks
     - Fields:
-      - Vector3 _lclRotationDegrees
-      - Vector3 _lclRotationRadians
-      - Vector3 _preRotationDegrees
-      - Vector3 _preRotationRadians
-      - Vector3 _postRotationDegrees
-      - Vector3 _postRotationRadians
-      - Vector3 _geometricRotationDegrees
-      - Vector3 _geometricRotationRadians
       - Matrix4x4 Geo
     - Methods:
       - Matrix4x4 ComputeLocal()
+      - Quaternion ToQuaternion( int order, Vector3 degrees)
         - Calls: CreateFromEuler
+      - Vector3 ToEuler(Quaternion q)
       - Matrix4x4 CreateFromEuler( int order, Vector3 degrees)
       - Vector3 GetRotationPivotGlobal(Matrix4x4 parentGlobal)
 - File: BrushRegistryUpdateEvent.cs
@@ -767,7 +770,7 @@ Folder: SiegeEngine
       - Vector3 CalculateBounds(List<FBXVertex> vertices)
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - constructor FBXModel()
       - bool HasUnweightedVertices()
@@ -780,7 +783,6 @@ Folder: SiegeEngine
       - void AssignToClosestBone(MeshData mainMesh)
         - Calls: Skeleton.ComputeGlobalTransforms
       - void ComputeBindPoses()
-        - Calls: Matrix4x4.Transpose, Skeleton.ComputeGlobalTransforms
 - File: FBXNode.cs
   - Class: FBXNode (Namespace: SiegeEngine.Core.AssetObjects)
     - Inherits: BaseNode
@@ -793,7 +795,7 @@ Folder: SiegeEngine
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, MetaDataExporter.ExportMetadata, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: FBXModel, FBXParserBase.CreateDefaultCubeModel, FBXSkeletonParser.ApplyRootRotation, GatherConnections, GatherObjectsById
+        - Calls: FBXModel, FBXParserBase.CreateDefaultCubeModel, GatherConnections, GatherObjectsById
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
 - File: FBXParserBase.cs
@@ -828,8 +830,6 @@ Folder: SiegeEngine
 - File: FBXSkeletonParser.cs
   - Class: FBXSkeletonParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
-    - Methods:
-      - void ApplyRootRotation( List<int> rootIndices,  Matrix4x4 rootRot, FBXModel model)
 - File: FBXVertex.cs
   - Class: FBXVertex (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Fields:
@@ -1259,7 +1259,7 @@ Folder: SiegeEngine
       - EventBus _eventBus
     - Methods:
       - void HandleDataHook(string hook)
-        - Calls: OpenPanelEvent, SwitchSceneEvent, _document.getElementById, checked.ToString
+        - Calls: _document.getElementById, checked.ToString, mi.Invoke
       - void HandleLink(string href)
         - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
 - File: MeshData.cs
@@ -1295,8 +1295,6 @@ Folder: SiegeEngine
     - Methods:
       - constructor ModManager( ISteamEngine steamEngine, string modsDirectory)
         - Calls: LoadLocalMods, LoadWorkshopMods
-      - void LoadModels(ModelManager loader)
-        - Calls: loader.ScanDirectory
       - void LoadLocalMods()
         - Calls: LoadMod, ProcessUnityAssets
       - void LoadWorkshopMods()
@@ -1633,6 +1631,8 @@ Folder: SiegeEngine
       - ShaderProgram _modelShader
       - ShaderProgram _gridShader
     - Methods:
+      - void Launch( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: SwitchSceneEvent
       - void Initialize( int height, int width)
         - Calls: ShaderProgram, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _renderContext.ClearColor, _renderContext.Viewport
       - void Update(float deltaTime)
@@ -1769,7 +1769,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering.Shaders, Silk.NET.OpenGL
 - File: Skeleton.cs
   - Class: Skeleton (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - Matrix4x4[] _currentTransforms
     - Methods:
@@ -1779,6 +1779,8 @@ Folder: SiegeEngine
         - Calls: ComputeGlobalRecursive
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globalTransforms,  Matrix4x4[] localTransforms, int idx)
       - Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
+      - void ComputeBindPoses()
+        - Calls: ComputeGlobalTransforms
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
