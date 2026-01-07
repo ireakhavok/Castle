@@ -364,9 +364,9 @@ namespace SiegeEngine.Core.AssetParsing
             for (int v = 0; v < perVertBones.Count; v++)
             {
                 var bw = perVertBones[v];
-                if (bw.Count > 4)
+                if (bw.Count > 8)
                 {
-                    bw = bw.OrderByDescending(b => b.weight).Take(4).ToList();
+                    bw = bw.OrderByDescending(b => b.weight).Take(8).ToList();
                 }
                 float sumW = bw.Sum(b => b.weight);
                 if (sumW > 0)

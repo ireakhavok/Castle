@@ -36,7 +36,7 @@ namespace SiegeEngine.Systems
                                 mat.M11, mat.M12, mat.M13,
                                 mat.M21, mat.M22, mat.M23,
                                 mat.M31, mat.M32, mat.M33
-                            ).Transpose().Inverse();
+                            ).Inverse();
                         }
                         modelComp.Model.Skeleton.UpdateTransforms(finalTransforms);
                         modelComp.NormalBoneTransforms = normalTransforms;

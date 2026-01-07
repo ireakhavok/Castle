@@ -28,7 +28,7 @@ void main()
     vec3 totalNormal = vec3(0.0);
     vec3 totalTangent = vec3(0.0);
     if (uHasBones == 1) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 8; i++) {
             int boneIndex = int(aBoneIDs[i]);
             if (boneIndex < 0 || boneIndex >= 100) continue;
             mat4 boneTransform = uBoneTransforms[boneIndex];

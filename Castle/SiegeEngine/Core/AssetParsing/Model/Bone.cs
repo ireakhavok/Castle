@@ -45,7 +45,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
-            Matrix4x4.Invert(Rp, out Matrix4x4 invRp); // More robust than negation
+            Matrix4x4 invRp = Matrix4x4.CreateTranslation(-RotationPivot);
+            //Matrix4x4.Invert(Rp, out Matrix4x4 invRp); // More robust than negation
             Matrix4x4 Soff = Matrix4x4.CreateTranslation(ScalingOffset);
             Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);
             Matrix4x4.Invert(Sp, out Matrix4x4 invSp); // More robust than negation
