@@ -1,5 +1,4 @@
-﻿
-// Folder: SiegeEngine.Core
+﻿// Folder: SiegeEngine.Core
 // File: AssetParsing/Model/FBXModel.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -23,13 +22,16 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public Matrix4x4 InvP4 { get; set; }
         public bool ReverseWinding { get; set; }
         public bool HasSkin { get; set; } = false;
+
         public FBXModel()
         {
         }
+
         public bool HasUnweightedVertices()
         {
             return Meshes.Any(m => m.Vertices.Any(v => v.Weight0 + v.Weight1 + v.Weight2 + v.Weight3 == 0));
         }
+
         public void FixUnweightedVertices()
         {
             if (!HasUnweightedVertices()) return;
@@ -39,6 +41,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             HasSkin = true;
         }
+
         public void CopyWeightsFrom(FBXModel other)
         {
             if (Meshes.Count != 1 || other.Meshes.Count != 1)
@@ -71,6 +74,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             HasSkin = true;
         }
+
         private void AssignToRootBone(MeshData mainMesh)
         {
             int rootIdx = Skeleton.Bones.FindIndex(b => b.ParentIndex == -1);
@@ -87,6 +91,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 mainMesh.Vertices[i].Weight3 = 0f;
             }
         }
+
         private void AssignToClosestBone(MeshData mainMesh)
         {
             if (Skeleton.Bones.Count == 0) return;
@@ -127,21 +132,10 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 }
             }
         }
+
         public void ComputeBindPoses()
         {
-            if (Skeleton == null || Skeleton.Bones.Count == 0) return;
-            var restLocals = Skeleton.Bones.Select(b => b.LocalRest).ToArray();
-            var restGlobals = Skeleton.ComputeGlobalTransforms(restLocals);
-            for (int i = 0; i < Skeleton.Bones.Count; i++)
-            {
-                Matrix4x4 global = Matrix4x4.Transpose(restGlobals[i]);
-                if (!Matrix4x4.Invert(global, out Matrix4x4 invRestGlobal))
-                {
-                    Skeleton.Bones[i].BindPose = Matrix4x4.Identity;
-                    continue;
-                }
-                Skeleton.Bones[i].BindPose = Matrix4x4.Transpose(invRestGlobal);
-            }
+            Skeleton.ComputeBindPoses();
         }
     }
 }

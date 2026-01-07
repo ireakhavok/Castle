@@ -1,5 +1,4 @@
-﻿
-// Folder: SiegeEngine.Core
+﻿// Folder: SiegeEngine.Core
 // File: AssetParsing/Model/Skeleton.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -14,6 +13,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
     {
         public List<Bone> Bones { get; set; } = new List<Bone>();
         private Matrix4x4[] _currentTransforms;
+
         public Matrix4x4[] GetTransforms()
         {
             if (_currentTransforms == null)
@@ -24,10 +24,12 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return _currentTransforms;
         }
+
         public void UpdateTransforms(Matrix4x4[] transforms)
         {
             _currentTransforms = transforms;
         }
+
         public Matrix4x4[] ComputeGlobalTransforms(Matrix4x4[] localTransforms)
         {
             var globalTransforms = new Matrix4x4[Bones.Count];
@@ -41,6 +43,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return globalTransforms;
         }
+
         private void ComputeGlobalRecursive(int idx, Matrix4x4[] localTransforms, Matrix4x4[] globalTransforms, Matrix4x4 parentGlobal)
         {
             globalTransforms[idx] = parentGlobal * localTransforms[idx];
@@ -53,6 +56,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 }
             }
         }
+
         public Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
         {
             var finalTransforms = new Matrix4x4[Bones.Count];
@@ -61,6 +65,23 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 finalTransforms[i] = globalTransforms[i] * Bones[i].BindPose;
             }
             return finalTransforms;
+        }
+
+        public void ComputeBindPoses()
+        {
+            if (Bones.Count == 0) return;
+            var restLocals = Bones.Select(b => b.LocalRest).ToArray();
+            var restGlobals = ComputeGlobalTransforms(restLocals);
+            for (int i = 0; i < Bones.Count; i++)
+            {
+                Matrix4x4 global = Matrix4x4.Transpose(restGlobals[i]);
+                if (!Matrix4x4.Invert(global, out Matrix4x4 invRestGlobal))
+                {
+                    Bones[i].BindPose = Matrix4x4.Identity;
+                    continue;
+                }
+                Bones[i].BindPose = Matrix4x4.Transpose(invRestGlobal);
+            }
         }
     }
 }
