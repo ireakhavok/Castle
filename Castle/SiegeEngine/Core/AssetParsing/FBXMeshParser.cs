@@ -10,7 +10,7 @@ namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXMeshParser
     {
-        public static void ParseMeshes(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale, bool reverseWinding, Dictionary<long, int> boneIndexById, Matrix4x4 rootRot, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, FBXFileForest forest)
+        public static void ParseMeshes(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale, bool reverseWinding, Dictionary<long, int> boneIndexById, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, FBXFileForest forest)
         {
             var geomNodes = objectsNode.children.Where(n => n.Name == "Geometry" && n.properties.Count >= 3 && (string)n.properties[2].Value == "Mesh").ToList();
             if (geomNodes.Count == 0 && !objectsNode.children.Any(n => n.Name == "AnimationStack"))
@@ -33,7 +33,7 @@ namespace SiegeEngine.Core.AssetParsing
                 var (matIndices, matMapping) = ParseMaterials(geom);
                 var geoMat = ParseGeometricTransform(geomId, conns, objectsById, sourceToTarget, signs, modelScale);
                 int numVerts = vertsD.Length / 3;
-                var perVertBones = ParseSkin(geomId, conns, objectsById, boneIndexById, model, rootRot, rootIndices, P4, invP4, modelScale, numVerts, geoMat);
+                var perVertBones = ParseSkin(geomId, conns, objectsById, boneIndexById, model, rootIndices, P4, invP4, modelScale, numVerts, geoMat);
                 NormalizeWeights(perVertBones);
                 var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, matIndices, matMapping, perVertBones, reverseWinding, numVerts);
                 MeshData mesh = new MeshData
@@ -218,7 +218,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return geoMat;
         }
-        private static List<List<(int boneIdx, float weight)>> ParseSkin(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, FBXModel model, Matrix4x4 rootRot, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, float modelScale, int numVerts, Matrix4x4 geoMat)
+        private static List<List<(int boneIdx, float weight)>> ParseSkin(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, FBXModel model, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, float modelScale, int numVerts, Matrix4x4 geoMat)
         {
             var perVertBones = Enumerable.Range(0, numVerts).Select(_ => new List<(int, float)>()).ToList();
             var skinConns = conns.Where(c => c.type == "OO" && c.parent == geomId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Deformer" && (string)objectsById[c.child].properties[2].Value == "Skin").ToList();
@@ -324,13 +324,7 @@ namespace SiegeEngine.Core.AssetParsing
                                                 t_remap.M21, t_remap.M22, t_remap.M23, t_remap.M24,
                                                 t_remap.M31, t_remap.M32, t_remap.M33, t_remap.M34,
                                                 t_remap.M41 * modelScale, t_remap.M42 * modelScale, t_remap.M43 * modelScale, t_remap.M44);
-                        // Apply rootRot if root
-                        bool isRoot = model.Skeleton.Bones[boneIdx].ParentIndex == -1;
-                        if (isRoot)
-                        {
-                            tl_remap = rootRot * tl_remap;
-                            t_remap = rootRot * t_remap;
-                        }
+
                         // Compute invBind including geoMat
                         if (Matrix4x4.Invert(tl_remap, out var invTl))
                         {

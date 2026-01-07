@@ -9,7 +9,7 @@ namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXAnimationParser
     {
-        public static void ParseAnimations(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 rootRot, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4)
+        public static void ParseAnimations(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4)
         {
             var animStackNodes = objectsNode.children.Where(n => n.Name == "AnimationStack").ToList();
             foreach (var stack in animStackNodes)
@@ -116,10 +116,6 @@ namespace SiegeEngine.Core.AssetParsing
                         Vector3? animS = trsVals.ContainsKey("S") ? (Vector3?)trsVals["S"] : null;
                         Matrix4x4 local = model.Skeleton.Bones[boneIdx].ComputeLocal(animT, animR, animS);
                         local = model.P4 * local * model.InvP4;
-                        if (rootIndices.Contains(boneIdx))
-                        {
-                            local = rootRot * local;
-                        }
                         kf.BoneTransforms[boneIdx] = local;
                     }
                     anim.Keyframes.Add(kf);

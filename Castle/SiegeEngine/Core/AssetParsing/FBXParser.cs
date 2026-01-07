@@ -81,10 +81,10 @@ namespace SiegeEngine.Core.AssetParsing
             model.ReverseWinding = reverseWinding;
             var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
-            Matrix4x4 rootRot = Matrix4x4.Identity;
-            FBXSkeletonParser.ApplyRootRotation(model, rootRot, rootIndices);
-            FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, reverseWinding, boneIndexById, rootRot, rootIndices, P4, invP4, forest);
-            FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootRot, rootIndices, P4, invP4);
+            //Matrix4x4 rootRot = Matrix4x4.Identity;
+            //FBXSkeletonParser.ApplyRootRotation(model, rootRot, rootIndices);
+            FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, reverseWinding, boneIndexById, rootIndices, P4, invP4, forest);
+            FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootIndices, P4, invP4);
             return model;
         }
         public static Dictionary<long, BaseNode> GatherObjectsById(BaseNode objectsNode)
