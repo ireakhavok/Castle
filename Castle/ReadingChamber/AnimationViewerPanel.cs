@@ -849,8 +849,8 @@ namespace ReadingChamber
         private Dictionary<int, int> MatchBoneHierarchies(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainRoot, int animRoot, FBXModel animModel)
         {
             var boneMap = new Dictionary<int, int>();
-            string mainRootName = NormalizeBoneName(_model.Skeleton.Bones[mainRoot].Name);
-            string animRootName = NormalizeBoneName(animModel.Skeleton.Bones[animRoot].Name);
+            string mainRootName = _model.Skeleton.Bones[mainRoot].Name;
+            string animRootName = animModel.Skeleton.Bones[animRoot].Name;
             if (mainRootName != animRootName)
             {
                 var mainRootChildren = mainTree[mainRoot];
@@ -880,8 +880,8 @@ namespace ReadingChamber
             var mainChildren = mainTree[mainIdx];
             var animChildren = animTree[animIdx];
             if (mainChildren.Count != animChildren.Count) return false;
-            var sortedMainChildren = mainChildren.OrderBy(c => NormalizeBoneName(_model.Skeleton.Bones[c].Name)).ToList();
-            var sortedAnimChildren = animChildren.OrderBy(c => NormalizeBoneName(animModel.Skeleton.Bones[c].Name)).ToList();
+            var sortedMainChildren = mainChildren.OrderBy(c => _model.Skeleton.Bones[c].Name).ToList();
+            var sortedAnimChildren = animChildren.OrderBy(c => animModel.Skeleton.Bones[c].Name).ToList();
             for (int i = 0; i < sortedMainChildren.Count; i++)
             {
                 if (!MatchStructures(mainTree, animTree, sortedMainChildren[i], sortedAnimChildren[i], animModel)) return false;
@@ -890,24 +890,20 @@ namespace ReadingChamber
         }
         private void MatchBoneSubtree(int mainIdx, int animIdx, Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, Skeleton mainSkeleton, Skeleton animSkeleton, Dictionary<int, int> boneMap)
         {
-            string mainName = NormalizeBoneName(mainSkeleton.Bones[mainIdx].Name);
-            string animName = NormalizeBoneName(animSkeleton.Bones[animIdx].Name);
+            string mainName = mainSkeleton.Bones[mainIdx].Name;
+            string animName = animSkeleton.Bones[animIdx].Name;
             boneMap[animIdx] = mainIdx;
             var mainChildren = mainTree[mainIdx];
             var animChildren = animTree[animIdx];
             if (mainChildren.Count == animChildren.Count)
             {
-                var sortedMainChildren = mainChildren.OrderBy(c => NormalizeBoneName(mainSkeleton.Bones[c].Name)).ToList();
-                var sortedAnimChildren = animChildren.OrderBy(c => NormalizeBoneName(animSkeleton.Bones[c].Name)).ToList();
+                var sortedMainChildren = mainChildren.OrderBy(c => mainSkeleton.Bones[c].Name).ToList();
+                var sortedAnimChildren = animChildren.OrderBy(c => animSkeleton.Bones[c].Name).ToList();
                 for (int i = 0; i < sortedMainChildren.Count; i++)
                 {
                     MatchBoneSubtree(sortedMainChildren[i], sortedAnimChildren[i], mainTree, animTree, mainSkeleton, animSkeleton, boneMap);
                 }
             }
-        }
-        private string NormalizeBoneName(string name)
-        {
-            return name.ToLowerInvariant().Replace("_", "");
         }
     }
 }
