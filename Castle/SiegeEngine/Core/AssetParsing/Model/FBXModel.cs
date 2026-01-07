@@ -20,7 +20,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public float ModelScale { get; set; }
         public Matrix4x4 P4 { get; set; }
         public Matrix4x4 InvP4 { get; set; }
-        public bool ReverseWinding { get; set; }
         public bool HasSkin { get; set; } = false;
 
         public FBXModel()

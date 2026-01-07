@@ -10,7 +10,7 @@ namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXMeshParser
     {
-        public static void ParseMeshes(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale, bool reverseWinding, Dictionary<long, int> boneIndexById, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, FBXFileForest forest)
+        public static void ParseMeshes(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale, Dictionary<long, int> boneIndexById, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, FBXFileForest forest)
         {
             var geomNodes = objectsNode.children.Where(n => n.Name == "Geometry" && n.properties.Count >= 3 && (string)n.properties[2].Value == "Mesh").ToList();
             if (geomNodes.Count == 0 && !objectsNode.children.Any(n => n.Name == "AnimationStack"))
@@ -35,7 +35,7 @@ namespace SiegeEngine.Core.AssetParsing
                 int numVerts = vertsD.Length / 3;
                 var perVertBones = ParseSkin(geomId, conns, objectsById, boneIndexById, model, rootIndices, P4, invP4, modelScale, numVerts, geoMat);
                 NormalizeWeights(perVertBones);
-                var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, matIndices, matMapping, perVertBones, reverseWinding, numVerts);
+                var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, matIndices, matMapping, perVertBones, numVerts);
                 MeshData mesh = new MeshData
                 {
                     Vertices = expandedVertices,
@@ -379,7 +379,7 @@ namespace SiegeEngine.Core.AssetParsing
                 perVertBones[v] = bw.OrderByDescending(b => b.weight).ToList(); // Sort descending weight
             }
         }
-        private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, bool reverseWinding, int numVerts)
+        private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, int numVerts)
         {
             List<FBXVertex> expandedVertices = new List<FBXVertex>();
             List<uint> newIndices = new List<uint>();
@@ -403,18 +403,9 @@ namespace SiegeEngine.Core.AssetParsing
                     // Triangulate polygon
                     for (int j = 1; j < tempPoly.Count - 1; j++)
                     {
-                        if (reverseWinding)
-                        {
-                            newIndices.Add((uint)currentIndex);
-                            newIndices.Add((uint)(currentIndex + j + 1));
-                            newIndices.Add((uint)(currentIndex + j));
-                        }
-                        else
-                        {
-                            newIndices.Add((uint)currentIndex);
-                            newIndices.Add((uint)(currentIndex + j));
-                            newIndices.Add((uint)(currentIndex + j + 1));
-                        }
+                        newIndices.Add((uint)currentIndex);
+                        newIndices.Add((uint)(currentIndex + j));
+                        newIndices.Add((uint)(currentIndex + j + 1));
                     }
                     // Add vertices for the polygon
                     for (int k = 0; k < tempPoly.Count; k++)

@@ -72,16 +72,15 @@ namespace SiegeEngine.Core.AssetParsing
             }
             var objectsById = GatherObjectsById(objectsNode);
             var conns = GatherConnections(forest);
-            var (sourceToTarget, signs, modelScale, P4, invP4, reverseWinding) = ParseGlobalSettingsAndRemapping(forest);
+            var (sourceToTarget, signs, modelScale, P4, invP4) = ParseGlobalSettingsAndRemapping(forest);
             model.SourceToTarget = sourceToTarget;
             model.Signs = signs;
             model.ModelScale = modelScale;
             model.P4 = P4;
             model.InvP4 = invP4;
-            model.ReverseWinding = reverseWinding;
             var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
-            FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, reverseWinding, boneIndexById, rootIndices, P4, invP4, forest);
+            FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, boneIndexById, rootIndices, P4, invP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootIndices, P4, invP4);
             return model;
         }
@@ -118,7 +117,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return conns;
         }
-        public static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4, bool reverseWinding) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
+        public static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
         {
             var globalSettings = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
             int upAxis = 1; // Y
@@ -200,17 +199,7 @@ namespace SiegeEngine.Core.AssetParsing
                 invP4 = Matrix4x4.Transpose(P4);
             }
 
-            float det = FBXCoordinateUtils.CalculateDeterminant(P4);
-            bool reverseWinding = det < 0;
-            //bool disableRemap = true;  // Toggle this to false to re-enable
-            //if (disableRemap)
-            //{
-            //    P4 = Matrix4x4.Identity;
-            //    invP4 = Matrix4x4.Identity;
-            //    reverseWinding = false;  // No handedness flip
-            //    modelScale = 1f;  // Optional: disable scaling if suspect
-            //}
-            return (sourceToTarget, signs, modelScale, P4, invP4, reverseWinding);
+            return (sourceToTarget, signs, modelScale, P4, invP4);
         }
     }
 }

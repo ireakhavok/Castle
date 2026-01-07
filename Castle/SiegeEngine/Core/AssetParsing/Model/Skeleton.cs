@@ -74,7 +74,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             var restGlobals = ComputeGlobalTransforms(restLocals);
             for (int i = 0; i < Bones.Count; i++)
             {
-               
                 if (!Matrix4x4.Invert(restGlobals[i], out Matrix4x4 invRestGlobal))
                 {
                     Bones[i].BindPose = Matrix4x4.Identity;
