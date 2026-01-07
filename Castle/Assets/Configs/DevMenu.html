@@ -29,7 +29,7 @@
             background-image: url('../Static_Images/Main_Background.jpg');
             background-repeat: no-repeat;
             background-position: center center;
-            /*            background: linear-gradient(to bottom, #1e1e1e, #121212);*/
+            /* background: linear-gradient(to bottom, #1e1e1e, #121212);*/
         }
 
         #main {
@@ -236,7 +236,6 @@
             </div>
         </div>
     </div>
-
     <div id="main" class="screen">
         <div class="menu-container">
             <div class="sidebar">
@@ -253,7 +252,7 @@
                 <input type="radio" id="map" name="menu-section">
                 <input type="radio" id="reading" name="menu-section">
                 <div class="content regression">
-                    <div class="button" data-hook="RealmFoundry.Test.LaunchSandbox">Run Sandbox Test</div>
+                    <div class="button" data-hook="SiegeEngine.Scenes.StartingPoints.SandboxScene.Launch">Run Sandbox Test</div>
                     <div class="toggle">
                         <label for="enable-logs">Enable Debug Logs</label>
                         <input type="checkbox" id="enable-logs" checked>
@@ -277,10 +276,10 @@
                     <div class="button">Import Assets</div>
                 </div>
                 <div class="content reading">
-                    <div class="button" data-hook="ReadingChamber.OpenAssetViewer">Open Asset Viewer</div>
+                    <div class="button" data-hook="ReadingChamber.AssetViewerPanel.Open">Open Asset Viewer</div>
                 </div>
                 <div class="content reading">
-                    <div class="button" data-hook="ReadingChamber.OpenAnimationViewer">Open Animation Viewer</div>
+                    <div class="button" data-hook="ReadingChamber.AnimationViewerPanel.Open">Open Animation Viewer</div>
                 </div>
             </div>
         </div>
@@ -293,7 +292,6 @@
             '21:9': ['2560x1080', '3440x1440', '5120x2160'],
             '32:9': ['3840x1080', '5120x1440', '7680x2160']
         };
-
         function updateResolutions() {
             const aspect = document.getElementById('aspect-ratio').value;
             const resSelect = document.getElementById('resolution');
@@ -305,10 +303,8 @@
                 resSelect.appendChild(option);
             });
         }
-
         // Initial update
         updateResolutions();
-
         function applySettings() {
             // Placeholder for apply logic
             alert('Settings applied!');

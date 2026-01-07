@@ -1,4 +1,5 @@
 ﻿// Folder: ReadingChamber
+// File: AssetViewerPanel.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -20,10 +21,16 @@ namespace ReadingChamber
 {
     public unsafe class AssetViewerPanel : BasePanel
     {
+        public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            var panel = new AssetViewerPanel(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new OpenPanelEvent(panel));
+        }
+
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AssetViewerPanel _parent;
-            public AssetUIOverlay(AssetViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, IntPtr window) : base(renderContext, controlContext, window)
+            public AssetUIOverlay(AssetViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
@@ -58,7 +65,7 @@ namespace ReadingChamber
         private List<string> _animationFiles = new List<string>();
         private float _cameraDistance;
         private float _maxExtent;
-        public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
+        public AssetViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
             Scaling = ScalingMode.BestFit;

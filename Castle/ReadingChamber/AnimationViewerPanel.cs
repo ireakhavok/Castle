@@ -16,14 +16,21 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanel : BasePanel
     {
+        public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            var panel = new AnimationViewerPanel(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new OpenPanelEvent(panel));
+        }
+
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AnimationViewerPanel _parent;
-            public AssetUIOverlay(AnimationViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, IntPtr window) : base(renderContext, controlContext, window)
+            public AssetUIOverlay(AnimationViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
@@ -57,7 +64,7 @@ namespace ReadingChamber
         private float _cameraDistance;
         private float _maxExtent;
         private int _currentFrameIndex = 0;
-        public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
+        public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
             Scaling = ScalingMode.BestFit;

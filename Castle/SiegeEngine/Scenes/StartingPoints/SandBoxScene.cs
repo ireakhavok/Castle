@@ -18,6 +18,11 @@ namespace SiegeEngine.Scenes.StartingPoints
 {
     public unsafe class SandboxScene : Scene
     {
+        public static void Launch(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            eventBus.Publish(new SwitchSceneEvent("Sandbox"));
+        }
+
         private readonly Player _player;
         private readonly PlayerMovement _playerMovement;
         private readonly ModelManager _modelManager;
@@ -34,7 +39,6 @@ namespace SiegeEngine.Scenes.StartingPoints
             _modelManager = modelManager ?? throw new ArgumentNullException(nameof(modelManager));
             _server = server ?? throw new ArgumentNullException(nameof(server));
             _scrollDelta = 0f;
-
             var lightingSystem = _systems.Find(s => s is LightingSystem) as LightingSystem;
             if (lightingSystem != null)
             {
@@ -81,12 +85,9 @@ namespace SiegeEngine.Scenes.StartingPoints
             }
             _renderContext.Viewport(0, 0, (uint)_width, (uint)_height);
             _renderContext.Scissor(0, 0, (uint)_width, (uint)_height);
-
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-
             Matrix4x4 view = _player.Camera?.ViewMatrix ?? Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, 0.1f, 1000f);
-
             // Render grid
             _gridShader.Use();
             _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
@@ -96,12 +97,10 @@ namespace SiegeEngine.Scenes.StartingPoints
             _gridBuffer.Bind();
             _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
             _renderContext.Enable(_renderContext.Enums.DepthTest);
-
             // Render player model
             _modelShader.Use();
             _modelShader.SetMatrix4("uView", view);
             _modelShader.SetMatrix4("uProjection", projection);
-
             var lightingSystem = _systems.Find(s => s is LightingSystem) as LightingSystem;
             if (lightingSystem != null)
             {
@@ -114,32 +113,26 @@ namespace SiegeEngine.Scenes.StartingPoints
                     //Console.WriteLine($"SandboxScene: Light direction: {lightData.Value.direction}, intensity: {lightData.Value.intensity}");
                 }
             }
-
             _modelShader.SetUniform("uViewPos", _player?.Camera?.Position.X ?? 0f, _player?.Camera?.Position.Y ?? 0f, _player?.Camera?.Position.Z ?? 0f, 0.0f);
             _modelShader.SetUniform("uAmbientStrength", 0.3f);
             _modelShader.SetUniform("uSpecularStrength", 0.05f);
             _modelShader.SetUniform("uShininess", 4.0f);
-
             var playerEntity = _server.GetEntityById(_player.EntityId);
             var modelComponent = playerEntity?.GetComponent<ModelComponent>();
             string modelKey = modelComponent?.Key?.ToLower() ?? "man_mesh";
             var physics = _player.Physics;
-
             if (physics != null && _modelManager.TryGetModelData(modelKey, out var modelData))
             {
                 // Apply position and rotation
                 Matrix4x4 rotationMatrix = Matrix4x4.CreateFromQuaternion(physics.Rotation);
                 Matrix4x4 translationMatrix = Matrix4x4.CreateTranslation(physics.Position);
                 Matrix4x4 modelMatrix = rotationMatrix * translationMatrix;
-
                 _modelShader.Use();
                 _modelShader.SetMatrix4("uModel", modelMatrix);
-
                 int total_albedo_count = 0;
                 int total_meshes = modelData.MeshRenders.Count;
                 int total_normal_count = 0;
                 int total_metallic_count = 0;
-
                 foreach (var mmr in modelData.MeshRenders)
                 {
                     // Bind textures
@@ -183,7 +176,6 @@ namespace SiegeEngine.Scenes.StartingPoints
                             _modelShader.SetUniform("uAlbedoMap[0]", 0);
                         }
                     }
-
                     // Debug material index pass (disabled)
                     try
                     {
@@ -195,7 +187,6 @@ namespace SiegeEngine.Scenes.StartingPoints
                     {
                         //Console.WriteLine($"SandboxScene: Debug material index error: {ex.Message}. Skipping debug pass.");
                     }
-
                     // Debug texture-only pass
                     try
                     {
@@ -208,26 +199,22 @@ namespace SiegeEngine.Scenes.StartingPoints
                     {
                         //Console.WriteLine($"SandboxScene: Debug texture-only error: {ex.Message}. Skipping debug pass.");
                     }
-
                     // Normal rendering pass
                     _renderContext.BindVertexArray(mmr.Vao);
                     _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                     _renderContext.BindVertexArray(0);
                 }
-
                 //Console.WriteLine($"SandboxScene: Rendered {total_meshes} player with {total_albedo_count} total albedo textures, {total_normal_count} normal textures, {total_metallic_count} metallic textures");//, VAO {mmr.Vao}, indices {mmr.IndexCount}");
             }
             else
             {
                 //Console.WriteLine($"SandboxScene: Error: Model data for {modelKey} not found or physics unavailable");
             }
-
             // Log OpenGL errors
             var error = _renderContext.GetError();
             if (error != _renderContext.Enums.NoError)
                 Console.WriteLine($"SandboxScene: OpenGL Error: {error}");
         }
-
         public override void Dispose()
         {
             if (!_disposed)
