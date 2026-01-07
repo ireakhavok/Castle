@@ -178,16 +178,6 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
         }
-        public static void ApplyRootRotation(FBXModel model, Matrix4x4 rootRot, List<int> rootIndices)
-        {
-            for (int i = 0; i < model.Skeleton.Bones.Count; i++)
-            {
-                if (model.Skeleton.Bones[i].ParentIndex == -1)
-                {
-                    model.Skeleton.Bones[i].LocalRest = rootRot * model.Skeleton.Bones[i].LocalRest;
-                }
-            }
-        }
         private static void AddAncestorsAndDescendants(long boneId, HashSet<long> usedIds, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById)
         {
             // Add ancestors

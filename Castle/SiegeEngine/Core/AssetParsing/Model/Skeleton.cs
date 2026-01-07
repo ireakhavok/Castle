@@ -74,13 +74,13 @@ namespace SiegeEngine.Core.AssetParsing.Model
             var restGlobals = ComputeGlobalTransforms(restLocals);
             for (int i = 0; i < Bones.Count; i++)
             {
-                Matrix4x4 global = Matrix4x4.Transpose(restGlobals[i]);
-                if (!Matrix4x4.Invert(global, out Matrix4x4 invRestGlobal))
+               
+                if (!Matrix4x4.Invert(restGlobals[i], out Matrix4x4 invRestGlobal))
                 {
                     Bones[i].BindPose = Matrix4x4.Identity;
                     continue;
                 }
-                Bones[i].BindPose = Matrix4x4.Transpose(invRestGlobal);
+                Bones[i].BindPose = invRestGlobal;
             }
         }
     }

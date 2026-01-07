@@ -81,8 +81,6 @@ namespace SiegeEngine.Core.AssetParsing
             model.ReverseWinding = reverseWinding;
             var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
-            //Matrix4x4 rootRot = Matrix4x4.Identity;
-            //FBXSkeletonParser.ApplyRootRotation(model, rootRot, rootIndices);
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, reverseWinding, boneIndexById, rootIndices, P4, invP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootIndices, P4, invP4);
             return model;
@@ -201,8 +199,17 @@ namespace SiegeEngine.Core.AssetParsing
                 Console.WriteLine("Failed to invert P4, using transpose as approximation");
                 invP4 = Matrix4x4.Transpose(P4);
             }
+
             float det = FBXCoordinateUtils.CalculateDeterminant(P4);
             bool reverseWinding = det < 0;
+            //bool disableRemap = true;  // Toggle this to false to re-enable
+            //if (disableRemap)
+            //{
+            //    P4 = Matrix4x4.Identity;
+            //    invP4 = Matrix4x4.Identity;
+            //    reverseWinding = false;  // No handedness flip
+            //    modelScale = 1f;  // Optional: disable scaling if suspect
+            //}
             return (sourceToTarget, signs, modelScale, P4, invP4, reverseWinding);
         }
     }

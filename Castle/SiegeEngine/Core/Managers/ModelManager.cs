@@ -50,9 +50,9 @@ namespace SiegeEngine.Core.Managers
             Directory.CreateDirectory(_fallbackPath);
             string charactersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters");
             Directory.CreateDirectory(charactersPath);
-            ScanDirectory(_primaryPath);
-            ScanDirectory(_fallbackPath);
-            ScanDirectory(charactersPath);
+            //ScanDirectory(_primaryPath);
+            //ScanDirectory(_fallbackPath);
+            //ScanDirectory(charactersPath);
         }
         public void LoadCharacters()
         {
@@ -74,23 +74,23 @@ namespace SiegeEngine.Core.Managers
                 Console.WriteLine($"ModelManager: Error: Man_Mesh.fbx not found at {fbxPath}");
             }
         }
-        public void ScanDirectory(string path)
-        {
-            if (!Directory.Exists(path))
-            {
-                Console.WriteLine($"ModelManager: Error: Directory not found at {path}");
-                return;
-            }
-            foreach (var file in Directory.GetFiles(path, "*.fbx", SearchOption.AllDirectories))
-            {
-                string key = Path.GetFileNameWithoutExtension(file).ToLower();
-                Console.WriteLine($"ModelManager: Found FBX file: {file}, key: {key}");
-                if (!_models.ContainsKey(key))
-                {
-                    _models[key] = null;
-                }
-            }
-        }
+        //public void ScanDirectory(string path)
+        //{
+        //    if (!Directory.Exists(path))
+        //    {
+        //        Console.WriteLine($"ModelManager: Error: Directory not found at {path}");
+        //        return;
+        //    }
+        //    foreach (var file in Directory.GetFiles(path, "*.fbx", SearchOption.AllDirectories))
+        //    {
+        //        string key = Path.GetFileNameWithoutExtension(file).ToLower();
+        //        Console.WriteLine($"ModelManager: Found FBX file: {file}, key: {key}");
+        //        if (!_models.ContainsKey(key))
+        //        {
+        //            _models[key] = null;
+        //        }
+        //    }
+        //}
         public void LoadPlayerFromPrefab(string prefabPath)
         {
             string fbxPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx");

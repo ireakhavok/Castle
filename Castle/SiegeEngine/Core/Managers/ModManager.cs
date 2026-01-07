@@ -27,27 +27,6 @@ namespace SiegeEngine.Core.Managers
             if (_steamEngine != null) LoadWorkshopMods();
         }
         public IReadOnlyList<ModInfo> LoadedMods => _loadedMods.AsReadOnly();
-        public void LoadModels(ModelManager loader)
-        {
-            foreach (var mod in _loadedMods)
-            {
-                string modelsPath = Path.Combine(mod.Path, "Models");
-                if (Directory.Exists(modelsPath))
-                {
-                    Console.WriteLine($"ModManager: Scanning mod models path: {modelsPath}, Exists: {Directory.Exists(modelsPath)}");
-                    loader.ScanDirectory(modelsPath);
-                }
-            }
-            string solutionModelsPath = Path.Combine(_solutionDirectory, "Assets", "Models");
-            Console.WriteLine($"ModManager: Scanning solution models path: {solutionModelsPath}, Exists: {Directory.Exists(solutionModelsPath)}");
-            loader.ScanDirectory(solutionModelsPath);
-            string outputModelsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Models");
-            Console.WriteLine($"ModManager: Scanning output models path: {outputModelsPath}, Exists: {Directory.Exists(outputModelsPath)}");
-            loader.ScanDirectory(outputModelsPath);
-            string charactersPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters");
-            Console.WriteLine($"ModManager: Scanning characters path: {charactersPath}, Exists: {Directory.Exists(charactersPath)}");
-            loader.ScanDirectory(charactersPath);
-        }
         private void LoadLocalMods()
         {
             string localModsPath = _modsDirectory;
