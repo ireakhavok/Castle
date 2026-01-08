@@ -1,7 +1,4 @@
-﻿
-// Folder: SiegeEngine.Core
-// File: AssetParsing/Model/Animation.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;

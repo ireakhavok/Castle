@@ -1,6 +1,4 @@
-﻿// Folder: ReadingChamber
-// File: AnimationViewerPanel.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -26,7 +24,6 @@ namespace ReadingChamber
             var panel = new AnimationViewerPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel));
         }
-
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AnimationViewerPanel _parent;
@@ -106,6 +103,7 @@ namespace ReadingChamber
             {
             }
             CenterCamera();
+            SetRestPose();
         }
         private void LoadArmature(string path)
         {
@@ -192,6 +190,11 @@ namespace ReadingChamber
                         oldToNewMap[kv.Value] = newI;
                     }
                 }
+                var newToOldMap = new Dictionary<int, int>();
+                foreach (var kv in oldToNewMap)
+                {
+                    newToOldMap[kv.Value] = kv.Key;
+                }
                 foreach (var mesh in _model.Meshes)
                 {
                     for (int vi = 0; vi < mesh.Vertices.Count; vi++)
@@ -204,6 +207,85 @@ namespace ReadingChamber
                         mesh.Vertices[vi] = v;
                     }
                 }
+                // Transform vertices, normals, tangents to new bind pose
+                var oldRestLocals = oldSkeleton.Bones.Select(b => b.LocalRest).ToArray();
+                var oldGlobals = oldSkeleton.ComputeGlobalTransforms(oldRestLocals);
+                var newRestLocals = _model.Skeleton.Bones.Select(b => b.LocalRest).ToArray();
+                var newGlobals = _model.Skeleton.ComputeGlobalTransforms(newRestLocals);
+                var delta = new Matrix4x4[_model.Skeleton.Bones.Count];
+                for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+                {
+                    if (newToOldMap.TryGetValue(i, out int i_old))
+                    {
+                        var oldGlobal = oldGlobals[i_old];
+                        if (Matrix4x4.Invert(oldGlobal, out var invOld))
+                        {
+                            delta[i] = newGlobals[i] * invOld;
+                        }
+                        else
+                        {
+                            delta[i] = Matrix4x4.Identity;
+                        }
+                    }
+                    else
+                    {
+                        delta[i] = Matrix4x4.Identity;
+                    }
+                }
+                foreach (var mesh in _model.Meshes)
+                {
+                    for (int vi = 0; vi < mesh.Vertices.Count; vi++)
+                    {
+                        var v = mesh.Vertices[vi];
+                        Vector4 pos = new Vector4(v.X, v.Y, v.Z, 1.0f);
+                        Vector4 newPos = Vector4.Zero;
+                        Vector3 normal = new Vector3(v.Nx, v.Ny, v.Nz);
+                        Vector3 newNormal = Vector3.Zero;
+                        Vector3 tangent = new Vector3(v.Tx, v.Ty, v.Tz);
+                        Vector3 newTangent = Vector3.Zero;
+                        float totalW = 0.0f;
+                        int[] boneIDs = new int[] { v.BoneID0, v.BoneID1, v.BoneID2, v.BoneID3 };
+                        float[] weights = new float[] { v.Weight0, v.Weight1, v.Weight2, v.Weight3 };
+                        for (int bi = 0; bi < 4; bi++)
+                        {
+                            int boneIdx = boneIDs[bi];
+                            if (boneIdx < 0) continue;
+                            float w = weights[bi];
+                            if (w <= 0) continue;
+                            newPos += w * Vector4.Transform(pos, delta[boneIdx]);
+                            Matrix3x3 normalDelta = Matrix3x3.Identity;
+                            if (Matrix4x4.Invert(delta[boneIdx], out var invDelta))
+                            {
+                                normalDelta = new Matrix3x3(invDelta.M11, invDelta.M12, invDelta.M13, invDelta.M21, invDelta.M22, invDelta.M23, invDelta.M31, invDelta.M32, invDelta.M33).Transpose();
+                            }
+                            newNormal += w * (normalDelta * normal);
+                            newTangent += w * (normalDelta * tangent);
+                            totalW += w;
+                        }
+                        if (totalW > 0.0f)
+                        {
+                            newPos /= totalW;
+                            newNormal = Vector3.Normalize(newNormal / totalW);
+                            newTangent = Vector3.Normalize(newTangent / totalW);
+                        }
+                        else
+                        {
+                            newPos = pos;
+                            newNormal = normal;
+                            newTangent = tangent;
+                        }
+                        v.X = newPos.X;
+                        v.Y = newPos.Y;
+                        v.Z = newPos.Z;
+                        v.Nx = newNormal.X;
+                        v.Ny = newNormal.Y;
+                        v.Nz = newNormal.Z;
+                        v.Tx = newTangent.X;
+                        v.Ty = newTangent.Y;
+                        v.Tz = newTangent.Z;
+                        mesh.Vertices[vi] = v;
+                    }
+                }
             }
             _model.ComputeBindPoses();
             if (_model.Meshes.Count > 0 && _model.HasUnweightedVertices())
@@ -212,6 +294,7 @@ namespace ReadingChamber
             }
             UpdateModelData();
             CenterCamera();
+            SetRestPose();
         }
         private void LoadAnimation(string animPath)
         {
@@ -380,37 +463,33 @@ namespace ReadingChamber
         }
         private void UpdateTransformsFromFrame(int frame)
         {
-            if (_model.Skeleton != null && _model.Animations.Count > 0)
+            if (_model.Skeleton == null || _model.Animations.Count == 0) return;
+            var animation = _model.Animations.Find(a => a.Name == _currentAnimation);
+            if (animation == null) return;
+            frame = Math.Clamp(frame, 0, animation.Keyframes.Count - 1);
+            _currentFrameIndex = frame;
+            var boneTransforms = animation.Keyframes[frame].BoneTransforms.ToArray();
+            var globalTransforms = _model.Skeleton.ComputeGlobalTransforms(boneTransforms);
+            _currentGlobalTransforms = globalTransforms;
+            var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
+            var normalTransforms = new Matrix3x3[finalTransforms.Length];
+            for (int i = 0; i < finalTransforms.Length; i++)
             {
-                var animation = _model.Animations.Find(a => a.Name == _currentAnimation);
-                if (animation != null)
+                Matrix4x4 mat = finalTransforms[i];
+                if (!Matrix4x4.Invert(mat, out Matrix4x4 invMat))
                 {
-                    frame = Math.Clamp(frame, 0, animation.Keyframes.Count - 1);
-                    _currentFrameIndex = frame;
-                    var boneTransforms = animation.Keyframes[frame].BoneTransforms.ToArray();
-                    var globalTransforms = _model.Skeleton.ComputeGlobalTransforms(boneTransforms);
-                    _currentGlobalTransforms = globalTransforms;
-                    var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
-                    var normalTransforms = new Matrix3x3[finalTransforms.Length];
-                    for (int i = 0; i < finalTransforms.Length; i++)
-                    {
-                        Matrix4x4 mat = finalTransforms[i];
-                        if (!Matrix4x4.Invert(mat, out Matrix4x4 invMat))
-                        {
-                            normalTransforms[i] = Matrix3x3.Identity;
-                            continue;
-                        }
-                        Matrix3x3 normalMat = new Matrix3x3(
-                            invMat.M11, invMat.M12, invMat.M13,
-                            invMat.M21, invMat.M22, invMat.M23,
-                            invMat.M31, invMat.M32, invMat.M33
-                        ).Transpose();
-                        normalTransforms[i] = normalMat;
-                    }
-                    _currentNormalTransforms = normalTransforms;
-                    _model.Skeleton.UpdateTransforms(finalTransforms);
+                    normalTransforms[i] = new Matrix3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+                    continue;
                 }
+                normalTransforms[i] = new Matrix3x3(
+                    invMat.M11, invMat.M12, invMat.M13,
+                    invMat.M21, invMat.M22, invMat.M23,
+                    invMat.M31, invMat.M32, invMat.M33
+                ).Transpose();
             }
+            _currentNormalTransforms = normalTransforms;
+            _model.Skeleton.UpdateTransforms(finalTransforms);
+            UpdateSkeletonVisualization();
         }
         private void UpdateModelData()
         {
@@ -904,6 +983,32 @@ namespace ReadingChamber
                     MatchBoneSubtree(sortedMainChildren[i], sortedAnimChildren[i], mainTree, animTree, mainSkeleton, animSkeleton, boneMap);
                 }
             }
+        }
+        private void SetRestPose()
+        {
+            if (_model == null || _model.Skeleton == null) return;
+            var restLocals = _model.Skeleton.Bones.Select(b => b.LocalRest).ToArray();
+            var globalTransforms = _model.Skeleton.ComputeGlobalTransforms(restLocals);
+            _currentGlobalTransforms = globalTransforms;
+            var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
+            var normalTransforms = new Matrix3x3[finalTransforms.Length];
+            for (int i = 0; i < finalTransforms.Length; i++)
+            {
+                var mat = finalTransforms[i];
+                if (!Matrix4x4.Invert(mat, out var invMat))
+                {
+                    normalTransforms[i] = new Matrix3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+                    continue;
+                }
+                normalTransforms[i] = new Matrix3x3(
+                    invMat.M11, invMat.M12, invMat.M13,
+                    invMat.M21, invMat.M22, invMat.M23,
+                    invMat.M31, invMat.M32, invMat.M33
+                ).Transpose();
+            }
+            _currentNormalTransforms = normalTransforms;
+            _model.Skeleton.UpdateTransforms(finalTransforms);
+            UpdateSkeletonVisualization();
         }
     }
 }

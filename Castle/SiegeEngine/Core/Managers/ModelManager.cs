@@ -365,7 +365,7 @@ namespace SiegeEngine.Core.Managers
                     if (vertex.Nx == 0f && vertex.Ny == 0f && vertex.Nz == 0f)
                         zeroNormalCount++;
                 }
-                Console.WriteLine($"ModelManager: Loaded mesh {meshIndex} with {mesh.Materials.Count} materials");
+                //Console.WriteLine($"ModelManager: Loaded mesh {meshIndex} with {mesh.Materials.Count} materials");
                 //Console.WriteLine($"ModelManager: Vertex ranges: X=({minX}, {maxX}), Y=({minY}, {maxY}), Z=({minZ}, {maxZ})");
                 //Console.WriteLine($"ModelManager: Bounds: Width={maxX - minX:F2}, Height={maxY - minY:F2}, Depth={maxZ - minZ:F2}");
                 //Console.WriteLine($"ModelManager: {defaultNormalCount} of {mesh.Vertices.Count} vertices have default normals (0, 0, 1)");

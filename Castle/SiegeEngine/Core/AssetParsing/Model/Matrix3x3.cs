@@ -47,5 +47,27 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 invDet * (M23 * M31 - M21 * M33), invDet * (M11 * M33 - M13 * M31), invDet * (M13 * M21 - M11 * M23),
                 invDet * (M21 * M32 - M22 * M31), invDet * (M12 * M31 - M11 * M32), invDet * (M11 * M22 - M12 * M21));
         }
+
+        public static Matrix3x3 operator *(Matrix3x3 a, Matrix3x3 b)
+        {
+            return new Matrix3x3(
+                a.M11 * b.M11 + a.M12 * b.M21 + a.M13 * b.M31,
+                a.M11 * b.M12 + a.M12 * b.M22 + a.M13 * b.M32,
+                a.M11 * b.M13 + a.M12 * b.M23 + a.M13 * b.M33,
+                a.M21 * b.M11 + a.M22 * b.M21 + a.M23 * b.M31,
+                a.M21 * b.M12 + a.M22 * b.M22 + a.M23 * b.M32,
+                a.M21 * b.M13 + a.M22 * b.M23 + a.M23 * b.M33,
+                a.M31 * b.M11 + a.M32 * b.M21 + a.M33 * b.M31,
+                a.M31 * b.M12 + a.M32 * b.M22 + a.M33 * b.M32,
+                a.M31 * b.M13 + a.M32 * b.M23 + a.M33 * b.M33);
+        }
+
+        public static Vector3 operator *(Matrix3x3 m, Vector3 v)
+        {
+            return new Vector3(
+                m.M11 * v.X + m.M12 * v.Y + m.M13 * v.Z,
+                m.M21 * v.X + m.M22 * v.Y + m.M23 * v.Z,
+                m.M31 * v.X + m.M32 * v.Y + m.M33 * v.Z);
+        }
     }
 }
