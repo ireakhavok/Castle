@@ -1248,6 +1248,7 @@ Folder: SiegeEngine
       - constructor Matrix3x3()
       - Matrix3x3 Inverse()
         - Calls: Matrix3x3
+      - constructor Matrix3x3()
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
