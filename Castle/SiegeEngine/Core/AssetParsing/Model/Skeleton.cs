@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/Model/Skeleton.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
@@ -13,7 +11,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
     {
         public List<Bone> Bones { get; set; } = new List<Bone>();
         private Matrix4x4[] _currentTransforms;
-
         public Matrix4x4[] GetTransforms()
         {
             if (_currentTransforms == null)
@@ -24,12 +21,10 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return _currentTransforms;
         }
-
         public void UpdateTransforms(Matrix4x4[] transforms)
         {
             _currentTransforms = transforms;
         }
-
         public Matrix4x4[] ComputeGlobalTransforms(Matrix4x4[] localTransforms)
         {
             var globalTransforms = new Matrix4x4[Bones.Count];
@@ -43,7 +38,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return globalTransforms;
         }
-
         private void ComputeGlobalRecursive(int idx, Matrix4x4[] localTransforms, Matrix4x4[] globalTransforms, Matrix4x4 parentGlobal)
         {
             globalTransforms[idx] = parentGlobal * localTransforms[idx];
@@ -56,7 +50,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 }
             }
         }
-
         public Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
         {
             var finalTransforms = new Matrix4x4[Bones.Count];
@@ -66,7 +59,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return finalTransforms;
         }
-
         public void ComputeBindPoses()
         {
             if (Bones.Count == 0) return;
@@ -80,6 +72,37 @@ namespace SiegeEngine.Core.AssetParsing.Model
                     continue;
                 }
                 Bones[i].BindPose = invRestGlobal;
+            }
+        }
+        public Matrix4x4[] ComputeLocalsFromGlobals(Matrix4x4[] globals)
+        {
+            var locals = new Matrix4x4[Bones.Count];
+            for (int i = 0; i < Bones.Count; i++)
+            {
+                if (Bones[i].ParentIndex == -1)
+                {
+                    ComputeLocalsRecursive(i, globals, locals, Matrix4x4.Identity);
+                }
+            }
+            return locals;
+        }
+        private void ComputeLocalsRecursive(int idx, Matrix4x4[] globals, Matrix4x4[] locals, Matrix4x4 parentGlobal)
+        {
+            if (Matrix4x4.Invert(parentGlobal, out var invParent))
+            {
+                locals[idx] = invParent * globals[idx];
+            }
+            else
+            {
+                locals[idx] = globals[idx];
+            }
+            foreach (var child in Bones[idx].Children)
+            {
+                int childIdx = Bones.IndexOf(child);
+                if (childIdx != -1)
+                {
+                    ComputeLocalsRecursive(childIdx, globals, locals, globals[idx]);
+                }
             }
         }
     }

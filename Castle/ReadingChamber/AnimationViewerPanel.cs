@@ -207,83 +207,24 @@ namespace ReadingChamber
                         mesh.Vertices[vi] = v;
                     }
                 }
-                // Transform vertices, normals, tangents to new bind pose
+                // Log old and new bone positions
                 var oldRestLocals = oldSkeleton.Bones.Select(b => b.LocalRest).ToArray();
                 var oldGlobals = oldSkeleton.ComputeGlobalTransforms(oldRestLocals);
                 var newRestLocals = _model.Skeleton.Bones.Select(b => b.LocalRest).ToArray();
                 var newGlobals = _model.Skeleton.ComputeGlobalTransforms(newRestLocals);
-                var delta = new Matrix4x4[_model.Skeleton.Bones.Count];
+                Console.WriteLine("Old and New Bone Positions:");
                 for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
                 {
                     if (newToOldMap.TryGetValue(i, out int i_old))
                     {
-                        var oldGlobal = oldGlobals[i_old];
-                        if (Matrix4x4.Invert(oldGlobal, out var invOld))
-                        {
-                            delta[i] = newGlobals[i] * invOld;
-                        }
-                        else
-                        {
-                            delta[i] = Matrix4x4.Identity;
-                        }
+                        Vector3 oldPos = oldGlobals[i_old].Translation;
+                        Vector3 newPos = newGlobals[i].Translation;
+                        string name = _model.Skeleton.Bones[i].Name;
+                        Console.WriteLine($"Bone {name} (index {i}): Old Pos = ({oldPos.X:F2}, {oldPos.Y:F2}, {oldPos.Z:F2}), New Pos = ({newPos.X:F2}, {newPos.Y:F2}, {newPos.Z:F2})");
                     }
                     else
                     {
-                        delta[i] = Matrix4x4.Identity;
-                    }
-                }
-                foreach (var mesh in _model.Meshes)
-                {
-                    for (int vi = 0; vi < mesh.Vertices.Count; vi++)
-                    {
-                        var v = mesh.Vertices[vi];
-                        Vector4 pos = new Vector4(v.X, v.Y, v.Z, 1.0f);
-                        Vector4 newPos = Vector4.Zero;
-                        Vector3 normal = new Vector3(v.Nx, v.Ny, v.Nz);
-                        Vector3 newNormal = Vector3.Zero;
-                        Vector3 tangent = new Vector3(v.Tx, v.Ty, v.Tz);
-                        Vector3 newTangent = Vector3.Zero;
-                        float totalW = 0.0f;
-                        int[] boneIDs = new int[] { v.BoneID0, v.BoneID1, v.BoneID2, v.BoneID3 };
-                        float[] weights = new float[] { v.Weight0, v.Weight1, v.Weight2, v.Weight3 };
-                        for (int bi = 0; bi < 4; bi++)
-                        {
-                            int boneIdx = boneIDs[bi];
-                            if (boneIdx < 0) continue;
-                            float w = weights[bi];
-                            if (w <= 0) continue;
-                            newPos += w * Vector4.Transform(pos, delta[boneIdx]);
-                            Matrix3x3 normalDelta = Matrix3x3.Identity;
-                            if (Matrix4x4.Invert(delta[boneIdx], out var invDelta))
-                            {
-                                normalDelta = new Matrix3x3(invDelta.M11, invDelta.M12, invDelta.M13, invDelta.M21, invDelta.M22, invDelta.M23, invDelta.M31, invDelta.M32, invDelta.M33).Transpose();
-                            }
-                            newNormal += w * (normalDelta * normal);
-                            newTangent += w * (normalDelta * tangent);
-                            totalW += w;
-                        }
-                        if (totalW > 0.0f)
-                        {
-                            newPos /= totalW;
-                            newNormal = Vector3.Normalize(newNormal / totalW);
-                            newTangent = Vector3.Normalize(newTangent / totalW);
-                        }
-                        else
-                        {
-                            newPos = pos;
-                            newNormal = normal;
-                            newTangent = tangent;
-                        }
-                        v.X = newPos.X;
-                        v.Y = newPos.Y;
-                        v.Z = newPos.Z;
-                        v.Nx = newNormal.X;
-                        v.Ny = newNormal.Y;
-                        v.Nz = newNormal.Z;
-                        v.Tx = newTangent.X;
-                        v.Ty = newTangent.Y;
-                        v.Tz = newTangent.Z;
-                        mesh.Vertices[vi] = v;
+                        Console.WriteLine($"Bone index {i} not mapped");
                     }
                 }
             }
@@ -328,6 +269,14 @@ namespace ReadingChamber
                 {
                     return;
                 }
+                // Log bone mapping
+                Console.WriteLine("Bone map:");
+                foreach (var kv in boneMap)
+                {
+                    string animName = animModel.Skeleton.Bones[kv.Key].Name;
+                    string mainName = _model.Skeleton.Bones[kv.Value].Name;
+                    Console.WriteLine($"Anim bone {kv.Key} ({animName}) maps to main bone {kv.Value} ({mainName})");
+                }
                 // Compute transformation to align coordinate systems if different
                 Matrix4x4 trans = Matrix4x4.Identity;
                 Matrix4x4 invTrans = Matrix4x4.Identity;
@@ -344,52 +293,54 @@ namespace ReadingChamber
                 HashSet<int> mappedBones = new HashSet<int>();
                 foreach (var kf in anim.Keyframes)
                 {
-                    List<Matrix4x4> newTransforms = new List<Matrix4x4>(_model.Skeleton.Bones.Count);
-                    for (int j = 0; j < _model.Skeleton.Bones.Count; j++)
+                    var anim_locals = kf.BoneTransforms.ToArray();
+                    // Adjust for axis if mismatch
+                    if (axisMismatch)
                     {
-                        newTransforms.Add(_model.Skeleton.Bones[j].LocalRest);
-                    }
-                    for (int i = 0; i < animModel.Skeleton.Bones.Count; i++)
-                    {
-                        if (boneMap.TryGetValue(i, out int targetIdx))
+                        for (int j = 0; j < anim_locals.Length; j++)
                         {
-                            Matrix4x4 local = kf.BoneTransforms[i];
-                            if (Matrix4x4.Invert(animModel.Skeleton.Bones[i].LocalRest, out Matrix4x4 invAnimRest))
-                            {
-                                Matrix4x4 delta = invAnimRest * local;
-                                if (axisMismatch)
-                                {
-                                    delta = trans * delta * invTrans;
-                                }
-                                if (scaleMismatch)
-                                {
-                                    if (Matrix4x4.Decompose(delta, out Vector3 s, out Quaternion r, out Vector3 t))
-                                    {
-                                        t *= scaleFactor;
-                                        delta = Matrix4x4.CreateScale(s) * Matrix4x4.CreateFromQuaternion(r) * Matrix4x4.CreateTranslation(t);
-                                    }
-                                }
-                                Matrix4x4 modelRest = _model.Skeleton.Bones[targetIdx].LocalRest;
-                                Matrix4x4 newLocal = modelRest * delta;
-                                newTransforms[targetIdx] = newLocal;
-                            }
-                            else
-                            {
-                                Matrix4x4 localAdjusted = axisMismatch ? trans * local * invTrans : local;
-                                if (scaleMismatch)
-                                {
-                                    if (Matrix4x4.Decompose(localAdjusted, out Vector3 s, out Quaternion r, out Vector3 t))
-                                    {
-                                        t *= scaleFactor;
-                                        localAdjusted = Matrix4x4.CreateScale(s) * Matrix4x4.CreateFromQuaternion(r) * Matrix4x4.CreateTranslation(t);
-                                    }
-                                }
-                                newTransforms[targetIdx] = localAdjusted;
-                            }
-                            mappedBones.Add(targetIdx);
+                            anim_locals[j] = trans * anim_locals[j] * invTrans;
                         }
                     }
-                    kf.BoneTransforms = newTransforms;
+                    // Scale translation if scaleMismatch
+                    if (scaleMismatch)
+                    {
+                        for (int j = 0; j < anim_locals.Length; j++)
+                        {
+                            if (Matrix4x4.Decompose(anim_locals[j], out Vector3 s, out Quaternion r, out Vector3 t))
+                            {
+                                t *= scaleFactor;
+                                anim_locals[j] = Matrix4x4.CreateScale(s) * Matrix4x4.CreateFromQuaternion(r) * Matrix4x4.CreateTranslation(t);
+                            }
+                        }
+                    }
+                    // Now, compute anim_globals
+                    var anim_globals = animModel.Skeleton.ComputeGlobalTransforms(anim_locals);
+                    // Compute adjusted globals = anim_global * invA * T for each bone
+                    var anim_rest_globals = animModel.Skeleton.ComputeGlobalTransforms(animModel.Skeleton.Bones.Select(b => b.LocalRest).ToArray());
+                    var main_rest_globals = _model.Skeleton.ComputeGlobalTransforms(_model.Skeleton.Bones.Select(b => b.LocalRest).ToArray());
+                    var adjusted_globals = new Matrix4x4[_model.Skeleton.Bones.Count];
+                    for (int animI = 0; animI < animModel.Skeleton.Bones.Count; animI++)
+                    {
+                        if (boneMap.TryGetValue(animI, out int mainI))
+                        {
+                            Matrix4x4 invA;
+                            Matrix4x4.Invert(anim_rest_globals[animI], out invA);
+                            adjusted_globals[mainI] = anim_globals[animI] * invA * main_rest_globals[mainI];
+                            mappedBones.Add(mainI);
+                        }
+                    }
+                    // For unmapped bones, set to main rest global
+                    for (int mainI = 0; mainI < _model.Skeleton.Bones.Count; mainI++)
+                    {
+                        if (adjusted_globals[mainI] == default)
+                        {
+                            adjusted_globals[mainI] = main_rest_globals[mainI];
+                        }
+                    }
+                    // Compute new_locals from adjusted_globals
+                    var new_locals = _model.Skeleton.ComputeLocalsFromGlobals(adjusted_globals);
+                    kf.BoneTransforms = new_locals.ToList();
                 }
                 if (mappedBones.Count < (int)(_model.Skeleton.Bones.Count * 0.8f))
                 {
