@@ -89,6 +89,10 @@ namespace SiegeEngine.Core.AssetParsing
                         {
                             val = val_source;
                         }
+                        if (k == 0)
+                        {
+                            Console.WriteLine($"FBXDebug: Anim {anim.Name} bone {bone.Name} time0 {trsType}: {val.X},{val.Y},{val.Z}");
+                        }
                         if (!timeBoneTRS.TryGetValue(t, out var boneTRS))
                         {
                             boneTRS = new Dictionary<int, Dictionary<string, Vector3>>();

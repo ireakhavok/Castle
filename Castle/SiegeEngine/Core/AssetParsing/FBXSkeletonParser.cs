@@ -47,6 +47,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 float tz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
                                 Vector3 t_source = new Vector3(tx, ty, tz);
                                 bone.LclTranslation = FBXCoordinateUtils.RemapVector(t_source, sourceToTarget, signs) * modelScale;
+                                Console.WriteLine($"FBXDebug: Bone {name} rest T: {bone.LclTranslation.X},{bone.LclTranslation.Y},{bone.LclTranslation.Z}");
                             }
                             else if (pname == "Lcl Rotation" && p.properties.Count >= 7)
                             {
@@ -56,6 +57,8 @@ namespace SiegeEngine.Core.AssetParsing
                                 Vector3 r_source = new Vector3(rx, ry, rz);
                                 Vector3 r_remap = FBXCoordinateUtils.RemapRotation(r_source, sourceToTarget, signs);
                                 bone.LclRotation = bone.ToQuaternion(r_remap, bone.RotationOrder);
+                                Vector3 euler = bone.ToEuler(bone.LclRotation);
+                                Console.WriteLine($"FBXDebug: Bone {name} rest R: {euler.X},{euler.Y},{euler.Z}");
                             }
                             else if (pname == "Lcl Scaling" && p.properties.Count >= 7)
                             {
@@ -64,6 +67,7 @@ namespace SiegeEngine.Core.AssetParsing
                                 float sz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
                                 Vector3 s_source = new Vector3(sx, sy, sz);
                                 bone.LclScaling = FBXCoordinateUtils.RemapScale(s_source, sourceToTarget, signs);
+                                Console.WriteLine($"FBXDebug: Bone {name} rest S: {bone.LclScaling.X},{bone.LclScaling.Y},{bone.LclScaling.Z}");
                             }
                             else if (pname == "PreRotation" && p.properties.Count >= 7)
                             {
