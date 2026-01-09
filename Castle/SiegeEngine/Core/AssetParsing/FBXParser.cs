@@ -120,9 +120,9 @@ namespace SiegeEngine.Core.AssetParsing
         public static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
         {
             var globalSettings = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
-            int upAxis = 1; // Y
+            int upAxis = 2; // Y
             int upAxisSign = 1;
-            int frontAxis = 2; // Z
+            int frontAxis = 1; // Z
             int frontAxisSign = 1;
             int coordAxis = 0; // X
             int coordAxisSign = 1;
@@ -180,7 +180,7 @@ namespace SiegeEngine.Core.AssetParsing
             // Handle handedness
             int handedness = (coordSystem == 0 ? 1 : -1) * coordSystemSign; // Assume 0 right, positive
             // Engine-specific adjustment (e.g., flip forward if needed)
-            signs[frontAxis] = -signs[frontAxis]; // Assuming engine needs positive Y forward, flip if FBX has positive
+            // signs[frontAxis] = -signs[frontAxis]; // Assuming engine needs positive Y forward, flip if FBX has positive
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
             for (int src = 0; src < 3; src++)
