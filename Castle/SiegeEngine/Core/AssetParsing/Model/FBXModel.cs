@@ -22,6 +22,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public Matrix4x4 P4 { get; set; }
         public Matrix4x4 InvP4 { get; set; }
         public bool HasSkin { get; set; } = false;
+        public bool HasRestPose { get; set; }
         public FBXModel()
         {
         }
