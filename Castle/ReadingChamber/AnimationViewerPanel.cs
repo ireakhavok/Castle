@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// Folder: ReadingChamber
+// File: AnimationViewerPanel.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -17,13 +19,17 @@ using System.Text;
 
 namespace ReadingChamber
 {
+    // Panel for viewing and testing animations on loaded models, with UI controls for loading mesh/armature/animation.
     public unsafe class AnimationViewerPanel : BasePanel
     {
+        // Static method to open the panel via event.
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new AnimationViewerPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel));
         }
+
+        // Inner UI overlay class for handling clicks.
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AnimationViewerPanel _parent;
@@ -36,6 +42,7 @@ namespace ReadingChamber
                 _parent.HandleUIClick(elem);
             }
         }
+
         private FBXModel _model;
         private ModelManager.ModelData _modelData;
         private float _duration = 0f;
@@ -61,6 +68,8 @@ namespace ReadingChamber
         private float _cameraDistance;
         private float _maxExtent;
         private int _currentFrameIndex = 0;
+
+        // Constructor, initializes shader, sets scaling mode.
         public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
@@ -68,10 +77,14 @@ namespace ReadingChamber
             BaseWidth = 1280f;
             BaseHeight = 720f;
         }
+
+        // Creates custom UI overlay.
         protected override UIOverlay CreateUIOverlay()
         {
             return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
+        // Initializes buffers, shaders, loads initial mesh, discovers animations, updates UI, subscribes to events.
         public override void Init()
         {
             base.Init();
@@ -88,6 +101,8 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
+        // Loads and parses mesh FBX, fixes unweighted vertices, centers camera, sets rest pose.
         private void LoadMesh(string path)
         {
             _meshPath = path;
@@ -105,6 +120,8 @@ namespace ReadingChamber
             CenterCamera();
             SetRestPose();
         }
+
+        // Loads armature FBX, remaps bone properties to match mesh coordinate system, recomputes locals, fixes weights, updates data.
         private void LoadArmature(string path)
         {
             _armaturePath = path;
@@ -237,6 +254,8 @@ namespace ReadingChamber
             CenterCamera();
             SetRestPose();
         }
+
+        // Loads animation FBX, remaps to match mesh, aligns hierarchies by name matching, adjusts transforms.
         private void LoadAnimation(string animPath)
         {
             var animForest = FBXParser.Load(animPath);
@@ -412,6 +431,8 @@ namespace ReadingChamber
                 _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
             }
         }
+
+        // Updates transforms and normals from a specific animation frame, updates skeleton visualization.
         private void UpdateTransformsFromFrame(int frame)
         {
             if (_model.Skeleton == null || _model.Animations.Count == 0) return;
@@ -442,6 +463,8 @@ namespace ReadingChamber
             _model.Skeleton.UpdateTransforms(finalTransforms);
             UpdateSkeletonVisualization();
         }
+
+        // Sets up model data for rendering, chooses shader based on skinning.
         private void UpdateModelData()
         {
             if (_model == null) return;
@@ -460,6 +483,8 @@ namespace ReadingChamber
             _model.ComputeBindPoses();
             _skeletonBuffer.UpdateCustom(new List<Vertex>(), new List<uint>());
         }
+
+        // Centers camera on model bounds, sets distance based on extent.
         private void CenterCamera()
         {
             if (_model == null || _model.Meshes.Count == 0) return;
@@ -481,6 +506,8 @@ namespace ReadingChamber
             _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
             _cameraUp = Vector3.UnitZ;
         }
+
+        // Finds .fbx files in .fbm subdirectory for animations.
         private void DiscoverAnimationFiles()
         {
             string fbmDir = Path.Combine(Path.GetDirectoryName(_meshPath), Path.GetFileNameWithoutExtension(_meshPath) + ".fbm");
@@ -489,6 +516,8 @@ namespace ReadingChamber
                 _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
             }
         }
+
+        // Updates vertex buffers with current vertex data (e.g., after weight changes).
         private void UpdateModelBuffers()
         {
             if (_model == null || _modelData == null || _modelData.MeshRenders.Count != _model.Meshes.Count)
@@ -550,6 +579,8 @@ namespace ReadingChamber
             }
             _model.HasSkin = true;
         }
+
+        // Updates dynamic select in HTML for animations.
         private void UpdateUIControls()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetViewerUI.html");
@@ -578,6 +609,8 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
+        // Handles file selection events for loading mesh/armature/animation.
         private void OnFileSelected(FileSelectedEvent e)
         {
             string hook = e.UserData as string;
@@ -595,6 +628,8 @@ namespace ReadingChamber
             }
             _currentFrameIndex = 0;
         }
+
+        // Handles UI clicks for loading files or selecting animations.
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -652,6 +687,8 @@ namespace ReadingChamber
                 }
             }
         }
+
+        // Updates camera rotation/pan based on mouse, advances frame with arrows.
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
@@ -714,32 +751,8 @@ namespace ReadingChamber
             }
             UpdateSkeletonVisualization();
         }
-        private void UpdateSkeletonVisualization()
-        {
-            if (_model?.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
-            var vertices = new List<Vertex>();
-            var indices = new List<uint>();
-            uint idx = 0;
-            var positions = new Vector3[_model.Skeleton.Bones.Count];
-            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-            {
-                positions[i] = _currentGlobalTransforms[i].Translation;
-            }
-            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-            {
-                int parentIdx = _model.Skeleton.Bones[i].ParentIndex;
-                if (parentIdx >= 0)
-                {
-                    Vector3 parentPos = positions[parentIdx];
-                    Vector3 childPos = positions[i];
-                    vertices.Add(new Vertex(parentPos.X, parentPos.Y, parentPos.Z, 0, 1, 0, 1));
-                    indices.Add(idx++);
-                    vertices.Add(new Vertex(childPos.X, childPos.Y, childPos.Z, 0, 1, 0, 1));
-                    indices.Add(idx++);
-                }
-            }
-            _skeletonBuffer.UpdateCustom(vertices, indices);
-        }
+
+        // Renders model with lighting, textures, skeleton lines, UI, text info.
         public override void Render()
         {
             if (!Visible) return;
@@ -859,6 +872,36 @@ namespace ReadingChamber
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
         }
+
+        // Builds line buffer for visualizing skeleton bones.
+        private void UpdateSkeletonVisualization()
+        {
+            if (_model?.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
+            var vertices = new List<Vertex>();
+            var indices = new List<uint>();
+            uint idx = 0;
+            var positions = new Vector3[_model.Skeleton.Bones.Count];
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                positions[i] = _currentGlobalTransforms[i].Translation;
+            }
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                int parentIdx = _model.Skeleton.Bones[i].ParentIndex;
+                if (parentIdx >= 0)
+                {
+                    Vector3 parentPos = positions[parentIdx];
+                    Vector3 childPos = positions[i];
+                    vertices.Add(new Vertex(parentPos.X, parentPos.Y, parentPos.Z, 0, 1, 0, 1));
+                    indices.Add(idx++);
+                    vertices.Add(new Vertex(childPos.X, childPos.Y, childPos.Z, 0, 1, 0, 1));
+                    indices.Add(idx++);
+                }
+            }
+            _skeletonBuffer.UpdateCustom(vertices, indices);
+        }
+
+        // Builds tree representation of skeleton hierarchy (parent to children indices).
         private Dictionary<int, List<int>> BuildBoneTree(Skeleton skeleton)
         {
             var tree = new Dictionary<int, List<int>>();
@@ -876,6 +919,8 @@ namespace ReadingChamber
             }
             return tree;
         }
+
+        // Matches animation skeleton to main skeleton by hierarchy and names, handling possible extra roots.
         private Dictionary<int, int> MatchBoneHierarchies(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainRoot, int animRoot, FBXModel animModel)
         {
             var boneMap = new Dictionary<int, int>();
@@ -905,6 +950,8 @@ namespace ReadingChamber
             MatchBoneSubtree(mainRoot, animRoot, mainTree, animTree, _model.Skeleton, animModel.Skeleton, boneMap);
             return boneMap;
         }
+
+        // Checks if subtree structures match (child counts, recursive).
         private bool MatchStructures(Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, int mainIdx, int animIdx, FBXModel animModel)
         {
             var mainChildren = mainTree[mainIdx];
@@ -918,6 +965,8 @@ namespace ReadingChamber
             }
             return true;
         }
+
+        // Recursively matches bone subtrees by sorted child names.
         private void MatchBoneSubtree(int mainIdx, int animIdx, Dictionary<int, List<int>> mainTree, Dictionary<int, List<int>> animTree, Skeleton mainSkeleton, Skeleton animSkeleton, Dictionary<int, int> boneMap)
         {
             string mainName = mainSkeleton.Bones[mainIdx].Name;
@@ -935,6 +984,8 @@ namespace ReadingChamber
                 }
             }
         }
+
+        // Sets rest pose transforms and updates visualization.
         private void SetRestPose()
         {
             if (_model == null || _model.Skeleton == null) return;

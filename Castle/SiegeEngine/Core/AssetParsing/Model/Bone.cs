@@ -1,5 +1,4 @@
-﻿
-// Folder: SiegeEngine.Core
+﻿// Folder: SiegeEngine.Core
 // File: AssetParsing/Model/Bone.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -12,6 +11,7 @@ using System.Threading.Tasks;
 
 namespace SiegeEngine.Core.AssetParsing.Model
 {
+    // Represents a single bone in the skeleton, with transform components, hierarchy links, and computation methods.
     public class Bone
     {
         public string Name { get; set; }
@@ -37,6 +37,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4.CreateFromQuaternion(GeometricRotation) *
             Matrix4x4.CreateTranslation(GeometricTranslation);
         public List<Bone> Children { get; set; } = new List<Bone>();
+
+        // Computes local transform matrix from T/R/S components, including pivots, offsets, pre/post rotations.
         public Matrix4x4 ComputeLocal(Vector3? t = null, Quaternion? r = null, Vector3? s = null)
         {
             Vector3 useT = t ?? LclTranslation;
@@ -58,10 +60,14 @@ namespace SiegeEngine.Core.AssetParsing.Model
             Matrix4x4 local = T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp;
             return local;
         }
+
+        // Converts Euler angles (degrees) to quaternion using the bone's rotation order.
         public Quaternion ToQuaternion(Vector3 degrees, int order)
         {
             return Quaternion.CreateFromRotationMatrix(CreateFromEuler(degrees, order));
         }
+
+        // Converts quaternion back to Euler angles (degrees).
         public Vector3 ToEuler(Quaternion q)
         {
             q = Quaternion.Normalize(q);
@@ -85,6 +91,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return euler * (180f / MathF.PI);
         }
+
+        // Creates rotation matrix from Euler angles (radians) in specified order.
         public Matrix4x4 CreateFromEuler(Vector3 degrees, int order)
         {
             float rx = degrees.X * MathF.PI / 180f;
@@ -105,6 +113,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 default: return mz * my * mx;
             }
         }
+
+        // Computes global position of the rotation pivot point.
         public Vector3 GetRotationPivotGlobal(Matrix4x4 parentGlobal)
         {
             Matrix4x4 T = Matrix4x4.CreateTranslation(LclTranslation);

@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/FBXAnimationParser.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
@@ -7,8 +9,10 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.AssetParsing
 {
+    // This static class parses animations from AnimationStack/Layer/Curve nodes into keyframes.
     public static class FBXAnimationParser
     {
+        // Parses all animation stacks, layers, curves, interpolates values, remaps, builds keyframes.
         public static void ParseAnimations(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4)
         {
             var animStackNodes = objectsNode.children.Where(n => n.Name == "AnimationStack").ToList();
@@ -131,6 +135,8 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
         }
+
+        // Gets key times and values for a specific curve (X/Y/Z).
         private static (long[] keyTimes, float[] keyValues) GetCurveData(List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, long curveNodeId, string propName)
         {
             var curveConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == propName);

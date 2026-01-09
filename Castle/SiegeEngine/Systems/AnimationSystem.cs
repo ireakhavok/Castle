@@ -6,13 +6,17 @@ using SiegeEngine.Core.Interfaces;
 using Silk.NET.Maths;
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Systems
 {
+    // System to update animation components on entities, computing bone transforms each frame.
     public class AnimationSystem : GameSystem
     {
         public AnimationSystem(IGameServer server) : base(server)
         {
         }
+
+        // Updates all animated entities by advancing time, computing local/global/final transforms.
         public override void Update(float deltaTime)
         {
             foreach (var entity in _server.GetEntities())

@@ -1,5 +1,4 @@
-﻿
-// Folder: SiegeEngine.Core
+﻿// Folder: SiegeEngine.Core
 // File: AssetParsing/FBXSkeletonParser.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -10,8 +9,11 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.AssetParsing
 {
+    // This static class parses skeleton (bones) from Model::LimbNode/Root/Null nodes, builds hierarchy.
     public static class FBXSkeletonParser
     {
+        // Parses all bones, their properties, remaps them, assigns indices.
+        // Returns bone index by ID and root bone indices.
         public static (Dictionary<long, int> boneIndexById, List<int> rootIndices) ParseSkeleton(FBXModel model, BaseNode objectsNode, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, int[] sourceToTarget, int[] signs, float modelScale)
         {
             var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
@@ -165,6 +167,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (boneIndexById, rootIndices);
         }
+
+        // Builds bone hierarchy by setting parent-child relations from connections.
         public static void BuildHierarchy(FBXModel model, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById)
         {
             foreach (var conn in conns)
@@ -178,6 +182,8 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
         }
+
+        // Recursively adds ancestors and descendants to a set of bone IDs, for gathering related bones.
         private static void AddAncestorsAndDescendants(long boneId, HashSet<long> usedIds, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById)
         {
             // Add ancestors

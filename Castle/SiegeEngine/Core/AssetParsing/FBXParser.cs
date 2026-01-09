@@ -1,5 +1,5 @@
-﻿// Folder: Root
-// File: FBXParser.cs
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/FBXParser.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Rendering;
@@ -10,10 +10,15 @@ using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace SiegeEngine.Core.AssetParsing
 {
+    // This static class handles loading and parsing of binary FBX files into an FBXModel structure.
+    // It reads the file, parses nodes, and builds the model by calling specialized parsers for skeleton, meshes, and animations.
     public static class FBXParser
     {
+        // Loads an FBX file from path, checks format, parses binary data into a node forest.
+        // Supports only binary FBX version 7000+, logs errors, exports metadata.
         public static FBXFileForest Load(string path)
         {
             if (!File.Exists(path))
@@ -61,6 +66,10 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return context;
         }
+
+        // Builds an FBXModel from the parsed node forest.
+        // Gathers objects and connections, parses global settings for remapping,
+        // then calls parsers for skeleton, meshes, and animations.
         public static FBXModel BuildModelFromForest(FBXFileForest forest)
         {
             FBXModel model = new FBXModel();
@@ -84,6 +93,8 @@ namespace SiegeEngine.Core.AssetParsing
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootIndices, P4, invP4);
             return model;
         }
+
+        // Collects all object nodes keyed by their ID from the Objects node.
         public static Dictionary<long, BaseNode> GatherObjectsById(BaseNode objectsNode)
         {
             var objectsById = new Dictionary<long, BaseNode>();
@@ -97,6 +108,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return objectsById;
         }
+
+        // Gathers all connection tuples (type, child ID, parent ID, property) from the Connections node.
         public static List<(string type, long child, long parent, string prop)> GatherConnections(FBXFileForest forest)
         {
             var connectionsNode = forest.TreeList.FirstOrDefault(n => n.Name == "Connections");
@@ -117,6 +130,9 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return conns;
         }
+
+        // Parses GlobalSettings for axis system, handedness, scale, computes remapping arrays and matrices.
+        // Determines axis permutation, signs, scale factor, and transformation matrices P4/invP4.
         public static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
         {
             var globalSettings = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
@@ -174,13 +190,13 @@ namespace SiegeEngine.Core.AssetParsing
             sourceToTarget[frontAxis] = 1; // Map to engine Y (forward)
             sourceToTarget[upAxis] = 2; // Map to engine Z (up)
             int[] signs = new int[3];
-            signs[coordAxis] = coordAxisSign;
+            signs[coordAxis] = -coordAxisSign;
             signs[frontAxis] = frontAxisSign;
             signs[upAxis] = upAxisSign;
             // Handle handedness
             int handedness = (coordSystem == 0 ? 1 : -1) * coordSystemSign; // Assume 0 right, positive
             // Engine-specific adjustment (e.g., flip forward if needed)
-            // signs[frontAxis] = -signs[frontAxis]; // Assuming engine needs positive Y forward, flip if FBX has positive
+            // signs[frontAxis] = -signs[frontAxis]; # this fixes the mesh, but screws up animations
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
             for (int src = 0; src < 3; src++)
@@ -198,7 +214,6 @@ namespace SiegeEngine.Core.AssetParsing
                 Console.WriteLine("Failed to invert P4, using transpose as approximation");
                 invP4 = Matrix4x4.Transpose(P4);
             }
-
             return (sourceToTarget, signs, modelScale, P4, invP4);
         }
     }

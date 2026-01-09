@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing/Model/Skeleton.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
@@ -7,10 +9,13 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.AssetParsing.Model
 {
+    // Represents a skeleton with bones, computes hierarchical transforms (local to global to final skinning matrices).
     public class Skeleton
     {
         public List<Bone> Bones { get; set; } = new List<Bone>();
         private Matrix4x4[] _currentTransforms;
+
+        // Gets current final transforms for skinning, initializes if null.
         public Matrix4x4[] GetTransforms()
         {
             if (_currentTransforms == null)
@@ -21,10 +26,14 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return _currentTransforms;
         }
+
+        // Sets the current final transforms.
         public void UpdateTransforms(Matrix4x4[] transforms)
         {
             _currentTransforms = transforms;
         }
+
+        // Computes global transforms from local ones, starting from roots.
         public Matrix4x4[] ComputeGlobalTransforms(Matrix4x4[] localTransforms)
         {
             var globalTransforms = new Matrix4x4[Bones.Count];
@@ -38,6 +47,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return globalTransforms;
         }
+
+        // Recursive helper to compute global transform for a bone and its children.
         private void ComputeGlobalRecursive(int idx, Matrix4x4[] localTransforms, Matrix4x4[] globalTransforms, Matrix4x4 parentGlobal)
         {
             globalTransforms[idx] = parentGlobal * localTransforms[idx];
@@ -50,6 +61,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 }
             }
         }
+
+        // Computes final skinning matrices: global * bindPose (inverse bind pose actually, but named BindPose).
         public Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
         {
             var finalTransforms = new Matrix4x4[Bones.Count];
@@ -59,6 +72,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return finalTransforms;
         }
+
+        // Computes inverse bind poses as inverse of rest global transforms.
         public void ComputeBindPoses()
         {
             if (Bones.Count == 0) return;
@@ -74,6 +89,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 Bones[i].BindPose = invRestGlobal;
             }
         }
+
+        // Computes local transforms from global ones by inverting parent globals.
         public Matrix4x4[] ComputeLocalsFromGlobals(Matrix4x4[] globals)
         {
             var locals = new Matrix4x4[Bones.Count];
@@ -86,6 +103,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return locals;
         }
+
+        // Recursive helper to compute local transform for a bone and its children.
         private void ComputeLocalsRecursive(int idx, Matrix4x4[] globals, Matrix4x4[] locals, Matrix4x4 parentGlobal)
         {
             if (Matrix4x4.Invert(parentGlobal, out var invParent))

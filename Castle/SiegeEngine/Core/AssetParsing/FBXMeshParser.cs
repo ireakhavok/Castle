@@ -6,10 +6,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing
 {
+    // This static class parses mesh data from FBX Geometry nodes, including vertices, indices, normals, UVs, materials, skins.
+    // It expands per-polygon data to per-vertex, applies remapping, and extracts embedded textures.
     public static class FBXMeshParser
     {
+        // Main method to parse all meshes from Geometry::Mesh nodes.
+        // Processes vertices, indices, attributes, skins, and materials for each mesh.
         public static void ParseMeshes(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale, Dictionary<long, int> boneIndexById, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, FBXFileForest forest)
         {
             var geomNodes = objectsNode.children.Where(n => n.Name == "Geometry" && n.properties.Count >= 3 && (string)n.properties[2].Value == "Mesh").ToList();
@@ -46,6 +51,8 @@ namespace SiegeEngine.Core.AssetParsing
                 model.Meshes.Add(mesh);
             }
         }
+
+        // Parses the Vertices array from Geometry node as doubles.
         private static double[] ParseVertices(BaseNode geom)
         {
             var vertsNode = geom.children.FirstOrDefault(c => c.Name == "Vertices");
@@ -66,6 +73,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return vertsD;
         }
+
+        // Parses PolygonVertexIndex array, which defines polygons with negative indices marking end.
         private static int[] ParsePolygonVertexIndices(BaseNode geom)
         {
             var indicesNode = geom.children.FirstOrDefault(c => c.Name == "PolygonVertexIndex");
@@ -76,6 +85,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return pviArray;
         }
+
+        // Parses normals, their indices, mapping type (ByPolygonVertex/ByVertice), reference type (IndexToDirect/Direct).
         private static (double[] norms, int[] normIdx, string normMapping, string normRef) ParseNormals(BaseNode geom)
         {
             var layerNorm = geom.children.FirstOrDefault(c => c.Name == "LayerElementNormal");
@@ -112,6 +123,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (norms, normIdx, normMapping, normRef);
         }
+
+        // Parses UVs similar to normals.
         private static (double[] uvs, int[] uvIdx, string uvMapping, string uvRef) ParseUVs(BaseNode geom)
         {
             var layerUV = geom.children.FirstOrDefault(c => c.Name == "LayerElementUV");
@@ -148,6 +161,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (uvs, uvIdx, uvMapping, uvRef);
         }
+
+        // Parses material indices and mapping type (AllSame/ByPolygon).
         private static (int[] matIndices, string matMapping) ParseMaterials(BaseNode geom)
         {
             var layerMat = geom.children.FirstOrDefault(c => c.Name == "LayerElementMaterial");
@@ -165,6 +180,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (matIndices, matMapping);
         }
+
+        // Parses geometric transform (translation, rotation, scale) for the mesh, applied after bind poses.
         private static Matrix4x4 ParseGeometricTransform(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale)
         {
             Matrix4x4 geoMat = Matrix4x4.Identity;
@@ -218,6 +235,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return geoMat;
         }
+
+        // Parses skin deformers, clusters, weights, indices, and computes inverse bind poses including remapping.
         private static List<List<(int boneIdx, float weight)>> ParseSkin(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, FBXModel model, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, float modelScale, int numVerts, Matrix4x4 geoMat)
         {
             var perVertBones = Enumerable.Range(0, numVerts).Select(_ => new List<(int, float)>()).ToList();
@@ -324,7 +343,6 @@ namespace SiegeEngine.Core.AssetParsing
                                                 t_remap.M21, t_remap.M22, t_remap.M23, t_remap.M24,
                                                 t_remap.M31, t_remap.M32, t_remap.M33, t_remap.M34,
                                                 t_remap.M41 * modelScale, t_remap.M42 * modelScale, t_remap.M43 * modelScale, t_remap.M44);
-
                         // Compute invBind including geoMat
                         if (Matrix4x4.Invert(tl_remap, out var invTl))
                         {
@@ -359,6 +377,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return perVertBones;
         }
+
+        // Normalizes per-vertex weights to sum to 1, limits to top 8 bones per vertex.
         private static void NormalizeWeights(List<List<(int boneIdx, float weight)>> perVertBones)
         {
             for (int v = 0; v < perVertBones.Count; v++)
@@ -379,6 +399,8 @@ namespace SiegeEngine.Core.AssetParsing
                 perVertBones[v] = bw.OrderByDescending(b => b.weight).ToList(); // Sort descending weight
             }
         }
+
+        // Expands polygon-based data to per-vertex format, triangulates polygons, applies remapping to positions/normals, flips V in UV.
         private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, int numVerts)
         {
             List<FBXVertex> expandedVertices = new List<FBXVertex>();
@@ -538,6 +560,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (expandedVertices, newIndices);
         }
+
+        // Extracts material properties and textures (albedo, normal, metallic), handles embedded textures.
         private static List<Material> ExtractMaterials(long geomId, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, FBXFileForest forest)
         {
             List<Material> materials = new List<Material>();
@@ -655,6 +679,8 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return materials;
         }
+
+        // Computes axis-aligned bounding box size from vertex positions.
         private static Vector3 CalculateBounds(List<FBXVertex> vertices)
         {
             float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;

@@ -10,6 +10,7 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.AssetParsing.Model
 {
+    // Represents a parsed FBX model with meshes, skeleton, animations, coordinate remapping info.
     public class FBXModel
     {
         public List<MeshData> Meshes { get; set; } = new List<MeshData>();
@@ -26,11 +27,13 @@ namespace SiegeEngine.Core.AssetParsing.Model
         {
         }
 
+        // Checks if any vertices have zero total weight (unskinned).
         public bool HasUnweightedVertices()
         {
             return Meshes.Any(m => m.Vertices.Any(v => v.Weight0 + v.Weight1 + v.Weight2 + v.Weight3 == 0));
         }
 
+        // Assigns weights to unweighted vertices by closest bone or root.
         public void FixUnweightedVertices()
         {
             if (!HasUnweightedVertices()) return;
@@ -41,6 +44,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             HasSkin = true;
         }
 
+        // Copies skin weights from another model, remapping if possible, fallback to assigning.
         public void CopyWeightsFrom(FBXModel other)
         {
             if (Meshes.Count != 1 || other.Meshes.Count != 1)
@@ -74,6 +78,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             HasSkin = true;
         }
 
+        // Assigns all vertices to root bone.
         private void AssignToRootBone(MeshData mainMesh)
         {
             int rootIdx = Skeleton.Bones.FindIndex(b => b.ParentIndex == -1);
@@ -91,6 +96,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
         }
 
+        // Assigns each vertex to the closest bone based on position.
         private void AssignToClosestBone(MeshData mainMesh)
         {
             if (Skeleton.Bones.Count == 0) return;
@@ -132,6 +138,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
         }
 
+        // Delegates bind pose computation to skeleton.
         public void ComputeBindPoses()
         {
             Skeleton.ComputeBindPoses();
