@@ -795,9 +795,11 @@ Folder: SiegeEngine
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, MetaDataExporter.ExportMetadata, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: FBXModel, FBXParserBase.CreateDefaultCubeModel, GatherConnections, GatherObjectsById
+        - Calls: FBXModel, FBXParserBase.CreateDefaultCubeModel, GatherConnections, GatherObjectsById, ParsePoses
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
+      - void ParsePoses( BaseNode objectsNode,  Matrix4x4 P4,  Matrix4x4 invP4,  float modelScale,  int> boneIndexById, FBXModel model)
+        - Calls: model.ComputeBindPoses, model.Skeleton.ComputeGlobalTransforms, model.Skeleton.ComputeLocalsFromGlobals
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -1782,6 +1784,9 @@ Folder: SiegeEngine
       - Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
       - void ComputeBindPoses()
         - Calls: ComputeGlobalTransforms
+      - Matrix4x4[] ComputeLocalsFromGlobals(Matrix4x4[] globals)
+        - Calls: ComputeLocalsRecursive
+      - void ComputeLocalsRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] locals, int idx)
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
