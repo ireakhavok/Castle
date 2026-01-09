@@ -190,7 +190,7 @@ namespace SiegeEngine.Core.AssetParsing
             sourceToTarget[frontAxis] = 1; // Map to engine Y (forward)
             sourceToTarget[upAxis] = 2; // Map to engine Z (up)
             int[] signs = new int[3];
-            signs[coordAxis] = -coordAxisSign;
+            signs[coordAxis] = coordAxisSign;
             signs[frontAxis] = frontAxisSign;
             signs[upAxis] = upAxisSign;
             // Handle handedness
