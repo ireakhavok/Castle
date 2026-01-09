@@ -167,7 +167,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (boneIndexById, rootIndices);
         }
-
         // Builds bone hierarchy by setting parent-child relations from connections.
         public static void BuildHierarchy(FBXModel model, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById)
         {
@@ -182,7 +181,6 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
         }
-
         // Recursively adds ancestors and descendants to a set of bone IDs, for gathering related bones.
         private static void AddAncestorsAndDescendants(long boneId, HashSet<long> usedIds, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById)
         {

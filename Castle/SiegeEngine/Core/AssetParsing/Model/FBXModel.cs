@@ -22,17 +22,14 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public Matrix4x4 P4 { get; set; }
         public Matrix4x4 InvP4 { get; set; }
         public bool HasSkin { get; set; } = false;
-
         public FBXModel()
         {
         }
-
         // Checks if any vertices have zero total weight (unskinned).
         public bool HasUnweightedVertices()
         {
             return Meshes.Any(m => m.Vertices.Any(v => v.Weight0 + v.Weight1 + v.Weight2 + v.Weight3 == 0));
         }
-
         // Assigns weights to unweighted vertices by closest bone or root.
         public void FixUnweightedVertices()
         {
@@ -43,7 +40,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             HasSkin = true;
         }
-
         // Copies skin weights from another model, remapping if possible, fallback to assigning.
         public void CopyWeightsFrom(FBXModel other)
         {
@@ -77,7 +73,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             HasSkin = true;
         }
-
         // Assigns all vertices to root bone.
         private void AssignToRootBone(MeshData mainMesh)
         {
@@ -95,7 +90,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 mainMesh.Vertices[i].Weight3 = 0f;
             }
         }
-
         // Assigns each vertex to the closest bone based on position.
         private void AssignToClosestBone(MeshData mainMesh)
         {
@@ -137,7 +131,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 }
             }
         }
-
         // Delegates bind pose computation to skeleton.
         public void ComputeBindPoses()
         {

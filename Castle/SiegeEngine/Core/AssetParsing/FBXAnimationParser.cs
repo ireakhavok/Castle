@@ -135,7 +135,6 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
         }
-
         // Gets key times and values for a specific curve (X/Y/Z).
         private static (long[] keyTimes, float[] keyValues) GetCurveData(List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, long curveNodeId, string propName)
         {
