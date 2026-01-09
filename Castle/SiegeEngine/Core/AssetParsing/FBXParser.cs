@@ -66,10 +66,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return context;
         }
-
-        // Builds an FBXModel from the parsed node forest.
-        // Gathers objects and connections, parses global settings for remapping,
-        // then calls parsers for skeleton, meshes, and animations.
         public static FBXModel BuildModelFromForest(FBXFileForest forest)
         {
             FBXModel model = new FBXModel();
@@ -89,12 +85,11 @@ namespace SiegeEngine.Core.AssetParsing
             model.InvP4 = invP4;
             var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
+            ParsePoses(model, objectsNode, boneIndexById, P4, invP4, modelScale);
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, boneIndexById, rootIndices, P4, invP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootIndices, P4, invP4);
             return model;
         }
-
-        // Collects all object nodes keyed by their ID from the Objects node.
         public static Dictionary<long, BaseNode> GatherObjectsById(BaseNode objectsNode)
         {
             var objectsById = new Dictionary<long, BaseNode>();
@@ -108,8 +103,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return objectsById;
         }
-
-        // Gathers all connection tuples (type, child ID, parent ID, property) from the Connections node.
         public static List<(string type, long child, long parent, string prop)> GatherConnections(FBXFileForest forest)
         {
             var connectionsNode = forest.TreeList.FirstOrDefault(n => n.Name == "Connections");
@@ -130,9 +123,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return conns;
         }
-
-        // Parses GlobalSettings for axis system, handedness, scale, computes remapping arrays and matrices.
-        // Determines axis permutation, signs, scale factor, and transformation matrices P4/invP4.
         public static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
         {
             var globalSettings = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
@@ -215,6 +205,94 @@ namespace SiegeEngine.Core.AssetParsing
                 invP4 = Matrix4x4.Transpose(P4);
             }
             return (sourceToTarget, signs, modelScale, P4, invP4);
+        }
+        private static void ParsePoses(FBXModel model, BaseNode objectsNode, Dictionary<long, int> boneIndexById, Matrix4x4 P4, Matrix4x4 invP4, float modelScale)
+        {
+            var poseNodes = objectsNode.children.Where(n => n.Name == "Pose").ToList();
+            if (poseNodes.Count == 0)
+            {
+                model.ComputeBindPoses();
+                return;
+            }
+            Matrix4x4[] restGlobals = null;
+            bool hasRestPose = false;
+            bool hasBindPose = false;
+            foreach (var pose in poseNodes)
+            {
+                if (pose.properties.Count < 3) continue;
+                string poseType = (string)pose.properties[2].Value;
+                if (poseType != "BindPose" && poseType != "RestPose") 
+                    continue;
+                var poseNodesChildren = pose.children.Where(c => c.Name == "PoseNode").ToList();
+                foreach (var pn in poseNodesChildren)
+                {
+                    var nodeIdNode = pn.children.FirstOrDefault(c => c.Name == "Node");
+                    if (nodeIdNode == null) continue;
+                    long id = (long)nodeIdNode.properties[0].Value;
+                    if (!boneIndexById.TryGetValue(id, out int boneIdx)) continue;
+                    var matrixNode = pn.children.FirstOrDefault(c => c.Name == "Matrix");
+                    if (matrixNode == null) continue;
+                    double[] m = (double[])matrixNode.properties[0].Value;
+                    Matrix4x4 mat = new Matrix4x4((float)m[0], (float)m[4], (float)m[8], (float)m[12],
+                                                  (float)m[1], (float)m[5], (float)m[9], (float)m[13],
+                                                  (float)m[2], (float)m[6], (float)m[10], (float)m[14],
+                                                  (float)m[3], (float)m[7], (float)m[11], (float)m[15]);
+                    // Remap matrix
+                    mat = P4 * mat * invP4;
+                    mat = new Matrix4x4(mat.M11, mat.M12, mat.M13, mat.M14,
+                                        mat.M21, mat.M22, mat.M23, mat.M24,
+                                        mat.M31, mat.M32, mat.M33, mat.M34,
+                                        mat.M41 * modelScale, mat.M42 * modelScale, mat.M43 * modelScale, mat.M44);
+                    if (poseType == "BindPose")
+                    {
+                        if (Matrix4x4.Invert(mat, out Matrix4x4 invMat))
+                        {
+                            model.Skeleton.Bones[boneIdx].BindPose = invMat;
+                            hasBindPose = true;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Failed to invert bind matrix for bone {boneIdx}");
+                        }
+                    }
+                    else if (poseType == "RestPose")
+                    {
+                        if (restGlobals == null)
+                        {
+                            restGlobals = new Matrix4x4[model.Skeleton.Bones.Count];
+                        }
+                        restGlobals[boneIdx] = mat;
+                        hasRestPose = true;
+                    }
+                }
+            }
+            if (hasRestPose && restGlobals != null)
+            {
+                // Fill missing rest globals with computed ones from current LocalRest
+                var computedGlobals = model.Skeleton.ComputeGlobalTransforms(model.Skeleton.Bones.Select(b => b.LocalRest).ToArray());
+                for (int i = 0; i < restGlobals.Length; i++)
+                {
+                    if (restGlobals[i] == default)
+                    {
+                        restGlobals[i] = computedGlobals[i];
+                    }
+                }
+                var locals = model.Skeleton.ComputeLocalsFromGlobals(restGlobals);
+                for (int i = 0; i < model.Skeleton.Bones.Count; i++)
+                {
+                    model.Skeleton.Bones[i].LocalRest = locals[i];
+                    if (Matrix4x4.Decompose(locals[i], out Vector3 s, out Quaternion r, out Vector3 t))
+                    {
+                        model.Skeleton.Bones[i].LclScaling = s;
+                        model.Skeleton.Bones[i].LclRotation = r;
+                        model.Skeleton.Bones[i].LclTranslation = t;
+                    }
+                }
+            }
+            if (!hasBindPose)
+            {
+                model.ComputeBindPoses();
+            }
         }
     }
 }
