@@ -10,7 +10,6 @@ using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     // This static class handles loading and parsing of binary FBX files into an FBXModel structure.
@@ -88,35 +87,6 @@ namespace SiegeEngine.Core.AssetParsing
             ParsePoses(model, objectsNode, boneIndexById, P4, invP4, modelScale);
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, boneIndexById, rootIndices, P4, invP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootIndices, P4, invP4);
-            if (!model.HasRestPose && model.Animations.Count > 0)
-            {
-                var firstAnim = model.Animations[0];
-                if (firstAnim.Keyframes.Count > 0)
-                {
-                    var firstKf = firstAnim.Keyframes.OrderBy(kf => kf.Time).First();
-                    var locals = firstKf.BoneTransforms.ToArray();
-                    for (int i = 0; i < model.Skeleton.Bones.Count; i++)
-                    {
-                        model.Skeleton.Bones[i].LocalRest = locals[i];
-                        if (Matrix4x4.Decompose(locals[i], out Vector3 s, out Quaternion r, out Vector3 t))
-                        {
-                            model.Skeleton.Bones[i].LclScaling = s;
-                            model.Skeleton.Bones[i].LclRotation = r;
-                            model.Skeleton.Bones[i].LclTranslation = t;
-                        }
-                    }
-                    model.ComputeBindPoses();
-                    // Rebase animations to new rest pose
-                    foreach (var anim in model.Animations)
-                    {
-                        foreach (var kf in anim.Keyframes)
-                        {
-                            var kfGlobals = model.Skeleton.ComputeGlobalTransforms(kf.BoneTransforms.ToArray());
-                            kf.BoneTransforms = model.Skeleton.ComputeLocalsFromGlobals(kfGlobals).ToList();
-                        }
-                    }
-                }
-            }
             return model;
         }
         public static Dictionary<long, BaseNode> GatherObjectsById(BaseNode objectsNode)
@@ -145,7 +115,7 @@ namespace SiegeEngine.Core.AssetParsing
                         string type = (string)conn.properties[0].Value;
                         long child = (long)conn.properties[1].Value;
                         long parent = (long)conn.properties[2].Value;
-                        string prop = conn.properties.Count > 3 ? (string)conn.properties[3].Value : null;
+                        string prop = conn.properties.Count >= 4 ? (string)conn.properties[3].Value : null;
                         conns.Add((type, child, parent, prop));
                     }
                 }
