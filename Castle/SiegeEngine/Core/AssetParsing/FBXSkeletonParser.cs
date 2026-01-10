@@ -181,7 +181,7 @@ namespace SiegeEngine.Core.AssetParsing
                     int childIdx = boneIndexById[conn.child];
                     int parentIdx = boneIndexById[conn.parent];
                     model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
-                    model.Skeleton.Bones[parentIdx].Children.Add(model.Skeleton.Bones[childIdx]);
+                    model.Skeleton.Bones[parentIdx].Children.Add(model.Skeleton.Bones[childIdx]); 
                 }
             }
         }

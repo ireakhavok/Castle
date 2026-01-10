@@ -44,7 +44,10 @@ namespace SiegeEngine.Core.AssetParsing
                     if (prop == "Lcl Translation") trsType = "T";
                     else if (prop == "Lcl Rotation") trsType = "R";
                     else if (prop == "Lcl Scaling") trsType = "S";
-                    else continue;
+                    else
+                    { 
+                        Console.WriteLine($"FBXDebug: Unknown property {prop} on bone {model.Skeleton.Bones[boneIdx].Name} in animation {anim.Name}");
+                    }
                     // Get X, Y, Z curves
                     var (keyTimesX, keyValuesX) = GetCurveData(conns, objectsById, curveNodeId, "d|X");
                     var (keyTimesY, keyValuesY) = GetCurveData(conns, objectsById, curveNodeId, "d|Y");
@@ -60,7 +63,7 @@ namespace SiegeEngine.Core.AssetParsing
                     Vector3 defaultVal = trsType switch
                     {
                         "T" => bone.LclTranslation,
-                        "R" => Vector3.Zero, // Since we use quats, but default is identity, Euler 0
+                        "R" => bone.ToEuler(bone.LclRotation),
                         "S" => bone.LclScaling,
                         _ => Vector3.Zero
                     };
@@ -123,7 +126,7 @@ namespace SiegeEngine.Core.AssetParsing
                         Quaternion? animR = animRDeg.HasValue ? (Quaternion?)model.Skeleton.Bones[boneIdx].ToQuaternion(animRDeg.Value, model.Skeleton.Bones[boneIdx].RotationOrder) : null;
                         Vector3? animS = trsVals.ContainsKey("S") ? (Vector3?)trsVals["S"] : null;
                         Matrix4x4 local = model.Skeleton.Bones[boneIdx].ComputeLocal(animT, animR, animS);
-                        local = model.P4 * local * model.InvP4;
+                        local = model.P4 * local * model.InvP4; //doesn't this just cancel tout to local?
                         kf.BoneTransforms[boneIdx] = local;
                     }
                     anim.Keyframes.Add(kf);

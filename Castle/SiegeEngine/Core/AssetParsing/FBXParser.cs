@@ -55,7 +55,7 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                     long fileLength = stream.Length;
                     NodeParser.ParseNodes(reader, version, fileLength, fileLength, null, context);
-                    MetaDataExporter.ExportMetadata(context, $"{path}._metadata.json");
+                    //MetaDataExporter.ExportMetadata(context, $"{path}._metadata.json");
                 }
             }
             catch (Exception ex)
@@ -125,9 +125,9 @@ namespace SiegeEngine.Core.AssetParsing
         public static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
         {
             var globalSettings = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
-            int upAxis = 2; // Y
+            int upAxis = 2; // Z
             int upAxisSign = 1;
-            int frontAxis = 1; // Z
+            int frontAxis = 1; // Y
             int frontAxisSign = 1;
             int coordAxis = 0; // X
             int coordAxisSign = 1;
@@ -163,6 +163,11 @@ namespace SiegeEngine.Core.AssetParsing
                                 else if (pname == "FrameRate") frameRate = FBXParserUtils.GetPropertyDouble(p.properties[4].Value);
                                 else if (pname == "TimeMode") timeMode = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
                                 else if (pname == "SnapOnFrameMode") snapOnFrameMode = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
+                                //else
+                                //{
+                                //    Console.WriteLine($"property pname: '{pname}': not parsed. value '{FBXParserUtils.GetPropertyInt(p.properties[4].Value)}'");
+                                //}
+                                    
                             }
                             catch (Exception ex)
                             {
@@ -184,8 +189,7 @@ namespace SiegeEngine.Core.AssetParsing
             signs[upAxis] = upAxisSign;
             // Handle handedness
             int handedness = (coordSystem == 0 ? 1 : -1) * coordSystemSign; // Assume 0 right, positive
-            // Engine-specific adjustment (e.g., flip forward if needed)
-            // signs[frontAxis] = -signs[frontAxis]; # this fixes the mesh, but screws up animations
+          
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
             for (int src = 0; src < 3; src++)
@@ -221,7 +225,10 @@ namespace SiegeEngine.Core.AssetParsing
                 if (pose.properties.Count < 3) continue;
                 string poseType = (string)pose.properties[2].Value;
                 if (poseType != "BindPose" && poseType != "RestPose")
+                {
+                    Console.WriteLine($"Unknown pose type: {poseType}, skipping");
                     continue;
+                }
                 var poseNodesChildren = pose.children.Where(c => c.Name == "PoseNode").ToList();
                 foreach (var pn in poseNodesChildren)
                 {
@@ -280,7 +287,7 @@ namespace SiegeEngine.Core.AssetParsing
                 for (int i = 0; i < model.Skeleton.Bones.Count; i++)
                 {
                     model.Skeleton.Bones[i].LocalRest = locals[i];
-                    if (Matrix4x4.Decompose(locals[i], out Vector3 s, out Quaternion r, out Vector3 t))
+                    if (Matrix4x4.Decompose(locals[i], out Vector3 s, out Quaternion r, out Vector3 t)) // and here we don't need to remap the decomposed components?
                     {
                         model.Skeleton.Bones[i].LclScaling = s;
                         model.Skeleton.Bones[i].LclRotation = r;
@@ -290,7 +297,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             if (!hasBindPose)
             {
-                model.ComputeBindPoses();
+                model.ComputeBindPoses(); // how can we compute global transforms and locals if we don't have rest pose?
             }
             model.HasRestPose = hasRestPose;
         }
