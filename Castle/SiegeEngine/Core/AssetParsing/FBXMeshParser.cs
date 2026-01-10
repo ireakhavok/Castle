@@ -38,7 +38,6 @@ namespace SiegeEngine.Core.AssetParsing
                 var (matIndices, matMapping) = ParseMaterials(geom);
                 var geoMat = ParseGeometricTransform(geomId, conns, objectsById, sourceToTarget, signs, modelScale);
                 int numVerts = vertsD.Length / 3;
-                // Why is P4 and invp4 needed in only skin parsing? weird that they're only remapped in one spot? but it's okay if it works. 
                 var perVertBones = ParseSkin(geomId, conns, objectsById, boneIndexById, model, rootIndices, P4, invP4, modelScale, numVerts, geoMat);
                 NormalizeWeights(perVertBones);
                 var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, matIndices, matMapping, perVertBones, numVerts);

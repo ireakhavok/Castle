@@ -163,11 +163,6 @@ namespace SiegeEngine.Core.AssetParsing
                                 else if (pname == "FrameRate") frameRate = FBXParserUtils.GetPropertyDouble(p.properties[4].Value);
                                 else if (pname == "TimeMode") timeMode = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
                                 else if (pname == "SnapOnFrameMode") snapOnFrameMode = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                //else
-                                //{
-                                //    Console.WriteLine($"property pname: '{pname}': not parsed. value '{FBXParserUtils.GetPropertyInt(p.properties[4].Value)}'");
-                                //}
-                                    
                             }
                             catch (Exception ex)
                             {
@@ -226,7 +221,6 @@ namespace SiegeEngine.Core.AssetParsing
                 string poseType = (string)pose.properties[2].Value;
                 if (poseType != "BindPose" && poseType != "RestPose")
                 {
-                    Console.WriteLine($"Unknown pose type: {poseType}, skipping");
                     continue;
                 }
                 var poseNodesChildren = pose.children.Where(c => c.Name == "PoseNode").ToList();
