@@ -180,11 +180,11 @@ namespace SiegeEngine.Core.AssetParsing
             sourceToTarget[upAxis] = 2; // Map to engine Z (up)
             int[] signs = new int[3];
             signs[coordAxis] = coordAxisSign;
-            signs[frontAxis] = frontAxisSign;
+            signs[frontAxis] = -frontAxisSign;
             signs[upAxis] = upAxisSign;
             // Handle handedness
             int handedness = (coordSystem == 0 ? 1 : -1) * coordSystemSign; // Assume 0 right, positive
-          
+
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
             for (int src = 0; src < 3; src++)
