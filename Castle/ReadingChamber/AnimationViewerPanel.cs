@@ -433,10 +433,32 @@ namespace ReadingChamber
             var boneTransforms = animation.Keyframes[frame].BoneTransforms.ToArray();
             var globalTransforms = _model.Skeleton.ComputeGlobalTransforms(boneTransforms);
             _currentGlobalTransforms = globalTransforms;
-            Console.WriteLine($"<Engine Matrix 4x4 at frame {_currentFrameIndex} for bone 0>");
-            PrintMatrix(globalTransforms[0]);
-            Console.WriteLine($"<Engine Matrix 4x4 at frame {_currentFrameIndex} for bone 1>");
-            PrintMatrix(globalTransforms[1]);
+
+            // Find indices for specific bones
+            Dictionary<string, int> boneIndices = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var bone in _model.Skeleton.Bones)
+            {
+                if (bone.Name.Equals("calf_l", StringComparison.OrdinalIgnoreCase) ||
+                    bone.Name.Equals("thigh_l", StringComparison.OrdinalIgnoreCase) ||
+                    bone.Name.Equals("pelvis", StringComparison.OrdinalIgnoreCase) ||
+                    bone.Name.Equals("root", StringComparison.OrdinalIgnoreCase))
+                {
+                    boneIndices[bone.Name.ToLowerInvariant()] = _model.Skeleton.Bones.IndexOf(bone);
+                }
+            }
+
+            // Print matrices for specific bones
+            foreach (var kv in boneIndices)
+            {
+                string boneName = kv.Key;
+                int boneIdx = kv.Value;
+                if ((frame == 0) || (frame == 10))
+                {
+                    Console.WriteLine($"<Engine Matrix 4x4 at frame {_currentFrameIndex} for bone {boneIdx} ({boneName})>");
+                    PrintMatrix(globalTransforms[boneIdx]);
+                }
+            }
+
             var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
             var normalTransforms = new Matrix3x3[finalTransforms.Length];
             for (int i = 0; i < finalTransforms.Length; i++)

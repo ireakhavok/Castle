@@ -173,6 +173,10 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
             float modelScale = unitScaleFactor / originalUnitScaleFactor;
+            if (originalUnitScaleFactor == 1f)
+            {
+                modelScale /= 100f;
+            }
             Console.WriteLine($"Parsed global settings: UpAxis={upAxis} Sign={upAxisSign}, FrontAxis={frontAxis} Sign={frontAxisSign}, CoordAxis={coordAxis} Sign={coordAxisSign}, CoordSystem={coordSystem} Sign={coordSystemSign}, Scale={modelScale}, FrameRate={frameRate}");
             int[] sourceToTarget = new int[3];
             sourceToTarget[coordAxis] = 0; // Map to engine X
@@ -184,7 +188,6 @@ namespace SiegeEngine.Core.AssetParsing
             signs[upAxis] = upAxisSign;
             // Handle handedness
             int handedness = (coordSystem == 0 ? 1 : -1) * coordSystemSign; // Assume 0 right, positive
-
             Matrix4x4 P4 = Matrix4x4.Identity;
             float[,] p3 = new float[3, 3];
             for (int src = 0; src < 3; src++)
