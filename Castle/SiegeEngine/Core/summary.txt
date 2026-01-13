@@ -79,7 +79,6 @@ Folder: AssetParsing
       - void AssignToClosestBone(MeshData mainMesh)
         - Calls: Skeleton.ComputeGlobalTransforms
       - void ComputeBindPoses()
-        - Calls: Matrix4x4.Transpose, Skeleton.ComputeGlobalTransforms
 - File: FBXParser.cs
   - Class: FBXParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Linq, System.Numerics, System.Text
@@ -87,7 +86,7 @@ Folder: AssetParsing
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, MetaDataExporter.ExportMetadata, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: FBXModel, FBXParserBase.CreateDefaultCubeModel, FBXSkeletonParser.ApplyRootRotation, GatherConnections, GatherObjectsById
+        - Calls: FBXModel, FBXParserBase.CreateDefaultCubeModel, GatherConnections, GatherObjectsById, ParsePoses
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
 - File: FBXParserBase.cs
@@ -122,8 +121,6 @@ Folder: AssetParsing
 - File: FBXSkeletonParser.cs
   - Class: FBXSkeletonParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
-    - Methods:
-      - void ApplyRootRotation( List<int> rootIndices,  Matrix4x4 rootRot, FBXModel model)
 - File: FBXVertex.cs
   - Class: FBXVertex (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Fields:
@@ -156,6 +153,7 @@ Folder: AssetParsing
       - constructor Matrix3x3()
       - Matrix3x3 Inverse()
         - Calls: Matrix3x3
+      - constructor Matrix3x3()
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics
@@ -200,6 +198,11 @@ Folder: AssetParsing
         - Calls: ComputeGlobalRecursive
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globalTransforms,  Matrix4x4[] localTransforms, int idx)
       - Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
+      - void ComputeBindPoses()
+        - Calls: ComputeGlobalTransforms
+      - Matrix4x4[] ComputeLocalsFromGlobals(Matrix4x4[] globals)
+        - Calls: ComputeLocalsRecursive
+      - void ComputeLocalsRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] locals, int idx)
 - File: TextureInfo.cs
   - Class: TextureInfo (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -714,8 +717,6 @@ Folder: Managers
     - Methods:
       - constructor ModManager( ISteamEngine steamEngine, string modsDirectory)
         - Calls: LoadLocalMods, LoadWorkshopMods
-      - void LoadModels(ModelManager loader)
-        - Calls: loader.ScanDirectory
       - void LoadLocalMods()
         - Calls: LoadMod, ProcessUnityAssets
       - void LoadWorkshopMods()
@@ -1494,7 +1495,7 @@ Folder: UI
       - EventBus _eventBus
     - Methods:
       - void HandleDataHook(string hook)
-        - Calls: OpenPanelEvent, SwitchSceneEvent, _document.getElementById, checked.ToString
+        - Calls: _document.getElementById, checked.ToString, mi.Invoke
       - void HandleLink(string href)
         - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
 - File: NavElement.cs

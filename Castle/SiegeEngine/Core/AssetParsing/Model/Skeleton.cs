@@ -63,7 +63,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             int unmappedCount = 0;
             for (int i = 0; i < Bones.Count; i++)
             {
-                finalTransforms[i] = globalTransforms[i] * Bones[i].BindPose;
+                finalTransforms[i] = Bones[i].BindPose * globalTransforms[i];
                 if (finalTransforms[i] == Matrix4x4.Identity)
                     unmappedCount++;
             }
