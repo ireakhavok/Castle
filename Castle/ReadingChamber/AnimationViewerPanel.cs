@@ -452,8 +452,11 @@ namespace ReadingChamber
             {
                 string boneName = kv.Key;
                 int boneIdx = kv.Value;
-                Console.WriteLine($"<Engine Matrix 4x4 at frame {_currentFrameIndex} for bone {boneIdx} ({boneName})>");
-                PrintMatrix(globalTransforms[boneIdx]);
+                if ((frame == 0) || (frame == 10))
+                {
+                    Console.WriteLine($"<Engine Matrix 4x4 at frame {_currentFrameIndex} for bone {boneIdx} ({boneName})>");
+                    PrintMatrix(globalTransforms[boneIdx]);
+                }
             }
 
             var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
@@ -884,10 +887,9 @@ namespace ReadingChamber
             var indices = new List<uint>();
             uint idx = 0;
             var positions = new Vector3[_model.Skeleton.Bones.Count];
-            Matrix4x4 correctionMatrix = Matrix4x4.CreateRotationX(MathF.PI);
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
-                positions[i] = Vector3.Transform(_currentGlobalTransforms[i].Translation, correctionMatrix);
+                positions[i] = _currentGlobalTransforms[i].Translation;
             }
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
