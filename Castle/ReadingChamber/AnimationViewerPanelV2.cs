@@ -362,7 +362,7 @@ namespace ReadingChamber
                 Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
                 float currentDist = Vector3.Distance(_cameraPosition, _cameraTarget);
                 float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
-                float far = currentDist + _maxExtent * 2f;
+                float far = Math.Max(near + 0.01f, currentDist + _maxExtent * 2f);
                 Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, near, far);
                 //stubbed and removed code for fill in later
             }
@@ -386,9 +386,6 @@ namespace ReadingChamber
                 }
             }
             _textRenderer.RenderText(frameInfo, 10, TitleHeight + 10, (int)Size.X, (int)Size.Y, 12f);
-            // Render bone info text
-            float currentY = TitleHeight + 25;
-
             // Render 2px border
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
