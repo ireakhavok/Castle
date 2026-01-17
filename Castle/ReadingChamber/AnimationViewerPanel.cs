@@ -433,7 +433,6 @@ namespace ReadingChamber
             var boneTransforms = animation.Keyframes[frame].BoneTransforms.ToArray();
             var globalTransforms = _model.Skeleton.ComputeGlobalTransforms(boneTransforms);
             _currentGlobalTransforms = globalTransforms;
-
             // Find indices for specific bones
             Dictionary<string, int> boneIndices = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             foreach (var bone in _model.Skeleton.Bones)
@@ -446,7 +445,6 @@ namespace ReadingChamber
                     boneIndices[bone.Name.ToLowerInvariant()] = _model.Skeleton.Bones.IndexOf(bone);
                 }
             }
-
             // Print matrices for specific bones
             foreach (var kv in boneIndices)
             {
@@ -458,7 +456,6 @@ namespace ReadingChamber
                     PrintMatrix(globalTransforms[boneIdx]);
                 }
             }
-
             var finalTransforms = _model.Skeleton.ComputeFinalTransforms(globalTransforms);
             var normalTransforms = new Matrix3x3[finalTransforms.Length];
             for (int i = 0; i < finalTransforms.Length; i++)
@@ -902,6 +899,10 @@ namespace ReadingChamber
                     indices.Add(idx++);
                     vertices.Add(new Vertex(childPos.X, childPos.Y, childPos.Z, 0, 1, 0, 1));
                     indices.Add(idx++);
+                }
+                else
+                {
+                    // For root bone, draw a small cross or something, but skip for now
                 }
             }
             _skeletonBuffer.UpdateCustom(vertices, indices);
