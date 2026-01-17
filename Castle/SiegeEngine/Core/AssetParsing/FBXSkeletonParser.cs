@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     // This static class parses skeleton (bones) from Model::LimbNode/Root/Null nodes, builds hierarchy.
@@ -168,6 +167,19 @@ namespace SiegeEngine.Core.AssetParsing
                 {
                     rootIndices.Add(i);
                 }
+            }
+            // Build hierarchy before orientation correction
+            BuildHierarchy(model, conns, boneIndexById);
+            // Apply global flip to root bone to correct upside down
+            if (rootIndices.Count > 0)
+            {
+                int rootIdx = rootIndices[0];
+                var rootBone = model.Skeleton.Bones[rootIdx];
+                Quaternion flipRot = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI);
+                rootBone.PreRotation = flipRot * rootBone.PreRotation;
+                rootBone.LocalRest = rootBone.ComputeLocal();
+                rootBone.LocalRest = model.P4 * rootBone.LocalRest * model.InvP4;
+                Console.WriteLine($"Applied global flip to root bone {rootBone.Name}");
             }
             return (boneIndexById, rootIndices);
         }

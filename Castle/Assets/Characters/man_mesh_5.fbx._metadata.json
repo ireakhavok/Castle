@@ -1,0 +1,5238 @@
+[
+  {
+    "name": "FBXHeaderExtension",
+    "numProperties": 0,
+    "childrenCount": 6,
+    "properties": [],
+    "children": [
+      {
+        "name": "FBXHeaderVersion",
+        "numProperties": 1,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "I",
+            "value": 1003
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "FBXVersion",
+        "numProperties": 1,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "I",
+            "value": 7400
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "EncryptionType",
+        "numProperties": 1,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "I",
+            "value": 0
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "CreationTimeStamp",
+        "numProperties": 0,
+        "childrenCount": 8,
+        "properties": [],
+        "children": [
+          {
+            "name": "Version",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 1000
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Year",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 2026
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Month",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 1
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Day",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 10
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Hour",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 23
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Minute",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 46
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Second",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 4
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Millisecond",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 990
+              }
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "Creator",
+        "numProperties": 1,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "Blender (stable FBX IO) - 5.0.1 - 5.14.0"
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "SceneInfo",
+        "numProperties": 2,
+        "childrenCount": 4,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "GlobalInfo\u0000\u0001SceneInfo"
+          },
+          {
+            "typeCode": "S",
+            "value": "UserData"
+          }
+        ],
+        "children": [
+          {
+            "name": "Type",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "UserData"
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Version",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 100
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "MetaData",
+            "numProperties": 0,
+            "childrenCount": 7,
+            "properties": [],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 100
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Title",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Subject",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Author",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Keywords",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Revision",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Comment",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "Properties70",
+            "numProperties": 0,
+            "childrenCount": 14,
+            "properties": [],
+            "children": [
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "DocumentUrl"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Url"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "/foobar.fbx"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "SrcDocumentUrl"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Url"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "/foobar.fbx"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 4,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Original"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Compound"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Original|ApplicationVendor"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Blender Foundation"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Original|ApplicationName"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Blender (stable FBX IO)"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Original|ApplicationVersion"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "5.0.1"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Original|DateTime_GMT"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "DateTime"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "01/01/1970 00:00:00.000"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Original|FileName"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "/foobar.fbx"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 4,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "LastSaved"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Compound"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "LastSaved|ApplicationVendor"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Blender Foundation"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "LastSaved|ApplicationName"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Blender (stable FBX IO)"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "LastSaved|ApplicationVersion"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "5.0.1"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "LastSaved|DateTime_GMT"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "DateTime"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "01/01/1970 00:00:00.000"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Original|ApplicationNativeFile"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "C:\\Users\\ireak\\source\\repos\\CitadelMRPGM\\BlenderScene\\Man.blend"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "FileId",
+    "numProperties": 1,
+    "childrenCount": 0,
+    "properties": [
+      {
+        "typeCode": "R",
+        "length": 16,
+        "sample": [
+          40,
+          179,
+          42,
+          235,
+          182
+        ]
+      }
+    ],
+    "children": []
+  },
+  {
+    "name": "CreationTime",
+    "numProperties": 1,
+    "childrenCount": 0,
+    "properties": [
+      {
+        "typeCode": "S",
+        "value": "1970-01-01 10:00:00:000"
+      }
+    ],
+    "children": []
+  },
+  {
+    "name": "Creator",
+    "numProperties": 1,
+    "childrenCount": 0,
+    "properties": [
+      {
+        "typeCode": "S",
+        "value": "Blender (stable FBX IO) - 5.0.1 - 5.14.0"
+      }
+    ],
+    "children": []
+  },
+  {
+    "name": "GlobalSettings",
+    "numProperties": 0,
+    "childrenCount": 2,
+    "properties": [],
+    "children": [
+      {
+        "name": "Version",
+        "numProperties": 1,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "I",
+            "value": 1000
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "Properties70",
+        "numProperties": 0,
+        "childrenCount": 16,
+        "properties": [],
+        "children": [
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "UpAxis"
+              },
+              {
+                "typeCode": "S",
+                "value": "int"
+              },
+              {
+                "typeCode": "S",
+                "value": "Integer"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "I",
+                "value": 2
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "UpAxisSign"
+              },
+              {
+                "typeCode": "S",
+                "value": "int"
+              },
+              {
+                "typeCode": "S",
+                "value": "Integer"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "I",
+                "value": 1
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "FrontAxis"
+              },
+              {
+                "typeCode": "S",
+                "value": "int"
+              },
+              {
+                "typeCode": "S",
+                "value": "Integer"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "I",
+                "value": 1
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "FrontAxisSign"
+              },
+              {
+                "typeCode": "S",
+                "value": "int"
+              },
+              {
+                "typeCode": "S",
+                "value": "Integer"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "I",
+                "value": 1
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "CoordAxis"
+              },
+              {
+                "typeCode": "S",
+                "value": "int"
+              },
+              {
+                "typeCode": "S",
+                "value": "Integer"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "CoordAxisSign"
+              },
+              {
+                "typeCode": "S",
+                "value": "int"
+              },
+              {
+                "typeCode": "S",
+                "value": "Integer"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "I",
+                "value": -1
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "OriginalUpAxis"
+              },
+              {
+                "typeCode": "S",
+                "value": "int"
+              },
+              {
+                "typeCode": "S",
+                "value": "Integer"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "I",
+                "value": -1
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "OriginalUpAxisSign"
+              },
+              {
+                "typeCode": "S",
+                "value": "int"
+              },
+              {
+                "typeCode": "S",
+                "value": "Integer"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "I",
+                "value": 1
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "UnitScaleFactor"
+              },
+              {
+                "typeCode": "S",
+                "value": "double"
+              },
+              {
+                "typeCode": "S",
+                "value": "Number"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "D",
+                "value": 1
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "OriginalUnitScaleFactor"
+              },
+              {
+                "typeCode": "S",
+                "value": "double"
+              },
+              {
+                "typeCode": "S",
+                "value": "Number"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "D",
+                "value": 1
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 7,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "AmbientColor"
+              },
+              {
+                "typeCode": "S",
+                "value": "ColorRGB"
+              },
+              {
+                "typeCode": "S",
+                "value": "Color"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "D",
+                "value": 0
+              },
+              {
+                "typeCode": "D",
+                "value": 0
+              },
+              {
+                "typeCode": "D",
+                "value": 0
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "DefaultCamera"
+              },
+              {
+                "typeCode": "S",
+                "value": "KString"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "S",
+                "value": "Producer Perspective"
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "TimeMode"
+              },
+              {
+                "typeCode": "S",
+                "value": "enum"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "I",
+                "value": 6
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "TimeSpanStart"
+              },
+              {
+                "typeCode": "S",
+                "value": "KTime"
+              },
+              {
+                "typeCode": "S",
+                "value": "Time"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "L",
+                "value": 0
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "TimeSpanStop"
+              },
+              {
+                "typeCode": "S",
+                "value": "KTime"
+              },
+              {
+                "typeCode": "S",
+                "value": "Time"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "L",
+                "value": 46186158000
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "P",
+            "numProperties": 5,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "CustomFrameRate"
+              },
+              {
+                "typeCode": "S",
+                "value": "double"
+              },
+              {
+                "typeCode": "S",
+                "value": "Number"
+              },
+              {
+                "typeCode": "S",
+                "value": ""
+              },
+              {
+                "typeCode": "D",
+                "value": 30
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Documents",
+    "numProperties": 0,
+    "childrenCount": 2,
+    "properties": [],
+    "children": [
+      {
+        "name": "Count",
+        "numProperties": 1,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "I",
+            "value": 1
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "Document",
+        "numProperties": 3,
+        "childrenCount": 2,
+        "properties": [
+          {
+            "typeCode": "L",
+            "value": 884441879
+          },
+          {
+            "typeCode": "S",
+            "value": "Scene"
+          },
+          {
+            "typeCode": "S",
+            "value": "Scene"
+          }
+        ],
+        "children": [
+          {
+            "name": "Properties70",
+            "numProperties": 0,
+            "childrenCount": 2,
+            "properties": [],
+            "children": [
+              {
+                "name": "P",
+                "numProperties": 4,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "SourceObject"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "object"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "ActiveAnimStackName"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "KString"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "RootNode",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "L",
+                "value": 0
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "References",
+    "numProperties": 0,
+    "childrenCount": 0,
+    "properties": [],
+    "children": []
+  },
+  {
+    "name": "Definitions",
+    "numProperties": 0,
+    "childrenCount": 11,
+    "properties": [],
+    "children": [
+      {
+        "name": "Version",
+        "numProperties": 1,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "I",
+            "value": 100
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "Count",
+        "numProperties": 1,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "I",
+            "value": 1120
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "ObjectType",
+        "numProperties": 1,
+        "childrenCount": 1,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "GlobalSettings"
+          }
+        ],
+        "children": [
+          {
+            "name": "Count",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 1
+              }
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "ObjectType",
+        "numProperties": 1,
+        "childrenCount": 1,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "NodeAttribute"
+          }
+        ],
+        "children": [
+          {
+            "name": "Count",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 57
+              }
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "ObjectType",
+        "numProperties": 1,
+        "childrenCount": 2,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "Geometry"
+          }
+        ],
+        "children": [
+          {
+            "name": "Count",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 17
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "PropertyTemplate",
+            "numProperties": 1,
+            "childrenCount": 1,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "FbxMesh"
+              }
+            ],
+            "children": [
+              {
+                "name": "Properties70",
+                "numProperties": 0,
+                "childrenCount": 6,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Color"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "ColorRGB"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Color"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0.8
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0.8
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0.8
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "BBoxMin"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "BBoxMax"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Primary Visibility"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 1
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Casts Shadows"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 1
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Receive Shadows"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 1
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ObjectType",
+        "numProperties": 1,
+        "childrenCount": 2,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "Model"
+          }
+        ],
+        "children": [
+          {
+            "name": "Count",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 74
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "PropertyTemplate",
+            "numProperties": 1,
+            "childrenCount": 1,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "FbxNode"
+              }
+            ],
+            "children": [
+              {
+                "name": "Properties70",
+                "numProperties": 0,
+                "childrenCount": 71,
+                "properties": [],
+                "additionalChildren": 66,
+                "children": [
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "QuaternionInterpolate"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "enum"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "RotationOffset"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "RotationPivot"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "ScalingOffset"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "ScalingPivot"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ObjectType",
+        "numProperties": 1,
+        "childrenCount": 1,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "Pose"
+          }
+        ],
+        "children": [
+          {
+            "name": "Count",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 17
+              }
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "ObjectType",
+        "numProperties": 1,
+        "childrenCount": 1,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "Deformer"
+          }
+        ],
+        "children": [
+          {
+            "name": "Count",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 936
+              }
+            ],
+            "children": []
+          }
+        ]
+      },
+      {
+        "name": "ObjectType",
+        "numProperties": 1,
+        "childrenCount": 2,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "Material"
+          }
+        ],
+        "children": [
+          {
+            "name": "Count",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 3
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "PropertyTemplate",
+            "numProperties": 1,
+            "childrenCount": 1,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "FbxSurfacePhong"
+              }
+            ],
+            "children": [
+              {
+                "name": "Properties70",
+                "numProperties": 0,
+                "childrenCount": 24,
+                "properties": [],
+                "additionalChildren": 19,
+                "children": [
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "ShadingModel"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "KString"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Phong"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "MultiLayer"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "EmissiveColor"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Color"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "A"
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "EmissiveFactor"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Number"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "A"
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 1
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "AmbientColor"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Color"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "A"
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0.2
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0.2
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0.2
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ObjectType",
+        "numProperties": 1,
+        "childrenCount": 2,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "Texture"
+          }
+        ],
+        "children": [
+          {
+            "name": "Count",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 8
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "PropertyTemplate",
+            "numProperties": 1,
+            "childrenCount": 1,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "FbxFileTexture"
+              }
+            ],
+            "children": [
+              {
+                "name": "Properties70",
+                "numProperties": 0,
+                "childrenCount": 17,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "TextureTypeUse"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "enum"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "AlphaSource"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "enum"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 2
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Texture alpha"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "double"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Number"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 1
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "PremultiplyAlpha"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 1
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "CurrentTextureBlendMode"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "enum"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 1
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "CurrentMappingType"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "enum"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "UVSet"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "KString"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "default"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "WrapModeU"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "enum"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "WrapModeV"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "enum"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "UVSwap"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Translation"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Rotation"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Scaling"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 1
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 1
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 1
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "TextureRotationPivot"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 7,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "TextureScalingPivot"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector3D"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Vector"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "UseMaterial"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "UseMipMap"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ObjectType",
+        "numProperties": 1,
+        "childrenCount": 2,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "Video"
+          }
+        ],
+        "children": [
+          {
+            "name": "Count",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 7
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "PropertyTemplate",
+            "numProperties": 1,
+            "childrenCount": 1,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "FbxVideo"
+              }
+            ],
+            "children": [
+              {
+                "name": "Properties70",
+                "numProperties": 0,
+                "childrenCount": 15,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Width"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "int"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Integer"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Height"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "int"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Integer"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Path"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "KString"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Url"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "AccessMode"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "enum"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "StartFrame"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "int"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Integer"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "StopFrame"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "int"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Integer"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Offset"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "KTime"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Time"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "L",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "PlaySpeed"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "double"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Number"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "FreeRunning"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "Loop"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "InterlaceMode"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "enum"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "ImageSequence"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "bool"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "ImageSequenceOffset"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "int"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Integer"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "FrameRate"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "double"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Number"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "D",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "P",
+                    "numProperties": 5,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LastFrame"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "int"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": "Integer"
+                      },
+                      {
+                        "typeCode": "S",
+                        "value": ""
+                      },
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Objects",
+    "numProperties": 0,
+    "childrenCount": 1165,
+    "properties": [],
+    "additionalChildren": 1160,
+    "children": [
+      {
+        "name": "NodeAttribute",
+        "numProperties": 3,
+        "childrenCount": 2,
+        "properties": [
+          {
+            "typeCode": "L",
+            "value": 817048933
+          },
+          {
+            "typeCode": "S",
+            "value": "Armature\u0000\u0001NodeAttribute"
+          },
+          {
+            "typeCode": "S",
+            "value": "Null"
+          }
+        ],
+        "children": [
+          {
+            "name": "TypeFlags",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "S",
+                "value": "Null"
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Properties70",
+            "numProperties": 0,
+            "childrenCount": 3,
+            "properties": [],
+            "children": [
+              {
+                "name": "P",
+                "numProperties": 7,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Color"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "ColorRGB"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Color"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 0.8
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 0.8
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 0.8
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Size"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "double"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Number"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 100
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Look"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "enum"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "I",
+                    "value": 1
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "NodeAttribute",
+        "numProperties": 3,
+        "childrenCount": 2,
+        "properties": [
+          {
+            "typeCode": "L",
+            "value": 643588327
+          },
+          {
+            "typeCode": "S",
+            "value": "Light\u0000\u0001NodeAttribute"
+          },
+          {
+            "typeCode": "S",
+            "value": "Light"
+          }
+        ],
+        "children": [
+          {
+            "name": "GeometryVersion",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 124
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Properties70",
+            "numProperties": 0,
+            "childrenCount": 10,
+            "properties": [],
+            "children": [
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "LightType"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "enum"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "I",
+                    "value": 0
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "CastLight"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "bool"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "I",
+                    "value": 1
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 7,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Color"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Color"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "A"
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 1
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 1
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 1
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Intensity"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Number"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "A"
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 100000
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "DecayType"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "enum"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "I",
+                    "value": 2
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "DecayStart"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "double"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Number"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 2500
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "CastShadows"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "bool"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "I",
+                    "value": 1
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 7,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "ShadowColor"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Color"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "A"
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 0
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 0
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 0
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "Exposure"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "Number"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "A"
+                  },
+                  {
+                    "typeCode": "D",
+                    "value": 0
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "P",
+                "numProperties": 5,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "AreaLightShape"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": "enum"
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  },
+                  {
+                    "typeCode": "I",
+                    "value": 0
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Geometry",
+        "numProperties": 3,
+        "childrenCount": 9,
+        "properties": [
+          {
+            "typeCode": "L",
+            "value": 695119205
+          },
+          {
+            "typeCode": "S",
+            "value": "Mesh.013\u0000\u0001Geometry"
+          },
+          {
+            "typeCode": "S",
+            "value": "Mesh"
+          }
+        ],
+        "children": [
+          {
+            "name": "Properties70",
+            "numProperties": 0,
+            "childrenCount": 0,
+            "properties": [],
+            "children": []
+          },
+          {
+            "name": "GeometryVersion",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 124
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Vertices",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "d",
+                "length": 23001,
+                "sample": [
+                  34.18370056152344,
+                  5.981400012969971,
+                  127.00251007080078,
+                  34.1660041809082,
+                  7.567299842834473
+                ]
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "PolygonVertexIndex",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "i",
+                "length": 30628,
+                "sample": [
+                  7623,
+                  1,
+                  0,
+                  -7626,
+                  7624
+                ]
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Edges",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "i",
+                "length": 15336,
+                "sample": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ]
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "LayerElementNormal",
+            "numProperties": 1,
+            "childrenCount": 6,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 101
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Name",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "MappingInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "ByPolygonVertex"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "ReferenceInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "IndexToDirect"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Normals",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "d",
+                    "length": 23001,
+                    "sample": [
+                      0.0019283043220639229,
+                      -0.7214192152023315,
+                      0.6924958825111389,
+                      0.004211127758026123,
+                      0.28243306279182434
+                    ]
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "NormalsIndex",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "i",
+                    "length": 30628,
+                    "sample": [
+                      4520,
+                      7352,
+                      1557,
+                      7262,
+                      5532
+                    ]
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "LayerElementUV",
+            "numProperties": 1,
+            "childrenCount": 6,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 101
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Name",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "UVChannel_1"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "MappingInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "ByPolygonVertex"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "ReferenceInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "IndexToDirect"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "UV",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "d",
+                    "length": 16638,
+                    "sample": [
+                      0.819599986076355,
+                      0.0020000000949949026,
+                      0.8866000175476074,
+                      0.0020000000949949026,
+                      0.9449999928474426
+                    ]
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "UVIndex",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "i",
+                    "length": 30628,
+                    "sample": [
+                      2185,
+                      2164,
+                      2177,
+                      2196,
+                      2180
+                    ]
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "LayerElementMaterial",
+            "numProperties": 1,
+            "childrenCount": 5,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 101
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Name",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "MappingInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "AllSame"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "ReferenceInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "IndexToDirect"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Materials",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "i",
+                    "length": 1,
+                    "sample": [
+                      0
+                    ]
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "Layer",
+            "numProperties": 1,
+            "childrenCount": 4,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 100
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "LayerElement",
+                "numProperties": 0,
+                "childrenCount": 2,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "Type",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LayerElementNormal"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "TypedIndex",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "name": "LayerElement",
+                "numProperties": 0,
+                "childrenCount": 2,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "Type",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LayerElementUV"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "TypedIndex",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "name": "LayerElement",
+                "numProperties": 0,
+                "childrenCount": 2,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "Type",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LayerElementMaterial"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "TypedIndex",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Geometry",
+        "numProperties": 3,
+        "childrenCount": 9,
+        "properties": [
+          {
+            "typeCode": "L",
+            "value": 451365817
+          },
+          {
+            "typeCode": "S",
+            "value": "Mesh.007\u0000\u0001Geometry"
+          },
+          {
+            "typeCode": "S",
+            "value": "Mesh"
+          }
+        ],
+        "children": [
+          {
+            "name": "Properties70",
+            "numProperties": 0,
+            "childrenCount": 0,
+            "properties": [],
+            "children": []
+          },
+          {
+            "name": "GeometryVersion",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 124
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Vertices",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "d",
+                "length": 27441,
+                "sample": [
+                  -7.573200225830078,
+                  16.60110092163086,
+                  95.7134017944336,
+                  -8.365300178527832,
+                  16.398300170898438
+                ]
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "PolygonVertexIndex",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "i",
+                "length": 36632,
+                "sample": [
+                  3,
+                  2,
+                  1,
+                  -1,
+                  6
+                ]
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Edges",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "i",
+                "length": 18316,
+                "sample": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  4
+                ]
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "LayerElementNormal",
+            "numProperties": 1,
+            "childrenCount": 6,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 101
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Name",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "MappingInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "ByPolygonVertex"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "ReferenceInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "IndexToDirect"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Normals",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "d",
+                    "length": 27441,
+                    "sample": [
+                      0.0026225242763757706,
+                      -0.21087341010570526,
+                      -0.9775098562240601,
+                      0.004289399832487106,
+                      0.05909058451652527
+                    ]
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "NormalsIndex",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "i",
+                    "length": 36632,
+                    "sample": [
+                      4197,
+                      4273,
+                      5398,
+                      3092,
+                      4301
+                    ]
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "LayerElementUV",
+            "numProperties": 1,
+            "childrenCount": 6,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 101
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Name",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "UVChannel_1"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "MappingInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "ByPolygonVertex"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "ReferenceInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "IndexToDirect"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "UV",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "d",
+                    "length": 21316,
+                    "sample": [
+                      0.0471000000834465,
+                      0.008299999870359898,
+                      0.031599998474121094,
+                      0.008700000122189522,
+                      0.04740000143647194
+                    ]
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "UVIndex",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "i",
+                    "length": 36632,
+                    "sample": [
+                      4108,
+                      4067,
+                      4068,
+                      4111,
+                      4069
+                    ]
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "LayerElementMaterial",
+            "numProperties": 1,
+            "childrenCount": 5,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 101
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Name",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "MappingInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "AllSame"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "ReferenceInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "IndexToDirect"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Materials",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "i",
+                    "length": 1,
+                    "sample": [
+                      0
+                    ]
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "Layer",
+            "numProperties": 1,
+            "childrenCount": 4,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 100
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "LayerElement",
+                "numProperties": 0,
+                "childrenCount": 2,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "Type",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LayerElementNormal"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "TypedIndex",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "name": "LayerElement",
+                "numProperties": 0,
+                "childrenCount": 2,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "Type",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LayerElementUV"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "TypedIndex",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "name": "LayerElement",
+                "numProperties": 0,
+                "childrenCount": 2,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "Type",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LayerElementMaterial"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "TypedIndex",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Geometry",
+        "numProperties": 3,
+        "childrenCount": 9,
+        "properties": [
+          {
+            "typeCode": "L",
+            "value": 491945557
+          },
+          {
+            "typeCode": "S",
+            "value": "Mesh.009\u0000\u0001Geometry"
+          },
+          {
+            "typeCode": "S",
+            "value": "Mesh"
+          }
+        ],
+        "children": [
+          {
+            "name": "Properties70",
+            "numProperties": 0,
+            "childrenCount": 0,
+            "properties": [],
+            "children": []
+          },
+          {
+            "name": "GeometryVersion",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 124
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Vertices",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "d",
+                "length": 4602,
+                "sample": [
+                  2.5122010707855225,
+                  -8.918329238891602,
+                  165.9697265625,
+                  2.3116729259490967,
+                  -8.9418363571167
+                ]
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "PolygonVertexIndex",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "i",
+                "length": 6020,
+                "sample": [
+                  3,
+                  2,
+                  1,
+                  -1,
+                  0
+                ]
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "Edges",
+            "numProperties": 1,
+            "childrenCount": 0,
+            "properties": [
+              {
+                "typeCode": "i",
+                "length": 3058,
+                "sample": [
+                  0,
+                  1,
+                  2,
+                  3,
+                  5
+                ]
+              }
+            ],
+            "children": []
+          },
+          {
+            "name": "LayerElementNormal",
+            "numProperties": 1,
+            "childrenCount": 6,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 101
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Name",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "MappingInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "ByPolygonVertex"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "ReferenceInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "IndexToDirect"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Normals",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "d",
+                    "length": 4602,
+                    "sample": [
+                      0,
+                      -0.6542484164237976,
+                      0.7562796473503113,
+                      0,
+                      -0.8744475245475769
+                    ]
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "NormalsIndex",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "i",
+                    "length": 6020,
+                    "sample": [
+                      28,
+                      228,
+                      624,
+                      1392,
+                      1392
+                    ]
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "LayerElementUV",
+            "numProperties": 1,
+            "childrenCount": 6,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 101
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Name",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "UVChannel_1"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "MappingInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "ByPolygonVertex"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "ReferenceInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "IndexToDirect"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "UV",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "d",
+                    "length": 3256,
+                    "sample": [
+                      0.4187999963760376,
+                      0.45910000801086426,
+                      0.4180999994277954,
+                      0.459199994802475,
+                      0.4129999876022339
+                    ]
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "UVIndex",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "i",
+                    "length": 6020,
+                    "sample": [
+                      747,
+                      722,
+                      711,
+                      727,
+                      727
+                    ]
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "LayerElementMaterial",
+            "numProperties": 1,
+            "childrenCount": 5,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 101
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Name",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": ""
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "MappingInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "AllSame"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "ReferenceInformationType",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "S",
+                    "value": "IndexToDirect"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "Materials",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "i",
+                    "length": 1,
+                    "sample": [
+                      0
+                    ]
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "name": "Layer",
+            "numProperties": 1,
+            "childrenCount": 4,
+            "properties": [
+              {
+                "typeCode": "I",
+                "value": 0
+              }
+            ],
+            "children": [
+              {
+                "name": "Version",
+                "numProperties": 1,
+                "childrenCount": 0,
+                "properties": [
+                  {
+                    "typeCode": "I",
+                    "value": 100
+                  }
+                ],
+                "children": []
+              },
+              {
+                "name": "LayerElement",
+                "numProperties": 0,
+                "childrenCount": 2,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "Type",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LayerElementNormal"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "TypedIndex",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "name": "LayerElement",
+                "numProperties": 0,
+                "childrenCount": 2,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "Type",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LayerElementUV"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "TypedIndex",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "name": "LayerElement",
+                "numProperties": 0,
+                "childrenCount": 2,
+                "properties": [],
+                "children": [
+                  {
+                    "name": "Type",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "S",
+                        "value": "LayerElementMaterial"
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "name": "TypedIndex",
+                    "numProperties": 1,
+                    "childrenCount": 0,
+                    "properties": [
+                      {
+                        "typeCode": "I",
+                        "value": 0
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Connections",
+    "numProperties": 0,
+    "childrenCount": 2098,
+    "properties": [],
+    "additionalChildren": 2093,
+    "children": [
+      {
+        "name": "C",
+        "numProperties": 3,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "OO"
+          },
+          {
+            "typeCode": "L",
+            "value": 869061755
+          },
+          {
+            "typeCode": "L",
+            "value": 0
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "C",
+        "numProperties": 3,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "OO"
+          },
+          {
+            "typeCode": "L",
+            "value": 615939660
+          },
+          {
+            "typeCode": "L",
+            "value": 0
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "C",
+        "numProperties": 3,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "OO"
+          },
+          {
+            "typeCode": "L",
+            "value": 764178820
+          },
+          {
+            "typeCode": "L",
+            "value": 0
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "C",
+        "numProperties": 3,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "OO"
+          },
+          {
+            "typeCode": "L",
+            "value": 24193340
+          },
+          {
+            "typeCode": "L",
+            "value": 0
+          }
+        ],
+        "children": []
+      },
+      {
+        "name": "C",
+        "numProperties": 3,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": "OO"
+          },
+          {
+            "typeCode": "L",
+            "value": 168343097
+          },
+          {
+            "typeCode": "L",
+            "value": 0
+          }
+        ],
+        "children": []
+      }
+    ]
+  },
+  {
+    "name": "Takes",
+    "numProperties": 0,
+    "childrenCount": 1,
+    "properties": [],
+    "children": [
+      {
+        "name": "Current",
+        "numProperties": 1,
+        "childrenCount": 0,
+        "properties": [
+          {
+            "typeCode": "S",
+            "value": ""
+          }
+        ],
+        "children": []
+      }
+    ]
+  }
+]
