@@ -1,6 +1,5 @@
 ﻿// Folder: SiegeEngine.Core
 // File: AssetParsing.V2/Model/Material.cs
-using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 

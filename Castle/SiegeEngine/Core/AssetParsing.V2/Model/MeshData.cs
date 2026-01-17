@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SiegeEngine.Core.AssetParsing.Model;
 
 namespace SiegeEngine.Core.AssetParsing.V2.Model
 {
