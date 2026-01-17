@@ -31,7 +31,6 @@ Folder: Model
       - void AssignToClosestBone(MeshData mainMesh)
         - Calls: Skeleton.ComputeGlobalTransforms
       - void ComputeBindPoses()
-        - Calls: Matrix4x4.Transpose, Skeleton.ComputeGlobalTransforms
 - File: FBXVertex.cs
   - Class: FBXVertex (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Fields:
@@ -64,6 +63,7 @@ Folder: Model
       - constructor Matrix3x3()
       - Matrix3x3 Inverse()
         - Calls: Matrix3x3
+      - constructor Matrix3x3()
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics
@@ -79,6 +79,11 @@ Folder: Model
         - Calls: ComputeGlobalRecursive
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globalTransforms,  Matrix4x4[] localTransforms, int idx)
       - Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
+      - void ComputeBindPoses()
+        - Calls: ComputeGlobalTransforms
+      - Matrix4x4[] ComputeLocalsFromGlobals(Matrix4x4[] globals)
+        - Calls: ComputeLocalsRecursive
+      - void ComputeLocalsRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] locals, int idx)
 - File: TextureInfo.cs
   - Class: TextureInfo (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -123,7 +128,7 @@ Folder: Root
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, MetaDataExporter.ExportMetadata, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: FBXModel, FBXParserBase.CreateDefaultCubeModel, FBXSkeletonParser.ApplyRootRotation, GatherConnections, GatherObjectsById
+        - Calls: FBXModel, FBXParserBase.CreateDefaultCubeModel, GatherConnections, GatherObjectsById, ParsePoses
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
 - File: FBXParserBase.cs
@@ -155,8 +160,9 @@ Folder: Root
 - File: FBXSkeletonParser.cs
   - Class: FBXSkeletonParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
-    - Methods:
-      - void ApplyRootRotation( List<int> rootIndices,  Matrix4x4 rootRot, FBXModel model)
+- File: IOSettings.cs
+  - Class: IOSettings (Namespace: SiegeEngine.Core.AssetParsing)
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
 - File: MetaDataExporter.cs
   - Class: MetaDataExporter (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.Linq, System.Text, System.Text.Json, System.Text.Json.Serialization, System.Threading.Tasks
@@ -195,6 +201,7 @@ SiegeEngine.Core.AssetParsing.FBXParser
 SiegeEngine.Core.AssetParsing.FBXParserBase
 SiegeEngine.Core.AssetParsing.FBXParserUtils
 SiegeEngine.Core.AssetParsing.FBXSkeletonParser
+SiegeEngine.Core.AssetParsing.IOSettings
 SiegeEngine.Core.AssetParsing.MetaDataExporter
 SiegeEngine.Core.AssetParsing.Model.Bone
 SiegeEngine.Core.AssetParsing.Model.FBXModel
