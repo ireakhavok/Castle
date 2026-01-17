@@ -2,7 +2,6 @@
 // File: AssetParsing.V2/FBXSettings.cs
 using System;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public class FBXSettings
@@ -25,7 +24,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
         /// </summary>
         public int[] AxisSigns { get; set; } = new int[3] { 1, 1, 1 };
         public bool ImportMesh { get; set; } = true;
-        public bool ImportArmature { get; set; } = true;
+        public bool ImportArmature { get; set; } = false;
         public bool ImportAnimations { get; set; } = true;
         // Additional dynamic settings for coordinate frames, etc., can be added
     }

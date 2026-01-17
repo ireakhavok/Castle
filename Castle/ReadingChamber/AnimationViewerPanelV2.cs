@@ -41,7 +41,7 @@ namespace ReadingChamber
             }
         }
         private FBXModel _model;
-        private ModelManager.ModelData _modelData;
+        private ModelManagerV2.ModelData _modelData;
         private float _duration = 0f;
         private string _currentAnimation;
         private ShaderProgram _assetShader;
@@ -65,6 +65,7 @@ namespace ReadingChamber
         private float _cameraDistance;
         private float _maxExtent;
         private int _currentFrameIndex = 0;
+        private ModelManagerV2 _modelManagerV2;
         // Constructor, initializes shader, sets scaling mode.
         public AnimationViewerPanelV2(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
@@ -72,6 +73,7 @@ namespace ReadingChamber
             Scaling = ScalingMode.BestFit;
             BaseWidth = 1280f;
             BaseHeight = 720f;
+            _modelManagerV2 = new ModelManagerV2(_renderContext);
         }
         // Creates custom UI overlay.
         protected override UIOverlay CreateUIOverlay()
@@ -145,7 +147,12 @@ namespace ReadingChamber
         // Sets up model data for rendering, chooses shader based on skinning.
         private void UpdateModelData()
         {
-            // stubbed for future use
+            _modelManagerV2.LoadModel(_meshPath);
+            _modelManagerV2.TryGetModelData(Path.GetFileNameWithoutExtension(_meshPath).ToLower(), out _modelData);
+            if (_model.HasSkin)
+            {
+                _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
+            }
         }
         // Centers camera on model bounds, sets distance based on extent.
         private void CenterCamera()
@@ -352,20 +359,59 @@ namespace ReadingChamber
             }
             _renderContext.ClearColor(0.118f, 0.118f, 0.118f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            if (_model != null && _model.Meshes.Count > 0 && _maxExtent > 0)
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.CullFace);
+            _renderContext.CullFace(_renderContext.Enums.Back);
+            // Set matrices
+            Matrix4x4 modelMatrix = Matrix4x4.Identity;
+            Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
+            float currentDist = Vector3.Distance(_cameraPosition, _cameraTarget);
+            float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
+            float far = currentDist + _maxExtent * 2f;
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, near, far);
+            _assetShader.Use();
+            _assetShader.SetMatrix4("uModel", modelMatrix);
+            _assetShader.SetMatrix4("uView", view);
+            _assetShader.SetMatrix4("uProjection", projection);
+            _assetShader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
+            _assetShader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
+            _assetShader.SetUniform("uLightIntensity", 1.0f);
+            _assetShader.SetUniform("uViewPos", _cameraPosition.X, _cameraPosition.Y, _cameraPosition.Z);
+            _assetShader.SetUniform("uAmbientStrength", 0.3f);
+            _assetShader.SetUniform("uSpecularStrength", 0.05f);
+            _assetShader.SetUniform("uShininess", 4.0f);
+            _assetShader.SetUniform("uHasBones", 0);
+            foreach (var mmr in _modelData.MeshRenders)
             {
-                _renderContext.Enable(_renderContext.Enums.DepthTest);
-                _renderContext.Enable(_renderContext.Enums.CullFace);
-                _renderContext.CullFace(_renderContext.Enums.Back);
-                // Set matrices
-                Matrix4x4 modelMatrix = Matrix4x4.Identity;
-                Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
-                float currentDist = Vector3.Distance(_cameraPosition, _cameraTarget);
-                float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
-                float far = Math.Max(near + 0.01f, currentDist + _maxExtent * 2f);
-                Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, near, far);
-                //stubbed and removed code for fill in later
+                // Bind textures
+                for (int t = 0; t < Math.Min(mmr.AlbedoTextures.Length, 4); t++)
+                {
+                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + t);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[t]);
+                    _assetShader.SetUniform($"uAlbedoMap[{t}]", t);
+                }
+                for (int t = 0; t < Math.Min(mmr.NormalTextures.Length, 4); t++)
+                {
+                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + t);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[t]);
+                    _assetShader.SetUniform($"uNormalMap[{t}]", 4 + t);
+                }
+                for (int t = 0; t < Math.Min(mmr.MetallicTextures.Length, 4); t++)
+                {
+                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + t);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[t]);
+                    _assetShader.SetUniform($"uMetallicMap[{t}]", 8 + t);
+                }
+                _renderContext.BindVertexArray(mmr.Vao);
+                _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
             }
+            // Render skeleton
+            _pointShader.Use();
+            _pointShader.SetMatrix4("uView", view);
+            _pointShader.SetMatrix4("uProjection", projection);
+            _pointShader.SetUniform("uPointSize", 5f);
+            _skeletonBuffer.Bind();
+            _renderContext.DrawElements(_renderContext.Enums.Lines, _skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
