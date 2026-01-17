@@ -140,7 +140,7 @@ namespace ReadingChamber
         // Updates transforms and normals from a specific animation frame, updates skeleton visualization.
         private void UpdateTransformsFromFrame(int frame)
         {
-           //STUBBED FOR FUTURE USE
+            //STUBBED FOR FUTURE USE
         }
         // Sets up model data for rendering, chooses shader based on skinning.
         private void UpdateModelData()
@@ -157,8 +157,8 @@ namespace ReadingChamber
             {
                 foreach (var v in mesh.Vertices)
                 {
-                    minBounds = Vector3.Min(minBounds, new Vector3(v.X, v.Y, v.Z));
-                    maxBounds = Vector3.Max(maxBounds, new Vector3(v.X, v.Y, v.Z));
+                    minBounds = Vector3.Min(minBounds, v.Position);
+                    maxBounds = Vector3.Max(maxBounds, v.Position);
                 }
             }
             Vector3 center = (minBounds + maxBounds) / 2;
@@ -336,7 +336,7 @@ namespace ReadingChamber
             {
                 //stubbed for future use
             }
-             //UpdateSkeletonVisualization();
+            //UpdateSkeletonVisualization();
         }
         // Renders model with lighting, textures, skeleton lines, UI, text info.
         public override void Render()
@@ -352,14 +352,61 @@ namespace ReadingChamber
             }
             _renderContext.ClearColor(0.118f, 0.118f, 0.118f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            //stubbed and removed code for fill in later
+            if (_model != null && _model.Meshes.Count > 0 && _maxExtent > 0)
+            {
+                _renderContext.Enable(_renderContext.Enums.DepthTest);
+                _renderContext.Enable(_renderContext.Enums.CullFace);
+                _renderContext.CullFace(_renderContext.Enums.Back);
+                // Set matrices
+                Matrix4x4 modelMatrix = Matrix4x4.Identity;
+                Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
+                float currentDist = Vector3.Distance(_cameraPosition, _cameraTarget);
+                float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
+                float far = currentDist + _maxExtent * 2f;
+                Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, near, far);
+                //stubbed and removed code for fill in later
+            }
+            _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
+            _renderContext.Disable(_renderContext.Enums.CullFace);
+            _renderContext.Enable(_renderContext.Enums.Blend);
+            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+            // Render title bar
+            _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
+            // Render UI overlay
+            _uiOverlay.Render();
+            // Render frame info
+            string frameInfo = "Frame: " + _currentFrameIndex;
+            if (_model != null && _model.Animations.Count > 0)
+            {
+                var animation = _model.Animations.Find(a => a.Name == _currentAnimation);
+                if (animation != null)
+                {
+                    frameInfo += " / " + (animation.Keyframes.Count - 1);
+                }
+            }
+            _textRenderer.RenderText(frameInfo, 10, TitleHeight + 10, (int)Size.X, (int)Size.Y, 12f);
+            // Render bone info text
+            float currentY = TitleHeight + 25;
+
+            // Render 2px border
+            float bw = 2f;
+            Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
+            // Bottom
+            _quadRenderer.DrawQuad(0, Size.Y - bw, Size.X, bw, bc, Size.X, Size.Y);
+            // Left
+            _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
+            // Right
+            _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
+            _renderContext.Disable(_renderContext.Enums.Blend);
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.CullFace);
         }
         // Builds line buffer for visualizing skeleton bones.
         private void UpdateSkeletonVisualization()
         {
             //stubbed for future use
         }
- 
         private void SetRestPose()
         {
             //stubbed for future use
