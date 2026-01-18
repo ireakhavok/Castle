@@ -223,9 +223,21 @@ Folder: AssetParsing.V2
 - File: FBXCoordinateUtils.cs
   - Class: FBXCoordinateUtils (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: System, System.Numerics
+    - Methods:
+      - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
 - File: FBXMeshParser.cs
   - Class: FBXMeshParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - MeshData ParseMesh( BaseNode modelNode,  float modelScale,  int[] signs,  int[] sourceToTarget, BaseNode meshNode)
+        - Calls: FBXParserBase.Log, ParsePolygonVertexIndices, ParseVertices
+      - double[] ParseVertices(BaseNode geom)
+      - int[] ParsePolygonVertexIndices(BaseNode geom)
+      - int GetMatId( int polyIndex,  int[] matIndices, string matMapping)
+        - Calls: FBXParserBase.Log
+      - Vector3 GetNormal( int pvIdx,  int vertIdx,  int[] normIdx,  int[] signs,  int[] sourceToTarget,  string mapping,  string refe, double[] norms)
+        - Calls: FBXCoordinateUtils.RemapVector
+      - Vector2 GetUV( int pvIdx,  int vertIdx,  int[] uvIdx,  string mapping,  string refe, double[] uvs)
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -236,10 +248,12 @@ Folder: AssetParsing.V2
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: FBXModel
+        - Calls: FBXModel, FBXParserBase.Log, GatherConnections, GatherObjectsById
+      - BaseNode> GatherObjectsById(BaseNode objectsNode)
+      - > GatherConnections(FBXFileForest forest)
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - void Log(string message)
       - FBXModel CreateDefaultCubeModel()
@@ -255,21 +269,27 @@ Folder: AssetParsing.V2
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
 - File: FBXVertex.cs
   - Class: FBXVertex (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
-    - Dependencies: System
+    - Dependencies: System, System.Numerics
     - Fields:
+      - Vector3 Position
+      - Vector3 Normal
+      - Vector2 TexCoord
+      - Vector3 Tangent
+      - Vector4 BoneIDs
+      - Vector4 Weights
       - float MatIdx
 - File: Keyframe.cs
   - Class: Keyframe (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
 - File: Material.cs
   - Class: Material (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
+    - Dependencies: System, System.Collections.Generic
 - File: Matrix3x3.cs
   - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Numerics
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Numerics
+    - Dependencies: System, System.Collections.Generic, System.Numerics
 - File: NodeParser.cs
   - Class: NodeParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Text
@@ -390,6 +410,7 @@ Folder: ContextManagement
       - uint GenBuffer()
         - Calls: _gl.GenBuffers
       - void Viewport( int y,  uint height,  uint width, int x)
+      - void FrontFace(int mode)
 - File: VulkanNative.cs
   - Class: VkDeviceCreateInfo (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: System, System.Runtime.InteropServices
@@ -813,6 +834,9 @@ Folder: Managers
 - File: ModelManager.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+- File: ModelManagerV2.cs
+  - Class: ModelMeshRender (Namespace: SiegeEngine.Core.Managers)
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
 - File: PanelManager.cs
   - Class: PanelManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Numerics
@@ -823,11 +847,12 @@ Folder: Managers
       - nint _window
       - EventBus _eventBus
       - bool _prevMouseDown
+      - List<IPanel> _panels
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: DockManager
       - void OnOpenPanel(OpenPanelEvent e)
-        - Calls: AddPanel
+        - Calls: AddPanel, RemovePanel, _panels.Clear
       - void OnClosePanel(ClosePanelEvent e)
         - Calls: RemovePanel
       - void AddPanel(IPanel panel)

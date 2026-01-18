@@ -936,6 +936,7 @@ Folder: Core
       - uint GenBuffer()
         - Calls: _gl.GenBuffers
       - void Viewport( int y,  uint height,  uint width, int x)
+      - void FrontFace(int mode)
 - File: OpenPanelEvent.cs
   - Class: OpenPanelEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -966,11 +967,12 @@ Folder: Core
       - nint _window
       - EventBus _eventBus
       - bool _prevMouseDown
+      - List<IPanel> _panels
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: DockManager
       - void OnOpenPanel(OpenPanelEvent e)
-        - Calls: AddPanel
+        - Calls: AddPanel, RemovePanel, _panels.Clear
       - void OnClosePanel(ClosePanelEvent e)
         - Calls: RemovePanel
       - void AddPanel(IPanel panel)
