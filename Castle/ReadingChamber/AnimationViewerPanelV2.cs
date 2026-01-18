@@ -16,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
     // Panel for viewing and testing animations on loaded models, with UI controls for loading mesh/armature/animation.
@@ -360,7 +361,8 @@ namespace ReadingChamber
             _renderContext.ClearColor(0.118f, 0.118f, 0.118f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
-            _renderContext.Disable(_renderContext.Enums.CullFace);
+            _renderContext.Enable(_renderContext.Enums.CullFace);
+            _renderContext.CullFace(_renderContext.Enums.Back);
             // Set matrices
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);

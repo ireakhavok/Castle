@@ -35,7 +35,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             FBXParserBase.Log($"FBXMeshParser: Parsed {model.Meshes.Count} meshes");
         }
-
         private static MeshData ParseMesh(BaseNode meshNode, BaseNode modelNode, int[] sourceToTarget, int[] signs, float modelScale)
         {
             var meshData = new MeshData();
@@ -58,7 +57,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             meshData.Indices = newIndices;
             return meshData;
         }
-
         private static double[] ParseVertices(BaseNode geom)
         {
             var vertsNode = geom.children.FirstOrDefault(c => c.Name == "Vertices");
@@ -79,7 +77,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return vertsD;
         }
-
         private static int[] ParsePolygonVertexIndices(BaseNode geom)
         {
             var indicesNode = geom.children.FirstOrDefault(c => c.Name == "PolygonVertexIndex");
@@ -90,7 +87,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return pviArray;
         }
-
         private static (double[] norms, int[] normIdx, string normMapping, string normRef) ParseNormals(BaseNode geom)
         {
             var normNode = geom.children.FirstOrDefault(c => c.Name == "LayerElementNormal");
@@ -123,7 +119,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return (norms, normIdx, normMapping, normRef);
         }
-
         private static (double[] uvs, int[] uvIdx, string uvMapping, string uvRef) ParseUVs(BaseNode geom)
         {
             var uvNode = geom.children.FirstOrDefault(c => c.Name == "LayerElementUV");
@@ -156,7 +151,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return (uvs, uvIdx, uvMapping, uvRef);
         }
-
         private static (int[] matIndices, string matMapping) ParseMaterials(BaseNode geom)
         {
             var matNode = geom.children.FirstOrDefault(c => c.Name == "LayerElementMaterial");
@@ -173,18 +167,15 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return (matIndices, matMapping);
         }
-
         private static Matrix4x4 ParseGeometricTransform(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale)
         {
             // Stub, return identity
             return Matrix4x4.Identity;
         }
-
         private static void ParseSkin(MeshData meshData, List<BaseNode> deformers, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4)
         {
             // Stub for skin parsing
         }
-
         private static void ParseMaterials(MeshData meshData, long modelId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, FBXFileForest forest)
         {
             var matConns = conns.Where(c => c.type == "OO" && c.parent == modelId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Material").ToList();
@@ -251,9 +242,16 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             FBXParserBase.Log($"FBXMeshParser: Parsed {meshData.Materials.Count} materials for model {modelId}");
         }
-
         private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, int numVerts)
         {
+            int productSigns = signs[0] * signs[1] * signs[2];
+            int signPerm = 1;
+            for (int i = 0; i < 3; i++)
+                for (int j = i + 1; j < 3; j++)
+                    if (sourceToTarget[i] > sourceToTarget[j]) signPerm = -signPerm;
+            int overallSign = productSigns * signPerm;
+            bool flipWinding = overallSign < 0;
+            bool flipNormal = overallSign < 0;
             List<FBXVertex> expandedVertices = new List<FBXVertex>();
             List<uint> newIndices = new List<uint>();
             int currentIndex = 0;
@@ -280,9 +278,18 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     // Triangulate polygon
                     for (int j = 1; j < tempPoly.Count - 1; j++)
                     {
-                        newIndices.Add((uint)currentIndex);
-                        newIndices.Add((uint)(currentIndex + j));
-                        newIndices.Add((uint)(currentIndex + j + 1));
+                        if (flipWinding)
+                        {
+                            newIndices.Add((uint)currentIndex);
+                            newIndices.Add((uint)(currentIndex + j + 1));
+                            newIndices.Add((uint)(currentIndex + j));
+                        }
+                        else
+                        {
+                            newIndices.Add((uint)currentIndex);
+                            newIndices.Add((uint)(currentIndex + j));
+                            newIndices.Add((uint)(currentIndex + j + 1));
+                        }
                     }
                     // Add vertices for the polygon
                     for (int k = 0; k < tempPoly.Count; k++)
@@ -294,6 +301,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         Vector3 pos = FBXCoordinateUtils.RemapVector(new Vector3(x, y, z), sourceToTarget, signs) * modelScale;
                         int pvIdx = tempPolyPvIdx[k];
                         Vector3 normal = GetNormal(norms, normIdx, normMapping, normRef, vertIdx, pvIdx, sourceToTarget, signs);
+                        if (flipNormal) normal = -normal;
                         Vector2 uv = GetUV(uvs, uvIdx, uvMapping, uvRef, vertIdx, pvIdx);
                         // Stub for other attributes
                         expandedVertices.Add(new FBXVertex { Position = pos, Normal = normal, TexCoord = new Vector2(uv.X, 1f - uv.Y), MatIdx = matId });
@@ -306,7 +314,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return (expandedVertices, newIndices);
         }
-
         private static int GetMatId(string matMapping, int[] matIndices, int polyIndex)
         {
             if (matIndices == null) return 0;
@@ -315,7 +322,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             FBXParserBase.Log($"Unknown matMapping {matMapping}");
             return 0;
         }
-
         private static Vector3 GetNormal(double[] norms, int[] normIdx, string mapping, string refe, int vertIdx, int pvIdx, int[] sourceToTarget, int[] signs)
         {
             if (norms == null) return Vector3.Zero;
@@ -344,7 +350,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 normal = Vector3.Normalize(normal);
             return normal;
         }
-
         private static Vector2 GetUV(double[] uvs, int[] uvIdx, string mapping, string refe, int vertIdx, int pvIdx)
         {
             if (uvs == null) return Vector2.Zero;

@@ -61,7 +61,7 @@ namespace SiegeEngine.Core.Managers
         }
         private unsafe ModelData SetupModelData(FBXModel model, string fbxDir, FBXFileForest forest)
         {
-            SmoothNormals(model);
+            // SmoothNormals(model);
             var modelData = new ModelData();
             int meshIndex = 0;
             foreach (var mesh in model.Meshes.Where(m => m.Indices.Count > 0))
