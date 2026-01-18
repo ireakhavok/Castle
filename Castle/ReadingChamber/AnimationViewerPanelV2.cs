@@ -16,7 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanelV2 : BasePanel
@@ -50,6 +49,7 @@ namespace ReadingChamber
         private EditorTextRenderer _textRenderer;
         private ShaderProgram _textShader;
         private Matrix4x4[] _currentGlobalTransforms;
+        private Matrix4x4[] _boneMatrices;
         private Matrix3x3[] _currentNormalTransforms;
         private Vector3 _cameraPosition = new Vector3(0, 500, 0);
         private Vector3 _cameraTarget = Vector3.Zero;
@@ -108,6 +108,7 @@ namespace ReadingChamber
             UpdateModelData();
             if (_model.HasSkin)
             {
+                SetRestPose();
             }
             CenterCamera();
         }
@@ -125,6 +126,12 @@ namespace ReadingChamber
             var tempSkeleton = parsedModel.Skeleton;
             // Unremap and remap bone components to match mesh's axis system
             //stubbed for future implementation
+            _model.Skeleton = tempSkeleton;
+            if (_model.HasSkin)
+            {
+                SetRestPose();
+            }
+            UpdateModelData();
         }
         // Loads animation FBX, remaps to match mesh, aligns hierarchies by name matching, adjusts transforms.
         private void LoadAnimation(string animPath)
@@ -466,7 +473,31 @@ namespace ReadingChamber
         }
         private void SetRestPose()
         {
-            //stubbed for future use
+            if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0) return;
+            Matrix4x4[] locals = _model.Skeleton.Bones.Select(b => b.LocalRest).ToArray();
+            _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
+            _boneMatrices = new Matrix4x4[_currentGlobalTransforms.Length];
+            for (int i = 0; i < _currentGlobalTransforms.Length; i++)
+            {
+                _boneMatrices[i] = _currentGlobalTransforms[i] * _model.Skeleton.Bones[i].BindPose;
+            }
+            _currentNormalTransforms = new Matrix3x3[_boneMatrices.Length];
+            for (int i = 0; i < _boneMatrices.Length; i++)
+            {
+                if (Matrix4x4.Invert(_boneMatrices[i], out Matrix4x4 inv))
+                {
+                    Matrix4x4 transInv = Matrix4x4.Transpose(inv);
+                    _currentNormalTransforms[i] = new Matrix3x3(
+                        transInv.M11, transInv.M12, transInv.M13,
+                        transInv.M21, transInv.M22, transInv.M23,
+                        transInv.M31, transInv.M32, transInv.M33);
+                }
+                else
+                {
+                    _currentNormalTransforms[i] = Matrix3x3.Identity;
+                }
+            }
+            UpdateSkeletonVisualization();
         }
         private void PrintMatrix(Matrix4x4 m)
         {

@@ -34,6 +34,10 @@ Folder: Model
 - File: Skeleton.cs
   - Class: Skeleton (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - Matrix4x4[] ComputeGlobalTransforms()
+        - Calls: ComputeGlobalRecursive
+      - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)
 - File: TextureInfo.cs
   - Class: TextureInfo (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System
@@ -42,11 +46,19 @@ Folder: Root
 - File: FBXAnimationParser.cs
   - Class: FBXAnimationParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - long TicksPerSecond
+    - Methods:
+      - Vector3 GetInterpolatedVector( bool isTranslation,  float modelScale,  int[] signs,  int[] sourceToTarget,  long tick, BaseNode curveNode)
+        - Calls: FBXCoordinateUtils.RemapVector, GetInterpolatedValue
+      - float GetInterpolatedValue( long tick,  string chan, BaseNode curveNode)
+      - void ComputeGlobalRecursive( List<Bone> bones,  Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] locals, Bone bone)
 - File: FBXCoordinateUtils.cs
   - Class: FBXCoordinateUtils (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: System, System.Numerics
     - Methods:
       - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
+      - Matrix4x4 RemapMatrix( int[] signs,  int[] sourceToTarget, Matrix4x4 m)
 - File: FBXMeshParser.cs
   - Class: FBXMeshParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -60,6 +72,9 @@ Folder: Root
       - Vector3 GetNormal( int pvIdx,  int vertIdx,  int[] normIdx,  int[] signs,  int[] sourceToTarget,  string mapping,  string refe, double[] norms)
         - Calls: FBXCoordinateUtils.RemapVector
       - Vector2 GetUV( int pvIdx,  int vertIdx,  int[] uvIdx,  string mapping,  string refe, double[] uvs)
+      - Matrix4x4 CreateMatrixFromArray(double[] vals)
+      - void PrintMatrix(Matrix4x4 m)
+        - Calls: FBXParserBase.Log
 - File: FBXParser.cs
   - Class: FBXParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
@@ -67,9 +82,11 @@ Folder: Root
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: FBXParserBase.Log, GatherConnections, GatherObjectsById
+        - Calls: FBXParserBase.Log, GatherConnections, GatherObjectsById, ParseBindPoses, model.Skeleton.ComputeGlobalTransforms
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
+      - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
+        - Calls: FBXCoordinateUtils.RemapMatrix, FBXMeshParser.CreateMatrixFromArray
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
