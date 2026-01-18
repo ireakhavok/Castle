@@ -11,6 +11,7 @@ using SiegeEngine.Core.AssetParsing.V2.Model;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2;
+
 namespace SiegeEngine.Core.Managers
 {
     public class ModelManagerV2
@@ -69,13 +70,13 @@ namespace SiegeEngine.Core.Managers
                 List<uint> metallics = new List<uint>();
                 foreach (var mat in mesh.Materials)
                 {
-                    var albedoInfo = mat.Textures.GetValueOrDefault("albedo");
+                    var albedoInfo = mat.Textures.GetValueOrDefault("DiffuseColor");
                     uint albedo = 0;
                     if (albedoInfo != null)
                     {
                         int glWrapU = albedoInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
                         int glWrapV = albedoInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
-                        if (albedoInfo.Path?.StartsWith("embedded_") == true)
+                        if (albedoInfo.Path?.StartsWith("embedded:") == true)
                         {
                             string embName = albedoInfo.Path.Substring(9);
                             var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
@@ -92,12 +93,12 @@ namespace SiegeEngine.Core.Managers
                     albedos.Add(albedo);
                     // Similar for normal and metallic
                     uint normalTex = 0;
-                    var normalInfo = mat.Textures.GetValueOrDefault("normal");
+                    var normalInfo = mat.Textures.GetValueOrDefault("Bump");
                     if (normalInfo != null)
                     {
                         int glNormalWrapU = normalInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
                         int glNormalWrapV = normalInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
-                        if (normalInfo.Path?.StartsWith("embedded_") == true)
+                        if (normalInfo.Path?.StartsWith("embedded:") == true)
                         {
                             string embName = normalInfo.Path.Substring(9);
                             var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
@@ -113,12 +114,12 @@ namespace SiegeEngine.Core.Managers
                     }
                     normals.Add(normalTex);
                     uint metallic = 0;
-                    var metallicInfo = mat.Textures.GetValueOrDefault("metallic");
+                    var metallicInfo = mat.Textures.GetValueOrDefault("SpecularColor");
                     if (metallicInfo != null)
                     {
                         int glMetallicWrapU = metallicInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
                         int glMetallicWrapV = metallicInfo.WrapV == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
-                        if (metallicInfo.Path?.StartsWith("embedded_") == true)
+                        if (metallicInfo.Path?.StartsWith("embedded:") == true)
                         {
                             string embName = metallicInfo.Path.Substring(9);
                             var data = forest.EmbeddedTextures.FirstOrDefault(t => t.Name == embName).Data;
@@ -210,13 +211,18 @@ namespace SiegeEngine.Core.Managers
         }
         private (uint, byte) LoadEmbeddedTexture(byte[] textureData, string textureName, int wrapS, int wrapT)
         {
-            // Stub, return 0
-            return (0, 0);
+            return TextureLoader.LoadEmbeddedTexture(_renderContext, textureData, textureName, 1, wrapS, wrapT);
         }
         private (uint, byte) LoadExternalTexture(string texturePath, string fbxDir, int wrapS, int wrapT)
         {
-            // Stub, return 0
-            return (0, 0);
+            if (string.IsNullOrEmpty(texturePath)) return (0, 0);
+            string fullPath = Path.Combine(fbxDir, texturePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(fullPath))
+            {
+                Console.WriteLine($"ModelManagerV2: Texture file not found at {fullPath}");
+                return (0, 0);
+            }
+            return TextureLoader.LoadTexture(_renderContext, fullPath, 1, wrapS, wrapT);
         }
         public bool TryGetModel(string key, out FBXModel model)
         {

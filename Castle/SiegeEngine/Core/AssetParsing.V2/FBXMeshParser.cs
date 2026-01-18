@@ -6,6 +6,7 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXMeshParser
@@ -34,6 +35,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             FBXParserBase.Log($"FBXMeshParser: Parsed {model.Meshes.Count} meshes");
         }
+
         private static MeshData ParseMesh(BaseNode meshNode, BaseNode modelNode, int[] sourceToTarget, int[] signs, float modelScale)
         {
             var meshData = new MeshData();
@@ -56,6 +58,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             meshData.Indices = newIndices;
             return meshData;
         }
+
         private static double[] ParseVertices(BaseNode geom)
         {
             var vertsNode = geom.children.FirstOrDefault(c => c.Name == "Vertices");
@@ -76,6 +79,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return vertsD;
         }
+
         private static int[] ParsePolygonVertexIndices(BaseNode geom)
         {
             var indicesNode = geom.children.FirstOrDefault(c => c.Name == "PolygonVertexIndex");
@@ -86,39 +90,120 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return pviArray;
         }
+
         private static (double[] norms, int[] normIdx, string normMapping, string normRef) ParseNormals(BaseNode geom)
         {
             // Stub, return defaults
             return (null, null, "", "");
         }
+
         private static (double[] uvs, int[] uvIdx, string uvMapping, string uvRef) ParseUVs(BaseNode geom)
         {
             // Stub, return defaults
             return (null, null, "", "");
         }
+
         private static (int[] matIndices, string matMapping) ParseMaterials(BaseNode geom)
         {
-            // Stub, return defaults
-            return (null, "");
+            var matNode = geom.children.FirstOrDefault(c => c.Name == "LayerElementMaterial");
+            if (matNode == null) return (null, "");
+            var mappingNode = matNode.children.FirstOrDefault(c => c.Name == "MappingInformationType");
+            string matMapping = mappingNode?.properties.Count > 0 ? mappingNode.properties[0].Value.ToString() : "";
+            var refNode = matNode.children.FirstOrDefault(c => c.Name == "ReferenceInformationType");
+            string matRef = refNode?.properties.Count > 0 ? refNode.properties[0].Value.ToString() : "";
+            var matsNode = matNode.children.FirstOrDefault(c => c.Name == "Materials");
+            int[] matIndices = null;
+            if (matsNode != null && matsNode.properties.Count > 0 && matsNode.properties[0].TypeCode == 'i')
+            {
+                matIndices = (int[])matsNode.properties[0].Value;
+            }
+            return (matIndices, matMapping);
         }
+
         private static Matrix4x4 ParseGeometricTransform(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale)
         {
             // Stub, return identity
             return Matrix4x4.Identity;
         }
+
         private static void ParseSkin(MeshData meshData, List<BaseNode> deformers, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4)
         {
             // Stub for skin parsing
         }
+
         private static void ParseMaterials(MeshData meshData, long modelId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, FBXFileForest forest)
         {
-            // Stub for material parsing
+            var matConns = conns.Where(c => c.type == "OO" && c.parent == modelId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Material").ToList();
+            matConns.Sort((a, b) => a.child.CompareTo(b.child));
+            foreach (var conn in matConns)
+            {
+                long matId = conn.child;
+                var matNode = objectsById[matId];
+                string name = matNode.properties.Count > 2 ? matNode.properties[2].Value.ToString() : "Material";
+                var material = new Material { Name = name };
+                var texConns = conns.Where(c => c.type.StartsWith("OP") && c.parent == matId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Texture").ToList();
+                foreach (var tconn in texConns)
+                {
+                    string prop = tconn.prop ?? "DiffuseColor";
+                    long texId = tconn.child;
+                    var texNode = objectsById[texId];
+                    string path = "";
+                    var relFileNode = texNode.children.FirstOrDefault(n => n.Name == "RelativeFilename");
+                    if (relFileNode != null && relFileNode.properties.Count > 0)
+                    {
+                        path = relFileNode.properties[0].Value.ToString();
+                    }
+                    else
+                    {
+                        var fileNode = texNode.children.FirstOrDefault(n => n.Name == "FileName");
+                        if (fileNode != null && fileNode.properties.Count > 0)
+                        {
+                            path = fileNode.properties[0].Value.ToString();
+                        }
+                    }
+                    path = path.Replace("\\", "/");
+                    var texInfo = new TextureInfo { Path = path };
+                    var props70 = texNode.children.FirstOrDefault(n => n.Name == "Properties70");
+                    if (props70 != null)
+                    {
+                        var wrapUP = props70.children.FirstOrDefault(p => p.Name == "P" && (p.properties[0].Value.ToString().Contains("WrapU") || p.properties[0].Value.ToString().Contains("UWarp")));
+                        if (wrapUP != null && wrapUP.properties.Count > 4)
+                        {
+                            texInfo.WrapU = Convert.ToInt32(wrapUP.properties[4].Value);
+                        }
+                        var wrapVP = props70.children.FirstOrDefault(p => p.Name == "P" && (p.properties[0].Value.ToString().Contains("WrapV") || p.properties[0].Value.ToString().Contains("VWarp")));
+                        if (wrapVP != null && wrapVP.properties.Count > 4)
+                        {
+                            texInfo.WrapV = Convert.ToInt32(wrapVP.properties[4].Value);
+                        }
+                    }
+                    material.Textures[prop] = texInfo;
+                    var videoConn = conns.FirstOrDefault(c => c.type == "OO" && c.parent == texId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Video");
+                    if (videoConn != default)
+                    {
+                        long videoId = videoConn.child;
+                        var videoNode = objectsById[videoId];
+                        var contentNode = videoNode.children.FirstOrDefault(n => n.Name == "Content");
+                        if (contentNode != null && contentNode.properties.Count > 0 && contentNode.properties[0].TypeCode == 'R')
+                        {
+                            byte[] data = (byte[])contentNode.properties[0].Value;
+                            string embName = System.IO.Path.GetFileName(path);
+                            forest.EmbeddedTextures.Add((embName, data));
+                            texInfo.Path = "embedded:" + embName;
+                        }
+                    }
+                }
+                meshData.Materials.Add(material);
+            }
+            FBXParserBase.Log($"FBXMeshParser: Parsed {meshData.Materials.Count} materials for model {modelId}");
         }
+
         private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, int numVerts)
         {
             List<FBXVertex> expandedVertices = new List<FBXVertex>();
             List<uint> newIndices = new List<uint>();
             int currentIndex = 0;
+            int polyIndex = 0;
             List<int> tempPoly = new List<int>();
             for (int i = 0; i < pviArray.Length; i++)
             {
@@ -134,6 +219,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 tempPoly.Add(vId);
                 if (end)
                 {
+                    int matId = GetMatId(matMapping, matIndices, polyIndex);
                     // Triangulate polygon
                     for (int j = 1; j < tempPoly.Count - 1; j++)
                     {
@@ -150,13 +236,23 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         float z = (float)vertsD[vertIdx * 3 + 2];
                         Vector3 pos = FBXCoordinateUtils.RemapVector(new Vector3(x, y, z), sourceToTarget, signs) * modelScale;
                         // Stub for other attributes
-                        expandedVertices.Add(new FBXVertex { Position = pos });
+                        expandedVertices.Add(new FBXVertex { Position = pos, MatIdx = matId });
                     }
                     currentIndex += tempPoly.Count;
                     tempPoly.Clear();
+                    polyIndex++;
                 }
             }
             return (expandedVertices, newIndices);
+        }
+
+        private static int GetMatId(string matMapping, int[] matIndices, int polyIndex)
+        {
+            if (matIndices == null) return 0;
+            if (matMapping == "AllSame") return matIndices.Length > 0 ? matIndices[0] : 0;
+            if (matMapping == "ByPolygon" || matMapping == "ByPolygone") return polyIndex < matIndices.Length ? matIndices[polyIndex] : 0;
+            FBXParserBase.Log($"Unknown matMapping {matMapping}");
+            return 0;
         }
     }
 }
