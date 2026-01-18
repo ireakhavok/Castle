@@ -771,8 +771,12 @@ namespace ReadingChamber
             _renderContext.ClearColor(0.118f, 0.118f, 0.118f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.DepthFunc(_renderContext.Enums.Less);
+            _renderContext.DepthMask(true);
             _renderContext.Enable(_renderContext.Enums.CullFace);
+            _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
             _renderContext.CullFace(_renderContext.Enums.Back);
+            _renderContext.Disable(_renderContext.Enums.Blend);
             // Set matrices
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
