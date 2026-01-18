@@ -16,7 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace ReadingChamber
 {
     // Panel for viewing and testing animations on loaded models, with UI controls for loading mesh/armature/animation.
@@ -429,6 +428,7 @@ namespace ReadingChamber
             }
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
+            _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             // Render title bar
@@ -457,6 +457,7 @@ namespace ReadingChamber
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.CullFace);
         }
         // Builds line buffer for visualizing skeleton bones.
         private void UpdateSkeletonVisualization()
