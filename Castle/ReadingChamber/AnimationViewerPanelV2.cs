@@ -43,9 +43,15 @@ namespace ReadingChamber
         }
         private FBXModel _model;
         private ModelManagerV2.ModelData _modelData;
+        private float _duration = 0f;
+        private string _currentAnimation;
         private ShaderProgram _assetShader;
+        private VertexBuffer _skeletonBuffer;
+        private ShaderProgram _pointShader;
         private EditorTextRenderer _textRenderer;
         private ShaderProgram _textShader;
+        private Matrix4x4[] _currentGlobalTransforms;
+        private Matrix3x3[] _currentNormalTransforms;
         private Vector3 _cameraPosition = new Vector3(0, 500, 0);
         private Vector3 _cameraTarget = Vector3.Zero;
         private Vector3 _cameraUp = Vector3.UnitZ;
@@ -54,8 +60,12 @@ namespace ReadingChamber
         private bool _firstMouse = true;
         private bool _isPanning = false;
         private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
+        private string _armaturePath = "";
+        private string _animationPath = "";
+        private List<string> _animationFiles = new List<string>();
         private float _cameraDistance;
         private float _maxExtent;
+        private int _currentFrameIndex = 0;
         private ModelManagerV2 _modelManagerV2;
         // Constructor, initializes shader, sets scaling mode.
         public AnimationViewerPanelV2(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
@@ -76,10 +86,14 @@ namespace ReadingChamber
         public override void Init()
         {
             base.Init();
+            _skeletonBuffer = new VertexBuffer(_renderContext);
+            _pointShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
             _textShader = new ShaderProgram(_renderContext, TextShader.VertexShaderSource, TextShader.FragmentShaderSource);
             _textRenderer = new EditorTextRenderer(_renderContext, _window);
             _textRenderer.Initialize(_textShader);
             LoadMesh(_meshPath);
+            DiscoverAnimationFiles();
+            UpdateUIControls();
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
@@ -93,13 +107,54 @@ namespace ReadingChamber
             var parsedModel = FBXParser.BuildModelFromForest(forest);
             _model = parsedModel;
             UpdateModelData();
+            if (_model.HasSkin)
+            {
+            }
             CenterCamera();
         }
-        // Updates model data for rendering, chooses shader based on skinning.
+        // Loads armature FBX, remaps bone properties to match mesh coordinate system, recomputes locals, fixes weights, updates data.
+        private void LoadArmature(string path)
+        {
+            _armaturePath = path;
+            var forest = FBXParser.Load(path);
+            var parsedModel = FBXParser.BuildModelFromForest(forest);
+            if (_model == null)
+            {
+                _model = new FBXModel();
+            }
+            var oldSkeleton = _model.Skeleton;
+            var tempSkeleton = parsedModel.Skeleton;
+            // Unremap and remap bone components to match mesh's axis system
+            //stubbed for future implementation
+        }
+        // Loads animation FBX, remaps to match mesh, aligns hierarchies by name matching, adjusts transforms.
+        private void LoadAnimation(string animPath)
+        {
+            var animForest = FBXParser.Load(animPath);
+            var objectsNode = animForest.TreeList.FirstOrDefault(n => n.Name == "Objects");
+            //var objectsById = FBXParser.GatherObjectsById(objectsNode);
+            //var conns = FBXParser.GatherConnections(animForest);
+            var animModel = FBXParser.BuildModelFromForest(animForest);
+            var validAnimations = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+            if (validAnimations.Count > 0)
+            {
+                //stubbed for future implementation
+            }
+        }
+        // Updates transforms and normals from a specific animation frame, updates skeleton visualization.
+        private void UpdateTransformsFromFrame(int frame)
+        {
+            //STUBBED FOR FUTURE USE
+        }
+        // Sets up model data for rendering, chooses shader based on skinning.
         private void UpdateModelData()
         {
             _modelManagerV2.LoadModel(_meshPath);
             _modelManagerV2.TryGetModelData(Path.GetFileNameWithoutExtension(_meshPath).ToLower(), out _modelData);
+            if (_model.HasSkin)
+            {
+                _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
+            }
         }
         // Centers camera on model bounds, sets distance based on extent.
         private void CenterCamera()
@@ -123,6 +178,49 @@ namespace ReadingChamber
             _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
             _cameraUp = Vector3.UnitZ;
         }
+        // Finds .fbx files in .fbm subdirectory for animations.
+        private void DiscoverAnimationFiles()
+        {
+            string fbmDir = Path.Combine(Path.GetDirectoryName(_meshPath), Path.GetFileNameWithoutExtension(_meshPath) + ".fbm");
+            if (Directory.Exists(fbmDir))
+            {
+                _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
+            }
+        }
+        // Updates vertex buffers with current vertex data (e.g., after weight changes).
+        private void UpdateModelBuffers()
+        {
+            //stubbed for future use
+        }
+        // Updates dynamic select in HTML for animations.
+        private void UpdateUIControls()
+        {
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetViewerUI.html");
+            if (!File.Exists(htmlPath))
+            {
+                return;
+            }
+            string baseHtml = File.ReadAllText(htmlPath);
+            int insertIndex = baseHtml.IndexOf("");
+            if (insertIndex == -1)
+            {
+                return;
+            }
+            StringBuilder dynamicSelect = new StringBuilder();
+            dynamicSelect.Append("<select id=\"animSelect\" style=\"\">");
+            foreach (var file in _animationFiles)
+            {
+                string name = Path.GetFileNameWithoutExtension(file);
+                dynamicSelect.Append($"<option value=\"{file}\">{name}</option>");
+            }
+            dynamicSelect.Append("</select>");
+            string modifiedHtml = baseHtml.Insert(insertIndex, dynamicSelect.ToString());
+            _uiOverlay.LoadUI(modifiedHtml);
+            var animSelect = _uiOverlay.FindElementById("animSelect");
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();
+        }
         // Handles file selection events for loading mesh/armature/animation.
         private void OnFileSelected(FileSelectedEvent e)
         {
@@ -131,18 +229,72 @@ namespace ReadingChamber
             {
                 LoadMesh(e.Path);
             }
-            _uiOverlay.RefreshUI();
+            else if (hook == "LoadArmature")
+            {
+                LoadArmature(e.Path);
+            }
+            else if (hook == "LoadAnimation")
+            {
+                LoadAnimation(e.Path);
+            }
+            _currentFrameIndex = 0;
         }
         // Handles UI clicks for loading files or selecting animations.
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
-            if (hook == "LoadMesh")
+            if (hook == "TogglePlay")
+            {
+                // Removed
+            }
+            else if (hook == "LoadMesh")
             {
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
                 fileSelector.UserData = "LoadMesh";
                 _eventBus.Publish(new OpenPanelEvent(fileSelector));
+            }
+            else if (hook == "LoadArmature")
+            {
+                string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
+                fileSelector.UserData = "LoadArmature";
+                _eventBus.Publish(new OpenPanelEvent(fileSelector));
+            }
+            else if (hook == "LoadAnimation")
+            {
+                string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
+                fileSelector.UserData = "LoadAnimation";
+                _eventBus.Publish(new OpenPanelEvent(fileSelector));
+            }
+            else if (elem.Tag == "select")
+            {
+                var select = elem as SelectElement;
+                if (select != null)
+                {
+                    var allSelects = _uiOverlay.FindElementsByTag("select");
+                    foreach (var s in allSelects)
+                    {
+                        if (s is SelectElement sel)
+                        {
+                            sel.IsOpen = false;
+                        }
+                    }
+                    select.IsOpen = !select.IsOpen;
+                    _uiOverlay.RefreshUI();
+                }
+            }
+            else if (elem.Tag == "option")
+            {
+                var select = elem.Parent as SelectElement;
+                if (select != null)
+                {
+                    string val = elem.Attributes.GetValueOrDefault("value", string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)));
+                    LoadAnimation(val);
+                    select.IsOpen = false;
+                    _uiOverlay.RefreshUI();
+                }
             }
         }
         // Updates camera rotation/pan based on mouse, advances frame with arrows.
@@ -189,6 +341,11 @@ namespace ReadingChamber
             {
                 _cameraPosition = _cameraTarget + front * _cameraDistance;
             }
+            if (_model.Skeleton != null && _model.Animations.Count > 0)
+            {
+                //stubbed for future use
+            }
+            //UpdateSkeletonVisualization();
         }
         // Renders model with lighting, textures, skeleton lines, UI, text info.
         public override void Render()
@@ -272,7 +429,6 @@ namespace ReadingChamber
             }
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             // Render title bar
@@ -280,7 +436,15 @@ namespace ReadingChamber
             // Render UI overlay
             _uiOverlay.Render();
             // Render frame info
-            string frameInfo = "Static Mesh Viewer";
+            string frameInfo = "Frame: " + _currentFrameIndex;
+            if (_model != null && _model.Animations.Count > 0)
+            {
+                var animation = _model.Animations.Find(a => a.Name == _currentAnimation);
+                if (animation != null)
+                {
+                    frameInfo += " / " + (animation.Keyframes.Count - 1);
+                }
+            }
             _textRenderer.RenderText(frameInfo, 10, TitleHeight + 10, (int)Size.X, (int)Size.Y, 12f);
             // Render 2px border
             float bw = 2f;
@@ -293,10 +457,22 @@ namespace ReadingChamber
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _renderContext.Disable(_renderContext.Enums.Blend);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
-            // Log OpenGL errors
-            var error = _renderContext.GetError();
-            if (error != _renderContext.Enums.NoError)
-                Console.WriteLine($"AnimationViewerPanelV2: OpenGL Error: {error}");
+        }
+        // Builds line buffer for visualizing skeleton bones.
+        private void UpdateSkeletonVisualization()
+        {
+            //stubbed for future use
+        }
+        private void SetRestPose()
+        {
+            //stubbed for future use
+        }
+        private void PrintMatrix(Matrix4x4 m)
+        {
+            Console.WriteLine($"({m.M11:F4}, {m.M12:F4}, {m.M13:F4}, {m.M14:F4})");
+            Console.WriteLine($"({m.M21:F4}, {m.M22:F4}, {m.M23:F4}, {m.M24:F4})");
+            Console.WriteLine($"({m.M31:F4}, {m.M32:F4}, {m.M33:F4}, {m.M34:F4})");
+            Console.WriteLine($"({m.M41:F4}, {m.M42:F4}, {m.M43:F4}, {m.M44:F4})");
         }
     }
 }
