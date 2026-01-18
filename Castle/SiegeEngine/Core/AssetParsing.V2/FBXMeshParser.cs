@@ -244,14 +244,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
         }
         private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, int numVerts)
         {
-            int productSigns = signs[0] * signs[1] * signs[2];
-            int signPerm = 1;
-            for (int i = 0; i < 3; i++)
-                for (int j = i + 1; j < 3; j++)
-                    if (sourceToTarget[i] > sourceToTarget[j]) signPerm = -signPerm;
-            int overallSign = productSigns * signPerm;
-            bool flipWinding = overallSign < 0;
-            bool flipNormal = overallSign < 0;
             List<FBXVertex> expandedVertices = new List<FBXVertex>();
             List<uint> newIndices = new List<uint>();
             int currentIndex = 0;
@@ -278,18 +270,9 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     // Triangulate polygon
                     for (int j = 1; j < tempPoly.Count - 1; j++)
                     {
-                        if (flipWinding)
-                        {
-                            newIndices.Add((uint)currentIndex);
-                            newIndices.Add((uint)(currentIndex + j + 1));
-                            newIndices.Add((uint)(currentIndex + j));
-                        }
-                        else
-                        {
-                            newIndices.Add((uint)currentIndex);
-                            newIndices.Add((uint)(currentIndex + j));
-                            newIndices.Add((uint)(currentIndex + j + 1));
-                        }
+                        newIndices.Add((uint)currentIndex);
+                        newIndices.Add((uint)(currentIndex + j));
+                        newIndices.Add((uint)(currentIndex + j + 1));
                     }
                     // Add vertices for the polygon
                     for (int k = 0; k < tempPoly.Count; k++)
@@ -301,7 +284,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         Vector3 pos = FBXCoordinateUtils.RemapVector(new Vector3(x, y, z), sourceToTarget, signs) * modelScale;
                         int pvIdx = tempPolyPvIdx[k];
                         Vector3 normal = GetNormal(norms, normIdx, normMapping, normRef, vertIdx, pvIdx, sourceToTarget, signs);
-                        if (flipNormal) normal = -normal;
                         Vector2 uv = GetUV(uvs, uvIdx, uvMapping, uvRef, vertIdx, pvIdx);
                         // Stub for other attributes
                         expandedVertices.Add(new FBXVertex { Position = pos, Normal = normal, TexCoord = new Vector2(uv.X, 1f - uv.Y), MatIdx = matId });
