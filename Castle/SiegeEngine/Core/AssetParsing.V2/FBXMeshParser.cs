@@ -26,7 +26,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     var deformers = conns.Where(c => c.type == "OO" && c.parent == meshId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Deformer").Select(c => objectsById[c.child]).ToList();
                     if (deformers.Any())
                     {
-                        ParseSkin(model, meshData, deformers, objectsById, conns, boneIndexById, sourceToTarget, signs, modelScale, P4, invP4);
+                        ParseSkin(meshData, deformers, objectsById, conns, boneIndexById, sourceToTarget, signs, modelScale, P4, invP4);
                         model.HasSkin = true;
                     }
                     ParseMaterials(meshData, modelId, conns, objectsById, forest);
@@ -51,6 +51,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             var geoMat = ParseGeometricTransform((long)meshNode.properties[0].Value, new List<(string, long, long, string)>(), new Dictionary<long, BaseNode>(), sourceToTarget, signs, modelScale);
             int numVerts = vertsD.Length / 3;
             var perVertBones = new List<List<(int, float)>>(Enumerable.Repeat(new List<(int, float)>(), numVerts));
+            // Stub for skin
             var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, matIndices, matMapping, perVertBones, numVerts);
             meshData.Vertices = expandedVertices;
             meshData.Indices = newIndices;
@@ -171,65 +172,9 @@ namespace SiegeEngine.Core.AssetParsing.V2
             // Stub, return identity
             return Matrix4x4.Identity;
         }
-        private static void ParseSkin(FBXModel model, MeshData meshData, List<BaseNode> deformers, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4)
+        private static void ParseSkin(MeshData meshData, List<BaseNode> deformers, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4)
         {
-            var skinDeformer = deformers.FirstOrDefault(d => d.properties.Count > 2 && d.properties[2].Value.ToString().Contains("Skin"));
-            if (skinDeformer == null) return;
-            long skinId = (long)skinDeformer.properties[0].Value;
-            var clusterConns = conns.Where(c => c.type == "OO" && c.parent == skinId).Select(c => c.child).ToList();
-            var perVertBones = Enumerable.Repeat(new List<(int, float)>(), meshData.Vertices.Count).ToList();
-            foreach (var clusterId in clusterConns)
-            {
-                var clusterNode = objectsById[clusterId];
-                var linkConn = conns.FirstOrDefault(c => c.type == "OO" && c.child == clusterId);
-                if (linkConn == default) continue;
-                long boneId = linkConn.parent;
-                if (!boneIndexById.TryGetValue(boneId, out int boneIdx)) continue;
-                var indexesNode = clusterNode.children.FirstOrDefault(n => n.Name == "Indexes");
-                int[] indexes = indexesNode != null ? (int[])indexesNode.properties[0].Value : null;
-                var weightsNode = clusterNode.children.FirstOrDefault(n => n.Name == "Weights");
-                double[] weightsD = weightsNode != null ? (double[])weightsNode.properties[0].Value : null;
-                if (indexes == null || weightsD == null || indexes.Length != weightsD.Length) continue;
-                var transformNode = clusterNode.children.FirstOrDefault(n => n.Name == "Transform");
-                double[] tvals = transformNode != null ? (double[])transformNode.properties[0].Value : null;
-                Matrix4x4 transform = tvals != null ? CreateMatrixFromArray(tvals) : Matrix4x4.Identity;
-                var transformLinkNode = clusterNode.children.FirstOrDefault(n => n.Name == "TransformLink");
-                double[] tlvals = transformLinkNode != null ? (double[])transformLinkNode.properties[0].Value : null;
-                Matrix4x4 transformLink = tlvals != null ? CreateMatrixFromArray(tlvals) : Matrix4x4.Identity;
-                transform = FBXCoordinateUtils.RemapMatrix(transform, sourceToTarget, signs);
-                transformLink = FBXCoordinateUtils.RemapMatrix(transformLink, sourceToTarget, signs);
-                Matrix4x4.Invert(transformLink, out var invTL);
-                Matrix4x4 invBind = invTL * transform;
-                FBXParserBase.Log($"Bone {boneIdx} invBind:");
-                PrintMatrix(invBind);
-                model.Skeleton.Bones[boneIdx].BindPose = invBind;
-                for (int wi = 0; wi < indexes.Length; wi++)
-                {
-                    int vertIdx = indexes[wi];
-                    float weight = (float)weightsD[wi];
-                    if (weight > 0 && vertIdx < perVertBones.Count)
-                    {
-                        perVertBones[vertIdx].Add((boneIdx, weight));
-                    }
-                }
-            }
-            for (int v = 0; v < meshData.Vertices.Count; v++)
-            {
-                var bones = perVertBones[v];
-                float sumW = bones.Sum(b => b.Item2);
-                if (sumW > 0)
-                {
-                    bones = bones.OrderByDescending(b => b.Item2).Take(4).ToList();
-                    sumW = bones.Sum(b => b.Item2);
-                    var vert = meshData.Vertices[v];
-                    for (int w = 0; w < bones.Count; w++)
-                    {
-                        vert.BoneIDs[w] = bones[w].Item1;
-                        vert.Weights[w] = bones[w].Item2 / sumW;
-                    }
-                    meshData.Vertices[v] = vert;
-                }
-            }
+            // Stub for skin parsing
         }
         private static void ParseMaterials(MeshData meshData, long modelId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, FBXFileForest forest)
         {
@@ -326,8 +271,8 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     for (int j = 1; j < tempPoly.Count - 1; j++)
                     {
                         newIndices.Add((uint)currentIndex);
+                        newIndices.Add((uint)(currentIndex + j ));
                         newIndices.Add((uint)(currentIndex + j + 1));
-                        newIndices.Add((uint)(currentIndex + j));
                     }
                     // Add vertices for the polygon
                     for (int k = 0; k < tempPoly.Count; k++)

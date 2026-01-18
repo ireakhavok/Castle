@@ -19,7 +19,6 @@ using System.Text;
 
 namespace ReadingChamber
 {
-    // Panel for viewing and testing animations on loaded models, with UI controls for loading mesh/armature/animation.
     public unsafe class AnimationViewerPanelV2 : BasePanel
     {
         // Static method to open the panel via event.
@@ -109,7 +108,6 @@ namespace ReadingChamber
             UpdateModelData();
             if (_model.HasSkin)
             {
-                _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             }
             CenterCamera();
         }
@@ -366,7 +364,7 @@ namespace ReadingChamber
             _renderContext.DepthFunc(_renderContext.Enums.Less);
             _renderContext.DepthMask(true);
             _renderContext.Enable(_renderContext.Enums.CullFace);
-            _renderContext.FrontFace(_renderContext.Enums.Clockwise);
+            _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
             _renderContext.CullFace(_renderContext.Enums.Back);
             _renderContext.Disable(_renderContext.Enums.Blend);
             // Set matrices
