@@ -267,7 +267,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 if (end)
                 {
                     int matId = GetMatId(matMapping, matIndices, polyIndex);
-                    // Triangulate polygon (reversed for winding fix)
                     for (int j = 1; j < tempPoly.Count - 1; j++)
                     {
                         newIndices.Add((uint)currentIndex);
