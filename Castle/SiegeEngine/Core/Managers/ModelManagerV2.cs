@@ -18,6 +18,7 @@ namespace SiegeEngine.Core.Managers
     {
         private readonly Dictionary<string, FBXModel> _models = new();
         private readonly Dictionary<string, ModelData> _modelData = new();
+        private readonly Dictionary<string, (uint, byte)> _textureCache = new();
         private readonly IRenderContext _renderContext;
         public class ModelData
         {
@@ -60,6 +61,7 @@ namespace SiegeEngine.Core.Managers
         }
         private unsafe ModelData SetupModelData(FBXModel model, string fbxDir, FBXFileForest forest)
         {
+            SmoothNormals(model);
             var modelData = new ModelData();
             int meshIndex = 0;
             foreach (var mesh in model.Meshes.Where(m => m.Indices.Count > 0))
@@ -93,7 +95,7 @@ namespace SiegeEngine.Core.Managers
                     albedos.Add(albedo);
                     // Similar for normal and metallic
                     uint normalTex = 0;
-                    var normalInfo = mat.Textures.GetValueOrDefault("Bump");
+                    var normalInfo = mat.Textures.GetValueOrDefault("Bump") ?? mat.Textures.GetValueOrDefault("NormalMap");
                     if (normalInfo != null)
                     {
                         int glNormalWrapU = normalInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
@@ -141,6 +143,7 @@ namespace SiegeEngine.Core.Managers
                     normals = normals.Take(4).ToList();
                     metallics = metallics.Take(4).ToList();
                 }
+                ComputeTangents(mesh);
                 float[] vertexData = new float[mesh.Vertices.Count * 20];
                 for (int i = 0; i < mesh.Vertices.Count; i++)
                 {
@@ -211,18 +214,141 @@ namespace SiegeEngine.Core.Managers
         }
         private (uint, byte) LoadEmbeddedTexture(byte[] textureData, string textureName, int wrapS, int wrapT)
         {
-            return TextureLoader.LoadEmbeddedTexture(_renderContext, textureData, textureName, 1, wrapS, wrapT);
+            string cacheKey = "embedded:" + textureName.ToLowerInvariant();
+            if (_textureCache.TryGetValue(cacheKey, out var cached))
+            {
+                return cached;
+            }
+            var res = TextureLoader.LoadEmbeddedTexture(_renderContext, textureData, textureName, 1, wrapS, wrapT);
+            if (res.Item1 != 0)
+            {
+                _textureCache[cacheKey] = res;
+            }
+            return res;
         }
         private (uint, byte) LoadExternalTexture(string texturePath, string fbxDir, int wrapS, int wrapT)
         {
             if (string.IsNullOrEmpty(texturePath)) return (0, 0);
             string fullPath = Path.Combine(fbxDir, texturePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+            string cacheKey = fullPath.ToLowerInvariant() + ":" + wrapS + ":" + wrapT;
+            if (_textureCache.TryGetValue(cacheKey, out var cached))
+            {
+                return cached;
+            }
             if (!File.Exists(fullPath))
             {
                 Console.WriteLine($"ModelManagerV2: Texture file not found at {fullPath}");
                 return (0, 0);
             }
-            return TextureLoader.LoadTexture(_renderContext, fullPath, 1, wrapS, wrapT);
+            var res = TextureLoader.LoadTexture(_renderContext, fullPath, 1, wrapS, wrapT);
+            if (res.Item1 != 0)
+            {
+                _textureCache[cacheKey] = res;
+            }
+            return res;
+        }
+        private static void SmoothNormals(FBXModel model)
+        {
+            foreach (var mesh in model.Meshes)
+            {
+                int vertexCount = mesh.Vertices.Count;
+                var vertexToFaces = new List<List<int>>(vertexCount);
+                for (int i = 0; i < vertexCount; i++)
+                {
+                    vertexToFaces.Add(new List<int>());
+                }
+                for (int i = 0; i < mesh.Indices.Count; i += 3)
+                {
+                    uint v1 = mesh.Indices[i];
+                    uint v2 = mesh.Indices[i + 1];
+                    uint v3 = mesh.Indices[i + 2];
+                    int faceIdx = i / 3;
+                    vertexToFaces[(int)v1].Add(faceIdx);
+                    vertexToFaces[(int)v2].Add(faceIdx);
+                    vertexToFaces[(int)v3].Add(faceIdx);
+                }
+                for (int v = 0; v < vertexCount; v++)
+                {
+                    Vector3 sum = Vector3.Zero;
+                    foreach (int faceIdx in vertexToFaces[v])
+                    {
+                        uint iv1 = mesh.Indices[faceIdx * 3];
+                        uint iv2 = mesh.Indices[faceIdx * 3 + 1];
+                        uint iv3 = mesh.Indices[faceIdx * 3 + 2];
+                        var p1 = mesh.Vertices[(int)iv1].Position;
+                        var p2 = mesh.Vertices[(int)iv2].Position;
+                        var p3 = mesh.Vertices[(int)iv3].Position;
+                        Vector3 normal = Vector3.Normalize(Vector3.Cross(p2 - p1, p3 - p1));
+                        sum += normal;
+                    }
+                    if (vertexToFaces[v].Count > 0)
+                    {
+                        Vector3 avgNormal = Vector3.Normalize(sum / vertexToFaces[v].Count);
+                        var vertex = mesh.Vertices[v];
+                        vertex.Normal = avgNormal;
+                        mesh.Vertices[v] = vertex;
+                    }
+                }
+            }
+        }
+        private static void ComputeTangents(MeshData mesh)
+        {
+            Vector3[] tangents = new Vector3[mesh.Vertices.Count];
+            Vector3[] bitangents = new Vector3[mesh.Vertices.Count];
+            for (int i = 0; i < mesh.Indices.Count; i += 3)
+            {
+                int i1 = (int)mesh.Indices[i];
+                int i2 = (int)mesh.Indices[i + 1];
+                int i3 = (int)mesh.Indices[i + 2];
+                var v1 = mesh.Vertices[i1];
+                var v2 = mesh.Vertices[i2];
+                var v3 = mesh.Vertices[i3];
+                Vector3 p1 = v1.Position;
+                Vector3 p2 = v2.Position;
+                Vector3 p3 = v3.Position;
+                Vector2 uv1 = v1.TexCoord;
+                Vector2 uv2 = v2.TexCoord;
+                Vector2 uv3 = v3.TexCoord;
+                Vector3 edge1 = p2 - p1;
+                Vector3 edge2 = p3 - p1;
+                Vector2 deltaUV1 = uv2 - uv1;
+                Vector2 deltaUV2 = uv3 - uv1;
+                float denom = deltaUV1.X * deltaUV2.Y - deltaUV2.X * deltaUV1.Y;
+                float f = denom != 0 ? 1.0f / denom : 0;
+                Vector3 tangent = f * (deltaUV2.Y * edge1 - deltaUV1.Y * edge2);
+                Vector3 bitangent = f * (deltaUV1.X * edge2 - deltaUV2.X * edge1);
+                tangents[i1] += tangent;
+                tangents[i2] += tangent;
+                tangents[i3] += tangent;
+                bitangents[i1] += bitangent;
+                bitangents[i2] += bitangent;
+                bitangents[i3] += bitangent;
+            }
+            for (int i = 0; i < mesh.Vertices.Count; i++)
+            {
+                var vertex = mesh.Vertices[i];
+                Vector3 n = vertex.Normal;
+                Vector3 t = tangents[i];
+                Vector3 b = bitangents[i];
+                if (t.LengthSquared() > 0) t = Vector3.Normalize(t);
+                if (b.LengthSquared() > 0) b = Vector3.Normalize(b);
+                t = Vector3.Normalize(t - n * Vector3.Dot(n, t));
+                if (Vector3.Dot(Vector3.Cross(n, t), b) < 0)
+                {
+                    t = -t;
+                }
+                var newVertex = new FBXVertex
+                {
+                    Position = vertex.Position,
+                    Normal = vertex.Normal,
+                    TexCoord = vertex.TexCoord,
+                    Tangent = t,
+                    BoneIDs = vertex.BoneIDs,
+                    Weights = vertex.Weights,
+                    MatIdx = vertex.MatIdx
+                };
+                mesh.Vertices[i] = newVertex;
+            }
         }
         public bool TryGetModel(string key, out FBXModel model)
         {

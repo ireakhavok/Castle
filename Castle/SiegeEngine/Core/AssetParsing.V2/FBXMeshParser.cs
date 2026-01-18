@@ -93,14 +93,68 @@ namespace SiegeEngine.Core.AssetParsing.V2
 
         private static (double[] norms, int[] normIdx, string normMapping, string normRef) ParseNormals(BaseNode geom)
         {
-            // Stub, return defaults
-            return (null, null, "", "");
+            var normNode = geom.children.FirstOrDefault(c => c.Name == "LayerElementNormal");
+            if (normNode == null) return (null, null, "", "");
+            var mappingNode = normNode.children.FirstOrDefault(c => c.Name == "MappingInformationType");
+            string normMapping = mappingNode?.properties.Count > 0 ? mappingNode.properties[0].Value.ToString() : "";
+            var refNode = normNode.children.FirstOrDefault(c => c.Name == "ReferenceInformationType");
+            string normRef = refNode?.properties.Count > 0 ? refNode.properties[0].Value.ToString() : "";
+            var normsNode = normNode.children.FirstOrDefault(c => c.Name == "Normals");
+            double[] norms = null;
+            if (normsNode != null && normsNode.properties.Count > 0)
+            {
+                var prop = normsNode.properties[0];
+                if (prop.TypeCode == 'd')
+                {
+                    norms = (double[])prop.Value;
+                }
+                else if (prop.TypeCode == 'f')
+                {
+                    float[] fvals = (float[])prop.Value;
+                    norms = new double[fvals.Length];
+                    for (int vi = 0; vi < fvals.Length; vi++) norms[vi] = fvals[vi];
+                }
+            }
+            var normIdxNode = normNode.children.FirstOrDefault(c => c.Name == "NormalsIndex");
+            int[] normIdx = null;
+            if (normIdxNode != null && normIdxNode.properties.Count > 0 && normIdxNode.properties[0].TypeCode == 'i')
+            {
+                normIdx = (int[])normIdxNode.properties[0].Value;
+            }
+            return (norms, normIdx, normMapping, normRef);
         }
 
         private static (double[] uvs, int[] uvIdx, string uvMapping, string uvRef) ParseUVs(BaseNode geom)
         {
-            // Stub, return defaults
-            return (null, null, "", "");
+            var uvNode = geom.children.FirstOrDefault(c => c.Name == "LayerElementUV");
+            if (uvNode == null) return (null, null, "", "");
+            var mappingNode = uvNode.children.FirstOrDefault(c => c.Name == "MappingInformationType");
+            string uvMapping = mappingNode?.properties.Count > 0 ? mappingNode.properties[0].Value.ToString() : "";
+            var refNode = uvNode.children.FirstOrDefault(c => c.Name == "ReferenceInformationType");
+            string uvRef = refNode?.properties.Count > 0 ? refNode.properties[0].Value.ToString() : "";
+            var uvsNode = uvNode.children.FirstOrDefault(c => c.Name == "UV");
+            double[] uvs = null;
+            if (uvsNode != null && uvsNode.properties.Count > 0)
+            {
+                var prop = uvsNode.properties[0];
+                if (prop.TypeCode == 'd')
+                {
+                    uvs = (double[])prop.Value;
+                }
+                else if (prop.TypeCode == 'f')
+                {
+                    float[] fvals = (float[])prop.Value;
+                    uvs = new double[fvals.Length];
+                    for (int vi = 0; vi < fvals.Length; vi++) uvs[vi] = fvals[vi];
+                }
+            }
+            var uvIdxNode = uvNode.children.FirstOrDefault(c => c.Name == "UVIndex");
+            int[] uvIdx = null;
+            if (uvIdxNode != null && uvIdxNode.properties.Count > 0 && uvIdxNode.properties[0].TypeCode == 'i')
+            {
+                uvIdx = (int[])uvIdxNode.properties[0].Value;
+            }
+            return (uvs, uvIdx, uvMapping, uvRef);
         }
 
         private static (int[] matIndices, string matMapping) ParseMaterials(BaseNode geom)
@@ -205,6 +259,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             int currentIndex = 0;
             int polyIndex = 0;
             List<int> tempPoly = new List<int>();
+            List<int> tempPolyPvIdx = new List<int>();
             for (int i = 0; i < pviArray.Length; i++)
             {
                 int pv = pviArray[i];
@@ -214,9 +269,11 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 {
                     FBXParserBase.Log($"Invalid vId {vId} at i={i}, skipping polygon");
                     tempPoly.Clear();
+                    tempPolyPvIdx.Clear();
                     continue;
                 }
                 tempPoly.Add(vId);
+                tempPolyPvIdx.Add(i);
                 if (end)
                 {
                     int matId = GetMatId(matMapping, matIndices, polyIndex);
@@ -235,11 +292,15 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         float y = (float)vertsD[vertIdx * 3 + 1];
                         float z = (float)vertsD[vertIdx * 3 + 2];
                         Vector3 pos = FBXCoordinateUtils.RemapVector(new Vector3(x, y, z), sourceToTarget, signs) * modelScale;
+                        int pvIdx = tempPolyPvIdx[k];
+                        Vector3 normal = GetNormal(norms, normIdx, normMapping, normRef, vertIdx, pvIdx, sourceToTarget, signs);
+                        Vector2 uv = GetUV(uvs, uvIdx, uvMapping, uvRef, vertIdx, pvIdx);
                         // Stub for other attributes
-                        expandedVertices.Add(new FBXVertex { Position = pos, MatIdx = matId });
+                        expandedVertices.Add(new FBXVertex { Position = pos, Normal = normal, TexCoord = new Vector2(uv.X, 1f - uv.Y), MatIdx = matId });
                     }
                     currentIndex += tempPoly.Count;
                     tempPoly.Clear();
+                    tempPolyPvIdx.Clear();
                     polyIndex++;
                 }
             }
@@ -253,6 +314,57 @@ namespace SiegeEngine.Core.AssetParsing.V2
             if (matMapping == "ByPolygon" || matMapping == "ByPolygone") return polyIndex < matIndices.Length ? matIndices[polyIndex] : 0;
             FBXParserBase.Log($"Unknown matMapping {matMapping}");
             return 0;
+        }
+
+        private static Vector3 GetNormal(double[] norms, int[] normIdx, string mapping, string refe, int vertIdx, int pvIdx, int[] sourceToTarget, int[] signs)
+        {
+            if (norms == null) return Vector3.Zero;
+            int idx;
+            if (mapping == "ByVertice" || mapping == "ByVertex")
+            {
+                idx = vertIdx;
+            }
+            else if (mapping == "ByPolygonVertex")
+            {
+                idx = pvIdx;
+            }
+            else
+            {
+                return Vector3.Zero;
+            }
+            if (refe == "IndexToDirect" && normIdx != null)
+            {
+                idx = normIdx[idx];
+            }
+            float nx = (float)norms[idx * 3];
+            float ny = (float)norms[idx * 3 + 1];
+            float nz = (float)norms[idx * 3 + 2];
+            return FBXCoordinateUtils.RemapVector(new Vector3(nx, ny, nz), sourceToTarget, signs);
+        }
+
+        private static Vector2 GetUV(double[] uvs, int[] uvIdx, string mapping, string refe, int vertIdx, int pvIdx)
+        {
+            if (uvs == null) return Vector2.Zero;
+            int idx;
+            if (mapping == "ByVertice" || mapping == "ByVertex")
+            {
+                idx = vertIdx;
+            }
+            else if (mapping == "ByPolygonVertex")
+            {
+                idx = pvIdx;
+            }
+            else
+            {
+                return Vector2.Zero;
+            }
+            if (refe == "IndexToDirect" && uvIdx != null)
+            {
+                idx = uvIdx[idx];
+            }
+            float u = (float)uvs[idx * 2];
+            float v = (float)uvs[idx * 2 + 1];
+            return new Vector2(u, v);
         }
     }
 }
