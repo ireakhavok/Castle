@@ -6,7 +6,6 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
-
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXMeshParser
@@ -167,7 +166,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return (matIndices, matMapping);
         }
-        private static Matrix4x4 ParseGeometricTransform(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale)
+        private static Matrix4x4 ParseGeometricTransform(long geomId, List<(string, long, long, string)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale)
         {
             // Stub, return identity
             return Matrix4x4.Identity;
@@ -242,7 +241,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             FBXParserBase.Log($"FBXMeshParser: Parsed {meshData.Materials.Count} materials for model {modelId}");
         }
-        private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, int numVerts)
+        private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int, float)>> perVertBones, int numVerts)
         {
             List<FBXVertex> expandedVertices = new List<FBXVertex>();
             List<uint> newIndices = new List<uint>();
@@ -267,12 +266,12 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 if (end)
                 {
                     int matId = GetMatId(matMapping, matIndices, polyIndex);
-                    // Triangulate polygon
+                    // Triangulate polygon (reversed for winding fix)
                     for (int j = 1; j < tempPoly.Count - 1; j++)
                     {
                         newIndices.Add((uint)currentIndex);
-                        newIndices.Add((uint)(currentIndex + j));
                         newIndices.Add((uint)(currentIndex + j + 1));
+                        newIndices.Add((uint)(currentIndex + j));
                     }
                     // Add vertices for the polygon
                     for (int k = 0; k < tempPoly.Count; k++)
@@ -293,6 +292,19 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     tempPolyPvIdx.Clear();
                     polyIndex++;
                 }
+            }
+            // Debug logs for first 3 vertices and first triangle indices
+            if (expandedVertices.Count >= 3)
+            {
+                for (int dbg = 0; dbg < 3; dbg++)
+                {
+                    var v = expandedVertices[dbg];
+                    FBXParserBase.Log($"Debug Vertex {dbg}: Pos=({v.Position.X:F3},{v.Position.Y:F3},{v.Position.Z:F3}), Normal=({v.Normal.X:F3},{v.Normal.Y:F3},{v.Normal.Z:F3}), UV=({v.TexCoord.X:F3},{v.TexCoord.Y:F3}), MatIdx={v.MatIdx}");
+                }
+            }
+            if (newIndices.Count >= 3)
+            {
+                FBXParserBase.Log($"Debug First Triangle Indices: {newIndices[0]}, {newIndices[1]}, {newIndices[2]}");
             }
             return (expandedVertices, newIndices);
         }

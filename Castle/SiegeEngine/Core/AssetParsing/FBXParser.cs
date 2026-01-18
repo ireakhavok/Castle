@@ -175,7 +175,7 @@ namespace SiegeEngine.Core.AssetParsing
             float modelScale = unitScaleFactor / originalUnitScaleFactor;
             if (originalUnitScaleFactor == 1f)
             {
-                modelScale /= 100f;
+                modelScale /= 1f;
             }
             Console.WriteLine($"Parsed global settings: UpAxis={upAxis} Sign={upAxisSign}, FrontAxis={frontAxis} Sign={frontAxisSign}, CoordAxis={coordAxis} Sign={coordAxisSign}, CoordSystem={coordSystem} Sign={coordSystemSign}, Scale={modelScale}, FrameRate={frameRate}");
             int[] sourceToTarget = new int[3];

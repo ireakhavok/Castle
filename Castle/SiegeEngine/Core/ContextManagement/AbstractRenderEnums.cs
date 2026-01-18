@@ -58,5 +58,7 @@ namespace SiegeEngine.Core.ContextManagement
         public abstract int Rgba { get; }
         public abstract int CullFace { get; }
         public abstract int Back { get; }
+        public abstract int Clockwise { get; }
+        public abstract int CounterClockwise { get; }
     }
 }

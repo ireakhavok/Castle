@@ -11,7 +11,6 @@ using SiegeEngine.Core.AssetParsing.V2.Model;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2;
-
 namespace SiegeEngine.Core.Managers
 {
     public class ModelManagerV2
@@ -49,6 +48,7 @@ namespace SiegeEngine.Core.Managers
                     forest = FBXParser.Load(filePath);
                 }
                 FBXModel model = FBXParser.BuildModelFromForest(forest);
+                SmoothNormals(model);
                 ModelData modelData = SetupModelData(model, fbxDir, forest);
                 _models[key] = model;
                 _modelData[key] = modelData;

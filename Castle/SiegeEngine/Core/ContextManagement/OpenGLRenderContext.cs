@@ -102,5 +102,9 @@ namespace SiegeEngine.Core.ContextManagement
         public void GetFloat(int pname, out float param) => _gl.GetFloat((GetPName)pname, out param);
         public void Scissor(int x, int y, uint width, uint height) => _gl.Scissor(x, y, width, height);
         public void CullFace(int mode) => _gl.CullFace((GLEnum)mode);
+        public void FrontFace(int mode)
+        {
+            _gl.FrontFace((FrontFaceDirection)mode);
+        }
     }
 }

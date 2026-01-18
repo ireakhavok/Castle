@@ -75,5 +75,6 @@ namespace SiegeEngine.Core.ContextManagement
         void GetFloat(int pname, out float param);
         void Scissor(int x, int y, uint width, uint height);
         void CullFace(int mode);
+        void FrontFace(int mode);
     }
 }

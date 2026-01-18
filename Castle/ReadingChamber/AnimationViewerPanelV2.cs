@@ -16,7 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace ReadingChamber
 {
     // Panel for viewing and testing animations on loaded models, with UI controls for loading mesh/armature/animation.
@@ -75,6 +74,7 @@ namespace ReadingChamber
             BaseWidth = 1280f;
             BaseHeight = 720f;
             _modelManagerV2 = new ModelManagerV2(_renderContext);
+            _modelData = new ModelManagerV2.ModelData(); // Initialize to avoid null reference
         }
         // Creates custom UI overlay.
         protected override UIOverlay CreateUIOverlay()
@@ -363,6 +363,7 @@ namespace ReadingChamber
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
             _renderContext.CullFace(_renderContext.Enums.Back);
+            _renderContext.FrontFace(_renderContext.Enums.CounterClockwise); // Set to default CCW for consistency with sandbox
             // Set matrices
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
@@ -382,29 +383,32 @@ namespace ReadingChamber
             _assetShader.SetUniform("uSpecularStrength", 0.05f);
             _assetShader.SetUniform("uShininess", 4.0f);
             _assetShader.SetUniform("uHasBones", 0);
-            foreach (var mmr in _modelData.MeshRenders)
+            if (_modelData != null)
             {
-                // Bind textures
-                for (int t = 0; t < Math.Min(mmr.AlbedoTextures.Length, 4); t++)
+                foreach (var mmr in _modelData.MeshRenders)
                 {
-                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + t);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[t]);
-                    _assetShader.SetUniform($"uAlbedoMap[{t}]", t);
+                    // Bind textures
+                    for (int t = 0; t < Math.Min(mmr.AlbedoTextures.Length, 4); t++)
+                    {
+                        _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + t);
+                        _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[t]);
+                        _assetShader.SetUniform($"uAlbedoMap[{t}]", t);
+                    }
+                    for (int t = 0; t < Math.Min(mmr.NormalTextures.Length, 4); t++)
+                    {
+                        _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + t);
+                        _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[t]);
+                        _assetShader.SetUniform($"uNormalMap[{t}]", 4 + t);
+                    }
+                    for (int t = 0; t < Math.Min(mmr.MetallicTextures.Length, 4); t++)
+                    {
+                        _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + t);
+                        _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[t]);
+                        _assetShader.SetUniform($"uMetallicMap[{t}]", 8 + t);
+                    }
+                    _renderContext.BindVertexArray(mmr.Vao);
+                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                 }
-                for (int t = 0; t < Math.Min(mmr.NormalTextures.Length, 4); t++)
-                {
-                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + t);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[t]);
-                    _assetShader.SetUniform($"uNormalMap[{t}]", 4 + t);
-                }
-                for (int t = 0; t < Math.Min(mmr.MetallicTextures.Length, 4); t++)
-                {
-                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + t);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[t]);
-                    _assetShader.SetUniform($"uMetallicMap[{t}]", 8 + t);
-                }
-                _renderContext.BindVertexArray(mmr.Vao);
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
             }
             // Render skeleton
             _pointShader.Use();

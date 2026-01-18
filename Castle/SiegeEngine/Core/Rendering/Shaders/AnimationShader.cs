@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core
-// File: Rendering.Shaders/AnimationShader.cs
-namespace SiegeEngine.Core.Rendering.Shaders
+﻿namespace SiegeEngine.Core.Rendering.Shaders
 {
     public static class AnimationShader
     {
@@ -11,7 +9,7 @@ layout(location = 2) in vec2 aTexCoord;
 layout(location = 3) in vec3 aNormal;
 layout(location = 4) in float aMaterialIndex;
 layout(location = 5) in vec3 aTangent;
-layout(location = 6) in ivec4 aBoneIDs;
+layout(location = 6) in vec4 aBoneIDs;
 layout(location = 7) in vec4 aWeights;
 out vec2 TexCoord;
 out vec3 Normal;
@@ -30,8 +28,8 @@ void main()
     vec3 totalNormal = vec3(0.0);
     vec3 totalTangent = vec3(0.0);
     if (uHasBones == 1) {
-        for (int i = 0; i < 4; i++) {
-            int boneIndex = aBoneIDs[i];
+        for (int i = 0; i < 8; i++) {
+            int boneIndex = int(aBoneIDs[i]);
             if (boneIndex < 0 || boneIndex >= 100) continue;
             mat4 boneTransform = uBoneTransforms[boneIndex];
             vec4 localPosition = boneTransform * vec4(aPosition, 1.0);

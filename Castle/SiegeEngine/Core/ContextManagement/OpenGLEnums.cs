@@ -58,5 +58,8 @@ namespace SiegeEngine.Core.ContextManagement
         public override int Rgba => (int)GLEnum.Rgba;
         public override int CullFace => (int)GLEnum.CullFace;
         public override int Back => (int)GLEnum.Back;
+        public override int CounterClockwise => (int)GLEnum.Ccw;
+        public override int Clockwise => (int)GLEnum.CW;
+
     }
 }
