@@ -339,7 +339,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
             float nx = (float)norms[idx * 3];
             float ny = (float)norms[idx * 3 + 1];
             float nz = (float)norms[idx * 3 + 2];
-            return FBXCoordinateUtils.RemapVector(new Vector3(nx, ny, nz), sourceToTarget, signs);
+            Vector3 normal = FBXCoordinateUtils.RemapVector(new Vector3(nx, ny, nz), sourceToTarget, signs);
+            if (normal.LengthSquared() > 0)
+                normal = Vector3.Normalize(normal);
+            return normal;
         }
 
         private static Vector2 GetUV(double[] uvs, int[] uvIdx, string mapping, string refe, int vertIdx, int pvIdx)

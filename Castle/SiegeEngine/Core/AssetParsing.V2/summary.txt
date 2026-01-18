@@ -55,6 +55,11 @@ Folder: Root
         - Calls: FBXParserBase.Log, ParsePolygonVertexIndices, ParseVertices
       - double[] ParseVertices(BaseNode geom)
       - int[] ParsePolygonVertexIndices(BaseNode geom)
+      - int GetMatId( int polyIndex,  int[] matIndices, string matMapping)
+        - Calls: FBXParserBase.Log
+      - Vector3 GetNormal( int pvIdx,  int vertIdx,  int[] normIdx,  int[] signs,  int[] sourceToTarget,  string mapping,  string refe, double[] norms)
+        - Calls: FBXCoordinateUtils.RemapVector
+      - Vector2 GetUV( int pvIdx,  int vertIdx,  int[] uvIdx,  string mapping,  string refe, double[] uvs)
 - File: FBXParser.cs
   - Class: FBXParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
