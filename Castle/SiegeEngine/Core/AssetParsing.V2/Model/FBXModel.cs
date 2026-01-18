@@ -16,6 +16,5 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
         public List<Animation> Animations { get; set; } = new List<Animation>();
         public bool HasSkin { get; set; } = false;
         public bool HasRestPose { get; set; }
-        // Methods like HasUnweightedVertices will be added iteratively
     }
 }

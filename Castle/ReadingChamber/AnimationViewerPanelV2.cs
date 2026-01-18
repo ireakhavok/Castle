@@ -16,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
     // Panel for viewing and testing animations on loaded models, with UI controls for loading mesh/armature/animation.
@@ -108,6 +109,7 @@ namespace ReadingChamber
             UpdateModelData();
             if (_model.HasSkin)
             {
+                _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             }
             CenterCamera();
         }

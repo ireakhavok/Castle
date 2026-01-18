@@ -8,6 +8,7 @@ using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXParser
@@ -71,6 +72,22 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 FBXParserBase.Log("FBXParser: 'Objects' node not found, returning empty model");
                 return model;
             }
+            var headerNode = forest.TreeList.FirstOrDefault(n => n.Name == "FBXHeaderExtension");
+            bool isBlender = false;
+            if (headerNode != null)
+            {
+                var creatorNode = headerNode.children.FirstOrDefault(n => n.Name == "Creator");
+                if (creatorNode != null && creatorNode.properties.Count > 0)
+                {
+                    string creator = creatorNode.properties[0].Value.ToString();
+                    FBXParserBase.Log($"FBX Creator: {creator}");
+                    if (creator.Contains("Blender"))
+                    {
+                        isBlender = true;
+                        FBXParserBase.Log("Detected Blender FBX export");
+                    }
+                }
+            }
             var objectsById = GatherObjectsById(objectsNode);
             var conns = GatherConnections(forest);
             var settings = new FBXSettings();
@@ -78,6 +95,24 @@ namespace SiegeEngine.Core.AssetParsing.V2
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, boneIndexById, rootIndices, settings.P4, settings.InvP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, rootIndices, settings.P4, settings.InvP4);
+            bool allIdentity = model.Skeleton.Bones.All(b => Matrix4x4.Identity == b.BindPose);
+            if (isBlender || allIdentity)
+            {
+                FBXParserBase.Log("Applying Blender FBX export quirk workaround: using inverse rest poses as bind poses.");
+                var globals = model.Skeleton.ComputeGlobalTransforms();
+                for (int i = 0; i < globals.Length; i++)
+                {
+                    if (Matrix4x4.Invert(globals[i], out var inv))
+                    {
+                        model.Skeleton.Bones[i].BindPose = inv;
+                    }
+                    else
+                    {
+                        model.Skeleton.Bones[i].BindPose = Matrix4x4.Identity;
+                    }
+                }
+            }
+            ParseBindPoses(model, objectsNode, boneIndexById, settings.AxisMapping, settings.AxisSigns);
             FBXParserBase.Log($"FBXParser: Built model with {model.Meshes.Count} meshes, {model.Skeleton.Bones.Count} bones, {model.Animations.Count} animations");
             return model;
         }
@@ -115,5 +150,30 @@ namespace SiegeEngine.Core.AssetParsing.V2
             return conns;
         }
         // Additional helper methods will be added in subsequent steps
+        private static void ParseBindPoses(FBXModel model, BaseNode objectsNode, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs)
+        {
+            var poseNodes = objectsNode.children.Where(n => n.Name == "Pose").ToList();
+            foreach (var poseNode in poseNodes)
+            {
+                string type = poseNode.properties.Count > 2 ? poseNode.properties[2].Value.ToString() : "";
+                if (type == "BindPose")
+                {
+                    foreach (var pnode in poseNode.children.Where(c => c.Name == "PoseNode"))
+                    {
+                        var nodeIdNode = pnode.children.FirstOrDefault(cn => cn.Name == "Node");
+                        if (nodeIdNode == null) continue;
+                        long boneId = (long)nodeIdNode.properties[0].Value;
+                        if (!boneIndexById.TryGetValue(boneId, out int idx)) continue;
+                        var matrixNode = pnode.children.FirstOrDefault(cn => cn.Name == "Matrix");
+                        if (matrixNode == null) continue;
+                        double[] vals = (double[])matrixNode.properties[0].Value;
+                        Matrix4x4 globalBind = FBXMeshParser.CreateMatrixFromArray(vals); // use same
+                        globalBind = FBXCoordinateUtils.RemapMatrix(globalBind, sourceToTarget, signs);
+                        Matrix4x4.Invert(globalBind, out var invBind);
+                        model.Skeleton.Bones[idx].BindPose = invBind;
+                    }
+                }
+            }
+        }
     }
 }
