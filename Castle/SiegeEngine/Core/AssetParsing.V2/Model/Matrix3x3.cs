@@ -21,6 +21,6 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             M32 = m32;
             M33 = m33;
         }
-        public static Matrix3x3 Identity = new Matrix3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+        public static Matrix3x3 Identity { get; } = new Matrix3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
     }
 }
