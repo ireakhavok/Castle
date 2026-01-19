@@ -8,7 +8,6 @@ using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
-
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXParser
@@ -95,23 +94,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, boneIndexById, rootIndices, settings.P4, settings.InvP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, rootIndices, settings.P4, settings.InvP4);
-            bool allIdentity = model.Skeleton.Bones.All(b => Matrix4x4.Identity == b.BindPose);
-            if (isBlender || allIdentity)
-            {
-                FBXParserBase.Log("Applying Blender FBX export quirk workaround: using inverse rest poses as bind poses.");
-                var globals = model.Skeleton.ComputeGlobalTransforms();
-                for (int i = 0; i < globals.Length; i++)
-                {
-                    if (Matrix4x4.Invert(globals[i], out var inv))
-                    {
-                        model.Skeleton.Bones[i].BindPose = inv;
-                    }
-                    else
-                    {
-                        model.Skeleton.Bones[i].BindPose = Matrix4x4.Identity;
-                    }
-                }
-            }
             ParseBindPoses(model, objectsNode, boneIndexById, settings.AxisMapping, settings.AxisSigns);
             FBXParserBase.Log($"FBXParser: Built model with {model.Meshes.Count} meshes, {model.Skeleton.Bones.Count} bones, {model.Animations.Count} animations");
             return model;
@@ -153,9 +135,14 @@ namespace SiegeEngine.Core.AssetParsing.V2
         private static void ParseBindPoses(FBXModel model, BaseNode objectsNode, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs)
         {
             var poseNodes = objectsNode.children.Where(n => n.Name == "Pose").ToList();
+            if (poseNodes.Count == 0)
+            {
+                FBXParserBase.Log("No Pose nodes found");
+            }
             foreach (var poseNode in poseNodes)
             {
                 string type = poseNode.properties.Count > 2 ? poseNode.properties[2].Value.ToString() : "";
+                FBXParserBase.Log($"Found Pose node of type: {type}");
                 if (type == "BindPose")
                 {
                     foreach (var pnode in poseNode.children.Where(c => c.Name == "PoseNode"))

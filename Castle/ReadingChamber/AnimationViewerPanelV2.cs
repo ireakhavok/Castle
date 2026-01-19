@@ -487,19 +487,19 @@ namespace ReadingChamber
         {
             if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0) return;
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
-            for (int i = 0; i < _currentGlobalTransforms.Length; i++)
-            {
-                Console.WriteLine($"Rest global transform for bone {i} ({_model.Skeleton.Bones[i].Name}):");
-                PrintMatrix(_currentGlobalTransforms[i]);
-            }
+            //for (int i = 0; i < _currentGlobalTransforms.Length; i++)
+            //{
+            // //Console.WriteLine($"Rest global transform for bone {i} ({_model.Skeleton.Bones[i].Name}):");
+            // //PrintMatrix(_currentGlobalTransforms[i]);
+            //}
             _boneMatrices = new Matrix4x4[_currentGlobalTransforms.Length];
             for (int i = 0; i < _currentGlobalTransforms.Length; i++)
             {
-                _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
-                Console.WriteLine($"Bind pose for bone {i} ({_model.Skeleton.Bones[i].Name}):");
-                PrintMatrix(_model.Skeleton.Bones[i].BindPose);
-                Console.WriteLine($"Bone matrix for bone {i} ({_model.Skeleton.Bones[i].Name}):");
-                PrintMatrix(_boneMatrices[i]);
+                _boneMatrices[i] = _currentGlobalTransforms[i] * _model.Skeleton.Bones[i].BindPose;
+                //Console.WriteLine($"Bind pose for bone {i} ({_model.Skeleton.Bones[i].Name}):");
+                //PrintMatrix(_model.Skeleton.Bones[i].BindPose);
+                //Console.WriteLine($"Bone matrix for bone {i} ({_model.Skeleton.Bones[i].Name}):");
+                //PrintMatrix(_boneMatrices[i]);
             }
             _currentNormalTransforms = new Matrix3x3[_boneMatrices.Length];
             for (int i = 0; i < _boneMatrices.Length; i++)
