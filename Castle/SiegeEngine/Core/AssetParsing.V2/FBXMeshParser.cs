@@ -312,14 +312,17 @@ namespace SiegeEngine.Core.AssetParsing.V2
         }
         private static void AssignBoneDataToVertices(MeshData meshData, List<List<(int, float)>> perVertBones)
         {
+            int weightedCount = 0;
             for (int v = 0; v < meshData.Vertices.Count; v++)
             {
                 var vertex = meshData.Vertices[v];
                 var bw = perVertBones[v];
                 vertex.BoneIDs = new Vector4(bw.Count > 0 ? bw[0].Item1 : -1, bw.Count > 1 ? bw[1].Item1 : -1, bw.Count > 2 ? bw[2].Item1 : -1, bw.Count > 3 ? bw[3].Item1 : -1);
                 vertex.Weights = new Vector4(bw.Count > 0 ? bw[0].Item2 : 0, bw.Count > 1 ? bw[1].Item2 : 0, bw.Count > 2 ? bw[2].Item2 : 0, bw.Count > 3 ? bw[3].Item2 : 0);
+                if (vertex.Weights.X > 0 || vertex.Weights.Y > 0 || vertex.Weights.Z > 0 || vertex.Weights.W > 0) weightedCount++;
                 meshData.Vertices[v] = vertex;
             }
+            FBXParserBase.Log($"FBXMeshParser: {weightedCount} weighted vertices out of {meshData.Vertices.Count}");
         }
         private static void ParseMaterials(MeshData meshData, long modelId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, FBXFileForest forest)
         {

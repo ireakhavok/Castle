@@ -11,9 +11,21 @@ namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXParserBase
     {
+        private static int totalLogCount = 0;
+        private const int MaxTotalLogs = 5000;
         public static void Log(string message)
         {
-            // Logging implementation
+            if (totalLogCount >= MaxTotalLogs)
+            {
+                if (totalLogCount == MaxTotalLogs)
+                {
+                    Console.WriteLine($"FBXParser: Log limit reached, suppressing further logs");
+                    totalLogCount++;
+                }
+                return;
+            }
+            Console.WriteLine(message);
+            totalLogCount++;
         }
 
         public static FBXModel CreateDefaultCubeModel()
