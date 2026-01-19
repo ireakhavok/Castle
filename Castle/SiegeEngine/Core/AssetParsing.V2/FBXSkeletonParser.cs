@@ -42,7 +42,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double rz = (double)p.properties[6].Value;
                             Vector3 euler = new Vector3((float)rx, (float)ry, (float)rz);
                             euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
-                            bone.LclRotation = Quaternion.CreateFromYawPitchRoll(euler.Y * MathF.PI / 180f, euler.X * MathF.PI / 180f, euler.Z * MathF.PI / 180f);
+                            bone.LclRotation = bone.ToQuaternion(euler);
                         }
                         else if (propName == "Lcl Scaling")
                         {
@@ -114,7 +114,8 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double gry = (double)p.properties[5].Value;
                             double grz = (double)p.properties[6].Value;
                             Vector3 euler = new Vector3((float)grx, (float)gry, (float)grz);
-                            bone.GeometricRotation = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
+                            euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
+                            bone.GeometricRotation = euler;
                         }
                         else if (propName == "GeometricScaling")
                         {

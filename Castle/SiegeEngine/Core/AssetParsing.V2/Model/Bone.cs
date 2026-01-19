@@ -48,5 +48,25 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
 
             return T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
         }
+
+        public Quaternion ToQuaternion(Vector3 degrees)
+        {
+            float rx = degrees.X * MathF.PI / 180f;
+            float ry = degrees.Y * MathF.PI / 180f;
+            float rz = degrees.Z * MathF.PI / 180f;
+            Quaternion qx = Quaternion.CreateFromAxisAngle(Vector3.UnitX, rx);
+            Quaternion qy = Quaternion.CreateFromAxisAngle(Vector3.UnitY, ry);
+            Quaternion qz = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, rz);
+            switch (RotationOrder)
+            {
+                case 0: return qz * qy * qx; // XYZ
+                case 1: return qy * qz * qx; // XZY
+                case 2: return qx * qz * qy; // YZX
+                case 3: return qz * qx * qy; // YXZ
+                case 4: return qy * qx * qz; // ZXY
+                case 5: return qx * qy * qz; // ZYX
+                default: return qz * qy * qx;
+            }
+        }
     }
 }
