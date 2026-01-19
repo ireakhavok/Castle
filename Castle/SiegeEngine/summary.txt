@@ -91,6 +91,9 @@ Folder: Core
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
+    - Methods:
+      - Matrix4x4 ComputeLocal()
+      - Quaternion ToQuaternion(Vector3 degrees)
 - File: BrushRegistryUpdateEvent.cs
   - Class: BrushRegistryUpdateEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -350,11 +353,19 @@ Folder: Core
 - File: FBXAnimationParser.cs
   - Class: FBXAnimationParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - long TicksPerSecond
+    - Methods:
+      - Vector3 GetInterpolatedVector( bool isTranslation,  float modelScale,  int[] signs,  int[] sourceToTarget,  long tick, BaseNode curveNode)
+        - Calls: FBXCoordinateUtils.RemapVector, GetInterpolatedValue
+      - float GetInterpolatedValue( long tick,  string chan, BaseNode curveNode)
+      - void ComputeGlobalRecursive( List<Bone> bones,  Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] locals, Bone bone)
 - File: FBXCoordinateUtils.cs
   - Class: FBXCoordinateUtils (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: System, System.Numerics
     - Methods:
       - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
+      - Matrix4x4 RemapMatrix( int[] signs,  int[] sourceToTarget, Matrix4x4 m)
 - File: FBXFileForest.cs
   - Class: FBXFileForest (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -371,6 +382,9 @@ Folder: Core
       - Vector3 GetNormal( int pvIdx,  int vertIdx,  int[] normIdx,  int[] signs,  int[] sourceToTarget,  string mapping,  string refe, double[] norms)
         - Calls: FBXCoordinateUtils.RemapVector
       - Vector2 GetUV( int pvIdx,  int vertIdx,  int[] uvIdx,  string mapping,  string refe, double[] uvs)
+      - Matrix4x4 CreateMatrixFromArray(double[] vals)
+      - void PrintMatrix(Matrix4x4 m)
+        - Calls: FBXParserBase.Log
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -386,12 +400,17 @@ Folder: Core
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: FBXModel, FBXParserBase.Log, GatherConnections, GatherObjectsById
+        - Calls: .Value.ToString, FBXModel, FBXParserBase.Log, GatherConnections, GatherObjectsById, ParseBindPoses
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
+      - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
+        - Calls: .Value.ToString, FBXCoordinateUtils.RemapMatrix, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - int totalLogCount
+      - int MaxTotalLogs
     - Methods:
       - void Log(string message)
       - FBXModel CreateDefaultCubeModel()
@@ -768,6 +787,8 @@ Folder: Core
 - File: Matrix3x3.cs
   - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Numerics
+    - Methods:
+      - constructor Matrix3x3( float m12,  float m13,  float m21,  float m22,  float m23,  float m31,  float m32,  float m33, float m11)
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
@@ -972,7 +993,7 @@ Folder: Core
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: DockManager
       - void OnOpenPanel(OpenPanelEvent e)
-        - Calls: AddPanel, RemovePanel, _panels.Clear
+        - Calls: AddPanel
       - void OnClosePanel(ClosePanelEvent e)
         - Calls: RemovePanel
       - void AddPanel(IPanel panel)
@@ -1154,7 +1175,7 @@ Folder: Core
   - Class: ShaderProgram (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, System, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - uint _program
@@ -1176,7 +1197,9 @@ Folder: Core
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
       - void SetMatrix4Array( Matrix4x4[] matrices, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
-      - void SetMatrix3Array( Matrix3x3[] matrices, string name)
+      - void SetMatrix3Array(Matrix3x3[] matrices, string name)
+        - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix3
+      - void SetMatrix3Array(Matrix3x3[] matrices, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix3
       - void Dispose()
         - Calls: _renderContext.DeleteProgram
@@ -1186,6 +1209,10 @@ Folder: Core
 - File: Skeleton.cs
   - Class: Skeleton (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - Matrix4x4[] ComputeGlobalTransforms()
+        - Calls: ComputeGlobalRecursive, FBXMeshParser.PrintMatrix, FBXParserBase.Log
+      - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
@@ -1526,6 +1553,7 @@ Folder: Core
       - uint _vertexCount
       - uint _indexCount
       - bool _disposed
+      - uint Vao
     - Methods:
       - constructor VertexBuffer(IRenderContext renderContext)
         - Calls: _renderContext.GenBuffer, _renderContext.GenVertexArray
