@@ -1,9 +1,10 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core
+// File: Rendering/VertexBuffer.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class VertexBuffer : IDisposable
@@ -15,6 +16,7 @@ namespace SiegeEngine.Core.Rendering
         private uint _vertexCount;
         private uint _indexCount;
         private bool _disposed;
+        public uint Vao => _vao;
         public VertexBuffer(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));

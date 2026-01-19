@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine
-// File: Core/Rendering/Shaders/PointShader.cs
+﻿// Folder: SiegeEngine.Core
+// File: Rendering/Shaders/PointShader.cs
 namespace SiegeEngine.Core.Rendering.Shaders
 {
     public static class PointShader
@@ -8,13 +8,14 @@ namespace SiegeEngine.Core.Rendering.Shaders
             #version 330 core
             layout (location = 0) in vec3 aPosition;
             layout (location = 1) in vec4 aColor;
-            uniform mat4 uProjection;
+            uniform mat4 uModel;
             uniform mat4 uView;
+            uniform mat4 uProjection;
             uniform float uPointSize = 5.0;
             out vec4 vColor;
             void main()
             {
-                gl_Position = uProjection * uView * vec4(aPosition, 1.0);
+                gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
                 gl_PointSize = uPointSize;
                 vColor = aColor;
             }";

@@ -6,13 +6,11 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
-
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXAnimationParser
     {
         private const long TicksPerSecond = 46186158000L;
-
         public static void ParseAnimations(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4)
         {
             var animStacks = objectsNode.children.Where(n => n.Name == "AnimationStack").ToList();
@@ -111,7 +109,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 if (anim.Keyframes.Count > 0) model.Animations.Add(anim);
             }
         }
-
         private static Vector3 GetInterpolatedVector(BaseNode curveNode, long tick, int[] sourceToTarget, int[] signs, float modelScale, bool isTranslation)
         {
             Vector3 v = Vector3.Zero;
@@ -122,7 +119,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             if (isTranslation) v *= modelScale;
             return v;
         }
-
         private static float GetInterpolatedValue(BaseNode curveNode, string chan, long tick)
         {
             var curve = curveNode.children.FirstOrDefault(n => n.Name == chan);
@@ -153,7 +149,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             float frac = (tick - times[low]) / (float)(times[low + 1] - times[low]);
             return values[low] + frac * (values[low + 1] - values[low]);
         }
-
         private static void ComputeGlobalRecursive(Bone bone, Matrix4x4 parentGlobal, Matrix4x4[] locals, Matrix4x4[] globals, List<Bone> bones)
         {
             int idx = bones.IndexOf(bone);

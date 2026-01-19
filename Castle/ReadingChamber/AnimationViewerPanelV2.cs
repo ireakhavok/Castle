@@ -354,7 +354,7 @@ namespace ReadingChamber
             {
                 //stubbed for future use
             }
-            //UpdateSkeletonVisualization();
+            UpdateSkeletonVisualization();
         }
         // Renders model with lighting, textures, skeleton lines, UI, text info.
         public override void Render()
@@ -445,6 +445,13 @@ namespace ReadingChamber
                     _renderContext.BindVertexArray(0);
                 }
             }
+            _pointShader.Use();
+            _pointShader.SetMatrix4("uModel", modelMatrix);
+            _pointShader.SetMatrix4("uView", view);
+            _pointShader.SetMatrix4("uProjection", projection);
+            _renderContext.BindVertexArray(_skeletonBuffer.Vao);
+            _renderContext.DrawElements(_renderContext.Enums.Lines, _skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            _renderContext.BindVertexArray(0);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
@@ -481,7 +488,26 @@ namespace ReadingChamber
         // Builds line buffer for visualizing skeleton bones.
         private void UpdateSkeletonVisualization()
         {
-            //stubbed for future use
+            if (_model == null || _model.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
+            var vertices = new List<Vertex>();
+            var indices = new List<uint>();
+            uint idx = 0;
+            foreach (var bone in _model.Skeleton.Bones)
+            {
+                int boneIdx = _model.Skeleton.Bones.IndexOf(bone);
+                Vector3 pos = _currentGlobalTransforms[boneIdx].Translation;
+                vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 0, 1, 0, 1));
+                indices.Add(idx++);
+                if (bone.ParentIndex != -1)
+                {
+                    Vector3 parentPos = _currentGlobalTransforms[bone.ParentIndex].Translation;
+                    vertices.Add(new Vertex(parentPos.X, parentPos.Y, parentPos.Z, 1, 0, 0, 1));
+                    indices.Add(idx++);
+                    indices.Add(idx - 2); // Connect to child
+                    indices.Add(idx - 1);
+                }
+            }
+            _skeletonBuffer.UpdateCustom(vertices, indices);
         }
         private void SetRestPose()
         {
@@ -495,7 +521,7 @@ namespace ReadingChamber
             _boneMatrices = new Matrix4x4[_currentGlobalTransforms.Length];
             for (int i = 0; i < _currentGlobalTransforms.Length; i++)
             {
-                _boneMatrices[i] = _currentGlobalTransforms[i] * _model.Skeleton.Bones[i].BindPose;
+                _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
                 //Console.WriteLine($"Bind pose for bone {i} ({_model.Skeleton.Bones[i].Name}):");
                 //PrintMatrix(_model.Skeleton.Bones[i].BindPose);
                 //Console.WriteLine($"Bone matrix for bone {i} ({_model.Skeleton.Bones[i].Name}):");
