@@ -491,20 +491,17 @@ namespace ReadingChamber
             if (_model == null || _model.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
-            uint idx = 0;
-            foreach (var bone in _model.Skeleton.Bones)
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
-                int boneIdx = _model.Skeleton.Bones.IndexOf(bone);
-                Vector3 pos = _currentGlobalTransforms[boneIdx].Translation;
-                vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 0, 1, 0, 1));
-                indices.Add(idx++);
-                if (bone.ParentIndex != -1)
+                Vector3 pos = _currentGlobalTransforms[i].Translation;
+                vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 0, 1, 0, 1)); // Green for joints
+            }
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {
-                    Vector3 parentPos = _currentGlobalTransforms[bone.ParentIndex].Translation;
-                    vertices.Add(new Vertex(parentPos.X, parentPos.Y, parentPos.Z, 1, 0, 0, 1));
-                    indices.Add(idx++);
-                    indices.Add(idx - 2); // Connect to child
-                    indices.Add(idx - 1);
+                    indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
+                    indices.Add((uint)i);
                 }
             }
             _skeletonBuffer.UpdateCustom(vertices, indices);
