@@ -20,35 +20,27 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 uniform int uHasBones;
-uniform mat4 uBoneTransforms[100]; // Adjust max bones as needed
+uniform mat4 uBoneMatrices[100]; // Adjust max bones as needed
+uniform mat3 uNormalMatrices[100]; // For normal and tangent transformations
 void main()
 {
     vec4 totalPosition = vec4(0.0);
     vec3 totalNormal = vec3(0.0);
     vec3 totalTangent = vec3(0.0);
-    float totalWeight = 0.0;
     if (uHasBones == 1) {
         for (int i = 0; i < 4; i++) {
             int boneIndex = int(aBoneIDs[i]);
             if (boneIndex == -1) continue;
-            mat4 boneTransform = uBoneTransforms[boneIndex];
-            vec4 localPosition = boneTransform * vec4(aPosition, 1.0);
+            vec4 localPosition = uBoneMatrices[boneIndex] * vec4(aPosition, 1.0);
             totalPosition += localPosition * aWeights[i];
-            vec3 localNormal = mat3(boneTransform) * aNormal;
+            vec3 localNormal = uNormalMatrices[boneIndex] * aNormal;
             totalNormal += localNormal * aWeights[i];
-            vec3 localTangent = mat3(boneTransform) * aTangent;
+            vec3 localTangent = uNormalMatrices[boneIndex] * aTangent;
             totalTangent += localTangent * aWeights[i];
-            totalWeight += aWeights[i];
         }
-        if (totalWeight > 0.0) {
-            totalPosition /= totalWeight;
-            totalNormal = normalize(totalNormal / totalWeight);
-            totalTangent = normalize(totalTangent / totalWeight);
-        } else {
-            totalPosition = vec4(aPosition, 1.0);
-            totalNormal = aNormal;
-            totalTangent = aTangent;
-        }
+        totalPosition /= (aWeights[0] + aWeights[1] + aWeights[2] + aWeights[3]);
+        totalNormal = normalize(totalNormal);
+        totalTangent = normalize(totalTangent);
     } else {
         totalPosition = vec4(aPosition, 1.0);
         totalNormal = aNormal;

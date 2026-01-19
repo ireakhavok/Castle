@@ -6,7 +6,6 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
-
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXMeshParser
@@ -26,7 +25,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     var deformers = conns.Where(c => c.type == "OO" && c.parent == meshId && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Deformer").Select(c => objectsById[c.child]).ToList();
                     if (deformers.Any())
                     {
-                        ParseSkin(meshData, deformers, objectsById, conns, boneIndexById, sourceToTarget, signs, modelScale, P4, invP4);
+                        ParseSkin(meshData, deformers, objectsById, conns, boneIndexById, sourceToTarget, signs, modelScale, P4, invP4, model);
                         model.HasSkin = true;
                     }
                     ParseMaterials(meshData, modelId, conns, objectsById, forest);
@@ -48,10 +47,8 @@ namespace SiegeEngine.Core.AssetParsing.V2
             var (norms, normIdx, normMapping, normRef) = ParseNormals(meshNode);
             var (uvs, uvIdx, uvMapping, uvRef) = ParseUVs(meshNode);
             var (matIndices, matMapping) = ParseMaterials(meshNode);
-            var geoMat = ParseGeometricTransform((long)meshNode.properties[0].Value, new List<(string, long, long, string)>(), new Dictionary<long, BaseNode>(), sourceToTarget, signs, modelScale);
             int numVerts = vertsD.Length / 3;
             var perVertBones = new List<List<(int, float)>>(Enumerable.Repeat(new List<(int, float)>(), numVerts));
-            // Stub for skin
             var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, matIndices, matMapping, perVertBones, numVerts);
             meshData.Vertices = expandedVertices;
             meshData.Indices = newIndices;
@@ -172,9 +169,157 @@ namespace SiegeEngine.Core.AssetParsing.V2
             // Stub, return identity
             return Matrix4x4.Identity;
         }
-        private static void ParseSkin(MeshData meshData, List<BaseNode> deformers, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4)
+        private static void ParseSkin(MeshData meshData, List<BaseNode> deformers, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4, FBXModel model)
         {
-            // Stub for skin parsing
+            int numVerts = meshData.Vertices.Count;
+            var perVertBones = Enumerable.Range(0, numVerts).Select(_ => new List<(int, float)>()).ToList();
+            int totalClusters = 0;
+            long totalIndexes = 0;
+            long totalWeights = 0;
+            foreach (var deformer in deformers.Where(d => d.properties.Count > 2 && d.properties[2].Value.ToString() == "Skin"))
+            {
+                var clusterConns = conns.Where(c => c.type == "OO" && c.parent == (long)deformer.properties[0].Value && objectsById.ContainsKey(c.child) && objectsById[c.child].Name == "Deformer" && objectsById[c.child].properties.Count > 2 && objectsById[c.child].properties[2].Value.ToString() == "Cluster").ToList();
+                foreach (var clusterConn in clusterConns)
+                {
+                    var clusterNode = objectsById[clusterConn.child];
+                    var boneConn = conns.FirstOrDefault(c => c.type == "OO" && (c.child == clusterConn.child || c.parent == clusterConn.child) && objectsById.ContainsKey(c.parent == clusterConn.child ? c.child : c.parent) && objectsById[c.parent == clusterConn.child ? c.child : c.parent].Name == "Model");
+                    if (boneConn.type == null) continue;
+                    long boneId = (boneConn.child == clusterConn.child) ? boneConn.parent : boneConn.child;
+                    if (!boneIndexById.TryGetValue(boneId, out int boneIdx)) continue;
+                    var indexesNode = clusterNode.children.FirstOrDefault(c => c.Name == "Indexes");
+                    int[] indexes = null;
+                    if (indexesNode != null)
+                    {
+                        var prop = indexesNode.properties[0];
+                        char typeCode = prop.TypeCode;
+                        if (typeCode == 'i')
+                        {
+                            indexes = (int[])prop.Value;
+                        }
+                        else if (typeCode == 'R')
+                        {
+                            byte[] raw = (byte[])prop.Value;
+                            indexes = new int[raw.Length / 4];
+                            Buffer.BlockCopy(raw, 0, indexes, 0, raw.Length);
+                        }
+                        else
+                        {
+                            FBXParserBase.Log($"Unexpected type for Indexes: {typeCode}");
+                            indexes = Array.Empty<int>();
+                        }
+                    }
+                    else
+                    {
+                        indexes = Array.Empty<int>();
+                    }
+                    var weightsNode = clusterNode.children.FirstOrDefault(c => c.Name == "Weights");
+                    double[] weights = null;
+                    if (weightsNode != null)
+                    {
+                        var prop = weightsNode.properties[0];
+                        char typeCode = prop.TypeCode;
+                        if (typeCode == 'd')
+                        {
+                            weights = (double[])prop.Value;
+                        }
+                        else if (typeCode == 'f')
+                        {
+                            float[] fvals = (float[])prop.Value;
+                            weights = new double[fvals.Length];
+                            for (int wi = 0; wi < fvals.Length; wi++) weights[wi] = fvals[wi];
+                        }
+                        else if (typeCode == 'R')
+                        {
+                            byte[] raw = (byte[])prop.Value;
+                            weights = new double[raw.Length / 8];
+                            Buffer.BlockCopy(raw, 0, weights, 0, raw.Length);
+                        }
+                        else
+                        {
+                            FBXParserBase.Log($"Unexpected type for Weights: {typeCode}");
+                            weights = Array.Empty<double>();
+                        }
+                    }
+                    else
+                    {
+                        weights = Array.Empty<double>();
+                    }
+                    var transformLinkNode = clusterNode.children.FirstOrDefault(c => c.Name == "TransformLink");
+                    double[] tl = transformLinkNode != null && transformLinkNode.properties.Count > 0 && transformLinkNode.properties[0].TypeCode == 'd' ? (double[])transformLinkNode.properties[0].Value : null;
+                    var transformNode = clusterNode.children.FirstOrDefault(c => c.Name == "Transform");
+                    double[] tr = transformNode != null && transformNode.properties.Count > 0 && transformNode.properties[0].TypeCode == 'd' ? (double[])transformNode.properties[0].Value : null;
+                    Matrix4x4 tlMat = tl != null && tl.Length == 16 ? CreateMatrixFromArray(tl) : Matrix4x4.Identity;
+                    Matrix4x4 tMat = tr != null && tr.Length == 16 ? CreateMatrixFromArray(tr) : Matrix4x4.Identity;
+                    tlMat = FBXCoordinateUtils.RemapMatrix(tlMat, sourceToTarget, signs);
+                    tlMat = new Matrix4x4(tlMat.M11, tlMat.M12, tlMat.M13, tlMat.M14,
+                                          tlMat.M21, tlMat.M22, tlMat.M23, tlMat.M24,
+                                          tlMat.M31, tlMat.M32, tlMat.M33, tlMat.M34,
+                                          tlMat.M41 * modelScale, tlMat.M42 * modelScale, tlMat.M43 * modelScale, tlMat.M44);
+                    tMat = FBXCoordinateUtils.RemapMatrix(tMat, sourceToTarget, signs);
+                    tMat = new Matrix4x4(tMat.M11, tMat.M12, tMat.M13, tMat.M14,
+                                         tMat.M21, tMat.M22, tMat.M23, tMat.M24,
+                                         tMat.M31, tMat.M32, tMat.M33, tMat.M34,
+                                         tMat.M41 * modelScale, tMat.M42 * modelScale, tMat.M43 * modelScale, tMat.M44);
+                    if (Matrix4x4.Invert(tlMat, out Matrix4x4 invTl))
+                    {
+                        Matrix4x4 invBind = invTl * tMat;
+                        model.Skeleton.Bones[boneIdx].BindPose = invBind;
+                    }
+                    else
+                    {
+                        FBXParserBase.Log($"Failed to invert tlMat for bone {boneIdx}, using identity");
+                        model.Skeleton.Bones[boneIdx].BindPose = Matrix4x4.Identity;
+                    }
+                    for (int i = 0; i < Math.Min(indexes?.Length ?? 0, weights?.Length ?? 0); i++)
+                    {
+                        int vertIdx = indexes[i];
+                        float w = (float)weights[i];
+                        if (w > 0 && vertIdx >= 0 && vertIdx < numVerts)
+                        {
+                            perVertBones[vertIdx].Add((boneIdx, w));
+                        }
+                    }
+                    totalClusters++;
+                    totalIndexes += indexes?.Length ?? 0;
+                    totalWeights += weights?.Length ?? 0;
+                }
+            }
+            if (totalClusters > 0)
+            {
+                FBXParserBase.Log($"Total clusters parsed: {totalClusters}, Total indexes: {totalIndexes}, Total weights: {totalWeights}");
+                NormalizeWeights(perVertBones);
+                AssignBoneDataToVertices(meshData, perVertBones);
+            }
+        }
+        private static void NormalizeWeights(List<List<(int, float)>> perVertBones)
+        {
+            foreach (var bw in perVertBones)
+            {
+                if (bw.Count > 4)
+                {
+                    bw.Sort((a, b) => b.Item2.CompareTo(a.Item2));
+                    bw.RemoveRange(4, bw.Count - 4);
+                }
+                float sum = bw.Sum(x => x.Item2);
+                if (sum > 0)
+                {
+                    for (int j = 0; j < bw.Count; j++)
+                    {
+                        bw[j] = (bw[j].Item1, bw[j].Item2 / sum);
+                    }
+                }
+            }
+        }
+        private static void AssignBoneDataToVertices(MeshData meshData, List<List<(int, float)>> perVertBones)
+        {
+            for (int v = 0; v < meshData.Vertices.Count; v++)
+            {
+                var vertex = meshData.Vertices[v];
+                var bw = perVertBones[v];
+                vertex.BoneIDs = new Vector4(bw.Count > 0 ? bw[0].Item1 : -1, bw.Count > 1 ? bw[1].Item1 : -1, bw.Count > 2 ? bw[2].Item1 : -1, bw.Count > 3 ? bw[3].Item1 : -1);
+                vertex.Weights = new Vector4(bw.Count > 0 ? bw[0].Item2 : 0, bw.Count > 1 ? bw[1].Item2 : 0, bw.Count > 2 ? bw[2].Item2 : 0, bw.Count > 3 ? bw[3].Item2 : 0);
+                meshData.Vertices[v] = vertex;
+            }
         }
         private static void ParseMaterials(MeshData meshData, long modelId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, FBXFileForest forest)
         {
@@ -270,7 +415,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     for (int j = 1; j < tempPoly.Count - 1; j++)
                     {
                         newIndices.Add((uint)currentIndex);
-                        newIndices.Add((uint)(currentIndex + j ));
+                        newIndices.Add((uint)(currentIndex + j));
                         newIndices.Add((uint)(currentIndex + j + 1));
                     }
                     // Add vertices for the polygon
@@ -284,8 +429,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         int pvIdx = tempPolyPvIdx[k];
                         Vector3 normal = GetNormal(norms, normIdx, normMapping, normRef, vertIdx, pvIdx, sourceToTarget, signs);
                         Vector2 uv = GetUV(uvs, uvIdx, uvMapping, uvRef, vertIdx, pvIdx);
-                        // Stub for other attributes
-                        expandedVertices.Add(new FBXVertex { Position = pos, Normal = normal, TexCoord = new Vector2(uv.X, 1f - uv.Y), MatIdx = matId });
+                        var bw = perVertBones[vertIdx];
+                        Vector4 boneIDs = new Vector4(bw.Count > 0 ? bw[0].Item1 : -1, bw.Count > 1 ? bw[1].Item1 : -1, bw.Count > 2 ? bw[2].Item1 : -1, bw.Count > 3 ? bw[3].Item1 : -1);
+                        Vector4 weights = new Vector4(bw.Count > 0 ? bw[0].Item2 : 0, bw.Count > 1 ? bw[1].Item2 : 0, bw.Count > 2 ? bw[2].Item2 : 0, bw.Count > 3 ? bw[3].Item2 : 0);
+                        expandedVertices.Add(new FBXVertex { Position = pos, Normal = normal, TexCoord = new Vector2(uv.X, 1f - uv.Y), Tangent = Vector3.Zero, BoneIDs = boneIDs, Weights = weights, MatIdx = matId });
                     }
                     currentIndex += tempPoly.Count;
                     tempPoly.Clear();

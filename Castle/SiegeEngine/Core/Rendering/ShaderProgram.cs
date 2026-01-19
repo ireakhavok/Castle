@@ -2,7 +2,7 @@
 using System;
 using System.Numerics;
 using SiegeEngine.Core.AssetParsing.Model;
-
+using SiegeEngine.Core.AssetParsing.V2.Model;
 namespace SiegeEngine.Core.Rendering
 {
     public class ShaderProgram : IDisposable
@@ -163,7 +163,34 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.UniformMatrix4(location, (uint)matrices.Length, false, ptr);
             }
         }
-        public unsafe void SetMatrix3Array(string name, Matrix3x3[] matrices)
+        public unsafe void SetMatrix3Array(string name, SiegeEngine.Core.AssetParsing.Model.Matrix3x3[] matrices)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
+            int location = _renderContext.GetUniformLocation(_program, name);
+            if (location == -1)
+                return;
+            float[] data = new float[matrices.Length * 9];
+            for (int i = 0; i < matrices.Length; i++)
+            {
+                data[i * 9 + 0] = matrices[i].M11;
+                data[i * 9 + 1] = matrices[i].M12;
+                data[i * 9 + 2] = matrices[i].M13;
+                data[i * 9 + 3] = matrices[i].M21;
+                data[i * 9 + 4] = matrices[i].M22;
+                data[i * 9 + 5] = matrices[i].M23;
+                data[i * 9 + 6] = matrices[i].M31;
+                data[i * 9 + 7] = matrices[i].M32;
+                data[i * 9 + 8] = matrices[i].M33;
+            }
+            fixed (float* ptr = data)
+            {
+                _renderContext.UniformMatrix3(location, (uint)matrices.Length, false, ptr);
+            }
+        }
+        public unsafe void SetMatrix3Array(string name, SiegeEngine.Core.AssetParsing.V2.Model.Matrix3x3[] matrices)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ShaderProgram));

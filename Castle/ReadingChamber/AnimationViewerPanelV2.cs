@@ -395,7 +395,16 @@ namespace ReadingChamber
             _assetShader.SetUniform("uAmbientStrength", 0.3f);
             _assetShader.SetUniform("uSpecularStrength", 0.05f);
             _assetShader.SetUniform("uShininess", 4.0f);
-            _assetShader.SetUniform("uHasBones", 0);
+            if (_model.HasSkin && _boneMatrices != null && _boneMatrices.Length > 0)
+            {
+                _assetShader.SetUniform("uHasBones", 1);
+                _assetShader.SetMatrix4Array("uBoneMatrices", _boneMatrices);
+                _assetShader.SetMatrix3Array("uNormalMatrices", _currentNormalTransforms);
+            }
+            else
+            {
+                _assetShader.SetUniform("uHasBones", 0);
+            }
             if (_modelData != null)
             {
                 foreach (var mmr in _modelData.MeshRenders)
@@ -486,7 +495,7 @@ namespace ReadingChamber
             _boneMatrices = new Matrix4x4[_currentGlobalTransforms.Length];
             for (int i = 0; i < _currentGlobalTransforms.Length; i++)
             {
-                _boneMatrices[i] = _currentGlobalTransforms[i] * _model.Skeleton.Bones[i].BindPose;
+                _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
                 Console.WriteLine($"Bind pose for bone {i} ({_model.Skeleton.Bones[i].Name}):");
                 PrintMatrix(_model.Skeleton.Bones[i].BindPose);
                 Console.WriteLine($"Bone matrix for bone {i} ({_model.Skeleton.Bones[i].Name}):");
