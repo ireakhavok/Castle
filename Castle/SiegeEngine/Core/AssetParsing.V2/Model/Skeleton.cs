@@ -30,7 +30,7 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
         }
         private void ComputeGlobalRecursive(int idx, Matrix4x4 parentGlobal, Matrix4x4[] globals)
         {
-            globals[idx] = parentGlobal * Bones[idx].LocalRest;
+            globals[idx] = Bones[idx].LocalRest * parentGlobal;
             foreach (var child in Bones[idx].Children)
             {
                 int childIdx = Bones.IndexOf(child);

@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
-
 namespace SiegeEngine.Core.AssetParsing.V2.Model
 {
     public class Bone
@@ -16,6 +15,38 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
         public Vector3 LclTranslation { get; set; } = Vector3.Zero;
         public Quaternion LclRotation { get; set; } = Quaternion.Identity;
         public Vector3 LclScaling { get; set; } = Vector3.One;
+        public Vector3 PreRotation { get; set; } = Vector3.Zero;
+        public Vector3 PostRotation { get; set; } = Vector3.Zero;
+        public Vector3 RotationPivot { get; set; } = Vector3.Zero;
+        public Vector3 RotationOffset { get; set; } = Vector3.Zero;
+        public Vector3 ScalingPivot { get; set; } = Vector3.Zero;
+        public Vector3 ScalingOffset { get; set; } = Vector3.Zero;
+        public int RotationOrder { get; set; } = 0; // 0: XYZ, 1: XZY, 2: YZX, 3: YXZ, 4: ZXY, 5: ZYX, 6: Spherical XYZ
+        public Vector3 GeometricTranslation { get; set; } = Vector3.Zero;
+        public Vector3 GeometricRotation { get; set; } = Vector3.Zero;
+        public Vector3 GeometricScaling { get; set; } = Vector3.One;
+        public Matrix4x4 GeometricTransform { get; set; } = Matrix4x4.Identity;
         public List<Bone> Children { get; set; } = new List<Bone>();
+
+        public Matrix4x4 ComputeLocal(Vector3? t = null, Quaternion? r = null, Vector3? s = null)
+        {
+            Vector3 useT = t ?? LclTranslation;
+            Quaternion useR = r ?? LclRotation;
+            Vector3 useS = s ?? LclScaling;
+
+            Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
+            Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
+            Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
+            Matrix4x4 Pre = Matrix4x4.CreateFromYawPitchRoll(PreRotation.Y * MathF.PI / 180f, PreRotation.X * MathF.PI / 180f, PreRotation.Z * MathF.PI / 180f);
+            Matrix4x4 R = Matrix4x4.CreateFromQuaternion(useR);
+            Matrix4x4 PostInv = Matrix4x4.CreateFromYawPitchRoll(-PostRotation.Y * MathF.PI / 180f, -PostRotation.X * MathF.PI / 180f, -PostRotation.Z * MathF.PI / 180f);
+            Matrix4x4 invRp = Matrix4x4.CreateTranslation(-RotationPivot);
+            Matrix4x4 Soff = Matrix4x4.CreateTranslation(ScalingOffset);
+            Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);
+            Matrix4x4 S = Matrix4x4.CreateScale(useS);
+            Matrix4x4 invSp = Matrix4x4.CreateTranslation(-ScalingPivot);
+
+            return T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
+        }
     }
 }
