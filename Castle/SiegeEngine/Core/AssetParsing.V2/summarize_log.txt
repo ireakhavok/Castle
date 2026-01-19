@@ -21,7 +21,7 @@ Found 2 dependencies
 Found: FBXMeshParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXMeshParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXMeshParser.cs
-Read 21313 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXMeshParser.cs
+Read 30193 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXMeshParser.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2
 Found 6 dependencies
 Found: FBXParser.cs
@@ -98,7 +98,7 @@ Found 2 dependencies
 Found: Matrix3x3.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Matrix3x3.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Matrix3x3.cs
-Read 374 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Matrix3x3.cs
+Read 756 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Matrix3x3.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2.Model
 Found 2 dependencies
 Found: MeshData.cs

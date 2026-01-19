@@ -28,6 +28,8 @@ Folder: Model
 - File: Matrix3x3.cs
   - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Numerics
+    - Methods:
+      - constructor Matrix3x3( float m12,  float m13,  float m21,  float m22,  float m23,  float m31,  float m32,  float m33, float m11)
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics

@@ -30,11 +30,6 @@ namespace SiegeEngine.Core.Managers
         }
         private void OnOpenPanel(OpenPanelEvent e)
         {
-            foreach (var p in _panels.ToArray())
-            {
-                RemovePanel(p);
-            }
-            _panels.Clear();
             AddPanel(e.Panel);
         }
         private void OnClosePanel(ClosePanelEvent e)

@@ -1,4 +1,6 @@
-﻿namespace SiegeEngine.Core.Rendering.Shaders
+﻿// Folder: SiegeEngine.Core.Rendering.Shaders
+// File: AnimationShader.cs
+namespace SiegeEngine.Core.Rendering.Shaders
 {
     public static class AnimationShader
     {
@@ -9,7 +11,7 @@ layout(location = 2) in vec2 aTexCoord;
 layout(location = 3) in vec3 aNormal;
 layout(location = 4) in float aMaterialIndex;
 layout(location = 5) in vec3 aTangent;
-layout(location = 6) in vec4 aBoneIDs;
+layout(location = 6) in ivec4 aBoneIDs;
 layout(location = 7) in vec4 aWeights;
 out vec2 TexCoord;
 out vec3 Normal;
@@ -20,26 +22,34 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 uniform int uHasBones;
-uniform mat4 uBoneTransforms[100]; // Adjust max bones as needed
-uniform mat3 uNormalBoneTransforms[100];
+uniform mat4 uBoneMatrices[100]; // Adjust max bones as needed
+uniform mat3 uNormalMatrices[100];
 void main()
 {
     vec4 totalPosition = vec4(0.0);
     vec3 totalNormal = vec3(0.0);
     vec3 totalTangent = vec3(0.0);
+    float sumWeights = 0.0;
     if (uHasBones == 1) {
-        for (int i = 0; i < 8; i++) {
-            int boneIndex = int(aBoneIDs[i]);
+        for (int i = 0; i < 4; i++) {
+            int boneIndex = aBoneIDs[i];
             if (boneIndex < 0 || boneIndex >= 100) continue;
-            mat4 boneTransform = uBoneTransforms[boneIndex];
+            mat4 boneTransform = uBoneMatrices[boneIndex];
             vec4 localPosition = boneTransform * vec4(aPosition, 1.0);
             totalPosition += localPosition * aWeights[i];
-            vec3 localNormal = uNormalBoneTransforms[boneIndex] * aNormal;
+            vec3 localNormal = uNormalMatrices[boneIndex] * aNormal;
             totalNormal += localNormal * aWeights[i];
-            vec3 localTangent = uNormalBoneTransforms[boneIndex] * aTangent;
+            vec3 localTangent = uNormalMatrices[boneIndex] * aTangent;
             totalTangent += localTangent * aWeights[i];
+            sumWeights += aWeights[i];
         }
-        if (totalPosition.w < 0.001) {
+        if (sumWeights > 0.001) {
+            totalPosition /= sumWeights;
+            totalNormal /= sumWeights;
+            totalTangent /= sumWeights;
+            totalNormal = normalize(totalNormal);
+            totalTangent = normalize(totalTangent);
+        } else {
             totalPosition = vec4(aPosition, 1.0);
             totalNormal = aNormal;
             totalTangent = aTangent;
