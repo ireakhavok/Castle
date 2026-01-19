@@ -1,7 +1,6 @@
 ﻿// Folder: SiegeEngine.Interfaces
 // File: IPanel.cs
 using System.Numerics;
-
 namespace SiegeEngine.Core.Interfaces
 {
     public enum DockState
@@ -13,7 +12,6 @@ namespace SiegeEngine.Core.Interfaces
         DockedBottom,
         Tabbed
     }
-
     public interface IPanel
     {
         void Init();
@@ -27,5 +25,6 @@ namespace SiegeEngine.Core.Interfaces
         bool Visible { get; set; }
         void OnPanelResize(float w, float h);
         bool AllowDragging { get; set; }
+        bool IsModal { get; set; }
     }
 }

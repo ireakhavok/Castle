@@ -13,7 +13,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Reflection;
-
 namespace SiegeEngine.Core.Managers
 {
     public class UIManager
@@ -35,13 +34,11 @@ namespace SiegeEngine.Core.Managers
         private readonly string _configPath;
         private bool _menuVisible = true;
         private bool _prevMouseDown;
-
         public bool MenuVisible
         {
             get => _menuVisible;
             set => _menuVisible = value;
         }
-
         public UIManager(UISettingsManager settingsManager, ModManager modManager, EventBus eventBus, IControlContext controlContext, nint window, IRenderContext renderContext, string configPath)
         {
             _settingsManager = settingsManager;
@@ -53,8 +50,8 @@ namespace SiegeEngine.Core.Managers
             _configPath = configPath;
             _controlContext.SetWindowSizeCallback(_window, OnResize);
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
+            _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
         }
-
         private void OnResize(nint win, int w, int h)
         {
             _renderContext.Viewport(0, 0, (uint)w, (uint)h);
@@ -68,7 +65,6 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
-
         public void Initialize(string initialMenuHtmlPath)
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -81,7 +77,6 @@ namespace SiegeEngine.Core.Managers
             OnResize(_window, w, h);
             _initialized = true;
         }
-
         private void LoadMenu(string initialMenuHtmlPath)
         {
             string resolvedPath = _modManager.ResolvePath(initialMenuHtmlPath);
@@ -96,24 +91,32 @@ namespace SiegeEngine.Core.Managers
             var menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialMenuHtmlPath);
             AddPanel(menuPanel);
         }
-
         private void OnOpenPanel(OpenPanelEvent e)
         {
+            if (e.Mode == OpenMode.Replace)
+            {
+                foreach (var p in _panels.ToArray())
+                {
+                    RemovePanel(p);
+                }
+                _panels.Clear();
+            }
             e.Panel.Init();
             AddPanel(e.Panel);
         }
-
+        private void OnClosePanel(ClosePanelEvent e)
+        {
+            RemovePanel(e.Panel);
+        }
         public void AddPanel(IPanel panel)
         {
             _panels.Add(panel);
         }
-
         public void RemovePanel(IPanel panel)
         {
             panel.Dispose();
             _panels.Remove(panel);
         }
-
         public void Update(float deltaTime)
         {
             if (!_initialized) return;
@@ -123,23 +126,62 @@ namespace SiegeEngine.Core.Managers
             bool mousePressed = !_prevMouseDown && currentMouseDown;
             bool mouseReleased = _prevMouseDown && !currentMouseDown;
             _prevMouseDown = currentMouseDown;
-            foreach (var panel in _panels.ToArray())
+            bool handled = false;
+            bool hasModal = _panels.Any(p => p.IsModal && p.Visible);
+            if (hasModal)
             {
-                panel.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased);
+                // Find the top modal
+                for (int i = _panels.Count - 1; i >= 0; i--)
+                {
+                    var panel = _panels[i];
+                    if (panel.IsModal && panel.Visible)
+                    {
+                        Vector2 rel = mousePos - panel.Position;
+                        bool over = rel.X >= 0 && rel.X <= panel.Size.X && rel.Y >= 0 && rel.Y <= panel.Size.Y;
+                        if (over)
+                        {
+                            panel.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased);
+                            handled = true;
+                        }
+                        break;
+                    }
+                }
+                if (!handled && mouseReleased)
+                {
+                    var topModal = _panels.LastOrDefault(p => p.IsModal && p.Visible);
+                    if (topModal != null)
+                    {
+                        _eventBus.Publish(new ClosePanelEvent(topModal));
+                    }
+                }
+            }
+            else
+            {
+                for (int i = _panels.Count - 1; i >= 0; i--)
+                {
+                    var panel = _panels[i];
+                    if (!panel.Visible) continue;
+                    Vector2 rel = mousePos - panel.Position;
+                    bool over = rel.X >= 0 && rel.X <= panel.Size.X && rel.Y >= 0 && rel.Y <= panel.Size.Y;
+                    if (over)
+                    {
+                        panel.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased);
+                        handled = true;
+                        break;
+                    }
+                }
             }
         }
-
         public void Render()
         {
             if (!_initialized) return;
             _renderContext.Disable(_renderContext.Enums.DepthTest);
-            foreach (var panel in _panels)
+            foreach (var panel in _panels.Where(p => p.Visible))
             {
                 panel.Render();
             }
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         public void Dispose()
         {
             foreach (var panel in _panels)

@@ -9,7 +9,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Reflection;
-
 namespace SiegeEngine.Core.UI
 {
     public class MenuPanel : BasePanel
@@ -19,14 +18,12 @@ namespace SiegeEngine.Core.UI
             private readonly MenuPanel _parent;
             private readonly ModManager _modManager;
             private readonly EventBus _eventBus;
-
             public MenuUIOverlay(MenuPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window, ModManager modManager, EventBus eventBus) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
                 _modManager = modManager;
                 _eventBus = eventBus;
             }
-
             protected override void HandleDataHook(string hook)
             {
                 var parts = hook.Split('.');
@@ -65,6 +62,7 @@ namespace SiegeEngine.Core.UI
                     {
                         Console.WriteLine($"MenuUIOverlay: Failed to find type {typeName}");
                     }
+                    _eventBus.Publish(new ClosePanelEvent(_parent));
                 }
                 else if (hook.Contains("Scene"))
                 {
@@ -91,7 +89,6 @@ namespace SiegeEngine.Core.UI
                     Console.WriteLine($"MenuUIOverlay: Published GenericEvent with hook {hook}");
                 }
             }
-
             protected override void HandleLink(string href)
             {
                 if (string.IsNullOrEmpty(href)) return;
@@ -115,22 +112,18 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
-
         private readonly ModManager _modManager;
         private readonly string _initialHtmlPath;
-
         public MenuPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, ModManager modManager, string initialHtmlPath) : base(renderContext, controlContext, window, eventBus)
         {
             _modManager = modManager;
             _initialHtmlPath = initialHtmlPath;
             AllowDragging = false;
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new MenuUIOverlay(this, _renderContext, _controlContext, _window, _modManager, _eventBus);
         }
-
         public override void Init()
         {
             base.Init();
@@ -146,7 +139,6 @@ namespace SiegeEngine.Core.UI
                 Console.WriteLine($"MenuPanel: Initial HTML file not found at {_initialHtmlPath}");
             }
         }
-
         public void SwitchMenu(string menuName)
         {
             string htmlPath = _modManager.ResolvePath($"{menuName}.html");
@@ -162,12 +154,10 @@ namespace SiegeEngine.Core.UI
                 Console.WriteLine($"MenuPanel: Failed to load menu {menuName}");
             }
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
         }
-
         public override void OnPanelResize(float w, float h)
         {
             base.OnPanelResize(w, h);

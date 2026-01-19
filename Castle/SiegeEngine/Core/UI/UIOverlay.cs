@@ -10,7 +10,6 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.Shaders;
-
 namespace SiegeEngine.Core.UI
 {
     public class UIOverlay
@@ -38,6 +37,7 @@ namespace SiegeEngine.Core.UI
         public HtmlElement FocusedElement => _currentFocused;
         public float PanelWidth { get; set; }
         public float PanelHeight { get; set; }
+        public bool DidHandleClick { get; private set; }
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
         {
             _renderContext = renderContext;
@@ -494,6 +494,8 @@ namespace SiegeEngine.Core.UI
         }
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
+            if (_uiRoot == null) return;
+            DidHandleClick = false;
             PanelWidth = panelW;
             PanelHeight = panelH;
             // UI input handling
@@ -577,6 +579,7 @@ namespace SiegeEngine.Core.UI
             }
             if (clickedElem != null)
             {
+                DidHandleClick = true;
                 bool focusable = clickedElem.Tag.ToLower() == "input" || clickedElem.Tag.ToLower() == "select" || clickedElem.Tag.ToLower() == "button" || clickedElem.Attributes.ContainsKey("tabindex") || !string.IsNullOrEmpty(clickedElem.OnFocusJS) || !string.IsNullOrEmpty(clickedElem.OnBlurJS);
                 if (focusable)
                 {
@@ -718,6 +721,8 @@ namespace SiegeEngine.Core.UI
         {
             _uiShader.Dispose();
             _textRenderer.Dispose();
+            _uiRoot = null;
+            _uiClickables.Clear();
         }
         public virtual void TriggerChange(HtmlElement elem)
         {

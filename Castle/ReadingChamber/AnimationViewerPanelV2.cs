@@ -24,7 +24,7 @@ namespace ReadingChamber
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new AnimationViewerPanelV2(renderContext, controlContext, window, eventBus);
-            eventBus.Publish(new OpenPanelEvent(panel));
+            eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
         // Inner UI overlay class for handling clicks.
         private class AssetUIOverlay : UIOverlay
@@ -261,21 +261,24 @@ namespace ReadingChamber
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
                 fileSelector.UserData = "LoadMesh";
-                _eventBus.Publish(new OpenPanelEvent(fileSelector));
+                fileSelector.IsModal = true;
+                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
             else if (hook == "LoadArmature")
             {
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
                 fileSelector.UserData = "LoadArmature";
-                _eventBus.Publish(new OpenPanelEvent(fileSelector));
+                fileSelector.IsModal = true;
+                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
             else if (hook == "LoadAnimation")
             {
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
                 fileSelector.UserData = "LoadAnimation";
-                _eventBus.Publish(new OpenPanelEvent(fileSelector));
+                fileSelector.IsModal = true;
+                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
             else if (elem.Tag == "select")
             {
