@@ -5,6 +5,9 @@ Folder: Model
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
+    - Methods:
+      - Matrix4x4 ComputeLocal()
+      - Quaternion ToQuaternion(Vector3 degrees)
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -38,7 +41,7 @@ Folder: Model
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - Matrix4x4[] ComputeGlobalTransforms()
-        - Calls: ComputeGlobalRecursive
+        - Calls: ComputeGlobalRecursive, FBXMeshParser.PrintMatrix, FBXParserBase.Log
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)
 - File: TextureInfo.cs
   - Class: TextureInfo (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
@@ -84,14 +87,17 @@ Folder: Root
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: FBXParserBase.Log, GatherConnections, GatherObjectsById, ParseBindPoses, model.Skeleton.ComputeGlobalTransforms
+        - Calls: FBXParserBase.Log, GatherConnections, GatherObjectsById, ParseBindPoses
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
       - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
-        - Calls: FBXCoordinateUtils.RemapMatrix, FBXMeshParser.CreateMatrixFromArray
+        - Calls: FBXCoordinateUtils.RemapMatrix, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - int totalLogCount
+      - int MaxTotalLogs
     - Methods:
       - void Log(string message)
       - FBXModel CreateDefaultCubeModel()
