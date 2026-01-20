@@ -6,6 +6,7 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXSkeletonParser
@@ -21,6 +22,11 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 long id = (long)limbNode.properties[0].Value;
                 string fullName = (string)limbNode.properties[1].Value;
                 string name = fullName.Split("::").LastOrDefault() ?? fullName;
+                if (name.EndsWith("Model"))
+                {
+                    name = name.Substring(0, name.Length - 5);
+                }
+                if (name.EndsWith("_end")) continue;
                 var bone = new Bone { Name = name, ParentIndex = -1 };
                 var props70 = limbNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
@@ -147,6 +153,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return (boneIndexById, rootIndices);
         }
+
         public static void BuildHierarchy(FBXModel model, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById)
         {
             foreach (var bone in model.Skeleton.Bones)
@@ -159,6 +166,30 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 int parentIdx = boneIndexById[conn.parent];
                 model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
                 model.Skeleton.Bones[parentIdx].Children.Add(model.Skeleton.Bones[childIdx]);
+            }
+            foreach (var bone in model.Skeleton.Bones)
+            {
+                bone.Children = bone.Children.OrderBy(c => c.Name).ToList();
+            }
+            LogHierarchy(model.Skeleton);
+        }
+
+        private static void LogHierarchy(Skeleton skeleton)
+        {
+            Console.WriteLine("Skeleton Hierarchy:");
+            foreach (var root in skeleton.Bones.Where(b => b.ParentIndex == -1))
+            {
+                LogBoneRecursive(root, 0, skeleton.Bones);
+            }
+        }
+
+        private static void LogBoneRecursive(Bone bone, int depth, List<Bone> bones)
+        {
+            string indent = new string(' ', depth * 2);
+            Console.WriteLine($"{indent}- {bone.Name} (Index: {bones.IndexOf(bone)})");
+            foreach (var child in bone.Children)
+            {
+                LogBoneRecursive(child, depth + 1, bones);
             }
         }
     }
