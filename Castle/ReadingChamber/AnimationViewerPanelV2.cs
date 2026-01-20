@@ -16,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanelV2 : BasePanel
@@ -108,7 +109,7 @@ namespace ReadingChamber
             UpdateModelData();
             if (_model.HasSkin)
             {
-                SetRestPose();
+                //SetRestPose();
             }
             CenterCamera();
         }
@@ -129,7 +130,7 @@ namespace ReadingChamber
             _model.Skeleton = tempSkeleton;
             if (_model.HasSkin)
             {
-                SetRestPose();
+                //SetRestPose();
             }
             UpdateModelData();
         }
