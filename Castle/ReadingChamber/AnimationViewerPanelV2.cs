@@ -109,7 +109,7 @@ namespace ReadingChamber
             UpdateModelData();
             if (_model.HasSkin)
             {
-                //SetRestPose();
+                SetRestPose();
             }
             CenterCamera();
         }
@@ -130,7 +130,7 @@ namespace ReadingChamber
             _model.Skeleton = tempSkeleton;
             if (_model.HasSkin)
             {
-                //SetRestPose();
+                SetRestPose();
             }
             UpdateModelData();
         }
@@ -519,31 +519,31 @@ namespace ReadingChamber
             // //Console.WriteLine($"Rest global transform for bone {i} ({_model.Skeleton.Bones[i].Name}):");
             // //PrintMatrix(_currentGlobalTransforms[i]);
             //}
-            _boneMatrices = new Matrix4x4[_currentGlobalTransforms.Length];
-            for (int i = 0; i < _currentGlobalTransforms.Length; i++)
-            {
-                _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
-                //Console.WriteLine($"Bind pose for bone {i} ({_model.Skeleton.Bones[i].Name}):");
-                //PrintMatrix(_model.Skeleton.Bones[i].BindPose);
-                //Console.WriteLine($"Bone matrix for bone {i} ({_model.Skeleton.Bones[i].Name}):");
-                //PrintMatrix(_boneMatrices[i]);
-            }
-            _currentNormalTransforms = new Matrix3x3[_boneMatrices.Length];
-            for (int i = 0; i < _boneMatrices.Length; i++)
-            {
-                if (Matrix4x4.Invert(_boneMatrices[i], out Matrix4x4 inv))
-                {
-                    Matrix4x4 transInv = Matrix4x4.Transpose(inv);
-                    _currentNormalTransforms[i] = new Matrix3x3(
-                        transInv.M11, transInv.M12, transInv.M13,
-                        transInv.M21, transInv.M22, transInv.M23,
-                        transInv.M31, transInv.M32, transInv.M33);
-                }
-                else
-                {
-                    _currentNormalTransforms[i] = Matrix3x3.Identity;
-                }
-            }
+            //_boneMatrices = new Matrix4x4[_currentGlobalTransforms.Length];
+            //for (int i = 0; i < _currentGlobalTransforms.Length; i++)
+            //{
+            //    _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
+            //    //Console.WriteLine($"Bind pose for bone {i} ({_model.Skeleton.Bones[i].Name}):");
+            //    //PrintMatrix(_model.Skeleton.Bones[i].BindPose);
+            //    //Console.WriteLine($"Bone matrix for bone {i} ({_model.Skeleton.Bones[i].Name}):");
+            //    //PrintMatrix(_boneMatrices[i]);
+            //}
+            //_currentNormalTransforms = new Matrix3x3[_boneMatrices.Length];
+            //for (int i = 0; i < _boneMatrices.Length; i++)
+            //{
+            //    if (Matrix4x4.Invert(_boneMatrices[i], out Matrix4x4 inv))
+            //    {
+            //        Matrix4x4 transInv = Matrix4x4.Transpose(inv);
+            //        _currentNormalTransforms[i] = new Matrix3x3(
+            //            transInv.M11, transInv.M12, transInv.M13,
+            //            transInv.M21, transInv.M22, transInv.M23,
+            //            transInv.M31, transInv.M32, transInv.M33);
+            //    }
+            //    else
+            //    {
+            //        _currentNormalTransforms[i] = Matrix3x3.Identity;
+            //    }
+            //}
             UpdateSkeletonVisualization();
         }
         private void PrintMatrix(Matrix4x4 m)
