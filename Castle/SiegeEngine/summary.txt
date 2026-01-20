@@ -246,7 +246,7 @@ Folder: Core
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  int winH,  int winW, float deltaTime)
-        - Calls: DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, panel.OnPanelResize
+        - Calls: ClosePanelEvent, DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, panel.OnPanelResize
       - DockState GetDockStateFromPosition( int winH,  int winW, Vector2 mousePos)
       - void DockPanel( DockState state, IPanel panel)
         - Calls: newTabbed.AddPanel
@@ -800,7 +800,7 @@ Folder: Core
       - EventBus _eventBus
     - Methods:
       - void HandleDataHook(string hook)
-        - Calls: _document.getElementById, checked.ToString, mi.Invoke
+        - Calls: ClosePanelEvent, _document.getElementById, checked.ToString, mi.Invoke
       - void HandleLink(string href)
         - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
 - File: MeshData.cs
@@ -1391,12 +1391,14 @@ Folder: Core
       - void LoadMenu(string initialMenuHtmlPath)
         - Calls: AddPanel, _modManager.ResolvePath
       - void OnOpenPanel(OpenPanelEvent e)
-        - Calls: AddPanel, e.Panel.Init
+        - Calls: AddPanel, RemovePanel, _panels.Clear, _previousVisibility.Clear, e.Panel.Init
+      - void OnClosePanel(ClosePanelEvent e)
+        - Calls: RemovePanel, _previousVisibility.Clear
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
         - Calls: panel.Dispose
       - void Update(float deltaTime)
-        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton
+        - Calls: ClosePanelEvent, _controlContext.GetCursorPos, _controlContext.GetMouseButton
       - void Render()
         - Calls: _renderContext.Disable, _renderContext.Enable
       - void Dispose()
@@ -1464,6 +1466,7 @@ Folder: Core
       - void RecomputeLayout( float h, float w)
         - Calls: _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
       - void Dispose()
+        - Calls: _uiClickables.Clear
       - void TriggerChange(HtmlElement elem)
         - Calls: InvokeListeners, JSElement, _jsContext.RunWithThis
       - void InvokeListeners( string eventName, HtmlElement elem)

@@ -384,6 +384,9 @@ Folder: SiegeEngine
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
+    - Methods:
+      - Matrix4x4 ComputeLocal()
+      - Quaternion ToQuaternion(Vector3 degrees)
 - File: BrushRegistryUpdateEvent.cs
   - Class: BrushRegistryUpdateEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -592,7 +595,7 @@ Folder: SiegeEngine
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  int winH,  int winW, float deltaTime)
-        - Calls: DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, panel.OnPanelResize
+        - Calls: ClosePanelEvent, DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, panel.OnPanelResize
       - DockState GetDockStateFromPosition( int winH,  int winW, Vector2 mousePos)
       - void DockPanel( DockState state, IPanel panel)
         - Calls: newTabbed.AddPanel
@@ -734,11 +737,19 @@ Folder: SiegeEngine
 - File: FBXAnimationParser.cs
   - Class: FBXAnimationParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - long TicksPerSecond
+    - Methods:
+      - Vector3 GetInterpolatedVector( bool isTranslation,  float modelScale,  int[] signs,  int[] sourceToTarget,  long tick, BaseNode curveNode)
+        - Calls: FBXCoordinateUtils.RemapVector, GetInterpolatedValue
+      - float GetInterpolatedValue( long tick,  string chan, BaseNode curveNode)
+      - void ComputeGlobalRecursive( List<Bone> bones,  Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] locals, Bone bone)
 - File: FBXCoordinateUtils.cs
   - Class: FBXCoordinateUtils (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: System, System.Numerics
     - Methods:
       - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
+      - Matrix4x4 RemapMatrix( int[] signs,  int[] sourceToTarget, Matrix4x4 m)
 - File: FBXFileForest.cs
   - Class: FBXFileForest (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -755,6 +766,9 @@ Folder: SiegeEngine
       - Vector3 GetNormal( int pvIdx,  int vertIdx,  int[] normIdx,  int[] signs,  int[] sourceToTarget,  string mapping,  string refe, double[] norms)
         - Calls: FBXCoordinateUtils.RemapVector
       - Vector2 GetUV( int pvIdx,  int vertIdx,  int[] uvIdx,  string mapping,  string refe, double[] uvs)
+      - Matrix4x4 CreateMatrixFromArray(double[] vals)
+      - void PrintMatrix(Matrix4x4 m)
+        - Calls: FBXParserBase.Log
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -770,12 +784,17 @@ Folder: SiegeEngine
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: FBXModel, FBXParserBase.Log, GatherConnections, GatherObjectsById
+        - Calls: .Value.ToString, FBXModel, FBXParserBase.Log, GatherConnections, GatherObjectsById, ParseBindPoses
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
+      - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
+        - Calls: .Value.ToString, FBXCoordinateUtils.RemapMatrix, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - int totalLogCount
+      - int MaxTotalLogs
     - Methods:
       - void Log(string message)
       - FBXModel CreateDefaultCubeModel()
@@ -1198,6 +1217,8 @@ Folder: SiegeEngine
 - File: Matrix3x3.cs
   - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Numerics
+    - Methods:
+      - constructor Matrix3x3( float m12,  float m13,  float m21,  float m22,  float m23,  float m31,  float m32,  float m33, float m11)
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
@@ -1209,7 +1230,7 @@ Folder: SiegeEngine
       - EventBus _eventBus
     - Methods:
       - void HandleDataHook(string hook)
-        - Calls: _document.getElementById, checked.ToString, mi.Invoke
+        - Calls: ClosePanelEvent, _document.getElementById, checked.ToString, mi.Invoke
       - void HandleLink(string href)
         - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
 - File: MeshData.cs
@@ -1402,7 +1423,7 @@ Folder: SiegeEngine
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: DockManager
       - void OnOpenPanel(OpenPanelEvent e)
-        - Calls: AddPanel, RemovePanel, _panels.Clear
+        - Calls: AddPanel
       - void OnClosePanel(ClosePanelEvent e)
         - Calls: RemovePanel
       - void AddPanel(IPanel panel)
@@ -1693,7 +1714,7 @@ Folder: SiegeEngine
   - Class: ShaderProgram (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, System, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - uint _program
@@ -1715,7 +1736,9 @@ Folder: SiegeEngine
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
       - void SetMatrix4Array( Matrix4x4[] matrices, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
-      - void SetMatrix3Array( Matrix3x3[] matrices, string name)
+      - void SetMatrix3Array(Matrix3x3[] matrices, string name)
+        - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix3
+      - void SetMatrix3Array(Matrix3x3[] matrices, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix3
       - void Dispose()
         - Calls: _renderContext.DeleteProgram
@@ -1725,6 +1748,10 @@ Folder: SiegeEngine
 - File: Skeleton.cs
   - Class: Skeleton (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - Matrix4x4[] ComputeGlobalTransforms()
+        - Calls: ComputeGlobalRecursive, FBXMeshParser.PrintMatrix, FBXParserBase.Log
+      - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
@@ -1903,12 +1930,14 @@ Folder: SiegeEngine
       - void LoadMenu(string initialMenuHtmlPath)
         - Calls: AddPanel, _modManager.ResolvePath
       - void OnOpenPanel(OpenPanelEvent e)
-        - Calls: AddPanel, e.Panel.Init
+        - Calls: AddPanel, RemovePanel, _panels.Clear, _previousVisibility.Clear, e.Panel.Init
+      - void OnClosePanel(ClosePanelEvent e)
+        - Calls: RemovePanel, _previousVisibility.Clear
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
         - Calls: panel.Dispose
       - void Update(float deltaTime)
-        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton
+        - Calls: ClosePanelEvent, _controlContext.GetCursorPos, _controlContext.GetMouseButton
       - void Render()
         - Calls: _renderContext.Disable, _renderContext.Enable
       - void Dispose()
@@ -1976,6 +2005,7 @@ Folder: SiegeEngine
       - void RecomputeLayout( float h, float w)
         - Calls: _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
       - void Dispose()
+        - Calls: _uiClickables.Clear
       - void TriggerChange(HtmlElement elem)
         - Calls: InvokeListeners, JSElement, _jsContext.RunWithThis
       - void InvokeListeners( string eventName, HtmlElement elem)
@@ -2065,6 +2095,7 @@ Folder: SiegeEngine
       - uint _vertexCount
       - uint _indexCount
       - bool _disposed
+      - uint Vao
     - Methods:
       - constructor VertexBuffer(IRenderContext renderContext)
         - Calls: _renderContext.GenBuffer, _renderContext.GenVertexArray
