@@ -162,5 +162,9 @@ namespace SiegeEngine.Core.UI
         {
             base.OnPanelResize(w, h);
         }
+        public override void Dispose()
+        {
+            base.Dispose();
+        }
     }
 }

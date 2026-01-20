@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: ReadingChamber
+// File: FileSelectorPanel.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
 using System;
@@ -8,7 +10,6 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
-
 namespace ReadingChamber
 {
     public class FileSelectorPanel : BasePanel
@@ -16,7 +17,7 @@ namespace ReadingChamber
         private class FileSelectorUIOverlay : UIOverlay
         {
             private readonly FileSelectorPanel _parent;
-            public FileSelectorUIOverlay(FileSelectorPanel parent, IRenderContext renderContext, IControlContext controlContext, IntPtr window) : base(renderContext, controlContext, window)
+            public FileSelectorUIOverlay(FileSelectorPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
@@ -33,11 +34,12 @@ namespace ReadingChamber
         private bool _sortAscending = true;
         private readonly string[] _allowedExtensions;
         public object UserData { get; set; } // To pass context like hook
-        public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, IntPtr window, EventBus eventBus, string initialDir, params string[] allowedExtensions) : base(renderContext, controlContext, window, eventBus)
+        public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialDir, params string[] allowedExtensions) : base(renderContext, controlContext, window, eventBus)
         {
             _currentDir = initialDir;
             _allowedExtensions = allowedExtensions?.Select(ext => ext.ToLowerInvariant()).ToArray();
             Scaling = ScalingMode.Fill;
+            IsModal = true;
         }
         protected override UIOverlay CreateUIOverlay()
         {

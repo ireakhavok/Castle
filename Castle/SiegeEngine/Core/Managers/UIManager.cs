@@ -34,6 +34,7 @@ namespace SiegeEngine.Core.Managers
         private readonly string _configPath;
         private bool _menuVisible = true;
         private bool _prevMouseDown;
+        private Dictionary<IPanel, bool> _previousVisibility = new Dictionary<IPanel, bool>();
         public bool MenuVisible
         {
             get => _menuVisible;
@@ -101,11 +102,28 @@ namespace SiegeEngine.Core.Managers
                 }
                 _panels.Clear();
             }
+            else if (e.Mode == OpenMode.Overlay && e.Panel.IsModal)
+            {
+                _previousVisibility.Clear();
+                foreach (var p in _panels)
+                {
+                    _previousVisibility[p] = p.Visible;
+                    p.Visible = false;
+                }
+            }
             e.Panel.Init();
             AddPanel(e.Panel);
         }
         private void OnClosePanel(ClosePanelEvent e)
         {
+            if (e.Panel.IsModal)
+            {
+                foreach (var kvp in _previousVisibility)
+                {
+                    kvp.Key.Visible = kvp.Value;
+                }
+                _previousVisibility.Clear();
+            }
             RemovePanel(e.Panel);
         }
         public void AddPanel(IPanel panel)
@@ -130,7 +148,6 @@ namespace SiegeEngine.Core.Managers
             bool hasModal = _panels.Any(p => p.IsModal && p.Visible);
             if (hasModal)
             {
-                // Find the top modal
                 for (int i = _panels.Count - 1; i >= 0; i--)
                 {
                     var panel = _panels[i];
