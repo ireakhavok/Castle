@@ -14,13 +14,17 @@ namespace SiegeEngine.Core.AssetParsing.V2
         {
             var boneIndexById = new Dictionary<long, int>();
             var rootIndices = new List<int>();
-            var limbNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 && n.properties[2].Value.ToString() == "LimbNode").ToList();
+            var limbNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
+                (n.properties[2].Value.ToString() == "LimbNode" || n.properties[2].Value.ToString() == "Limb" ||
+                 n.properties[2].Value.ToString() == "Root" || n.properties[2].Value.ToString() == "Null")).ToList();
             int index = 0;
             foreach (var limbNode in limbNodes)
             {
                 long id = (long)limbNode.properties[0].Value;
-                string fullName = (string)limbNode.properties[1].Value;
-                string name = fullName.Split("::").LastOrDefault() ?? fullName;
+                string fullName = ((string)limbNode.properties[1].Value).Split('\0')[0];
+                string[] nameParts = fullName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
+                string name = nameParts[nameParts.Length - 1].Trim();
+                if (name.EndsWith("_end")) continue;
                 var bone = new Bone { Name = name, ParentIndex = -1 };
                 var props70 = limbNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
@@ -130,6 +134,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 }
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = index;
+                FBXParserBase.Log($"Parsed bone: ID={id}, Index={index}, Name={name}, Type={limbNode.properties[2].Value}, Translation={bone.LclTranslation}, Rotation={bone.LclRotation}, Scaling={bone.LclScaling}");
                 index++;
             }
             var boneIds = new HashSet<long>(boneIndexById.Keys);
@@ -137,12 +142,20 @@ namespace SiegeEngine.Core.AssetParsing.V2
             foreach (var conn in conns.Where(conn => conn.type == "OO" && boneIds.Contains(conn.child) && boneIds.Contains(conn.parent)))
             {
                 childBones.Add(conn.child);
+                long parentId = conn.parent;
+                long childId = conn.child;
+                string parentName = model.Skeleton.Bones[boneIndexById[parentId]].Name;
+                string childName = model.Skeleton.Bones[boneIndexById[childId]].Name;
+                FBXParserBase.Log($"Hierarchy connection: Parent ID={parentId} ({parentName}), Child ID={childId} ({childName})");
             }
             foreach (var bid in boneIds)
             {
                 if (!childBones.Contains(bid))
                 {
-                    rootIndices.Add(boneIndexById[bid]);
+                    int rootIdx = boneIndexById[bid];
+                    rootIndices.Add(rootIdx);
+                    string rootName = model.Skeleton.Bones[rootIdx].Name;
+                    FBXParserBase.Log($"Root bone: ID={bid}, Index={rootIdx}, Name={rootName}");
                 }
             }
             return (boneIndexById, rootIndices);
@@ -159,6 +172,21 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 int parentIdx = boneIndexById[conn.parent];
                 model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
                 model.Skeleton.Bones[parentIdx].Children.Add(model.Skeleton.Bones[childIdx]);
+            }
+            FBXParserBase.Log("Built hierarchy:");
+            foreach (var bone in model.Skeleton.Bones.Where(b => b.ParentIndex == -1))
+            {
+                LogBoneHierarchy(model.Skeleton.Bones, bone, 0);
+            }
+        }
+        private static void LogBoneHierarchy(List<Bone> bones, Bone bone, int level)
+        {
+            string indent = new string(' ', level * 2);
+            int idx = bones.IndexOf(bone);
+            FBXParserBase.Log($"{indent}Bone {idx}: {bone.Name}, ParentIndex={bone.ParentIndex}, LocalRest Translation={bone.LocalRest.Translation}");
+            foreach (var child in bone.Children)
+            {
+                LogBoneHierarchy(bones, child, level + 1);
             }
         }
     }
