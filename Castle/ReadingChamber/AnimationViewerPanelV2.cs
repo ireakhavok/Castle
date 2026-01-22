@@ -500,6 +500,7 @@ namespace ReadingChamber
         private void UpdateSkeletonVisualization()
         {
             if (_model == null || _model.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
+            // Rotate skeleton 180 degrees around Z-axis to align with mesh orientation (fixes 180-degree mismatch between rest/bind and mesh)
             Matrix4x4 rotation180Z = Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, MathF.PI);
             // Rest pose (green)
             var vertices = new List<Vertex>();
