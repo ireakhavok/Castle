@@ -28,11 +28,6 @@ Found: ..
 Found: cube.png
 Found: cube_move.fbx
 Found: cube.fbx
-Found: jumping_forward.fbx
-Found: jumping_forward_correct_axis.fbx
-Found: jumping_mesh.fbx
-Found: jumping_mesh_anim.fbx
-Found: jumping_skeletal_mesh.fbx
 Found: Man_blender.fbm
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\Man_blender.fbm
 Found: .
@@ -123,8 +118,14 @@ Found: walkingRight.fbx.meta
 Found: walking_backwards.fbx
 Found: walking_backwards.fbx.meta
 Found: man_mesh.fbx
+Found: man_mesh_arrow.fbx
+Found: mesh5Files
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\mesh5Files
+Found: .
+Found: ..
+Found: jumping_forward_correct_axis.fbx
 Found: man_mesh_5.fbm
-Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\man_mesh_5.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\mesh5Files\man_mesh_5.fbm
 Found: .
 Found: ..
 Found: jumping_forward_correct_axis.fbx
@@ -139,7 +140,7 @@ Found: Man_Cloth_Up_Normals.tga
 Found: man_mesh_5.fbx
 Found: man_mesh_5_armature.fbx
 Found: man_mesh_5_armature_mesh.fbm
-Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\man_mesh_5_armature_mesh.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\mesh5Files\man_mesh_5_armature_mesh.fbm
 Found: .
 Found: ..
 Found: Man_Body_Albedo.tga
@@ -150,7 +151,16 @@ Found: Man_Cloth_Up_Albedo_01.tga
 Found: Man_Cloth_Up_Metallic.tga
 Found: Man_Cloth_Up_Normals.tga
 Found: man_mesh_5_armature_mesh.fbx
-Found: man_mesh_arrow.fbx
+Found: man_mesh_5_v2.fbm
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\mesh5Files\man_mesh_5_v2.fbm
+Found: .
+Found: ..
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Metallic.tga
+Found: Man_Cloth_Down_Albedo_02.tga
+Found: Man_Cloth_Down_Metallic.tga
+Found: Man_Cloth_Up_Albedo_01.tga
+Found: man_mesh_5_v2.fbx
 Found: SimpleDebug
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Characters\SimpleDebug
 Found: .
@@ -444,7 +454,7 @@ Found 16 dependencies
 Found: AnimationViewerPanelV2.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanelV2.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanelV2.cs
-Read 27210 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanelV2.cs
+Read 28163 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanelV2.cs
 Namespace: ReadingChamber
 Found 16 dependencies
 Found: AssetViewerPanel.cs
@@ -705,7 +715,7 @@ Found 2 dependencies
 Found: FBXSkeletonParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
-Read 9887 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
+Read 12255 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2
 Found 6 dependencies
 Found: HeirarchySummary.exe
@@ -1286,7 +1296,7 @@ Found 0 dependencies
 Found: PointShader.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\PointShader.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\PointShader.cs
-Read 977 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\PointShader.cs
+Read 888 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\PointShader.cs
 Namespace: SiegeEngine.Core.Rendering.Shaders
 Found 0 dependencies
 Found: SceneShader.cs
