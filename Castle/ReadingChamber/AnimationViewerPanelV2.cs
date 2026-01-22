@@ -500,12 +500,13 @@ namespace ReadingChamber
         private void UpdateSkeletonVisualization()
         {
             if (_model == null || _model.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
+            Matrix4x4 rotation180Z = Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, MathF.PI);
             // Rest pose (green)
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
-                Vector3 pos = _currentGlobalTransforms[i].Translation;
+                Vector3 pos = Vector3.Transform(_currentGlobalTransforms[i].Translation, rotation180Z);
                 vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 0, 1, 0, 1)); // Green for joints
             }
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
@@ -523,7 +524,7 @@ namespace ReadingChamber
             indices = new List<uint>();
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
-                Vector3 pos = _currentBindGlobals[i].Translation;
+                Vector3 pos = Vector3.Transform(_currentBindGlobals[i].Translation, rotation180Z);
                 vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1)); // Red for joints
             }
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
@@ -559,6 +560,51 @@ namespace ReadingChamber
                 {
                     _currentBindGlobals[i] = Matrix4x4.Identity;
                 }
+            }
+            // Overwrite root orientation of rest pose with bind pose info
+            if (_model.Skeleton.Bones.Count > 0)
+            {
+                int rootIdx = 0; // Assuming bone 0 is the root
+                _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
+            }
+            // Recompute rest globals after overwrite
+            _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
+            // Align rest pose to bind pose using a non-root bone
+            if (_model.Skeleton.Bones.Count > 2)
+            {
+                int alignBoneIdx = 2; // e.g., pelvis
+                Matrix4x4 M_r = _currentGlobalTransforms[alignBoneIdx];
+                Matrix4x4 M_b = _currentBindGlobals[alignBoneIdx];
+                if (Matrix4x4.Invert(M_r, out Matrix4x4 invMr))
+                {
+                    Matrix4x4 C = invMr * M_b;
+                    for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+                    {
+                        _currentGlobalTransforms[i] = _currentGlobalTransforms[i] * C;
+                    }
+                }
+            }
+            // Added debug logs for first 4 bones
+            for (int i = 0; i < Math.Min(4, _model.Skeleton.Bones.Count); i++)
+            {
+                Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}) Translation: {_currentGlobalTransforms[i].Translation}");
+                Console.WriteLine($"Rest Pose Bone {i} Matrix:");
+                PrintMatrix(_currentGlobalTransforms[i]);
+                Console.WriteLine($"Rest Pose Bone {i} LocalRest:");
+                PrintMatrix(_model.Skeleton.Bones[i].LocalRest);
+            }
+            for (int i = 0; i < Math.Min(4, _model.Skeleton.Bones.Count); i++)
+            {
+                Console.WriteLine($"Bind Pose Bone {i} ({_model.Skeleton.Bones[i].Name}) Translation: {_currentBindGlobals[i].Translation}");
+                Console.WriteLine($"Bind Pose Bone {i} Matrix:");
+                PrintMatrix(_currentBindGlobals[i]);
+                Console.WriteLine($"Bind Pose Bone {i} BindPose:");
+                PrintMatrix(_model.Skeleton.Bones[i].BindPose);
+            }
+            // Also print a mesh vertex position for comparison
+            if (_model.Meshes.Count > 0 && _model.Meshes[0].Vertices.Count > 0)
+            {
+                Console.WriteLine("Mesh First Vertex Position: " + _model.Meshes[0].Vertices[0].Position);
             }
             UpdateSkeletonVisualization();
         }
