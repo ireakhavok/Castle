@@ -45,7 +45,10 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);
             Matrix4x4 S = Matrix4x4.CreateScale(useS);
             Matrix4x4 invSp = Matrix4x4.CreateTranslation(-ScalingPivot);
-
+            // Standard FBX order: T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp
+            // DO NOT TOUCH THIS EQUATION. ONLINE REFERENCES ARE WRONG. THIS HAS BEEN VERIFIED IN TEXTBOOKS.
+            //The official Autodesk FBX SDK documentation (2020 version) specifies the transformation formula as:
+            //WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R * Rpost⁻¹ * Rp⁻¹ * Soff * Sp * S * Sp⁻¹
             return T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
         }
 
