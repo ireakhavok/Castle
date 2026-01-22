@@ -545,6 +545,11 @@ namespace ReadingChamber
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 var bindPose = _model.Skeleton.Bones[i].BindPose;
+                // Transpose the global bind matrix to align with OpenGL's column-major format.
+                // System.Numerics.Matrix4x4 is row-major, but after FBX inversion and remapping,
+                // this ensures bind pose skeleton orientation matches the rest pose without
+                // additional flips in parsing. Verified with Blender exports where bind and rest
+                // are equivalent but stored differently.
                 if (Matrix4x4.Invert(bindPose, out Matrix4x4 globalBind))
                 {
                     globalBind = Matrix4x4.Transpose(globalBind);
