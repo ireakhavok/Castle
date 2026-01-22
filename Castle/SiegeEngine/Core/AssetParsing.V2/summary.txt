@@ -110,6 +110,9 @@ Folder: Root
 - File: FBXSkeletonParser.cs
   - Class: FBXSkeletonParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - void LogBoneHierarchy( Bone bone,  int level, List<Bone> bones)
+        - Calls: FBXParserBase.Log
 - File: NodeParser.cs
   - Class: NodeParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Text

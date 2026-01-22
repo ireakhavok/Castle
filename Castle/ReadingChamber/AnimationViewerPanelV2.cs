@@ -16,7 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanelV2 : BasePanel
@@ -46,10 +45,12 @@ namespace ReadingChamber
         private string _currentAnimation;
         private ShaderProgram _assetShader;
         private VertexBuffer _skeletonBuffer;
+        private VertexBuffer _bindSkeletonBuffer;
         private ShaderProgram _pointShader;
         private EditorTextRenderer _textRenderer;
         private ShaderProgram _textShader;
         private Matrix4x4[] _currentGlobalTransforms;
+        private Matrix4x4[] _currentBindGlobals;
         private Matrix4x4[] _boneMatrices;
         private Matrix3x3[] _currentNormalTransforms;
         private Vector3 _cameraPosition = new Vector3(0, 500, 0);
@@ -87,6 +88,7 @@ namespace ReadingChamber
         {
             base.Init();
             _skeletonBuffer = new VertexBuffer(_renderContext);
+            _bindSkeletonBuffer = new VertexBuffer(_renderContext);
             _pointShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
             _textShader = new ShaderProgram(_renderContext, TextShader.VertexShaderSource, TextShader.FragmentShaderSource);
             _textRenderer = new EditorTextRenderer(_renderContext, _window);
@@ -453,8 +455,13 @@ namespace ReadingChamber
             _pointShader.SetMatrix4("uModel", modelMatrix);
             _pointShader.SetMatrix4("uView", view);
             _pointShader.SetMatrix4("uProjection", projection);
+            // Draw rest skeleton in green
             _renderContext.BindVertexArray(_skeletonBuffer.Vao);
             _renderContext.DrawElements(_renderContext.Enums.Lines, _skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            _renderContext.BindVertexArray(0);
+            // Draw bind skeleton in red
+            _renderContext.BindVertexArray(_bindSkeletonBuffer.Vao);
+            _renderContext.DrawElements(_renderContext.Enums.Lines, _bindSkeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _renderContext.BindVertexArray(0);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -493,6 +500,7 @@ namespace ReadingChamber
         private void UpdateSkeletonVisualization()
         {
             if (_model == null || _model.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
+            // Rest pose (green)
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
@@ -509,41 +517,44 @@ namespace ReadingChamber
                 }
             }
             _skeletonBuffer.UpdateCustom(vertices, indices);
+            // Bind pose (red)
+            if (_currentBindGlobals == null || _currentBindGlobals.Length != _model.Skeleton.Bones.Count) return;
+            vertices = new List<Vertex>();
+            indices = new List<uint>();
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                Vector3 pos = _currentBindGlobals[i].Translation;
+                vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1)); // Red for joints
+            }
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                if (_model.Skeleton.Bones[i].ParentIndex >= 0)
+                {
+                    indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
+                    indices.Add((uint)i);
+                }
+            }
+            _bindSkeletonBuffer.UpdateCustom(vertices, indices);
         }
         private void SetRestPose()
         {
             if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0) return;
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
-            //for (int i = 0; i < _currentGlobalTransforms.Length; i++)
-            //{
-            // //Console.WriteLine($"Rest global transform for bone {i} ({_model.Skeleton.Bones[i].Name}):");
-            // //PrintMatrix(_currentGlobalTransforms[i]);
-            //}
-            //_boneMatrices = new Matrix4x4[_currentGlobalTransforms.Length];
-            //for (int i = 0; i < _currentGlobalTransforms.Length; i++)
-            //{
-            //    _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
-            //    //Console.WriteLine($"Bind pose for bone {i} ({_model.Skeleton.Bones[i].Name}):");
-            //    //PrintMatrix(_model.Skeleton.Bones[i].BindPose);
-            //    //Console.WriteLine($"Bone matrix for bone {i} ({_model.Skeleton.Bones[i].Name}):");
-            //    //PrintMatrix(_boneMatrices[i]);
-            //}
-            //_currentNormalTransforms = new Matrix3x3[_boneMatrices.Length];
-            //for (int i = 0; i < _boneMatrices.Length; i++)
-            //{
-            //    if (Matrix4x4.Invert(_boneMatrices[i], out Matrix4x4 inv))
-            //    {
-            //        Matrix4x4 transInv = Matrix4x4.Transpose(inv);
-            //        _currentNormalTransforms[i] = new Matrix3x3(
-            //            transInv.M11, transInv.M12, transInv.M13,
-            //            transInv.M21, transInv.M22, transInv.M23,
-            //            transInv.M31, transInv.M32, transInv.M33);
-            //    }
-            //    else
-            //    {
-            //        _currentNormalTransforms[i] = Matrix3x3.Identity;
-            //    }
-            //}
+            // Compute bind globals by inverting BindPose (since BindPose is inverse global bind from FBX)
+            _currentBindGlobals = new Matrix4x4[_model.Skeleton.Bones.Count];
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                var bindPose = _model.Skeleton.Bones[i].BindPose;
+                if (Matrix4x4.Invert(bindPose, out Matrix4x4 globalBind))
+                {
+                    globalBind = Matrix4x4.Transpose(globalBind);
+                    _currentBindGlobals[i] = globalBind;
+                }
+                else
+                {
+                    _currentBindGlobals[i] = Matrix4x4.Identity;
+                }
+            }
             UpdateSkeletonVisualization();
         }
         private void PrintMatrix(Matrix4x4 m)
