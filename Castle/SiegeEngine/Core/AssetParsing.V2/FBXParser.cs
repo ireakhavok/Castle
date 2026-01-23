@@ -87,9 +87,36 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     }
                 }
             }
+            var settings = new FBXSettings();
+            var globalSettingsNode = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
+            if (globalSettingsNode != null && isBlender)
+            {
+                var props70 = globalSettingsNode.children.FirstOrDefault(c => c.Name == "Properties70");
+                if (props70 != null)
+                {
+                    var upAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "UpAxis");
+                    var upAxisSignP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "UpAxisSign");
+                    var frontAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "FrontAxis");
+                    var frontAxisSignP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "FrontAxisSign");
+                    var coordAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "CoordAxis");
+                    var coordAxisSignP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "CoordAxisSign");
+                    int upAxis = upAxisP != null ? Convert.ToInt32(upAxisP.properties[4].Value) : 2;
+                    int upAxisSign = upAxisSignP != null ? Convert.ToInt32(upAxisSignP.properties[4].Value) : 1;
+                    int frontAxis = frontAxisP != null ? Convert.ToInt32(frontAxisP.properties[4].Value) : 1;
+                    int frontAxisSign = frontAxisSignP != null ? Convert.ToInt32(frontAxisSignP.properties[4].Value) : 1;
+                    int coordAxis = coordAxisP != null ? Convert.ToInt32(coordAxisP.properties[4].Value) : 0;
+                    int coordAxisSign = coordAxisSignP != null ? Convert.ToInt32(coordAxisSignP.properties[4].Value) : 1;
+                    FBXParserBase.Log($"GlobalSettings: UpAxis={upAxis} (sign={upAxisSign}), FrontAxis={frontAxis} (sign={frontAxisSign}), CoordAxis={coordAxis} (sign={coordAxisSign})");
+                    var detected = FBXSettings.DetectAxes(upAxis, upAxisSign, frontAxis, frontAxisSign, coordAxis, coordAxisSign);
+                    int[] mapping = detected.mapping;
+                    int[] signs = detected.signs;
+                    settings.AxisMapping = mapping;
+                    settings.AxisSigns = signs;
+                    model.AutoCorrected = true;
+                }
+            }
             var objectsById = GatherObjectsById(objectsNode);
             var conns = GatherConnections(forest);
-            var settings = new FBXSettings();
             var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, settings.AxisMapping, settings.AxisSigns, settings.ModelScale);
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, boneIndexById, rootIndices, settings.P4, settings.InvP4, forest);

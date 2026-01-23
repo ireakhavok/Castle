@@ -27,5 +27,24 @@ namespace SiegeEngine.Core.AssetParsing.V2
         public bool ImportArmature { get; set; } = false;
         public bool ImportAnimations { get; set; } = true;
         // Additional dynamic settings for coordinate frames, etc., can be added
+        public static int EngineUpAxis = 2;
+        public static int EngineUpSign = 1;
+        public static int EngineFrontAxis = 1;
+        public static int EngineFrontSign = -1;
+        public static int EngineCoordAxis = 0;
+        public static int EngineCoordSign = 1;
+        public static (int[] mapping, int[] signs) DetectAxes(int upAxis, int upSign, int frontAxis, int frontSign, int coordAxis, int coordSign)
+        {
+            // Blender internal: UpAxis=2 (Z), sign=1; FrontAxis=1 (Y), sign=1; CoordAxis=0 (X), sign=1 (right-handed)
+            int[] mapping = new int[3];
+            mapping[EngineCoordAxis] = coordAxis;
+            mapping[EngineFrontAxis] = frontAxis;
+            mapping[EngineUpAxis] = upAxis;
+            int[] signs = new int[3] { 1, 1, 1 };
+            signs[coordAxis] = coordSign * EngineCoordSign;
+            signs[frontAxis] = frontSign * EngineFrontSign;
+            signs[upAxis] = upSign * EngineUpSign;
+            return (mapping, signs);
+        }
     }
 }

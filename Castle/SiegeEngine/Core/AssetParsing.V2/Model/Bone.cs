@@ -27,13 +27,12 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
         public Vector3 GeometricScaling { get; set; } = Vector3.One;
         public Matrix4x4 GeometricTransform { get; set; } = Matrix4x4.Identity;
         public List<Bone> Children { get; set; } = new List<Bone>();
-
+        public bool IsDrawable { get; set; } = true;
         public Matrix4x4 ComputeLocal(Vector3? t = null, Quaternion? r = null, Vector3? s = null)
         {
             Vector3 useT = t ?? LclTranslation;
             Quaternion useR = r ?? LclRotation;
             Vector3 useS = s ?? LclScaling;
-
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
@@ -51,7 +50,6 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             //WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R * Rpost⁻¹ * Rp⁻¹ * Soff * Sp * S * Sp⁻¹
             return T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
         }
-
         public Quaternion ToQuaternion(Vector3 degrees)
         {
             float rx = degrees.X * MathF.PI / 180f;

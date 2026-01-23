@@ -6,7 +6,6 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.Definitions;
-
 namespace SiegeEngine.Core.AssetParsing.V2.Model
 {
     public class FBXModel
@@ -16,5 +15,6 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
         public List<Animation> Animations { get; set; } = new List<Animation>();
         public bool HasSkin { get; set; } = false;
         public bool HasRestPose { get; set; }
+        public bool AutoCorrected { get; set; } = false;
     }
 }

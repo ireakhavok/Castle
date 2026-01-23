@@ -507,11 +507,14 @@ namespace ReadingChamber
             var indices = new List<uint>();
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
-                Vector3 pos = Vector3.Transform(_currentGlobalTransforms[i].Translation, rotation180Z);
+                if (!_model.Skeleton.Bones[i].IsDrawable) continue;
+                Vector3 pos = _currentGlobalTransforms[i].Translation;
+                if (!_model.AutoCorrected) pos = Vector3.Transform(pos, rotation180Z);
                 vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 0, 1, 0, 1)); // Green for joints
             }
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
+                if (!_model.Skeleton.Bones[i].IsDrawable) continue;
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {
                     indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
@@ -525,11 +528,14 @@ namespace ReadingChamber
             indices = new List<uint>();
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
-                Vector3 pos = Vector3.Transform(_currentBindGlobals[i].Translation, rotation180Z);
+                if (!_model.Skeleton.Bones[i].IsDrawable) continue;
+                Vector3 pos = _currentBindGlobals[i].Translation;
+                if (!_model.AutoCorrected) pos = Vector3.Transform(pos, rotation180Z);
                 vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1)); // Red for joints
             }
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
+                if (!_model.Skeleton.Bones[i].IsDrawable) continue;
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {
                     indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
