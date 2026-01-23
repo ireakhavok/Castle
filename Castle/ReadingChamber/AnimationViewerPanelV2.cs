@@ -565,29 +565,29 @@ namespace ReadingChamber
                     _currentBindGlobals[i] = Matrix4x4.Identity;
                 }
             }
-            // Overwrite root orientation of rest pose with bind pose info
-            if (_model.Skeleton.Bones.Count > 0)
-            {
-                int rootIdx = 0; // Assuming bone 0 is the root
-                _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
-            }
-            // Recompute rest globals after overwrite
-            _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
-            // Align rest pose to bind pose using a non-root bone
-            if (_model.Skeleton.Bones.Count > 2)
-            {
-                int alignBoneIdx = 2; // e.g., pelvis
-                Matrix4x4 M_r = _currentGlobalTransforms[alignBoneIdx];
-                Matrix4x4 M_b = _currentBindGlobals[alignBoneIdx];
-                if (Matrix4x4.Invert(M_r, out Matrix4x4 invMr))
-                {
-                    Matrix4x4 C = invMr * M_b;
-                    for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-                    {
-                        _currentGlobalTransforms[i] = _currentGlobalTransforms[i] * C;
-                    }
-                }
-            }
+            //// Overwrite root orientation of rest pose with bind pose info
+            //if (_model.Skeleton.Bones.Count > 0)
+            //{
+            //    int rootIdx = 0; // Assuming bone 0 is the root
+            //    _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
+            //}
+            //// Recompute rest globals after overwrite
+            //_currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
+            //// Align rest pose to bind pose using a non-root bone
+            //if (_model.Skeleton.Bones.Count > 2)
+            //{
+            //    int alignBoneIdx = 2; // e.g., pelvis
+            //    Matrix4x4 M_r = _currentGlobalTransforms[alignBoneIdx];
+            //    Matrix4x4 M_b = _currentBindGlobals[alignBoneIdx];
+            //    if (Matrix4x4.Invert(M_r, out Matrix4x4 invMr))
+            //    {
+            //        Matrix4x4 C = invMr * M_b;
+            //        for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            //        {
+            //            _currentGlobalTransforms[i] = _currentGlobalTransforms[i] * C;
+            //        }
+            //    }
+            //}
             // Added debug logs for first 4 bones
             for (int i = 0; i < Math.Min(4, _model.Skeleton.Bones.Count); i++)
             {
