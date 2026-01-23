@@ -47,10 +47,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double rz = (double)p.properties[6].Value;
                             Vector3 euler = new Vector3((float)rx, (float)ry, (float)rz);
                             euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
-                            if (FBXSettings.EngineFrontSign == -1)
-                            {
-                                euler.Y = -euler.Y; // Invert Y Euler for negative forward to preserve rotation direction without 180° artifact
-                            }
                             bone.LclRotation = bone.ToQuaternion(euler);
                         }
                         else if (propName == "Lcl Scaling")
@@ -67,10 +63,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double prz = (double)p.properties[6].Value;
                             Vector3 euler = new Vector3((float)prx, (float)pry, (float)prz);
                             euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
-                            if (FBXSettings.EngineFrontSign == -1)
-                            {
-                                euler.Y = -euler.Y;
-                            }
                             bone.PreRotation = euler;
                         }
                         else if (propName == "PostRotation")
@@ -80,10 +72,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double poz = (double)p.properties[6].Value;
                             Vector3 euler = new Vector3((float)pox, (float)poy, (float)poz);
                             euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
-                            if (FBXSettings.EngineFrontSign == -1)
-                            {
-                                euler.Y = -euler.Y;
-                            }
                             bone.PostRotation = euler;
                         }
                         else if (propName == "RotationPivot")
@@ -132,10 +120,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double grz = (double)p.properties[6].Value;
                             Vector3 euler = new Vector3((float)grx, (float)gry, (float)grz);
                             euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
-                            if (FBXSettings.EngineFrontSign == -1)
-                            {
-                                euler.Y = -euler.Y;
-                            }
                             bone.GeometricRotation = euler;
                         }
                         else if (propName == "GeometricScaling")
