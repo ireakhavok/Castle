@@ -805,6 +805,13 @@ Folder: SiegeEngine
 - File: FBXSettings.cs
   - Class: FBXSettings (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: System, System.Numerics
+    - Fields:
+      - int EngineUpAxis
+      - int EngineUpSign
+      - int EngineFrontAxis
+      - int EngineFrontSign
+      - int EngineCoordAxis
+      - int EngineCoordSign
 - File: FBXSkeletonParser.cs
   - Class: FBXSkeletonParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
