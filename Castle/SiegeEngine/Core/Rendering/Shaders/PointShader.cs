@@ -12,10 +12,12 @@ namespace SiegeEngine.Core.Rendering.Shaders
             uniform mat4 uModel;
             uniform mat4 uView;
             uniform mat4 uProjection;
+            uniform float uPointSize;
             void main()
             {
                 gl_Position = uProjection * uView * uModel * vec4(aPosition, 1.0);
                 vColor = aColor;
+                gl_PointSize = uPointSize;
             }";
         public const string FragmentShaderSource = @"
             #version 330 core
