@@ -8,6 +8,7 @@ using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXParser
@@ -122,6 +123,11 @@ namespace SiegeEngine.Core.AssetParsing.V2
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, boneIndexById, rootIndices, settings.P4, settings.InvP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, rootIndices, settings.P4, settings.InvP4);
             ParseBindPoses(model, objectsNode, boneIndexById, settings.AxisMapping, settings.AxisSigns);
+            // Align rest to bind by setting LocalRest = BindLocal for all bones
+            foreach (var bone in model.Skeleton.Bones)
+            {
+                bone.LocalRest = bone.BindLocal;
+            }
             FBXParserBase.Log($"FBXParser: Built model with {model.Meshes.Count} meshes, {model.Skeleton.Bones.Count} bones, {model.Animations.Count} animations");
             return model;
         }
@@ -182,9 +188,23 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         if (matrixNode == null) continue;
                         double[] vals = (double[])matrixNode.properties[0].Value;
                         Matrix4x4 globalBind = FBXMeshParser.CreateMatrixFromArray(vals); // use same
-                        globalBind = FBXCoordinateUtils.RemapMatrix(globalBind, sourceToTarget, signs);
+                        globalBind = FBXCoordinateUtils.RemapMatrixSelective(globalBind, sourceToTarget, signs, skipFrontSign: true);
                         Matrix4x4.Invert(globalBind, out var invBind);
                         model.Skeleton.Bones[idx].BindPose = invBind;
+                        // Compute BindLocal for alignment
+                        if (Matrix4x4.Invert(invBind, out Matrix4x4 global))
+                        {
+                            Bone bone = model.Skeleton.Bones[idx];
+                            if (bone.ParentIndex >= 0)
+                            {
+                                Matrix4x4 parentInvBind = model.Skeleton.Bones[bone.ParentIndex].BindPose;
+                                bone.BindLocal = global * parentInvBind;
+                            }
+                            else
+                            {
+                                bone.BindLocal = global;
+                            }
+                        }
                     }
                 }
             }

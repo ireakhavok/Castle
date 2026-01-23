@@ -12,7 +12,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             float[] comp = { v.X * signs[0], v.Y * signs[1], v.Z * signs[2] };
             return new Vector3(comp[sourceToTarget[0]], comp[sourceToTarget[1]], comp[sourceToTarget[2]]);
         }
-
         public static Matrix4x4 RemapMatrix(Matrix4x4 m, int[] sourceToTarget, int[] signs)
         {
             Matrix4x4 p = new Matrix4x4();
@@ -42,6 +41,16 @@ namespace SiegeEngine.Core.AssetParsing.V2
             p.M44 = 1;
             Matrix4x4.Invert(p, out var invP);
             return p * m * invP;
+        }
+        public static Matrix4x4 RemapMatrixSelective(Matrix4x4 m, int[] sourceToTarget, int[] signs, bool skipFrontSign = false)
+        {
+            int[] adjustedSigns = (int[])signs.Clone();
+            if (skipFrontSign)
+            {
+                int frontAxis = FBXSettings.EngineFrontAxis; // 1 for Y
+                adjustedSigns[frontAxis] = 1; // Force no flip on front to avoid rotation artifact
+            }
+            return RemapMatrix(m, sourceToTarget, adjustedSigns);
         }
     }
 }
