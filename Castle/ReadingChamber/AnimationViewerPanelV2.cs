@@ -501,8 +501,6 @@ namespace ReadingChamber
         private void UpdateSkeletonVisualization()
         {
             if (_model == null || _model.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
-            // Rotate skeleton 180 degrees around Z-axis to align with mesh orientation (fixes 180-degree mismatch between rest/bind and mesh)
-            Matrix4x4 rotation180Z = Matrix4x4.CreateFromAxisAngle(Vector3.UnitZ, MathF.PI);
             // Rest pose (green)
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
@@ -510,7 +508,6 @@ namespace ReadingChamber
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
                 Vector3 pos = _currentGlobalTransforms[i].Translation;
-                if (!_model.AutoCorrected) pos = Vector3.Transform(pos, rotation180Z);
                 vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 0, 1, 0, 1)); // Green for joints
             }
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
@@ -531,7 +528,6 @@ namespace ReadingChamber
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
                 Vector3 pos = _currentBindGlobals[i].Translation;
-                if (!_model.AutoCorrected) pos = Vector3.Transform(pos, rotation180Z);
                 vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1)); // Red for joints
             }
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
