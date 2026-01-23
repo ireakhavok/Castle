@@ -123,11 +123,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, boneIndexById, rootIndices, settings.P4, settings.InvP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, rootIndices, settings.P4, settings.InvP4);
             ParseBindPoses(model, objectsNode, boneIndexById, settings.AxisMapping, settings.AxisSigns);
-            // Align rest to bind by setting LocalRest = BindLocal for all bones
-            foreach (var bone in model.Skeleton.Bones)
-            {
-                bone.LocalRest = bone.BindLocal;
-            }
             FBXParserBase.Log($"FBXParser: Built model with {model.Meshes.Count} meshes, {model.Skeleton.Bones.Count} bones, {model.Animations.Count} animations");
             return model;
         }
@@ -198,7 +193,14 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             if (bone.ParentIndex >= 0)
                             {
                                 Matrix4x4 parentInvBind = model.Skeleton.Bones[bone.ParentIndex].BindPose;
-                                bone.BindLocal = global * parentInvBind;
+                                if (Matrix4x4.Invert(parentInvBind, out Matrix4x4 parentGlobal))
+                                {
+                                    bone.BindLocal = global * parentGlobal;
+                                }
+                                else
+                                {
+                                    bone.BindLocal = Matrix4x4.Identity;
+                                }
                             }
                             else
                             {
