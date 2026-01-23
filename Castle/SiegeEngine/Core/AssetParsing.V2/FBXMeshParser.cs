@@ -444,19 +444,19 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     polyIndex++;
                 }
             }
-            // Debug logs for first 3 vertices and first triangle indices
-            if (expandedVertices.Count >= 3)
-            {
-                for (int dbg = 0; dbg < 3; dbg++)
-                {
-                    var v = expandedVertices[dbg];
-                    FBXParserBase.Log($"Debug Vertex {dbg}: Pos=({v.Position.X:F3},{v.Position.Y:F3},{v.Position.Z:F3}), Normal=({v.Normal.X:F3},{v.Normal.Y:F3},{v.Normal.Z:F3}), UV=({v.TexCoord.X:F3},{v.TexCoord.Y:F3}), MatIdx={v.MatIdx}");
-                }
-            }
-            if (newIndices.Count >= 3)
-            {
-                FBXParserBase.Log($"Debug First Triangle Indices: {newIndices[0]}, {newIndices[1]}, {newIndices[2]}");
-            }
+            //// Debug logs for first 3 vertices and first triangle indices
+            //if (expandedVertices.Count >= 3)
+            //{
+            //    for (int dbg = 0; dbg < 3; dbg++)
+            //    {
+            //        var v = expandedVertices[dbg];
+            //        FBXParserBase.Log($"Debug Vertex {dbg}: Pos=({v.Position.X:F3},{v.Position.Y:F3},{v.Position.Z:F3}), Normal=({v.Normal.X:F3},{v.Normal.Y:F3},{v.Normal.Z:F3}), UV=({v.TexCoord.X:F3},{v.TexCoord.Y:F3}), MatIdx={v.MatIdx}");
+            //    }
+            //}
+            //if (newIndices.Count >= 3)
+            //{
+            //    FBXParserBase.Log($"Debug First Triangle Indices: {newIndices[0]}, {newIndices[1]}, {newIndices[2]}");
+            //}
             return (expandedVertices, newIndices);
         }
         private static int GetMatId(string matMapping, int[] matIndices, int polyIndex)
