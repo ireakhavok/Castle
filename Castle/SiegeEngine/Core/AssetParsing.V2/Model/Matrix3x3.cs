@@ -21,6 +21,19 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             M32 = m32;
             M33 = m33;
         }
+        public Matrix3x3(Matrix4x4 m)
+        {
+            M11 = m.M11; M12 = m.M12; M13 = m.M13;
+            M21 = m.M21; M22 = m.M22; M23 = m.M23;
+            M31 = m.M31; M32 = m.M32; M33 = m.M33;
+        }
         public static Matrix3x3 Identity { get; } = new Matrix3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
+        public static Matrix3x3 Transpose(Matrix3x3 m)
+        {
+            return new Matrix3x3(
+                m.M11, m.M21, m.M31,
+                m.M12, m.M22, m.M32,
+                m.M13, m.M23, m.M33);
+        }
     }
 }

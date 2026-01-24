@@ -16,7 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanelV2 : BasePanel
@@ -448,7 +447,7 @@ namespace ReadingChamber
                         }
                     }
                     _renderContext.BindVertexArray(mmr.Vao);
-                    //_renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                     _renderContext.BindVertexArray(0);
                 }
             }
@@ -568,7 +567,8 @@ namespace ReadingChamber
             // Overwrite root orientation of rest pose with bind pose info
             if (_model.Skeleton.Bones.Count > 0)
             {
-                int rootIdx = 0; // Assuming bone 0 is the root
+                int rootIdx = _model.Skeleton.Bones.FindIndex(b => b.Name.Contains("Root") || b.Name == "Armature");
+                if (rootIdx == -1) rootIdx = 0; // Fallback to 0 if not found
                 _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
             }
             // Recompute rest globals after overwrite
@@ -576,7 +576,7 @@ namespace ReadingChamber
             // Align rest pose to bind pose using a non-root bone
             if (_model.Skeleton.Bones.Count > 2)
             {
-                int alignBoneIdx = 2; // e.g., pelvis
+                int alignBoneIdx = 2; // e.g., pelvis; adjust based on your skeleton (test with logs)
                 Matrix4x4 M_r = _currentGlobalTransforms[alignBoneIdx];
                 Matrix4x4 M_b = _currentBindGlobals[alignBoneIdx];
                 if (Matrix4x4.Invert(M_r, out Matrix4x4 invMr))
@@ -609,6 +609,15 @@ namespace ReadingChamber
             if (_model.Meshes.Count > 0 && _model.Meshes[0].Vertices.Count > 0)
             {
                 Console.WriteLine("Mesh First Vertex Position: " + _model.Meshes[0].Vertices[0].Position);
+            }
+            // Deform mesh to rest pose via skinning
+            _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
+            _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                Matrix4x4 skinMat = _currentGlobalTransforms[i] * _model.Skeleton.Bones[i].BindPose;
+                _boneMatrices[i] = skinMat;
+                _currentNormalTransforms[i] = Matrix3x3.Transpose(new Matrix3x3(Matrix4x4.Invert(skinMat, out var inv) ? inv : Matrix4x4.Identity));
             }
             UpdateSkeletonVisualization();
         }
