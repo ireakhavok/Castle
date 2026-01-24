@@ -2,6 +2,7 @@
 using Silk.NET.Maths;
 using System;
 using System.Numerics;
+using SiegeEngine.Core.Interfaces;  
 namespace SiegeEngine.Core.Definitions
 {
     public class ModelComponent : IComponent

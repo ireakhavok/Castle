@@ -466,11 +466,11 @@ namespace ReadingChamber
                     normalTransforms[i] = new Matrix3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
                     continue;
                 }
-                normalTransforms[i] = new Matrix3x3(
+                normalTransforms[i] = Matrix3x3.Transpose(
                     invMat.M11, invMat.M12, invMat.M13,
                     invMat.M21, invMat.M22, invMat.M23,
                     invMat.M31, invMat.M32, invMat.M33
-                ).Transpose();
+                );
             }
             _currentNormalTransforms = normalTransforms;
             _model.Skeleton.UpdateTransforms(finalTransforms);
@@ -1008,11 +1008,11 @@ namespace ReadingChamber
                     normalTransforms[i] = new Matrix3x3(1, 0, 0, 0, 1, 0, 0, 0, 1);
                     continue;
                 }
-                normalTransforms[i] = new Matrix3x3(
+                normalTransforms[i] = Matrix3x3.Transpose(
                     invMat.M11, invMat.M12, invMat.M13,
                     invMat.M21, invMat.M22, invMat.M23,
                     invMat.M31, invMat.M32, invMat.M33
-                ).Transpose();
+                );
             }
             _currentNormalTransforms = normalTransforms;
             _model.Skeleton.UpdateTransforms(finalTransforms);
