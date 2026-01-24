@@ -30,13 +30,23 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
         public Matrix4x4 GeometricTransform { get; set; } = Matrix4x4.Identity;
         public List<Bone> Children { get; set; } = new List<Bone>();
         public bool IsDrawable { get; set; } = true;
+
         public Matrix4x4 ComputeLocal(Vector3? t = null, Quaternion? r = null, Vector3? s = null)
         {
             Vector3 useT = t ?? LclTranslation;
             Quaternion useR = r ?? LclRotation;
             Vector3 useS = s ?? LclScaling;
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
+            Console.WriteLine("T:");
+            PrintMatrix(T);  // Add this and below
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
+            Console.WriteLine("Roff:");
+            PrintMatrix(Roff);
+            //Vector3 useT = t ?? LclTranslation;
+            //Quaternion useR = r ?? LclRotation;
+            //Vector3 useS = s ?? LclScaling;
+            //Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
+            //Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
             Matrix4x4 Pre = Matrix4x4.CreateFromYawPitchRoll(PreRotation.Y * MathF.PI / 180f, PreRotation.X * MathF.PI / 180f, PreRotation.Z * MathF.PI / 180f);
             Matrix4x4 R = Matrix4x4.CreateFromQuaternion(useR);
@@ -50,7 +60,21 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             // DO NOT TOUCH THIS EQUATION. ONLINE REFERENCES ARE WRONG. THIS HAS BEEN VERIFIED IN TEXTBOOKS.
             //The official Autodesk FBX SDK documentation (2020 version) specifies the transformation formula as:
             //WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R * Rpost⁻¹ * Rp⁻¹ * Soff * Sp * S * Sp⁻¹
-            return T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
+            //return T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
+            Matrix4x4 local = T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
+            Console.WriteLine("Final LocalRest:");
+            PrintMatrix(local);
+
+            return local;
+        }
+
+        // Add helper (like in viewer)
+        private void PrintMatrix(Matrix4x4 m)
+        {
+            Console.WriteLine($"({m.M11:F4}, {m.M12:F4}, {m.M13:F4}, {m.M14:F4})");
+            Console.WriteLine($"({m.M21:F4}, {m.M22:F4}, {m.M23:F4}, {m.M24:F4})");
+            Console.WriteLine($"({m.M31:F4}, {m.M32:F4}, {m.M33:F4}, {m.M34:F4})");
+            Console.WriteLine($"({m.M41:F4}, {m.M42:F4}, {m.M43:F4}, {m.M44:F4})");
         }
         public Quaternion ToQuaternion(Vector3 degrees)
         {

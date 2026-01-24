@@ -130,7 +130,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             bone.GeometricScaling = new Vector3((float)gsx, (float)gsy, (float)gsz);
                         }
                     }
+                    Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");
+
                     bone.LocalRest = bone.ComputeLocal();
+
                     bone.GeometricTransform = Matrix4x4.CreateScale(bone.GeometricScaling) * Matrix4x4.CreateFromYawPitchRoll(bone.GeometricRotation.Y * MathF.PI / 180f, bone.GeometricRotation.X * MathF.PI / 180f, bone.GeometricRotation.Z * MathF.PI / 180f) * Matrix4x4.CreateTranslation(bone.GeometricTranslation);
                 }
                 model.Skeleton.Bones.Add(bone);
@@ -147,7 +150,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 long childId = conn.child;
                 string parentName = model.Skeleton.Bones[boneIndexById[parentId]].Name;
                 string childName = model.Skeleton.Bones[boneIndexById[childId]].Name;
-                FBXParserBase.Log($"Hierarchy connection: Parent ID={parentId} ({parentName}), Child ID={childId} ({childName})");
+                //FBXParserBase.Log($"Hierarchy connection: Parent ID={parentId} ({parentName}), Child ID={childId} ({childName})");
             }
             foreach (var bid in boneIds)
             {
@@ -165,7 +168,9 @@ namespace SiegeEngine.Core.AssetParsing.V2
             {
                 var armatureBone = model.Skeleton.Bones[armatureIdx];
                 armatureBone.LclRotation = Quaternion.Identity;
+                Console.WriteLine("** MODEL Limbnode recompute **");
                 armatureBone.LocalRest = armatureBone.ComputeLocal();
+
                 FBXParserBase.Log("Applied fix to Armature bone rotation");
             }
             return (boneIndexById, rootIndices);
@@ -189,7 +194,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 LogBoneHierarchy(model.Skeleton.Bones, bone, 0);
             }
         }
-        private static void LogBoneHierarchy(List<Bone> bones, Bone bone, int level)
+        public static void LogBoneHierarchy(List<Bone> bones, Bone bone, int level)
         {
             string indent = new string(' ', level * 2);
             int idx = bones.IndexOf(bone);
