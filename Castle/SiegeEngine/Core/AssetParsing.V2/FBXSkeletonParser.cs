@@ -45,8 +45,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double rx = (double)p.properties[4].Value;
                             double ry = (double)p.properties[5].Value;
                             double rz = (double)p.properties[6].Value;
-                            Vector3 euler = new Vector3((float)rx, (float)ry, (float)rz);
-                            euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
+                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)rx, (float)ry, (float)rz), sourceToTarget, signs);
                             bone.LclRotation = bone.ToQuaternion(euler);
                         }
                         else if (propName == "Lcl Scaling")
@@ -61,8 +60,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double prx = (double)p.properties[4].Value;
                             double pry = (double)p.properties[5].Value;
                             double prz = (double)p.properties[6].Value;
-                            Vector3 euler = new Vector3((float)prx, (float)pry, (float)prz);
-                            euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
+                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)prx, (float)pry, (float)prz), sourceToTarget, signs);
                             bone.PreRotation = euler;
                         }
                         else if (propName == "PostRotation")
@@ -70,8 +68,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double pox = (double)p.properties[4].Value;
                             double poy = (double)p.properties[5].Value;
                             double poz = (double)p.properties[6].Value;
-                            Vector3 euler = new Vector3((float)pox, (float)poy, (float)poz);
-                            euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
+                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)pox, (float)poy, (float)poz), sourceToTarget, signs);
                             bone.PostRotation = euler;
                         }
                         else if (propName == "RotationPivot")
@@ -118,8 +115,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double grx = (double)p.properties[4].Value;
                             double gry = (double)p.properties[5].Value;
                             double grz = (double)p.properties[6].Value;
-                            Vector3 euler = new Vector3((float)grx, (float)gry, (float)grz);
-                            euler = FBXCoordinateUtils.RemapVector(euler, sourceToTarget, signs);
+                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)grx, (float)gry, (float)grz), sourceToTarget, signs);
                             bone.GeometricRotation = euler;
                         }
                         else if (propName == "GeometricScaling")
@@ -131,9 +127,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         }
                     }
                     Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");
-
                     bone.LocalRest = bone.ComputeLocal();
-
                     bone.GeometricTransform = Matrix4x4.CreateScale(bone.GeometricScaling) * Matrix4x4.CreateFromYawPitchRoll(bone.GeometricRotation.Y * MathF.PI / 180f, bone.GeometricRotation.X * MathF.PI / 180f, bone.GeometricRotation.Z * MathF.PI / 180f) * Matrix4x4.CreateTranslation(bone.GeometricTranslation);
                 }
                 model.Skeleton.Bones.Add(bone);
@@ -170,7 +164,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 armatureBone.LclRotation = Quaternion.Identity;
                 Console.WriteLine("** MODEL Limbnode recompute **");
                 armatureBone.LocalRest = armatureBone.ComputeLocal();
-
                 FBXParserBase.Log("Applied fix to Armature bone rotation");
             }
             return (boneIndexById, rootIndices);

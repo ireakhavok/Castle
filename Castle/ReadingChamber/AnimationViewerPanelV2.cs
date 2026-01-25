@@ -16,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanelV2 : BasePanel
@@ -601,19 +602,19 @@ namespace ReadingChamber
             for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
             {
                 Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
-                Console.WriteLine($"  Translation: {_currentGlobalTransforms[i].Translation}");
-                Console.WriteLine("  Matrix:");
+                Console.WriteLine($" Translation: {_currentGlobalTransforms[i].Translation}");
+                Console.WriteLine(" Matrix:");
                 PrintMatrix(_currentGlobalTransforms[i]);
-                Console.WriteLine("  LocalRest:");
+                Console.WriteLine(" LocalRest:");
                 PrintMatrix(_model.Skeleton.Bones[i].LocalRest);
             }
             for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
             {
                 Console.WriteLine($"Bind Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
-                Console.WriteLine($"  Translation: {_currentBindGlobals[i].Translation}");
-                Console.WriteLine("  Matrix:");
+                Console.WriteLine($" Translation: {_currentBindGlobals[i].Translation}");
+                Console.WriteLine(" Matrix:");
                 PrintMatrix(_currentBindGlobals[i]);
-                Console.WriteLine("  BindPose:");
+                Console.WriteLine(" BindPose:");
                 PrintMatrix(_model.Skeleton.Bones[i].BindPose);
             }
             // Also print a mesh vertex position for comparison
@@ -627,6 +628,7 @@ namespace ReadingChamber
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 Matrix4x4 skinMat = _currentGlobalTransforms[i] * _model.Skeleton.Bones[i].BindPose;
+                skinMat = Matrix4x4.Transpose(skinMat); // Transpose for visualization in OpenGL
                 _boneMatrices[i] = skinMat;
                 _currentNormalTransforms[i] = Matrix3x3.Transpose(new Matrix3x3(Matrix4x4.Invert(skinMat, out var inv) ? inv : Matrix4x4.Identity));
             }
@@ -649,8 +651,8 @@ namespace ReadingChamber
             // Model AutoCorrected log (assuming _model.AutoCorrected exists; if not, add to FBXModel class)
             Console.WriteLine($"Model AutoCorrected: {_model.AutoCorrected}");
             // Axis Mapping and Signs (stub with defaults or expose in FBXModel; assuming not present, use example)
-            int[] mapping = new int[] { 0, 2, 1 };  // Example Y-up to Z-up
-            int[] signs = new int[] { 1, 1, 1 };    // Example
+            int[] mapping = new int[] { 0, 2, 1 }; // Example Y-up to Z-up
+            int[] signs = new int[] { 1, 1, 1 }; // Example
             Console.WriteLine($"Axis Mapping: {string.Join(",", mapping ?? new int[0])} Signs: {string.Join(",", signs ?? new int[0])}");
             UpdateSkeletonVisualization();
         }
