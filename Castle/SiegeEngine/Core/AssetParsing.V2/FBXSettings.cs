@@ -28,7 +28,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
         public bool ImportAnimations { get; set; } = true;
         // Additional dynamic settings for coordinate frames, etc., can be added
         public static int EngineUpAxis = 2;
-        public static int EngineUpSign = -1;
+        public static int EngineUpSign = 1;
         public static int EngineFrontAxis = 1;
         public static int EngineFrontSign = -1;
         public static int EngineCoordAxis = 0;

@@ -44,8 +44,11 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double rx = (double)p.properties[4].Value;
                             double ry = (double)p.properties[5].Value;
                             double rz = (double)p.properties[6].Value;
-                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)rx, (float)ry, (float)rz), sourceToTarget, signs);
-                            bone.LclRotation = bone.ToQuaternion(euler);
+                            Vector3 euler = new Vector3((float)rx, (float)ry, (float)rz); // No vector remap here
+                            Quaternion rot = bone.ToQuaternion(euler);
+                            Matrix4x4 rotMat = Matrix4x4.CreateFromQuaternion(rot);
+                            rotMat = FBXCoordinateUtils.RemapMatrix(rotMat, sourceToTarget, signs);
+                            bone.LclRotation = Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(rotMat));
                         }
                         else if (propName == "Lcl Scaling")
                         {
@@ -135,7 +138,9 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     }
                     Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");
                     bone.LocalRest = bone.ComputeLocal();
+                    bone.LocalRest = FBXCoordinateUtils.RemapMatrix(bone.LocalRest, sourceToTarget, signs);
                     bone.GeometricTransform = Matrix4x4.CreateScale(bone.GeometricScaling) * Matrix4x4.CreateFromYawPitchRoll(bone.GeometricRotation.Y * MathF.PI / 180f, bone.GeometricRotation.X * MathF.PI / 180f, bone.GeometricRotation.Z * MathF.PI / 180f) * Matrix4x4.CreateTranslation(bone.GeometricTranslation);
+                    bone.GeometricTransform = FBXCoordinateUtils.RemapMatrix(bone.GeometricTransform, sourceToTarget, signs);
                 }
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = index;
@@ -171,6 +176,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 armatureBone.LclRotation = Quaternion.Identity;
                 Console.WriteLine("** MODEL Limbnode recompute **");
                 armatureBone.LocalRest = armatureBone.ComputeLocal();
+                armatureBone.LocalRest = FBXCoordinateUtils.RemapMatrix(armatureBone.LocalRest, sourceToTarget, signs);
                 FBXParserBase.Log("Applied fix to Armature bone rotation");
             }
             return (boneIndexById, rootIndices);
