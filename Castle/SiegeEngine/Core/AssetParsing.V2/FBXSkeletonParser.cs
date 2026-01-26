@@ -6,7 +6,6 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
-
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXSkeletonParser
@@ -124,6 +123,14 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double gsy = (double)p.properties[5].Value;
                             double gsz = (double)p.properties[6].Value;
                             bone.GeometricScaling = new Vector3((float)gsx, (float)gsy, (float)gsz);
+                        }
+                        else if (propName == "InheritType")
+                        {
+                            bone.InheritType = Convert.ToInt32(p.properties[4].Value);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"{propName}: not parsed.");
                         }
                     }
                     Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");

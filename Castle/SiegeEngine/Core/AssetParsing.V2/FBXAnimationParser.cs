@@ -152,10 +152,45 @@ namespace SiegeEngine.Core.AssetParsing.V2
         private static void ComputeGlobalRecursive(Bone bone, Matrix4x4 parentGlobal, Matrix4x4[] locals, Matrix4x4[] globals, List<Bone> bones)
         {
             int idx = bones.IndexOf(bone);
-            globals[idx] = parentGlobal * locals[idx];
+            Matrix4x4 local = locals[idx];
+            Matrix4x4 childGlobal;
+            if (!Matrix4x4.Decompose(parentGlobal, out Vector3 parentScale, out Quaternion parentRot, out Vector3 parentTrans))
+            {
+                parentScale = Vector3.One;
+                parentRot = Quaternion.Identity;
+                parentTrans = Vector3.Zero;
+            }
+            Matrix4x4 parentR = Matrix4x4.CreateFromQuaternion(parentRot);
+            Matrix4x4 parentT = Matrix4x4.CreateTranslation(parentTrans);
+            Matrix4x4 parentS = Matrix4x4.CreateScale(parentScale);
+            if (!Matrix4x4.Decompose(local, out Vector3 childScale, out Quaternion childRot, out Vector3 childTrans))
+            {
+                childScale = Vector3.One;
+                childRot = Quaternion.Identity;
+                childTrans = Vector3.Zero;
+            }
+            Matrix4x4 childR = Matrix4x4.CreateFromQuaternion(childRot);
+            Matrix4x4 childT = Matrix4x4.CreateTranslation(childTrans);
+            Matrix4x4 childS = Matrix4x4.CreateScale(childScale);
+            switch (bone.InheritType)
+            {
+                case 0: // eInheritRrSs
+                    childGlobal = childS * parentS * childR * childT * parentR * parentT;
+                    break;
+                case 1: // eInheritRSrs
+                    childGlobal = childS * childR * childT * parentS * parentR * parentT;
+                    break;
+                case 2: // eInheritRrs
+                    childGlobal = childS * childR * childT * parentR * parentT;
+                    break;
+                default:
+                    childGlobal = local * parentGlobal;
+                    break;
+            }
+            globals[idx] = childGlobal;
             foreach (var child in bone.Children)
             {
-                ComputeGlobalRecursive(child, globals[idx], locals, globals, bones);
+                ComputeGlobalRecursive(child, childGlobal, locals, globals, bones);
             }
         }
     }

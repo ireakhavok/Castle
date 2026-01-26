@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
-
 namespace SiegeEngine.Core.AssetParsing.V2.Model
 {
     public class Bone
@@ -30,7 +29,7 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
         public Matrix4x4 GeometricTransform { get; set; } = Matrix4x4.Identity;
         public List<Bone> Children { get; set; } = new List<Bone>();
         public bool IsDrawable { get; set; } = true;
-
+        public int InheritType { get; set; } = 0;
         public Matrix4x4 ComputeLocal(Vector3? t = null, Quaternion? r = null, Vector3? s = null)
         {
             Vector3 useT = t ?? LclTranslation;
@@ -38,7 +37,7 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             Vector3 useS = s ?? LclScaling;
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             Console.WriteLine("T:");
-            PrintMatrix(T);  // Add this and below
+            PrintMatrix(T); // Add this and below
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Console.WriteLine("Roff:");
             PrintMatrix(Roff);
@@ -60,14 +59,11 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             // DO NOT TOUCH THIS EQUATION. ONLINE REFERENCES ARE WRONG. THIS HAS BEEN VERIFIED IN TEXTBOOKS.
             //The official Autodesk FBX SDK documentation (2020 version) specifies the transformation formula as:
             //WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R * Rpost⁻¹ * Rp⁻¹ * Soff * Sp * S * Sp⁻¹
-            //return T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
             Matrix4x4 local = T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
             Console.WriteLine("Final LocalRest:");
             PrintMatrix(local);
-
             return local;
         }
-
         // Add helper (like in viewer)
         private void PrintMatrix(Matrix4x4 m)
         {

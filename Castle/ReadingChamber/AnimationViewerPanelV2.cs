@@ -16,7 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanelV2 : BasePanel
@@ -61,7 +60,7 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
+        private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters","man_blender.fbx");
         private string _armaturePath = "";
         private string _animationPath = "";
         private List<string> _animationFiles = new List<string>();
@@ -448,7 +447,7 @@ namespace ReadingChamber
                         }
                     }
                     _renderContext.BindVertexArray(mmr.Vao);
-                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                    //_renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                     _renderContext.BindVertexArray(0);
                 }
             }
@@ -577,46 +576,26 @@ namespace ReadingChamber
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             // Log hierarchy before alignment
             FBXSkeletonParser.LogBoneHierarchy(_model.Skeleton.Bones, _model.Skeleton.Bones[0], 0);
-            // Align rest pose to bind pose using a non-root bone
-            if (_model.Skeleton.Bones.Count > 2)
-            {
-                int alignBoneIdx = 2; // e.g., pelvis; adjust based on your skeleton (test with logs)
-                Matrix4x4 M_r = _currentGlobalTransforms[alignBoneIdx];
-                Matrix4x4 M_b = _currentBindGlobals[alignBoneIdx];
-                if (Matrix4x4.Invert(M_r, out Matrix4x4 invMr))
-                {
-                    Matrix4x4 C = invMr * M_b;
-                    Console.WriteLine("Align Bone M_r (Rest):");
-                    PrintMatrix(M_r);
-                    Console.WriteLine("Align Bone M_b (Bind):");
-                    PrintMatrix(M_b);
-                    Console.WriteLine("Alignment Matrix C:");
-                    PrintMatrix(C);
-                    for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-                    {
-                        _currentGlobalTransforms[i] = _currentGlobalTransforms[i] * C;
-                    }
-                }
-            }
+            // Removed alignment block to prevent offsetting positions
             // Added debug logs for first 10 bones
-            for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
-            {
-                Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
-                Console.WriteLine($" Translation: {_currentGlobalTransforms[i].Translation}");
-                Console.WriteLine(" Matrix:");
-                PrintMatrix(_currentGlobalTransforms[i]);
-                Console.WriteLine(" LocalRest:");
-                PrintMatrix(_model.Skeleton.Bones[i].LocalRest);
-            }
-            for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
-            {
-                Console.WriteLine($"Bind Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
-                Console.WriteLine($" Translation: {_currentBindGlobals[i].Translation}");
-                Console.WriteLine(" Matrix:");
-                PrintMatrix(_currentBindGlobals[i]);
-                Console.WriteLine(" BindPose:");
-                PrintMatrix(_model.Skeleton.Bones[i].BindPose);
-            }
+            //for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
+            //{
+            //    Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
+            //    Console.WriteLine($" Translation: {_currentGlobalTransforms[i].Translation}");
+            //    Console.WriteLine(" Matrix:");
+            //    PrintMatrix(_currentGlobalTransforms[i]);
+            //    Console.WriteLine(" LocalRest:");
+            //    PrintMatrix(_model.Skeleton.Bones[i].LocalRest);
+            //}
+            //for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
+            //{
+            //    Console.WriteLine($"Bind Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
+            //    Console.WriteLine($" Translation: {_currentBindGlobals[i].Translation}");
+            //    Console.WriteLine(" Matrix:");
+            //    PrintMatrix(_currentBindGlobals[i]);
+            //    Console.WriteLine(" BindPose:");
+            //    PrintMatrix(_model.Skeleton.Bones[i].BindPose);
+            //}
             // Also print a mesh vertex position for comparison
             if (_model.Meshes.Count > 0 && _model.Meshes[0].Vertices.Count > 0)
             {
