@@ -60,7 +60,7 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters","man_blender.fbx");
+        private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters","man_mesh.fbx");
         private string _armaturePath = "";
         private string _animationPath = "";
         private List<string> _animationFiles = new List<string>();
@@ -512,6 +512,7 @@ namespace ReadingChamber
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
+                //if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {
                     indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
@@ -532,6 +533,8 @@ namespace ReadingChamber
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
+                //if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
+
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {
                     indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
@@ -571,36 +574,36 @@ namespace ReadingChamber
                 if (rootIdx == -1) rootIdx = 0; // Fallback to 0 if not found
                 // _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
             }
-            Console.WriteLine("*********** OUTPUT BELOW **************");
+            Console.WriteLine("*********** AnimationViewerPanel OUTPUT BELOW **************");
             // Recompute rest globals after overwrite
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             // Log hierarchy before alignment
             // FBXSkeletonParser.LogBoneHierarchy(_model.Skeleton.Bones, _model.Skeleton.Bones[0], 0);
             // Removed alignment block to prevent offsetting positions
             // Added debug logs for first 10 bones
-            //for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
-            //{
-            //    Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
-            //    Console.WriteLine($" Translation: {_currentGlobalTransforms[i].Translation}");
-            //    Console.WriteLine(" Matrix:");
-            //    PrintMatrix(_currentGlobalTransforms[i]);
-            //    Console.WriteLine(" LocalRest:");
-            //    PrintMatrix(_model.Skeleton.Bones[i].LocalRest);
-            //}
-            //for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
-            //{
-            //    Console.WriteLine($"Bind Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
-            //    Console.WriteLine($" Translation: {_currentBindGlobals[i].Translation}");
-            //    Console.WriteLine(" Matrix:");
-            //    PrintMatrix(_currentBindGlobals[i]);
-            //    Console.WriteLine(" BindPose:");
-            //    PrintMatrix(_model.Skeleton.Bones[i].BindPose);
-            //}
-            // Also print a mesh vertex position for comparison
-            if (_model.Meshes.Count > 0 && _model.Meshes[0].Vertices.Count > 0)
+            for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
             {
-                Console.WriteLine("Mesh First Vertex Position: " + _model.Meshes[0].Vertices[0].Position);
+                Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
+                Console.WriteLine($" Translation: {_currentGlobalTransforms[i].Translation}");
+                Console.WriteLine(" Matrix:");
+                PrintMatrix(_currentGlobalTransforms[i]);
+                Console.WriteLine(" LocalRest:");
+                PrintMatrix(_model.Skeleton.Bones[i].LocalRest);
             }
+            for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
+            {
+                Console.WriteLine($"Bind Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
+                Console.WriteLine($" Translation: {_currentBindGlobals[i].Translation}");
+                Console.WriteLine(" Matrix:");
+                PrintMatrix(_currentBindGlobals[i]);
+                Console.WriteLine(" BindPose:");
+                PrintMatrix(_model.Skeleton.Bones[i].BindPose);
+            }
+            // Also print a mesh vertex position for comparison
+            //if (_model.Meshes.Count > 0 && _model.Meshes[0].Vertices.Count > 0)
+            //{
+            //    Console.WriteLine("Mesh First Vertex Position: " + _model.Meshes[0].Vertices[0].Position);
+            //}
             // Deform mesh to rest pose via skinning
             _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
@@ -611,22 +614,22 @@ namespace ReadingChamber
                 _boneMatrices[i] = skinMat;
                 _currentNormalTransforms[i] = Matrix3x3.Transpose(new Matrix3x3(Matrix4x4.Invert(skinMat, out var inv) ? inv : Matrix4x4.Identity));
             }
-            // Post-skinning vertex log
-            if (_model.Meshes.Count > 0 && _model.Meshes[0].Vertices.Count > 0)
-            {
-                FBXVertex v = _model.Meshes[0].Vertices[0];
-                Vector3 skinnedPos = Vector3.Zero;
-                for (int w = 0; w < 4; w++)
-                {
-                    int boneId = (int)v.BoneIDs[w];
-                    float weight = v.Weights[w];
-                    if (weight > 0 && boneId < _boneMatrices.Length)
-                    {
-                        skinnedPos += Vector3.Transform(v.Position, _boneMatrices[boneId]) * weight;
-                    }
-                }
-                Console.WriteLine($"Skinned First Vertex Position (Rest Pose): {skinnedPos}");
-            }
+            //// Post-skinning vertex log
+            //if (_model.Meshes.Count > 0 && _model.Meshes[0].Vertices.Count > 0)
+            //{
+            //    FBXVertex v = _model.Meshes[0].Vertices[0];
+            //    Vector3 skinnedPos = Vector3.Zero;
+            //    for (int w = 0; w < 4; w++)
+            //    {
+            //        int boneId = (int)v.BoneIDs[w];
+            //        float weight = v.Weights[w];
+            //        if (weight > 0 && boneId < _boneMatrices.Length)
+            //        {
+            //            skinnedPos += Vector3.Transform(v.Position, _boneMatrices[boneId]) * weight;
+            //        }
+            //    }
+            //    Console.WriteLine($"Skinned First Vertex Position (Rest Pose): {skinnedPos}");
+            //}
             // Model AutoCorrected log (assuming _model.AutoCorrected exists; if not, add to FBXModel class)
             Console.WriteLine($"Model AutoCorrected: {_model.AutoCorrected}");
             // Axis Mapping and Signs (stub with defaults or expose in FBXModel; assuming not present, use example)

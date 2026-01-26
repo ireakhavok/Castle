@@ -386,6 +386,9 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
     - Methods:
       - Matrix4x4 ComputeLocal()
+        - Calls: PrintMatrix
+      - else PrintMatrix()
+      - void PrintMatrix(Matrix4x4 m)
       - Quaternion ToQuaternion(Vector3 degrees)
 - File: BrushRegistryUpdateEvent.cs
   - Class: BrushRegistryUpdateEvent (Namespace: SiegeEngine.Core.Events)
@@ -790,7 +793,7 @@ Folder: SiegeEngine
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
       - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
-        - Calls: .Value.ToString, FBXCoordinateUtils.RemapMatrixSelective, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
+        - Calls: FBXCoordinateUtils.RemapMatrixSelective, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -817,9 +820,6 @@ Folder: SiegeEngine
 - File: FBXSkeletonParser.cs
   - Class: FBXSkeletonParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
-    - Methods:
-      - void LogBoneHierarchy( Bone bone,  int level, List<Bone> bones)
-        - Calls: FBXParserBase.Log
 - File: FBXVertex.cs
   - Class: FBXVertex (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Numerics
@@ -1227,10 +1227,26 @@ Folder: SiegeEngine
   - Class: MaterialProperties (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System
 - File: Matrix3x3.cs
-  - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
+  - Class: Matrix3x3 (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System, System.Numerics
     - Methods:
-      - constructor Matrix3x3( float m12,  float m13,  float m21,  float m22,  float m23,  float m31,  float m32,  float m33, float m11)
+      - constructor Matrix3x3(
+        float m11,  
+        float m21,  
+        float m31,  float m12,  float m13,  float m22,  float m23,  float m32,  float m33)
+      - constructor Matrix3x3(Matrix4x4 m)
+      - constructor Matrix3x3()
+      - Matrix3x3 Transpose(Matrix3x3 m)
+        - Calls: Matrix3x3
+      - constructor Matrix3x3()
+      - Matrix3x3 Transpose(
+        float m21, 
+        float m31,  float m12,  float m13,  float m22,  float m23,  float m32,  float m33, float m11)
+        - Calls: Matrix3x3
+      - constructor Matrix3x3()
+      - Matrix3x3 Inverse()
+        - Calls: Matrix3x3
+      - constructor Matrix3x3()
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
@@ -1291,7 +1307,7 @@ Folder: SiegeEngine
   - Class: ModelComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, Silk.NET.Maths, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Numerics
 - File: ModelManager.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
@@ -1726,7 +1742,7 @@ Folder: SiegeEngine
   - Class: ShaderProgram (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, System, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - uint _program
@@ -1748,9 +1764,7 @@ Folder: SiegeEngine
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
       - void SetMatrix4Array( Matrix4x4[] matrices, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
-      - void SetMatrix3Array(Matrix3x3[] matrices, string name)
-        - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix3
-      - void SetMatrix3Array(Matrix3x3[] matrices, string name)
+      - void SetMatrix3Array( Matrix3x3[] matrices, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix3
       - void Dispose()
         - Calls: _renderContext.DeleteProgram
@@ -1764,6 +1778,10 @@ Folder: SiegeEngine
       - Matrix4x4[] ComputeGlobalTransforms()
         - Calls: ComputeGlobalRecursive, FBXMeshParser.PrintMatrix, FBXParserBase.Log
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)
+      - void LogBoneHierarchy()
+        - Calls: FBXParserBase.Log
+      - void LogBoneHierarchy( Bone bone,  int level, List<Bone> bones)
+        - Calls: FBXParserBase.Log
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
@@ -2246,7 +2264,6 @@ SiegeEngine.Core.AssetParsing.V2.Model.FBXModel
 SiegeEngine.Core.AssetParsing.V2.Model.FBXVertex
 SiegeEngine.Core.AssetParsing.V2.Model.Keyframe
 SiegeEngine.Core.AssetParsing.V2.Model.Material
-SiegeEngine.Core.AssetParsing.V2.Model.Matrix3x3
 SiegeEngine.Core.AssetParsing.V2.Model.MeshData
 SiegeEngine.Core.AssetParsing.V2.Model.Skeleton
 SiegeEngine.Core.AssetParsing.V2.Model.TextureInfo
@@ -2268,6 +2285,7 @@ SiegeEngine.Core.Definitions.GameMode
 SiegeEngine.Core.Definitions.LightComponent
 SiegeEngine.Core.Definitions.LightType
 SiegeEngine.Core.Definitions.MaterialProperties
+SiegeEngine.Core.Definitions.Matrix3x3
 SiegeEngine.Core.Definitions.ModelComponent
 SiegeEngine.Core.Definitions.PhysicsComponent
 SiegeEngine.Core.Definitions.PreviewComponent

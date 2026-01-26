@@ -7,6 +7,9 @@ Folder: Model
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
     - Methods:
       - Matrix4x4 ComputeLocal()
+        - Calls: PrintMatrix
+      - else PrintMatrix()
+      - void PrintMatrix(Matrix4x4 m)
       - Quaternion ToQuaternion(Vector3 degrees)
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
@@ -28,11 +31,6 @@ Folder: Model
 - File: Material.cs
   - Class: Material (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Collections.Generic
-- File: Matrix3x3.cs
-  - Class: Matrix3x3 (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
-    - Dependencies: System, System.Numerics
-    - Methods:
-      - constructor Matrix3x3( float m12,  float m13,  float m21,  float m22,  float m23,  float m31,  float m32,  float m33, float m11)
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
@@ -43,6 +41,10 @@ Folder: Model
       - Matrix4x4[] ComputeGlobalTransforms()
         - Calls: ComputeGlobalRecursive, FBXMeshParser.PrintMatrix, FBXParserBase.Log
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)
+      - void LogBoneHierarchy()
+        - Calls: FBXParserBase.Log
+      - void LogBoneHierarchy( Bone bone,  int level, List<Bone> bones)
+        - Calls: FBXParserBase.Log
 - File: TextureInfo.cs
   - Class: TextureInfo (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System
@@ -64,6 +66,8 @@ Folder: Root
     - Methods:
       - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
       - Matrix4x4 RemapMatrix( int[] signs,  int[] sourceToTarget, Matrix4x4 m)
+      - Matrix4x4 RemapMatrixSelective( bool skipFrontSign = false,  int[] signs,  int[] sourceToTarget, Matrix4x4 m)
+        - Calls: RemapMatrix
 - File: FBXMeshParser.cs
   - Class: FBXMeshParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -91,7 +95,7 @@ Folder: Root
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
       - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
-        - Calls: FBXCoordinateUtils.RemapMatrix, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
+        - Calls: FBXCoordinateUtils.RemapMatrixSelective, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -107,12 +111,16 @@ Folder: Root
 - File: FBXSettings.cs
   - Class: FBXSettings (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: System, System.Numerics
+    - Fields:
+      - int EngineUpAxis
+      - int EngineUpSign
+      - int EngineFrontAxis
+      - int EngineFrontSign
+      - int EngineCoordAxis
+      - int EngineCoordSign
 - File: FBXSkeletonParser.cs
   - Class: FBXSkeletonParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
-    - Methods:
-      - void LogBoneHierarchy( Bone bone,  int level, List<Bone> bones)
-        - Calls: FBXParserBase.Log
 - File: NodeParser.cs
   - Class: NodeParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Text
@@ -143,7 +151,6 @@ SiegeEngine.Core.AssetParsing.V2.Model.FBXModel
 SiegeEngine.Core.AssetParsing.V2.Model.FBXVertex
 SiegeEngine.Core.AssetParsing.V2.Model.Keyframe
 SiegeEngine.Core.AssetParsing.V2.Model.Material
-SiegeEngine.Core.AssetParsing.V2.Model.Matrix3x3
 SiegeEngine.Core.AssetParsing.V2.Model.MeshData
 SiegeEngine.Core.AssetParsing.V2.Model.Skeleton
 SiegeEngine.Core.AssetParsing.V2.Model.TextureInfo
