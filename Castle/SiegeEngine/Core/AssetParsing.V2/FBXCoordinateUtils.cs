@@ -42,15 +42,5 @@ namespace SiegeEngine.Core.AssetParsing.V2
             Matrix4x4.Invert(p, out var invP);
             return p * m * invP;
         }
-        public static Matrix4x4 RemapMatrixSelective(Matrix4x4 m, int[] sourceToTarget, int[] signs, bool skipFrontSign = false)
-        {
-            int[] adjustedSigns = (int[])signs.Clone();
-            if (skipFrontSign)
-            {
-                int frontAxis = FBXSettings.EngineFrontAxis; // 1 for Y
-                adjustedSigns[frontAxis] = 1; // Force no flip on front to avoid rotation artifact
-            }
-            return RemapMatrix(m, sourceToTarget, adjustedSigns);
-        }
     }
 }

@@ -369,8 +369,6 @@ Folder: Core
     - Methods:
       - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
       - Matrix4x4 RemapMatrix( int[] signs,  int[] sourceToTarget, Matrix4x4 m)
-      - Matrix4x4 RemapMatrixSelective( bool skipFrontSign = false,  int[] signs,  int[] sourceToTarget, Matrix4x4 m)
-        - Calls: RemapMatrix, signs.Clone
 - File: FBXFileForest.cs
   - Class: FBXFileForest (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -409,7 +407,7 @@ Folder: Core
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
       - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
-        - Calls: FBXCoordinateUtils.RemapMatrixSelective, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
+        - Calls: FBXCoordinateUtils.RemapMatrix, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics

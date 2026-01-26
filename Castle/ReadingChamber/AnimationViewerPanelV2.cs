@@ -512,7 +512,7 @@ namespace ReadingChamber
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
-                //if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
+                if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {
                     indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
@@ -533,7 +533,7 @@ namespace ReadingChamber
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
-                //if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
+                if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
 
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {

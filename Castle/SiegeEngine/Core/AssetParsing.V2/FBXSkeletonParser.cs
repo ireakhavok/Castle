@@ -138,9 +138,8 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     }
                     Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");
                     bone.LocalRest = bone.ComputeLocal();
-                    bone.LocalRest = FBXCoordinateUtils.RemapMatrix(bone.LocalRest, sourceToTarget, signs);
                     bone.GeometricTransform = Matrix4x4.CreateScale(bone.GeometricScaling) * Matrix4x4.CreateFromYawPitchRoll(bone.GeometricRotation.Y * MathF.PI / 180f, bone.GeometricRotation.X * MathF.PI / 180f, bone.GeometricRotation.Z * MathF.PI / 180f) * Matrix4x4.CreateTranslation(bone.GeometricTranslation);
-                    bone.GeometricTransform = FBXCoordinateUtils.RemapMatrix(bone.GeometricTransform, sourceToTarget, signs);
+
                 }
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = index;
