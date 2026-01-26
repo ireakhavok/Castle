@@ -263,7 +263,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     Matrix4x4 geom = model.Skeleton.Bones[boneIdx].GeometricTransform;
                     if (Matrix4x4.Invert(tlMat, out Matrix4x4 invTl))
                     {
-                        Matrix4x4 invBind = invTl * tMat; // * geom;
+                        Matrix4x4 invBind = invTl * tMat * geom;
                         model.Skeleton.Bones[boneIdx].BindPose = invBind;
                     }
                     else

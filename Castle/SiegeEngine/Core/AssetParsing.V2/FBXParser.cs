@@ -161,51 +161,43 @@ namespace SiegeEngine.Core.AssetParsing.V2
         // Additional helper methods will be added in subsequent steps
         private static void ParseBindPoses(FBXModel model, BaseNode objectsNode, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs)
         {
-            var poseNodes = objectsNode.children.Where(n => n.Name == "Pose").ToList();
-            if (poseNodes.Count == 0)
+            var poseNode = objectsNode.children.Where(n => n.Name == "Pose").Where(q => (string)q.properties[2].Value == "BindPose").FirstOrDefault();
+            if (poseNode == null)
             {
-                FBXParserBase.Log("No Pose nodes found");
+                FBXParserBase.Log("No Bind Pose found");
             }
-            foreach (var poseNode in poseNodes)
+            foreach (var pnode in poseNode.children.Where(c => c.Name == "PoseNode"))
             {
-                string type = poseNode.properties.Count > 2 ? poseNode.properties[2].Value.ToString() : "";
-                FBXParserBase.Log($"Found Pose node of type: {type}");
-                if (type == "BindPose")
+                var nodeIdNode = pnode.children.FirstOrDefault(cn => cn.Name == "Node");
+                if (nodeIdNode == null) continue;
+                long boneId = (long)nodeIdNode.properties[0].Value;
+                if (!boneIndexById.TryGetValue(boneId, out int idx)) continue;
+                var matrixNode = pnode.children.FirstOrDefault(cn => cn.Name == "Matrix");
+                if (matrixNode == null) continue;
+                double[] vals = (double[])matrixNode.properties[0].Value;
+                Matrix4x4 globalBind = FBXMeshParser.CreateMatrixFromArray(vals); // use same
+                globalBind = FBXCoordinateUtils.RemapMatrixSelective(globalBind, sourceToTarget, signs, skipFrontSign: true);
+                Matrix4x4.Invert(globalBind, out var invBind);
+                model.Skeleton.Bones[idx].BindPose = invBind;
+                // Compute BindLocal for alignment
+                if (Matrix4x4.Invert(invBind, out Matrix4x4 global))
                 {
-                    foreach (var pnode in poseNode.children.Where(c => c.Name == "PoseNode"))
+                    Bone bone = model.Skeleton.Bones[idx];
+                    if (bone.ParentIndex >= 0)
                     {
-                        var nodeIdNode = pnode.children.FirstOrDefault(cn => cn.Name == "Node");
-                        if (nodeIdNode == null) continue;
-                        long boneId = (long)nodeIdNode.properties[0].Value;
-                        if (!boneIndexById.TryGetValue(boneId, out int idx)) continue;
-                        var matrixNode = pnode.children.FirstOrDefault(cn => cn.Name == "Matrix");
-                        if (matrixNode == null) continue;
-                        double[] vals = (double[])matrixNode.properties[0].Value;
-                        Matrix4x4 globalBind = FBXMeshParser.CreateMatrixFromArray(vals); // use same
-                        globalBind = FBXCoordinateUtils.RemapMatrixSelective(globalBind, sourceToTarget, signs, skipFrontSign: true);
-                        Matrix4x4.Invert(globalBind, out var invBind);
-                        model.Skeleton.Bones[idx].BindPose = invBind;
-                        // Compute BindLocal for alignment
-                        if (Matrix4x4.Invert(invBind, out Matrix4x4 global))
+                        Matrix4x4 parentInvBind = model.Skeleton.Bones[bone.ParentIndex].BindPose;
+                        if (Matrix4x4.Invert(parentInvBind, out Matrix4x4 parentGlobal))
                         {
-                            Bone bone = model.Skeleton.Bones[idx];
-                            if (bone.ParentIndex >= 0)
-                            {
-                                Matrix4x4 parentInvBind = model.Skeleton.Bones[bone.ParentIndex].BindPose;
-                                if (Matrix4x4.Invert(parentInvBind, out Matrix4x4 parentGlobal))
-                                {
-                                    bone.BindLocal = global * parentGlobal;
-                                }
-                                else
-                                {
-                                    bone.BindLocal = Matrix4x4.Identity;
-                                }
-                            }
-                            else
-                            {
-                                bone.BindLocal = global;
-                            }
+                            bone.BindLocal = global * parentGlobal;
                         }
+                        else
+                        {
+                            bone.BindLocal = Matrix4x4.Identity;
+                        }
+                    }
+                    else
+                    {
+                        bone.BindLocal = global;
                     }
                 }
             }

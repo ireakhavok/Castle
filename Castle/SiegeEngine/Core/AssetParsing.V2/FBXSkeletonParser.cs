@@ -195,20 +195,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 model.Skeleton.Bones[parentIdx].Children.Add(model.Skeleton.Bones[childIdx]);
             }
             FBXParserBase.Log("Built hierarchy:");
-            foreach (var bone in model.Skeleton.Bones.Where(b => b.ParentIndex == -1))
-            {
-                LogBoneHierarchy(model.Skeleton.Bones, bone, 0);
-            }
-        }
-        public static void LogBoneHierarchy(List<Bone> bones, Bone bone, int level)
-        {
-            string indent = new string(' ', level * 2);
-            int idx = bones.IndexOf(bone);
-            FBXParserBase.Log($"{indent}Bone {idx}: {bone.Name}, ParentIndex={bone.ParentIndex}, LocalRest Translation={bone.LocalRest.Translation}");
-            foreach (var child in bone.Children)
-            {
-                LogBoneHierarchy(bones, child, level + 1);
-            }
         }
     }
 }

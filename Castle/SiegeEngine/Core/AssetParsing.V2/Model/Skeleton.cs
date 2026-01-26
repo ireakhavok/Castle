@@ -73,5 +73,23 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
                 ComputeGlobalRecursive(childIdx, childGlobal, globals);
             }
         }
+        public void LogBoneHierarchy()
+        {
+            FBXParserBase.Log("Bone Hierarchy:");
+            foreach (var bone in Bones.Where(b => b.ParentIndex == -1))
+            {
+                LogBoneHierarchy(Bones, bone, 0);
+            }
+        }
+        public void LogBoneHierarchy(List<Bone> bones, Bone bone, int level)
+        {
+            string indent = new string(' ', level * 2);
+            int idx = bones.IndexOf(bone);
+            FBXParserBase.Log($"{indent}Bone {idx}: {bone.Name}, ParentIndex={bone.ParentIndex}, LocalRest Translation={bone.LocalRest.Translation}");
+            foreach (var child in bone.Children)
+            {
+                LogBoneHierarchy(bones, child, level + 1);
+            }
+        }
     }
 }

@@ -447,7 +447,7 @@ namespace ReadingChamber
                         }
                     }
                     _renderContext.BindVertexArray(mmr.Vao);
-                    //_renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                     _renderContext.BindVertexArray(0);
                 }
             }
@@ -567,15 +567,15 @@ namespace ReadingChamber
             // Overwrite root orientation of rest pose with bind pose info
             if (_model.Skeleton.Bones.Count > 0)
             {
-                int rootIdx = _model.Skeleton.Bones.FindIndex(b => b.Name.Contains("Root") || b.Name == "Armature");
+                int rootIdx = _model.Skeleton.Bones.FindIndex(b => b.Name.Contains("Root"));
                 if (rootIdx == -1) rootIdx = 0; // Fallback to 0 if not found
-                //_model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
+                // _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
             }
             Console.WriteLine("*********** OUTPUT BELOW **************");
             // Recompute rest globals after overwrite
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             // Log hierarchy before alignment
-            FBXSkeletonParser.LogBoneHierarchy(_model.Skeleton.Bones, _model.Skeleton.Bones[0], 0);
+            // FBXSkeletonParser.LogBoneHierarchy(_model.Skeleton.Bones, _model.Skeleton.Bones[0], 0);
             // Removed alignment block to prevent offsetting positions
             // Added debug logs for first 10 bones
             //for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)

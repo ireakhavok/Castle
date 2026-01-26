@@ -40,7 +40,10 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             PrintMatrix(T); // Add this and below
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Console.WriteLine("Roff:");
-            PrintMatrix(Roff);
+            if (Roff == Matrix4x4.Identity)
+                Console.WriteLine("Identity");
+            else
+                PrintMatrix(Roff);
             //Vector3 useT = t ?? LclTranslation;
             //Quaternion useR = r ?? LclRotation;
             //Vector3 useS = s ?? LclScaling;

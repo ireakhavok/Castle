@@ -48,6 +48,7 @@ namespace SiegeEngine.Core.Managers
                     forest = FBXParser.Load(filePath);
                 }
                 FBXModel model = FBXParser.BuildModelFromForest(forest);
+                model.Skeleton.LogBoneHierarchy();
                 SmoothNormals(model);
                 ModelData modelData = SetupModelData(model, fbxDir, forest);
                 _models[key] = model;
