@@ -8,6 +8,7 @@ using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXParser
@@ -117,11 +118,11 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             var objectsById = GatherObjectsById(objectsNode);
             var conns = GatherConnections(forest);
-            var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, settings.AxisMapping, settings.AxisSigns, settings.ModelScale);
+            var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, settings.InternalAxisMapping, settings.InternalAxisSigns, settings.ModelScale);
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, boneIndexById, rootIndices, settings.P4, settings.InvP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, rootIndices, settings.P4, settings.InvP4);
-            ParseBindPoses(model, objectsNode, boneIndexById, settings.AxisMapping, settings.AxisSigns);
+            ParseBindPoses(model, objectsNode, boneIndexById, settings.InternalAxisMapping, settings.InternalAxisSigns);
             FBXParserBase.Log($"FBXParser: Built model with {model.Meshes.Count} meshes, {model.Skeleton.Bones.Count} bones, {model.Animations.Count} animations");
             return model;
         }
@@ -175,9 +176,8 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 var matrixNode = pnode.children.FirstOrDefault(cn => cn.Name == "Matrix");
                 if (matrixNode == null) continue;
                 double[] vals = (double[])matrixNode.properties[0].Value;
-                Matrix4x4 globalBind = FBXMeshParser.CreateMatrixFromArray(vals); 
-                // cant use selective here. left side of skeleton becomes inverted otherwise.
-                globalBind = FBXCoordinateUtils.RemapMatrix(globalBind, sourceToTarget, signs); 
+                Matrix4x4 globalBind = FBXMeshParser.CreateMatrixFromArray(vals);
+                globalBind = FBXCoordinateUtils.RemapMatrix(globalBind, sourceToTarget, signs);
                 Matrix4x4.Invert(globalBind, out var invBind);
                 model.Skeleton.Bones[idx].BindPose = invBind;
                 // Compute BindLocal for alignment

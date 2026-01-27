@@ -2,6 +2,7 @@
 // File: AssetParsing.V2/FBXSettings.cs
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public class FBXSettings
@@ -23,6 +24,8 @@ namespace SiegeEngine.Core.AssetParsing.V2
         /// Used to handle handedness differences (e.g., flip Y for forward direction).
         /// </summary>
         public int[] AxisSigns { get; set; } = new int[3] { 1, -1, 1 };
+        public int[] InternalAxisMapping { get; set; } = new int[3] { 0, 1, 2 };
+        public int[] InternalAxisSigns { get; set; } = new int[3] { 1, 1, 1 };
         public bool ImportMesh { get; set; } = true;
         public bool ImportArmature { get; set; } = false;
         public bool ImportAnimations { get; set; } = true;

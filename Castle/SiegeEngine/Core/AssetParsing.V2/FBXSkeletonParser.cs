@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing.V2/FBXSkeletonParser.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
