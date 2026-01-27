@@ -22,7 +22,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
         /// Index corresponds to source axis: 0 for source X, 1 for source Y, 2 for source Z.
         /// Used to handle handedness differences (e.g., flip Y for forward direction).
         /// </summary>
-        public int[] AxisSigns { get; set; } = new int[3] { 1, 1, 1 };
+        public int[] AxisSigns { get; set; } = new int[3] { 1, -1, 1 };
         public bool ImportMesh { get; set; } = true;
         public bool ImportArmature { get; set; } = false;
         public bool ImportAnimations { get; set; } = true;

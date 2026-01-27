@@ -567,13 +567,13 @@ namespace ReadingChamber
                     _currentBindGlobals[i] = Matrix4x4.Identity;
                 }
             }
-            // Overwrite root orientation of rest pose with bind pose info
-            if (_model.Skeleton.Bones.Count > 0)
-            {
-                int rootIdx = _model.Skeleton.Bones.FindIndex(b => b.Name.Contains("Root"));
-                if (rootIdx == -1) rootIdx = 0; // Fallback to 0 if not found
-                // _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
-            }
+            //// Overwrite root orientation of rest pose with bind pose info
+            //if (_model.Skeleton.Bones.Count > 0)
+            //{
+            //    int rootIdx = _model.Skeleton.Bones.FindIndex(b => b.Name.Contains("Root"));
+            //    if (rootIdx == -1) rootIdx = 0; // Fallback to 0 if not found
+            //    // _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
+            //}
             Console.WriteLine("*********** AnimationViewerPanel OUTPUT BELOW **************");
             // Recompute rest globals after overwrite
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
