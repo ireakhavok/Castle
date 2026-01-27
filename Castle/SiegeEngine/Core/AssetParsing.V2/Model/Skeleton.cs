@@ -1,10 +1,9 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing.V2/Model/Skeleton.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
+
 namespace SiegeEngine.Core.AssetParsing.V2.Model
 {
     public class Skeleton
@@ -66,6 +65,7 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
                     childGlobal = local * parentGlobal;
                     break;
             }
+            childGlobal = childGlobal * bone.GeometricTransform;
             globals[idx] = childGlobal;
             foreach (var child in bone.Children)
             {

@@ -1,11 +1,10 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing.V2/FBXSkeletonParser.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXSkeletonParser
@@ -138,8 +137,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     }
                     Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");
                     bone.LocalRest = bone.ComputeLocal();
-                    bone.GeometricTransform = Matrix4x4.CreateScale(bone.GeometricScaling) * Matrix4x4.CreateFromYawPitchRoll(bone.GeometricRotation.Y * MathF.PI / 180f, bone.GeometricRotation.X * MathF.PI / 180f, bone.GeometricRotation.Z * MathF.PI / 180f) * Matrix4x4.CreateTranslation(bone.GeometricTranslation);
-
+                    bone.GeometricTransform = Matrix4x4.CreateTranslation(bone.GeometricTranslation) * Matrix4x4.CreateFromYawPitchRoll(bone.GeometricRotation.Y * MathF.PI / 180f, bone.GeometricRotation.X * MathF.PI / 180f, bone.GeometricRotation.Z * MathF.PI / 180f) * Matrix4x4.CreateScale(bone.GeometricScaling);
                 }
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = index;
