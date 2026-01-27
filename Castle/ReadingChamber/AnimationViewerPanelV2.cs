@@ -512,7 +512,7 @@ namespace ReadingChamber
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
-                if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
+                //if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {
                     indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
@@ -533,7 +533,7 @@ namespace ReadingChamber
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
-                if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
+                //if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
 
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {
@@ -581,7 +581,8 @@ namespace ReadingChamber
             // FBXSkeletonParser.LogBoneHierarchy(_model.Skeleton.Bones, _model.Skeleton.Bones[0], 0);
             // Removed alignment block to prevent offsetting positions
             // Added debug logs for first 10 bones
-            for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
+            int[] bones = [3,4,5,6,7,8,9,22,23,24,25];
+            foreach (int i in bones)
             {
                 Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
                 Console.WriteLine($" Translation: {_currentGlobalTransforms[i].Translation}");
@@ -590,7 +591,7 @@ namespace ReadingChamber
                 Console.WriteLine(" LocalRest:");
                 PrintMatrix(_model.Skeleton.Bones[i].LocalRest);
             }
-            for (int i = 0; i < Math.Min(10, _model.Skeleton.Bones.Count); i++)
+            foreach (int i in bones)
             {
                 Console.WriteLine($"Bind Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
                 Console.WriteLine($" Translation: {_currentBindGlobals[i].Translation}");

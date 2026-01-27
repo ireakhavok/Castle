@@ -167,17 +167,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     FBXParserBase.Log($"Root bone: ID={bid}, Index={rootIdx}, Name={rootName}");
                 }
             }
-            // Fix Blender artifact on Armature node
-            var armatureIdx = model.Skeleton.Bones.FindIndex(b => b.Name == "Armature");
-            if (armatureIdx >= 0)
-            {
-                var armatureBone = model.Skeleton.Bones[armatureIdx];
-                armatureBone.LclRotation = Quaternion.Identity;
-                Console.WriteLine("** MODEL Limbnode recompute **");
-                armatureBone.LocalRest = armatureBone.ComputeLocal();
-                armatureBone.LocalRest = FBXCoordinateUtils.RemapMatrix(armatureBone.LocalRest, sourceToTarget, signs);
-                FBXParserBase.Log("Applied fix to Armature bone rotation");
-            }
             return (boneIndexById, rootIndices);
         }
         public static void BuildHierarchy(FBXModel model, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById)
