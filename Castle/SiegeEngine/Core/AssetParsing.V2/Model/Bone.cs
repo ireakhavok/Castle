@@ -1,9 +1,8 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing.V2/Model/Bone.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
+
 namespace SiegeEngine.Core.AssetParsing.V2.Model
 {
     public class Bone
@@ -43,16 +42,31 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             if (Roff == Matrix4x4.Identity)
                 Console.WriteLine("Identity Matrix");
             else
-            PrintMatrix(Roff);
+                PrintMatrix(Roff);
             //Vector3 useT = t ?? LclTranslation;
             //Quaternion useR = r ?? LclRotation;
             //Vector3 useS = s ?? LclScaling;
             //Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             //Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
-            Matrix4x4 Pre = Matrix4x4.CreateFromYawPitchRoll(PreRotation.Y * MathF.PI / 180f, PreRotation.X * MathF.PI / 180f, PreRotation.Z * MathF.PI / 180f);
+            // PreRotation as quaternion in fixed XYZ order
+            float prx = PreRotation.X * MathF.PI / 180f;
+            float pry = PreRotation.Y * MathF.PI / 180f;
+            float prz = PreRotation.Z * MathF.PI / 180f;
+            Quaternion qxPre = Quaternion.CreateFromAxisAngle(Vector3.UnitX, prx);
+            Quaternion qyPre = Quaternion.CreateFromAxisAngle(Vector3.UnitY, pry);
+            Quaternion qzPre = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, prz);
+            Matrix4x4 Pre = Matrix4x4.CreateFromQuaternion(qzPre * qyPre * qxPre);
             Matrix4x4 R = Matrix4x4.CreateFromQuaternion(useR);
-            Matrix4x4 PostInv = Matrix4x4.CreateFromYawPitchRoll(-PostRotation.Y * MathF.PI / 180f, -PostRotation.X * MathF.PI / 180f, -PostRotation.Z * MathF.PI / 180f);
+            // PostRotation inverse as quaternion in fixed XYZ order
+            float pox = PostRotation.X * MathF.PI / 180f;
+            float poy = PostRotation.Y * MathF.PI / 180f;
+            float poz = PostRotation.Z * MathF.PI / 180f;
+            Quaternion qxPost = Quaternion.CreateFromAxisAngle(Vector3.UnitX, pox);
+            Quaternion qyPost = Quaternion.CreateFromAxisAngle(Vector3.UnitY, poy);
+            Quaternion qzPost = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, poz);
+            Quaternion postQ = qzPost * qyPost * qxPost;
+            Matrix4x4 PostInv = Matrix4x4.CreateFromQuaternion(Quaternion.Conjugate(postQ));
             Matrix4x4 invRp = Matrix4x4.CreateTranslation(-RotationPivot);
             Matrix4x4 Soff = Matrix4x4.CreateTranslation(ScalingOffset);
             Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);

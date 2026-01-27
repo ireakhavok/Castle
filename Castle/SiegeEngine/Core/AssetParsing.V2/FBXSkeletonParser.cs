@@ -113,10 +113,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         }
                         else if (propName == "GeometricRotation")
                         {
-                            double grx = (double)p.properties[4].Value;
-                            double gry = (double)p.properties[5].Value;
-                            double grz = (double)p.properties[6].Value;
-                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)grx, (float)gry, (float)grz), sourceToTarget, signs);
+                            double geoRx = (double)p.properties[4].Value;
+                            double geoRy = (double)p.properties[5].Value;
+                            double geoRz = (double)p.properties[6].Value;
+                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)geoRx, (float)geoRy, (float)geoRz), sourceToTarget, signs);
                             bone.GeometricRotation = euler;
                         }
                         else if (propName == "GeometricScaling")
@@ -137,7 +137,15 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     }
                     Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");
                     bone.LocalRest = bone.ComputeLocal();
-                    bone.GeometricTransform = Matrix4x4.CreateTranslation(bone.GeometricTranslation) * Matrix4x4.CreateFromYawPitchRoll(bone.GeometricRotation.Y * MathF.PI / 180f, bone.GeometricRotation.X * MathF.PI / 180f, bone.GeometricRotation.Z * MathF.PI / 180f) * Matrix4x4.CreateScale(bone.GeometricScaling);
+                    // GeometricRotation as quaternion in fixed XYZ order
+                    float grx = bone.GeometricRotation.X * MathF.PI / 180f;
+                    float gry = bone.GeometricRotation.Y * MathF.PI / 180f;
+                    float grz = bone.GeometricRotation.Z * MathF.PI / 180f;
+                    Quaternion qxGeo = Quaternion.CreateFromAxisAngle(Vector3.UnitX, grx);
+                    Quaternion qyGeo = Quaternion.CreateFromAxisAngle(Vector3.UnitY, gry);
+                    Quaternion qzGeo = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, grz);
+                    Matrix4x4 geoR = Matrix4x4.CreateFromQuaternion(qzGeo * qyGeo * qxGeo);
+                    bone.GeometricTransform = Matrix4x4.CreateTranslation(bone.GeometricTranslation) * geoR * Matrix4x4.CreateScale(bone.GeometricScaling);
                 }
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = index;
