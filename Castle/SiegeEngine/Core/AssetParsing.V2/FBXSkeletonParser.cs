@@ -26,7 +26,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 string name = nameParts[nameParts.Length - 1].Trim();
                 if (name.EndsWith("_end")) continue;
                 var bone = new Bone { Name = name, ParentIndex = -1 };
-                bone.BoneType = (string)limbNode.properties[2].Value;
+                //bone.BoneType = (string)limbNode.properties[2].Value;
                 var props70 = limbNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
                 {
@@ -100,7 +100,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         else if (propName == "RotationOrder")
                         {
                             int rawOrder = (int)(double)p.properties[4].Value;
-                            bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(sourceToTarget, rawOrder);
+                            //bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(sourceToTarget, rawOrder);
                         }
                         else if (propName == "GeometricTranslation")
                         {

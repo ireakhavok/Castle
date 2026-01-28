@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing.V2/FBXParser.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -90,11 +88,24 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             var settings = new FBXSettings();
             var globalSettingsNode = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
-            if (globalSettingsNode != null && isBlender)
+            if (globalSettingsNode != null)
             {
                 var props70 = globalSettingsNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
                 {
+                    var unitScaleP = props70.children.FirstOrDefault(p => p.Name == "P" && (p.properties[0].Value.ToString() == "UnitScaleFactor" || p.properties[0].Value.ToString() == "OriginalUnitScaleFactor"));
+                    if (unitScaleP != null)
+                    {
+                        double unitScale = Convert.ToDouble(unitScaleP.properties[4].Value);
+                        settings.ModelScale = (float)unitScale;
+                        FBXParserBase.Log($"Detected UnitScaleFactor: {unitScale}, setting ModelScale to {settings.ModelScale}");
+                    }
+                    else
+                    {
+                        FBXParserBase.Log("No UnitScaleFactor found, keeping ModelScale at 1.0");
+                    }
+                    //if (isBlender)
+                    //{
                     var upAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "UpAxis");
                     var upAxisSignP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "UpAxisSign");
                     var frontAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "FrontAxis");
@@ -114,6 +125,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     settings.AxisMapping = mapping;
                     settings.AxisSigns = signs;
                     model.AutoCorrected = true;
+                    //}
                 }
             }
             var objectsById = GatherObjectsById(objectsNode);
@@ -166,6 +178,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             if (poseNode == null)
             {
                 FBXParserBase.Log("No Bind Pose found");
+                return;
             }
             foreach (var pnode in poseNode.children.Where(c => c.Name == "PoseNode"))
             {

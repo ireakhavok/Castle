@@ -61,7 +61,7 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
+        private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_blender.fbx");
         private string _armaturePath = "";
         private string _animationPath = "";
         private List<string> _animationFiles = new List<string>();
@@ -448,7 +448,7 @@ namespace ReadingChamber
                         }
                     }
                     _renderContext.BindVertexArray(mmr.Vao);
-                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                    //_renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                     _renderContext.BindVertexArray(0);
                 }
             }
