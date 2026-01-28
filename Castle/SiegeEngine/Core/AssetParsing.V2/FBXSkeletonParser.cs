@@ -6,7 +6,6 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
-
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXSkeletonParser
@@ -45,34 +44,29 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double rx = (double)p.properties[4].Value;
                             double ry = (double)p.properties[5].Value;
                             double rz = (double)p.properties[6].Value;
-                            Vector3 euler = new Vector3((float)rx, (float)ry, (float)rz); // No vector remap here
-                            Quaternion rot = bone.ToQuaternion(euler);
-                            Matrix4x4 rotMat = Matrix4x4.CreateFromQuaternion(rot);
-                            rotMat = FBXCoordinateUtils.RemapMatrix(rotMat, sourceToTarget, signs);
-                            bone.LclRotation = Quaternion.Normalize(Quaternion.CreateFromRotationMatrix(rotMat));
+                            Vector3 euler = FBXCoordinateUtils.RemapRotation(new Vector3((float)rx, (float)ry, (float)rz), sourceToTarget, signs);
+                            bone.LclRotation = bone.ToQuaternion(euler);
                         }
                         else if (propName == "Lcl Scaling")
                         {
                             double sx = (double)p.properties[4].Value;
                             double sy = (double)p.properties[5].Value;
                             double sz = (double)p.properties[6].Value;
-                            bone.LclScaling = new Vector3((float)sx, (float)sy, (float)sz);
+                            bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), sourceToTarget, signs);
                         }
                         else if (propName == "PreRotation")
                         {
                             double prx = (double)p.properties[4].Value;
                             double pry = (double)p.properties[5].Value;
                             double prz = (double)p.properties[6].Value;
-                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)prx, (float)pry, (float)prz), sourceToTarget, signs);
-                            bone.PreRotation = euler;
+                            bone.PreRotation = FBXCoordinateUtils.RemapRotation(new Vector3((float)prx, (float)pry, (float)prz), sourceToTarget, signs);
                         }
                         else if (propName == "PostRotation")
                         {
                             double pox = (double)p.properties[4].Value;
                             double poy = (double)p.properties[5].Value;
                             double poz = (double)p.properties[6].Value;
-                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)pox, (float)poy, (float)poz), sourceToTarget, signs);
-                            bone.PostRotation = euler;
+                            bone.PostRotation = FBXCoordinateUtils.RemapRotation(new Vector3((float)pox, (float)poy, (float)poz), sourceToTarget, signs);
                         }
                         else if (propName == "RotationPivot")
                         {
@@ -104,7 +98,8 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         }
                         else if (propName == "RotationOrder")
                         {
-                            bone.RotationOrder = (int)(double)p.properties[4].Value;
+                            int rawOrder = (int)(double)p.properties[4].Value;
+                            bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(sourceToTarget, rawOrder);
                         }
                         else if (propName == "GeometricTranslation")
                         {
@@ -118,15 +113,14 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             double geoRx = (double)p.properties[4].Value;
                             double geoRy = (double)p.properties[5].Value;
                             double geoRz = (double)p.properties[6].Value;
-                            Vector3 euler = FBXCoordinateUtils.RemapVector(new Vector3((float)geoRx, (float)geoRy, (float)geoRz), sourceToTarget, signs);
-                            bone.GeometricRotation = euler;
+                            bone.GeometricRotation = FBXCoordinateUtils.RemapRotation(new Vector3((float)geoRx, (float)geoRy, (float)geoRz), sourceToTarget, signs);
                         }
                         else if (propName == "GeometricScaling")
                         {
                             double gsx = (double)p.properties[4].Value;
                             double gsy = (double)p.properties[5].Value;
                             double gsz = (double)p.properties[6].Value;
-                            bone.GeometricScaling = new Vector3((float)gsx, (float)gsy, (float)gsz);
+                            bone.GeometricScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)gsx, (float)gsy, (float)gsz), sourceToTarget, signs);
                         }
                         else if (propName == "InheritType")
                         {

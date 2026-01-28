@@ -16,7 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanelV2 : BasePanel
@@ -27,23 +26,19 @@ namespace ReadingChamber
             var panel = new AnimationViewerPanelV2(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
-
         // Inner UI overlay class for handling clicks.
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AnimationViewerPanelV2 _parent;
-
             public AssetUIOverlay(AnimationViewerPanelV2 parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
-
             protected override void HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
             }
         }
-
         private FBXModel _model;
         private ModelManagerV2.ModelData _modelData;
         private float _duration = 0f;
@@ -74,7 +69,6 @@ namespace ReadingChamber
         private float _maxExtent;
         private int _currentFrameIndex = 0;
         private ModelManagerV2 _modelManagerV2;
-
         // Constructor, initializes shader, sets scaling mode.
         public AnimationViewerPanelV2(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
@@ -85,13 +79,11 @@ namespace ReadingChamber
             _modelManagerV2 = new ModelManagerV2(_renderContext);
             _modelData = new ModelManagerV2.ModelData(); // Initialize to avoid null reference
         }
-
         // Creates custom UI overlay.
         protected override UIOverlay CreateUIOverlay()
         {
             return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         // Initializes buffers, shaders, loads initial mesh, discovers animations, updates UI, subscribes to events.
         public override void Init()
         {
@@ -110,7 +102,6 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         // Loads and parses mesh FBX, fixes unweighted vertices, centers camera, sets rest pose.
         private void LoadMesh(string path)
         {
@@ -125,7 +116,6 @@ namespace ReadingChamber
             }
             CenterCamera();
         }
-
         // Loads armature FBX, remaps bone properties to match mesh coordinate system, recomputes locals, fixes weights, updates data.
         private void LoadArmature(string path)
         {
@@ -147,7 +137,6 @@ namespace ReadingChamber
             }
             UpdateModelData();
         }
-
         // Loads animation FBX, remaps to match mesh, aligns hierarchies by name matching, adjusts transforms.
         private void LoadAnimation(string animPath)
         {
@@ -162,13 +151,11 @@ namespace ReadingChamber
                 //stubbed for future implementation
             }
         }
-
         // Updates transforms and normals from a specific animation frame, updates skeleton visualization.
         private void UpdateTransformsFromFrame(int frame)
         {
             //STUBBED FOR FUTURE USE
         }
-
         // Sets up model data for rendering, chooses shader based on skinning.
         private void UpdateModelData()
         {
@@ -179,7 +166,6 @@ namespace ReadingChamber
                 _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
             }
         }
-
         // Centers camera on model bounds, sets distance based on extent.
         private void CenterCamera()
         {
@@ -202,7 +188,6 @@ namespace ReadingChamber
             _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
             _cameraUp = Vector3.UnitZ;
         }
-
         // Finds .fbx files in .fbm subdirectory for animations.
         private void DiscoverAnimationFiles()
         {
@@ -212,13 +197,11 @@ namespace ReadingChamber
                 _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
             }
         }
-
         // Updates vertex buffers with current vertex data (e.g., after weight changes).
         private void UpdateModelBuffers()
         {
             //stubbed for future use
         }
-
         // Updates dynamic select in HTML for animations.
         private void UpdateUIControls()
         {
@@ -248,7 +231,6 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         // Handles file selection events for loading mesh/armature/animation.
         private void OnFileSelected(FileSelectedEvent e)
         {
@@ -270,7 +252,6 @@ namespace ReadingChamber
             }
             _currentFrameIndex = 0;
         }
-
         // Handles UI clicks for loading files or selecting animations.
         public void HandleUIClick(HtmlElement elem)
         {
@@ -332,7 +313,6 @@ namespace ReadingChamber
                 }
             }
         }
-
         // Updates camera rotation/pan based on mouse, advances frame with arrows.
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
@@ -383,7 +363,6 @@ namespace ReadingChamber
             }
             UpdateSkeletonVisualization();
         }
-
         // Renders model with lighting, textures, skeleton lines, UI, text info.
         public override void Render()
         {
@@ -469,7 +448,7 @@ namespace ReadingChamber
                         }
                     }
                     _renderContext.BindVertexArray(mmr.Vao);
-                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                    //_renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                     _renderContext.BindVertexArray(0);
                 }
             }
@@ -518,7 +497,6 @@ namespace ReadingChamber
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
         }
-
         // Builds line buffer for visualizing skeleton bones.
         private void UpdateSkeletonVisualization()
         {
@@ -565,7 +543,6 @@ namespace ReadingChamber
             }
             _bindSkeletonBuffer.UpdateCustom(vertices, indices);
         }
-
         private void SetRestPose()
         {
             if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0) return;
@@ -593,13 +570,13 @@ namespace ReadingChamber
                     _currentBindGlobalsVis[i] = Matrix4x4.Identity;
                 }
             }
-            //// Overwrite root orientation of rest pose with bind pose info
-            //if (_model.Skeleton.Bones.Count > 0)
-            //{
-            // int rootIdx = _model.Skeleton.Bones.FindIndex(b => b.Name.Contains("Root"));
-            // if (rootIdx == -1) rootIdx = 0; // Fallback to 0 if not found
-            // // _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
-            //}
+            if (_model.Skeleton.Bones.Count > 0)
+            {
+                int rootIdx = _model.Skeleton.Bones.FindIndex(b => b.Name.ToLowerInvariant().Contains("root"));
+                int actualRoot = _model.Skeleton.Bones.FindIndex(b => _model.Skeleton.Bones[rootIdx].Children.FirstOrDefault() == b);
+                if (actualRoot == -1) actualRoot = 0; // Fallback to 0 if not found
+                _model.Skeleton.Bones[actualRoot].LocalRest = _currentBindGlobalsVis[actualRoot];
+            }
             Console.WriteLine("*********** AnimationViewerPanel OUTPUT BELOW **************");
             // Recompute rest globals after overwrite
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
@@ -644,7 +621,6 @@ namespace ReadingChamber
             Console.WriteLine($"Axis Mapping: {string.Join(",", mapping ?? new int[0])} Signs: {string.Join(",", signs ?? new int[0])}");
             UpdateSkeletonVisualization();
         }
-
         private void PrintMatrix(Matrix4x4 m)
         {
             Console.WriteLine($"({m.M11:F4}, {m.M12:F4}, {m.M13:F4}, {m.M14:F4})");

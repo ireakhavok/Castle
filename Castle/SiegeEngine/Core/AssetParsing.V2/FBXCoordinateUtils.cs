@@ -1,8 +1,8 @@
 ﻿// Folder: SiegeEngine.Core
 // File: AssetParsing.V2/FBXCoordinateUtils.cs
 using System;
+using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXCoordinateUtils
@@ -41,6 +41,42 @@ namespace SiegeEngine.Core.AssetParsing.V2
             p.M44 = 1;
             Matrix4x4.Invert(p, out var invP);
             return p * m * invP;
+        }
+        public static Vector3 RemapRotation(Vector3 v, int[] sourceToTarget, int[] signs)
+        {
+            return RemapVector(v, sourceToTarget, signs);
+        }
+        private static int[][] OrderSequences = new int[][]
+        {
+            new[] {0,1,2}, // 0: XYZ
+            new[] {0,2,1}, // 1: XZY
+            new[] {1,2,0}, // 2: YZX
+            new[] {1,0,2}, // 3: YXZ
+            new[] {2,0,1}, // 4: ZXY
+            new[] {2,1,0}  // 5: ZYX
+        };
+        public static int[] GetOrderSequence(int order)
+        {
+            if (order < 0 || order > 5) return OrderSequences[0];
+            return OrderSequences[order];
+        }
+        public static int GetOrderFromSequence(int[] seq)
+        {
+            for (int o = 0; o < 6; o++)
+            {
+                if (OrderSequences[o].SequenceEqual(seq)) return o;
+            }
+            return 0;
+        }
+        public static int RemapRotationOrder(int[] sourceToTarget, int order)
+        {
+            int[] seq = GetOrderSequence(order);
+            int[] remappedSeq = new int[3];
+            for (int i = 0; i < 3; i++)
+            {
+                remappedSeq[i] = Array.IndexOf(sourceToTarget, seq[i]);
+            }
+            return GetOrderFromSequence(remappedSeq);
         }
     }
 }
