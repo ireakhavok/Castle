@@ -16,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanelV2 : BasePanel
@@ -26,19 +27,23 @@ namespace ReadingChamber
             var panel = new AnimationViewerPanelV2(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
+
         // Inner UI overlay class for handling clicks.
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AnimationViewerPanelV2 _parent;
+
             public AssetUIOverlay(AnimationViewerPanelV2 parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
+
             protected override void HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
             }
         }
+
         private FBXModel _model;
         private ModelManagerV2.ModelData _modelData;
         private float _duration = 0f;
@@ -51,6 +56,7 @@ namespace ReadingChamber
         private ShaderProgram _textShader;
         private Matrix4x4[] _currentGlobalTransforms;
         private Matrix4x4[] _currentBindGlobals;
+        private Matrix4x4[] _currentBindGlobalsVis;
         private Matrix4x4[] _boneMatrices;
         private Matrix3x3[] _currentNormalTransforms;
         private Vector3 _cameraPosition = new Vector3(0, 500, 0);
@@ -60,7 +66,7 @@ namespace ReadingChamber
         private float _lastMouseX, _lastMouseY;
         private bool _firstMouse = true;
         private bool _isPanning = false;
-        private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters","man_mesh.fbx");
+        private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
         private string _armaturePath = "";
         private string _animationPath = "";
         private List<string> _animationFiles = new List<string>();
@@ -68,6 +74,7 @@ namespace ReadingChamber
         private float _maxExtent;
         private int _currentFrameIndex = 0;
         private ModelManagerV2 _modelManagerV2;
+
         // Constructor, initializes shader, sets scaling mode.
         public AnimationViewerPanelV2(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
@@ -78,11 +85,13 @@ namespace ReadingChamber
             _modelManagerV2 = new ModelManagerV2(_renderContext);
             _modelData = new ModelManagerV2.ModelData(); // Initialize to avoid null reference
         }
+
         // Creates custom UI overlay.
         protected override UIOverlay CreateUIOverlay()
         {
             return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         // Initializes buffers, shaders, loads initial mesh, discovers animations, updates UI, subscribes to events.
         public override void Init()
         {
@@ -101,6 +110,7 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         // Loads and parses mesh FBX, fixes unweighted vertices, centers camera, sets rest pose.
         private void LoadMesh(string path)
         {
@@ -115,6 +125,7 @@ namespace ReadingChamber
             }
             CenterCamera();
         }
+
         // Loads armature FBX, remaps bone properties to match mesh coordinate system, recomputes locals, fixes weights, updates data.
         private void LoadArmature(string path)
         {
@@ -136,6 +147,7 @@ namespace ReadingChamber
             }
             UpdateModelData();
         }
+
         // Loads animation FBX, remaps to match mesh, aligns hierarchies by name matching, adjusts transforms.
         private void LoadAnimation(string animPath)
         {
@@ -150,11 +162,13 @@ namespace ReadingChamber
                 //stubbed for future implementation
             }
         }
+
         // Updates transforms and normals from a specific animation frame, updates skeleton visualization.
         private void UpdateTransformsFromFrame(int frame)
         {
             //STUBBED FOR FUTURE USE
         }
+
         // Sets up model data for rendering, chooses shader based on skinning.
         private void UpdateModelData()
         {
@@ -165,6 +179,7 @@ namespace ReadingChamber
                 _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
             }
         }
+
         // Centers camera on model bounds, sets distance based on extent.
         private void CenterCamera()
         {
@@ -187,6 +202,7 @@ namespace ReadingChamber
             _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
             _cameraUp = Vector3.UnitZ;
         }
+
         // Finds .fbx files in .fbm subdirectory for animations.
         private void DiscoverAnimationFiles()
         {
@@ -196,11 +212,13 @@ namespace ReadingChamber
                 _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
             }
         }
+
         // Updates vertex buffers with current vertex data (e.g., after weight changes).
         private void UpdateModelBuffers()
         {
             //stubbed for future use
         }
+
         // Updates dynamic select in HTML for animations.
         private void UpdateUIControls()
         {
@@ -230,6 +248,7 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         // Handles file selection events for loading mesh/armature/animation.
         private void OnFileSelected(FileSelectedEvent e)
         {
@@ -251,6 +270,7 @@ namespace ReadingChamber
             }
             _currentFrameIndex = 0;
         }
+
         // Handles UI clicks for loading files or selecting animations.
         public void HandleUIClick(HtmlElement elem)
         {
@@ -312,6 +332,7 @@ namespace ReadingChamber
                 }
             }
         }
+
         // Updates camera rotation/pan based on mouse, advances frame with arrows.
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
@@ -362,6 +383,7 @@ namespace ReadingChamber
             }
             UpdateSkeletonVisualization();
         }
+
         // Renders model with lighting, textures, skeleton lines, UI, text info.
         public override void Render()
         {
@@ -496,6 +518,7 @@ namespace ReadingChamber
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.CullFace);
         }
+
         // Builds line buffer for visualizing skeleton bones.
         private void UpdateSkeletonVisualization()
         {
@@ -521,20 +544,19 @@ namespace ReadingChamber
             }
             _skeletonBuffer.UpdateCustom(vertices, indices);
             // Bind pose (red)
-            if (_currentBindGlobals == null || _currentBindGlobals.Length != _model.Skeleton.Bones.Count) return;
+            if (_currentBindGlobalsVis == null || _currentBindGlobalsVis.Length != _model.Skeleton.Bones.Count) return;
             vertices = new List<Vertex>();
             indices = new List<uint>();
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
-                Vector3 pos = _currentBindGlobals[i].Translation;
+                Vector3 pos = _currentBindGlobalsVis[i].Translation;
                 vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1)); // Red for joints
             }
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 if (!_model.Skeleton.Bones[i].IsDrawable) continue;
                 //if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
-
                 if (_model.Skeleton.Bones[i].ParentIndex >= 0)
                 {
                     indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
@@ -543,12 +565,14 @@ namespace ReadingChamber
             }
             _bindSkeletonBuffer.UpdateCustom(vertices, indices);
         }
+
         private void SetRestPose()
         {
             if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0) return;
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             // Compute bind globals by inverting BindPose (since BindPose is inverse global bind from FBX)
             _currentBindGlobals = new Matrix4x4[_model.Skeleton.Bones.Count];
+            _currentBindGlobalsVis = new Matrix4x4[_model.Skeleton.Bones.Count];
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 var bindPose = _model.Skeleton.Bones[i].BindPose;
@@ -559,20 +583,22 @@ namespace ReadingChamber
                 // are equivalent but stored differently.
                 if (Matrix4x4.Invert(bindPose, out Matrix4x4 globalBind))
                 {
+                    _currentBindGlobalsVis[i] = globalBind;
                     globalBind = Matrix4x4.Transpose(globalBind);
                     _currentBindGlobals[i] = globalBind;
                 }
                 else
                 {
                     _currentBindGlobals[i] = Matrix4x4.Identity;
+                    _currentBindGlobalsVis[i] = Matrix4x4.Identity;
                 }
             }
             //// Overwrite root orientation of rest pose with bind pose info
             //if (_model.Skeleton.Bones.Count > 0)
             //{
-            //    int rootIdx = _model.Skeleton.Bones.FindIndex(b => b.Name.Contains("Root"));
-            //    if (rootIdx == -1) rootIdx = 0; // Fallback to 0 if not found
-            //    // _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
+            // int rootIdx = _model.Skeleton.Bones.FindIndex(b => b.Name.Contains("Root"));
+            // if (rootIdx == -1) rootIdx = 0; // Fallback to 0 if not found
+            // // _model.Skeleton.Bones[rootIdx].LocalRest = _currentBindGlobals[rootIdx];
             //}
             Console.WriteLine("*********** AnimationViewerPanel OUTPUT BELOW **************");
             // Recompute rest globals after overwrite
@@ -581,7 +607,7 @@ namespace ReadingChamber
             // FBXSkeletonParser.LogBoneHierarchy(_model.Skeleton.Bones, _model.Skeleton.Bones[0], 0);
             // Removed alignment block to prevent offsetting positions
             // Added debug logs for first 10 bones
-            int[] bones = [3,4,5,6,7,8,9,22,23,24,25];
+            int[] bones = [3, 4, 5, 6, 7, 8, 9, 22, 23, 24, 25];
             foreach (int i in bones)
             {
                 Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
@@ -600,11 +626,6 @@ namespace ReadingChamber
                 Console.WriteLine(" BindPose:");
                 PrintMatrix(_model.Skeleton.Bones[i].BindPose);
             }
-            // Also print a mesh vertex position for comparison
-            //if (_model.Meshes.Count > 0 && _model.Meshes[0].Vertices.Count > 0)
-            //{
-            //    Console.WriteLine("Mesh First Vertex Position: " + _model.Meshes[0].Vertices[0].Position);
-            //}
             // Deform mesh to rest pose via skinning
             _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
@@ -615,22 +636,6 @@ namespace ReadingChamber
                 _boneMatrices[i] = skinMat;
                 _currentNormalTransforms[i] = Matrix3x3.Transpose(new Matrix3x3(Matrix4x4.Invert(skinMat, out var inv) ? inv : Matrix4x4.Identity));
             }
-            //// Post-skinning vertex log
-            //if (_model.Meshes.Count > 0 && _model.Meshes[0].Vertices.Count > 0)
-            //{
-            //    FBXVertex v = _model.Meshes[0].Vertices[0];
-            //    Vector3 skinnedPos = Vector3.Zero;
-            //    for (int w = 0; w < 4; w++)
-            //    {
-            //        int boneId = (int)v.BoneIDs[w];
-            //        float weight = v.Weights[w];
-            //        if (weight > 0 && boneId < _boneMatrices.Length)
-            //        {
-            //            skinnedPos += Vector3.Transform(v.Position, _boneMatrices[boneId]) * weight;
-            //        }
-            //    }
-            //    Console.WriteLine($"Skinned First Vertex Position (Rest Pose): {skinnedPos}");
-            //}
             // Model AutoCorrected log (assuming _model.AutoCorrected exists; if not, add to FBXModel class)
             Console.WriteLine($"Model AutoCorrected: {_model.AutoCorrected}");
             // Axis Mapping and Signs (stub with defaults or expose in FBXModel; assuming not present, use example)
@@ -639,6 +644,7 @@ namespace ReadingChamber
             Console.WriteLine($"Axis Mapping: {string.Join(",", mapping ?? new int[0])} Signs: {string.Join(",", signs ?? new int[0])}");
             UpdateSkeletonVisualization();
         }
+
         private void PrintMatrix(Matrix4x4 m)
         {
             Console.WriteLine($"({m.M11:F4}, {m.M12:F4}, {m.M13:F4}, {m.M14:F4})");
