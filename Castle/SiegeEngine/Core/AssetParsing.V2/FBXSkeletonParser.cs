@@ -26,6 +26,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 string name = nameParts[nameParts.Length - 1].Trim();
                 if (name.EndsWith("_end")) continue;
                 var bone = new Bone { Name = name, ParentIndex = -1 };
+                bone.BoneType = (string)limbNode.properties[2].Value;
                 var props70 = limbNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
                 {

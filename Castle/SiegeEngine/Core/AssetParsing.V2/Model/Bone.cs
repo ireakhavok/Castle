@@ -29,6 +29,8 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
         public List<Bone> Children { get; set; } = new List<Bone>();
         public bool IsDrawable { get; set; } = true;
         public int InheritType { get; set; } = 0;
+
+        public string BoneType { get; set; } = "None";
         public Matrix4x4 ComputeLocal(Vector3? t = null, Quaternion? r = null, Vector3? s = null)
         {
             Vector3 useT = t ?? LclTranslation;
