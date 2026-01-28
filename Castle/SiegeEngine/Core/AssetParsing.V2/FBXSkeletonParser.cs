@@ -100,7 +100,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         else if (propName == "RotationOrder")
                         {
                             int rawOrder = (int)(double)p.properties[4].Value;
-                            //bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(sourceToTarget, rawOrder);
+                            bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(sourceToTarget, rawOrder);
                         }
                         else if (propName == "GeometricTranslation")
                         {
