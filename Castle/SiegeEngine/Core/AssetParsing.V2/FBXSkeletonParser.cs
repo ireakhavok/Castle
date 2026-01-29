@@ -6,6 +6,7 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXSkeletonParser
@@ -25,6 +26,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 string[] nameParts = fullName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
                 string name = nameParts[nameParts.Length - 1].Trim();
                 if (name.EndsWith("_end")) continue;
+                if (name == "Armature") continue; // Skip adding Armature to skeleton
                 var bone = new Bone { Name = name, ParentIndex = -1 };
                 //bone.BoneType = (string)limbNode.properties[2].Value;
                 var props70 = limbNode.children.FirstOrDefault(c => c.Name == "Properties70");
@@ -153,12 +155,13 @@ namespace SiegeEngine.Core.AssetParsing.V2
             var childBones = new HashSet<long>();
             foreach (var conn in conns.Where(conn => conn.type == "OO" && boneIds.Contains(conn.child) && boneIds.Contains(conn.parent)))
             {
-                childBones.Add(conn.child);
-                long parentId = conn.parent;
-                long childId = conn.child;
-                string parentName = model.Skeleton.Bones[boneIndexById[parentId]].Name;
-                string childName = model.Skeleton.Bones[boneIndexById[childId]].Name;
-                //FBXParserBase.Log($"Hierarchy connection: Parent ID={parentId} ({parentName}), Child ID={childId} ({childName})");
+                if (boneIndexById.TryGetValue(conn.child, out int childIdx) && boneIndexById.TryGetValue(conn.parent, out int parentIdx))
+                {
+                    childBones.Add(conn.child);
+                    string parentName = model.Skeleton.Bones[parentIdx].Name;
+                    string childName = model.Skeleton.Bones[childIdx].Name;
+                    //FBXParserBase.Log($"Hierarchy connection: Parent ID={conn.parent} ({parentName}), Child ID={conn.child} ({childName})");
+                }
             }
             foreach (var bid in boneIds)
             {
