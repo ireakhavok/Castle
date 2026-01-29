@@ -13,6 +13,14 @@ namespace SiegeEngine.Core.AssetParsing.V2
     {
         public static (Dictionary<long, int> boneIndexById, List<int> rootIndices) ParseSkeleton(FBXModel model, BaseNode objectsNode, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, int[] sourceToTarget, int[] signs, float modelScale)
         {
+            var bonesToPrint = new List<int>
+            {
+                0,1,2,3,4,5,6
+                // Add bone indices to print here, e.g.:
+                // 0,
+                // 1
+            };
+
             var boneIndexById = new Dictionary<long, int>();
             var rootIndices = new List<int>();
             var limbNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
@@ -26,7 +34,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 string[] nameParts = fullName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
                 string name = nameParts[nameParts.Length - 1].Trim();
                 if (name.EndsWith("_end")) continue;
-                if (name == "Armature") continue; // Skip adding Armature to skeleton
                 var bone = new Bone { Name = name, ParentIndex = -1 };
                 //bone.BoneType = (string)limbNode.properties[2].Value;
                 var props70 = limbNode.children.FirstOrDefault(c => c.Name == "Properties70");
@@ -134,7 +141,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                             Console.WriteLine($"{propName}: not parsed.");
                         }
                     }
-                    Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");
                     bone.LocalRest = bone.ComputeLocal();
                     // GeometricRotation as quaternion in fixed XYZ order
                     float grx = bone.GeometricRotation.X * MathF.PI / 180f;
@@ -145,6 +151,29 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     Quaternion qzGeo = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, grz);
                     Matrix4x4 geoR = Matrix4x4.CreateFromQuaternion(qzGeo * qyGeo * qxGeo);
                     bone.GeometricTransform = Matrix4x4.CreateTranslation(bone.GeometricTranslation) * geoR * Matrix4x4.CreateScale(bone.GeometricScaling);
+
+                    bool shouldPrint = bonesToPrint.Contains(index);
+                    if (shouldPrint)
+                    {
+                        Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");
+                        Console.WriteLine($"Final properties for bone {name} (index {index}):");
+                        Console.WriteLine($"  Lcl Translation: {bone.LclTranslation}");
+                        Console.WriteLine($"  Lcl Rotation: {bone.LclRotation}");
+                        Console.WriteLine($"  Lcl Scaling: {bone.LclScaling}");
+                        Console.WriteLine($"  PreRotation: {bone.PreRotation}");
+                        Console.WriteLine($"  PostRotation: {bone.PostRotation}");
+                        Console.WriteLine($"  RotationPivot: {bone.RotationPivot}");
+                        Console.WriteLine($"  RotationOffset: {bone.RotationOffset}");
+                        Console.WriteLine($"  ScalingPivot: {bone.ScalingPivot}");
+                        Console.WriteLine($"  ScalingOffset: {bone.ScalingOffset}");
+                        Console.WriteLine($"  RotationOrder: {bone.RotationOrder}");
+                        Console.WriteLine($"  GeometricTranslation: {bone.GeometricTranslation}");
+                        Console.WriteLine($"  GeometricRotation: {bone.GeometricRotation}");
+                        Console.WriteLine($"  GeometricScaling: {bone.GeometricScaling}");
+                        Console.WriteLine($"  InheritType: {bone.InheritType}");
+                        Console.WriteLine($"  LocalRest: {bone.LocalRest}");
+                        Console.WriteLine($"  GeometricTransform: {bone.GeometricTransform}");
+                    }
                 }
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = index;
@@ -155,13 +184,12 @@ namespace SiegeEngine.Core.AssetParsing.V2
             var childBones = new HashSet<long>();
             foreach (var conn in conns.Where(conn => conn.type == "OO" && boneIds.Contains(conn.child) && boneIds.Contains(conn.parent)))
             {
-                if (boneIndexById.TryGetValue(conn.child, out int childIdx) && boneIndexById.TryGetValue(conn.parent, out int parentIdx))
-                {
-                    childBones.Add(conn.child);
-                    string parentName = model.Skeleton.Bones[parentIdx].Name;
-                    string childName = model.Skeleton.Bones[childIdx].Name;
-                    //FBXParserBase.Log($"Hierarchy connection: Parent ID={conn.parent} ({parentName}), Child ID={conn.child} ({childName})");
-                }
+                childBones.Add(conn.child);
+                long parentId = conn.parent;
+                long childId = conn.child;
+                string parentName = model.Skeleton.Bones[boneIndexById[parentId]].Name;
+                string childName = model.Skeleton.Bones[boneIndexById[childId]].Name;
+                //FBXParserBase.Log($"Hierarchy connection: Parent ID={parentId} ({parentName}), Child ID={childId} ({childName})");
             }
             foreach (var bid in boneIds)
             {
