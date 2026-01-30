@@ -10,8 +10,7 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.AssetParsing.V2.Model;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
-using SiegeEngine.Core.AssetParsing.V2;
-namespace SiegeEngine.Core.Managers
+namespace SiegeEngine.Core.AssetParsing.V2
 {
     public class ModelManagerV2
     {

@@ -6,7 +6,6 @@ using SiegeEngine.Core.AssetParsing.V2.Model;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
-using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.UI;
@@ -43,7 +42,7 @@ namespace ReadingChamber
         private ModelManagerV2.ModelData _modelData;
         private float _duration = 0f;
         private string _currentAnimation;
-        private ShaderProgram _assetShader;
+        private ShaderProgram _animationShader;
         private VertexBuffer _skeletonBuffer;
         private VertexBuffer _bindSkeletonBuffer;
         private ShaderProgram _pointShader;
@@ -74,7 +73,7 @@ namespace ReadingChamber
         // Constructor, initializes shader, sets scaling mode.
         public AnimationViewerPanelV2(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
-            _assetShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
+            _animationShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
             Scaling = ScalingMode.BestFit;
             BaseWidth = 1280f;
             BaseHeight = 720f;
@@ -165,7 +164,7 @@ namespace ReadingChamber
             _modelManagerV2.TryGetModelData(Path.GetFileNameWithoutExtension(_meshPath).ToLower(), out _modelData);
             if (_model.HasSkin)
             {
-                _assetShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
+                _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
             }
         }
         // Centers camera on model bounds, sets distance based on extent.
@@ -393,26 +392,26 @@ namespace ReadingChamber
             float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
             float far = currentDist + _maxExtent * 2f;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, Size.X / Size.Y, near, far);
-            _assetShader.Use();
-            _assetShader.SetMatrix4("uModel", modelMatrix);
-            _assetShader.SetMatrix4("uView", view);
-            _assetShader.SetMatrix4("uProjection", projection);
-            _assetShader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
-            _assetShader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
-            _assetShader.SetUniform("uLightIntensity", 1.0f);
-            _assetShader.SetUniform("uViewPos", _cameraPosition.X, _cameraPosition.Y, _cameraPosition.Z);
-            _assetShader.SetUniform("uAmbientStrength", 0.3f);
-            _assetShader.SetUniform("uSpecularStrength", 0.05f);
-            _assetShader.SetUniform("uShininess", 4.0f);
+            _animationShader.Use();
+            _animationShader.SetMatrix4("uModel", modelMatrix);
+            _animationShader.SetMatrix4("uView", view);
+            _animationShader.SetMatrix4("uProjection", projection);
+            _animationShader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
+            _animationShader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
+            _animationShader.SetUniform("uLightIntensity", 1.0f);
+            _animationShader.SetUniform("uViewPos", _cameraPosition.X, _cameraPosition.Y, _cameraPosition.Z);
+            _animationShader.SetUniform("uAmbientStrength", 0.3f);
+            _animationShader.SetUniform("uSpecularStrength", 0.05f);
+            _animationShader.SetUniform("uShininess", 4.0f);
             if (_model.HasSkin && _boneMatrices != null && _boneMatrices.Length > 0)
             {
-                _assetShader.SetUniform("uHasBones", 1);
-                _assetShader.SetMatrix4Array("uBoneMatrices", _boneMatrices);
-                _assetShader.SetMatrix3Array("uNormalMatrices", _currentNormalTransforms);
+                _animationShader.SetUniform("uHasBones", 1);
+                _animationShader.SetMatrix4Array("uBoneMatrices", _boneMatrices);
+                _animationShader.SetMatrix3Array("uNormalMatrices", _currentNormalTransforms);
             }
             else
             {
-                _assetShader.SetUniform("uHasBones", 0);
+                _animationShader.SetUniform("uHasBones", 0);
             }
             if (_modelData != null)
             {
@@ -425,19 +424,19 @@ namespace ReadingChamber
                         {
                             _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + i);
                             _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[i]);
-                            _assetShader.SetUniform($"uAlbedoMap[{i}]", i);
+                            _animationShader.SetUniform($"uAlbedoMap[{i}]", i);
                         }
                         for (int i = 0; i < Math.Min(mmr.NormalTextures.Length, 4); i++)
                         {
                             _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + i);
                             _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[i]);
-                            _assetShader.SetUniform($"uNormalMap[{i}]", 4 + i);
+                            _animationShader.SetUniform($"uNormalMap[{i}]", 4 + i);
                         }
                         for (int i = 0; i < Math.Min(mmr.MetallicTextures.Length, 4); i++)
                         {
                             _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + i);
                             _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[i]);
-                            _assetShader.SetUniform($"uMetallicMap[{i}]", 8 + i);
+                            _animationShader.SetUniform($"uMetallicMap[{i}]", 8 + i);
                         }
                     }
                     catch (ArgumentException ex)
@@ -446,7 +445,7 @@ namespace ReadingChamber
                         {
                             _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
                             _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[0]);
-                            _assetShader.SetUniform("uAlbedoMap[0]", 0);
+                            _animationShader.SetUniform("uAlbedoMap[0]", 0);
                         }
                     }
                     _renderContext.BindVertexArray(mmr.Vao);

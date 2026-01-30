@@ -2,6 +2,7 @@
 // File: AssetParsing.V2/FBXSkeletonParser.cs
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
@@ -59,10 +60,23 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         }
                         else if (propName == "Lcl Scaling")
                         {
-                            double sx = (double)p.properties[4].Value;
-                            double sy = (double)p.properties[5].Value;
-                            double sz = (double)p.properties[6].Value;
-                            bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), sourceToTarget, signs);
+                            // THIS IS NORMALIZATION FOR THE ARMATURE. BLENDER OUTPUTS SHIT SCALE. 
+                            if (name == "Armature")
+                            {
+                                double sx = (double)1;
+                                double sy = (double)1;
+                                double sz = (double)1;
+                                bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), sourceToTarget, signs);
+                                
+                            }
+                            else
+                            {
+                                double sx = (double)p.properties[4].Value;
+                                double sy = (double)p.properties[5].Value;
+                                double sz = (double)p.properties[6].Value;
+                                bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), sourceToTarget, signs);
+                            }
+
                         }
                         else if (propName == "PreRotation")
                         {
@@ -171,8 +185,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         Console.WriteLine($"  GeometricRotation: {bone.GeometricRotation}");
                         Console.WriteLine($"  GeometricScaling: {bone.GeometricScaling}");
                         Console.WriteLine($"  InheritType: {bone.InheritType}");
-                        Console.WriteLine($"  LocalRest: {bone.LocalRest}");
-                        Console.WriteLine($"  GeometricTransform: {bone.GeometricTransform}");
+                        Console.WriteLine($"  LocalRest:");
+                        PrintMatrix(bone.LocalRest);
+                        Console.WriteLine($"  GeometricTransform:");
+                        PrintMatrix(bone.GeometricTransform);
                     }
                 }
                 model.Skeleton.Bones.Add(bone);
@@ -202,6 +218,14 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 }
             }
             return (boneIndexById, rootIndices);
+        }
+        // Add helper (like in viewer)
+        private static void PrintMatrix(Matrix4x4 m)
+        {
+            Console.WriteLine($"({m.M11:F4}, {m.M12:F4}, {m.M13:F4}, {m.M14:F4})");
+            Console.WriteLine($"({m.M21:F4}, {m.M22:F4}, {m.M23:F4}, {m.M24:F4})");
+            Console.WriteLine($"({m.M31:F4}, {m.M32:F4}, {m.M33:F4}, {m.M34:F4})");
+            Console.WriteLine($"({m.M41:F4}, {m.M42:F4}, {m.M43:F4}, {m.M44:F4})");
         }
         public static void BuildHierarchy(FBXModel model, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById)
         {

@@ -31,25 +31,14 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
         public int InheritType { get; set; } = 0;
 
         //public string BoneType { get; set; } = "None";
-        public Matrix4x4 ComputeLocal(Vector3? t = null, Quaternion? r = null, Vector3? s = null)
+        public Matrix4x4 ComputeLocal()
         {
-            Vector3 useT = t ?? LclTranslation;
-            Quaternion useR = r ?? LclRotation;
-            Vector3 useS = s ?? LclScaling;
+            Vector3 useT = LclTranslation;
+            Quaternion useR = LclRotation;
+            Vector3 useS = LclScaling;
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
             Console.WriteLine("T:");
-            PrintMatrix(T); // Add this and below
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
-            Console.WriteLine("Roff:");
-            if (Roff == Matrix4x4.Identity)
-                Console.WriteLine("Identity Matrix");
-            else
-                PrintMatrix(Roff);
-            //Vector3 useT = t ?? LclTranslation;
-            //Quaternion useR = r ?? LclRotation;
-            //Vector3 useS = s ?? LclScaling;
-            //Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
-            //Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
             // PreRotation as quaternion in fixed XYZ order
             float prx = PreRotation.X * MathF.PI / 180f;
@@ -80,17 +69,9 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             //WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R * Rpost⁻¹ * Rp⁻¹ * Soff * Sp * S * Sp⁻¹
             Matrix4x4 local = T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
             Console.WriteLine("Final LocalRest:");
-            PrintMatrix(local);
             return local;
         }
-        // Add helper (like in viewer)
-        private void PrintMatrix(Matrix4x4 m)
-        {
-            Console.WriteLine($"({m.M11:F4}, {m.M12:F4}, {m.M13:F4}, {m.M14:F4})");
-            Console.WriteLine($"({m.M21:F4}, {m.M22:F4}, {m.M23:F4}, {m.M24:F4})");
-            Console.WriteLine($"({m.M31:F4}, {m.M32:F4}, {m.M33:F4}, {m.M34:F4})");
-            Console.WriteLine($"({m.M41:F4}, {m.M42:F4}, {m.M43:F4}, {m.M44:F4})");
-        }
+
         public Quaternion ToQuaternion(Vector3 degrees)
         {
             float rx = degrees.X * MathF.PI / 180f;
