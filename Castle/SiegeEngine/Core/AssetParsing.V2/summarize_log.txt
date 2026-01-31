@@ -116,7 +116,7 @@ Found 1 dependencies
 Found: ModelManagerV2.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\ModelManagerV2.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\ModelManagerV2.cs
-Read 17929 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\ModelManagerV2.cs
+Read 20390 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\ModelManagerV2.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2
 Found 10 dependencies
 Found: NodeParser.cs

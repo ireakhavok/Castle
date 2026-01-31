@@ -93,9 +93,6 @@ Folder: Core
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
     - Methods:
       - Matrix4x4 ComputeLocal()
-        - Calls: PrintMatrix
-      - else PrintMatrix()
-      - void PrintMatrix(Matrix4x4 m)
       - Quaternion ToQuaternion(Vector3 degrees)
 - File: BrushRegistryUpdateEvent.cs
   - Class: BrushRegistryUpdateEvent (Namespace: SiegeEngine.Core.Events)
@@ -365,10 +362,19 @@ Folder: Core
       - void ComputeGlobalRecursive( List<Bone> bones,  Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] locals, Bone bone)
 - File: FBXCoordinateUtils.cs
   - Class: FBXCoordinateUtils (Namespace: SiegeEngine.Core.AssetParsing.V2)
-    - Dependencies: System, System.Numerics
+    - Dependencies: System, System.Linq, System.Numerics
+    - Fields:
+      - int[][] OrderSequences
     - Methods:
       - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
       - Matrix4x4 RemapMatrix( int[] signs,  int[] sourceToTarget, Matrix4x4 m)
+      - Vector3 RemapRotation( int[] signs,  int[] sourceToTarget, Vector3 v)
+        - Calls: RemapVector
+      - return RemapVector()
+      - int[] GetOrderSequence(int order)
+      - int GetOrderFromSequence(int[] seq)
+      - int RemapRotationOrder( int order, int[] sourceToTarget)
+        - Calls: GetOrderFromSequence, GetOrderSequence
 - File: FBXFileForest.cs
   - Class: FBXFileForest (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -385,9 +391,6 @@ Folder: Core
       - Vector3 GetNormal( int pvIdx,  int vertIdx,  int[] normIdx,  int[] signs,  int[] sourceToTarget,  string mapping,  string refe, double[] norms)
         - Calls: FBXCoordinateUtils.RemapVector
       - Vector2 GetUV( int pvIdx,  int vertIdx,  int[] uvIdx,  string mapping,  string refe, double[] uvs)
-      - Matrix4x4 CreateMatrixFromArray(double[] vals)
-      - void PrintMatrix(Matrix4x4 m)
-        - Calls: FBXParserBase.Log
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -407,7 +410,7 @@ Folder: Core
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
       - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
-        - Calls: FBXCoordinateUtils.RemapMatrix, FBXMeshParser.CreateMatrixFromArray, FBXParserBase.Log
+        - Calls: FBXCoordinateUtils.RemapMatrix, FBXParserBase.Log, FBXParserUtils.CreateMatrixFromArray_LoadFromColumnMajor
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -420,7 +423,12 @@ Folder: Core
         - Calls: FBXModel
 - File: FBXParserUtils.cs
   - Class: FBXParserUtils (Namespace: SiegeEngine.Core.AssetParsing.V2)
-    - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Globalization, System.IO, System.IO.Compression, System.Linq
+    - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Globalization, System.IO, System.IO.Compression, System.Linq, System.Numerics
+    - Methods:
+      - Matrix4x4 CreateMatrixFromArray_LoadFromColumnMajor(double[] vals)
+      - Matrix4x4 CreateMatrixFromArray(double[] vals)
+      - void PrintMatrix(Matrix4x4 m)
+        - Calls: FBXParserBase.Log
 - File: FBXSettings.cs
   - Class: FBXSettings (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: System, System.Numerics
@@ -433,7 +441,9 @@ Folder: Core
       - int EngineCoordSign
 - File: FBXSkeletonParser.cs
   - Class: FBXSkeletonParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.ComponentModel.Design, System.Linq, System.Numerics, YamlDotNet.Serialization
+    - Methods:
+      - void PrintMatrix(Matrix4x4 m)
 - File: FBXVertex.cs
   - Class: FBXVertex (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Numerics
@@ -880,8 +890,8 @@ Folder: Core
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
 - File: ModelManagerV2.cs
-  - Class: ModelMeshRender (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+  - Class: ModelMeshRender (Namespace: SiegeEngine.Core.AssetParsing.V2)
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
 - File: ModelShader.cs
   - Class: ModelShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1235,7 +1245,7 @@ Folder: Core
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - Matrix4x4[] ComputeGlobalTransforms()
-        - Calls: ComputeGlobalRecursive, FBXMeshParser.PrintMatrix, FBXParserBase.Log
+        - Calls: ComputeGlobalRecursive, FBXParserBase.Log, FBXParserUtils.PrintMatrix
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)
       - void LogBoneHierarchy()
         - Calls: FBXParserBase.Log
@@ -1988,6 +1998,7 @@ SiegeEngine.Core.AssetParsing.V2.Model.Material
 SiegeEngine.Core.AssetParsing.V2.Model.MeshData
 SiegeEngine.Core.AssetParsing.V2.Model.Skeleton
 SiegeEngine.Core.AssetParsing.V2.Model.TextureInfo
+SiegeEngine.Core.AssetParsing.V2.ModelMeshRender
 SiegeEngine.Core.AssetParsing.V2.NodeParser
 SiegeEngine.Core.ContextManagement.AbstractRenderEnums
 SiegeEngine.Core.ContextManagement.ContextManager
