@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine.Core
-// File: Managers/ModelManagerV2.cs
+﻿// Folder: SiegeEngine.Core.AssetParsing.V2
+// File: ModelManagerV2.cs
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
@@ -10,18 +10,25 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.AssetParsing.V2.Model;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public class ModelManagerV2
     {
         private readonly Dictionary<string, FBXModel> _models = new();
         private readonly Dictionary<string, ModelData> _modelData = new();
+        private readonly Dictionary<string, Skeleton> _skeletons = new();
+        private readonly Dictionary<string, List<Animation>> _animations = new();
+        private readonly Dictionary<string, FBXFileForest> _forests = new();
+        private readonly Dictionary<string, string> _fbxDirs = new();
         private readonly Dictionary<string, (uint, byte)> _textureCache = new();
         private readonly IRenderContext _renderContext;
+
         public class ModelData
         {
             public List<ModelMeshRender> MeshRenders { get; set; } = new List<ModelMeshRender>();
         }
+
         public class ModelMeshRender
         {
             public uint Vao { get; set; }
@@ -32,33 +39,86 @@ namespace SiegeEngine.Core.AssetParsing.V2
             public uint[] MetallicTextures { get; set; }
             public uint IndexCount { get; set; }
         }
+
         public ModelManagerV2(IRenderContext renderContext = null)
         {
             _renderContext = renderContext;
         }
-        public void LoadModel(string filePath, FBXFileForest forest = null)
+
+        public void LoadModel(string filePath)
         {
             string key = Path.GetFileNameWithoutExtension(filePath).ToLower();
+            if (_models.ContainsKey(key))
+            {
+                return;
+            }
             string fbxDir = Path.GetDirectoryName(filePath);
-            try
-            {
-                if (forest == null)
-                {
-                    forest = FBXParser.Load(filePath);
-                }
-                FBXModel model = FBXParser.BuildModelFromForest(forest);
-                model.Skeleton.LogBoneHierarchy();
-                SmoothNormals(model);
-                ModelData modelData = SetupModelData(model, fbxDir, forest);
-                _models[key] = model;
-                _modelData[key] = modelData;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"ModelManagerV2: Error: Failed to load {filePath}: {ex.Message}");
-                throw;
-            }
+            _fbxDirs[key] = fbxDir;
+            FBXFileForest forest = FBXParser.Load(filePath);
+            _forests[key] = forest;
+            FBXModel model = FBXParser.BuildModelFromForest(forest);
+            model.Skeleton.LogBoneHierarchy();
+            SmoothNormals(model);
+            ModelData modelData = SetupModelData(model, fbxDir, forest);
+            _models[key] = model;
+            _modelData[key] = modelData;
         }
+
+        public void AttachSkeleton(string targetKey, string skeletonPath)
+        {
+            if (!_models.ContainsKey(targetKey))
+            {
+                throw new InvalidOperationException($"Target model {targetKey} not loaded");
+            }
+            string skeletonKey = Path.GetFileNameWithoutExtension(skeletonPath).ToLower();
+            Skeleton skeleton;
+            if (!_skeletons.TryGetValue(skeletonKey, out skeleton))
+            {
+                FBXFileForest forest = FBXParser.Load(skeletonPath);
+                FBXModel parsedModel = FBXParser.BuildModelFromForest(forest);
+                skeleton = parsedModel.Skeleton;
+                _skeletons[skeletonKey] = skeleton;
+            }
+            // Stub for remapping
+            _models[targetKey].Skeleton = skeleton;
+            _models[targetKey].HasSkin = true;
+            UpdateModelData(targetKey);
+        }
+
+        public void AttachAnimation(string targetKey, string animPath)
+        {
+            if (!_models.ContainsKey(targetKey))
+            {
+                throw new InvalidOperationException($"Target model {targetKey} not loaded");
+            }
+            string animKey = Path.GetFileNameWithoutExtension(animPath).ToLower();
+            List<Animation> anims;
+            if (!_animations.TryGetValue(animKey, out anims))
+            {
+                FBXFileForest forest = FBXParser.Load(animPath);
+                FBXModel animModel = FBXParser.BuildModelFromForest(forest);
+                anims = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+                _animations[animKey] = anims;
+            }
+            // Stub for remapping/alignment
+            _models[targetKey].Animations.AddRange(anims);
+            // No need to update ModelData for animations
+        }
+
+        private void UpdateModelData(string key)
+        {
+            if (!_models.ContainsKey(key) || !_fbxDirs.ContainsKey(key) || !_forests.ContainsKey(key))
+            {
+                return;
+            }
+            FBXModel model = _models[key];
+            string fbxDir = _fbxDirs[key];
+            FBXFileForest forest = _forests[key];
+            SmoothNormals(model);
+            ModelData modelData = SetupModelData(model, fbxDir, forest);
+            _modelData[key] = modelData;
+        }
+
         private unsafe ModelData SetupModelData(FBXModel model, string fbxDir, FBXFileForest forest)
         {
             var modelData = new ModelData();
@@ -211,6 +271,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return modelData;
         }
+
         private (uint, byte) LoadEmbeddedTexture(byte[] textureData, string textureName, int wrapS, int wrapT)
         {
             string cacheKey = "embedded:" + textureName.ToLowerInvariant();
@@ -225,6 +286,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return res;
         }
+
         private (uint, byte) LoadExternalTexture(string texturePath, string fbxDir, int wrapS, int wrapT)
         {
             if (string.IsNullOrEmpty(texturePath)) return (0, 0);
@@ -246,6 +308,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return res;
         }
+
         private static void SmoothNormals(FBXModel model)
         {
             foreach (var mesh in model.Meshes)
@@ -290,6 +353,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 }
             }
         }
+
         private static void ComputeTangents(MeshData mesh)
         {
             Vector3[] tangents = new Vector3[mesh.Vertices.Count];
@@ -349,11 +413,13 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 mesh.Vertices[i] = newVertex;
             }
         }
+
         public bool TryGetModel(string key, out FBXModel model)
         {
             key = key.ToLower();
             return _models.TryGetValue(key, out model);
         }
+
         public bool TryGetModelData(string key, out ModelData modelData)
         {
             key = key.ToLower();
