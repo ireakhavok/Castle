@@ -44,14 +44,14 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     foreach (var p in props70.children.Where(c => c.Name == "P"))
                     {
                         string propName = (string)p.properties[0].Value;
-                        if (propName == "Lcl Translation")
+                         if (propName == "Lcl Translation")
                         {
 
                             double tx = (double)p.properties[4].Value;
                             double ty = (double)p.properties[5].Value;
                             double tz = (double)p.properties[6].Value;
                             bone.LclTranslation = FBXCoordinateUtils.RemapVector(new Vector3((float)tx, (float)ty, (float)tz), settings.InternalAxisMapping, settings.InternalAxisSigns) * settings.ModelScale;
-                        }
+                        }           
                         else if (propName == "Lcl Rotation")
                         {
                             double rx = (double)p.properties[4].Value;

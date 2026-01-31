@@ -446,7 +446,7 @@ namespace ReadingChamber
                         }
                     }
                     _renderContext.BindVertexArray(mmr.Vao);
-                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
+                    //_renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                     _renderContext.BindVertexArray(0);
                 }
             }
@@ -583,25 +583,25 @@ namespace ReadingChamber
             // FBXSkeletonParser.LogBoneHierarchy(_model.Skeleton.Bones, _model.Skeleton.Bones[0], 0);
             // Removed alignment block to prevent offsetting positions
             // Added debug logs for first 10 bones
-            //int[] bones = [3, 4, 5, 6, 7, 8, 9, 22, 23, 24, 25];
-            //foreach (int i in bones)
-            //{
-            //    Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
-            //    Console.WriteLine($" Translation: {_currentGlobalTransforms[i].Translation}");
-            //    Console.WriteLine(" Matrix:");
-            //    PrintMatrix(_currentGlobalTransforms[i]);
-            //    Console.WriteLine(" LocalRest:");
-            //    PrintMatrix(_model.Skeleton.Bones[i].LocalRest);
-            //}
-            //foreach (int i in bones)
-            //{
-            //    Console.WriteLine($"Bind Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
-            //    Console.WriteLine($" Translation: {_currentBindGlobals[i].Translation}");
-            //    Console.WriteLine(" Matrix:");
-            //    PrintMatrix(_currentBindGlobals[i]);
-            //    Console.WriteLine(" BindPose:");
-            //    PrintMatrix(_model.Skeleton.Bones[i].BindPose);
-            //}
+            int[] bones = [0,1,2,3,4,5,6,7];
+            foreach (int i in bones)
+            {
+                Console.WriteLine($"Rest Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
+                Console.WriteLine($" Translation: {_currentGlobalTransforms[i].Translation}");
+                Console.WriteLine(" Matrix:");
+                PrintMatrix(_currentGlobalTransforms[i]);
+                Console.WriteLine(" LocalRest:");
+                PrintMatrix(_model.Skeleton.Bones[i].LocalRest);
+            }
+            foreach (int i in bones)
+            {
+                Console.WriteLine($"Bind Pose Bone {i} ({_model.Skeleton.Bones[i].Name}):");
+                Console.WriteLine($" Translation: {_currentBindGlobals[i].Translation}");
+                Console.WriteLine(" Matrix:");
+                PrintMatrix(_currentBindGlobals[i]);
+                Console.WriteLine(" BindPose:");
+                PrintMatrix(_model.Skeleton.Bones[i].BindPose);
+            }
             // Deform mesh to rest pose via skinning
             _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
