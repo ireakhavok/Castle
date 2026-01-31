@@ -93,17 +93,17 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 var props70 = globalSettingsNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
                 {
-                    var unitScaleP = props70.children.FirstOrDefault(p => p.Name == "P" && (p.properties[0].Value.ToString() == "UnitScaleFactor" || p.properties[0].Value.ToString() == "OriginalUnitScaleFactor"));
-                    if (unitScaleP != null)
-                    {
-                        double unitScale = Convert.ToDouble(unitScaleP.properties[4].Value);
-                        settings.ModelScale = (float)unitScale;
-                        FBXParserBase.Log($"Detected UnitScaleFactor: {unitScale}, setting ModelScale to {settings.ModelScale}");
-                    }
-                    else
-                    {
-                        FBXParserBase.Log("No UnitScaleFactor found, keeping ModelScale at 1.0");
-                    }
+                    //var unitScaleP = props70.children.FirstOrDefault(p => p.Name == "P" && (p.properties[0].Value.ToString() == "UnitScaleFactor" || p.properties[0].Value.ToString() == "OriginalUnitScaleFactor"));
+                    //if (unitScaleP != null)
+                    //{
+                    //    double unitScale = Convert.ToDouble(unitScaleP.properties[4].Value);
+                    //    settings.ModelScale = (float)unitScale;
+                    //    FBXParserBase.Log($"Detected UnitScaleFactor: {unitScale}, setting ModelScale to {settings.ModelScale}");
+                    //}
+                    //else
+                    //{
+                    //    FBXParserBase.Log("No UnitScaleFactor found, keeping ModelScale at 1.0");
+                    //}
                     if (isBlender)
                     {
                         var upAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "UpAxis");
@@ -130,7 +130,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             var objectsById = GatherObjectsById(objectsNode);
             var conns = GatherConnections(forest);
-            var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, settings.InternalAxisMapping, settings.InternalAxisSigns, settings.ModelScale);
+            var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, settings);
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
             FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, boneIndexById, rootIndices, settings.P4, settings.InvP4, forest);
             FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, rootIndices, settings.P4, settings.InvP4);
@@ -189,7 +189,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 var matrixNode = pnode.children.FirstOrDefault(cn => cn.Name == "Matrix");
                 if (matrixNode == null) continue;
                 double[] vals = (double[])matrixNode.properties[0].Value;
-                Matrix4x4 globalBind = FBXMeshParser.CreateMatrixFromArray(vals);
+                Matrix4x4 globalBind = FBXParserUtils.CreateMatrixFromArray_LoadFromColumnMajor(vals);
                 globalBind = FBXCoordinateUtils.RemapMatrix(globalBind, sourceToTarget, signs);
                 Matrix4x4.Invert(globalBind, out var invBind);
                 model.Skeleton.Bones[idx].BindPose = invBind;

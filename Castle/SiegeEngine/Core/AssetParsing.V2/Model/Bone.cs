@@ -68,7 +68,6 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             //The official Autodesk FBX SDK documentation (2020 version) specifies the transformation formula as:
             //WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R * Rpost⁻¹ * Rp⁻¹ * Soff * Sp * S * Sp⁻¹
             Matrix4x4 local = T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
-            Console.WriteLine("Final LocalRest:");
             return local;
         }
 

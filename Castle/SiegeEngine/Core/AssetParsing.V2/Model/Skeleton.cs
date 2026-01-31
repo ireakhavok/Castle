@@ -22,7 +22,7 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
                 for (int i = 0; i < Math.Min(3, Bones.Count); i++)
                 {
                     FBXParserBase.Log($"Bone {i} ({Bones[i].Name}) Global:");
-                    FBXMeshParser.PrintMatrix(globals[i]);
+                    FBXParserUtils.PrintMatrix(globals[i]);
                 }
             }
             return globals;

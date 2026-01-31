@@ -6,6 +6,7 @@ using SiegeEngine.Core.AssetParsing.V2.Model;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.UI;
