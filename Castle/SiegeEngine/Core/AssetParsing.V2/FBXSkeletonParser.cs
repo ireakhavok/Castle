@@ -15,13 +15,13 @@ namespace SiegeEngine.Core.AssetParsing.V2
     {
         public static (Dictionary<long, int> boneIndexById, List<int> rootIndices) ParseSkeleton(FBXModel model, BaseNode objectsNode, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns,FBXSettings settings)// int[] sourceToTarget, int[] signs, float modelScale)
         {
-            var bonesToPrint = new List<int>
-            {
-                0,1,2,3,4,5,6
-                // Add bone indices to print here, e.g.:
-                // 0,
-                // 1
-            };
+            //var bonesToPrint = new List<int>
+            //{
+            //    0,1,2,3,4,5,6
+            //    // Add bone indices to print here, e.g.:
+            //    // 0,
+            //    // 1
+            //};
 
             var boneIndexById = new Dictionary<long, int>();
             var rootIndices = new List<int>();
@@ -62,14 +62,19 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         }
                         else if (propName == "Lcl Scaling")
                         {
-                            // THIS IS NORMALIZATION FOR THE ARMATURE. BLENDER OUTPUTS SHIT SCALE. 
+
+
                             if (name == "Armature")
                             {
-                                double sx = (double)1;
-                                double sy = (double)1;
-                                double sz = (double)1;
+                                double sx = (double)p.properties[4].Value;
+                                double sy = (double)p.properties[5].Value;
+                                double sz = (double)p.properties[6].Value;
                                 bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
-
+                                settings.ModelScale = (bone.LclScaling.X + bone.LclScaling.Y + bone.LclScaling.Z) / 3;
+                                sx = (double)1;
+                                sy = (double)1;
+                                sz = (double)1;
+                                bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
                             }
                             else
                             {
@@ -78,7 +83,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                                 double sz = (double)p.properties[6].Value;
                                 bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
                             }
-
                         }
                         else if (propName == "PreRotation")
                         {
@@ -167,31 +171,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     Quaternion qzGeo = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, grz);
                     Matrix4x4 geoR = Matrix4x4.CreateFromQuaternion(qzGeo * qyGeo * qxGeo);
                     bone.GeometricTransform = Matrix4x4.CreateTranslation(bone.GeometricTranslation) * geoR * Matrix4x4.CreateScale(bone.GeometricScaling);
-
-                    bool shouldPrint = bonesToPrint.Contains(index);
-                    if (shouldPrint)
-                    {
-                        Console.WriteLine("** MODEL ORIGINAL Limbnode ComputeLocal logs below ***");
-                        Console.WriteLine($"Final properties for bone {name} (index {index}):");
-                        Console.WriteLine($"  Lcl Translation: {bone.LclTranslation}");
-                        Console.WriteLine($"  Lcl Rotation: {bone.LclRotation}");
-                        Console.WriteLine($"  Lcl Scaling: {bone.LclScaling}");
-                        Console.WriteLine($"  PreRotation: {bone.PreRotation}");
-                        Console.WriteLine($"  PostRotation: {bone.PostRotation}");
-                        Console.WriteLine($"  RotationPivot: {bone.RotationPivot}");
-                        Console.WriteLine($"  RotationOffset: {bone.RotationOffset}");
-                        Console.WriteLine($"  ScalingPivot: {bone.ScalingPivot}");
-                        Console.WriteLine($"  ScalingOffset: {bone.ScalingOffset}");
-                        Console.WriteLine($"  RotationOrder: {bone.RotationOrder}");
-                        Console.WriteLine($"  GeometricTranslation: {bone.GeometricTranslation}");
-                        Console.WriteLine($"  GeometricRotation: {bone.GeometricRotation}");
-                        Console.WriteLine($"  GeometricScaling: {bone.GeometricScaling}");
-                        Console.WriteLine($"  InheritType: {bone.InheritType}");
-                        Console.WriteLine($"  LocalRest:");
-                        PrintMatrix(bone.LocalRest);
-                        Console.WriteLine($"  GeometricTransform:");
-                        PrintMatrix(bone.GeometricTransform);
-                    }
                 }
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = index;

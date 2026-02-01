@@ -164,11 +164,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return (matIndices, matMapping);
         }
-        private static Matrix4x4 ParseGeometricTransform(long geomId, List<(string, long, long, string)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale)
-        {
-            // Stub, return identity
-            return Matrix4x4.Identity;
-        }
         private static void ParseSkin(MeshData meshData, List<BaseNode> deformers, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4, FBXModel model)
         {
             int numVerts = meshData.Vertices.Count;
@@ -244,35 +239,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     {
                         weights = Array.Empty<double>();
                     }
-                    // THIS IS CALCULATED USING THE POSE NODE INSTEAD
-                    // THIS CAME CLOSE BUT WASN'T EXACT INDICATING THAT THE POSE NODE IS BETTER. 
-                    //var transformLinkNode = clusterNode.children.FirstOrDefault(c => c.Name == "TransformLink");
-                    //double[] tl = transformLinkNode != null && transformLinkNode.properties.Count > 0 && transformLinkNode.properties[0].TypeCode == 'd' ? (double[])transformLinkNode.properties[0].Value : null;
-                    //var transformNode = clusterNode.children.FirstOrDefault(c => c.Name == "Transform");
-                    //double[] tr = transformNode != null && transformNode.properties.Count > 0 && transformNode.properties[0].TypeCode == 'd' ? (double[])transformNode.properties[0].Value : null;
-                    //Matrix4x4 tlMat = tl != null && tl.Length == 16 ? CreateMatrixFromArray(tl) : Matrix4x4.Identity;
-                    //Matrix4x4 tMat = tr != null && tr.Length == 16 ? CreateMatrixFromArray(tr) : Matrix4x4.Identity;
-                    //tlMat = FBXCoordinateUtils.RemapMatrix(tlMat, sourceToTarget, signs);
-                    //tlMat = new Matrix4x4(tlMat.M11, tlMat.M12, tlMat.M13, tlMat.M14,
-                    //                      tlMat.M21, tlMat.M22, tlMat.M23, tlMat.M24,
-                    //                      tlMat.M31, tlMat.M32, tlMat.M33, tlMat.M34,
-                    //                      tlMat.M41 * modelScale, tlMat.M42 * modelScale, tlMat.M43 * modelScale, tlMat.M44);
-                    //tMat = FBXCoordinateUtils.RemapMatrix(tMat, sourceToTarget, signs);
-                    //tMat = new Matrix4x4(tMat.M11, tMat.M12, tMat.M13, tMat.M14,
-                    //                     tMat.M21, tMat.M22, tMat.M23, tMat.M24,
-                    //                     tMat.M31, tMat.M32, tMat.M33, tMat.M34,
-                    //                     tMat.M41 * modelScale, tMat.M42 * modelScale, tMat.M43 * modelScale, tMat.M44);
-                    //Matrix4x4 geom = model.Skeleton.Bones[boneIdx].GeometricTransform;
-                    //if (Matrix4x4.Invert(tlMat, out Matrix4x4 invTl))
-                    //{
-                    //    Matrix4x4 invBind = invTl * tMat * geom;
-                    //    model.Skeleton.Bones[boneIdx].BindPose = invBind;
-                    //}
-                    //else
-                    //{
-                    //    FBXParserBase.Log($"Failed to invert tlMat for bone {boneIdx}, using identity");
-                    //    model.Skeleton.Bones[boneIdx].BindPose = Matrix4x4.Identity;
-                    //}
                     for (int i = 0; i < Math.Min(indexes?.Length ?? 0, weights?.Length ?? 0); i++)
                     {
                         int vertIdx = indexes[i];
@@ -446,19 +412,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     polyIndex++;
                 }
             }
-            //// Debug logs for first 3 vertices and first triangle indices
-            //if (expandedVertices.Count >= 3)
-            //{
-            //    for (int dbg = 0; dbg < 3; dbg++)
-            //    {
-            //        var v = expandedVertices[dbg];
-            //        FBXParserBase.Log($"Debug Vertex {dbg}: Pos=({v.Position.X:F3},{v.Position.Y:F3},{v.Position.Z:F3}), Normal=({v.Normal.X:F3},{v.Normal.Y:F3},{v.Normal.Z:F3}), UV=({v.TexCoord.X:F3},{v.TexCoord.Y:F3}), MatIdx={v.MatIdx}");
-            //    }
-            //}
-            //if (newIndices.Count >= 3)
-            //{
-            //    FBXParserBase.Log($"Debug First Triangle Indices: {newIndices[0]}, {newIndices[1]}, {newIndices[2]}");
-            //}
             return (expandedVertices, newIndices);
         }
         private static int GetMatId(string matMapping, int[] matIndices, int polyIndex)

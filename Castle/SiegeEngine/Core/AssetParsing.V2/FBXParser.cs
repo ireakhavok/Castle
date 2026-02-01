@@ -93,17 +93,17 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 var props70 = globalSettingsNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
                 {
-                    //var unitScaleP = props70.children.FirstOrDefault(p => p.Name == "P" && (p.properties[0].Value.ToString() == "UnitScaleFactor" || p.properties[0].Value.ToString() == "OriginalUnitScaleFactor"));
-                    //if (unitScaleP != null)
-                    //{
-                    //    double unitScale = Convert.ToDouble(unitScaleP.properties[4].Value);
-                    //    settings.ModelScale = (float)unitScale;
-                    //    FBXParserBase.Log($"Detected UnitScaleFactor: {unitScale}, setting ModelScale to {settings.ModelScale}");
-                    //}
-                    //else
-                    //{
-                    //    FBXParserBase.Log("No UnitScaleFactor found, keeping ModelScale at 1.0");
-                    //}
+                    var unitScaleP = props70.children.FirstOrDefault(p => p.Name == "P" && (p.properties[0].Value.ToString() == "UnitScaleFactor" || p.properties[0].Value.ToString() == "OriginalUnitScaleFactor"));
+                    if (unitScaleP != null)
+                    {
+                        double unitScale = Convert.ToDouble(unitScaleP.properties[4].Value);
+                        settings.ModelScale = (float)unitScale;
+                        FBXParserBase.Log($"Detected UnitScaleFactor: {unitScale}, setting ModelScale to {settings.ModelScale}");
+                    }
+                    else
+                    {
+                        FBXParserBase.Log("No UnitScaleFactor found, keeping ModelScale at 1.0");
+                    }
                     if (isBlender)
                     {
                         var upAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "UpAxis");
