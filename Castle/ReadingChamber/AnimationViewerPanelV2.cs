@@ -570,6 +570,29 @@ namespace ReadingChamber
                 }
             }
             UpdateSkeletonVisualization();
+
+            // Compute per-bone deformation matrices for rest pose (D_i = M_rest * inv_M_bind)
+            var _restBoneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
+
+            var _restNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                _restBoneMatrices[i] = _currentGlobalTransforms[i] * _model.Skeleton.Bones[i].BindPose;
+                _boneMatrices = _restBoneMatrices;
+                if (Matrix4x4.Invert(_restBoneMatrices[i], out Matrix4x4 inv))
+                {
+                    Matrix4x4 invT = Matrix4x4.Transpose(inv);
+                    _restNormalTransforms[i] = new Matrix3x3(
+                        invT.M11, invT.M12, invT.M13,
+                        invT.M21, invT.M22, invT.M23,
+                        invT.M31, invT.M32, invT.M33);
+                }
+                else
+                {
+                    _restNormalTransforms[i] = Matrix3x3.Identity;
+                }
+            }
+            _currentNormalTransforms = _restNormalTransforms;
         }
     }
 }

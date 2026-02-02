@@ -68,6 +68,7 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             //The official Autodesk FBX SDK documentation (2020 version) specifies the transformation formula as:
             //WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R * Rpost⁻¹ * Rp⁻¹ * Soff * Sp * S * Sp⁻¹
             //Matrix4x4 local = T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
+            // BUT THIS IS FOR COLUMN MAJOR. FOR ROW MAJOR IT MUST BE REVERSED:
             Matrix4x4 local = invSp * S * Sp * Soff * invRp * PostInv * R * Pre * Rp * Roff * T;
             return local;
         }
@@ -89,6 +90,27 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
                 case 4: return qy * qx * qz; // ZXY
                 case 5: return qx * qy * qz; // ZYX
                 default: return qz * qy * qx;
+            }
+        }
+        // Creates rotation matrix from Euler angles (radians) in specified order.
+        public Matrix4x4 CreateFromEuler(Vector3 degrees, int order)
+        {
+            float rx = degrees.X * MathF.PI / 180f;
+            float ry = degrees.Y * MathF.PI / 180f;
+            float rz = degrees.Z * MathF.PI / 180f;
+            Matrix4x4 mx = Matrix4x4.CreateRotationX(rx);
+            Matrix4x4 my = Matrix4x4.CreateRotationY(ry);
+            Matrix4x4 mz = Matrix4x4.CreateRotationZ(rz);
+            switch (order)
+            {
+                case 0: return mz * my * mx;
+                case 1: return my * mz * mx;
+                case 2: return mx * mz * my;
+                case 3: return mz * mx * my;
+                case 4: return my * mx * mz;
+                case 5: return mx * my * mz;
+                case 6: return mz * my * mx;
+                default: return mz * my * mx;
             }
         }
     }

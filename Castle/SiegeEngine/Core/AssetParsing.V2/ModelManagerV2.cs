@@ -10,7 +10,6 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.AssetParsing.V2.Model;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
-
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public class ModelManagerV2
@@ -23,12 +22,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
         private readonly Dictionary<string, string> _fbxDirs = new();
         private readonly Dictionary<string, (uint, byte)> _textureCache = new();
         private readonly IRenderContext _renderContext;
-
         public class ModelData
         {
             public List<ModelMeshRender> MeshRenders { get; set; } = new List<ModelMeshRender>();
         }
-
         public class ModelMeshRender
         {
             public uint Vao { get; set; }
@@ -39,12 +36,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
             public uint[] MetallicTextures { get; set; }
             public uint IndexCount { get; set; }
         }
-
         public ModelManagerV2(IRenderContext renderContext = null)
         {
             _renderContext = renderContext;
         }
-
         public void LoadModel(string filePath)
         {
             string key = Path.GetFileNameWithoutExtension(filePath).ToLower();
@@ -63,7 +58,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             _models[key] = model;
             _modelData[key] = modelData;
         }
-
         public void AttachSkeleton(string targetKey, string skeletonPath)
         {
             if (!_models.ContainsKey(targetKey))
@@ -84,7 +78,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             _models[targetKey].HasSkin = true;
             UpdateModelData(targetKey);
         }
-
         public void AttachAnimation(string targetKey, string animPath)
         {
             if (!_models.ContainsKey(targetKey))
@@ -104,7 +97,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             _models[targetKey].Animations.AddRange(anims);
             // No need to update ModelData for animations
         }
-
         private void UpdateModelData(string key)
         {
             if (!_models.ContainsKey(key) || !_fbxDirs.ContainsKey(key) || !_forests.ContainsKey(key))
@@ -118,7 +110,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             ModelData modelData = SetupModelData(model, fbxDir, forest);
             _modelData[key] = modelData;
         }
-
         private unsafe ModelData SetupModelData(FBXModel model, string fbxDir, FBXFileForest forest)
         {
             var modelData = new ModelData();
@@ -131,7 +122,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 List<uint> metallics = new List<uint>();
                 foreach (var mat in mesh.Materials)
                 {
-                    var albedoInfo = mat.Textures.GetValueOrDefault("DiffuseColor");
+                    var albedoInfo = mat.Textures.GetValueOrDefault("albedo");
                     uint albedo = 0;
                     if (albedoInfo != null)
                     {
@@ -154,7 +145,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     albedos.Add(albedo);
                     // Similar for normal and metallic
                     uint normalTex = 0;
-                    var normalInfo = mat.Textures.GetValueOrDefault("Bump") ?? mat.Textures.GetValueOrDefault("NormalMap");
+                    var normalInfo = mat.Textures.GetValueOrDefault("normal");
                     if (normalInfo != null)
                     {
                         int glNormalWrapU = normalInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
@@ -175,7 +166,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     }
                     normals.Add(normalTex);
                     uint metallic = 0;
-                    var metallicInfo = mat.Textures.GetValueOrDefault("SpecularColor");
+                    var metallicInfo = mat.Textures.GetValueOrDefault("metallic");
                     if (metallicInfo != null)
                     {
                         int glMetallicWrapU = metallicInfo.WrapU == 0 ? _renderContext.Enums.Repeat : _renderContext.Enums.ClampToEdge;
@@ -214,8 +205,8 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     vertexData[offset + 3] = vertex.Normal.X;
                     vertexData[offset + 4] = vertex.Normal.Y;
                     vertexData[offset + 5] = vertex.Normal.Z;
-                    vertexData[offset + 6] = vertex.TexCoord.X;
-                    vertexData[offset + 7] = vertex.TexCoord.Y;
+                    vertexData[offset + 6] = vertex.UV.X;
+                    vertexData[offset + 7] = vertex.UV.Y;
                     vertexData[offset + 8] = vertex.MatIdx;
                     vertexData[offset + 9] = vertex.Tangent.X;
                     vertexData[offset + 10] = vertex.Tangent.Y;
@@ -271,7 +262,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return modelData;
         }
-
         private (uint, byte) LoadEmbeddedTexture(byte[] textureData, string textureName, int wrapS, int wrapT)
         {
             string cacheKey = "embedded:" + textureName.ToLowerInvariant();
@@ -286,7 +276,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return res;
         }
-
         private (uint, byte) LoadExternalTexture(string texturePath, string fbxDir, int wrapS, int wrapT)
         {
             if (string.IsNullOrEmpty(texturePath)) return (0, 0);
@@ -308,7 +297,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             return res;
         }
-
         private static void SmoothNormals(FBXModel model)
         {
             foreach (var mesh in model.Meshes)
@@ -353,7 +341,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 }
             }
         }
-
         private static void ComputeTangents(MeshData mesh)
         {
             Vector3[] tangents = new Vector3[mesh.Vertices.Count];
@@ -369,9 +356,9 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 Vector3 p1 = v1.Position;
                 Vector3 p2 = v2.Position;
                 Vector3 p3 = v3.Position;
-                Vector2 uv1 = v1.TexCoord;
-                Vector2 uv2 = v2.TexCoord;
-                Vector2 uv3 = v3.TexCoord;
+                Vector2 uv1 = v1.UV;
+                Vector2 uv2 = v2.UV;
+                Vector2 uv3 = v3.UV;
                 Vector3 edge1 = p2 - p1;
                 Vector3 edge2 = p3 - p1;
                 Vector2 deltaUV1 = uv2 - uv1;
@@ -408,18 +395,17 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     Tangent = t,
                     BoneIDs = vertex.BoneIDs,
                     Weights = vertex.Weights,
-                    MatIdx = vertex.MatIdx
+                    MatIdx = vertex.MatIdx,
+                    UV = vertex.UV
                 };
                 mesh.Vertices[i] = newVertex;
             }
         }
-
         public bool TryGetModel(string key, out FBXModel model)
         {
             key = key.ToLower();
             return _models.TryGetValue(key, out model);
         }
-
         public bool TryGetModelData(string key, out ModelData modelData)
         {
             key = key.ToLower();
