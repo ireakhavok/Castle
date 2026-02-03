@@ -211,10 +211,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     vertexData[offset + 9] = vertex.Tangent.X;
                     vertexData[offset + 10] = vertex.Tangent.Y;
                     vertexData[offset + 11] = vertex.Tangent.Z;
-                    vertexData[offset + 12] = vertex.BoneIDs.X;
-                    vertexData[offset + 13] = vertex.BoneIDs.Y;
-                    vertexData[offset + 14] = vertex.BoneIDs.Z;
-                    vertexData[offset + 15] = vertex.BoneIDs.W;
+                    vertexData[offset + 12] = vertex.BoneID0;
+                    vertexData[offset + 13] = vertex.BoneID1;
+                    vertexData[offset + 14] = vertex.BoneID2;
+                    vertexData[offset + 15] = vertex.BoneID3;
                     vertexData[offset + 16] = vertex.Weights.X;
                     vertexData[offset + 17] = vertex.Weights.Y;
                     vertexData[offset + 18] = vertex.Weights.Z;
@@ -246,7 +246,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 _renderContext.EnableVertexAttribArray(5); // Tangent
                 _renderContext.VertexAttribPointer(5, 3, _renderContext.Enums.Float, false, stride, (void*)(9 * sizeof(float)));
                 _renderContext.EnableVertexAttribArray(6); // BoneIDs
-                _renderContext.VertexAttribIPointer(6, 4, _renderContext.Enums.Int, stride, (void*)(12 * sizeof(float)));
+                _renderContext.VertexAttribPointer(6, 4, _renderContext.Enums.Float, false, stride, (void*)(12 * sizeof(float)));
                 _renderContext.EnableVertexAttribArray(7); // BoneWeights
                 _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
                 _renderContext.BindVertexArray(0);
@@ -393,7 +393,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
                     Normal = vertex.Normal,
                     TexCoord = vertex.TexCoord,
                     Tangent = t,
-                    BoneIDs = vertex.BoneIDs,
+                    BoneID0 = vertex.BoneID0,
+                    BoneID1 = vertex.BoneID1,
+                    BoneID2 = vertex.BoneID2,
+                    BoneID3 = vertex.BoneID3,
                     Weights = vertex.Weights,
                     MatIdx = vertex.MatIdx,
                     UV = vertex.UV

@@ -189,7 +189,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 var matrixNode = pnode.children.FirstOrDefault(cn => cn.Name == "Matrix");
                 if (matrixNode == null) continue;
                 double[] vals = (double[])matrixNode.properties[0].Value;
-                Matrix4x4 globalBind = FBXParserUtils.CreateMatrixFromArray_LoadFromColumnMajor(vals);
+                Matrix4x4 globalBind = FBXParserUtils.CreateMatrixFromArray(vals);
                 globalBind = FBXCoordinateUtils.RemapMatrix(globalBind, sourceToTarget, signs);
                 Matrix4x4.Invert(globalBind, out var invBind);
                 model.Skeleton.Bones[idx].BindPose = invBind;

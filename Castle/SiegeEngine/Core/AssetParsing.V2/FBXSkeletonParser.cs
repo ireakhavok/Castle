@@ -62,8 +62,6 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         }
                         else if (propName == "Lcl Scaling")
                         {
-
-
                             if (name == "Armature")
                             {
                                 double sx = (double)p.properties[4].Value;
