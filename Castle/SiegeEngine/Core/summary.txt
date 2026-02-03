@@ -246,7 +246,7 @@ Folder: AssetParsing.V2
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
       - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
-        - Calls: FBXCoordinateUtils.RemapMatrix, FBXParserBase.Log, FBXParserUtils.CreateMatrixFromArray_LoadFromColumnMajor
+        - Calls: FBXCoordinateUtils.RemapMatrix, FBXParserBase.Log, FBXParserUtils.CreateMatrixFromArray
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -303,7 +303,10 @@ Folder: AssetParsing.V2
       - Vector2 UV
       - Vector2 TexCoord
       - Vector3 Tangent
-      - Vector4 BoneIDs
+      - int BoneID0
+      - int BoneID1
+      - int BoneID2
+      - int BoneID3
       - Vector4 Weights
       - float MatIdx
     - Methods:

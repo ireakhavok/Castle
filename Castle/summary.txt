@@ -205,14 +205,8 @@ Folder: ReadingChamber
     - Methods:
       - void HandleUIClick(HtmlElement elem)
 - File: AnimationViewerPanelV2.cs
-  - Class: AssetUIOverlay (Namespace: ReadingChamber)
-    - Inherits: UIOverlay
-        
+  - Class: fields (Namespace: ReadingChamber)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
-    - Fields:
-      - AnimationViewerPanelV2 _parent
-    - Methods:
-      - void HandleUIClick(HtmlElement elem)
 - File: AssetViewerPanel.cs
   - Class: AssetUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
@@ -387,6 +381,7 @@ Folder: SiegeEngine
     - Methods:
       - Matrix4x4 ComputeLocal()
       - Quaternion ToQuaternion(Vector3 degrees)
+      - Matrix4x4 CreateFromEuler( int order, Vector3 degrees)
 - File: BrushRegistryUpdateEvent.cs
   - Class: BrushRegistryUpdateEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -750,15 +745,29 @@ Folder: SiegeEngine
     - Fields:
       - int[][] OrderSequences
     - Methods:
-      - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
       - Matrix4x4 RemapMatrix( int[] signs,  int[] sourceToTarget, Matrix4x4 m)
-      - Vector3 RemapRotation( int[] signs,  int[] sourceToTarget, Vector3 v)
-        - Calls: RemapVector
       - return RemapVector()
-      - int[] GetOrderSequence(int order)
-      - int GetOrderFromSequence(int[] seq)
       - int RemapRotationOrder( int order, int[] sourceToTarget)
         - Calls: GetOrderFromSequence, GetOrderSequence
+      - return GetOrderFromSequence()
+      - Vector3 RemapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
+      - Vector3 RemapScale( int[] signs,  int[] sourceToTarget, Vector3 v)
+      - Vector3 RemapRotation( int[] signs,  int[] sourceToTarget, Vector3 v)
+      - int RemapRotationOrder( int[] sourceToTarget, int order)
+        - Calls: GetOrderFromSequence, GetOrderSequence
+      - return GetOrderFromSequence()
+      - int[] GetOrderSequence(int order)
+      - int GetOrderFromSequence(int[] seq)
+      - float CalculateDeterminant(Matrix4x4 m)
+      - int[] GetInversePermutation(int[] perm)
+      - Vector3 UnremapVector( int[] signs,  int[] sourceToTarget, Vector3 v)
+        - Calls: GetInversePermutation, RemapVector
+      - Vector3 UnremapScale( int[] signs,  int[] sourceToTarget, Vector3 v)
+        - Calls: GetInversePermutation, RemapScale
+      - Vector3 UnremapRotation( int[] signs,  int[] sourceToTarget, Vector3 v)
+        - Calls: GetInversePermutation, RemapRotation
+      - int UnremapRotationOrder( int[] sourceToTarget, int order)
+        - Calls: GetInversePermutation, RemapRotationOrder
 - File: FBXFileForest.cs
   - Class: FBXFileForest (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -766,15 +775,9 @@ Folder: SiegeEngine
   - Class: FBXMeshParser (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
-      - MeshData ParseMesh( BaseNode modelNode,  float modelScale,  int[] signs,  int[] sourceToTarget, BaseNode meshNode)
-        - Calls: FBXParserBase.Log, ParsePolygonVertexIndices, ParseVertices
       - double[] ParseVertices(BaseNode geom)
       - int[] ParsePolygonVertexIndices(BaseNode geom)
-      - int GetMatId( int polyIndex,  int[] matIndices, string matMapping)
-        - Calls: FBXParserBase.Log
-      - Vector3 GetNormal( int pvIdx,  int vertIdx,  int[] normIdx,  int[] signs,  int[] sourceToTarget,  string mapping,  string refe, double[] norms)
-        - Calls: FBXCoordinateUtils.RemapVector
-      - Vector2 GetUV( int pvIdx,  int vertIdx,  int[] uvIdx,  string mapping,  string refe, double[] uvs)
+      - Vector3 CalculateBounds(List<FBXVertex> vertices)
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -794,7 +797,7 @@ Folder: SiegeEngine
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
       - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
-        - Calls: FBXCoordinateUtils.RemapMatrix, FBXParserBase.Log, FBXParserUtils.CreateMatrixFromArray_LoadFromColumnMajor
+        - Calls: FBXCoordinateUtils.RemapMatrix, FBXParserBase.Log, FBXParserUtils.CreateMatrixFromArray
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -813,6 +816,20 @@ Folder: SiegeEngine
       - Matrix4x4 CreateMatrixFromArray(double[] vals)
       - void PrintMatrix(Matrix4x4 m)
         - Calls: FBXParserBase.Log
+      - int[] ParseRawArrayAsInt(byte[] raw)
+        - Calls: DecompressData
+      - double[] ParseRawArrayAsDouble(byte[] raw)
+        - Calls: DecompressData
+      - byte[] DecompressData( int expectedLen, byte[] compressed)
+        - Calls: FBXParserBase.Log
+      - float GetValueAtTime( float defaultVal,  float[] values,  long time, long[] times)
+      - float[] ParseKeyValues( int expectedLength, BaseNode keyValueNode)
+      - float GetPropertyFloat(object value)
+        - Calls: float.Parse
+      - int GetPropertyInt(object value)
+        - Calls: int.Parse
+      - double GetPropertyDouble(object value)
+        - Calls: double.Parse
 - File: FBXSettings.cs
   - Class: FBXSettings (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: System, System.Numerics
@@ -834,11 +851,19 @@ Folder: SiegeEngine
     - Fields:
       - Vector3 Position
       - Vector3 Normal
+      - Vector2 UV
       - Vector2 TexCoord
       - Vector3 Tangent
-      - Vector4 BoneIDs
+      - int BoneID0
+      - int BoneID1
+      - int BoneID2
+      - int BoneID3
       - Vector4 Weights
       - float MatIdx
+    - Methods:
+      - constructor FBXVertex(
+        float weight0 = 0, 
+        int boneID0 = -1,  float matIdx,  float nx,  float ny,  float nz,  float tx = 0,  float ty = 0,  float tz = 0,  float u,  float v,  float weight1 = 0,  float weight2 = 0,  float weight3 = 0,  float y,  float z,  int boneID1 = -1,  int boneID2 = -1,  int boneID3 = -1, float x)
 - File: FileSelectedEvent.cs
   - Class: FileSelectedEvent (Namespace: None)
     - Inherits: IEvent
@@ -996,9 +1021,6 @@ Folder: SiegeEngine
 - File: IGameServer.cs
   - Class: IGameServer (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
-- File: IOSettings.cs
-  - Class: IOSettings (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
 - File: IPanel.cs
   - Class: IPanel (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: System.Numerics
@@ -1272,15 +1294,6 @@ Folder: SiegeEngine
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
-- File: MetaDataExporter.cs
-  - Class: MetaDataExporter (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.Linq, System.Text, System.Text.Json, System.Text.Json.Serialization, System.Threading.Tasks
-    - Methods:
-      - void ExportMetadata( string filePath, FBXFileForest forest)
-        - Calls: JsonSerializer.Serialize, SummarizeForest
-      - object>> SummarizeForest(FBXFileForest forest)
-        - Calls: SummarizeNode
-      - object> SummarizeNode( int depth, BaseNode node)
 - File: MetaFileParser.cs
   - Class: MetaFileParser (Namespace: SiegeEngine.Core.UnityAssetLoader)
     - Dependencies: System, System.Collections.Generic, System.IO, YamlDotNet.Serialization
@@ -1330,12 +1343,6 @@ Folder: SiegeEngine
     - Methods:
       - void main()
       - void main()
-- File: ModelTransformer.cs
-  - Class: ModelTransformer (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Numerics
-    - Methods:
-      - void ApplyTransformation( Matrix4x4 transformation, FBXModel model)
-        - Calls: FBXVertex
 - File: MovementRequest.cs
   - Class: MovementRequest (Namespace: SiegeEngine.Core.Networking)
     - Dependencies: System.Numerics
@@ -1750,7 +1757,7 @@ Folder: SiegeEngine
   - Class: ShaderProgram (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, System, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - uint _program
@@ -2250,14 +2257,12 @@ MapRoom.Class1
 QuestHall.Class1
 ReadingChamber.AssetUIOverlay
 ReadingChamber.FileSelectorUIOverlay
+ReadingChamber.fields
 ScriptChamber.Class1
 SiegeEngine.Core.AssetObjects.BaseNode
 SiegeEngine.Core.AssetObjects.FBXFileForest
 SiegeEngine.Core.AssetObjects.FBXNode
 SiegeEngine.Core.AssetObjects.PropertyNode
-SiegeEngine.Core.AssetParsing.IOSettings
-SiegeEngine.Core.AssetParsing.MetaDataExporter
-SiegeEngine.Core.AssetParsing.ModelTransformer
 SiegeEngine.Core.AssetParsing.V2.FBXAnimationParser
 SiegeEngine.Core.AssetParsing.V2.FBXCoordinateUtils
 SiegeEngine.Core.AssetParsing.V2.FBXMeshParser

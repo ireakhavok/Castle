@@ -62,25 +62,25 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         }
                         else if (propName == "Lcl Scaling")
                         {
-                            if (name == "Armature")
-                            {
+                            //if (name == "Armature")
+                            //{
+                            //    double sx = (double)p.properties[4].Value;
+                            //    double sy = (double)p.properties[5].Value;
+                            //    double sz = (double)p.properties[6].Value;
+                            //    bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                            //    settings.ModelScale = (bone.LclScaling.X + bone.LclScaling.Y + bone.LclScaling.Z) / 3;
+                            //    sx = (double)1;
+                            //    sy = (double)1;
+                            //    sz = (double)1;
+                            //    bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                            //}
+                            //else
+                            //{
                                 double sx = (double)p.properties[4].Value;
                                 double sy = (double)p.properties[5].Value;
                                 double sz = (double)p.properties[6].Value;
                                 bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
-                                settings.ModelScale = (bone.LclScaling.X + bone.LclScaling.Y + bone.LclScaling.Z) / 3;
-                                sx = (double)1;
-                                sy = (double)1;
-                                sz = (double)1;
-                                bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
-                            }
-                            else
-                            {
-                                double sx = (double)p.properties[4].Value;
-                                double sy = (double)p.properties[5].Value;
-                                double sz = (double)p.properties[6].Value;
-                                bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
-                            }
+                            //}
                         }
                         else if (propName == "PreRotation")
                         {
