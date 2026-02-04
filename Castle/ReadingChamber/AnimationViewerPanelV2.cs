@@ -135,9 +135,41 @@ namespace ReadingChamber
         // Loads animation FBX, remaps to match mesh, aligns hierarchies by name matching, adjusts transforms.
         private void LoadAnimation(string animPath)
         {
+            FBXFileForest animForest = FBXParser.Load(animPath);
+            FBXModel animModel = FBXParser.BuildModelFromForest(animForest);
             _modelManagerV2.AttachAnimation(_currentModelKey, animPath);
             _modelManagerV2.TryGetModel(_currentModelKey, out _model);
-            //stubbed for future implementation
+            ApplyRestPoseFromModel(animModel);
+            SetRestPose();
+        }
+        private void ApplyRestPoseFromModel(FBXModel sourceModel)
+        {
+            var targetSkeleton = _model.Skeleton;
+            if (sourceModel.Skeleton == null || targetSkeleton == null) return;
+            var nameToTargetBone = targetSkeleton.Bones.ToDictionary(b => b.Name.ToLowerInvariant());
+            foreach (var srcBone in sourceModel.Skeleton.Bones)
+            {
+                string key = srcBone.Name.ToLowerInvariant();
+                if (nameToTargetBone.TryGetValue(key, out Bone tgtBone))
+                {
+                    tgtBone.LclTranslation = srcBone.LclTranslation;
+                    tgtBone.LclRotation = srcBone.LclRotation;
+                    tgtBone.LclScaling = srcBone.LclScaling;
+                    tgtBone.PreRotation = srcBone.PreRotation;
+                    tgtBone.PostRotation = srcBone.PostRotation;
+                    tgtBone.RotationPivot = srcBone.RotationPivot;
+                    tgtBone.RotationOffset = srcBone.RotationOffset;
+                    tgtBone.ScalingPivot = srcBone.ScalingPivot;
+                    tgtBone.ScalingOffset = srcBone.ScalingOffset;
+                    tgtBone.RotationOrder = srcBone.RotationOrder;
+                    tgtBone.InheritType = srcBone.InheritType;
+                    tgtBone.GeometricTranslation = srcBone.GeometricTranslation;
+                    tgtBone.GeometricRotation = srcBone.GeometricRotation;
+                    tgtBone.GeometricScaling = srcBone.GeometricScaling;
+                    tgtBone.GeometricTransform = srcBone.GeometricTransform;
+                    tgtBone.LocalRest = tgtBone.ComputeLocal();
+                }
+            }
         }
         // Updates transforms and normals from a specific animation frame, updates skeleton visualization.
         private void UpdateTransformsFromFrame(int frame)
