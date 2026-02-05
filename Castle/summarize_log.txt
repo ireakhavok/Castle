@@ -481,7 +481,7 @@ Found 16 dependencies
 Found: AnimationViewerPanelV2.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanelV2.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanelV2.cs
-Read 29809 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanelV2.cs
+Read 31647 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanelV2.cs
 Namespace: ReadingChamber
 Found 16 dependencies
 No opening brace for class fields in C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanelV2.cs
@@ -719,7 +719,7 @@ Found 2 dependencies
 Found: FBXSkeletonParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
-Read 14290 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
+Read 14320 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2
 Found 8 dependencies
 Found: HeirarchySummary.exe
