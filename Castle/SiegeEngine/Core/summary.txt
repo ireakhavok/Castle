@@ -184,6 +184,7 @@ Folder: AssetParsing.V2
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
     - Methods:
       - Matrix4x4 ComputeLocal()
+      - Matrix4x4 ComputeLocal( Quaternion rotation,  Vector3 scaling, Vector3 translation)
       - Quaternion ToQuaternion(Vector3 degrees)
       - Matrix4x4 CreateFromEuler( int order, Vector3 degrees)
 - File: FBXAnimationParser.cs
@@ -192,9 +193,6 @@ Folder: AssetParsing.V2
     - Fields:
       - long TicksPerSecond
     - Methods:
-      - Vector3 GetInterpolatedVector( bool isTranslation,  float modelScale,  int[] signs,  int[] sourceToTarget,  long tick, BaseNode curveNode)
-        - Calls: FBXCoordinateUtils.RemapVector, GetInterpolatedValue
-      - float GetInterpolatedValue( long tick,  string chan, BaseNode curveNode)
       - void ComputeGlobalRecursive( List<Bone> bones,  Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] locals, Bone bone)
 - File: FBXCoordinateUtils.cs
   - Class: FBXCoordinateUtils (Namespace: SiegeEngine.Core.AssetParsing.V2)
@@ -343,6 +341,11 @@ Folder: AssetParsing.V2
   - Class: Skeleton (Namespace: SiegeEngine.Core.AssetParsing.V2.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
+      - Matrix4x4[] ComputeGlobalTransforms(Matrix4x4[] localTransforms)
+        - Calls: ComputeGlobalRecursiveAnimated
+      - return ComputeGlobalTransforms()
+        - Calls: ComputeGlobalRecursiveAnimated
+      - void ComputeGlobalRecursiveAnimated( Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] localTransforms, int idx)
       - Matrix4x4[] ComputeGlobalTransforms()
         - Calls: ComputeGlobalRecursive, FBXParserBase.Log, FBXParserUtils.PrintMatrix
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)

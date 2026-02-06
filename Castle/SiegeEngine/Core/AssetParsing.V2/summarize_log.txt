@@ -9,7 +9,7 @@ Found: ..
 Found: FBXAnimationParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXAnimationParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXAnimationParser.cs
-Read 10589 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXAnimationParser.cs
+Read 11837 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXAnimationParser.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2
 Found 6 dependencies
 Found: FBXCoordinateUtils.cs
@@ -51,7 +51,7 @@ Found 2 dependencies
 Found: FBXSkeletonParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
-Read 14290 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
+Read 14320 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\FBXSkeletonParser.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2
 Found 8 dependencies
 Found: HeirarchySummary.exe
@@ -62,13 +62,13 @@ Found: ..
 Found: Animation.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Animation.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Animation.cs
-Read 334 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Animation.cs
+Read 384 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Animation.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2.Model
 Found 2 dependencies
 Found: Bone.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Bone.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Bone.cs
-Read 6361 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Bone.cs
+Read 9202 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Bone.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2.Model
 Found 4 dependencies
 Found: FBXModel.cs
@@ -104,7 +104,7 @@ Found 3 dependencies
 Found: Skeleton.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Skeleton.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Skeleton.cs
-Read 3915 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Skeleton.cs
+Read 6923 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing.V2\Model\Skeleton.cs
 Namespace: SiegeEngine.Core.AssetParsing.V2.Model
 Found 5 dependencies
 Found: TextureInfo.cs
