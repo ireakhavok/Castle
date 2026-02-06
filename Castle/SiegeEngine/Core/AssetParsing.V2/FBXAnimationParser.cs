@@ -13,6 +13,8 @@ namespace SiegeEngine.Core.AssetParsing.V2
         private const long TicksPerSecond = 46186158000L;
         public static void ParseAnimations(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4)
         {
+            // In FBXAnimationParser.cs, in ParseAnimations
+            int[] animSigns = new int[] { 1, 1, 1 };
             var animStacks = objectsNode.children.Where(n => n.Name == "AnimationStack").ToList();
             FBXParserBase.Log($"Found {animStacks.Count} AnimationStack nodes");
             foreach (var stack in animStacks)
@@ -85,20 +87,20 @@ namespace SiegeEngine.Core.AssetParsing.V2
                         {
                             if (dict.TryGetValue("Lcl Translation", out long cnid))
                             {
-                                t = GetInterpolatedVector(objectsById, conns, cnid, tick, sourceToTarget, signs, modelScale, true);
+                                t = GetInterpolatedVector(objectsById, conns, cnid, tick, sourceToTarget, animSigns, modelScale, true);
                             }
                             if (dict.TryGetValue("Lcl Rotation", out cnid))
                             {
-                                Vector3 euler = GetInterpolatedVector(objectsById, conns, cnid, tick, sourceToTarget, signs, modelScale, false);
+                                Vector3 euler = GetInterpolatedVector(objectsById, conns, cnid, tick, sourceToTarget, animSigns, modelScale, false);
                                 r = model.Skeleton.Bones[b].ToQuaternion(euler);
                             }
                             if (dict.TryGetValue("Lcl Scaling", out cnid))
                             {
-                                Vector3 scale = GetInterpolatedVector(objectsById, conns, cnid, tick, sourceToTarget, signs, modelScale, false);
+                                Vector3 scale = GetInterpolatedVector(objectsById, conns, cnid, tick, sourceToTarget, animSigns, modelScale, false);
                                 s = scale;
                             }
                         }
-                        //locals[b] = model.Skeleton.Bones[b].ComputeLocal(t, r, s);
+                        locals[b] = model.Skeleton.Bones[b].ComputeLocal(t, r, s);
                     }
                     kf.BoneTransforms = locals.ToList();
                     anim.Keyframes.Add(kf);

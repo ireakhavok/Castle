@@ -73,7 +73,46 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             Matrix4x4 local = invSp * S * Sp * Soff * invRp * PostInv * R * Pre * Rp * Roff * T;
             return local;
         }
-
+        public Matrix4x4 ComputeLocal(Vector3 translation, Quaternion rotation, Vector3 scaling)
+        {
+            Vector3 useT = translation;
+            Quaternion useR = rotation;
+            Vector3 useS = scaling;
+            Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
+            Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
+            Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
+            // PreRotation as quaternion in fixed XYZ order
+            float prx = PreRotation.X * MathF.PI / 180f;
+            float pry = PreRotation.Y * MathF.PI / 180f;
+            float prz = PreRotation.Z * MathF.PI / 180f;
+            Quaternion qxPre = Quaternion.CreateFromAxisAngle(Vector3.UnitX, prx);
+            Quaternion qyPre = Quaternion.CreateFromAxisAngle(Vector3.UnitY, pry);
+            Quaternion qzPre = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, prz);
+            Matrix4x4 Pre = Matrix4x4.CreateFromQuaternion(qzPre * qyPre * qxPre);
+            Matrix4x4 R = Matrix4x4.CreateFromQuaternion(useR);
+            // PostRotation inverse as quaternion in fixed XYZ order
+            float pox = PostRotation.X * MathF.PI / 180f;
+            float poy = PostRotation.Y * MathF.PI / 180f;
+            float poz = PostRotation.Z * MathF.PI / 180f;
+            Quaternion qxPost = Quaternion.CreateFromAxisAngle(Vector3.UnitX, pox);
+            Quaternion qyPost = Quaternion.CreateFromAxisAngle(Vector3.UnitY, poy);
+            Quaternion qzPost = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, poz);
+            Quaternion postQ = qzPost * qyPost * qxPost;
+            Matrix4x4 PostInv = Matrix4x4.CreateFromQuaternion(Quaternion.Conjugate(postQ));
+            Matrix4x4 invRp = Matrix4x4.CreateTranslation(-RotationPivot);
+            Matrix4x4 Soff = Matrix4x4.CreateTranslation(ScalingOffset);
+            Matrix4x4 Sp = Matrix4x4.CreateTranslation(ScalingPivot);
+            Matrix4x4 S = Matrix4x4.CreateScale(useS);
+            Matrix4x4 invSp = Matrix4x4.CreateTranslation(-ScalingPivot);
+            // Standard FBX order: T * Roff * Rp * Pre * R * invPost * invRp * Soff * Sp * S * invSp
+            // DO NOT TOUCH THIS EQUATION. ONLINE REFERENCES ARE WRONG. THIS HAS BEEN VERIFIED IN TEXTBOOKS.
+            //The official Autodesk FBX SDK documentation (2020 version) specifies the transformation formula as:
+            //WorldTransform = ParentWorldTransform * T * Roff * Rp * Rpre * R * Rpost⁻¹ * Rp⁻¹ * Soff * Sp * S * Sp⁻¹
+            //Matrix4x4 local = T * Roff * Rp * Pre * R * PostInv * invRp * Soff * Sp * S * invSp;
+            // BUT THIS IS FOR COLUMN MAJOR. FOR ROW MAJOR IT MUST BE REVERSED:
+            Matrix4x4 local = invSp * S * Sp * Soff * invRp * PostInv * R * Pre * Rp * Roff * T;
+            return local;
+        }
         public Quaternion ToQuaternion(Vector3 degrees)
         {
             float rx = degrees.X * MathF.PI / 180f;

@@ -188,63 +188,74 @@ namespace ReadingChamber
         }
         private void UpdateTransformsFromTime(float time)
         {
-            //if (_model == null || _model.Skeleton == null || string.IsNullOrEmpty(_currentAnimation)) return;
-            //var animation = _model.Animations.FirstOrDefault(a => a.Name == _currentAnimation);
-            //if (animation == null || animation.Keyframes.Count == 0) return;
-            //int lower = 0;
-            //int upper = animation.Keyframes.Count - 1;
-            //for (int i = 1; i < animation.Keyframes.Count; i++)
-            //{
-            //    if (animation.Keyframes[i].Time > time)
-            //    {
-            //        upper = i;
-            //        lower = i - 1;
-            //        break;
-            //    }
-            //}
-            //float t0 = animation.Keyframes[lower].Time;
-            //float t1 = animation.Keyframes[upper].Time;
-            //float frac = (t1 - t0 > 0) ? (time - t0) / (t1 - t0) : 0f;
-            //_currentFrameIndex = lower;
-            //var l0 = animation.Keyframes[lower].BoneTransforms;
-            //var l1 = animation.Keyframes[upper].BoneTransforms;
-            //var lerpedLocals = new Matrix4x4[l0.Count];
-            //for (int i = 0; i < lerpedLocals.Length; i++)
-            //{
-            //    var lm0 = l0[i];
-            //    var lm1 = l1[i];
-            //    if (Matrix4x4.Decompose(lm0, out Vector3 s0, out Quaternion r0, out Vector3 p0) && Matrix4x4.Decompose(lm1, out Vector3 s1, out Quaternion r1, out Vector3 p1))
-            //    {
-            //        Vector3 p = Vector3.Lerp(p0, p1, frac);
-            //        Quaternion r = Quaternion.Normalize(Quaternion.Slerp(r0, r1, frac));
-            //        Vector3 s = Vector3.Lerp(s0, s1, frac);
-            //        lerpedLocals[i] = _model.Skeleton.Bones[i].ComputeLocal(p, r, s);
-            //    }
-            //    else
-            //    {
-            //        lerpedLocals[i] = lm0;
-            //    }
-            //}
-            //_currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms(lerpedLocals);
-            //_boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
-            //_currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
-            //for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-            //{
-            //    _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
-            //    if (Matrix4x4.Invert(_boneMatrices[i], out Matrix4x4 inv))
-            //    {
-            //        Matrix4x4 invT = Matrix4x4.Transpose(inv);
-            //        _currentNormalTransforms[i] = new Matrix3x3(
-            //            invT.M11, invT.M12, invT.M13,
-            //            invT.M21, invT.M22, invT.M23,
-            //            invT.M31, invT.M32, invT.M33);
-            //    }
-            //    else
-            //    {
-            //        _currentNormalTransforms[i] = Matrix3x3.Identity;
-            //    }
-            //}
-            //UpdateSkeletonVisualization();
+            if (_model == null || _model.Skeleton == null || string.IsNullOrEmpty(_currentAnimation)) return;
+            var animation = _model.Animations.FirstOrDefault(a => a.Name == _currentAnimation);
+            if (animation == null || animation.Keyframes.Count == 0) return;
+            int lower = 0;
+            int upper = animation.Keyframes.Count - 1;
+            for (int i = 1; i < animation.Keyframes.Count; i++)
+            {
+                if (animation.Keyframes[i].Time > time)
+                {
+                    upper = i;
+                    lower = i - 1;
+                    break;
+                }
+            }
+            float t0 = animation.Keyframes[lower].Time;
+            float t1 = animation.Keyframes[upper].Time;
+            float frac = (t1 - t0 > 0) ? (time - t0) / (t1 - t0) : 0f;
+            _currentFrameIndex = lower;
+            Console.WriteLine($"Time {time}: lower={lower} (t0={t0}), upper={upper} (t1={t1}), frac={frac}");
+            var l0 = animation.Keyframes[lower].BoneTransforms;
+            var l1 = animation.Keyframes[upper].BoneTransforms;
+            var lerpedLocals = new Matrix4x4[l0.Count];
+            for (int i = 0; i < lerpedLocals.Length; i++)
+            {
+                var lm0 = l0[i];
+                var lm1 = l1[i];
+                if (Matrix4x4.Decompose(lm0, out Vector3 s0, out Quaternion r0, out Vector3 p0) && Matrix4x4.Decompose(lm1, out Vector3 s1, out Quaternion r1, out Vector3 p1))
+                {
+                    Vector3 p = Vector3.Lerp(p0, p1, frac);
+                    Quaternion r = Quaternion.Normalize(Quaternion.Slerp(r0, r1, frac));
+                    Vector3 s = Vector3.Lerp(s0, s1, frac);
+                    lerpedLocals[i] = _model.Skeleton.Bones[i].ComputeLocal(p, r, s);
+                }
+                else
+                {
+                    lerpedLocals[i] = lm0;
+                }
+            }
+            // In UpdateTransformsFromTime, after computing lerpedLocals
+            if (_currentTime == 0)
+            {
+                Console.WriteLine("Lerped Locals at First Keyframe:");
+                for (int i = 0; i < lerpedLocals.Length; i++)
+                {
+                    Console.WriteLine($"Bone {i} Lerped Local:");
+                    FBXParserUtils.PrintMatrix(lerpedLocals[i]);
+                }
+            }
+            _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms(lerpedLocals);
+            _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
+            _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
+                if (Matrix4x4.Invert(_boneMatrices[i], out Matrix4x4 inv))
+                {
+                    Matrix4x4 invT = Matrix4x4.Transpose(inv);
+                    _currentNormalTransforms[i] = new Matrix3x3(
+                        invT.M11, invT.M12, invT.M13,
+                        invT.M21, invT.M22, invT.M23,
+                        invT.M31, invT.M32, invT.M33);
+                }
+                else
+                {
+                    _currentNormalTransforms[i] = Matrix3x3.Identity;
+                }
+            }
+            UpdateSkeletonVisualization();
         }
         // Centers camera on model bounds, sets distance based on extent.
         private void CenterCamera()
@@ -655,6 +666,18 @@ namespace ReadingChamber
         }
         private void SetRestPose()
         {
+            // In SetRestPose, after computing _currentGlobalTransforms (but for locals, add this before globals)
+            Matrix4x4[] restLocals = new Matrix4x4[_model.Skeleton.Bones.Count];
+            for (int i = 0; i < restLocals.Length; i++)
+            {
+                restLocals[i] = _model.Skeleton.Bones[i].LocalRest;
+            }
+            Console.WriteLine("Rest Pose Locals:");
+            for (int i = 0; i < restLocals.Length; i++)
+            {
+                Console.WriteLine($"Bone {i} Rest Local:");
+                FBXParserUtils.PrintMatrix(restLocals[i]);
+            }
             if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0) return;
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             // Bind globals for viz (unchanged)
