@@ -10,6 +10,8 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.AssetParsing.V2;
+
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class GameRenderer : Renderer
@@ -19,12 +21,12 @@ namespace SiegeEngine.Core.Rendering
         private readonly InputHandler _inputHandler;
         private readonly IGameServer _server;
         private readonly EventBus _eventBus;
-        private readonly ModelManager _modelManager;
+        private readonly ModelManagerV2 _modelManager;
         private bool _disposed;
         private uint _vao, _pointBuffer, _waterBuffer;
         private ShaderProgram _pointShader, _waterShader, _gridShader, _modelShader;
         private int _width, _height;
-        public GameRenderer(IRenderContext renderContext, nint window, InputHandler inputHandler, Player player, ModelManager modelManager, IGameServer server = null, EventBus eventBus = null) : base(player)
+        public GameRenderer(IRenderContext renderContext, nint window, InputHandler inputHandler, Player player, ModelManagerV2 modelManager, IGameServer server = null, EventBus eventBus = null) : base(player)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _window = window;
@@ -142,12 +144,29 @@ namespace SiegeEngine.Core.Rendering
                         Matrix4x4 modelMatrix = rotation * Matrix4x4.CreateTranslation(physics.Position);
                         _modelShader.Use();
                         _modelShader.SetMatrix4("uModel", modelMatrix);
-                        _modelShader.SetUniform("uHasBones", modelComp.Model.HasSkin ? 1 : 0);
-                        if (modelComp.Model.HasSkin && modelComp.Model.Skeleton != null && modelComp.NormalBoneTransforms != null)
+                        bool hasBones = modelComp.Model.Skeleton != null && modelComp.Model.Skeleton.Bones.Count > 0;
+                        _modelShader.SetUniform("uHasBones", hasBones ? 1 : 0);
+                        if (hasBones)
                         {
-                            var transforms = modelComp.Model.Skeleton.GetTransforms();
+                            var transforms = modelComp.Model.Skeleton.ComputeGlobalTransforms();
+                            var normalTransforms = new Matrix3x3[transforms.Length];
+                            for (int i = 0; i < transforms.Length; i++)
+                            {
+                                if (Matrix4x4.Invert(transforms[i], out var inv))
+                                {
+                                    var trans = Matrix4x4.Transpose(inv);
+                                    normalTransforms[i] = new Matrix3x3(
+                                        trans.M11, trans.M12, trans.M13,
+                                        trans.M21, trans.M22, trans.M23,
+                                        trans.M31, trans.M32, trans.M33);
+                                }
+                                else
+                                {
+                                    normalTransforms[i] = Matrix3x3.Identity;
+                                }
+                            }
                             _modelShader.SetMatrix4Array("uBoneTransforms", transforms);
-                            _modelShader.SetMatrix3Array("uNormalBoneTransforms", modelComp.NormalBoneTransforms);
+                            _modelShader.SetMatrix3Array("uNormalBoneTransforms", normalTransforms);
                         }
                         foreach (var mmr in modelData.MeshRenders)
                         {

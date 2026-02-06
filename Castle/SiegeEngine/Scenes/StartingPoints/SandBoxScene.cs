@@ -13,6 +13,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using SiegeEngine.Core.AssetParsing.V2;
+using SiegeEngine.Core.AssetParsing.V2.Model;
 
 namespace SiegeEngine.Scenes.StartingPoints
 {
@@ -22,16 +24,14 @@ namespace SiegeEngine.Scenes.StartingPoints
         {
             eventBus.Publish(new SwitchSceneEvent("Sandbox"));
         }
-
         private readonly Player _player;
         private readonly PlayerMovement _playerMovement;
-        private readonly ModelManager _modelManager;
+        private readonly ModelManagerV2 _modelManager;
         private readonly IGameServer _server;
         private float _scrollDelta;
         private ShaderProgram _modelShader;
         private ShaderProgram _gridShader;
-
-        public SandboxScene(IRenderContext renderContext, IControlContext controlContext, nint window, Player player, IGameServer server, PlayerMovement playerMovement, EventBus eventBus, ModelManager modelManager)
+        public SandboxScene(IRenderContext renderContext, IControlContext controlContext, nint window, Player player, IGameServer server, PlayerMovement playerMovement, EventBus eventBus, ModelManagerV2 modelManager)
             : base(renderContext, controlContext, window, server, eventBus)
         {
             _player = player ?? throw new ArgumentNullException(nameof(player));
@@ -51,7 +51,6 @@ namespace SiegeEngine.Scenes.StartingPoints
                 //Console.WriteLine("SandboxScene: Added directional light at direction (-0.707, -0.707, 0.707)");
             }
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
@@ -67,14 +66,12 @@ namespace SiegeEngine.Scenes.StartingPoints
                 _renderContext.Viewport(0, 0, (uint)newWidth, (uint)newHeight);
             });
         }
-
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
             _player.Update(deltaTime, _window, _scrollDelta, _playerMovement, true);
             _scrollDelta = 0f;
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _controlContext.GetWindowSize(_window, out int curW, out int curH);
@@ -129,6 +126,35 @@ namespace SiegeEngine.Scenes.StartingPoints
                 Matrix4x4 modelMatrix = rotationMatrix * translationMatrix;
                 _modelShader.Use();
                 _modelShader.SetMatrix4("uModel", modelMatrix);
+                bool hasBones = modelComponent.Model.Skeleton != null && modelComponent.Model.Skeleton.Bones.Count > 0;
+                _modelShader.SetUniform("uHasBones", hasBones ? 1 : 0);
+                if (hasBones)
+                {
+                    var globals = modelComponent.Model.Skeleton.ComputeGlobalTransforms();
+                    var transforms = new Matrix4x4[globals.Length];
+                    for (int i = 0; i < globals.Length; i++)
+                    {
+                        transforms[i] = modelComponent.Model.Skeleton.Bones[i].BindPose * globals[i];
+                    }
+                    var normalTransforms = new Matrix3x3[transforms.Length];
+                    for (int i = 0; i < transforms.Length; i++)
+                    {
+                        if (Matrix4x4.Invert(transforms[i], out var inv))
+                        {
+                            var trans = Matrix4x4.Transpose(inv);
+                            normalTransforms[i] = new Matrix3x3(
+                                trans.M11, trans.M12, trans.M13,
+                                trans.M21, trans.M22, trans.M23,
+                                trans.M31, trans.M32, trans.M33);
+                        }
+                        else
+                        {
+                            normalTransforms[i] = Matrix3x3.Identity;
+                        }
+                    }
+                    _modelShader.SetMatrix4Array("uBoneTransforms", transforms);
+                    _modelShader.SetMatrix3Array("uNormalBoneTransforms", normalTransforms);
+                }
                 int total_albedo_count = 0;
                 int total_meshes = modelData.MeshRenders.Count;
                 int total_normal_count = 0;

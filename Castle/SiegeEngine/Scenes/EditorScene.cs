@@ -5,6 +5,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.AssetParsing.V2;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;
@@ -18,7 +19,7 @@ namespace SiegeEngine.Scenes
 {
     public unsafe class EditorScene : Scene
     {
-        public EditorScene(IRenderContext renderContext, IControlContext controlContext, IntPtr window, Player player, IGameServer server, PlayerMovement playerMovement, EventBus eventBus, ModelManager modelManager)
+        public EditorScene(IRenderContext renderContext, IControlContext controlContext, IntPtr window, Player player, IGameServer server, PlayerMovement playerMovement, EventBus eventBus, ModelManagerV2 modelManager)
             : base(renderContext, controlContext, window, server, eventBus)
         {
         }
