@@ -41,7 +41,6 @@ namespace ReadingChamber
         }
         private FBXModel _model;
         private ModelManagerV2.ModelData _modelData;
-        private float _duration = 0f;
         private string _currentAnimation;
         private ShaderProgram _animationShader;
         private VertexBuffer _skeletonBuffer;
@@ -68,9 +67,12 @@ namespace ReadingChamber
         private List<string> _animationFiles = new List<string>();
         private float _cameraDistance;
         private float _maxExtent;
-        private int _currentFrameIndex = 0;
         private ModelManagerV2 _modelManagerV2;
         private string _currentModelKey;
+        private bool _isPlaying = false;
+        private float _currentTime = 0f;
+        private float _duration = 0f;
+        private int _currentFrameIndex = 0;
         // Constructor, initializes shader, sets scaling mode.
         public AnimationViewerPanelV2(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
@@ -141,6 +143,14 @@ namespace ReadingChamber
             _modelManagerV2.TryGetModel(_currentModelKey, out _model);
             ApplyRestPoseFromModel(animModel);
             SetRestPose();
+            if (_model.Animations.Count > 0)
+            {
+                _currentAnimation = _model.Animations.Last().Name;
+                _duration = _model.Animations.Last().Keyframes.Last().Time;
+                _currentTime = 0f;
+                _isPlaying = false;
+                _currentFrameIndex = 0;
+            }
         }
         private void ApplyRestPoseFromModel(FBXModel sourceModel)
         {
@@ -175,6 +185,66 @@ namespace ReadingChamber
         private void UpdateTransformsFromFrame(int frame)
         {
             //STUBBED FOR FUTURE USE
+        }
+        private void UpdateTransformsFromTime(float time)
+        {
+            //if (_model == null || _model.Skeleton == null || string.IsNullOrEmpty(_currentAnimation)) return;
+            //var animation = _model.Animations.FirstOrDefault(a => a.Name == _currentAnimation);
+            //if (animation == null || animation.Keyframes.Count == 0) return;
+            //int lower = 0;
+            //int upper = animation.Keyframes.Count - 1;
+            //for (int i = 1; i < animation.Keyframes.Count; i++)
+            //{
+            //    if (animation.Keyframes[i].Time > time)
+            //    {
+            //        upper = i;
+            //        lower = i - 1;
+            //        break;
+            //    }
+            //}
+            //float t0 = animation.Keyframes[lower].Time;
+            //float t1 = animation.Keyframes[upper].Time;
+            //float frac = (t1 - t0 > 0) ? (time - t0) / (t1 - t0) : 0f;
+            //_currentFrameIndex = lower;
+            //var l0 = animation.Keyframes[lower].BoneTransforms;
+            //var l1 = animation.Keyframes[upper].BoneTransforms;
+            //var lerpedLocals = new Matrix4x4[l0.Count];
+            //for (int i = 0; i < lerpedLocals.Length; i++)
+            //{
+            //    var lm0 = l0[i];
+            //    var lm1 = l1[i];
+            //    if (Matrix4x4.Decompose(lm0, out Vector3 s0, out Quaternion r0, out Vector3 p0) && Matrix4x4.Decompose(lm1, out Vector3 s1, out Quaternion r1, out Vector3 p1))
+            //    {
+            //        Vector3 p = Vector3.Lerp(p0, p1, frac);
+            //        Quaternion r = Quaternion.Normalize(Quaternion.Slerp(r0, r1, frac));
+            //        Vector3 s = Vector3.Lerp(s0, s1, frac);
+            //        lerpedLocals[i] = _model.Skeleton.Bones[i].ComputeLocal(p, r, s);
+            //    }
+            //    else
+            //    {
+            //        lerpedLocals[i] = lm0;
+            //    }
+            //}
+            //_currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms(lerpedLocals);
+            //_boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
+            //_currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
+            //for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            //{
+            //    _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
+            //    if (Matrix4x4.Invert(_boneMatrices[i], out Matrix4x4 inv))
+            //    {
+            //        Matrix4x4 invT = Matrix4x4.Transpose(inv);
+            //        _currentNormalTransforms[i] = new Matrix3x3(
+            //            invT.M11, invT.M12, invT.M13,
+            //            invT.M21, invT.M22, invT.M23,
+            //            invT.M31, invT.M32, invT.M33);
+            //    }
+            //    else
+            //    {
+            //        _currentNormalTransforms[i] = Matrix3x3.Identity;
+            //    }
+            //}
+            //UpdateSkeletonVisualization();
         }
         // Centers camera on model bounds, sets distance based on extent.
         private void CenterCamera()
@@ -268,7 +338,7 @@ namespace ReadingChamber
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
             if (hook == "TogglePlay")
             {
-                // Removed
+                _isPlaying = !_isPlaying;
             }
             else if (hook == "LoadMesh")
             {
@@ -369,7 +439,40 @@ namespace ReadingChamber
             }
             if (_model.Skeleton != null && _model.Animations.Count > 0)
             {
-                //stubbed for future use
+                var animation = _model.Animations.FirstOrDefault(a => a.Name == _currentAnimation);
+                if (animation != null && animation.Keyframes.Count > 0)
+                {
+                    if (_isPlaying)
+                    {
+                        _currentTime += deltaTime;
+                        if (_currentTime > _duration) _currentTime -= _duration; // loop
+                    }
+                    else
+                    {
+                        int lower = 0;
+                        int upper = animation.Keyframes.Count - 1;
+                        for (int i = 1; i < animation.Keyframes.Count; i++)
+                        {
+                            if (animation.Keyframes[i].Time > _currentTime)
+                            {
+                                upper = i;
+                                lower = i - 1;
+                                break;
+                            }
+                        }
+                        if (_controlContext.GetKey(_window, Key.Right) == InputAction.Press)
+                        {
+                            int next = upper;
+                            _currentTime = animation.Keyframes[next].Time;
+                        }
+                        if (_controlContext.GetKey(_window, Key.Left) == InputAction.Press)
+                        {
+                            int prev = lower - 1;
+                            if (prev >= 0) _currentTime = animation.Keyframes[prev].Time;
+                        }
+                    }
+                    UpdateTransformsFromTime(_currentTime);
+                }
             }
             UpdateSkeletonVisualization();
         }
@@ -471,9 +574,9 @@ namespace ReadingChamber
             _renderContext.DrawElements(_renderContext.Enums.Lines, _skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             _renderContext.BindVertexArray(0);
             // Draw bind skeleton in red
-            _renderContext.BindVertexArray(_bindSkeletonBuffer.Vao);
-            _renderContext.DrawElements(_renderContext.Enums.Lines, _bindSkeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            _renderContext.BindVertexArray(0);
+            //_renderContext.BindVertexArray(_bindSkeletonBuffer.Vao);
+            //_renderContext.DrawElements(_renderContext.Enums.Lines, _bindSkeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            //_renderContext.BindVertexArray(0);
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
@@ -484,14 +587,11 @@ namespace ReadingChamber
             // Render UI overlay
             _uiOverlay.Render();
             // Render frame info
-            string frameInfo = "Frame: " + _currentFrameIndex;
-            if (_model != null && _model.Animations.Count > 0)
+            string frameInfo = "Keyframe: " + _currentFrameIndex;
+            var animation = _model?.Animations.FirstOrDefault(a => a.Name == _currentAnimation);
+            if (animation != null)
             {
-                var animation = _model.Animations.Find(a => a.Name == _currentAnimation);
-                if (animation != null)
-                {
-                    frameInfo += " / " + (animation.Keyframes.Count - 1);
-                }
+                frameInfo += " / " + (animation.Keyframes.Count - 1);
             }
             _textRenderer.RenderText(frameInfo, 10, TitleHeight + 10, (int)Size.X, (int)Size.Y, 12f);
             // Render 2px border
@@ -532,26 +632,26 @@ namespace ReadingChamber
             }
             _skeletonBuffer.UpdateCustom(vertices, indices);
             // Bind pose (red)
-            if (_currentBindGlobalsVis == null || _currentBindGlobalsVis.Length != _model.Skeleton.Bones.Count) return;
-            vertices = new List<Vertex>();
-            indices = new List<uint>();
-            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-            {
-                if (!_model.Skeleton.Bones[i].IsDrawable) continue;
-                Vector3 pos = _currentBindGlobalsVis[i].Translation;
-                vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1)); // Red for joints
-            }
-            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
-            {
-                if (!_model.Skeleton.Bones[i].IsDrawable) continue;
-                //if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
-                if (_model.Skeleton.Bones[i].ParentIndex >= 0)
-                {
-                    indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
-                    indices.Add((uint)i);
-                }
-            }
-            _bindSkeletonBuffer.UpdateCustom(vertices, indices);
+            //if (_currentBindGlobalsVis == null || _currentBindGlobalsVis.Length != _model.Skeleton.Bones.Count) return;
+            //vertices = new List<Vertex>();
+            //indices = new List<uint>();
+            //for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            //{
+            //    if (!_model.Skeleton.Bones[i].IsDrawable) continue;
+            //    Vector3 pos = _currentBindGlobalsVis[i].Translation;
+            //    vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 1, 0, 0, 1)); // Red for joints
+            //}
+            //for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            //{
+            //    if (!_model.Skeleton.Bones[i].IsDrawable) continue;
+            //    //if (!_model.Skeleton.Bones[i].Name.EndsWith("_l")) continue; // Example filter
+            //    if (_model.Skeleton.Bones[i].ParentIndex >= 0)
+            //    {
+            //        indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
+            //        indices.Add((uint)i);
+            //    }
+            //}
+            //_bindSkeletonBuffer.UpdateCustom(vertices, indices);
         }
         private void SetRestPose()
         {

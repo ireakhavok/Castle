@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing.V2/Model/Bone.cs
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
@@ -37,7 +39,6 @@ namespace SiegeEngine.Core.AssetParsing.V2.Model
             Quaternion useR = LclRotation;
             Vector3 useS = LclScaling;
             Matrix4x4 T = Matrix4x4.CreateTranslation(useT);
-            Console.WriteLine("T:");
             Matrix4x4 Roff = Matrix4x4.CreateTranslation(RotationOffset);
             Matrix4x4 Rp = Matrix4x4.CreateTranslation(RotationPivot);
             // PreRotation as quaternion in fixed XYZ order
