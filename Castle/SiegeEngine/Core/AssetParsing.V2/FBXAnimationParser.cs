@@ -6,11 +6,13 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.V2.Model;
+
 namespace SiegeEngine.Core.AssetParsing.V2
 {
     public static class FBXAnimationParser
     {
         private const long TicksPerSecond = 46186158000L;
+
         public static void ParseAnimations(FBXModel model, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs, float modelScale, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4)
         {
             // In FBXAnimationParser.cs, in ParseAnimations
@@ -22,6 +24,16 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 long stackId = (long)stack.properties[0].Value;
                 string name = (string)stack.properties[1].Value;
                 var anim = new Animation { Name = name };
+                var props70 = stack.children.FirstOrDefault(c => c.Name == "Properties70");
+                if (props70 != null)
+                {
+                    var stopP = props70.children.FirstOrDefault(p => p.Name == "P" && (string)p.properties[0].Value == "LocalStop");
+                    if (stopP != null)
+                    {
+                        long stopTicks = Convert.ToInt64(stopP.properties[4].Value);
+                        anim.Duration = (float)(stopTicks / (double)TicksPerSecond);
+                    }
+                }
                 var layerConns = conns.Where(c => c.type == "OO" && c.parent == stackId).ToList();
                 FBXParserBase.Log($"For stack {name}, found {layerConns.Count} layers");
                 if (layerConns.Count == 0) continue;
@@ -71,7 +83,10 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 }
                 FBXParserBase.Log($"Found {allTimes.Count} unique key times");
                 var sortedTimes = allTimes.OrderBy(t => t).ToList();
-                float duration = sortedTimes.Any() ? (float)(sortedTimes.Last() / (double)TicksPerSecond) : 0f;
+                if (anim.Duration == 0f && sortedTimes.Any())
+                {
+                    anim.Duration = (float)(sortedTimes.Last() / (double)TicksPerSecond);
+                }
                 for (int ti = 0; ti < sortedTimes.Count; ti++)
                 {
                     long tick = sortedTimes[ti];
@@ -108,12 +123,14 @@ namespace SiegeEngine.Core.AssetParsing.V2
                 if (anim.Keyframes.Count > 0) model.Animations.Add(anim);
             }
         }
+
         private static BaseNode GetCurveNodeForChan(Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, long curveNodeId, string chan)
         {
             var curveConn = conns.FirstOrDefault(c => c.type == "OP" && c.parent == curveNodeId && c.prop == chan);
             if (curveConn.type == null) return null;
             return objectsById.GetValueOrDefault(curveConn.child);
         }
+
         private static Vector3 GetInterpolatedVector(Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, long curveNodeId, long tick, int[] sourceToTarget, int[] signs, float modelScale, bool isTranslation)
         {
             Vector3 v = Vector3.Zero;
@@ -124,6 +141,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             if (isTranslation) v *= modelScale;
             return v;
         }
+
         private static float GetInterpolatedValue(Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, long curveNodeId, string chan, long tick)
         {
             var curve = GetCurveNodeForChan(objectsById, conns, curveNodeId, chan);
@@ -154,6 +172,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             float frac = (tick - times[low]) / (float)(times[low + 1] - times[low]);
             return values[low] + frac * (values[low + 1] - values[low]);
         }
+
         private static void ComputeGlobalRecursive(Bone bone, Matrix4x4 parentGlobal, Matrix4x4[] locals, Matrix4x4[] globals, List<Bone> bones)
         {
             int idx = bones.IndexOf(bone);

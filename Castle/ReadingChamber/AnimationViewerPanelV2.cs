@@ -146,7 +146,7 @@ namespace ReadingChamber
             if (_model.Animations.Count > 0)
             {
                 _currentAnimation = _model.Animations.Last().Name;
-                _duration = _model.Animations.Last().Keyframes.Last().Time;
+                _duration = _model.Animations.Last().Duration;
                 _currentTime = 0f;
                 _isPlaying = false;
                 _currentFrameIndex = 0;
