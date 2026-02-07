@@ -679,6 +679,7 @@ Folder: Managers
       - float SnapDistance
       - int _lastWinW
       - int _lastWinH
+      - IPanel _draggingFloatingPanel
     - Methods:
       - constructor DockManager( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
       - void AddPanel(IPanel panel)
@@ -994,6 +995,20 @@ Folder: Rendering
         - Calls: SetViewport
       - void Dispose()
         - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteVertexArray
+- File: ModelRenderer.cs
+  - Class: ModelRenderer (Namespace: SiegeEngine.Core.Rendering)
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.Shaders, System, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - ShaderProgram _modelShader
+      - ShaderProgram _animationShader
+    - Methods:
+      - constructor ModelRenderer(IRenderContext renderContext)
+      - void Initialize()
+        - Calls: ShaderProgram
+      - void RenderModel( Matrix4x4 projection,  Matrix4x4 view,  ModelManager modelManager,  PhysicsComponent physics,  Vector3 viewPos, ModelComponent modelComp)
+        - Calls: Matrix3x3, Matrix4x4.Transpose, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawElements, modelComp.Model.Skeleton.ComputeGlobalTransforms, modelManager.TryGetModelData, shader.SetMatrix3Array, shader.SetMatrix4, shader.SetMatrix4Array, shader.SetUniform, shader.Use
+      - void Dispose()
 - File: ModelShader.cs
   - Class: ModelShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1250,7 +1265,7 @@ Folder: UI
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
         - Calls: OnPanelResize
       - void Render()
-        - Calls: _quadRenderer.DrawQuad, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _uiOverlay.RefreshUI
+        - Calls: _quadRenderer.DrawQuad, _renderContext.Disable, _renderContext.Enable, _uiOverlay.RefreshUI
       - void Dispose()
       - void Detach()
       - void OnPanelResize( float h, float w)
@@ -1791,6 +1806,7 @@ SiegeEngine.Core.Rendering.BackgroundRenderer
 SiegeEngine.Core.Rendering.CharacterData
 SiegeEngine.Core.Rendering.EditorTextRenderer
 SiegeEngine.Core.Rendering.GameRenderer
+SiegeEngine.Core.Rendering.ModelRenderer
 SiegeEngine.Core.Rendering.POINT
 SiegeEngine.Core.Rendering.Renderer
 SiegeEngine.Core.Rendering.RendererDetector
