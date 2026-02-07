@@ -2,7 +2,7 @@
 // File: AssetParsing.V2/Model/TextureInfo.cs
 using System;
 
-namespace SiegeEngine.Core.AssetParsing.V2.Model
+namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class TextureInfo
     {

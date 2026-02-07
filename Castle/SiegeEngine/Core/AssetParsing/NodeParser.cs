@@ -7,7 +7,7 @@ using System.IO.Compression;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
 
-namespace SiegeEngine.Core.AssetParsing.V2
+namespace SiegeEngine.Core.AssetParsing
 {
     public static class NodeParser
     {

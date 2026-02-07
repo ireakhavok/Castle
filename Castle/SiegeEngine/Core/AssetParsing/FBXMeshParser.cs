@@ -1,13 +1,13 @@
 ﻿// Folder: SiegeEngine.Core
 // File: AssetParsing/FBXMeshParser.cs
 using SiegeEngine.Core.AssetObjects;
-using SiegeEngine.Core.AssetParsing.V2.Model;
+using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
-namespace SiegeEngine.Core.AssetParsing.V2
+namespace SiegeEngine.Core.AssetParsing
 {
     // This static class parses mesh data from FBX Geometry nodes, including vertices, indices, normals, UVs, materials, skins.
     // It expands per-polygon data to per-vertex, applies remapping, and extracts embedded textures.

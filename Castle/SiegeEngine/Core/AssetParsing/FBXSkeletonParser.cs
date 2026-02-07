@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine.Core
 // File: AssetParsing.V2/FBXSkeletonParser.cs
 using SiegeEngine.Core.AssetObjects;
-using SiegeEngine.Core.AssetParsing.V2.Model;
+using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
@@ -9,7 +9,7 @@ using System.Linq;
 using System.Numerics;
 using YamlDotNet.Serialization;
 
-namespace SiegeEngine.Core.AssetParsing.V2
+namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXSkeletonParser
     {

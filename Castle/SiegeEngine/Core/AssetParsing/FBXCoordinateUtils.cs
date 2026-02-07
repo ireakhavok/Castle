@@ -3,7 +3,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
-namespace SiegeEngine.Core.AssetParsing.V2
+namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXCoordinateUtils
     {

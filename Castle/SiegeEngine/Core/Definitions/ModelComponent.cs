@@ -1,6 +1,6 @@
 ﻿// Folder: SiegeEngine.Core.Definitions
 // File: ModelComponent.cs
-using SiegeEngine.Core.AssetParsing.V2.Model;
+using SiegeEngine.Core.AssetParsing.Model;
 using Silk.NET.Maths;
 using System;
 using System.Numerics;

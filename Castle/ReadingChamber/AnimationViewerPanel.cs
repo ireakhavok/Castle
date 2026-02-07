@@ -1,8 +1,8 @@
 ﻿// Folder: ReadingChamber
 // File: AnimationViewerPanelV2.cs
 using SiegeEngine.Core.AssetObjects;
-using SiegeEngine.Core.AssetParsing.V2;
-using SiegeEngine.Core.AssetParsing.V2.Model;
+using SiegeEngine.Core.AssetParsing;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -18,19 +18,19 @@ using System.Numerics;
 using System.Text;
 namespace ReadingChamber
 {
-    public unsafe class AnimationViewerPanelV2 : BasePanel
+    public unsafe class AnimationViewerPanel : BasePanel
     {
         // Static method to open the panel via event.
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            var panel = new AnimationViewerPanelV2(renderContext, controlContext, window, eventBus);
+            var panel = new AnimationViewerPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
         // Inner UI overlay class for handling clicks.
         private class AssetUIOverlay : UIOverlay
         {
-            private readonly AnimationViewerPanelV2 _parent;
-            public AssetUIOverlay(AnimationViewerPanelV2 parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
+            private readonly AnimationViewerPanel _parent;
+            public AssetUIOverlay(AnimationViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
@@ -40,7 +40,7 @@ namespace ReadingChamber
             }
         }
         private FBXModel _model;
-        private ModelManagerV2.ModelData _modelData;
+        private ModelManager.ModelData _modelData;
         private string _currentAnimation;
         private ShaderProgram _animationShader;
         private VertexBuffer _skeletonBuffer;
@@ -67,21 +67,21 @@ namespace ReadingChamber
         private List<string> _animationFiles = new List<string>();
         private float _cameraDistance;
         private float _maxExtent;
-        private ModelManagerV2 _modelManagerV2;
+        private ModelManager _ModelManager;
         private string _currentModelKey;
         private bool _isPlaying = false;
         private float _currentTime = 0f;
         private float _duration = 0f;
         private int _currentFrameIndex = 0;
         // Constructor, initializes shader, sets scaling mode.
-        public AnimationViewerPanelV2(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
+        public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             _animationShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
             Scaling = ScalingMode.BestFit;
             BaseWidth = 1280f;
             BaseHeight = 720f;
-            _modelManagerV2 = new ModelManagerV2(_renderContext);
-            _modelData = new ModelManagerV2.ModelData(); // Initialize to avoid null reference
+            _ModelManager = new ModelManager(_renderContext);
+            _modelData = new ModelManager.ModelData(); // Initialize to avoid null reference
         }
         // Creates custom UI overlay.
         protected override UIOverlay CreateUIOverlay()
@@ -110,10 +110,10 @@ namespace ReadingChamber
         private void LoadMesh(string path)
         {
             _meshPath = path;
-            _modelManagerV2.LoadModel(path);
+            _ModelManager.LoadModel(path);
             _currentModelKey = Path.GetFileNameWithoutExtension(path).ToLower();
-            _modelManagerV2.TryGetModel(_currentModelKey, out _model);
-            _modelManagerV2.TryGetModelData(_currentModelKey, out _modelData);
+            _ModelManager.TryGetModel(_currentModelKey, out _model);
+            _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
             if (_model.HasSkin)
             {
                 _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
@@ -125,9 +125,9 @@ namespace ReadingChamber
         private void LoadArmature(string path)
         {
             _armaturePath = path;
-            _modelManagerV2.AttachSkeleton(_currentModelKey, path);
-            _modelManagerV2.TryGetModel(_currentModelKey, out _model);
-            _modelManagerV2.TryGetModelData(_currentModelKey, out _modelData);
+            _ModelManager.AttachSkeleton(_currentModelKey, path);
+            _ModelManager.TryGetModel(_currentModelKey, out _model);
+            _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
             if (_model.HasSkin)
             {
                 _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
@@ -139,8 +139,8 @@ namespace ReadingChamber
         {
             FBXFileForest animForest = FBXParser.Load(animPath);
             FBXModel animModel = FBXParser.BuildModelFromForest(animForest);
-            _modelManagerV2.AttachAnimation(_currentModelKey, animPath);
-            _modelManagerV2.TryGetModel(_currentModelKey, out _model);
+            _ModelManager.AttachAnimation(_currentModelKey, animPath);
+            _ModelManager.TryGetModel(_currentModelKey, out _model);
             ApplyRestPoseFromModel(animModel);
             SetRestPose();
             if (_model.Animations.Count > 0)

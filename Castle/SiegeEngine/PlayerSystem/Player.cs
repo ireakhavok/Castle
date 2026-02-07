@@ -1,9 +1,9 @@
 ﻿// SiegeEngine.PlayerSystem/Player.cs
 using System;
 using System.Numerics;
-using SiegeEngine.Core.AssetParsing.V2;
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.AssetParsing.V2.Model;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 
 namespace SiegeEngine.PlayerSystem
@@ -16,7 +16,7 @@ namespace SiegeEngine.PlayerSystem
         private readonly PhysicsComponent _physics;
         public ulong SteamId { get; set; }
         public FBXModel Model { get; private set; }
-        public Player(int entityId, Vector3 position, ulong steamId = 0, ModelManagerV2 modelLoader = null)
+        public Player(int entityId, Vector3 position, ulong steamId = 0, ModelManager modelLoader = null)
         {
             EntityId = entityId;
             Position = position;

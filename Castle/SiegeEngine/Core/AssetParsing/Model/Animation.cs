@@ -1,9 +1,10 @@
 ﻿// Folder: SiegeEngine.Core.AssetParsing.V2.Model
 // File: Animation.cs
+using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 
-namespace SiegeEngine.Core.AssetParsing.V2.Model
+namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class Animation
     {

@@ -1,5 +1,5 @@
 ﻿// Folder: SiegeEngine.Core.AssetParsing.V2
-// File: ModelManagerV2.cs
+// File: ModelManager.cs
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
@@ -7,12 +7,12 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.AssetParsing.V2.Model;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
-namespace SiegeEngine.Core.AssetParsing.V2
+namespace SiegeEngine.Core.AssetParsing
 {
-    public class ModelManagerV2
+    public class ModelManager
     {
         private readonly Dictionary<string, FBXModel> _models = new();
         private readonly Dictionary<string, ModelData> _modelData = new();
@@ -36,7 +36,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             public uint[] MetallicTextures { get; set; }
             public uint IndexCount { get; set; }
         }
-        public ModelManagerV2(IRenderContext renderContext = null)
+        public ModelManager(IRenderContext renderContext = null)
         {
             _renderContext = renderContext;
         }
@@ -287,7 +287,7 @@ namespace SiegeEngine.Core.AssetParsing.V2
             }
             if (!File.Exists(fullPath))
             {
-                Console.WriteLine($"ModelManagerV2: Texture file not found at {fullPath}");
+                Console.WriteLine($"ModelManager: Texture file not found at {fullPath}");
                 return (0, 0);
             }
             var res = TextureLoader.LoadTexture(_renderContext, fullPath, 1, wrapS, wrapT);

@@ -2,7 +2,7 @@
 // File: AssetParsing.V2/Model/FBXVertex.cs
 using System;
 using System.Numerics;
-namespace SiegeEngine.Core.AssetParsing.V2.Model
+namespace SiegeEngine.Core.AssetParsing.Model
 {
     public struct FBXVertex
     {

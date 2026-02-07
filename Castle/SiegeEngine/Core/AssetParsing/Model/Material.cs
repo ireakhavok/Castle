@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SiegeEngine.Core.AssetParsing.V2.Model
+namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class Material
     {

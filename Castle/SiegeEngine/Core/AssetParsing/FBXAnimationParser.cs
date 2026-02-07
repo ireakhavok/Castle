@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
-using SiegeEngine.Core.AssetParsing.V2.Model;
+using SiegeEngine.Core.AssetParsing.Model;
 
-namespace SiegeEngine.Core.AssetParsing.V2
+namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXAnimationParser
     {

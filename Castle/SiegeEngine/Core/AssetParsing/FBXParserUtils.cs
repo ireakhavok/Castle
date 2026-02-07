@@ -9,7 +9,7 @@ using SiegeEngine.Core.AssetObjects;
 using System.Numerics;
 
 
-namespace SiegeEngine.Core.AssetParsing.V2
+namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParserUtils
     {

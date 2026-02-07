@@ -413,7 +413,7 @@ Folder: Core
       - FBXFileForest Load(string path)
         - Calls: FBXParserBase.Log, NodeParser.ParseNodes
       - FBXModel BuildModelFromForest(FBXFileForest forest)
-        - Calls: .Value.ToString, FBXModel, FBXParserBase.Log, GatherConnections, GatherObjectsById, ParseBindPoses
+        - Calls: .Value.ToString, FBXParserBase.Log, GatherConnections, GatherObjectsById, ParseBindPoses
       - BaseNode> GatherObjectsById(BaseNode objectsNode)
       - > GatherConnections(FBXFileForest forest)
       - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
@@ -427,7 +427,6 @@ Folder: Core
     - Methods:
       - void Log(string message)
       - FBXModel CreateDefaultCubeModel()
-        - Calls: FBXModel
 - File: FBXParserUtils.cs
   - Class: FBXParserUtils (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Globalization, System.IO, System.IO.Compression, System.Linq, System.Numerics
@@ -509,7 +508,7 @@ Folder: Core
   - Class: GameRenderer (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: Renderer
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.V2, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - nint _window
@@ -525,7 +524,7 @@ Folder: Core
       - void SetViewport( int height, int width)
         - Calls: _renderContext.Viewport
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: Clear, PlayerMovement, _gridShader.SetMatrix4, _gridShader.Use, _modelManager.TryGetModelData, _modelShader.SetMatrix3Array, _modelShader.SetMatrix4, _modelShader.SetMatrix4Array, _modelShader.SetUniform, _modelShader.Use, _player.Update, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawArrays, _renderContext.DrawElements, _waterShader.SetMatrix4, _waterShader.Use, modelComp.Model.Skeleton.GetTransforms
+        - Calls: Clear, Matrix3x3, Matrix4x4.Transpose, PlayerMovement, _gridShader.SetMatrix4, _gridShader.Use, _modelManager.TryGetModelData, _modelShader.SetMatrix3Array, _modelShader.SetMatrix4, _modelShader.SetMatrix4Array, _modelShader.SetUniform, _modelShader.Use, _player.Update, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawArrays, _renderContext.DrawElements, _waterShader.SetMatrix4, _waterShader.Use, modelComp.Model.Skeleton.ComputeGlobalTransforms
       - void Resize( int height, int width)
         - Calls: SetViewport
       - void Dispose()
@@ -902,11 +901,8 @@ Folder: Core
   - Class: ModelComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Numerics
 - File: ModelManager.cs
-  - Class: ModelMeshRender (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
-- File: ModelManagerV2.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.AssetParsing.V2)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
 - File: ModelShader.cs
@@ -1158,7 +1154,7 @@ Folder: Core
         - Calls: D3D11CreateDevice, D3D12CreateDevice, IsOpenGLSupported, Marshal.Release, vkCreateInstance, vkDestroyInstance
 - File: SceneManager.cs
   - Class: SceneManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Reflection
+    - Dependencies: SiegeEngine.Core.AssetParsing.V2, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Reflection
     - Fields:
       - EventBus _eventBus
       - IRenderContext _renderContext
@@ -1182,7 +1178,7 @@ Folder: Core
       - void Resize( int height, int width)
       - void Dispose()
       - void OnSwitchScene(SwitchSceneEvent e)
-        - Calls: ClientGameServerProxy, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadCharacters, _player.InitializeCamera, _server.AddEntity, _server.AddSystem, ctor.Invoke
+        - Calls: ClientGameServerProxy, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem, ctor.Invoke
 - File: SceneShader.cs
   - Class: SceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1762,7 +1758,7 @@ Folder: PlayerSystem
   - Class: Player (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: IComponent
     
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.V2, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, System, System.Numerics
     - Fields:
       - CameraController _camera
       - PhysicsComponent _physics
@@ -1808,7 +1804,7 @@ Folder: Scenes
   - Class: EditorScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.V2, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - void Initialize( int height, int width)
       - void Update(float deltaTime)
@@ -1819,7 +1815,7 @@ Folder: Scenes
   - Class: SandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.V2, SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - Player _player
       - PlayerMovement _playerMovement
@@ -1876,10 +1872,10 @@ Folder: Systems
   - Class: AnimationSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.V2.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Numerics
     - Methods:
       - void Update(float deltaTime)
-        - Calls: Inverse, Matrix3x3, _server.GetEntities, animation.GetBoneTransforms, modelComp.Model.Skeleton.ComputeFinalTransforms, modelComp.Model.Skeleton.ComputeGlobalTransforms, modelComp.Model.Skeleton.UpdateTransforms
+        - Calls: Inverse, Matrix3x3, _server.GetEntities, modelComp.Model.Skeleton.ComputeGlobalTransforms
 - File: AudioSystem.cs
   - Class: AudioSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
@@ -2070,7 +2066,6 @@ SiegeEngine.Core.Managers.GameModeManager
 SiegeEngine.Core.Managers.LevelManager
 SiegeEngine.Core.Managers.LobbyManager
 SiegeEngine.Core.Managers.ModManager
-SiegeEngine.Core.Managers.ModelMeshRender
 SiegeEngine.Core.Managers.PanelManager
 SiegeEngine.Core.Managers.SceneManager
 SiegeEngine.Core.Managers.UIManager

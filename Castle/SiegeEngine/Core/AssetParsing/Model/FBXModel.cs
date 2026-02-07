@@ -5,8 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
-namespace SiegeEngine.Core.AssetParsing.V2.Model
+namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class FBXModel
     {

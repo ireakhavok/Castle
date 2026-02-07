@@ -13,8 +13,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using SiegeEngine.Core.AssetParsing.V2;
-using SiegeEngine.Core.AssetParsing.V2.Model;
+using SiegeEngine.Core.AssetParsing;
+using SiegeEngine.Core.AssetParsing.Model;
 
 namespace SiegeEngine.Scenes.StartingPoints
 {
@@ -26,12 +26,12 @@ namespace SiegeEngine.Scenes.StartingPoints
         }
         private readonly Player _player;
         private readonly PlayerMovement _playerMovement;
-        private readonly ModelManagerV2 _modelManager;
+        private readonly ModelManager _modelManager;
         private readonly IGameServer _server;
         private float _scrollDelta;
         private ShaderProgram _modelShader;
         private ShaderProgram _gridShader;
-        public SandboxScene(IRenderContext renderContext, IControlContext controlContext, nint window, Player player, IGameServer server, PlayerMovement playerMovement, EventBus eventBus, ModelManagerV2 modelManager)
+        public SandboxScene(IRenderContext renderContext, IControlContext controlContext, nint window, Player player, IGameServer server, PlayerMovement playerMovement, EventBus eventBus, ModelManager modelManager)
             : base(renderContext, controlContext, window, server, eventBus)
         {
             _player = player ?? throw new ArgumentNullException(nameof(player));

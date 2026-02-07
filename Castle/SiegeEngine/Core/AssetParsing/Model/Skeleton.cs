@@ -4,7 +4,7 @@ using System.Linq;
 using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 
-namespace SiegeEngine.Core.AssetParsing.V2.Model
+namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class Skeleton
     {

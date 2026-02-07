@@ -10,7 +10,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.AssetParsing.V2;
+using SiegeEngine.Core.AssetParsing;
 
 namespace SiegeEngine.Core.Rendering
 {
@@ -21,12 +21,12 @@ namespace SiegeEngine.Core.Rendering
         private readonly InputHandler _inputHandler;
         private readonly IGameServer _server;
         private readonly EventBus _eventBus;
-        private readonly ModelManagerV2 _modelManager;
+        private readonly ModelManager _modelManager;
         private bool _disposed;
         private uint _vao, _pointBuffer, _waterBuffer;
         private ShaderProgram _pointShader, _waterShader, _gridShader, _modelShader;
         private int _width, _height;
-        public GameRenderer(IRenderContext renderContext, nint window, InputHandler inputHandler, Player player, ModelManagerV2 modelManager, IGameServer server = null, EventBus eventBus = null) : base(player)
+        public GameRenderer(IRenderContext renderContext, nint window, InputHandler inputHandler, Player player, ModelManager modelManager, IGameServer server = null, EventBus eventBus = null) : base(player)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
             _window = window;

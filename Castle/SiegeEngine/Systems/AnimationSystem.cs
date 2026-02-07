@@ -1,7 +1,7 @@
 ﻿// SiegeEngine.Core
 // File: Systems/AnimationSystem.cs
 using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.AssetParsing.V2.Model;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Interfaces;
 using System;
 using System.Numerics;

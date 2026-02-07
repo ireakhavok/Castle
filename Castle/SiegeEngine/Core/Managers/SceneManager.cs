@@ -1,6 +1,6 @@
 ﻿// Folder: SiegeEngine.Core.Managers
 // File: SceneManager.cs
-using SiegeEngine.Core.AssetParsing.V2;
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -31,7 +31,7 @@ namespace SiegeEngine.Core.Managers
         private Scene _currentScene;
         private Player _player;
         private PlayerMovement _playerMovement;
-        private ModelManagerV2 _modelManager;
+        private ModelManager _modelManager;
         private IGameServer _server;
         public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, nint window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuPanel menuPanel)
         {
@@ -86,7 +86,7 @@ namespace SiegeEngine.Core.Managers
             _server = new ClientGameServerProxy(_eventBus); // Secure proxy
             var predictionSystem = new ClientPredictionSystem(_server, _eventBus);
             _server.AddSystem(predictionSystem);
-            _modelManager = new ModelManagerV2(_renderContext);
+            _modelManager = new ModelManager(_renderContext);
             _modelManager.LoadModel(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx"));
             Vector3 startPos = new Vector3(10, 10, 0);
             _player = new Player(1, startPos, ((SteamEngine)_steamEngine).GetSteamId(), _modelManager);
@@ -106,7 +106,7 @@ namespace SiegeEngine.Core.Managers
                 ConstructorInfo ctor = sceneType.GetConstructor(new Type[]
                 {
                     typeof(IRenderContext), typeof(IControlContext), typeof(nint),
-                    typeof(Player), typeof(IGameServer), typeof(PlayerMovement), typeof(EventBus), typeof(ModelManagerV2)
+                    typeof(Player), typeof(IGameServer), typeof(PlayerMovement), typeof(EventBus), typeof(ModelManager)
                 });
                 if (ctor != null)
                 {
