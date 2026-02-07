@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Managers
+﻿// Folder: SiegeEngine.Core.Managers
 // File: DockManager.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json.Serialization;
+
 namespace SiegeEngine.Core.Managers
 {
     [JsonDerivedType(typeof(DockSplitNode), "split")]
@@ -24,6 +25,7 @@ namespace SiegeEngine.Core.Managers
         public abstract bool RemovePanel(IPanel panel);
         public abstract DockNode FindNode(IPanel panel);
     }
+
     public class DockSplitNode : DockNode
     {
         public DockNode Left { get; set; }
@@ -156,6 +158,7 @@ namespace SiegeEngine.Core.Managers
             return null;
         }
     }
+
     public class DockTabbedNode : DockNode
     {
         public List<IPanel> Panels { get; set; } = new List<IPanel>();
@@ -254,6 +257,7 @@ namespace SiegeEngine.Core.Managers
             return null;
         }
     }
+
     public class DockManager
     {
         private DockNode _root;
@@ -267,6 +271,10 @@ namespace SiegeEngine.Core.Managers
         private const float SnapDistance = 20f;
         private int _lastWinW;
         private int _lastWinH;
+
+        // Minimal addition for fast-mouse dragging fix
+        private IPanel _draggingFloatingPanel;
+
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -274,6 +282,7 @@ namespace SiegeEngine.Core.Managers
             _eventBus = eventBus;
             _root = new DockTabbedNode();
         }
+
         public void AddPanel(IPanel panel)
         {
             if (panel.DockState == DockState.Floating)
@@ -287,10 +296,12 @@ namespace SiegeEngine.Core.Managers
                 panel.AllowDragging = false;
             }
         }
+
         public void RemovePanel(IPanel panel)
         {
             if (_floatingPanels.Remove(panel))
             {
+                if (_draggingFloatingPanel == panel) _draggingFloatingPanel = null;
                 return;
             }
             if (_root.RemovePanel(panel))
@@ -298,6 +309,7 @@ namespace SiegeEngine.Core.Managers
                 // If root empty, reset or something
             }
         }
+
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, EventBus eventBus, int winW, int winH)
         {
             if (winW != _lastWinW || winH != _lastWinH)
@@ -314,7 +326,9 @@ namespace SiegeEngine.Core.Managers
                 _lastWinH = winH;
             }
             _root.ComputeLayout(0, 0, winW, winH);
+
             bool handled = false;
+
             // Find if there is modal
             IPanel topModal = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
@@ -341,6 +355,19 @@ namespace SiegeEngine.Core.Managers
                 }
                 handled = true; // Block lower panels
             }
+
+            // === FAST MOUSE DRAG FIX ===
+            if (_draggingFloatingPanel != null)
+            {
+                _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
+                if (mouseReleased)
+                {
+                    _draggingFloatingPanel = null;
+                }
+                handled = true;
+            }
+            // === END FIX ===
+
             if (!handled)
             {
                 // Update other floating panels
@@ -353,17 +380,30 @@ namespace SiegeEngine.Core.Managers
                     if (over)
                     {
                         panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
+
+                        // Detect start of drag
+                        if (mousePressed && panel.AllowDragging && panel.DockState == DockState.Floating)
+                        {
+                            bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + 20f;
+                            if (overTitle)
+                            {
+                                _draggingFloatingPanel = panel;
+                            }
+                        }
+
                         handled = true;
                         break;
                     }
                 }
             }
+
             if (!handled)
             {
                 // Update docked
                 _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, eventBus);
             }
-            // Dragging logic
+
+            // Dragging logic (your original)
             if (_draggingPanel != null)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -400,6 +440,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
+
         private DockState GetDockStateFromPosition(Vector2 mousePos, int winW, int winH)
         {
             if (mousePos.X < SnapDistance) return DockState.DockedLeft;
@@ -409,6 +450,7 @@ namespace SiegeEngine.Core.Managers
             // TODO: Check for tab drop on other panels
             return DockState.Floating;
         }
+
         private void DockPanel(IPanel panel, DockState state)
         {
             DockSplitNode split = new DockSplitNode();
@@ -427,6 +469,7 @@ namespace SiegeEngine.Core.Managers
             }
             _root = split;
         }
+
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             _root.Render(renderContext, winW, winH);
