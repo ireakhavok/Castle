@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Managers
+﻿// Folder: SiegeEngine.Core.Managers
 // File: PanelManager.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
