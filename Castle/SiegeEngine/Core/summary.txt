@@ -1229,6 +1229,13 @@ Folder: Rendering
       - int x
       - int y
 
+Folder: Terrain
+- File: TerrainParser.cs
+  - Class: TerrainParser (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.Drawing, System.Drawing.Imaging, System.IO
+    - Methods:
+      - ] LoadUSGSDEM( out float,  out int, string filePath)
+
 Folder: UI
 - File: BasePanel.cs
   - Class: BasePanel (Namespace: SiegeEngine.Core.UI)
@@ -1828,6 +1835,7 @@ SiegeEngine.Core.Rendering.TextureLoader
 SiegeEngine.Core.Rendering.UIQuadRenderer
 SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
+SiegeEngine.Core.Terrain.TerrainParser
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CssParser
