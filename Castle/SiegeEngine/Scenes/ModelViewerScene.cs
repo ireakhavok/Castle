@@ -17,7 +17,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-
 namespace SiegeEngine.Scenes
 {
     public unsafe class ModelViewerScene : Scene
@@ -55,6 +54,10 @@ namespace SiegeEngine.Scenes
         private float _duration = 0f;
         private int _currentFrameIndex = 0;
 
+        // Toggle for animated/current skeleton visualization (off for now, code left intact)
+        private bool _showSkeleton = false;
+        private bool _showBindPoseSkeleton = false; // separate toggle for bind-pose skeleton (turned on by default)
+
         public ModelViewerScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -62,7 +65,6 @@ namespace SiegeEngine.Scenes
             _ModelManager = new ModelManager(_renderContext);
             _modelData = new ModelManager.ModelData();
         }
-
         public override void Initialize(int height, int width)
         {
             base.Initialize(height, width);
@@ -73,7 +75,6 @@ namespace SiegeEngine.Scenes
             LoadMesh(_meshPath);
             DiscoverAnimationFiles();
         }
-
         public void LoadMesh(string path)
         {
             _meshPath = path;
@@ -88,7 +89,6 @@ namespace SiegeEngine.Scenes
             }
             CenterCamera();
         }
-
         public void LoadArmature(string path)
         {
             _armaturePath = path;
@@ -101,7 +101,6 @@ namespace SiegeEngine.Scenes
                 SetRestPose();
             }
         }
-
         public void LoadAnimation(string animPath)
         {
             FBXFileForest animForest = FBXParser.Load(animPath);
@@ -119,7 +118,6 @@ namespace SiegeEngine.Scenes
                 _currentFrameIndex = 0;
             }
         }
-
         private void ApplyRestPoseFromModel(FBXModel sourceModel)
         {
             var targetSkeleton = _model.Skeleton;
@@ -149,7 +147,6 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
-
         private void UpdateTransformsFromTime(float time)
         {
             if (_model == null || _model.Skeleton == null || string.IsNullOrEmpty(_currentAnimation)) return;
@@ -220,7 +217,6 @@ namespace SiegeEngine.Scenes
             }
             UpdateSkeletonVisualization();
         }
-
         private void CenterCamera()
         {
             if (_model == null || _model.Meshes.Count == 0) return;
@@ -242,7 +238,6 @@ namespace SiegeEngine.Scenes
             _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
             _cameraUp = Vector3.UnitZ;
         }
-
         public void DiscoverAnimationFiles()
         {
             string fbmDir = Path.Combine(Path.GetDirectoryName(_meshPath), Path.GetFileNameWithoutExtension(_meshPath) + ".fbm");
@@ -251,7 +246,6 @@ namespace SiegeEngine.Scenes
                 _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
             }
         }
-
         private void UpdateSkeletonVisualization()
         {
             if (_model == null || _model.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
@@ -274,7 +268,6 @@ namespace SiegeEngine.Scenes
             }
             _skeletonBuffer.UpdateCustom(vertices, indices);
         }
-
         private void SetRestPose()
         {
             Matrix4x4[] restLocals = new Matrix4x4[_model.Skeleton.Bones.Count];
@@ -307,6 +300,30 @@ namespace SiegeEngine.Scenes
                 }
             }
             UpdateSkeletonVisualization();
+
+            // Minimal setup for bind-pose skeleton visualization (turned on)
+            if (_model.Skeleton != null && _currentBindGlobalsVis != null)
+            {
+                var vertices = new List<Vertex>();
+                var indices = new List<uint>();
+                for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+                {
+                    if (!_model.Skeleton.Bones[i].IsDrawable) continue;
+                    Vector3 pos = _currentBindGlobalsVis[i].Translation;
+                    vertices.Add(new Vertex(pos.X, pos.Y, pos.Z, 0, 1, 0, 1));
+                }
+                for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+                {
+                    if (!_model.Skeleton.Bones[i].IsDrawable) continue;
+                    if (_model.Skeleton.Bones[i].ParentIndex >= 0)
+                    {
+                        indices.Add((uint)_model.Skeleton.Bones[i].ParentIndex);
+                        indices.Add((uint)i);
+                    }
+                }
+                _bindSkeletonBuffer.UpdateCustom(vertices, indices);
+            }
+
             _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
@@ -326,12 +343,10 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
-
         public List<string> GetAnimationFiles()
         {
             return _animationFiles;
         }
-
         public string GetFrameInfo()
         {
             string frameInfo = "Keyframe: " + _currentFrameIndex;
@@ -342,17 +357,14 @@ namespace SiegeEngine.Scenes
             }
             return frameInfo;
         }
-
         public void TogglePlay()
         {
             _isPlaying = !_isPlaying;
         }
-
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
         }
-
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
             base.Update(deltaTime);
@@ -431,7 +443,6 @@ namespace SiegeEngine.Scenes
             }
             UpdateSkeletonVisualization();
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.118f, 0.118f, 0.118f, 1.0f);
@@ -449,80 +460,38 @@ namespace SiegeEngine.Scenes
             float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
             float far = currentDist + _maxExtent * 2f;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, near, far);
-            _animationShader.Use();
-            _animationShader.SetMatrix4("uModel", modelMatrix);
-            _animationShader.SetMatrix4("uView", view);
-            _animationShader.SetMatrix4("uProjection", projection);
-            _animationShader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
-            _animationShader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
-            _animationShader.SetUniform("uLightIntensity", 1.0f);
-            _animationShader.SetUniform("uViewPos", _cameraPosition.X, _cameraPosition.Y, _cameraPosition.Z);
-            _animationShader.SetUniform("uAmbientStrength", 0.3f);
-            _animationShader.SetUniform("uSpecularStrength", 0.05f);
-            _animationShader.SetUniform("uShininess", 4.0f);
-            if (_model.HasSkin && _boneMatrices != null && _boneMatrices.Length > 0)
-            {
-                _animationShader.SetUniform("uHasBones", 1);
-                _animationShader.SetMatrix4Array("uBoneMatrices", _boneMatrices);
-                _animationShader.SetMatrix3Array("uNormalMatrices", _currentNormalTransforms);
-            }
-            else
-            {
-                _animationShader.SetUniform("uHasBones", 0);
-            }
-            if (_modelData != null)
-            {
-                foreach (var mmr in _modelData.MeshRenders)
-                {
-                    try
-                    {
-                        for (int i = 0; i < Math.Min(mmr.AlbedoTextures.Length, 4); i++)
-                        {
-                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + i);
-                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[i]);
-                            _animationShader.SetUniform($"uAlbedoMap[{i}]", i);
-                        }
-                        for (int i = 0; i < Math.Min(mmr.NormalTextures.Length, 4); i++)
-                        {
-                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 4 + i);
-                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.NormalTextures[i]);
-                            _animationShader.SetUniform($"uNormalMap[{i}]", 4 + i);
-                        }
-                        for (int i = 0; i < Math.Min(mmr.MetallicTextures.Length, 4); i++)
-                        {
-                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0 + 8 + i);
-                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.MetallicTextures[i]);
-                            _animationShader.SetUniform($"uMetallicMap[{i}]", 8 + i);
-                        }
-                    }
-                    catch (ArgumentException ex)
-                    {
-                        if (mmr.AlbedoTextures.Length > 0)
-                        {
-                            _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
-                            _renderContext.BindTexture(_renderContext.Enums.Texture2D, mmr.AlbedoTextures[0]);
-                            _animationShader.SetUniform("uAlbedoMap[0]", 0);
-                        }
-                    }
-                    _renderContext.BindVertexArray(mmr.Vao);
-                    _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
-                    _renderContext.BindVertexArray(0);
-                }
-            }
+
+            // Consolidated model rendering via shared ModelRenderer (viewer context: identity transform + custom camera + precomputed bone matrices)
+            _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, modelMatrix, _boneMatrices, _currentNormalTransforms);
+
+            // Skeleton visualization (animated/current pose - toggled off for now; code left intact)
+            // Bind-pose skeleton visualization (turned on)
             _pointShader.Use();
             _pointShader.SetMatrix4("uModel", modelMatrix);
             _pointShader.SetMatrix4("uView", view);
             _pointShader.SetMatrix4("uProjection", projection);
-            _renderContext.BindVertexArray(_skeletonBuffer.Vao);
-            _renderContext.DrawElements(_renderContext.Enums.Lines, _skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            _renderContext.BindVertexArray(0);
+
+            if (_showSkeleton)
+            {
+                _renderContext.BindVertexArray(_skeletonBuffer.Vao);
+                _renderContext.DrawElements(_renderContext.Enums.Lines, _skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _renderContext.BindVertexArray(0);
+            }
+
+            // Bind pose skeleton (always drawn)
+            if (_bindSkeletonBuffer != null && _showBindPoseSkeleton)
+            {
+                _renderContext.BindVertexArray(_bindSkeletonBuffer.Vao);
+                _renderContext.DrawElements(_renderContext.Enums.Lines, _bindSkeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _renderContext.BindVertexArray(0);
+            }
+
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
-
         public override void Dispose()
         {
             _animationShader?.Dispose();
