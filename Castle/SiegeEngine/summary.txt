@@ -919,6 +919,8 @@ Folder: Core
         - Calls: ShaderProgram
       - void RenderModel( Matrix4x4 projection,  Matrix4x4 view,  ModelManager modelManager,  PhysicsComponent physics,  Vector3 viewPos, ModelComponent modelComp)
         - Calls: Matrix3x3, Matrix4x4.Transpose, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawElements, modelComp.Model.Skeleton.ComputeGlobalTransforms, modelManager.TryGetModelData, shader.SetMatrix3Array, shader.SetMatrix4, shader.SetMatrix4Array, shader.SetUniform, shader.Use
+      - void RenderModel( Matrix3x3[] normalMatrices = null,  Matrix4x4 modelMatrix = default,  Matrix4x4 projection,  Matrix4x4 view,  Matrix4x4[] boneMatrices = null,  Vector3 viewPos, FBXModel fbxModel, ModelData modelData)
+        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawElements, shader.SetMatrix3Array, shader.SetMatrix4, shader.SetMatrix4Array, shader.SetUniform, shader.Use
       - void Dispose()
 - File: ModelShader.cs
   - Class: ModelShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
@@ -1834,7 +1836,6 @@ Folder: Scenes
     - Fields:
       - FBXModel _model
       - string _currentAnimation
-      - ShaderProgram _animationShader
       - VertexBuffer _skeletonBuffer
       - VertexBuffer _bindSkeletonBuffer
       - ShaderProgram _pointShader
@@ -1862,13 +1863,15 @@ Folder: Scenes
       - float _currentTime
       - float _duration
       - int _currentFrameIndex
+      - bool _showSkeleton
+      - bool _showBindPoseSkeleton
     - Methods:
       - void Initialize( int width, int height)
         - Calls: DiscoverAnimationFiles, LoadMesh, ShaderProgram, VertexBuffer
       - void LoadMesh(string path)
-        - Calls: CenterCamera, SetRestPose, ShaderProgram, _ModelManager.LoadModel, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
+        - Calls: CenterCamera, SetRestPose, _ModelManager.LoadModel, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
       - void LoadArmature(string path)
-        - Calls: SetRestPose, ShaderProgram, _ModelManager.AttachSkeleton, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
+        - Calls: SetRestPose, _ModelManager.AttachSkeleton, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
       - void LoadAnimation(string animPath)
         - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, SetRestPose, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
       - void ApplyRestPoseFromModel(FBXModel sourceModel)
@@ -1880,7 +1883,7 @@ Folder: Scenes
       - void UpdateSkeletonVisualization()
         - Calls: Vertex, _skeletonBuffer.UpdateCustom
       - void SetRestPose()
-        - Calls: FBXParserUtils.PrintMatrix, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms
+        - Calls: FBXParserUtils.PrintMatrix, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, Vertex, _bindSkeletonBuffer.UpdateCustom, _model.Skeleton.ComputeGlobalTransforms
       - List<string> GetAnimationFiles()
       - string GetFrameInfo()
       - void TogglePlay()
@@ -1888,7 +1891,7 @@ Folder: Scenes
       - void Update( Vector2 relMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
         - Calls: UpdateSkeletonVisualization, UpdateTransformsFromTime, _controlContext.GetKey, _controlContext.GetMouseButton
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _animationShader.SetMatrix3Array, _animationShader.SetMatrix4, _animationShader.SetMatrix4Array, _animationShader.SetUniform, _animationShader.Use, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.Clear, _renderContext.ClearColor, _renderContext.CullFace, _renderContext.DepthFunc, _renderContext.DepthMask, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.FrontFace
+        - Calls: ModelRenderer, _modelRenderer.RenderModel, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.Clear, _renderContext.ClearColor, _renderContext.CullFace, _renderContext.DepthFunc, _renderContext.DepthMask, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.FrontFace
       - void Dispose()
 - File: SandBoxScene.cs
   - Class: SandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)

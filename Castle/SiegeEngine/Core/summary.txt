@@ -1008,6 +1008,8 @@ Folder: Rendering
         - Calls: ShaderProgram
       - void RenderModel( Matrix4x4 projection,  Matrix4x4 view,  ModelManager modelManager,  PhysicsComponent physics,  Vector3 viewPos, ModelComponent modelComp)
         - Calls: Matrix3x3, Matrix4x4.Transpose, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawElements, modelComp.Model.Skeleton.ComputeGlobalTransforms, modelManager.TryGetModelData, shader.SetMatrix3Array, shader.SetMatrix4, shader.SetMatrix4Array, shader.SetUniform, shader.Use
+      - void RenderModel( Matrix3x3[] normalMatrices = null,  Matrix4x4 modelMatrix = default,  Matrix4x4 projection,  Matrix4x4 view,  Matrix4x4[] boneMatrices = null,  Vector3 viewPos, FBXModel fbxModel, ModelData modelData)
+        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawElements, shader.SetMatrix3Array, shader.SetMatrix4, shader.SetMatrix4Array, shader.SetUniform, shader.Use
       - void Dispose()
 - File: ModelShader.cs
   - Class: ModelShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
