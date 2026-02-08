@@ -1,7 +1,5 @@
-﻿// SiegeEngine.ContextManagement/IControlContext.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using System;
-
 namespace SiegeEngine.Core.ContextManagement
 {
     public interface IControlContext
@@ -11,13 +9,13 @@ namespace SiegeEngine.Core.ContextManagement
         public delegate void KeyCallback(nint window, Key key, int scancode, InputAction action, KeyModifiers mods);
         public delegate void ScrollCallback(nint window, double xoffset, double yoffset);
         public delegate void WindowSizeCallback(nint window, int width, int height);
-
         void SetCursorPosCallback(nint window, CursorPosCallback callback);
         void SetMouseButtonCallback(nint window, MouseButtonCallback callback);
         void SetKeyCallback(nint window, KeyCallback callback);
         void SetScrollCallback(nint window, ScrollCallback callback);
         void SetWindowSizeCallback(nint window, WindowSizeCallback callback);
         void GetCursorPos(nint window, out double xpos, out double ypos);
+        void SetCursorPos(nint window, double xpos, double ypos);
         void SetInputMode(nint window, CursorAttribute attrib, CursorMode value);
         InputAction GetKey(nint window, Key key);
         InputAction GetMouseButton(nint window, MouseButton button);

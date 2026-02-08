@@ -33,6 +33,8 @@ namespace MapRoom
         }
         private TerrainCreatorScene _terrainScene;
         private string _initialTerrainPath;
+        private bool _cameraMode = true;
+        private bool _lastTab = false;
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialTerrainPath = null)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -108,10 +110,20 @@ namespace MapRoom
         }
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
-            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
+            var tab = _controlContext.GetKey(_window, Key.Tab);
+            if (tab == InputAction.Press && !_lastTab)
+            {
+                _cameraMode = !_cameraMode;
+                _lastTab = true;
+            }
+            else if (tab != InputAction.Press)
+            {
+                _lastTab = false;
+            }
+            base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode);
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
-            _terrainScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
+            _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
         }
         public override void Render()
         {

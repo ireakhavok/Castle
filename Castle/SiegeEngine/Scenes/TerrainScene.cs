@@ -94,10 +94,10 @@ namespace SiegeEngine.Scenes
             base.Update(deltaTime);
             _flyCamera.Update(deltaTime, 0f, true);
         }
-        public virtual void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
+        public virtual void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime);
-            _flyCamera.Update(deltaTime, 0f, true);
+            _flyCamera.Update(deltaTime, 0f, cameraMode);
         }
         public override void Render(IReadOnlyList<Entity> entities)
         {

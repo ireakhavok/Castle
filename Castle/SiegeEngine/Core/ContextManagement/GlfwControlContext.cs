@@ -1,8 +1,6 @@
-﻿// SiegeEngine.ContextManagement/GlfwControlContext.cs
-using System;
+﻿using System;
 using SiegeEngine.Core.Definitions;
 using Silk.NET.GLFW;
-
 namespace SiegeEngine.Core.ContextManagement
 {
     public unsafe class GlfwControlContext : IControlContext
@@ -47,6 +45,10 @@ namespace SiegeEngine.Core.ContextManagement
         public void GetCursorPos(nint window, out double xpos, out double ypos)
         {
             _glfw.GetCursorPos((WindowHandle*)window, out xpos, out ypos);
+        }
+        public void SetCursorPos(nint window, double xpos, double ypos)
+        {
+            _glfw.SetCursorPos((WindowHandle*)window, xpos, ypos);
         }
         public void SetInputMode(nint window, CursorAttribute attrib, CursorMode value)
         {
