@@ -1,3 +1,4 @@
+// File: DevMenu.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -106,7 +107,8 @@
         #regression:checked ~ .regression,
         #project:checked ~ .project,
         #map:checked ~ .map,
-        #reading:checked ~ .reading {
+        #reading:checked ~ .reading,
+        #terrain:checked ~ .terrain {
             display: block;
         }
 
@@ -243,6 +245,7 @@
                 <label for="project" class="button">Open Current Project</label>
                 <label for="map" class="button">Launch Map Room</label>
                 <label for="reading" class="button">Reading Chamber</label>
+                <label for="terrain" class="button">Terrain</label>
                 <a href="MainMenu.html" class="button">Back to Main Menu</a>
                 <div class="button">Exit</div>
             </div>
@@ -251,6 +254,7 @@
                 <input type="radio" id="project" name="menu-section">
                 <input type="radio" id="map" name="menu-section">
                 <input type="radio" id="reading" name="menu-section">
+                <input type="radio" id="terrain" name="menu-section">
                 <div class="content regression">
                     <div class="button" data-hook="SiegeEngine.Scenes.StartingPoints.SandboxScene.Launch">Run Sandbox Test</div>
                     <div class="toggle">
@@ -280,6 +284,12 @@
                 </div>
                 <div class="content reading">
                     <div class="button" data-hook="ReadingChamber.AnimationViewerPanel.Open">Open Animation Viewer</div>
+                </div>
+                <div class="content terrain">
+                    <div class="button" data-hook="MapRoom.TerrainCreatorPanel.OpenBlank">Create Blank Terrain</div>
+                </div>
+                <div class="content terrain">
+                    <div class="button" data-hook="MapRoom.TerrainCreatorPanel.OpenImport">Import Terrain from TIFF</div>
                 </div>
             </div>
         </div>
