@@ -20,15 +20,12 @@ namespace MapRoom
         public void CreateBlank()
         {
             Console.WriteLine("[TerrainCreatorScene] Created blank 2048×2048 terrain at 1m resolution");
+            BuildWireframeMesh(8);
         }
 
         public override void LoadTerrain(string path)
         {
             base.LoadTerrain(path);
-            Console.WriteLine($"[TerrainCreatorScene] Importing TIFF: {path}");
-            // TODO: TerrainParser.ParseTIFF(path) → populate _heightmap
-            _heightmap[1024, 1024] = 80f;   // visible test bump
-            BuildDebugTerrainMesh();
         }
     }
 }

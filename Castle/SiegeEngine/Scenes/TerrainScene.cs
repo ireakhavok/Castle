@@ -6,6 +6,7 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;
+using SiegeEngine.Core.Terrain;
 using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
@@ -17,8 +18,12 @@ namespace SiegeEngine.Scenes
     {
         protected CameraController _flyCamera;
         protected float[,] _heightmap;
-        protected const int TerrainResolution = 2048;
-        protected const float MeterPerUnit = 1.0f;
+        protected int _terrainWidth = 2048;
+        protected int _terrainHeight = 2048;
+        protected float _minHeight = 0;
+        protected float _maxHeight = 0;
+        protected const float VerticalExaggeration = 5.0f;
+        protected const int WireframeStep = 8;
 
         protected VertexBuffer _terrainBuffer;
         protected ShaderProgram _terrainShader;
@@ -33,42 +38,38 @@ namespace SiegeEngine.Scenes
         {
             base.Initialize(width, height);
 
-            _heightmap = new float[TerrainResolution, TerrainResolution];
-            for (int x = 0; x < TerrainResolution; x++)
-                for (int z = 0; z < TerrainResolution; z++)
-                    _heightmap[x, z] = 0f;
-
+            _heightmap = new float[_terrainWidth, _terrainHeight];
             _terrainBuffer = new VertexBuffer(_renderContext);
-            BuildDebugTerrainMesh();
-
+            BuildWireframeMesh(WireframeStep);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
         }
 
-        protected virtual void BuildDebugTerrainMesh()
+        protected virtual void BuildWireframeMesh(int step)
         {
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
-            int steps = 64;
-            float stepSize = TerrainResolution / (float)steps;
 
-            for (int x = 0; x <= steps; x++)
+            int stepsX = _terrainWidth / step;
+            int stepsZ = _terrainHeight / step;
+
+            for (int x = 0; x <= stepsX; x++)
             {
-                for (int z = 0; z <= steps; z++)
+                for (int z = 0; z <= stepsZ; z++)
                 {
-                    float wx = x * stepSize;
-                    float wz = z * stepSize;
-                    float y = GetHeight(wx, wz);
-                    vertices.Add(new Vertex(wx, y, wz, 0.4f, 0.8f, 0.4f, 1.0f));
+                    float wx = x * step;
+                    float wz = z * step;
+                    float y = GetHeight(wx, wz) * VerticalExaggeration;
+                    vertices.Add(new Vertex(wx, y, wz, 0.7f, 0.9f, 1.0f, 1.0f));
                 }
             }
 
-            for (int x = 0; x < steps; x++)
+            for (int x = 0; x < stepsX; x++)
             {
-                for (int z = 0; z < steps; z++)
+                for (int z = 0; z < stepsZ; z++)
                 {
-                    uint tl = (uint)(x * (steps + 1) + z);
+                    uint tl = (uint)(x * (stepsZ + 1) + z);
                     uint tr = tl + 1;
-                    uint bl = tl + (uint)(steps + 1);
+                    uint bl = tl + (uint)(stepsZ + 1);
                     uint br = bl + 1;
 
                     indices.Add(tl); indices.Add(tr);
@@ -81,14 +82,26 @@ namespace SiegeEngine.Scenes
 
         protected float GetHeight(float x, float z)
         {
-            int ix = (int)Math.Clamp(x / MeterPerUnit, 0, TerrainResolution - 1);
-            int iz = (int)Math.Clamp(z / MeterPerUnit, 0, TerrainResolution - 1);
+            int ix = (int)Math.Clamp(x, 0, _terrainWidth - 1);
+            int iz = (int)Math.Clamp(z, 0, _terrainHeight - 1);
             return _heightmap[ix, iz];
         }
 
         public virtual void LoadTerrain(string path)
         {
             Console.WriteLine($"[TerrainScene] Loading terrain from {path}");
+
+            try
+            {
+                _heightmap = TerrainParser.LoadUSGSDEM(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight);
+                Console.WriteLine($"[TerrainScene] Heightmap loaded: {_terrainWidth}x{_terrainHeight}, Height range: {_minHeight:F1} to {_maxHeight:F1}");
+
+                BuildWireframeMesh(WireframeStep);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TerrainScene] Failed to load TIFF: {ex.Message}");
+            }
         }
 
         public override void Update(float deltaTime)
@@ -105,15 +118,15 @@ namespace SiegeEngine.Scenes
 
         public override void Render(IReadOnlyList<Entity> entities)
         {
-            _renderContext.ClearColor(0.15f, 0.25f, 0.4f, 1.0f);
+            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
 
             Matrix4x4 view = _flyCamera.ViewMatrix;
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4f, (float)_width / _height, 0.1f, 10000f);
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4f, (float)_width / _height, 0.1f, 50000f);
 
             _terrainShader.Use();
-            _terrainShader.SetMatrix4("uView", view);          // Fixed order: name first
+            _terrainShader.SetMatrix4("uView", view);
             _terrainShader.SetMatrix4("uProjection", projection);
             _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
 
