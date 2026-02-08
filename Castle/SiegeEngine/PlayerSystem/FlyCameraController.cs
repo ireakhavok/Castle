@@ -66,6 +66,10 @@ namespace SiegeEngine.Scenes
                 _firstMouseMove = true;
             }
             float moveSpeed = 20.0f * deltaTime;
+            if (_controlContext.GetKey(_window, Key.LeftShift) == InputAction.Press)
+            {
+                moveSpeed *= 10f;
+            }
             float yawRad = _yaw * (float)(Math.PI / 180);
             float pitchRad = _pitch * (float)(Math.PI / 180);
             Vector3 forward = Vector3.Normalize(new Vector3(
