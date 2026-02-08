@@ -24,7 +24,6 @@ namespace SiegeEngine.Scenes
         private FBXModel _model;
         private ModelManager.ModelData _modelData;
         private string _currentAnimation;
-        private ShaderProgram _animationShader;
         private VertexBuffer _skeletonBuffer;
         private VertexBuffer _bindSkeletonBuffer;
         private ShaderProgram _pointShader;
@@ -61,7 +60,6 @@ namespace SiegeEngine.Scenes
         public ModelViewerScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
-            _animationShader = new ShaderProgram(_renderContext, AssetShader.VertexShaderSource, AssetShader.FragmentShaderSource);
             _ModelManager = new ModelManager(_renderContext);
             _modelData = new ModelManager.ModelData();
         }
@@ -84,7 +82,6 @@ namespace SiegeEngine.Scenes
             _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
             if (_model.HasSkin)
             {
-                _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
                 SetRestPose();
             }
             CenterCamera();
@@ -97,7 +94,6 @@ namespace SiegeEngine.Scenes
             _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
             if (_model.HasSkin)
             {
-                _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
                 SetRestPose();
             }
         }
@@ -494,7 +490,6 @@ namespace SiegeEngine.Scenes
         }
         public override void Dispose()
         {
-            _animationShader?.Dispose();
             _pointShader?.Dispose();
             _textShader?.Dispose();
             _skeletonBuffer?.Dispose();
