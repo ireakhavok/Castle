@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ReadingChamber\ReadingChamber.csproj" />
+    <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
+  </ItemGroup>
+
 </Project>
