@@ -19,7 +19,7 @@ namespace SiegeEngine.Scenes
         protected int _terrainHeight = 2048;
         protected float _minHeight = 0;
         protected float _maxHeight = 0;
-        protected const float VerticalExaggeration = 5.0f;
+        protected const float VerticalExaggeration = 1.0f;
         protected const int WireframeStep = 8;
         protected VertexBuffer _terrainBuffer;
         protected ShaderProgram _terrainShader;
@@ -51,7 +51,7 @@ namespace SiegeEngine.Scenes
                 {
                     float wx = x * step;
                     float wz = z * step;
-                    float y = GetHeight(wx, wz) * VerticalExaggeration;
+                    float y = GetHeight(wx, wz); // * VerticalExaggeration;
                     vertices.Add(new Vertex(wx, wz, y, 0.7f, 0.9f, 1.0f, 1.0f));
                 }
             }

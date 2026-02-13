@@ -4,7 +4,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
-
 namespace SiegeEngine.Core.Terrain
 {
     public class TiffTag
@@ -16,13 +15,11 @@ namespace SiegeEngine.Core.Terrain
         public uint ValueOrOffset { get; set; }
         public object Value { get; set; }
     }
-
     public class TiffIFD
     {
         public uint Offset { get; set; }
         public Dictionary<ushort, TiffTag> Tags { get; set; } = new Dictionary<ushort, TiffTag>();
     }
-
     public class TiffFile
     {
         public byte[] Bytes { get; set; }
@@ -46,7 +43,6 @@ namespace SiegeEngine.Core.Terrain
         public ushort SamplesPerPixel { get; set; } = 1;
         public ushort PlanarConfig { get; set; } = 1;
     }
-
     public static class TerrainParser
     {
         private static readonly Dictionary<ushort, string> TagNames = new Dictionary<ushort, string>
@@ -61,9 +57,8 @@ namespace SiegeEngine.Core.Terrain
             { 34735, "GeoKeyDirectoryTag" }, { 34736, "GeoDoubleParamsTag" },
             { 34737, "GeoAsciiParamsTag" }, { 42112, "GDAL_METADATA" },
             { 42113, "GDAL_NODATA" },
-            { 316, "SMinSampleValue" }   // fixes the "key '316' not present" crash
+            { 316, "SMinSampleValue" } // fixes the "key '316' not present" crash
         };
-
         private class LzwDecompressor
         {
             private byte[] input;
@@ -75,13 +70,11 @@ namespace SiegeEngine.Core.Terrain
             private int clearCode = 256;
             private int eoiCode = 257;
             private uint FillOrder;
-
             public LzwDecompressor(byte[] compressedData, uint fillOrder)
             {
                 input = compressedData;
                 FillOrder = fillOrder;
             }
-
             private int GetNextCode()
             {
                 while (bitsInBuffer < codeSize)
@@ -102,7 +95,6 @@ namespace SiegeEngine.Core.Terrain
                 bitBuffer &= ((1UL << bitsInBuffer) - 1UL);
                 return code;
             }
-
             public byte[] Decompress(bool isFirstBlock, int expectedLength)
             {
                 List<byte> output = new List<byte>(expectedLength);
@@ -112,15 +104,12 @@ namespace SiegeEngine.Core.Terrain
                 int nextCode = 258;
                 codeSize = 9;
                 List<int> codes = new List<int>();
-
                 int code = GetNextCode();
                 if (code < 0) return output.ToArray();
-
                 while (code != eoiCode)
                 {
                     if (output.Count >= expectedLength) break;
                     codes.Add(code);
-
                     if (code == clearCode)
                     {
                         dictionary.Clear();
@@ -136,7 +125,6 @@ namespace SiegeEngine.Core.Terrain
                         if (code < 0) break;
                         continue;
                     }
-
                     List<byte> entry;
                     if (dictionary.ContainsKey(code))
                     {
@@ -151,15 +139,12 @@ namespace SiegeEngine.Core.Terrain
                         Console.WriteLine($"[TerrainParser] Invalid LZW code: {code} (next={nextCode}, size={codeSize}) at output {output.Count}");
                         break;
                     }
-
                     output.AddRange(entry);
-
                     if (oldCode != -1)
                     {
                         var newEntry = new List<byte>(dictionary[oldCode]) { entry[0] };
                         dictionary[nextCode] = newEntry;
                         nextCode++;
-
                         // TIFF LZW EARLY-CHANGE (increase ONE code EARLY)
                         if (nextCode == ((1 << codeSize) - 1) && codeSize < 12)
                         {
@@ -170,22 +155,18 @@ namespace SiegeEngine.Core.Terrain
                     code = GetNextCode();
                     if (code < 0) break;
                 }
-
                 if (isFirstBlock)
                     Console.WriteLine($"[TerrainParser] First 10 codes: {string.Join(", ", codes.Take(10))}");
                 Console.WriteLine($"[TerrainParser] Decompressed {output.Count} bytes (expected {expectedLength}), pos {position}/{input.Length}");
-
                 return output.ToArray();
             }
         }
-
         private static void DecodeDeltaBytes(byte[] ptr, int cols, int channels)
         {
             for (int COL = 1; COL < cols; ++COL)
                 for (int CHAN = 0; CHAN < channels; ++CHAN)
                     ptr[COL * channels + CHAN] += ptr[(COL - 1) * channels + CHAN];
         }
-
         private static void DecodeFPDeltaRow(byte[] input, byte[] output, int cols, int channels, int bytesPerSample)
         {
             DecodeDeltaBytes(input, cols * bytesPerSample, channels);
@@ -194,7 +175,6 @@ namespace SiegeEngine.Core.Terrain
                 for (int BYTE = 0; BYTE < bytesPerSample; ++BYTE)
                     output[bytesPerSample * COL + BYTE] = input[(bytesPerSample - BYTE - 1) * rowIncrement + COL];
         }
-
         private static void ApplyFloatingPointPredictor3(byte[] decompressed, int tileWidth, int tileHeight, int bytesPerSample = 4, int channels = 1)
         {
             int rowLength = tileWidth * channels * bytesPerSample;
@@ -208,22 +188,18 @@ namespace SiegeEngine.Core.Terrain
                 Array.Copy(rowOutput, 0, decompressed, rowOff, rowLength);
             }
         }
-
         public static float[,] LoadUSGSDEM(string filePath, out int width, out int height, out float minHeight, out float maxHeight)
         {
             if (!File.Exists(filePath))
                 throw new FileNotFoundException("TIFF file not found", filePath);
-
             byte[] bytes = File.ReadAllBytes(filePath);
             if (bytes.Length < 8 || bytes[0] != 'I' || bytes[1] != 'I' || BitConverter.ToUInt16(bytes, 2) != 42)
                 throw new Exception("Not a valid TIFF file (II*42)");
-
             TiffFile tiffFile = new TiffFile { Bytes = bytes };
             tiffFile.Ifd = new TiffIFD();
             tiffFile.Ifd.Offset = BitConverter.ToUInt32(bytes, 4);
             uint numEntries = BitConverter.ToUInt16(bytes, (int)tiffFile.Ifd.Offset);
             Console.WriteLine($"[TerrainParser] IFD at {tiffFile.Ifd.Offset}, {numEntries} entries");
-
             for (uint i = 0; i < numEntries; i++)
             {
                 uint entryOffset = tiffFile.Ifd.Offset + 2 + i * 12;
@@ -235,7 +211,6 @@ namespace SiegeEngine.Core.Terrain
                     ValueOrOffset = BitConverter.ToUInt32(bytes, (int)entryOffset + 8)
                 };
                 tag.Name = TagNames.TryGetValue(tag.Tag, out var name) ? name : $"Unknown({tag.Tag})";
-
                 uint valSize = tag.Type switch
                 {
                     1 or 6 => 1,
@@ -246,7 +221,6 @@ namespace SiegeEngine.Core.Terrain
                     _ => throw new Exception($"Unknown TIFF type {tag.Type}")
                 };
                 uint dataSize = valSize * tag.Count;
-
                 if (tag.Count == 1 && tag.Type != 2)
                 {
                     uint value = tag.Type == 3 ? (uint)BitConverter.ToUInt16(bytes, (int)entryOffset + 8) : tag.ValueOrOffset;
@@ -277,9 +251,7 @@ namespace SiegeEngine.Core.Terrain
                         ? new string(values.OfType<char>().ToArray()).TrimEnd('\0')
                         : values;
                 }
-
                 tiffFile.Ifd.Tags[tag.Tag] = tag;
-
                 if (tag.Count == 1 && tag.Value is uint tagValue)
                 {
                     switch (tag.Tag)
@@ -315,50 +287,41 @@ namespace SiegeEngine.Core.Terrain
                     }
                 }
             }
-
             Console.WriteLine("[TerrainParser] All parsed TIFF tags (meaningful names):");
             foreach (var kv in tiffFile.Ifd.Tags.OrderBy(k => k.Key))
             {
                 var t = kv.Value;
-                Console.WriteLine($"  Tag {t.Name} ({t.Tag}): type={t.Type}, count={t.Count}, value={t.Value}");
+                Console.WriteLine($" Tag {t.Name} ({t.Tag}): type={t.Type}, count={t.Count}, value={t.Value}");
             }
-
             bool isTiled = tiffFile.TileWidth > 0 && tiffFile.TileLength > 0;
             if (tiffFile.SampleFormat != 3 || tiffFile.BitsPerSample != 32)
                 throw new Exception($"Unsupported format: SampleFormat={tiffFile.SampleFormat}, BitsPerSample={tiffFile.BitsPerSample}");
             if (tiffFile.NumBlocks == 0)
                 throw new Exception("No tiles or strips found");
-
             float noData = float.MinValue;
             if (tiffFile.Ifd.Tags.TryGetValue(42113, out var ndTag) && ndTag.Value is string ndStr && float.TryParse(ndStr, out float nd))
             {
                 noData = nd;
                 Console.WriteLine($"[TerrainParser] NoData value: {noData}");
             }
-
             List<byte> fullRawData = new List<byte>((int)(tiffFile.ImageWidth * tiffFile.ImageHeight * 4));
             uint numTilesX = isTiled ? (tiffFile.ImageWidth + tiffFile.TileWidth - 1) / tiffFile.TileWidth : 1;
             uint numTilesY = isTiled ? (tiffFile.ImageHeight + tiffFile.TileLength - 1) / tiffFile.TileLength : 1;
-
             for (uint i = 0; i < tiffFile.NumBlocks; i++)
             {
                 uint tileX = i % numTilesX;
                 uint tileY = i / numTilesX;
                 int thisTileW = isTiled ? (int)Math.Min(tiffFile.TileWidth, tiffFile.ImageWidth - tileX * tiffFile.TileWidth) : (int)tiffFile.ImageWidth;
                 int thisTileH = isTiled ? (int)Math.Min(tiffFile.TileLength, tiffFile.ImageHeight - tileY * tiffFile.TileLength) : (int)tiffFile.ImageHeight;
-                int expectedBlockSize = thisTileW * thisTileH * (int)(tiffFile.BitsPerSample / 8);
-
+                int expectedBlockSize = isTiled ? (int)(tiffFile.TileWidth * tiffFile.TileLength * (tiffFile.BitsPerSample / 8)) : thisTileW * thisTileH * (int)(tiffFile.BitsPerSample / 8);
                 uint offset = tiffFile.BlockOffsets[(int)i];
                 uint byteCount = tiffFile.BlockByteCounts[(int)i];
                 if (offset + byteCount > bytes.Length) throw new Exception("Data out of bounds");
-
                 byte[] blockData = new byte[byteCount];
                 Array.Copy(bytes, (int)offset, blockData, 0, (int)byteCount);
-
                 byte[] decompressed = tiffFile.Compression == 5
                     ? new LzwDecompressor(blockData, tiffFile.FillOrder).Decompress(i == 0, expectedBlockSize)
                     : blockData;
-
                 if (decompressed.Length != expectedBlockSize)
                 {
                     byte[] adjusted = new byte[expectedBlockSize];
@@ -367,13 +330,24 @@ namespace SiegeEngine.Core.Terrain
                     decompressed = adjusted;
                     Console.WriteLine($"[TerrainParser] Adjusted block {i} length from {decompressed.Length} to {expectedBlockSize}");
                 }
-
                 if (tiffFile.Predictor == 3)
-                    ApplyFloatingPointPredictor3(decompressed, thisTileW, thisTileH);
-
-                fullRawData.AddRange(decompressed);
+                    ApplyFloatingPointPredictor3(decompressed, isTiled ? (int)tiffFile.TileWidth : thisTileW, isTiled ? (int)tiffFile.TileLength : thisTileH);
+                byte[] dataToAdd = decompressed;
+                if (isTiled && (thisTileW < (int)tiffFile.TileWidth || thisTileH < (int)tiffFile.TileLength))
+                {
+                    int fullW = (int)tiffFile.TileWidth;
+                    int fullH = (int)tiffFile.TileLength;
+                    int bytesPerSample = (int)(tiffFile.BitsPerSample / 8);
+                    int validRowBytes = thisTileW * bytesPerSample;
+                    int fullRowBytes = fullW * bytesPerSample;
+                    dataToAdd = new byte[thisTileW * thisTileH * bytesPerSample];
+                    for (int r = 0; r < thisTileH; r++)
+                    {
+                        Array.Copy(decompressed, r * fullRowBytes, dataToAdd, r * validRowBytes, validRowBytes);
+                    }
+                }
+                fullRawData.AddRange(dataToAdd);
             }
-
             byte[] rawData = fullRawData.ToArray();
             width = (int)tiffFile.ImageWidth;
             height = (int)tiffFile.ImageHeight;
@@ -381,7 +355,6 @@ namespace SiegeEngine.Core.Terrain
             minHeight = float.MaxValue;
             maxHeight = float.MinValue;
             int idx = 0;
-
             if (isTiled)
             {
                 for (uint tileY = 0; tileY < numTilesY; tileY++)
@@ -422,9 +395,7 @@ namespace SiegeEngine.Core.Terrain
                         heightmap[x, y] = h;
                     }
             }
-
             Console.WriteLine($"[TerrainParser] Loaded {width}x{height} USGS DEM. Raw Min={minHeight:F1}m, Max={maxHeight:F1}m");
-
             bool debugPng = true;
             if (debugPng)
             {
@@ -442,10 +413,8 @@ namespace SiegeEngine.Core.Terrain
                 bmp.Save(pngPath, ImageFormat.Png);
                 Console.WriteLine($"[TerrainParser] Saved debug PNG: {pngPath}");
             }
-
             return heightmap;
         }
-
         private static float ToSingleLittleEndian(byte[] bytes, int offset)
         {
             if (!BitConverter.IsLittleEndian)
