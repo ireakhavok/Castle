@@ -3,21 +3,26 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Collections.Generic;
+using System.Linq;
+
 namespace SiegeEngine.Core.Terrain
 {
     public class TiffTag
     {
         public ushort Tag { get; set; }
+        public string Name { get; set; } = "Unknown";
         public ushort Type { get; set; }
         public uint Count { get; set; }
         public uint ValueOrOffset { get; set; }
-        public object Value { get; set; } // Resolved value if multi or offset
+        public object Value { get; set; }
     }
+
     public class TiffIFD
     {
         public uint Offset { get; set; }
-        public List<TiffTag> Tags { get; set; } = new List<TiffTag>();
+        public Dictionary<ushort, TiffTag> Tags { get; set; } = new Dictionary<ushort, TiffTag>();
     }
+
     public class TiffFile
     {
         public byte[] Bytes { get; set; }
@@ -31,15 +36,34 @@ namespace SiegeEngine.Core.Terrain
         public uint TileWidth { get; set; }
         public uint TileLength { get; set; }
         public uint Predictor { get; set; }
-        public uint FillOrder { get; set; } = 1; // Default
+        public uint FillOrder { get; set; } = 1;
         public List<uint> BlockOffsets { get; set; } = new List<uint>();
         public List<uint> BlockByteCounts { get; set; } = new List<uint>();
         public ushort BlockOffsetsType { get; set; }
         public ushort BlockByteCountsType { get; set; }
         public uint NumBlocks { get; set; }
+        public ushort PhotometricInterpretation { get; set; } = 1;
+        public ushort SamplesPerPixel { get; set; } = 1;
+        public ushort PlanarConfig { get; set; } = 1;
     }
+
     public static class TerrainParser
     {
+        private static readonly Dictionary<ushort, string> TagNames = new Dictionary<ushort, string>
+        {
+            { 256, "ImageWidth" }, { 257, "ImageLength" }, { 258, "BitsPerSample" },
+            { 259, "Compression" }, { 262, "PhotometricInterpretation" },
+            { 266, "FillOrder" }, { 277, "SamplesPerPixel" }, { 278, "RowsPerStrip" },
+            { 284, "PlanarConfiguration" }, { 317, "Predictor" },
+            { 322, "TileWidth" }, { 323, "TileLength" }, { 324, "TileOffsets" },
+            { 325, "TileByteCounts" }, { 339, "SampleFormat" },
+            { 33550, "ModelPixelScaleTag" }, { 33922, "ModelTiepointTag" },
+            { 34735, "GeoKeyDirectoryTag" }, { 34736, "GeoDoubleParamsTag" },
+            { 34737, "GeoAsciiParamsTag" }, { 42112, "GDAL_METADATA" },
+            { 42113, "GDAL_NODATA" },
+            { 316, "SMinSampleValue" }   // fixes the "key '316' not present" crash
+        };
+
         private class LzwDecompressor
         {
             private byte[] input;
@@ -50,20 +74,21 @@ namespace SiegeEngine.Core.Terrain
             private int codeSize = 9;
             private int clearCode = 256;
             private int eoiCode = 257;
-            private bool earlyChange = true; // For TIFF-standard LZW
             private uint FillOrder;
+
             public LzwDecompressor(byte[] compressedData, uint fillOrder)
             {
                 input = compressedData;
                 FillOrder = fillOrder;
             }
+
             private int GetNextCode()
             {
                 while (bitsInBuffer < codeSize)
                 {
                     if (position >= input.Length) return eoiCode;
                     byte b = input[position++];
-                    if (FillOrder == 2) // If FillOrder=2, reverse bits
+                    if (FillOrder == 2)
                     {
                         b = (byte)(((b & 0x55) << 1) | ((b & 0xAA) >> 1));
                         b = (byte)(((b & 0x33) << 2) | ((b & 0xCC) >> 2));
@@ -72,133 +97,169 @@ namespace SiegeEngine.Core.Terrain
                     bitBuffer = (bitBuffer << 8) | b;
                     bitsInBuffer += 8;
                 }
-                int code = (int)(bitBuffer >> (bitsInBuffer - codeSize));
+                int code = (int)(bitBuffer >> (bitsInBuffer - codeSize)) & ((1 << codeSize) - 1);
                 bitsInBuffer -= codeSize;
                 bitBuffer &= ((1UL << bitsInBuffer) - 1UL);
                 return code;
             }
-            public byte[] Decompress(bool isFirstBlock)
+
+            public byte[] Decompress(bool isFirstBlock, int expectedLength)
             {
-                List<byte> output = new List<byte>();
+                List<byte> output = new List<byte>(expectedLength);
                 dictionary.Clear();
-                for (int i = 0; i < 256; i++)
-                {
-                    dictionary[i] = new List<byte> { (byte)i };
-                }
+                for (int i = 0; i < 256; i++) dictionary[i] = new List<byte> { (byte)i };
                 int oldCode = -1;
                 int nextCode = 258;
                 codeSize = 9;
                 List<int> codes = new List<int>();
+
                 int code = GetNextCode();
-                codes.Add(code);
+                if (code < 0) return output.ToArray();
+
                 while (code != eoiCode)
                 {
+                    if (output.Count >= expectedLength) break;
+                    codes.Add(code);
+
                     if (code == clearCode)
                     {
                         dictionary.Clear();
-                        for (int i = 0; i < 256; i++)
-                        {
-                            dictionary[i] = new List<byte> { (byte)i };
-                        }
+                        for (int i = 0; i < 256; i++) dictionary[i] = new List<byte> { (byte)i };
                         codeSize = 9;
                         nextCode = 258;
                         oldCode = -1;
                         code = GetNextCode();
-                        codes.Add(code);
-                        if (code == eoiCode) break;
-                        output.Add((byte)code);
+                        if (code < 0 || code == eoiCode) break;
+                        output.AddRange(dictionary[code]);
                         oldCode = code;
+                        code = GetNextCode();
+                        if (code < 0) break;
                         continue;
                     }
+
                     List<byte> entry;
-                    if (code < 256)
-                    {
-                        entry = new List<byte> { (byte)code };
-                    }
-                    else if (dictionary.ContainsKey(code))
+                    if (dictionary.ContainsKey(code))
                     {
                         entry = dictionary[code];
                     }
-                    else if (code == nextCode)
+                    else if (code == nextCode && oldCode != -1)
                     {
-                        entry = new List<byte>(dictionary[oldCode]);
-                        entry.Add(dictionary[oldCode][0]);
+                        entry = new List<byte>(dictionary[oldCode]) { dictionary[oldCode][0] };
                     }
                     else
                     {
-                        Console.WriteLine($"[TerrainParser] Invalid LZW code: {code} > {nextCode} at output length {output.Count}, codeSize {codeSize}");
+                        Console.WriteLine($"[TerrainParser] Invalid LZW code: {code} (next={nextCode}, size={codeSize}) at output {output.Count}");
                         break;
                     }
+
                     output.AddRange(entry);
+
                     if (oldCode != -1)
                     {
-                        List<byte> newEntry = new List<byte>(dictionary[oldCode]);
-                        newEntry.Add(entry[0]);
+                        var newEntry = new List<byte>(dictionary[oldCode]) { entry[0] };
                         dictionary[nextCode] = newEntry;
-                        int offset = earlyChange ? 1 : 0;
-                        if (nextCode == ((1 << codeSize) - offset) && codeSize < 12)
+                        nextCode++;
+
+                        // TIFF LZW EARLY-CHANGE (increase ONE code EARLY)
+                        if (nextCode == ((1 << codeSize) - 1) && codeSize < 12)
                         {
                             codeSize++;
                         }
-                        nextCode++;
                     }
                     oldCode = code;
                     code = GetNextCode();
-                    codes.Add(code);
+                    if (code < 0) break;
                 }
+
                 if (isFirstBlock)
-                {
-                    Console.WriteLine($"[TerrainParser] First 10 codes in first block: {string.Join(", ", codes.GetRange(0, Math.Min(10, codes.Count)))}");
-                }
+                    Console.WriteLine($"[TerrainParser] First 10 codes: {string.Join(", ", codes.Take(10))}");
+                Console.WriteLine($"[TerrainParser] Decompressed {output.Count} bytes (expected {expectedLength}), pos {position}/{input.Length}");
+
                 return output.ToArray();
             }
         }
+
+        private static void DecodeDeltaBytes(byte[] ptr, int cols, int channels)
+        {
+            for (int COL = 1; COL < cols; ++COL)
+                for (int CHAN = 0; CHAN < channels; ++CHAN)
+                    ptr[COL * channels + CHAN] += ptr[(COL - 1) * channels + CHAN];
+        }
+
+        private static void DecodeFPDeltaRow(byte[] input, byte[] output, int cols, int channels, int bytesPerSample)
+        {
+            DecodeDeltaBytes(input, cols * bytesPerSample, channels);
+            int rowIncrement = cols * channels;
+            for (int COL = 0; COL < rowIncrement; ++COL)
+                for (int BYTE = 0; BYTE < bytesPerSample; ++BYTE)
+                    output[bytesPerSample * COL + BYTE] = input[(bytesPerSample - BYTE - 1) * rowIncrement + COL];
+        }
+
+        private static void ApplyFloatingPointPredictor3(byte[] decompressed, int tileWidth, int tileHeight, int bytesPerSample = 4, int channels = 1)
+        {
+            int rowLength = tileWidth * channels * bytesPerSample;
+            for (int r = 0; r < tileHeight; r++)
+            {
+                int rowOff = r * rowLength;
+                byte[] rowInput = new byte[rowLength];
+                Array.Copy(decompressed, rowOff, rowInput, 0, rowLength);
+                byte[] rowOutput = new byte[rowLength];
+                DecodeFPDeltaRow(rowInput, rowOutput, tileWidth, channels, bytesPerSample);
+                Array.Copy(rowOutput, 0, decompressed, rowOff, rowLength);
+            }
+        }
+
         public static float[,] LoadUSGSDEM(string filePath, out int width, out int height, out float minHeight, out float maxHeight)
         {
             if (!File.Exists(filePath))
                 throw new FileNotFoundException("TIFF file not found", filePath);
+
             byte[] bytes = File.ReadAllBytes(filePath);
             if (bytes.Length < 8 || bytes[0] != 'I' || bytes[1] != 'I' || BitConverter.ToUInt16(bytes, 2) != 42)
-            {
-                throw new Exception("Not a valid TIFF file");
-            }
+                throw new Exception("Not a valid TIFF file (II*42)");
+
             TiffFile tiffFile = new TiffFile { Bytes = bytes };
             tiffFile.Ifd = new TiffIFD();
             tiffFile.Ifd.Offset = BitConverter.ToUInt32(bytes, 4);
             uint numEntries = BitConverter.ToUInt16(bytes, (int)tiffFile.Ifd.Offset);
             Console.WriteLine($"[TerrainParser] IFD at {tiffFile.Ifd.Offset}, {numEntries} entries");
+
             for (uint i = 0; i < numEntries; i++)
             {
                 uint entryOffset = tiffFile.Ifd.Offset + 2 + i * 12;
-                TiffTag tag = new TiffTag();
-                tag.Tag = BitConverter.ToUInt16(bytes, (int)entryOffset);
-                tag.Type = BitConverter.ToUInt16(bytes, (int)entryOffset + 2);
-                tag.Count = BitConverter.ToUInt32(bytes, (int)entryOffset + 4);
-                tag.ValueOrOffset = BitConverter.ToUInt32(bytes, (int)entryOffset + 8);
-                if (tag.Count == 1)
+                TiffTag tag = new TiffTag
                 {
-                    uint value = tag.Type == 3 ? (ushort)tag.ValueOrOffset : tag.ValueOrOffset;
+                    Tag = BitConverter.ToUInt16(bytes, (int)entryOffset),
+                    Type = BitConverter.ToUInt16(bytes, (int)entryOffset + 2),
+                    Count = BitConverter.ToUInt32(bytes, (int)entryOffset + 4),
+                    ValueOrOffset = BitConverter.ToUInt32(bytes, (int)entryOffset + 8)
+                };
+                tag.Name = TagNames.TryGetValue(tag.Tag, out var name) ? name : $"Unknown({tag.Tag})";
+
+                uint valSize = tag.Type switch
+                {
+                    1 or 6 => 1,
+                    2 => 1,
+                    3 or 8 => 2,
+                    4 or 9 or 11 => 4,
+                    5 or 10 or 12 => 8,
+                    _ => throw new Exception($"Unknown TIFF type {tag.Type}")
+                };
+                uint dataSize = valSize * tag.Count;
+
+                if (tag.Count == 1 && tag.Type != 2)
+                {
+                    uint value = tag.Type == 3 ? (uint)BitConverter.ToUInt16(bytes, (int)entryOffset + 8) : tag.ValueOrOffset;
                     tag.Value = value;
-                    Console.WriteLine($"[TerrainParser] Tag {tag.Tag}: value {value} type {tag.Type} count {tag.Count}");
                 }
                 else
                 {
-                    Console.WriteLine($"[TerrainParser] Tag {tag.Tag} (multi {tag.Count}): type {tag.Type} offset {tag.ValueOrOffset}");
-                    uint valSize = tag.Type switch
-                    {
-                        1 or 6 => 1,
-                        2 => 1,
-                        3 or 8 => 2,
-                        4 or 9 or 11 => 4,
-                        5 or 10 or 12 => 8,
-                        _ => throw new Exception($"Unknown type {tag.Type}")
-                    };
-                    uint dataSize = valSize * tag.Count;
-                    if (dataSize > bytes.Length - tag.ValueOrOffset) throw new Exception("Data out of bounds");
+                    uint offBase = dataSize <= 4 ? (uint)(entryOffset + 8) : tag.ValueOrOffset;
+                    if (offBase + dataSize > bytes.Length) throw new Exception("Data out of bounds");
                     List<object> values = new List<object>();
                     for (uint j = 0; j < tag.Count; j++)
                     {
-                        uint off = tag.ValueOrOffset + j * valSize;
+                        uint off = offBase + j * valSize;
                         object val = tag.Type switch
                         {
                             1 => bytes[off],
@@ -206,41 +267,35 @@ namespace SiegeEngine.Core.Terrain
                             3 => BitConverter.ToUInt16(bytes, (int)off),
                             4 => BitConverter.ToUInt32(bytes, (int)off),
                             5 => (BitConverter.ToUInt32(bytes, (int)off), BitConverter.ToUInt32(bytes, (int)off + 4)),
-                            6 => (sbyte)bytes[off],
-                            8 => BitConverter.ToInt16(bytes, (int)off),
-                            9 => BitConverter.ToInt32(bytes, (int)off),
-                            10 => (BitConverter.ToInt32(bytes, (int)off), BitConverter.ToInt32(bytes, (int)off + 4)),
                             11 => BitConverter.ToSingle(bytes, (int)off),
                             12 => BitConverter.ToDouble(bytes, (int)off),
                             _ => null
                         };
                         values.Add(val);
                     }
-                    if (tag.Type == 2)
-                    {
-                        string str = new string(values.ConvertAll(c => (char)c).ToArray()).TrimEnd('\0');
-                        tag.Value = str;
-                    }
-                    else
-                    {
-                        tag.Value = values;
-                    }
+                    tag.Value = tag.Type == 2
+                        ? new string(values.OfType<char>().ToArray()).TrimEnd('\0')
+                        : values;
                 }
-                tiffFile.Ifd.Tags.Add(tag);
-                if (tag.Count == 1)
+
+                tiffFile.Ifd.Tags[tag.Tag] = tag;
+
+                if (tag.Count == 1 && tag.Value is uint tagValue)
                 {
-                    uint tagValue = Convert.ToUInt32(tag.Value);
                     switch (tag.Tag)
                     {
                         case 256: tiffFile.ImageWidth = tagValue; break;
                         case 257: tiffFile.ImageHeight = tagValue; break;
                         case 258: tiffFile.BitsPerSample = tagValue; break;
                         case 259: tiffFile.Compression = tagValue; break;
-                        case 339: tiffFile.SampleFormat = tagValue; break;
+                        case 262: tiffFile.PhotometricInterpretation = (ushort)tagValue; break;
+                        case 277: tiffFile.SamplesPerPixel = (ushort)tagValue; break;
                         case 278: tiffFile.RowsPerStrip = tagValue; break;
+                        case 284: tiffFile.PlanarConfig = (ushort)tagValue; break;
                         case 317: tiffFile.Predictor = tagValue; break;
                         case 322: tiffFile.TileWidth = tagValue; break;
                         case 323: tiffFile.TileLength = tagValue; break;
+                        case 339: tiffFile.SampleFormat = tagValue; break;
                         case 266: tiffFile.FillOrder = tagValue; break;
                     }
                 }
@@ -260,81 +315,65 @@ namespace SiegeEngine.Core.Terrain
                     }
                 }
             }
-            bool isTiled = tiffFile.TileWidth > 0;
+
+            Console.WriteLine("[TerrainParser] All parsed TIFF tags (meaningful names):");
+            foreach (var kv in tiffFile.Ifd.Tags.OrderBy(k => k.Key))
+            {
+                var t = kv.Value;
+                Console.WriteLine($"  Tag {t.Name} ({t.Tag}): type={t.Type}, count={t.Count}, value={t.Value}");
+            }
+
+            bool isTiled = tiffFile.TileWidth > 0 && tiffFile.TileLength > 0;
             if (tiffFile.SampleFormat != 3 || tiffFile.BitsPerSample != 32)
-            {
                 throw new Exception($"Unsupported format: SampleFormat={tiffFile.SampleFormat}, BitsPerSample={tiffFile.BitsPerSample}");
-            }
             if (tiffFile.NumBlocks == 0)
-            {
                 throw new Exception("No tiles or strips found");
+
+            float noData = float.MinValue;
+            if (tiffFile.Ifd.Tags.TryGetValue(42113, out var ndTag) && ndTag.Value is string ndStr && float.TryParse(ndStr, out float nd))
+            {
+                noData = nd;
+                Console.WriteLine($"[TerrainParser] NoData value: {noData}");
             }
+
             List<byte> fullRawData = new List<byte>((int)(tiffFile.ImageWidth * tiffFile.ImageHeight * 4));
-            uint numTilesX = (tiffFile.ImageWidth + tiffFile.TileWidth - 1) / tiffFile.TileWidth;
-            uint numTilesY = (tiffFile.ImageHeight + tiffFile.TileLength - 1) / tiffFile.TileLength;
+            uint numTilesX = isTiled ? (tiffFile.ImageWidth + tiffFile.TileWidth - 1) / tiffFile.TileWidth : 1;
+            uint numTilesY = isTiled ? (tiffFile.ImageHeight + tiffFile.TileLength - 1) / tiffFile.TileLength : 1;
+
             for (uint i = 0; i < tiffFile.NumBlocks; i++)
             {
                 uint tileX = i % numTilesX;
                 uint tileY = i / numTilesX;
-                int thisTileW = (int)Math.Min(tiffFile.TileWidth, tiffFile.ImageWidth - tileX * tiffFile.TileWidth);
-                int thisTileH = (int)Math.Min(tiffFile.TileLength, tiffFile.ImageHeight - tileY * tiffFile.TileLength);
+                int thisTileW = isTiled ? (int)Math.Min(tiffFile.TileWidth, tiffFile.ImageWidth - tileX * tiffFile.TileWidth) : (int)tiffFile.ImageWidth;
+                int thisTileH = isTiled ? (int)Math.Min(tiffFile.TileLength, tiffFile.ImageHeight - tileY * tiffFile.TileLength) : (int)tiffFile.ImageHeight;
                 int expectedBlockSize = thisTileW * thisTileH * (int)(tiffFile.BitsPerSample / 8);
+
                 uint offset = tiffFile.BlockOffsets[(int)i];
                 uint byteCount = tiffFile.BlockByteCounts[(int)i];
                 if (offset + byteCount > bytes.Length) throw new Exception("Data out of bounds");
+
                 byte[] blockData = new byte[byteCount];
                 Array.Copy(bytes, (int)offset, blockData, 0, (int)byteCount);
-                if (i == 0)
+
+                byte[] decompressed = tiffFile.Compression == 5
+                    ? new LzwDecompressor(blockData, tiffFile.FillOrder).Decompress(i == 0, expectedBlockSize)
+                    : blockData;
+
+                if (decompressed.Length != expectedBlockSize)
                 {
-                    Console.WriteLine($"[TerrainParser] First block compressed first 4 bytes: {BitConverter.ToString(blockData, 0, Math.Min(4, blockData.Length))}");
+                    byte[] adjusted = new byte[expectedBlockSize];
+                    int copyLen = Math.Min(decompressed.Length, expectedBlockSize);
+                    Array.Copy(decompressed, 0, adjusted, 0, copyLen);
+                    decompressed = adjusted;
+                    Console.WriteLine($"[TerrainParser] Adjusted block {i} length from {decompressed.Length} to {expectedBlockSize}");
                 }
-                byte[] decompressed;
-                if (tiffFile.Compression == 5)
-                {
-                    decompressed = new LzwDecompressor(blockData, tiffFile.FillOrder).Decompress(i == 0);
-                }
-                else if (tiffFile.Compression == 1)
-                {
-                    decompressed = blockData;
-                }
-                else
-                {
-                    throw new Exception($"Unsupported compression: {tiffFile.Compression}");
-                }
-                Console.WriteLine($"[TerrainParser] Block {i} decompressed length: {decompressed.Length} (expected {expectedBlockSize})");
-                if (decompressed.Length < expectedBlockSize)
-                {
-                    byte[] padded = new byte[expectedBlockSize];
-                    Array.Copy(decompressed, 0, padded, 0, decompressed.Length);
-                    decompressed = padded;
-                    Console.WriteLine($"[TerrainParser] Padded block {i} with {expectedBlockSize - decompressed.Length} zeros");
-                }
-                if (decompressed.Length > expectedBlockSize)
-                {
-                    Console.WriteLine($"[TerrainParser] Warning: decompressed longer than expected for block {i}, truncating");
-                    byte[] truncated = new byte[expectedBlockSize];
-                    Array.Copy(decompressed, 0, truncated, 0, expectedBlockSize);
-                    decompressed = truncated;
-                }
-                // Apply predictor if necessary
+
                 if (tiffFile.Predictor == 3)
-                {
-                    int rowLength = thisTileW * 4;
-                    int numRows = thisTileH;
-                    for (int r = 0; r < numRows; r++)
-                    {
-                        int rowOff = r * rowLength;
-                        for (int c = 4; c < rowLength; c += 4)
-                        {
-                            float prev = ToSingleLittleEndian(decompressed, rowOff + c - 4);
-                            float delta = ToSingleLittleEndian(decompressed, rowOff + c);
-                            byte[] newV = GetBytesLittleEndian(prev + delta);
-                            Array.Copy(newV, 0, decompressed, rowOff + c, 4);
-                        }
-                    }
-                }
+                    ApplyFloatingPointPredictor3(decompressed, thisTileW, thisTileH);
+
                 fullRawData.AddRange(decompressed);
             }
+
             byte[] rawData = fullRawData.ToArray();
             width = (int)tiffFile.ImageWidth;
             height = (int)tiffFile.ImageHeight;
@@ -342,58 +381,50 @@ namespace SiegeEngine.Core.Terrain
             minHeight = float.MaxValue;
             maxHeight = float.MinValue;
             int idx = 0;
+
             if (isTiled)
             {
                 for (uint tileY = 0; tileY < numTilesY; tileY++)
-                {
                     for (uint tileX = 0; tileX < numTilesX; tileX++)
                     {
                         int thisTileW = (int)Math.Min(tiffFile.TileWidth, tiffFile.ImageWidth - tileX * tiffFile.TileWidth);
                         int thisTileH = (int)Math.Min(tiffFile.TileLength, tiffFile.ImageHeight - tileY * tiffFile.TileLength);
                         for (int row = 0; row < thisTileH; row++)
-                        {
                             for (int col = 0; col < thisTileW; col++)
                             {
                                 float h = ToSingleLittleEndian(rawData, idx);
                                 idx += 4;
-                                if (float.IsNaN(h) || float.IsInfinity(h) || h <= -999999f || h < -10000f)
-                                {
+                                if (float.IsNaN(h) || float.IsInfinity(h) || (noData != float.MinValue && Math.Abs(h - noData) < 0.001f))
                                     h = 0f;
-                                }
                                 else
                                 {
-                                    if (h < minHeight) minHeight = h;
-                                    if (h > maxHeight) maxHeight = h;
+                                    minHeight = Math.Min(minHeight, h);
+                                    maxHeight = Math.Max(maxHeight, h);
                                 }
                                 heightmap[(int)(tileX * tiffFile.TileWidth + col), (int)(tileY * tiffFile.TileLength + row)] = h;
                             }
-                        }
                     }
-                }
             }
             else
             {
                 for (int y = 0; y < height; y++)
-                {
                     for (int x = 0; x < width; x++)
                     {
                         float h = ToSingleLittleEndian(rawData, idx);
                         idx += 4;
-                        if (float.IsNaN(h) || float.IsInfinity(h) || h <= -999999f || h < -10000f)
-                        {
+                        if (float.IsNaN(h) || float.IsInfinity(h) || (noData != float.MinValue && Math.Abs(h - noData) < 0.001f))
                             h = 0f;
-                        }
                         else
                         {
-                            if (h < minHeight) minHeight = h;
-                            if (h > maxHeight) maxHeight = h;
+                            minHeight = Math.Min(minHeight, h);
+                            maxHeight = Math.Max(maxHeight, h);
                         }
                         heightmap[x, y] = h;
                     }
-                }
             }
+
             Console.WriteLine($"[TerrainParser] Loaded {width}x{height} USGS DEM. Raw Min={minHeight:F1}m, Max={maxHeight:F1}m");
-            // Optional: Save as PNG for debug
+
             bool debugPng = true;
             if (debugPng)
             {
@@ -402,40 +433,27 @@ namespace SiegeEngine.Core.Terrain
                 float range = maxHeight - minHeight;
                 if (range == 0) range = 1;
                 for (int y = 0; y < height; y++)
-                {
                     for (int x = 0; x < width; x++)
                     {
                         float norm = (heightmap[x, y] - minHeight) / range;
                         byte val = (byte)(norm * 255);
                         bmp.SetPixel(x, y, Color.FromArgb(val, val, val));
                     }
-                }
                 bmp.Save(pngPath, ImageFormat.Png);
                 Console.WriteLine($"[TerrainParser] Saved debug PNG: {pngPath}");
             }
+
             return heightmap;
         }
+
         private static float ToSingleLittleEndian(byte[] bytes, int offset)
         {
             if (!BitConverter.IsLittleEndian)
             {
-                byte[] reversed = new byte[4];
-                reversed[0] = bytes[offset + 3];
-                reversed[1] = bytes[offset + 2];
-                reversed[2] = bytes[offset + 1];
-                reversed[3] = bytes[offset];
+                byte[] reversed = new byte[4] { bytes[offset + 3], bytes[offset + 2], bytes[offset + 1], bytes[offset] };
                 return BitConverter.ToSingle(reversed, 0);
             }
             return BitConverter.ToSingle(bytes, offset);
-        }
-        private static byte[] GetBytesLittleEndian(float value)
-        {
-            byte[] bytes = BitConverter.GetBytes(value);
-            if (!BitConverter.IsLittleEndian)
-            {
-                Array.Reverse(bytes);
-            }
-            return bytes;
         }
     }
 }
