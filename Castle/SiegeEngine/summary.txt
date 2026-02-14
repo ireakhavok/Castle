@@ -1342,22 +1342,16 @@ Folder: Core
     - Methods:
       - constructor TdElement()
 - File: TerrainParser.cs
-  - Class: LzwDecompressor (Namespace: SiegeEngine.Core.Terrain)
-    - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Linq
+  - Class: GeoReference (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.IO.Compression, System.Linq, System.Numerics
     - Fields:
-      - byte[] input
-      - int position
-      - ulong bitBuffer
-      - int bitsInBuffer
-      - int codeSize
-      - int clearCode
-      - int eoiCode
-      - uint FillOrder
-    - Methods:
-      - constructor LzwDecompressor( uint fillOrder, byte[] compressedData)
-      - int GetNextCode()
-      - byte[] Decompress( int expectedLength, bool isFirstBlock)
-        - Calls: GetNextCode, dictionary.Clear
+      - Vector2 PixelScale
+      - Vector3 TiePointModel
+      - bool IsValid
+      - int TextureWidth
+      - int TextureHeight
+      - string CRS
+      - bool IsMeters
 - File: TerrainTextureParser.cs
   - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.IO
@@ -2009,20 +2003,23 @@ Folder: Scenes
       - VertexBuffer _terrainBuffer
       - ShaderProgram _terrainShader
       - uint _terrainTextureId
+      - bool _hasColorTexture
     - Methods:
       - void Initialize( int height, int width)
         - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
       - void BuildWireframeMesh(int step)
-        - Calls: GetHeight, Vertex, _terrainBuffer.UpdateCustom
+        - Calls: GetHeight, _terrainBuffer.UpdateCustomWithUV
+      - void BuildTexturedMesh()
+        - Calls: BuildWireframeMesh, GetHeight, _terrainBuffer.UpdateCustomWithUV
       - float GetHeight( float z, float x)
       - void LoadTerrain(string path)
-        - Calls: BuildWireframeMesh, TerrainParser.LoadUSGSDEM
+        - Calls: BuildWireframeMesh, TerrainParser.LoadUSGSDEM, TerrainParser.ParseGeoReference
       - void SetColorTexture(string path)
-        - Calls: TerrainTextureParser.LoadColorTexture
+        - Calls: BuildTexturedMesh, TerrainParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
       - void Update(float deltaTime)
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _renderContext.Clear, _renderContext.ClearColor, _renderContext.DrawElements, _renderContext.Enable, _terrainBuffer.Bind, _terrainShader.SetMatrix4, _terrainShader.Use
+        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Clear, _renderContext.ClearColor, _renderContext.DrawElements, _renderContext.Enable, _terrainBuffer.Bind, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use
       - void Dispose()
         - Calls: _renderContext.DeleteTexture
 
@@ -2257,7 +2254,7 @@ SiegeEngine.Core.Rendering.TextureLoader
 SiegeEngine.Core.Rendering.UIQuadRenderer
 SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
-SiegeEngine.Core.Terrain.LzwDecompressor
+SiegeEngine.Core.Terrain.GeoReference
 SiegeEngine.Core.Terrain.TerrainTextureParser
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement

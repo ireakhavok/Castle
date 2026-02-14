@@ -667,7 +667,7 @@ Found 0 dependencies
 Found: SceneShader.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SceneShader.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SceneShader.cs
-Read 880 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SceneShader.cs
+Read 1462 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SceneShader.cs
 Namespace: SiegeEngine.Core.Rendering.Shaders
 Found 1 dependencies
 Found: TextShader.cs
@@ -745,9 +745,9 @@ Found: ..
 Found: TerrainParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainParser.cs
-Read 22212 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainParser.cs
+Read 29670 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainParser.cs
 Namespace: SiegeEngine.Core.Terrain
-Found 6 dependencies
+Found 8 dependencies
 Found: TerrainTextureParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
