@@ -191,7 +191,7 @@ Folder: MapRoom
   - Class: TerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics
+    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text
     - Fields:
       - TerrainCreatorPanel _parent
     - Methods:
@@ -205,6 +205,7 @@ Folder: MapRoom
       - void CreateBlank()
         - Calls: BuildWireframeMesh
       - void LoadTerrain(string path)
+      - void SetColorTexture(string path)
 
 Folder: QuestHall
 - File: Class1.cs
@@ -1822,6 +1823,7 @@ Folder: SiegeEngine
         - Calls: ClientGameServerProxy, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, _currentScene.Initialize, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem, ctor.Invoke
 - File: SceneShader.cs
   - Class: SceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+    - Dependencies: System
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -1995,6 +1997,7 @@ Folder: SiegeEngine
       - int WireframeStep
       - VertexBuffer _terrainBuffer
       - ShaderProgram _terrainShader
+      - uint _terrainTextureId
     - Methods:
       - void Initialize( int height, int width)
         - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
@@ -2003,11 +2006,19 @@ Folder: SiegeEngine
       - float GetHeight( float z, float x)
       - void LoadTerrain(string path)
         - Calls: BuildWireframeMesh, TerrainParser.LoadUSGSDEM
+      - void SetColorTexture(string path)
+        - Calls: TerrainTextureParser.LoadColorTexture
       - void Update(float deltaTime)
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
       - void Render(IReadOnlyList<Entity> entities)
         - Calls: _renderContext.Clear, _renderContext.ClearColor, _renderContext.DrawElements, _renderContext.Enable, _terrainBuffer.Bind, _terrainShader.SetMatrix4, _terrainShader.Use
       - void Dispose()
+        - Calls: _renderContext.DeleteTexture
+- File: TerrainTextureParser.cs
+  - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.IO
+    - Methods:
+      - uint LoadColorTexture( string path, IRenderContext renderContext)
 - File: TextElement.cs
   - Class: TextElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
@@ -2524,6 +2535,7 @@ SiegeEngine.Core.Rendering.UIQuadRenderer
 SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
 SiegeEngine.Core.Terrain.LzwDecompressor
+SiegeEngine.Core.Terrain.TerrainTextureParser
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CssParser

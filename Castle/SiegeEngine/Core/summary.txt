@@ -1073,6 +1073,7 @@ Folder: Rendering
         - Calls: D3D11CreateDevice, D3D12CreateDevice, IsOpenGLSupported, Marshal.Release, vkCreateInstance, vkDestroyInstance
 - File: SceneShader.cs
   - Class: SceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+    - Dependencies: System
     - Fields:
       - string VertexShaderSource
       - string FragmentShaderSource
@@ -1248,6 +1249,11 @@ Folder: Terrain
       - int GetNextCode()
       - byte[] Decompress( int expectedLength, bool isFirstBlock)
         - Calls: GetNextCode, dictionary.Clear
+- File: TerrainTextureParser.cs
+  - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.IO
+    - Methods:
+      - uint LoadColorTexture( string path, IRenderContext renderContext)
 
 Folder: UI
 - File: BasePanel.cs
@@ -1849,6 +1855,7 @@ SiegeEngine.Core.Rendering.UIQuadRenderer
 SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
 SiegeEngine.Core.Terrain.LzwDecompressor
+SiegeEngine.Core.Terrain.TerrainTextureParser
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CssParser
