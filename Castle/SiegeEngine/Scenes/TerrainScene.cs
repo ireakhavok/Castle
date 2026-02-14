@@ -29,6 +29,7 @@ namespace SiegeEngine.Scenes
         protected uint _terrainTextureId = 0;
         protected bool _hasColorTexture = false;
         protected TerrainParser.GeoReference _colorGeoRef;
+        protected TerrainParser.GeoReference _terrainGeoRef;
 
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -61,7 +62,6 @@ namespace SiegeEngine.Scenes
                     float wx = x * step;
                     float wz = z * step;
                     float y = GetHeight(wx, wz);
-                    // Consistent 9-float: pos3 + color4 (cyan) + uv2 (dummy)
                     vertices.Add(wx); vertices.Add(wz); vertices.Add(y);
                     vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
                     vertices.Add(0.0f); vertices.Add(0.0f);
@@ -110,7 +110,7 @@ namespace SiegeEngine.Scenes
                     float y = GetHeight(wx, wz);
 
                     float u = (wx - tieEast) / (scaleEast * _colorGeoRef.TextureWidth);
-                    float v = 1.0f - (wz - tieNorth) / (scaleNorth * _colorGeoRef.TextureHeight); // north-up flip
+                    float v = 1.0f - (wz - tieNorth) / (scaleNorth * _colorGeoRef.TextureHeight);
 
                     vertices.Add(wx); vertices.Add(wz); vertices.Add(y);
                     vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
@@ -148,6 +148,7 @@ namespace SiegeEngine.Scenes
             try
             {
                 _heightmap = TerrainParser.LoadUSGSDEM(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight);
+                _terrainGeoRef = TerrainParser.ParseGeoReference(path);
                 Console.WriteLine($"[TerrainScene] Heightmap loaded: {_terrainWidth}x{_terrainHeight}, Height range: {_minHeight:F1} to {_maxHeight:F1}");
                 BuildWireframeMesh(WireframeStep);
             }
@@ -164,8 +165,19 @@ namespace SiegeEngine.Scenes
             {
                 _colorGeoRef = TerrainParser.ParseGeoReference(path);
                 _hasColorTexture = _colorGeoRef.IsValid;
+
+                // Overlap check between terrain DEM and color texture
+                if (_terrainGeoRef.IsValid && _colorGeoRef.IsValid)
+                {
+                    bool overlaps = !(_colorGeoRef.TiePointModel.X + _colorGeoRef.PixelScale.X * _colorGeoRef.TextureWidth < _terrainGeoRef.TiePointModel.X ||
+                                      _colorGeoRef.TiePointModel.X > _terrainGeoRef.TiePointModel.X + _terrainGeoRef.PixelScale.X * _terrainGeoRef.TextureWidth ||
+                                      _colorGeoRef.TiePointModel.Y + _colorGeoRef.PixelScale.Y * _colorGeoRef.TextureHeight < _terrainGeoRef.TiePointModel.Y ||
+                                      _colorGeoRef.TiePointModel.Y > _terrainGeoRef.TiePointModel.Y + _terrainGeoRef.PixelScale.Y * _terrainGeoRef.TextureHeight);
+                    Console.WriteLine($"[TerrainScene] Texture-DEM overlap: {overlaps}");
+                }
+
                 Console.WriteLine($"[TerrainScene] Color texture loaded: {path} (geo valid: {_hasColorTexture})");
-                BuildTexturedMesh(); // rebuild for skin (triangles only where geo matches)
+                BuildTexturedMesh();
             }
         }
 
@@ -199,17 +211,23 @@ namespace SiegeEngine.Scenes
 
             if (_hasColorTexture && _terrainTextureId != 0)
             {
-                // Textured skin (triangles) - discard outside geo bounds
+                // Wireframe lines first (base)
+                _terrainShader.SetUniform("uHasTexture", 0);
+                _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+
+                // Textured skin on top (filled triangles, discard outside geo)
                 _terrainShader.SetUniform("uHasTexture", 1);
                 _renderContext.ActiveTexture(0);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
                 _terrainShader.SetUniform("uTexture", 0);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
-
-            // ALWAYS draw cyan wireframe lines (pure, no fill) on top
-            _terrainShader.SetUniform("uHasTexture", 0);
-            _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            else
+            {
+                // Pure cyan wireframe (no skin)
+                _terrainShader.SetUniform("uHasTexture", 0);
+                _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            }
         }
 
         public override void Dispose()

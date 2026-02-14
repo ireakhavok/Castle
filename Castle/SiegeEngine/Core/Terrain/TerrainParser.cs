@@ -164,7 +164,7 @@ namespace SiegeEngine.Core.Terrain
                 }
                 if (isFirstBlock)
                     Console.WriteLine($"[TerrainParser] First 10 codes: {string.Join(", ", codes.Take(10))}");
-                Console.WriteLine($"[TerrainParser] Decompressed {output.Count} bytes (expected {expectedLength}), pos {position}/{input.Length}");
+                // REMOVED: per-block "Decompressed ..." spam (summary kept at end of LoadUSGSDEM)
                 return output.ToArray();
             }
         }
@@ -339,7 +339,6 @@ namespace SiegeEngine.Core.Terrain
                     int copyLen = Math.Min(decompressed.Length, expectedBlockSize);
                     Array.Copy(decompressed, 0, adjusted, 0, copyLen);
                     decompressed = adjusted;
-                    Console.WriteLine($"[TerrainParser] Adjusted block {i} length from {decompressed.Length} to {expectedBlockSize}");
                 }
                 if (tiffFile.Predictor == 3)
                     ApplyFloatingPointPredictor3(decompressed, isTiled ? (int)tiffFile.TileWidth : thisTileW, isTiled ? (int)tiffFile.TileLength : thisTileH);
@@ -437,7 +436,6 @@ namespace SiegeEngine.Core.Terrain
             return BitConverter.ToSingle(bytes, offset);
         }
 
-        // NEW: GeoReference struct and parser (minimal, reuses tag logic for color textures)
         public class GeoReference
         {
             public Vector2 PixelScale = Vector2.One;
@@ -458,25 +456,46 @@ namespace SiegeEngine.Core.Terrain
                 ushort numEntries = BitConverter.ToUInt16(bytes, (int)ifdOffset);
 
                 GeoReference geo = new GeoReference();
+                Console.WriteLine($"[TerrainParser] === Geo Tags for {Path.GetFileName(filePath)} ===");
                 for (uint i = 0; i < numEntries; i++)
                 {
                     uint entry = ifdOffset + 2 + i * 12;
                     ushort tag = BitConverter.ToUInt16(bytes, (int)entry);
-                    if (tag == 33550) // ModelPixelScaleTag: scaleX, scaleY, scaleZ
+                    uint type = BitConverter.ToUInt16(bytes, (int)entry + 2);
+                    uint count = BitConverter.ToUInt32(bytes, (int)entry + 4);
+                    uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
+
+                    if (tag == 33550) // ModelPixelScaleTag
                     {
-                        uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
                         geo.PixelScale.X = BitConverter.ToSingle(bytes, (int)off);
                         geo.PixelScale.Y = BitConverter.ToSingle(bytes, (int)off + 4);
+                        Console.WriteLine($"[Geo] ModelPixelScaleTag: X={geo.PixelScale.X:F6}, Y={geo.PixelScale.Y:F6}");
                     }
-                    else if (tag == 33922) // ModelTiepointTag: typically [0,0,0, X, Y, Z]
+                    else if (tag == 33922) // ModelTiepointTag
                     {
-                        uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
-                        geo.TiePointModel.X = BitConverter.ToSingle(bytes, (int)off + 12); // East (X)
-                        geo.TiePointModel.Y = BitConverter.ToSingle(bytes, (int)off + 16); // North (Y)
+                        geo.TiePointModel.X = BitConverter.ToSingle(bytes, (int)off + 12); // East
+                        geo.TiePointModel.Y = BitConverter.ToSingle(bytes, (int)off + 16); // North
                         geo.IsValid = true;
+                        Console.WriteLine($"[Geo] ModelTiepointTag: East={geo.TiePointModel.X:F2}, North={geo.TiePointModel.Y:F2}");
                     }
-                    else if (tag == 256) geo.TextureWidth = (int)BitConverter.ToUInt32(bytes, (int)entry + 8);
-                    else if (tag == 257) geo.TextureHeight = (int)BitConverter.ToUInt32(bytes, (int)entry + 8);
+                    else if (tag == 256)
+                    {
+                        geo.TextureWidth = (int)BitConverter.ToUInt32(bytes, (int)off);
+                        Console.WriteLine($"[Geo] ImageWidth = {geo.TextureWidth}");
+                    }
+                    else if (tag == 257)
+                    {
+                        geo.TextureHeight = (int)BitConverter.ToUInt32(bytes, (int)off);
+                        Console.WriteLine($"[Geo] ImageHeight = {geo.TextureHeight}");
+                    }
+                }
+                if (geo.IsValid)
+                {
+                    float minEast = geo.TiePointModel.X;
+                    float maxEast = geo.TiePointModel.X + geo.PixelScale.X * geo.TextureWidth;
+                    float minNorth = geo.TiePointModel.Y;
+                    float maxNorth = geo.TiePointModel.Y + geo.PixelScale.Y * geo.TextureHeight;
+                    Console.WriteLine($"[Geo] World bounds: East [{minEast:F1}-{maxEast:F1}], North [{minNorth:F1}-{maxNorth:F1}]");
                 }
                 return geo;
             }
