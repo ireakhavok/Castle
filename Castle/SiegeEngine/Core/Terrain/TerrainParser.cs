@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 
@@ -19,13 +20,11 @@ namespace SiegeEngine.Core.Terrain
         public uint ValueOrOffset { get; set; }
         public object Value { get; set; }
     }
-
     public class TiffIFD
     {
         public uint Offset { get; set; }
         public Dictionary<ushort, TiffTag> Tags { get; set; } = new Dictionary<ushort, TiffTag>();
     }
-
     public class TiffFile
     {
         public byte[] Bytes { get; set; }
@@ -49,7 +48,6 @@ namespace SiegeEngine.Core.Terrain
         public ushort SamplesPerPixel { get; set; } = 1;
         public ushort PlanarConfig { get; set; } = 1;
     }
-
     public static class TerrainParser
     {
         private static readonly Dictionary<ushort, string> TagNames = new Dictionary<ushort, string>
@@ -66,7 +64,6 @@ namespace SiegeEngine.Core.Terrain
             { 42113, "GDAL_NODATA" },
             { 316, "SMinSampleValue" }
         };
-
         private class LzwDecompressor
         {
             private byte[] input;
@@ -167,14 +164,12 @@ namespace SiegeEngine.Core.Terrain
                 return output.ToArray();
             }
         }
-
         private static void DecodeDeltaBytes(byte[] ptr, int cols, int channels)
         {
             for (int COL = 1; COL < cols; ++COL)
                 for (int CHAN = 0; CHAN < channels; ++CHAN)
                     ptr[COL * channels + CHAN] += ptr[(COL - 1) * channels + CHAN];
         }
-
         private static void DecodeFPDeltaRow(byte[] input, byte[] output, int cols, int channels, int bytesPerSample)
         {
             DecodeDeltaBytes(input, cols * bytesPerSample, channels);
@@ -183,7 +178,6 @@ namespace SiegeEngine.Core.Terrain
                 for (int BYTE = 0; BYTE < bytesPerSample; ++BYTE)
                     output[bytesPerSample * COL + BYTE] = input[(bytesPerSample - BYTE - 1) * rowIncrement + COL];
         }
-
         private static void ApplyFloatingPointPredictor3(byte[] decompressed, int tileWidth, int tileHeight, int bytesPerSample = 4, int channels = 1)
         {
             int rowLength = tileWidth * channels * bytesPerSample;
@@ -197,7 +191,18 @@ namespace SiegeEngine.Core.Terrain
                 Array.Copy(rowOutput, 0, decompressed, rowOff, rowLength);
             }
         }
+        private static byte[] DecompressDeflate(byte[] compressedData)
+        {
+            // TIFF Deflate (compression 8) is zlib-wrapped (2-byte header: CMF + FLG).
+            // Skip the header so DeflateStream can read the raw deflate stream.
+            if (compressedData.Length < 2) return Array.Empty<byte>();
 
+            using var input = new MemoryStream(compressedData, 2, compressedData.Length - 2); // skip zlib header
+            using var deflate = new DeflateStream(input, CompressionMode.Decompress);
+            using var output = new MemoryStream();
+            deflate.CopyTo(output);
+            return output.ToArray();
+        }
         public static float[,] LoadUSGSDEM(string filePath, out int width, out int height, out float minHeight, out float maxHeight)
         {
             if (!File.Exists(filePath))
@@ -329,9 +334,25 @@ namespace SiegeEngine.Core.Terrain
                 if (offset + byteCount > bytes.Length) throw new Exception("Data out of bounds");
                 byte[] blockData = new byte[byteCount];
                 Array.Copy(bytes, (int)offset, blockData, 0, (int)byteCount);
-                byte[] decompressed = tiffFile.Compression == 5
-                    ? new LzwDecompressor(blockData, tiffFile.FillOrder).Decompress(i == 0, expectedBlockSize)
-                    : blockData;
+                byte[] decompressed;
+                if (tiffFile.Compression == 5) // LZW
+                {
+                    decompressed = new LzwDecompressor(blockData, tiffFile.FillOrder).Decompress(i == 0, expectedBlockSize);
+                }
+                else if (tiffFile.Compression == 8 || tiffFile.Compression == 32946) // Deflate / ZIP (OpenTopography default)
+                {
+                    decompressed = DecompressDeflate(blockData);
+                    // Optional: log first time for sanity check
+                    if (i == 0) Console.WriteLine($"[TerrainParser] Deflate decompressed {blockData.Length} → {decompressed.Length} bytes");
+                }
+                else if (tiffFile.Compression == 1) // Uncompressed (USGS)
+                {
+                    decompressed = blockData;
+                }
+                else
+                {
+                    throw new NotSupportedException($"Unsupported TIFF compression: {tiffFile.Compression}");
+                }
                 if (decompressed.Length != expectedBlockSize)
                 {
                     byte[] adjusted = new byte[expectedBlockSize];
@@ -424,7 +445,6 @@ namespace SiegeEngine.Core.Terrain
             }
             return heightmap;
         }
-
         private static float ToSingleLittleEndian(byte[] bytes, int offset)
         {
             if (!BitConverter.IsLittleEndian)
@@ -434,7 +454,6 @@ namespace SiegeEngine.Core.Terrain
             }
             return BitConverter.ToSingle(bytes, offset);
         }
-
         public class GeoReference
         {
             public Vector2 PixelScale = Vector2.One;
@@ -445,17 +464,14 @@ namespace SiegeEngine.Core.Terrain
             public string CRS = "Unknown";
             public bool IsMeters = false;
         }
-
         public static GeoReference ParseGeoReference(string filePath)
         {
             try
             {
                 byte[] bytes = File.ReadAllBytes(filePath);
                 if (bytes.Length < 8 || bytes[0] != 'I' || bytes[1] != 'I') return new GeoReference();
-
                 uint ifdOffset = BitConverter.ToUInt32(bytes, 4);
                 ushort numEntries = BitConverter.ToUInt16(bytes, (int)ifdOffset);
-
                 GeoReference geo = new GeoReference();
                 Console.WriteLine($"[TerrainParser] === Geo Tags for {Path.GetFileName(filePath)} ===");
                 for (uint i = 0; i < numEntries; i++)
@@ -465,7 +481,6 @@ namespace SiegeEngine.Core.Terrain
                     ushort type = BitConverter.ToUInt16(bytes, (int)entry + 2);
                     uint count = BitConverter.ToUInt32(bytes, (int)entry + 4);
                     uint valueOrOffset = BitConverter.ToUInt32(bytes, (int)entry + 8);
-
                     if (tag == 256) // ImageWidth
                     {
                         geo.TextureWidth = (int)(type == 3 ? BitConverter.ToUInt16(bytes, (int)entry + 8) : valueOrOffset);
@@ -509,7 +524,6 @@ namespace SiegeEngine.Core.Terrain
                     float minNorth = geo.TiePointModel.Y;
                     float maxNorth = geo.TiePointModel.Y + geo.PixelScale.Y * geo.TextureHeight;
                     Console.WriteLine($"[Geo] World bounds: East [{minEast:F1}-{maxEast:F1}], North [{minNorth:F1}-{maxNorth:F1}]");
-
                     // Detect unit type (small scale = degrees, large = meters)
                     geo.IsMeters = geo.PixelScale.X > 0.01f; // NAIP is 0.6m, DEM is 0.000093°
                     Console.WriteLine($"[Geo] Units detected: {(geo.IsMeters ? "Meters (projected)" : "Degrees (geographic)")}");
@@ -522,7 +536,6 @@ namespace SiegeEngine.Core.Terrain
                 return new GeoReference();
             }
         }
-
         // REAL lat/long to UTM Zone 17N conversion (WGS84 datum)
         public static (double East, double North) ConvertLatLonToUTM(double lat, double lon)
         {
@@ -532,28 +545,22 @@ namespace SiegeEngine.Core.Terrain
             const double k0 = 0.9996; // scale factor
             int zone = 17; // UTM Zone 17N for Virginia
             double lon0 = (zone * 6 - 183); // central meridian
-
             double phi = lat * Math.PI / 180.0;
             double lambda = lon * Math.PI / 180.0;
             double lambda0 = lon0 * Math.PI / 180.0;
-
             double e = Math.Sqrt(f * (2 - f));
             double n = f / (2 - f);
             double A = a / (1 - n) * (1 + Math.Pow(n, 2) / 4 + Math.Pow(n, 4) / 64);
             double B = 3 * n / 2 - 27 * Math.Pow(n, 3) / 32;
             double C = 21 * Math.Pow(n, 2) / 16 - 55 * Math.Pow(n, 4) / 32;
             double D = 151 * Math.Pow(n, 3) / 96;
-
             double M = A * (phi - B * Math.Sin(2 * phi) + C * Math.Sin(4 * phi) - D * Math.Sin(6 * phi));
             double nu = a / Math.Sqrt(1 - Math.Pow(e * Math.Sin(phi), 2));
             double rho = a * (1 - Math.Pow(e, 2)) / Math.Pow(1 - Math.Pow(e * Math.Sin(phi), 2), 1.5);
             double t = Math.Tan(phi);
-
             double east = k0 * nu * (lambda - lambda0) * (1 + (nu / rho) * t * (lambda - lambda0) * (lambda - lambda0) / 6);
             double north = M * k0;
-
             east += 500000; // false easting
-
             return (east, north);
         }
     }
