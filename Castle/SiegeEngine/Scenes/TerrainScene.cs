@@ -26,7 +26,9 @@ namespace SiegeEngine.Scenes
         protected const int WireframeStep = 8;
         protected VertexBuffer _terrainBuffer;
         protected ShaderProgram _terrainShader;
-        protected uint _terrainTextureId = 0; // Loaded but not applied (for georeferenced skin in next step)
+        protected uint _terrainTextureId = 0;
+        protected bool _hasColorTexture = false;
+        protected TerrainParser.GeoReference _colorGeoRef;
 
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -48,24 +50,23 @@ namespace SiegeEngine.Scenes
 
         protected virtual void BuildWireframeMesh(int step)
         {
-            var vertices = new List<Vertex>();
+            var vertices = new List<float>();
             var indices = new List<uint>();
             int stepsX = _terrainWidth / step;
             int stepsZ = _terrainHeight / step;
-
             for (int x = 0; x <= stepsX; x++)
             {
                 for (int z = 0; z <= stepsZ; z++)
                 {
                     float wx = x * step;
                     float wz = z * step;
-                    float y = GetHeight(wx, wz); // * VerticalExaggeration;
-
-                    // EXACT original vertex (X=wx, Y=wz, Z=height)
-                    vertices.Add(new Vertex(wx, wz, y, 0.7f, 0.9f, 1.0f, 1.0f));
+                    float y = GetHeight(wx, wz);
+                    // Consistent 9-float: pos3 + color4 (cyan) + uv2 (dummy)
+                    vertices.Add(wx); vertices.Add(wz); vertices.Add(y);
+                    vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
+                    vertices.Add(0.0f); vertices.Add(0.0f);
                 }
             }
-
             for (int x = 0; x < stepsX; x++)
             {
                 for (int z = 0; z < stepsZ; z++)
@@ -78,8 +79,60 @@ namespace SiegeEngine.Scenes
                     indices.Add(tl); indices.Add(bl);
                 }
             }
+            _terrainBuffer.UpdateCustomWithUV(vertices, indices);
+        }
 
-            _terrainBuffer.UpdateCustom(vertices, indices);
+        protected virtual void BuildTexturedMesh()
+        {
+            if (!_hasColorTexture || !_colorGeoRef.IsValid)
+            {
+                BuildWireframeMesh(WireframeStep);
+                return;
+            }
+
+            var vertices = new List<float>();
+            var indices = new List<uint>();
+            int step = WireframeStep;
+            int stepsX = _terrainWidth / step;
+            int stepsZ = _terrainHeight / step;
+
+            float tieEast = _colorGeoRef.TiePointModel.X;
+            float tieNorth = _colorGeoRef.TiePointModel.Y;
+            float scaleEast = _colorGeoRef.PixelScale.X;
+            float scaleNorth = _colorGeoRef.PixelScale.Y;
+
+            for (int x = 0; x <= stepsX; x++)
+            {
+                for (int z = 0; z <= stepsZ; z++)
+                {
+                    float wx = x * step;
+                    float wz = z * step;
+                    float y = GetHeight(wx, wz);
+
+                    float u = (wx - tieEast) / (scaleEast * _colorGeoRef.TextureWidth);
+                    float v = 1.0f - (wz - tieNorth) / (scaleNorth * _colorGeoRef.TextureHeight); // north-up flip
+
+                    vertices.Add(wx); vertices.Add(wz); vertices.Add(y);
+                    vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
+                    vertices.Add(u); vertices.Add(v);
+                }
+            }
+
+            for (int x = 0; x < stepsX; x++)
+            {
+                for (int z = 0; z < stepsZ; z++)
+                {
+                    uint tl = (uint)(x * (stepsZ + 1) + z);
+                    uint tr = tl + 1;
+                    uint bl = tl + (uint)(stepsZ + 1);
+                    uint br = bl + 1;
+                    indices.Add(tl); indices.Add(tr); indices.Add(bl);
+                    indices.Add(tr); indices.Add(br); indices.Add(bl);
+                }
+            }
+
+            _terrainBuffer.UpdateCustomWithUV(vertices, indices);
+            Console.WriteLine($"[TerrainScene] Rebuilt textured mesh with {vertices.Count / 9} verts, geo-aligned UVs");
         }
 
         protected float GetHeight(float x, float z)
@@ -107,7 +160,13 @@ namespace SiegeEngine.Scenes
         public void SetColorTexture(string path)
         {
             _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, path);
-            // TODO (next step): Parse GeoTIFF tags from path to compute subset bounds and UV mapping
+            if (_terrainTextureId != 0)
+            {
+                _colorGeoRef = TerrainParser.ParseGeoReference(path);
+                _hasColorTexture = _colorGeoRef.IsValid;
+                Console.WriteLine($"[TerrainScene] Color texture loaded: {path} (geo valid: {_hasColorTexture})");
+                BuildTexturedMesh(); // rebuild for skin (triangles only where geo matches)
+            }
         }
 
         public override void Update(float deltaTime)
@@ -124,7 +183,6 @@ namespace SiegeEngine.Scenes
 
         public override void Render(IReadOnlyList<Entity> entities)
         {
-            // EXACT original background and rendering
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
@@ -138,6 +196,19 @@ namespace SiegeEngine.Scenes
             _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
 
             _terrainBuffer.Bind();
+
+            if (_hasColorTexture && _terrainTextureId != 0)
+            {
+                // Textured skin (triangles) - discard outside geo bounds
+                _terrainShader.SetUniform("uHasTexture", 1);
+                _renderContext.ActiveTexture(0);
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
+                _terrainShader.SetUniform("uTexture", 0);
+                _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            }
+
+            // ALWAYS draw cyan wireframe lines (pure, no fill) on top
+            _terrainShader.SetUniform("uHasTexture", 0);
             _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
         }
 

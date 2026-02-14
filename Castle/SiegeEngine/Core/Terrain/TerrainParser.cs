@@ -1,9 +1,13 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Core/Terrain
+// File: TerrainParser.cs
+using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
+
 namespace SiegeEngine.Core.Terrain
 {
     public class TiffTag
@@ -15,11 +19,13 @@ namespace SiegeEngine.Core.Terrain
         public uint ValueOrOffset { get; set; }
         public object Value { get; set; }
     }
+
     public class TiffIFD
     {
         public uint Offset { get; set; }
         public Dictionary<ushort, TiffTag> Tags { get; set; } = new Dictionary<ushort, TiffTag>();
     }
+
     public class TiffFile
     {
         public byte[] Bytes { get; set; }
@@ -43,6 +49,7 @@ namespace SiegeEngine.Core.Terrain
         public ushort SamplesPerPixel { get; set; } = 1;
         public ushort PlanarConfig { get; set; } = 1;
     }
+
     public static class TerrainParser
     {
         private static readonly Dictionary<ushort, string> TagNames = new Dictionary<ushort, string>
@@ -57,8 +64,9 @@ namespace SiegeEngine.Core.Terrain
             { 34735, "GeoKeyDirectoryTag" }, { 34736, "GeoDoubleParamsTag" },
             { 34737, "GeoAsciiParamsTag" }, { 42112, "GDAL_METADATA" },
             { 42113, "GDAL_NODATA" },
-            { 316, "SMinSampleValue" } // fixes the "key '316' not present" crash
+            { 316, "SMinSampleValue" }
         };
+
         private class LzwDecompressor
         {
             private byte[] input;
@@ -145,7 +153,6 @@ namespace SiegeEngine.Core.Terrain
                         var newEntry = new List<byte>(dictionary[oldCode]) { entry[0] };
                         dictionary[nextCode] = newEntry;
                         nextCode++;
-                        // TIFF LZW EARLY-CHANGE (increase ONE code EARLY)
                         if (nextCode == ((1 << codeSize) - 1) && codeSize < 12)
                         {
                             codeSize++;
@@ -161,12 +168,14 @@ namespace SiegeEngine.Core.Terrain
                 return output.ToArray();
             }
         }
+
         private static void DecodeDeltaBytes(byte[] ptr, int cols, int channels)
         {
             for (int COL = 1; COL < cols; ++COL)
                 for (int CHAN = 0; CHAN < channels; ++CHAN)
                     ptr[COL * channels + CHAN] += ptr[(COL - 1) * channels + CHAN];
         }
+
         private static void DecodeFPDeltaRow(byte[] input, byte[] output, int cols, int channels, int bytesPerSample)
         {
             DecodeDeltaBytes(input, cols * bytesPerSample, channels);
@@ -175,6 +184,7 @@ namespace SiegeEngine.Core.Terrain
                 for (int BYTE = 0; BYTE < bytesPerSample; ++BYTE)
                     output[bytesPerSample * COL + BYTE] = input[(bytesPerSample - BYTE - 1) * rowIncrement + COL];
         }
+
         private static void ApplyFloatingPointPredictor3(byte[] decompressed, int tileWidth, int tileHeight, int bytesPerSample = 4, int channels = 1)
         {
             int rowLength = tileWidth * channels * bytesPerSample;
@@ -188,6 +198,7 @@ namespace SiegeEngine.Core.Terrain
                 Array.Copy(rowOutput, 0, decompressed, rowOff, rowLength);
             }
         }
+
         public static float[,] LoadUSGSDEM(string filePath, out int width, out int height, out float minHeight, out float maxHeight)
         {
             if (!File.Exists(filePath))
@@ -415,6 +426,7 @@ namespace SiegeEngine.Core.Terrain
             }
             return heightmap;
         }
+
         private static float ToSingleLittleEndian(byte[] bytes, int offset)
         {
             if (!BitConverter.IsLittleEndian)
@@ -423,6 +435,56 @@ namespace SiegeEngine.Core.Terrain
                 return BitConverter.ToSingle(reversed, 0);
             }
             return BitConverter.ToSingle(bytes, offset);
+        }
+
+        // NEW: GeoReference struct and parser (minimal, reuses tag logic for color textures)
+        public class GeoReference
+        {
+            public Vector2 PixelScale = Vector2.One;
+            public Vector3 TiePointModel = Vector3.Zero;
+            public bool IsValid = false;
+            public int TextureWidth = 0;
+            public int TextureHeight = 0;
+        }
+
+        public static GeoReference ParseGeoReference(string filePath)
+        {
+            try
+            {
+                byte[] bytes = File.ReadAllBytes(filePath);
+                if (bytes.Length < 8 || bytes[0] != 'I' || bytes[1] != 'I') return new GeoReference();
+
+                uint ifdOffset = BitConverter.ToUInt32(bytes, 4);
+                ushort numEntries = BitConverter.ToUInt16(bytes, (int)ifdOffset);
+
+                GeoReference geo = new GeoReference();
+                for (uint i = 0; i < numEntries; i++)
+                {
+                    uint entry = ifdOffset + 2 + i * 12;
+                    ushort tag = BitConverter.ToUInt16(bytes, (int)entry);
+                    if (tag == 33550) // ModelPixelScaleTag: scaleX, scaleY, scaleZ
+                    {
+                        uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
+                        geo.PixelScale.X = BitConverter.ToSingle(bytes, (int)off);
+                        geo.PixelScale.Y = BitConverter.ToSingle(bytes, (int)off + 4);
+                    }
+                    else if (tag == 33922) // ModelTiepointTag: typically [0,0,0, X, Y, Z]
+                    {
+                        uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
+                        geo.TiePointModel.X = BitConverter.ToSingle(bytes, (int)off + 12); // East (X)
+                        geo.TiePointModel.Y = BitConverter.ToSingle(bytes, (int)off + 16); // North (Y)
+                        geo.IsValid = true;
+                    }
+                    else if (tag == 256) geo.TextureWidth = (int)BitConverter.ToUInt32(bytes, (int)entry + 8);
+                    else if (tag == 257) geo.TextureHeight = (int)BitConverter.ToUInt32(bytes, (int)entry + 8);
+                }
+                return geo;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TerrainParser] GeoReference parse failed for {filePath}: {ex.Message}");
+                return new GeoReference();
+            }
         }
     }
 }
