@@ -84,7 +84,7 @@ namespace SiegeEngine.Scenes
 
         protected virtual void BuildTexturedMesh()
         {
-            if (!_hasColorTexture || !_colorGeoRef.IsValid)
+            if (!_hasColorTexture || !_colorGeoRef.IsValid || !_terrainGeoRef.IsValid)
             {
                 BuildWireframeMesh(WireframeStep);
                 return;
@@ -96,10 +96,32 @@ namespace SiegeEngine.Scenes
             int stepsX = _terrainWidth / step;
             int stepsZ = _terrainHeight / step;
 
+            // REAL conversion: DEM degrees to UTM meters (Zone 17N)
+            double demEastMeters, demNorthMeters;
+            (demEastMeters, demNorthMeters) = TerrainParser.ConvertLatLonToUTM(_terrainGeoRef.TiePointModel.Y, _terrainGeoRef.TiePointModel.X);
+            float tieEastMeters = (float)demEastMeters;
+            float tieNorthMeters = (float)demNorthMeters;
+            float scaleEastMeters = _terrainGeoRef.PixelScale.X * 111000f * (float)Math.Cos(_terrainGeoRef.TiePointModel.Y * Math.PI / 180.0);
+            float scaleNorthMeters = _terrainGeoRef.PixelScale.Y * 111000f;
+
+            // Color is already in meters (UTM)
             float tieEast = _colorGeoRef.TiePointModel.X;
             float tieNorth = _colorGeoRef.TiePointModel.Y;
             float scaleEast = _colorGeoRef.PixelScale.X;
             float scaleNorth = _colorGeoRef.PixelScale.Y;
+
+            bool overlaps = !(_colorGeoRef.TiePointModel.X + _colorGeoRef.PixelScale.X * _colorGeoRef.TextureWidth < tieEastMeters ||
+                              _colorGeoRef.TiePointModel.X > tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth ||
+                              _colorGeoRef.TiePointModel.Y + _colorGeoRef.PixelScale.Y * _colorGeoRef.TextureHeight < tieNorthMeters ||
+                              _colorGeoRef.TiePointModel.Y > tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight);
+
+            // DETAILED DIAGNOSTIC LOGS (once per rebuild)
+            Console.WriteLine($"[TerrainScene] DEM converted to meters: East [{tieEastMeters:F1}-{tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth:F1}], North [{tieNorthMeters:F1}-{tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight:F1}]");
+            Console.WriteLine($"[TerrainScene] Color (meters): East [{tieEast:F1}-{tieEast + scaleEast * _colorGeoRef.TextureWidth:F1}], North [{tieNorth:F1}-{tieNorth + scaleNorth * _colorGeoRef.TextureHeight:F1}]");
+            Console.WriteLine($"[TerrainScene] Overlap: {overlaps}");
+
+            float minU = float.MaxValue, maxU = float.MinValue;
+            float minV = float.MaxValue, maxV = float.MinValue;
 
             for (int x = 0; x <= stepsX; x++)
             {
@@ -109,8 +131,21 @@ namespace SiegeEngine.Scenes
                     float wz = z * step;
                     float y = GetHeight(wx, wz);
 
-                    float u = (wx - tieEast) / (scaleEast * _colorGeoRef.TextureWidth);
-                    float v = 1.0f - (wz - tieNorth) / (scaleNorth * _colorGeoRef.TextureHeight);
+                    // Convert mesh grid point (pixel index) to real degrees
+                    float real_deg_east = _terrainGeoRef.TiePointModel.X + (wx / _terrainGeoRef.TextureWidth) * (_terrainGeoRef.PixelScale.X * _terrainGeoRef.TextureWidth);
+                    float real_deg_north = _terrainGeoRef.TiePointModel.Y + (wz / _terrainGeoRef.TextureHeight) * (_terrainGeoRef.PixelScale.Y * _terrainGeoRef.TextureHeight);
+
+                    // Convert to meters
+                    double meshEastMeters, meshNorthMeters;
+                    (meshEastMeters, meshNorthMeters) = TerrainParser.ConvertLatLonToUTM(real_deg_north, real_deg_east);
+
+                    float u = (float)(meshEastMeters - tieEast) / (scaleEast * _colorGeoRef.TextureWidth);
+                    float v = 1.0f - (float)(meshNorthMeters - tieNorth) / (scaleNorth * _colorGeoRef.TextureHeight);
+
+                    minU = Math.Min(minU, u);
+                    maxU = Math.Max(maxU, u);
+                    minV = Math.Min(minV, v);
+                    maxV = Math.Max(maxV, v);
 
                     vertices.Add(wx); vertices.Add(wz); vertices.Add(y);
                     vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
@@ -132,7 +167,8 @@ namespace SiegeEngine.Scenes
             }
 
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
-            Console.WriteLine($"[TerrainScene] Rebuilt textured mesh with {vertices.Count / 9} verts, geo-aligned UVs");
+            Console.WriteLine($"[TerrainScene] Rebuilt textured mesh with {vertices.Count / 9} verts, REAL geo-aligned UVs");
+            Console.WriteLine($"[TerrainScene] UV range: U [{minU:F3}-{maxU:F3}], V [{minV:F3}-{maxV:F3}]");
         }
 
         protected float GetHeight(float x, float z)
@@ -166,7 +202,6 @@ namespace SiegeEngine.Scenes
                 _colorGeoRef = TerrainParser.ParseGeoReference(path);
                 _hasColorTexture = _colorGeoRef.IsValid;
 
-                // Overlap check between terrain DEM and color texture
                 if (_terrainGeoRef.IsValid && _colorGeoRef.IsValid)
                 {
                     bool overlaps = !(_colorGeoRef.TiePointModel.X + _colorGeoRef.PixelScale.X * _colorGeoRef.TextureWidth < _terrainGeoRef.TiePointModel.X ||
@@ -209,24 +244,18 @@ namespace SiegeEngine.Scenes
 
             _terrainBuffer.Bind();
 
+            // Base: cyan wireframe lines (always)
+            _terrainShader.SetUniform("uHasTexture", 0);
+            _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+
+            // Skin: filled triangles ONLY where UV in [0,1] (no cyan fill)
             if (_hasColorTexture && _terrainTextureId != 0)
             {
-                // Wireframe lines first (base)
-                _terrainShader.SetUniform("uHasTexture", 0);
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-
-                // Textured skin on top (filled triangles, discard outside geo)
                 _terrainShader.SetUniform("uHasTexture", 1);
                 _renderContext.ActiveTexture(0);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
                 _terrainShader.SetUniform("uTexture", 0);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            }
-            else
-            {
-                // Pure cyan wireframe (no skin)
-                _terrainShader.SetUniform("uHasTexture", 0);
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
         }
 

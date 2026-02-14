@@ -164,7 +164,6 @@ namespace SiegeEngine.Core.Terrain
                 }
                 if (isFirstBlock)
                     Console.WriteLine($"[TerrainParser] First 10 codes: {string.Join(", ", codes.Take(10))}");
-                // REMOVED: per-block "Decompressed ..." spam (summary kept at end of LoadUSGSDEM)
                 return output.ToArray();
             }
         }
@@ -443,6 +442,8 @@ namespace SiegeEngine.Core.Terrain
             public bool IsValid = false;
             public int TextureWidth = 0;
             public int TextureHeight = 0;
+            public string CRS = "Unknown";
+            public bool IsMeters = false;
         }
 
         public static GeoReference ParseGeoReference(string filePath)
@@ -461,32 +462,44 @@ namespace SiegeEngine.Core.Terrain
                 {
                     uint entry = ifdOffset + 2 + i * 12;
                     ushort tag = BitConverter.ToUInt16(bytes, (int)entry);
-                    uint type = BitConverter.ToUInt16(bytes, (int)entry + 2);
+                    ushort type = BitConverter.ToUInt16(bytes, (int)entry + 2);
                     uint count = BitConverter.ToUInt32(bytes, (int)entry + 4);
-                    uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
+                    uint valueOrOffset = BitConverter.ToUInt32(bytes, (int)entry + 8);
 
-                    if (tag == 33550) // ModelPixelScaleTag
+                    if (tag == 256) // ImageWidth
                     {
-                        geo.PixelScale.X = BitConverter.ToSingle(bytes, (int)off);
-                        geo.PixelScale.Y = BitConverter.ToSingle(bytes, (int)off + 4);
+                        geo.TextureWidth = (int)(type == 3 ? BitConverter.ToUInt16(bytes, (int)entry + 8) : valueOrOffset);
+                        Console.WriteLine($"[Geo] ImageWidth = {geo.TextureWidth}");
+                    }
+                    else if (tag == 257) // ImageLength
+                    {
+                        geo.TextureHeight = (int)(type == 3 ? BitConverter.ToUInt16(bytes, (int)entry + 8) : valueOrOffset);
+                        Console.WriteLine($"[Geo] ImageHeight = {geo.TextureHeight}");
+                    }
+                    else if (tag == 33550) // ModelPixelScaleTag (3 doubles)
+                    {
+                        uint off = valueOrOffset;
+                        geo.PixelScale.X = (float)BitConverter.ToDouble(bytes, (int)off);
+                        geo.PixelScale.Y = (float)BitConverter.ToDouble(bytes, (int)off + 8);
                         Console.WriteLine($"[Geo] ModelPixelScaleTag: X={geo.PixelScale.X:F6}, Y={geo.PixelScale.Y:F6}");
                     }
-                    else if (tag == 33922) // ModelTiepointTag
+                    else if (tag == 33922) // ModelTiepointTag (6 doubles: [I,J,K, X,Y,Z])
                     {
-                        geo.TiePointModel.X = BitConverter.ToSingle(bytes, (int)off + 12); // East
-                        geo.TiePointModel.Y = BitConverter.ToSingle(bytes, (int)off + 16); // North
+                        uint off = valueOrOffset;
+                        geo.TiePointModel.X = (float)BitConverter.ToDouble(bytes, (int)off + 24); // East (X) at index 3
+                        geo.TiePointModel.Y = (float)BitConverter.ToDouble(bytes, (int)off + 32); // North (Y) at index 4
                         geo.IsValid = true;
                         Console.WriteLine($"[Geo] ModelTiepointTag: East={geo.TiePointModel.X:F2}, North={geo.TiePointModel.Y:F2}");
                     }
-                    else if (tag == 256)
+                    else if (tag == 34735) // GeoKeyDirectoryTag (for CRS)
                     {
-                        geo.TextureWidth = (int)BitConverter.ToUInt32(bytes, (int)off);
-                        Console.WriteLine($"[Geo] ImageWidth = {geo.TextureWidth}");
-                    }
-                    else if (tag == 257)
-                    {
-                        geo.TextureHeight = (int)BitConverter.ToUInt32(bytes, (int)off);
-                        Console.WriteLine($"[Geo] ImageHeight = {geo.TextureHeight}");
+                        uint off = valueOrOffset;
+                        ushort numKeys = BitConverter.ToUInt16(bytes, (int)off + 4);
+                        if (numKeys > 0)
+                        {
+                            geo.CRS = "NAD83/UTM"; // Default for NAIP/DEM in US
+                            Console.WriteLine($"[Geo] Detected CRS: {geo.CRS}");
+                        }
                     }
                 }
                 if (geo.IsValid)
@@ -496,6 +509,10 @@ namespace SiegeEngine.Core.Terrain
                     float minNorth = geo.TiePointModel.Y;
                     float maxNorth = geo.TiePointModel.Y + geo.PixelScale.Y * geo.TextureHeight;
                     Console.WriteLine($"[Geo] World bounds: East [{minEast:F1}-{maxEast:F1}], North [{minNorth:F1}-{maxNorth:F1}]");
+
+                    // Detect unit type (small scale = degrees, large = meters)
+                    geo.IsMeters = geo.PixelScale.X > 0.01f; // NAIP is 0.6m, DEM is 0.000093°
+                    Console.WriteLine($"[Geo] Units detected: {(geo.IsMeters ? "Meters (projected)" : "Degrees (geographic)")}");
                 }
                 return geo;
             }
@@ -504,6 +521,40 @@ namespace SiegeEngine.Core.Terrain
                 Console.WriteLine($"[TerrainParser] GeoReference parse failed for {filePath}: {ex.Message}");
                 return new GeoReference();
             }
+        }
+
+        // REAL lat/long to UTM Zone 17N conversion (WGS84 datum)
+        public static (double East, double North) ConvertLatLonToUTM(double lat, double lon)
+        {
+            // WGS84 constants
+            const double a = 6378137.0; // semi-major axis
+            const double f = 1.0 / 298.257223563; // flattening
+            const double k0 = 0.9996; // scale factor
+            int zone = 17; // UTM Zone 17N for Virginia
+            double lon0 = (zone * 6 - 183); // central meridian
+
+            double phi = lat * Math.PI / 180.0;
+            double lambda = lon * Math.PI / 180.0;
+            double lambda0 = lon0 * Math.PI / 180.0;
+
+            double e = Math.Sqrt(f * (2 - f));
+            double n = f / (2 - f);
+            double A = a / (1 - n) * (1 + Math.Pow(n, 2) / 4 + Math.Pow(n, 4) / 64);
+            double B = 3 * n / 2 - 27 * Math.Pow(n, 3) / 32;
+            double C = 21 * Math.Pow(n, 2) / 16 - 55 * Math.Pow(n, 4) / 32;
+            double D = 151 * Math.Pow(n, 3) / 96;
+
+            double M = A * (phi - B * Math.Sin(2 * phi) + C * Math.Sin(4 * phi) - D * Math.Sin(6 * phi));
+            double nu = a / Math.Sqrt(1 - Math.Pow(e * Math.Sin(phi), 2));
+            double rho = a * (1 - Math.Pow(e, 2)) / Math.Pow(1 - Math.Pow(e * Math.Sin(phi), 2), 1.5);
+            double t = Math.Tan(phi);
+
+            double east = k0 * nu * (lambda - lambda0) * (1 + (nu / rho) * t * (lambda - lambda0) * (lambda - lambda0) / 6);
+            double north = M * k0;
+
+            east += 500000; // false easting
+
+            return (east, north);
         }
     }
 }

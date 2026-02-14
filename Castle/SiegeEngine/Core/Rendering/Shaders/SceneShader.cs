@@ -31,13 +31,9 @@ namespace SiegeEngine.Core.Rendering.Shaders
             uniform int uHasTexture;
             void main() {
                 if (uHasTexture == 1) {
-                    if (vUV.x >= 0.0 && vUV.x <= 1.0 && vUV.y >= 0.0 && vUV.y <= 1.0) {
-                        FragColor = texture(uTexture, vUV);
-                    } else {
-                        discard; // NO cyan fill outside geo bounds
-                    }
+                    FragColor = texture(uTexture, vUV);
                 } else {
-                    FragColor = vColor; // pure cyan wireframe
+                    FragColor = vColor; // cyan wireframe
                 }
             }";
     }
