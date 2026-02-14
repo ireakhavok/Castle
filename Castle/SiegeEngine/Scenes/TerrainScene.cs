@@ -131,7 +131,7 @@ namespace SiegeEngine.Scenes
                     float wz = z * step;
                     float y = GetHeight(wx, wz);
 
-                    // Convert mesh grid point (pixel index) to real degrees
+                    // Convert mesh grid point (pixel index) to real degrees from DEM geo
                     float real_deg_east = _terrainGeoRef.TiePointModel.X + (wx / _terrainGeoRef.TextureWidth) * (_terrainGeoRef.PixelScale.X * _terrainGeoRef.TextureWidth);
                     float real_deg_north = _terrainGeoRef.TiePointModel.Y + (wz / _terrainGeoRef.TextureHeight) * (_terrainGeoRef.PixelScale.Y * _terrainGeoRef.TextureHeight);
 
@@ -248,7 +248,7 @@ namespace SiegeEngine.Scenes
             _terrainShader.SetUniform("uHasTexture", 0);
             _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
 
-            // Skin: filled triangles ONLY where UV in [0,1] (no cyan fill)
+            // Skin: filled triangles ONLY where UV in [0,1] (no rusty fill)
             if (_hasColorTexture && _terrainTextureId != 0)
             {
                 _terrainShader.SetUniform("uHasTexture", 1);

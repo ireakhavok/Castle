@@ -31,7 +31,11 @@ namespace SiegeEngine.Core.Rendering.Shaders
             uniform int uHasTexture;
             void main() {
                 if (uHasTexture == 1) {
-                    FragColor = texture(uTexture, vUV);
+                    if (vUV.x >= 0.0 && vUV.x <= 1.0 && vUV.y >= 0.0 && vUV.y <= 1.0) {
+                        FragColor = texture(uTexture, vUV);
+                    } else {
+                        discard; // NO rusty fill, only geo subset gets skin
+                    }
                 } else {
                     FragColor = vColor; // cyan wireframe
                 }
