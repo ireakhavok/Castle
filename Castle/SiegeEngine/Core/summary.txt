@@ -234,6 +234,7 @@ Folder: ContextManagement
       - void SetScrollCallback(ScrollCallback callback, nint window)
       - void SetWindowSizeCallback(WindowSizeCallback callback, nint window)
       - void GetCursorPos( out double, nint window)
+      - void SetCursorPos( double xpos,  double ypos, nint window)
       - void SetInputMode( CursorAttribute attrib,  CursorMode value, nint window)
       - InputAction GetKey( Key key, nint window)
         - Calls: MapEngineKey, MapGlfwInputAction
@@ -1231,10 +1232,22 @@ Folder: Rendering
 
 Folder: Terrain
 - File: TerrainParser.cs
-  - Class: TerrainParser (Namespace: SiegeEngine.Core.Terrain)
-    - Dependencies: System, System.Drawing, System.Drawing.Imaging, System.IO
+  - Class: LzwDecompressor (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Linq
+    - Fields:
+      - byte[] input
+      - int position
+      - ulong bitBuffer
+      - int bitsInBuffer
+      - int codeSize
+      - int clearCode
+      - int eoiCode
+      - uint FillOrder
     - Methods:
-      - ] LoadUSGSDEM( out float,  out int, string filePath)
+      - constructor LzwDecompressor( uint fillOrder, byte[] compressedData)
+      - int GetNextCode()
+      - byte[] Decompress( int expectedLength, bool isFirstBlock)
+        - Calls: GetNextCode, dictionary.Clear
 
 Folder: UI
 - File: BasePanel.cs
@@ -1835,7 +1848,7 @@ SiegeEngine.Core.Rendering.TextureLoader
 SiegeEngine.Core.Rendering.UIQuadRenderer
 SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
-SiegeEngine.Core.Terrain.TerrainParser
+SiegeEngine.Core.Terrain.LzwDecompressor
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CssParser

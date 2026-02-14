@@ -877,6 +877,27 @@ Folder: SiegeEngine
       - constructor FileSelectedEvent(string path)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+- File: FlyCameraController.cs
+  - Class: FlyCameraController (Namespace: SiegeEngine.Scenes)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, System, System.Numerics
+    - Fields:
+      - IControlContext _controlContext
+      - IntPtr _window
+      - float _yaw
+      - float _pitch
+      - float _xSpeed
+      - float _ySpeed
+      - float _pitchMinLimit
+      - float _pitchMaxLimit
+      - Vector2 _lastMousePos
+      - bool _firstMouseMove
+      - Vector3 _position
+    - Methods:
+      - constructor FlyCameraController( IntPtr window, IControlContext controlContext)
+        - Calls: UpdateCamera
+      - void Update( bool isGameActive,  float scrollDelta, float deltaTime)
+        - Calls: UpdateCamera, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.GetWindowSize, _controlContext.SetCursorPos, _controlContext.SetInputMode
+      - void UpdateCamera()
 - File: GameMode.cs
   - Class: GameMode (Namespace: SiegeEngine.Core.Definitions)
 - File: GameModeManager.cs
@@ -936,6 +957,7 @@ Folder: SiegeEngine
       - void SetScrollCallback(ScrollCallback callback, nint window)
       - void SetWindowSizeCallback(WindowSizeCallback callback, nint window)
       - void GetCursorPos( out double, nint window)
+      - void SetCursorPos( double xpos,  double ypos, nint window)
       - void SetInputMode( CursorAttribute attrib,  CursorMode value, nint window)
       - InputAction GetKey( Key key, nint window)
         - Calls: MapEngineKey, MapGlfwInputAction
@@ -1942,17 +1964,29 @@ Folder: SiegeEngine
     - Methods:
       - constructor TdElement()
 - File: TerrainParser.cs
-  - Class: TerrainParser (Namespace: SiegeEngine.Core.Terrain)
-    - Dependencies: System, System.Drawing, System.Drawing.Imaging, System.IO
+  - Class: LzwDecompressor (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Linq
+    - Fields:
+      - byte[] input
+      - int position
+      - ulong bitBuffer
+      - int bitsInBuffer
+      - int codeSize
+      - int clearCode
+      - int eoiCode
+      - uint FillOrder
     - Methods:
-      - ] LoadUSGSDEM( out float,  out int, string filePath)
+      - constructor LzwDecompressor( uint fillOrder, byte[] compressedData)
+      - int GetNextCode()
+      - byte[] Decompress( int expectedLength, bool isFirstBlock)
+        - Calls: GetNextCode, dictionary.Clear
 - File: TerrainScene.cs
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Numerics
     - Fields:
-      - CameraController _flyCamera
+      - FlyCameraController _flyCamera
       - int _terrainWidth
       - int _terrainHeight
       - float _minHeight
@@ -1970,7 +2004,7 @@ Folder: SiegeEngine
       - void LoadTerrain(string path)
         - Calls: BuildWireframeMesh, TerrainParser.LoadUSGSDEM
       - void Update(float deltaTime)
-      - void Update( Vector2 relMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
+      - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
       - void Render(IReadOnlyList<Entity> entities)
         - Calls: _renderContext.Clear, _renderContext.ClearColor, _renderContext.DrawElements, _renderContext.Enable, _terrainBuffer.Bind, _terrainShader.SetMatrix4, _terrainShader.Use
       - void Dispose()
@@ -2489,7 +2523,7 @@ SiegeEngine.Core.Rendering.TextureLoader
 SiegeEngine.Core.Rendering.UIQuadRenderer
 SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
-SiegeEngine.Core.Terrain.TerrainParser
+SiegeEngine.Core.Terrain.LzwDecompressor
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CssParser
@@ -2530,6 +2564,7 @@ SiegeEngine.PlayerSystem.PlayerMovement
 SiegeEngine.PlayerSystem.PositionCalculator
 SiegeEngine.PlayerSystem.SwitchMenuEvent
 SiegeEngine.Scenes.EditorScene
+SiegeEngine.Scenes.FlyCameraController
 SiegeEngine.Scenes.ModelViewerScene
 SiegeEngine.Scenes.Scene
 SiegeEngine.Scenes.StartingPoints.SandboxScene
