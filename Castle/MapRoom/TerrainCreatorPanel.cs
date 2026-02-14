@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: MapRoom
+// File: TerrainCreatorPanel.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Networking;
@@ -9,6 +11,7 @@ using SiegeEngine.Scenes;
 using System;
 using System.IO;
 using System.Numerics;
+using System.Text;
 namespace MapRoom
 {
     public class TerrainCreatorPanel : BasePanel
@@ -64,12 +67,88 @@ namespace MapRoom
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+            LoadTerrainControlsUI();
+        }
+        private void LoadTerrainControlsUI()
+        {
+            // Inline HTML modeled exactly after AssetViewerUI.html for "blank" option
+            string inlineHtml = @"
+<!DOCTYPE html>
+<html lang=""en"">
+<head>
+    <meta charset=""UTF-8"">
+    <style>
+        .ui-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(30, 30, 30, 0.8);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 100, 100, 0.5);
+            flex-wrap: wrap;
+        }
+        .ui-button {
+            padding: 8px 16px;
+            background-color: #555;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+        .ui-button:hover {
+            background-color: #777;
+        }
+        .ui-button:active {
+            transform: scale(0.98);
+            background-color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class=""ui-container"" id=""controls-bar"">
+        <button class=""ui-button"" data-hook=""LoadTerrainTexture"">Import Terrain Texture</button>
+    </div>
+</body>
+</html>";
+            _uiOverlay.LoadUI(inlineHtml);
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();
         }
         private void OnFileSelected(FileSelectedEvent e)
         {
+            string hook = e.UserData as string;
+            if (hook == "LoadTerrainTexture")
+            {
+                _terrainScene.SetColorTexture(e.Path);
+                Console.WriteLine($"[TerrainCreatorPanel] Color texture loaded: {e.Path}");
+            }
         }
         public void HandleUIClick(HtmlElement elem)
         {
+            string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
+            if (hook == "LoadTerrainTexture")
+            {
+                string terrainDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", "Textures");
+                if (!Directory.Exists(terrainDir))
+                {
+                    Directory.CreateDirectory(terrainDir);
+                    Console.WriteLine($"[TerrainCreatorPanel] Created texture directory: {terrainDir}");
+                }
+                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, terrainDir, ".jp2", ".tif", ".tiff", ".png", ".jpg");
+                fileSelector.UserData = "LoadTerrainTexture";
+                fileSelector.IsModal = true;
+                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = SiegeEngine.Core.Events.OpenMode.Overlay });
+            }
         }
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {

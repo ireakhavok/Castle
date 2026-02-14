@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine/Scenes
+// File: TerrainScene.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -9,6 +11,7 @@ using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Scenes
 {
     public unsafe class TerrainScene : Scene
@@ -23,6 +26,8 @@ namespace SiegeEngine.Scenes
         protected const int WireframeStep = 8;
         protected VertexBuffer _terrainBuffer;
         protected ShaderProgram _terrainShader;
+        protected uint _terrainTextureId = 0; // Loaded but not applied (for georeferenced skin in next step)
+
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -31,6 +36,7 @@ namespace SiegeEngine.Scenes
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
@@ -39,12 +45,14 @@ namespace SiegeEngine.Scenes
             BuildWireframeMesh(WireframeStep);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
         }
+
         protected virtual void BuildWireframeMesh(int step)
         {
             var vertices = new List<Vertex>();
             var indices = new List<uint>();
             int stepsX = _terrainWidth / step;
             int stepsZ = _terrainHeight / step;
+
             for (int x = 0; x <= stepsX; x++)
             {
                 for (int z = 0; z <= stepsZ; z++)
@@ -52,9 +60,12 @@ namespace SiegeEngine.Scenes
                     float wx = x * step;
                     float wz = z * step;
                     float y = GetHeight(wx, wz); // * VerticalExaggeration;
+
+                    // EXACT original vertex (X=wx, Y=wz, Z=height)
                     vertices.Add(new Vertex(wx, wz, y, 0.7f, 0.9f, 1.0f, 1.0f));
                 }
             }
+
             for (int x = 0; x < stepsX; x++)
             {
                 for (int z = 0; z < stepsZ; z++)
@@ -67,14 +78,17 @@ namespace SiegeEngine.Scenes
                     indices.Add(tl); indices.Add(bl);
                 }
             }
+
             _terrainBuffer.UpdateCustom(vertices, indices);
         }
+
         protected float GetHeight(float x, float z)
         {
             int ix = (int)Math.Clamp(x, 0, _terrainWidth - 1);
             int iz = (int)Math.Clamp(z, 0, _terrainHeight - 1);
             return _heightmap[ix, iz];
         }
+
         public virtual void LoadTerrain(string path)
         {
             Console.WriteLine($"[TerrainScene] Loading terrain from {path}");
@@ -89,32 +103,51 @@ namespace SiegeEngine.Scenes
                 Console.WriteLine($"[TerrainScene] Failed to load TIFF: {ex.Message}");
             }
         }
+
+        public void SetColorTexture(string path)
+        {
+            _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, path);
+            // TODO (next step): Parse GeoTIFF tags from path to compute subset bounds and UV mapping
+        }
+
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
             _flyCamera.Update(deltaTime, 0f, true);
         }
+
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime);
             _flyCamera.Update(deltaTime, 0f, cameraMode);
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
+            // EXACT original background and rendering
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+
             Matrix4x4 view = _flyCamera.ViewMatrix;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4f, (float)_width / _height, 0.1f, 50000f);
+
             _terrainShader.Use();
             _terrainShader.SetMatrix4("uView", view);
             _terrainShader.SetMatrix4("uProjection", projection);
             _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
+
             _terrainBuffer.Bind();
             _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
         }
+
         public override void Dispose()
         {
+            if (_terrainTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_terrainTextureId);
+                _terrainTextureId = 0;
+            }
             _terrainBuffer?.Dispose();
             _terrainShader?.Dispose();
             base.Dispose();

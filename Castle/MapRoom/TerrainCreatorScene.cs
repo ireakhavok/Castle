@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: MapRoom
+// File: TerrainCreatorScene.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -34,6 +36,10 @@ namespace MapRoom
         public override void LoadTerrain(string path)
         {
             base.LoadTerrain(path);
+        }
+        public void SetColorTexture(string path)
+        {
+            base.SetColorTexture(path);
         }
     }
 }
