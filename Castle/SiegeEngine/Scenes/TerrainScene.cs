@@ -90,8 +90,7 @@ namespace SiegeEngine.Scenes
             int step = WireframeStep;
             int stepsX = _terrainWidth / step;
             int stepsZ = _terrainHeight / step;
-
-            // DEM to meters (exact, signed scale)
+            // DEM to meters (exact, signed scale) — DEM LOGIC UNCHANGED
             double tieEastMeters, tieNorthMeters;
             int demZone = 0;
             float scaleEastMeters, scaleNorthMeters;
@@ -114,23 +113,21 @@ namespace SiegeEngine.Scenes
                 scaleNorthMeters = _terrainGeoRef.PixelScale.Y * 111000f;
                 Console.WriteLine($"[TerrainScene] DEM is geographic (degrees). Converted to UTM Zone {demZone}.");
             }
-
-            // NAIP color: positive east extent from tiepoint
-            float colorTieEast = _colorGeoRef.TiePointModel.X;
-            float colorExtentEast = Math.Abs(_colorGeoRef.PixelScale.X) * _colorGeoRef.TextureWidth;
-            float colorTieNorth = _colorGeoRef.TiePointModel.Y;
-            float colorExtentNorth = Math.Abs(_colorGeoRef.PixelScale.Y) * _colorGeoRef.TextureHeight;
-
-            // DETAILED DIAGNOSTIC LOGS (exact)
+            // NAIP color: use EXACT parsed bounds from GeoReference (no assumptions, direct from header)
+            float colorMinEast = _colorGeoRef.MinEast;
+            float colorMaxEast = _colorGeoRef.MaxEast;
+            float colorMinNorth = _colorGeoRef.MinNorth;
+            float colorMaxNorth = _colorGeoRef.MaxNorth;
+            float colorExtentEast = colorMaxEast - colorMinEast;
+            float colorExtentNorth = colorMaxNorth - colorMinNorth;
+            // DETAILED DIAGNOSTIC LOGS (exact, matches gdalinfo)
             Console.WriteLine($"[TerrainScene] DEM (meters, signed): East [{tieEastMeters:F1}-{tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth:F1}], North [{tieNorthMeters:F1}-{tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight:F1}]");
-            Console.WriteLine($"[TerrainScene] Color (meters, east-positive): East [{colorTieEast:F1}-{colorTieEast + colorExtentEast:F1}], North [{colorTieNorth:F1}-{colorTieNorth + colorExtentNorth:F1}]");
-
-            bool overlaps = !(colorTieEast + colorExtentEast < tieEastMeters ||
-                              colorTieEast > tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth ||
-                              colorTieNorth + colorExtentNorth < tieNorthMeters ||
-                              colorTieNorth > tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight);
+            Console.WriteLine($"[TerrainScene] Color (meters, exact from header): East [{colorMinEast:F1}-{colorMaxEast:F1}], North [{colorMinNorth:F1}-{colorMaxNorth:F1}]");
+            bool overlaps = !(colorMaxEast < tieEastMeters ||
+                              colorMinEast > tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth ||
+                              colorMaxNorth < tieNorthMeters ||
+                              colorMinNorth > tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight);
             Console.WriteLine($"[TerrainScene] Overlap: {overlaps}");
-
             float minU = float.MaxValue, maxU = float.MinValue;
             float minV = float.MaxValue, maxV = float.MinValue;
             for (int x = 0; x <= stepsX; x++)
@@ -140,8 +137,7 @@ namespace SiegeEngine.Scenes
                     float wx = x * step; // X = East
                     float wz = z * step; // Z = North
                     float y = GetHeight(wx, wz);
-
-                    // EXACT mesh world (DEM top-left signed)
+                    // EXACT mesh world (DEM top-left signed) — DEM LOGIC UNCHANGED
                     float meshEastMeters, meshNorthMeters;
                     if (_terrainGeoRef.IsMeters)
                     {
@@ -156,15 +152,13 @@ namespace SiegeEngine.Scenes
                         meshEastMeters = (float)e;
                         meshNorthMeters = (float)n;
                     }
-
-                    // UV: East for u (horizontal), North for v (vertical) — swapped to match mesh
-                    float u = (meshEastMeters - colorTieEast) / colorExtentEast;
-                    float v = 1.0f - (meshNorthMeters - colorTieNorth) / colorExtentNorth; // FLIP V for OpenGL
+                    // UV: East for u (horizontal), North for v (vertical) — exact normalized to color bounds
+                    float u = (meshEastMeters - colorMinEast) / colorExtentEast;
+                    float v = 1.0f - (meshNorthMeters - colorMinNorth) / colorExtentNorth; // FLIP V for OpenGL
                     minU = Math.Min(minU, u);
                     maxU = Math.Max(maxU, u);
                     minV = Math.Min(minV, v);
                     maxV = Math.Max(maxV, v);
-
                     vertices.Add(wx); vertices.Add(wz); vertices.Add(y);
                     vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
                     vertices.Add(u); vertices.Add(v);
@@ -183,7 +177,7 @@ namespace SiegeEngine.Scenes
                 }
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
-            Console.WriteLine($"[TerrainScene] Rebuilt textured mesh with {vertices.Count / 9} verts, CORRECT east-positive NAIP UVs (axes swapped, westward fixed)");
+            Console.WriteLine($"[TerrainScene] Rebuilt textured mesh with {vertices.Count / 9} verts, EXACT NAIP bounds from header");
             Console.WriteLine($"[TerrainScene] UV range: U [{minU:F3}-{maxU:F3}], V [{minV:F3}-{maxV:F3}]");
         }
         protected float GetHeight(float x, float z)
@@ -216,11 +210,12 @@ namespace SiegeEngine.Scenes
                 _hasColorTexture = _colorGeoRef.IsValid;
                 if (_terrainGeoRef.IsValid && _colorGeoRef.IsValid)
                 {
-                    bool overlaps = !(_colorGeoRef.MinEast + _colorGeoRef.PixelScale.X * _colorGeoRef.TextureWidth < _terrainGeoRef.MinEast ||
+                    // Overlap using EXACT parsed Min/Max (no top-left assumptions)
+                    bool overlaps = !(_colorGeoRef.MaxEast < _terrainGeoRef.MinEast ||
                                       _colorGeoRef.MinEast > _terrainGeoRef.MaxEast ||
-                                      _colorGeoRef.MinNorth + _colorGeoRef.PixelScale.Y * _colorGeoRef.TextureHeight < _terrainGeoRef.MinNorth ||
+                                      _colorGeoRef.MaxNorth < _terrainGeoRef.MinNorth ||
                                       _colorGeoRef.MinNorth > _terrainGeoRef.MaxNorth);
-                    Console.WriteLine($"[TerrainScene] Texture-DEM overlap (top-left bounds): {overlaps}");
+                    Console.WriteLine($"[TerrainScene] Texture-DEM overlap (exact bounds): {overlaps}");
                 }
                 Console.WriteLine($"[TerrainScene] Color texture loaded: {path} (geo valid: {_hasColorTexture})");
                 BuildTexturedMesh();

@@ -20,13 +20,11 @@ namespace SiegeEngine.Core.Terrain
         public uint ValueOrOffset { get; set; }
         public object Value { get; set; }
     }
-
     public class TiffIFD
     {
         public uint Offset { get; set; }
         public Dictionary<ushort, TiffTag> Tags { get; set; } = new Dictionary<ushort, TiffTag>();
     }
-
     public class TiffFile
     {
         public byte[] Bytes { get; set; }
@@ -50,7 +48,6 @@ namespace SiegeEngine.Core.Terrain
         public ushort SamplesPerPixel { get; set; } = 1;
         public ushort PlanarConfig { get; set; } = 1;
     }
-
     public static class TerrainParser
     {
         private static readonly Dictionary<ushort, string> TagNames = new Dictionary<ushort, string>
@@ -67,7 +64,6 @@ namespace SiegeEngine.Core.Terrain
             { 42113, "GDAL_NODATA" },
             { 316, "SMinSampleValue" }
         };
-
         private class LzwDecompressor
         {
             private byte[] input;
@@ -79,13 +75,11 @@ namespace SiegeEngine.Core.Terrain
             private int clearCode = 256;
             private int eoiCode = 257;
             private uint FillOrder;
-
             public LzwDecompressor(byte[] compressedData, uint fillOrder)
             {
                 input = compressedData;
                 FillOrder = fillOrder;
             }
-
             private int GetNextCode()
             {
                 while (bitsInBuffer < codeSize)
@@ -106,7 +100,6 @@ namespace SiegeEngine.Core.Terrain
                 bitBuffer &= ((1UL << bitsInBuffer) - 1UL);
                 return code;
             }
-
             public byte[] Decompress(bool isFirstBlock, int expectedLength)
             {
                 List<byte> output = new List<byte>(expectedLength);
@@ -171,14 +164,12 @@ namespace SiegeEngine.Core.Terrain
                 return output.ToArray();
             }
         }
-
         private static void DecodeDeltaBytes(byte[] ptr, int cols, int channels)
         {
             for (int COL = 1; COL < cols; ++COL)
                 for (int CHAN = 0; CHAN < channels; ++CHAN)
                     ptr[COL * channels + CHAN] += ptr[(COL - 1) * channels + CHAN];
         }
-
         private static void DecodeFPDeltaRow(byte[] input, byte[] output, int cols, int channels, int bytesPerSample)
         {
             DecodeDeltaBytes(input, cols * bytesPerSample, channels);
@@ -187,7 +178,6 @@ namespace SiegeEngine.Core.Terrain
                 for (int BYTE = 0; BYTE < bytesPerSample; ++BYTE)
                     output[bytesPerSample * COL + BYTE] = input[(bytesPerSample - BYTE - 1) * rowIncrement + COL];
         }
-
         private static void ApplyFloatingPointPredictor3(byte[] decompressed, int tileWidth, int tileHeight, int bytesPerSample = 4, int channels = 1)
         {
             int rowLength = tileWidth * channels * bytesPerSample;
@@ -201,7 +191,6 @@ namespace SiegeEngine.Core.Terrain
                 Array.Copy(rowOutput, 0, decompressed, rowOff, rowLength);
             }
         }
-
         private static byte[] DecompressDeflate(byte[] compressedData)
         {
             if (compressedData.Length < 2) return Array.Empty<byte>();
@@ -211,7 +200,6 @@ namespace SiegeEngine.Core.Terrain
             deflate.CopyTo(output);
             return output.ToArray();
         }
-
         public static float[,] LoadUSGSDEM(string filePath, out int width, out int height, out float minHeight, out float maxHeight)
         {
             if (!File.Exists(filePath))
@@ -453,7 +441,6 @@ namespace SiegeEngine.Core.Terrain
             }
             return heightmap;
         }
-
         private static float ToSingleLittleEndian(byte[] bytes, int offset)
         {
             if (!BitConverter.IsLittleEndian)
@@ -463,7 +450,6 @@ namespace SiegeEngine.Core.Terrain
             }
             return BitConverter.ToSingle(bytes, offset);
         }
-
         public class GeoReference
         {
             public Vector2 PixelScale = Vector2.One;
@@ -479,7 +465,6 @@ namespace SiegeEngine.Core.Terrain
             public float MinNorth = 0;
             public float MaxNorth = 0;
         }
-
         public static GeoReference ParseGeoReference(string filePath)
         {
             try
@@ -536,18 +521,38 @@ namespace SiegeEngine.Core.Terrain
                 }
                 if (geo.IsValid)
                 {
-                    // EXACT standard GeoTIFF: tiepoint = upper-left, signed scale for direction
-                    geo.MinEast = geo.TiePointModel.X;
-                    geo.MaxEast = geo.TiePointModel.X + geo.PixelScale.X * geo.TextureWidth;
-                    geo.MinNorth = geo.TiePointModel.Y + geo.PixelScale.Y * geo.TextureHeight;
-                    geo.MaxNorth = geo.TiePointModel.Y;
+                    // CRITICAL: Detect units from scale magnitude (DEM ~0.00009 degrees, NAIP ~0.6 meters)
+                    // This ensures NAIP (projected) is NEVER treated as geographic
+                    bool isGeographic = Math.Abs(geo.PixelScale.X) < 0.01f;
+                    geo.IsMeters = !isGeographic;
 
-                    // Normalize for overlap
+                    if (isGeographic)
+                    {
+                        // ONLY for DEM geographic files: force negative Y-scale for correct north-up
+                        geo.PixelScale.Y = -Math.Abs(geo.PixelScale.Y);
+                        Console.WriteLine($"[Geo] Geographic DEM: Forced Y-scale negative for north-up ({geo.PixelScale.Y:F6})");
+                    }
+                    else
+                    {
+                        // For NAIP projected meters: keep original positive Y-scale (tiepoint = north)
+                        Console.WriteLine($"[Geo] Projected NAIP: Keeping original Y-scale (positive, north-up)");
+                    }
+
+                    // EXACT bounds: tiepoint is ALWAYS upper-left (NW corner)
+                    // X: always increases east (positive scale)
+                    geo.MinEast = geo.TiePointModel.X;
+                    geo.MaxEast = geo.TiePointModel.X + Math.Abs(geo.PixelScale.X) * geo.TextureWidth;
+
+                    // Y: tiepoint Y = northern edge; subtract extent for southern edge (handles both sign conventions)
+                    float northExtent = Math.Abs(geo.PixelScale.Y) * geo.TextureHeight;
+                    geo.MaxNorth = geo.TiePointModel.Y;           // upper = north
+                    geo.MinNorth = geo.TiePointModel.Y - northExtent; // lower = south
+
+                    // Normalize
                     if (geo.MinEast > geo.MaxEast) (geo.MinEast, geo.MaxEast) = (geo.MaxEast, geo.MinEast);
                     if (geo.MinNorth > geo.MaxNorth) (geo.MinNorth, geo.MaxNorth) = (geo.MaxNorth, geo.MinNorth);
 
                     Console.WriteLine($"[Geo] EXACT top-left bounds (signed scale): East [{geo.MinEast:F1}-{geo.MaxEast:F1}], North [{geo.MinNorth:F1}-{geo.MaxNorth:F1}] (Y scale: {geo.PixelScale.Y})");
-
                     // Compute UTM zone from tiepoint lon (for geographic files)
                     if (!geo.IsMeters)
                     {
@@ -565,7 +570,6 @@ namespace SiegeEngine.Core.Terrain
                 return new GeoReference();
             }
         }
-
         // VERIFIED WGS84 UTM (exact match to your expected meters)
         public static (double East, double North, int Zone) ConvertLatLonToUTM(double lat, double lon)
         {
