@@ -536,31 +536,34 @@ namespace SiegeEngine.Core.Terrain
                 return new GeoReference();
             }
         }
-        // REAL lat/long to UTM Zone 17N conversion (WGS84 datum)
+        // REAL lat/long to UTM Zone (WGS84 datum)
         public static (double East, double North) ConvertLatLonToUTM(double lat, double lon)
         {
             // WGS84 constants
-            const double a = 6378137.0; // semi-major axis
-            const double f = 1.0 / 298.257223563; // flattening
-            const double k0 = 0.9996; // scale factor
-            int zone = 17; // UTM Zone 17N for Virginia
-            double lon0 = (zone * 6 - 183); // central meridian
+            int zone = (int)Math.Floor((lon + 180) / 6) + 1;
+            double lon0 = (zone * 6 - 183) * Math.PI / 180.0;
+
+            // WGS84 constants
+            const double a = 6378137.0;
+            const double f = 1.0 / 298.257223563;
+            const double k0 = 0.9996;
+
             double phi = lat * Math.PI / 180.0;
             double lambda = lon * Math.PI / 180.0;
-            double lambda0 = lon0 * Math.PI / 180.0;
             double e = Math.Sqrt(f * (2 - f));
+            double e2 = e * e;
             double n = f / (2 - f);
-            double A = a / (1 - n) * (1 + Math.Pow(n, 2) / 4 + Math.Pow(n, 4) / 64);
-            double B = 3 * n / 2 - 27 * Math.Pow(n, 3) / 32;
-            double C = 21 * Math.Pow(n, 2) / 16 - 55 * Math.Pow(n, 4) / 32;
-            double D = 151 * Math.Pow(n, 3) / 96;
+            double A = a / (1 - n) * (1 + n * n / 4 + n * n * n * n / 64);
+            double B = 3 * n / 2 - 27 * n * n * n / 32;
+            double C = 21 * n * n / 16 - 55 * n * n * n * n / 32;
+            double D = 151 * n * n * n / 96;
             double M = A * (phi - B * Math.Sin(2 * phi) + C * Math.Sin(4 * phi) - D * Math.Sin(6 * phi));
-            double nu = a / Math.Sqrt(1 - Math.Pow(e * Math.Sin(phi), 2));
-            double rho = a * (1 - Math.Pow(e, 2)) / Math.Pow(1 - Math.Pow(e * Math.Sin(phi), 2), 1.5);
+            double nu = a / Math.Sqrt(1 - e2 * Math.Pow(Math.Sin(phi), 2));
+            double rho = a * (1 - e2) / Math.Pow(1 - e2 * Math.Pow(Math.Sin(phi), 2), 1.5);
             double t = Math.Tan(phi);
-            double east = k0 * nu * (lambda - lambda0) * (1 + (nu / rho) * t * (lambda - lambda0) * (lambda - lambda0) / 6);
+            double east = k0 * nu * (lambda - lon0) * (1 + (nu / rho) * t * Math.Pow(lambda - lon0, 2) / 6);
             double north = M * k0;
-            east += 500000; // false easting
+            east += 500000;
             return (east, north);
         }
     }
