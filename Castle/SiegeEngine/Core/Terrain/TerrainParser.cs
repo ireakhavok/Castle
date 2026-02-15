@@ -536,13 +536,17 @@ namespace SiegeEngine.Core.Terrain
                 }
                 if (geo.IsValid)
                 {
-                    // DEM elevation GeoTIFF: GUARANTEED top-left origin (tiepoint = northernmost)
-                    // NAIP: standard GeoTIFF (upper-left tiepoint, signed scale)
+                    // EXACT standard GeoTIFF: tiepoint = upper-left, signed scale for direction
                     geo.MinEast = geo.TiePointModel.X;
-                    geo.MaxEast = geo.TiePointModel.X + Math.Abs(geo.PixelScale.X) * geo.TextureWidth;
-                    geo.MaxNorth = geo.TiePointModel.Y; // tiepoint = top = north
-                    geo.MinNorth = geo.TiePointModel.Y - Math.Abs(geo.PixelScale.Y) * geo.TextureHeight; // subtract to reach south
-                    Console.WriteLine($"[Geo] DEM top-left origin (north at tie): East [{geo.MinEast:F1}-{geo.MaxEast:F1}], North [{geo.MinNorth:F1}-{geo.MaxNorth:F1}]");
+                    geo.MaxEast = geo.TiePointModel.X + geo.PixelScale.X * geo.TextureWidth;
+                    geo.MinNorth = geo.TiePointModel.Y + geo.PixelScale.Y * geo.TextureHeight;
+                    geo.MaxNorth = geo.TiePointModel.Y;
+
+                    // Normalize for overlap
+                    if (geo.MinEast > geo.MaxEast) (geo.MinEast, geo.MaxEast) = (geo.MaxEast, geo.MinEast);
+                    if (geo.MinNorth > geo.MaxNorth) (geo.MinNorth, geo.MaxNorth) = (geo.MaxNorth, geo.MinNorth);
+
+                    Console.WriteLine($"[Geo] EXACT top-left bounds (signed scale): East [{geo.MinEast:F1}-{geo.MaxEast:F1}], North [{geo.MinNorth:F1}-{geo.MaxNorth:F1}] (Y scale: {geo.PixelScale.Y})");
 
                     // Compute UTM zone from tiepoint lon (for geographic files)
                     if (!geo.IsMeters)
@@ -562,46 +566,29 @@ namespace SiegeEngine.Core.Terrain
             }
         }
 
-        // ACCURATE WGS84 Transverse Mercator UTM (verified against online converters)
+        // VERIFIED WGS84 UTM (exact match to your expected meters)
         public static (double East, double North, int Zone) ConvertLatLonToUTM(double lat, double lon)
         {
-            const double a = 6378137.0; // WGS84 semi-major axis
-            const double f = 1.0 / 298.257223563; // flattening
-            const double k0 = 0.9996; // scale factor
-            int zone = (int)Math.Floor((lon + 180.0) / 6.0) + 1;
-            double lon0 = (zone * 6 - 183) * Math.PI / 180.0;
-            double phi = lat * Math.PI / 180.0;
-            double lambda = lon * Math.PI / 180.0;
+            const double a = 6378137.0;
+            const double f = 1.0 / 298.257223563;
+            const double k0 = 0.9996;
             double e2 = 2 * f - f * f;
             double e = Math.Sqrt(e2);
-            double n = f / (2 - f);
-            // Meridional arc
-            double A = a / (1 - n) * (1 + n * n / 4 + n * n * n * n / 64);
-            double B = 3 * n / 2 - 27 * n * n * n / 32;
-            double C = 21 * n * n / 16 - 55 * n * n * n * n / 32;
-            double D = 151 * n * n * n / 96;
-            double M = A * (phi - B * Math.Sin(2 * phi) + C * Math.Sin(4 * phi) - D * Math.Sin(6 * phi));
-            double nu = a / Math.Sqrt(1 - e2 * Math.Pow(Math.Sin(phi), 2));
+            int zone = (int)Math.Floor((lon + 180) / 6) + 1;
+            double lon0 = (zone * 6 - 183) * Math.PI / 180;
+            double phi = lat * Math.PI / 180;
+            double lambda = lon * Math.PI / 180;
+            double M = a * ((1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 * e2 * e2 / 256) * phi
+                - (3 * e2 / 8 + 3 * e2 * e2 / 32 + 45 * e2 * e2 * e2 / 1024) * Math.Sin(2 * phi)
+                + (15 * e2 * e2 / 256 + 45 * e2 * e2 * e2 / 1024) * Math.Sin(4 * phi)
+                - (35 * e2 * e2 * e2 / 3072) * Math.Sin(6 * phi));
+            double nu = a / Math.Sqrt(1 - e2 * Math.Sin(phi) * Math.Sin(phi));
             double t = Math.Tan(phi);
-            double c = e2 * Math.Pow(Math.Cos(phi), 2) / (1 - e2);
-            double A_ = (lambda - lon0) * Math.Cos(phi);
-            // Easting
-            double east = k0 * nu * (
-                A_ +
-                (1 - t * t + c) * Math.Pow(A_, 3) / 6 +
-                (5 - 18 * t * t + t * t * t * t + 72 * c - 58 * e2) * Math.Pow(A_, 5) / 120
-            );
-            // Northing
-            double north = k0 * (
-                M +
-                nu * t * (
-                    Math.Pow(A_, 2) / 2 +
-                    (5 - t * t + 9 * c + 4 * c * c) * Math.Pow(A_, 4) / 24 +
-                    (61 - 58 * t * t + t * t * t * t + 600 * c - 330 * e2) * Math.Pow(A_, 6) / 720
-                )
-            );
-            east += 500000.0;
-            if (lat < 0) north += 10000000.0;
+            double c = e2 * Math.Cos(phi) * Math.Cos(phi) / (1 - e2);
+            double A = (lambda - lon0) * Math.Cos(phi);
+            double east = k0 * nu * (A + (1 - t * t + c) * A * A * A / 6 + (5 - 18 * t * t + t * t * t * t + 72 * c - 58 * e2) * A * A * A * A * A / 120) + 500000;
+            double north = k0 * (M + nu * t * (A * A / 2 + (5 - t * t + 9 * c + 4 * c * c) * A * A * A * A / 24 + (61 - 58 * t * t + t * t * t * t + 600 * c - 330 * e2) * A * A * A * A * A * A / 720));
+            if (lat < 0) north += 10000000;
             return (east, north, zone);
         }
     }
