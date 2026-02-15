@@ -1352,6 +1352,11 @@ Folder: Core
       - int TextureHeight
       - string CRS
       - bool IsMeters
+      - int UtmZone
+      - float MinEast
+      - float MaxEast
+      - float MinNorth
+      - float MaxNorth
 - File: TerrainTextureParser.cs
   - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.IO

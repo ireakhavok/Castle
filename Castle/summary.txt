@@ -1976,6 +1976,11 @@ Folder: SiegeEngine
       - int TextureHeight
       - string CRS
       - bool IsMeters
+      - int UtmZone
+      - float MinEast
+      - float MaxEast
+      - float MinNorth
+      - float MaxNorth
 - File: TerrainScene.cs
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
