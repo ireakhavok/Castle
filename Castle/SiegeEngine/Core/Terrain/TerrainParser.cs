@@ -8,6 +8,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Terrain
 {
     public class TiffTag
@@ -19,11 +20,13 @@ namespace SiegeEngine.Core.Terrain
         public uint ValueOrOffset { get; set; }
         public object Value { get; set; }
     }
+
     public class TiffIFD
     {
         public uint Offset { get; set; }
         public Dictionary<ushort, TiffTag> Tags { get; set; } = new Dictionary<ushort, TiffTag>();
     }
+
     public class TiffFile
     {
         public byte[] Bytes { get; set; }
@@ -47,6 +50,7 @@ namespace SiegeEngine.Core.Terrain
         public ushort SamplesPerPixel { get; set; } = 1;
         public ushort PlanarConfig { get; set; } = 1;
     }
+
     public static class TerrainParser
     {
         private static readonly Dictionary<ushort, string> TagNames = new Dictionary<ushort, string>
@@ -63,6 +67,7 @@ namespace SiegeEngine.Core.Terrain
             { 42113, "GDAL_NODATA" },
             { 316, "SMinSampleValue" }
         };
+
         private class LzwDecompressor
         {
             private byte[] input;
@@ -74,11 +79,13 @@ namespace SiegeEngine.Core.Terrain
             private int clearCode = 256;
             private int eoiCode = 257;
             private uint FillOrder;
+
             public LzwDecompressor(byte[] compressedData, uint fillOrder)
             {
                 input = compressedData;
                 FillOrder = fillOrder;
             }
+
             private int GetNextCode()
             {
                 while (bitsInBuffer < codeSize)
@@ -99,6 +106,7 @@ namespace SiegeEngine.Core.Terrain
                 bitBuffer &= ((1UL << bitsInBuffer) - 1UL);
                 return code;
             }
+
             public byte[] Decompress(bool isFirstBlock, int expectedLength)
             {
                 List<byte> output = new List<byte>(expectedLength);
@@ -163,12 +171,14 @@ namespace SiegeEngine.Core.Terrain
                 return output.ToArray();
             }
         }
+
         private static void DecodeDeltaBytes(byte[] ptr, int cols, int channels)
         {
             for (int COL = 1; COL < cols; ++COL)
                 for (int CHAN = 0; CHAN < channels; ++CHAN)
                     ptr[COL * channels + CHAN] += ptr[(COL - 1) * channels + CHAN];
         }
+
         private static void DecodeFPDeltaRow(byte[] input, byte[] output, int cols, int channels, int bytesPerSample)
         {
             DecodeDeltaBytes(input, cols * bytesPerSample, channels);
@@ -177,6 +187,7 @@ namespace SiegeEngine.Core.Terrain
                 for (int BYTE = 0; BYTE < bytesPerSample; ++BYTE)
                     output[bytesPerSample * COL + BYTE] = input[(bytesPerSample - BYTE - 1) * rowIncrement + COL];
         }
+
         private static void ApplyFloatingPointPredictor3(byte[] decompressed, int tileWidth, int tileHeight, int bytesPerSample = 4, int channels = 1)
         {
             int rowLength = tileWidth * channels * bytesPerSample;
@@ -190,6 +201,7 @@ namespace SiegeEngine.Core.Terrain
                 Array.Copy(rowOutput, 0, decompressed, rowOff, rowLength);
             }
         }
+
         private static byte[] DecompressDeflate(byte[] compressedData)
         {
             if (compressedData.Length < 2) return Array.Empty<byte>();
@@ -199,6 +211,7 @@ namespace SiegeEngine.Core.Terrain
             deflate.CopyTo(output);
             return output.ToArray();
         }
+
         public static float[,] LoadUSGSDEM(string filePath, out int width, out int height, out float minHeight, out float maxHeight)
         {
             if (!File.Exists(filePath))
@@ -440,6 +453,7 @@ namespace SiegeEngine.Core.Terrain
             }
             return heightmap;
         }
+
         private static float ToSingleLittleEndian(byte[] bytes, int offset)
         {
             if (!BitConverter.IsLittleEndian)
@@ -449,6 +463,7 @@ namespace SiegeEngine.Core.Terrain
             }
             return BitConverter.ToSingle(bytes, offset);
         }
+
         public class GeoReference
         {
             public Vector2 PixelScale = Vector2.One;
@@ -458,8 +473,13 @@ namespace SiegeEngine.Core.Terrain
             public int TextureHeight = 0;
             public string CRS = "Unknown";
             public bool IsMeters = false;
-            public int UtmZone = 0; // NEW: for logging and zone consistency
+            public int UtmZone = 0;
+            public float MinEast = 0;
+            public float MaxEast = 0;
+            public float MinNorth = 0;
+            public float MaxNorth = 0;
         }
+
         public static GeoReference ParseGeoReference(string filePath)
         {
             try
@@ -516,18 +536,21 @@ namespace SiegeEngine.Core.Terrain
                 }
                 if (geo.IsValid)
                 {
+                    // DEM elevation GeoTIFF: GUARANTEED top-left origin (tiepoint = northernmost)
+                    // NAIP: standard GeoTIFF (upper-left tiepoint, signed scale)
+                    geo.MinEast = geo.TiePointModel.X;
+                    geo.MaxEast = geo.TiePointModel.X + Math.Abs(geo.PixelScale.X) * geo.TextureWidth;
+                    geo.MaxNorth = geo.TiePointModel.Y; // tiepoint = top = north
+                    geo.MinNorth = geo.TiePointModel.Y - Math.Abs(geo.PixelScale.Y) * geo.TextureHeight; // subtract to reach south
+                    Console.WriteLine($"[Geo] DEM top-left origin (north at tie): East [{geo.MinEast:F1}-{geo.MaxEast:F1}], North [{geo.MinNorth:F1}-{geo.MaxNorth:F1}]");
+
                     // Compute UTM zone from tiepoint lon (for geographic files)
                     if (!geo.IsMeters)
                     {
                         geo.UtmZone = (int)Math.Floor((geo.TiePointModel.X + 180) / 6) + 1;
                         Console.WriteLine($"[Geo] Computed UTM Zone from lon: {geo.UtmZone}N");
                     }
-                    float minX = geo.TiePointModel.X;
-                    float maxX = geo.TiePointModel.X + geo.PixelScale.X * geo.TextureWidth;
-                    float minY = geo.TiePointModel.Y;
-                    float maxY = geo.TiePointModel.Y + geo.PixelScale.Y * geo.TextureHeight;
-                    Console.WriteLine($"[Geo] World bounds: X [{minX:F1}-{maxX:F1}], Y [{minY:F1}-{maxY:F1}]");
-                    geo.IsMeters = geo.PixelScale.X > 0.01f || geo.CRS.Contains("Projected");
+                    geo.IsMeters = Math.Abs(geo.PixelScale.X) > 0.01f || geo.CRS.Contains("Projected");
                     Console.WriteLine($"[Geo] Units detected: {(geo.IsMeters ? "Meters (projected)" : "Degrees (geographic)")}");
                 }
                 return geo;
@@ -538,41 +561,36 @@ namespace SiegeEngine.Core.Terrain
                 return new GeoReference();
             }
         }
+
         // ACCURATE WGS84 Transverse Mercator UTM (verified against online converters)
         public static (double East, double North, int Zone) ConvertLatLonToUTM(double lat, double lon)
         {
-            const double a = 6378137.0;          // WGS84 semi-major axis
+            const double a = 6378137.0; // WGS84 semi-major axis
             const double f = 1.0 / 298.257223563; // flattening
-            const double k0 = 0.9996;            // scale factor
-
+            const double k0 = 0.9996; // scale factor
             int zone = (int)Math.Floor((lon + 180.0) / 6.0) + 1;
             double lon0 = (zone * 6 - 183) * Math.PI / 180.0;
-
             double phi = lat * Math.PI / 180.0;
             double lambda = lon * Math.PI / 180.0;
             double e2 = 2 * f - f * f;
             double e = Math.Sqrt(e2);
             double n = f / (2 - f);
-
             // Meridional arc
             double A = a / (1 - n) * (1 + n * n / 4 + n * n * n * n / 64);
             double B = 3 * n / 2 - 27 * n * n * n / 32;
             double C = 21 * n * n / 16 - 55 * n * n * n * n / 32;
             double D = 151 * n * n * n / 96;
             double M = A * (phi - B * Math.Sin(2 * phi) + C * Math.Sin(4 * phi) - D * Math.Sin(6 * phi));
-
             double nu = a / Math.Sqrt(1 - e2 * Math.Pow(Math.Sin(phi), 2));
             double t = Math.Tan(phi);
             double c = e2 * Math.Pow(Math.Cos(phi), 2) / (1 - e2);
             double A_ = (lambda - lon0) * Math.Cos(phi);
-
             // Easting
             double east = k0 * nu * (
                 A_ +
                 (1 - t * t + c) * Math.Pow(A_, 3) / 6 +
                 (5 - 18 * t * t + t * t * t * t + 72 * c - 58 * e2) * Math.Pow(A_, 5) / 120
             );
-
             // Northing
             double north = k0 * (
                 M +
@@ -582,10 +600,8 @@ namespace SiegeEngine.Core.Terrain
                     (61 - 58 * t * t + t * t * t * t + 600 * c - 330 * e2) * Math.Pow(A_, 6) / 720
                 )
             );
-
             east += 500000.0;
             if (lat < 0) north += 10000000.0;
-
             return (east, north, zone);
         }
     }

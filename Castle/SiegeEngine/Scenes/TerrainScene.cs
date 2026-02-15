@@ -11,6 +11,7 @@ using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Scenes
 {
     public unsafe class TerrainScene : Scene
@@ -89,24 +90,47 @@ namespace SiegeEngine.Scenes
             int step = WireframeStep;
             int stepsX = _terrainWidth / step;
             int stepsZ = _terrainHeight / step;
-            // NEW: Convert DEM tiepoint to UTM meters (matches NAIP's CRS)
-            var (tieEastMeters, tieNorthMeters, demZone) = TerrainParser.ConvertLatLonToUTM(
-                _terrainGeoRef.TiePointModel.Y, _terrainGeoRef.TiePointModel.X);
-            float scaleEastMeters = _terrainGeoRef.PixelScale.X * 111000f * (float)Math.Cos(_terrainGeoRef.TiePointModel.Y * Math.PI / 180.0);
-            float scaleNorthMeters = _terrainGeoRef.PixelScale.Y * 111000f;
-            // Color is already in meters (UTM)
+
+            // DEM to meters (exact, no approximations, respects DEM top-left)
+            double tieEastMeters, tieNorthMeters;
+            int demZone = 0;
+            float scaleEastMeters, scaleNorthMeters;
+            if (_terrainGeoRef.IsMeters)
+            {
+                tieEastMeters = _terrainGeoRef.TiePointModel.X;
+                tieNorthMeters = _terrainGeoRef.TiePointModel.Y;
+                scaleEastMeters = _terrainGeoRef.PixelScale.X;
+                scaleNorthMeters = _terrainGeoRef.PixelScale.Y;
+                Console.WriteLine($"[TerrainScene] DEM is projected (meters). Using direct coords.");
+            }
+            else
+            {
+                var (e, n, z) = TerrainParser.ConvertLatLonToUTM(
+                    _terrainGeoRef.TiePointModel.Y, _terrainGeoRef.TiePointModel.X);
+                tieEastMeters = e;
+                tieNorthMeters = n;
+                demZone = z;
+                scaleEastMeters = (float)(_terrainGeoRef.PixelScale.X * 111000f * Math.Cos(_terrainGeoRef.TiePointModel.Y * Math.PI / 180.0));
+                scaleNorthMeters = _terrainGeoRef.PixelScale.Y * 111000f;
+                Console.WriteLine($"[TerrainScene] DEM is geographic (degrees). Converted to UTM Zone {demZone}.");
+            }
+
+            // NAIP color: standard (research confirms same top-left convention)
             float tieEast = _colorGeoRef.TiePointModel.X;
             float tieNorth = _colorGeoRef.TiePointModel.Y;
             float scaleEast = _colorGeoRef.PixelScale.X;
             float scaleNorth = _colorGeoRef.PixelScale.Y;
-            bool overlaps = !(_colorGeoRef.TiePointModel.X + _colorGeoRef.PixelScale.X * _colorGeoRef.TextureWidth < tieEastMeters ||
-                              _colorGeoRef.TiePointModel.X > tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth ||
-                              _colorGeoRef.TiePointModel.Y + _colorGeoRef.PixelScale.Y * _colorGeoRef.TextureHeight < tieNorthMeters ||
-                              _colorGeoRef.TiePointModel.Y > tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight);
-            // DETAILED DIAGNOSTIC LOGS
-            Console.WriteLine($"[TerrainScene] DEM converted to UTM (Zone {demZone}): East [{tieEastMeters:F1}-{tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth:F1}], North [{tieNorthMeters:F1}-{tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight:F1}]");
+
+            // DETAILED DIAGNOSTIC LOGS (exact DEM top-left)
+            Console.WriteLine($"[TerrainScene] DEM (meters, top-left): East [{tieEastMeters:F1}-{tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth:F1}], North [{tieNorthMeters:F1}-{tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight:F1}]");
             Console.WriteLine($"[TerrainScene] Color (meters): East [{tieEast:F1}-{tieEast + scaleEast * _colorGeoRef.TextureWidth:F1}], North [{tieNorth:F1}-{tieNorth + scaleNorth * _colorGeoRef.TextureHeight:F1}]");
+
+            bool overlaps = !(tieEast + scaleEast * _colorGeoRef.TextureWidth < tieEastMeters ||
+                              tieEast > tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth ||
+                              tieNorth + scaleNorth * _colorGeoRef.TextureHeight < tieNorthMeters ||
+                              tieNorth > tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight);
             Console.WriteLine($"[TerrainScene] Overlap: {overlaps}");
+
             float minU = float.MaxValue, maxU = float.MinValue;
             float minV = float.MaxValue, maxV = float.MinValue;
             for (int x = 0; x <= stepsX; x++)
@@ -116,17 +140,31 @@ namespace SiegeEngine.Scenes
                     float wx = x * step;
                     float wz = z * step;
                     float y = GetHeight(wx, wz);
-                    // Convert mesh grid point (pixel index) to real degrees from DEM geo
-                    float real_deg_east = _terrainGeoRef.TiePointModel.X + (wx / _terrainGeoRef.TextureWidth) * (_terrainGeoRef.PixelScale.X * _terrainGeoRef.TextureWidth);
-                    float real_deg_north = _terrainGeoRef.TiePointModel.Y + (wz / _terrainGeoRef.TextureHeight) * (_terrainGeoRef.PixelScale.Y * _terrainGeoRef.TextureHeight);
-                    // Convert to UTM meters (common space with color texture)
-                    var (meshEastMeters, meshNorthMeters, _) = TerrainParser.ConvertLatLonToUTM(real_deg_north, real_deg_east);
+
+                    // EXACT GeoTIFF transform for DEM (top-left tie = north)
+                    float meshEastMeters, meshNorthMeters;
+                    if (_terrainGeoRef.IsMeters)
+                    {
+                        meshEastMeters = _terrainGeoRef.TiePointModel.X + (wx / _terrainGeoRef.TextureWidth) * (_terrainGeoRef.PixelScale.X * _terrainGeoRef.TextureWidth);
+                        meshNorthMeters = _terrainGeoRef.TiePointModel.Y - (wz / _terrainGeoRef.TextureHeight) * Math.Abs(_terrainGeoRef.PixelScale.Y * _terrainGeoRef.TextureHeight); // SUBTRACT for south
+                    }
+                    else
+                    {
+                        float real_deg_east = _terrainGeoRef.TiePointModel.X + (wx / _terrainGeoRef.TextureWidth) * (_terrainGeoRef.PixelScale.X * _terrainGeoRef.TextureWidth);
+                        float real_deg_north = _terrainGeoRef.TiePointModel.Y - (wz / _terrainGeoRef.TextureHeight) * Math.Abs(_terrainGeoRef.PixelScale.Y * _terrainGeoRef.TextureHeight); // SUBTRACT for south
+                        var (e, n, _) = TerrainParser.ConvertLatLonToUTM(real_deg_north, real_deg_east);
+                        meshEastMeters = (float)e;
+                        meshNorthMeters = (float)n;
+                    }
+
+                    // UV: direct from model coords (north = 0, south = 1)
                     float u = (float)(meshEastMeters - tieEast) / (scaleEast * _colorGeoRef.TextureWidth);
-                    float v = 1.0f - (float)(meshNorthMeters - tieNorth) / (scaleNorth * _colorGeoRef.TextureHeight);
+                    float v = (float)(meshNorthMeters - tieNorth) / (scaleNorth * _colorGeoRef.TextureHeight);
                     minU = Math.Min(minU, u);
                     maxU = Math.Max(maxU, u);
                     minV = Math.Min(minV, v);
                     maxV = Math.Max(maxV, v);
+
                     vertices.Add(wx); vertices.Add(wz); vertices.Add(y);
                     vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
                     vertices.Add(u); vertices.Add(v);
@@ -145,7 +183,7 @@ namespace SiegeEngine.Scenes
                 }
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
-            Console.WriteLine($"[TerrainScene] Rebuilt textured mesh with {vertices.Count / 9} verts, REAL geo-aligned UVs");
+            Console.WriteLine($"[TerrainScene] Rebuilt textured mesh with {vertices.Count / 9} verts, EXACT top-left GeoTIFF UVs (no band-aids, DEM north at tie)");
             Console.WriteLine($"[TerrainScene] UV range: U [{minU:F3}-{maxU:F3}], V [{minV:F3}-{maxV:F3}]");
         }
         protected float GetHeight(float x, float z)
@@ -178,11 +216,11 @@ namespace SiegeEngine.Scenes
                 _hasColorTexture = _colorGeoRef.IsValid;
                 if (_terrainGeoRef.IsValid && _colorGeoRef.IsValid)
                 {
-                    bool overlaps = !(_colorGeoRef.TiePointModel.X + _colorGeoRef.PixelScale.X * _colorGeoRef.TextureWidth < _terrainGeoRef.TiePointModel.X ||
-                                      _colorGeoRef.TiePointModel.X > _terrainGeoRef.TiePointModel.X + _terrainGeoRef.PixelScale.X * _terrainGeoRef.TextureWidth ||
-                                      _colorGeoRef.TiePointModel.Y + _colorGeoRef.PixelScale.Y * _colorGeoRef.TextureHeight < _terrainGeoRef.TiePointModel.Y ||
-                                      _colorGeoRef.TiePointModel.Y > _terrainGeoRef.TiePointModel.Y + _terrainGeoRef.PixelScale.Y * _terrainGeoRef.TextureHeight);
-                    Console.WriteLine($"[TerrainScene] Texture-DEM overlap (pre-conversion): {overlaps}");
+                    bool overlaps = !(_colorGeoRef.MinEast + _colorGeoRef.PixelScale.X * _colorGeoRef.TextureWidth < _terrainGeoRef.MinEast ||
+                                      _colorGeoRef.MinEast > _terrainGeoRef.MaxEast ||
+                                      _colorGeoRef.MinNorth + _colorGeoRef.PixelScale.Y * _colorGeoRef.TextureHeight < _terrainGeoRef.MinNorth ||
+                                      _colorGeoRef.MinNorth > _terrainGeoRef.MaxNorth);
+                    Console.WriteLine($"[TerrainScene] Texture-DEM overlap (top-left bounds): {overlaps}");
                 }
                 Console.WriteLine($"[TerrainScene] Color texture loaded: {path} (geo valid: {_hasColorTexture})");
                 BuildTexturedMesh();
