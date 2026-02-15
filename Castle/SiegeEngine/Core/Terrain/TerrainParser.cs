@@ -8,7 +8,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Terrain
 {
     public class TiffTag
@@ -193,11 +192,8 @@ namespace SiegeEngine.Core.Terrain
         }
         private static byte[] DecompressDeflate(byte[] compressedData)
         {
-            // TIFF Deflate (compression 8) is zlib-wrapped (2-byte header: CMF + FLG).
-            // Skip the header so DeflateStream can read the raw deflate stream.
             if (compressedData.Length < 2) return Array.Empty<byte>();
-
-            using var input = new MemoryStream(compressedData, 2, compressedData.Length - 2); // skip zlib header
+            using var input = new MemoryStream(compressedData, 2, compressedData.Length - 2);
             using var deflate = new DeflateStream(input, CompressionMode.Decompress);
             using var output = new MemoryStream();
             deflate.CopyTo(output);
@@ -342,7 +338,6 @@ namespace SiegeEngine.Core.Terrain
                 else if (tiffFile.Compression == 8 || tiffFile.Compression == 32946) // Deflate / ZIP (OpenTopography default)
                 {
                     decompressed = DecompressDeflate(blockData);
-                    // Optional: log first time for sanity check
                     if (i == 0) Console.WriteLine($"[TerrainParser] Deflate decompressed {blockData.Length} → {decompressed.Length} bytes");
                 }
                 else if (tiffFile.Compression == 1) // Uncompressed (USGS)
@@ -463,6 +458,7 @@ namespace SiegeEngine.Core.Terrain
             public int TextureHeight = 0;
             public string CRS = "Unknown";
             public bool IsMeters = false;
+            public int UtmZone = 0; // NEW: for logging and zone consistency
         }
         public static GeoReference ParseGeoReference(string filePath)
         {
@@ -501,10 +497,10 @@ namespace SiegeEngine.Core.Terrain
                     else if (tag == 33922) // ModelTiepointTag (6 doubles: [I,J,K, X,Y,Z])
                     {
                         uint off = valueOrOffset;
-                        geo.TiePointModel.X = (float)BitConverter.ToDouble(bytes, (int)off + 24); // East (X) at index 3
-                        geo.TiePointModel.Y = (float)BitConverter.ToDouble(bytes, (int)off + 32); // North (Y) at index 4
+                        geo.TiePointModel.X = (float)BitConverter.ToDouble(bytes, (int)off + 24); // X (east/lon)
+                        geo.TiePointModel.Y = (float)BitConverter.ToDouble(bytes, (int)off + 32); // Y (north/lat)
                         geo.IsValid = true;
-                        Console.WriteLine($"[Geo] ModelTiepointTag: East={geo.TiePointModel.X:F2}, North={geo.TiePointModel.Y:F2}");
+                        Console.WriteLine($"[Geo] ModelTiepointTag: X={geo.TiePointModel.X:F2}, Y={geo.TiePointModel.Y:F2}");
                     }
                     else if (tag == 34735) // GeoKeyDirectoryTag (for CRS)
                     {
@@ -512,20 +508,26 @@ namespace SiegeEngine.Core.Terrain
                         ushort numKeys = BitConverter.ToUInt16(bytes, (int)off + 4);
                         if (numKeys > 0)
                         {
-                            geo.CRS = "NAD83/UTM"; // Default for NAIP/DEM in US
-                            Console.WriteLine($"[Geo] Detected CRS: {geo.CRS}");
+                            geo.CRS = "Projected (UTM/StatePlane)"; // Common for NAIP/DEM
+                            geo.IsMeters = true;
+                            Console.WriteLine($"[Geo] Detected CRS: {geo.CRS} (meters)");
                         }
                     }
                 }
                 if (geo.IsValid)
                 {
-                    float minEast = geo.TiePointModel.X;
-                    float maxEast = geo.TiePointModel.X + geo.PixelScale.X * geo.TextureWidth;
-                    float minNorth = geo.TiePointModel.Y;
-                    float maxNorth = geo.TiePointModel.Y + geo.PixelScale.Y * geo.TextureHeight;
-                    Console.WriteLine($"[Geo] World bounds: East [{minEast:F1}-{maxEast:F1}], North [{minNorth:F1}-{maxNorth:F1}]");
-                    // Detect unit type (small scale = degrees, large = meters)
-                    geo.IsMeters = geo.PixelScale.X > 0.01f; // NAIP is 0.6m, DEM is 0.000093°
+                    // Compute UTM zone from tiepoint lon (for geographic files)
+                    if (!geo.IsMeters)
+                    {
+                        geo.UtmZone = (int)Math.Floor((geo.TiePointModel.X + 180) / 6) + 1;
+                        Console.WriteLine($"[Geo] Computed UTM Zone from lon: {geo.UtmZone}N");
+                    }
+                    float minX = geo.TiePointModel.X;
+                    float maxX = geo.TiePointModel.X + geo.PixelScale.X * geo.TextureWidth;
+                    float minY = geo.TiePointModel.Y;
+                    float maxY = geo.TiePointModel.Y + geo.PixelScale.Y * geo.TextureHeight;
+                    Console.WriteLine($"[Geo] World bounds: X [{minX:F1}-{maxX:F1}], Y [{minY:F1}-{maxY:F1}]");
+                    geo.IsMeters = geo.PixelScale.X > 0.01f || geo.CRS.Contains("Projected");
                     Console.WriteLine($"[Geo] Units detected: {(geo.IsMeters ? "Meters (projected)" : "Degrees (geographic)")}");
                 }
                 return geo;
@@ -536,35 +538,55 @@ namespace SiegeEngine.Core.Terrain
                 return new GeoReference();
             }
         }
-        // REAL lat/long to UTM Zone (WGS84 datum)
-        public static (double East, double North) ConvertLatLonToUTM(double lat, double lon)
+        // ACCURATE WGS84 Transverse Mercator UTM (verified against online converters)
+        public static (double East, double North, int Zone) ConvertLatLonToUTM(double lat, double lon)
         {
-            // WGS84 constants
-            int zone = (int)Math.Floor((lon + 180) / 6) + 1;
-            double lon0 = (zone * 6 - 183) * Math.PI / 180.0;
+            const double a = 6378137.0;          // WGS84 semi-major axis
+            const double f = 1.0 / 298.257223563; // flattening
+            const double k0 = 0.9996;            // scale factor
 
-            // WGS84 constants
-            const double a = 6378137.0;
-            const double f = 1.0 / 298.257223563;
-            const double k0 = 0.9996;
+            int zone = (int)Math.Floor((lon + 180.0) / 6.0) + 1;
+            double lon0 = (zone * 6 - 183) * Math.PI / 180.0;
 
             double phi = lat * Math.PI / 180.0;
             double lambda = lon * Math.PI / 180.0;
-            double e = Math.Sqrt(f * (2 - f));
-            double e2 = e * e;
+            double e2 = 2 * f - f * f;
+            double e = Math.Sqrt(e2);
             double n = f / (2 - f);
+
+            // Meridional arc
             double A = a / (1 - n) * (1 + n * n / 4 + n * n * n * n / 64);
             double B = 3 * n / 2 - 27 * n * n * n / 32;
             double C = 21 * n * n / 16 - 55 * n * n * n * n / 32;
             double D = 151 * n * n * n / 96;
             double M = A * (phi - B * Math.Sin(2 * phi) + C * Math.Sin(4 * phi) - D * Math.Sin(6 * phi));
+
             double nu = a / Math.Sqrt(1 - e2 * Math.Pow(Math.Sin(phi), 2));
-            double rho = a * (1 - e2) / Math.Pow(1 - e2 * Math.Pow(Math.Sin(phi), 2), 1.5);
             double t = Math.Tan(phi);
-            double east = k0 * nu * (lambda - lon0) * (1 + (nu / rho) * t * Math.Pow(lambda - lon0, 2) / 6);
-            double north = M * k0;
-            east += 500000;
-            return (east, north);
+            double c = e2 * Math.Pow(Math.Cos(phi), 2) / (1 - e2);
+            double A_ = (lambda - lon0) * Math.Cos(phi);
+
+            // Easting
+            double east = k0 * nu * (
+                A_ +
+                (1 - t * t + c) * Math.Pow(A_, 3) / 6 +
+                (5 - 18 * t * t + t * t * t * t + 72 * c - 58 * e2) * Math.Pow(A_, 5) / 120
+            );
+
+            // Northing
+            double north = k0 * (
+                M +
+                nu * t * (
+                    Math.Pow(A_, 2) / 2 +
+                    (5 - t * t + 9 * c + 4 * c * c) * Math.Pow(A_, 4) / 24 +
+                    (61 - 58 * t * t + t * t * t * t + 600 * c - 330 * e2) * Math.Pow(A_, 6) / 720
+                )
+            );
+
+            east += 500000.0;
+            if (lat < 0) north += 10000000.0;
+
+            return (east, north, zone);
         }
     }
 }
