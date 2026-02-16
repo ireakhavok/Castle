@@ -54,25 +54,33 @@ namespace SiegeEngine.Core.Events
         {
             Type type = typeof(T);
             bool isProtected = type.GetCustomAttribute<ProtectedEventAttribute>() != null;
+
             if (isProtected)
             {
                 StackTrace stackTrace = new StackTrace();
                 bool isInternalCaller = stackTrace.GetFrames()?.Any(frame =>
                     frame.GetMethod()?.DeclaringType?.Namespace?.StartsWith("Citadel") == true) ?? false;
+
                 if (!isInternalCaller)
                 {
                     Console.WriteLine($"EventBus: Rejected publish of protected event {type.Name} from unauthorized caller");
                     return;
                 }
             }
+
             if (_subscribers.ContainsKey(type))
             {
-                foreach (var handler in _subscribers[type])
+                // CRITICAL FIX: Take a snapshot so handlers can safely add/remove subscribers (e.g. OpenPanel + ClosePanel)
+                var handlersCopy = _subscribers[type].ToList();
+
+                foreach (var handler in handlersCopy)
                 {
                     ((Action<T>)handler)(eventData);
                 }
+
                 Console.WriteLine($"EventBus: Published {type.Name}");
             }
+
             if (networkSync && _steamEngine != null && !isProtected)
             {
                 byte[] data = eventData is IEvent ievent ? ievent.Serialize() : Encoding.UTF8.GetBytes(JsonSerializer.Serialize(eventData));
@@ -126,6 +134,7 @@ namespace SiegeEngine.Core.Events
                 }
                 return;
             }
+
             try
             {
                 var msg = JsonSerializer.Deserialize<Dictionary<string, object>>(message);
@@ -145,7 +154,8 @@ namespace SiegeEngine.Core.Events
                         return;
                     }
                     var eventData = JsonSerializer.Deserialize(message, type);
-                    foreach (var handler in _subscribers[type])
+                    var handlersCopy = _subscribers[type].ToList();
+                    foreach (var handler in handlersCopy)
                     {
                         ((Action<object>)handler)(eventData);
                     }

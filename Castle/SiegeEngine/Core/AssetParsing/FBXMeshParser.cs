@@ -676,12 +676,12 @@ namespace SiegeEngine.Core.AssetParsing
             float maxX = float.MinValue, maxY = float.MinValue, maxZ = float.MinValue;
             foreach (var v in vertices)
             {
-                minX = Math.Min(minX, v.X);
-                minY = Math.Min(minY, v.Y);
-                minZ = Math.Min(minZ, v.Z);
-                maxX = Math.Max(maxX, v.X);
-                maxY = Math.Max(maxY, v.Y);
-                maxZ = Math.Max(maxZ, v.Z);
+                minX = Math.Min(minX, v.Position.X);
+                minY = Math.Min(minY, v.Position.Y);
+                minZ = Math.Min(minZ, v.Position.Z);
+                maxX = Math.Max(maxX, v.Position.X);
+                maxY = Math.Max(maxY, v.Position.Y);
+                maxZ = Math.Max(maxZ, v.Position.Z);
             }
             return new Vector3(maxX - minX, maxY - minY, maxZ - minZ);
         }

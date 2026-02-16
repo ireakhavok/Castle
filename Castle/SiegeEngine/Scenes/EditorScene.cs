@@ -5,6 +5,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;

@@ -1,31 +1,24 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXParser.cs
-using SiegeEngine.Core.AssetObjects;
-using SiegeEngine.Core.AssetParsing.Model;
-using SiegeEngine.Core.Rendering;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using SiegeEngine.Core.AssetObjects;
+using SiegeEngine.Core.AssetParsing.Model;
+
 namespace SiegeEngine.Core.AssetParsing
 {
-    // This static class handles loading and parsing of binary FBX files into an FBXModel structure.
-    // It reads the file, parses nodes, and builds the model by calling specialized parsers for skeleton, meshes, and animations.
     public static class FBXParser
     {
-        // Loads an FBX file from path, checks format, parses binary data into a node forest.
-        // Supports only binary FBX version 7000+, logs errors, exports metadata.
         public static FBXFileForest Load(string path)
         {
+            var forest = new FBXFileForest();
             if (!File.Exists(path))
             {
                 FBXParserBase.Log($"FBXParser: File not found at {path}");
-                return new FBXFileForest();
+                return forest;
             }
-            var context = new FBXFileForest();
             try
             {
                 using (var stream = File.OpenRead(path))
@@ -39,11 +32,11 @@ namespace SiegeEngine.Core.AssetParsing
                         string firstLine = new StreamReader(reader.BaseStream, Encoding.ASCII).ReadLine();
                         if (firstLine?.StartsWith("; FBX") == true)
                         {
-                            FBXParserBase.Log($"FBXParser: ASCII FBX file detected at {path}, not supported. Please convert to binary using Autodesk FBX Converter using Autodesk FBX Converter.");
-                            return new FBXFileForest();
+                            FBXParserBase.Log($"FBXParser: ASCII FBX file detected at {path}, not supported. Please convert to binary using Autodesk FBX Converter.");
+                            return forest;
                         }
                         FBXParserBase.Log($"FBXParser: Invalid FBX file format at {path}");
-                        return new FBXFileForest();
+                        return forest;
                     }
                     reader.ReadBytes(2); // Padding
                     uint version = reader.ReadUInt32();
@@ -51,252 +44,177 @@ namespace SiegeEngine.Core.AssetParsing
                     if (version < 7000)
                     {
                         FBXParserBase.Log($"FBXParser: Unsupported FBX version {version} at {path}, requires version 7000 or higher.");
-                        return new FBXFileForest();
+                        return forest;
                     }
                     long fileLength = stream.Length;
-                    NodeParser.ParseNodes(reader, version, fileLength, fileLength, null, context);
-                    //MetaDataExporter.ExportMetadata(context, $"{path}._metadata.json");
+                    NodeParser.ParseNodes(reader, version, fileLength, fileLength, null, forest);
                 }
             }
             catch (Exception ex)
             {
                 FBXParserBase.Log($"FBXParser: Error loading {path}: {ex.Message}");
-                return new FBXFileForest();
             }
-            return context;
+            return forest;
         }
         public static FBXModel BuildModelFromForest(FBXFileForest forest)
         {
-            FBXModel model = new FBXModel();
+            var model = new FBXModel();
+            if (forest.TreeList.Count == 0)
+            {
+                FBXParserBase.Log("FBXParser: No nodes parsed, returning empty model");
+                return model;
+            }
             var objectsNode = forest.TreeList.FirstOrDefault(n => n.Name == "Objects");
             if (objectsNode == null)
             {
-                Console.WriteLine("BuildModelFromForest: No Objects node found");
-                return FBXParserBase.CreateDefaultCubeModel();
+                FBXParserBase.Log("FBXParser: 'Objects' node not found, returning empty model");
+                return model;
+            }
+            var headerNode = forest.TreeList.FirstOrDefault(n => n.Name == "FBXHeaderExtension");
+            bool isBlender = false;
+            if (headerNode != null)
+            {
+                var creatorNode = headerNode.children.FirstOrDefault(n => n.Name == "Creator");
+                if (creatorNode != null && creatorNode.properties.Count > 0)
+                {
+                    string creator = creatorNode.properties[0].Value.ToString();
+                    FBXParserBase.Log($"FBX Creator: {creator}");
+                    if (creator.Contains("Blender"))
+                    {
+                        isBlender = true;
+                        FBXParserBase.Log("Detected Blender FBX export");
+                    }
+                }
+            }
+            var settings = new FBXSettings();
+            var globalSettingsNode = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
+            if (globalSettingsNode != null)
+            {
+                var props70 = globalSettingsNode.children.FirstOrDefault(c => c.Name == "Properties70");
+                if (props70 != null)
+                {
+                    var unitScaleP = props70.children.FirstOrDefault(p => p.Name == "P" && (p.properties[0].Value.ToString() == "UnitScaleFactor" || p.properties[0].Value.ToString() == "OriginalUnitScaleFactor"));
+                    if (unitScaleP != null)
+                    {
+                        double unitScale = Convert.ToDouble(unitScaleP.properties[4].Value);
+                        settings.ModelScale = (float)unitScale;
+                        FBXParserBase.Log($"Detected UnitScaleFactor: {unitScale}, setting ModelScale to {settings.ModelScale}");
+                    }
+                    else
+                    {
+                        FBXParserBase.Log("No UnitScaleFactor found, keeping ModelScale at 1.0");
+                    }
+                    if (isBlender)
+                    {
+                        var upAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "UpAxis");
+                        var upAxisSignP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "UpAxisSign");
+                        var frontAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "FrontAxis");
+                        var frontAxisSignP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "FrontAxisSign");
+                        var coordAxisP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "CoordAxis");
+                        var coordAxisSignP = props70.children.FirstOrDefault(p => p.Name == "P" && p.properties[0].Value.ToString() == "CoordAxisSign");
+                        int upAxis = upAxisP != null ? Convert.ToInt32(upAxisP.properties[4].Value) : 2;
+                        int upAxisSign = upAxisSignP != null ? Convert.ToInt32(upAxisSignP.properties[4].Value) : 1;
+                        int frontAxis = frontAxisP != null ? Convert.ToInt32(frontAxisP.properties[4].Value) : 1;
+                        int frontAxisSign = frontAxisSignP != null ? Convert.ToInt32(frontAxisSignP.properties[4].Value) : 1;
+                        int coordAxis = coordAxisP != null ? Convert.ToInt32(coordAxisP.properties[4].Value) : 0;
+                        int coordAxisSign = coordAxisSignP != null ? Convert.ToInt32(coordAxisSignP.properties[4].Value) : 1;
+                        FBXParserBase.Log($"GlobalSettings: UpAxis={upAxis} (sign={upAxisSign}), FrontAxis={frontAxis} (sign={frontAxisSign}), CoordAxis={coordAxis} (sign={coordAxisSign})");
+                        var detected = FBXSettings.DetectAxes(upAxis, upAxisSign, frontAxis, frontAxisSign, coordAxis, coordAxisSign);
+                        int[] mapping = detected.mapping;
+                        int[] signs = detected.signs;
+                        settings.AxisMapping = mapping;
+                        settings.AxisSigns = signs;
+                        model.AutoCorrected = true;
+                    }
+                }
             }
             var objectsById = GatherObjectsById(objectsNode);
             var conns = GatherConnections(forest);
-            var (sourceToTarget, signs, modelScale, P4, invP4) = ParseGlobalSettingsAndRemapping(forest);
-            model.SourceToTarget = sourceToTarget;
-            model.Signs = signs;
-            model.ModelScale = modelScale;
-            model.P4 = P4;
-            model.InvP4 = invP4;
-            var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, sourceToTarget, signs, modelScale);
+            var (boneIndexById, rootIndices) = FBXSkeletonParser.ParseSkeleton(model, objectsNode, objectsById, conns, settings);
             FBXSkeletonParser.BuildHierarchy(model, conns, boneIndexById);
-            ParsePoses(model, objectsNode, boneIndexById, P4, invP4, modelScale);
-            FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, sourceToTarget, signs, modelScale, boneIndexById, rootIndices, P4, invP4, forest);
-            FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, sourceToTarget, signs, modelScale, rootIndices, P4, invP4);
+            FBXMeshParser.ParseMeshes(model, objectsNode, conns, objectsById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, boneIndexById, rootIndices, settings.P4, settings.InvP4, forest);
+            FBXAnimationParser.ParseAnimations(model, objectsNode, conns, objectsById, boneIndexById, settings.AxisMapping, settings.AxisSigns, settings.ModelScale, rootIndices, settings.P4, settings.InvP4);
+            ParseBindPoses(model, objectsNode, boneIndexById, settings.InternalAxisMapping, settings.InternalAxisSigns);
+            FBXParserBase.Log($"FBXParser: Built model with {model.Meshes.Count} meshes, {model.Skeleton.Bones.Count} bones, {model.Animations.Count} animations");
             return model;
         }
         public static Dictionary<long, BaseNode> GatherObjectsById(BaseNode objectsNode)
         {
             var objectsById = new Dictionary<long, BaseNode>();
-            foreach (var child in objectsNode.children)
+            if (objectsNode != null)
             {
-                if (child.properties.Count >= 1 && child.properties[0].TypeCode == 'L')
+                foreach (var child in objectsNode.children)
                 {
-                    long id = (long)child.properties[0].Value;
-                    objectsById[id] = child;
+                    if (child.properties.Count > 0 && child.properties[0].Value is long id)
+                    {
+                        objectsById[id] = child;
+                    }
                 }
             }
             return objectsById;
         }
         public static List<(string type, long child, long parent, string prop)> GatherConnections(FBXFileForest forest)
         {
-            var connectionsNode = forest.TreeList.FirstOrDefault(n => n.Name == "Connections");
             var conns = new List<(string type, long child, long parent, string prop)>();
+            var connectionsNode = forest.TreeList.FirstOrDefault(n => n.Name == "Connections");
             if (connectionsNode != null)
             {
-                foreach (var conn in connectionsNode.children)
+                foreach (var conn in connectionsNode.children.Where(c => c.Name == "C"))
                 {
-                    if (conn.Name == "C" && conn.properties.Count >= 3)
+                    if (conn.properties.Count >= 3 && conn.properties[0].Value is string type &&
+                        conn.properties[1].Value is long child && conn.properties[2].Value is long parent)
                     {
-                        string type = (string)conn.properties[0].Value;
-                        long child = (long)conn.properties[1].Value;
-                        long parent = (long)conn.properties[2].Value;
-                        string prop = conn.properties.Count >= 4 ? (string)conn.properties[3].Value : null;
+                        string prop = conn.properties.Count > 3 && conn.properties[3].Value is string p ? p : null;
                         conns.Add((type, child, parent, prop));
                     }
                 }
             }
             return conns;
         }
-        public static (int[] sourceToTarget, int[] signs, float modelScale, Matrix4x4 P4, Matrix4x4 invP4) ParseGlobalSettingsAndRemapping(FBXFileForest forest)
+        // Additional helper methods will be added in subsequent steps
+        private static void ParseBindPoses(FBXModel model, BaseNode objectsNode, Dictionary<long, int> boneIndexById, int[] sourceToTarget, int[] signs)
         {
-            var globalSettings = forest.TreeList.FirstOrDefault(n => n.Name == "GlobalSettings");
-            int upAxis = 2; // Z
-            int upAxisSign = 1;
-            int frontAxis = 1; // Y
-            int frontAxisSign = 1;
-            int coordAxis = 0; // X
-            int coordAxisSign = 1;
-            int coordSystem = 0; // 0: right-handed, 1: left-handed (assumed)
-            int coordSystemSign = 1;
-            float unitScaleFactor = 1f;
-            float originalUnitScaleFactor = 1f;
-            double frameRate = 30.0;
-            int timeMode = 0;
-            int snapOnFrameMode = 0;
-            if (globalSettings != null)
+            var poseNode = objectsNode.children.Where(n => n.Name == "Pose").Where(q => (string)q.properties[2].Value == "BindPose").FirstOrDefault();
+            if (poseNode == null)
             {
-                var props70 = globalSettings.children.FirstOrDefault(c => c.Name == "Properties70");
-                if (props70 != null)
-                {
-                    foreach (var p in props70.children)
-                    {
-                        if (p.Name == "P" && p.properties.Count >= 5)
-                        {
-                            string pname = (string)p.properties[0].Value;
-                            try
-                            {
-                                if (pname == "UpAxis") upAxis = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                else if (pname == "UpAxisSign") upAxisSign = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                else if (pname == "FrontAxis") frontAxis = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                else if (pname == "FrontAxisSign") frontAxisSign = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                else if (pname == "CoordAxis") coordAxis = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                else if (pname == "CoordAxisSign") coordAxisSign = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                else if (pname == "CoordSystem") coordSystem = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                else if (pname == "CoordSystemSign") coordSystemSign = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                else if (pname == "UnitScaleFactor") unitScaleFactor = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                else if (pname == "OriginalUnitScaleFactor") originalUnitScaleFactor = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                else if (pname == "FrameRate") frameRate = FBXParserUtils.GetPropertyDouble(p.properties[4].Value);
-                                else if (pname == "TimeMode") timeMode = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                else if (pname == "SnapOnFrameMode") snapOnFrameMode = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"Error parsing global setting '{pname}': {ex.Message}");
-                            }
-                        }
-                    }
-                }
-            }
-            float modelScale = unitScaleFactor / originalUnitScaleFactor;
-            if (originalUnitScaleFactor == 1f)
-            {
-                modelScale /= 1f;
-            }
-            Console.WriteLine($"Parsed global settings: UpAxis={upAxis} Sign={upAxisSign}, FrontAxis={frontAxis} Sign={frontAxisSign}, CoordAxis={coordAxis} Sign={coordAxisSign}, CoordSystem={coordSystem} Sign={coordSystemSign}, Scale={modelScale}, FrameRate={frameRate}");
-            int[] sourceToTarget = new int[3];
-            sourceToTarget[coordAxis] = 0; // Map to engine X
-            sourceToTarget[frontAxis] = 1; // Map to engine Y (forward)
-            sourceToTarget[upAxis] = 2; // Map to engine Z (up)
-            int[] signs = new int[3];
-            signs[coordAxis] = coordAxisSign;
-            signs[frontAxis] = -frontAxisSign;
-            signs[upAxis] = upAxisSign;
-            // Handle handedness
-            int handedness = (coordSystem == 0 ? 1 : -1) * coordSystemSign; // Assume 0 right, positive
-            Matrix4x4 P4 = Matrix4x4.Identity;
-            float[,] p3 = new float[3, 3];
-            for (int src = 0; src < 3; src++)
-            {
-                int tgt = sourceToTarget[src];
-                p3[tgt, src] = signs[src];
-            }
-            P4 = new Matrix4x4(p3[0, 0], p3[0, 1], p3[0, 2], 0,
-                               p3[1, 0], p3[1, 1], p3[1, 2], 0,
-                               p3[2, 0], p3[2, 1], p3[2, 2], 0,
-                               0, 0, 0, 1);
-            Matrix4x4 invP4;
-            if (!Matrix4x4.Invert(P4, out invP4))
-            {
-                Console.WriteLine("Failed to invert P4, using transpose as approximation");
-                invP4 = Matrix4x4.Transpose(P4);
-            }
-            return (sourceToTarget, signs, modelScale, P4, invP4);
-        }
-        private static void ParsePoses(FBXModel model, BaseNode objectsNode, Dictionary<long, int> boneIndexById, Matrix4x4 P4, Matrix4x4 invP4, float modelScale)
-        {
-            var poseNodes = objectsNode.children.Where(n => n.Name == "Pose").ToList();
-            if (poseNodes.Count == 0)
-            {
-                model.ComputeBindPoses();
+                FBXParserBase.Log("No Bind Pose found");
                 return;
             }
-            Matrix4x4[] restGlobals = null;
-            bool hasRestPose = false;
-            bool hasBindPose = false;
-            foreach (var pose in poseNodes)
+            foreach (var pnode in poseNode.children.Where(c => c.Name == "PoseNode"))
             {
-                if (pose.properties.Count < 3) continue;
-                string poseType = (string)pose.properties[2].Value;
-                if (poseType != "BindPose" && poseType != "RestPose")
+                var nodeIdNode = pnode.children.FirstOrDefault(cn => cn.Name == "Node");
+                if (nodeIdNode == null) continue;
+                long boneId = (long)nodeIdNode.properties[0].Value;
+                if (!boneIndexById.TryGetValue(boneId, out int idx)) continue;
+                var matrixNode = pnode.children.FirstOrDefault(cn => cn.Name == "Matrix");
+                if (matrixNode == null) continue;
+                double[] vals = (double[])matrixNode.properties[0].Value;
+                Matrix4x4 globalBind = FBXParserUtils.CreateMatrixFromArray(vals);
+                globalBind = FBXCoordinateUtils.RemapMatrix(globalBind, sourceToTarget, signs);
+                Matrix4x4.Invert(globalBind, out var invBind);
+                model.Skeleton.Bones[idx].BindPose = invBind;
+                // Compute BindLocal for alignment
+                if (Matrix4x4.Invert(invBind, out Matrix4x4 global))
                 {
-                    continue;
-                }
-                var poseNodesChildren = pose.children.Where(c => c.Name == "PoseNode").ToList();
-                foreach (var pn in poseNodesChildren)
-                {
-                    var nodeIdNode = pn.children.FirstOrDefault(c => c.Name == "Node");
-                    if (nodeIdNode == null) continue;
-                    long id = (long)nodeIdNode.properties[0].Value;
-                    if (!boneIndexById.TryGetValue(id, out int boneIdx)) continue;
-                    var matrixNode = pn.children.FirstOrDefault(c => c.Name == "Matrix");
-                    if (matrixNode == null) continue;
-                    double[] m = (double[])matrixNode.properties[0].Value;
-                    Matrix4x4 mat = new Matrix4x4((float)m[0], (float)m[4], (float)m[8], (float)m[12],
-                                                  (float)m[1], (float)m[5], (float)m[9], (float)m[13],
-                                                  (float)m[2], (float)m[6], (float)m[10], (float)m[14],
-                                                  (float)m[3], (float)m[7], (float)m[11], (float)m[15]);
-                    // Remap matrix
-                    mat = P4 * mat * invP4;
-                    mat = new Matrix4x4(mat.M11, mat.M12, mat.M13, mat.M14,
-                                        mat.M21, mat.M22, mat.M23, mat.M24,
-                                        mat.M31, mat.M32, mat.M33, mat.M34,
-                                        mat.M41 * modelScale, mat.M42 * modelScale, mat.M43 * modelScale, mat.M44);
-                    if (poseType == "BindPose")
+                    Bone bone = model.Skeleton.Bones[idx];
+                    if (bone.ParentIndex >= 0)
                     {
-                        if (Matrix4x4.Invert(mat, out Matrix4x4 invMat))
+                        Matrix4x4 parentInvBind = model.Skeleton.Bones[bone.ParentIndex].BindPose;
+                        if (Matrix4x4.Invert(parentInvBind, out Matrix4x4 parentGlobal))
                         {
-                            model.Skeleton.Bones[boneIdx].BindPose = invMat;
-                            hasBindPose = true;
+                            bone.BindLocal = global * parentGlobal;
                         }
                         else
                         {
-                            Console.WriteLine($"Failed to invert bind matrix for bone {boneIdx}");
+                            bone.BindLocal = Matrix4x4.Identity;
                         }
                     }
-                    else if (poseType == "RestPose")
+                    else
                     {
-                        if (restGlobals == null)
-                        {
-                            restGlobals = new Matrix4x4[model.Skeleton.Bones.Count];
-                        }
-                        restGlobals[boneIdx] = mat;
-                        hasRestPose = true;
+                        bone.BindLocal = global;
                     }
                 }
             }
-            if (hasRestPose && restGlobals != null)
-            {
-                // Fill missing rest globals with computed ones from current LocalRest
-                var computedGlobals = model.Skeleton.ComputeGlobalTransforms(model.Skeleton.Bones.Select(b => b.LocalRest).ToArray());
-                for (int i = 0; i < restGlobals.Length; i++)
-                {
-                    if (restGlobals[i] == default)
-                    {
-                        restGlobals[i] = computedGlobals[i];
-                    }
-                }
-                var locals = model.Skeleton.ComputeLocalsFromGlobals(restGlobals);
-                for (int i = 0; i < model.Skeleton.Bones.Count; i++)
-                {
-                    model.Skeleton.Bones[i].LocalRest = locals[i];
-                    if (Matrix4x4.Decompose(locals[i], out Vector3 s, out Quaternion r, out Vector3 t)) // and here we don't need to remap the decomposed components?
-                    {
-                        model.Skeleton.Bones[i].LclScaling = s;
-                        model.Skeleton.Bones[i].LclRotation = r;
-                        model.Skeleton.Bones[i].LclTranslation = t;
-                    }
-                }
-            }
-            if (!hasBindPose)
-            {
-                model.ComputeBindPoses(); // how can we compute global transforms and locals if we don't have rest pose?
-            }
-            model.HasRestPose = hasRestPose;
         }
     }
 }

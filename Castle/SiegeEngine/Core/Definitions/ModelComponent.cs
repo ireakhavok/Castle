@@ -1,8 +1,11 @@
-﻿using SiegeEngine.Core.AssetParsing.Model;
+﻿// Folder: SiegeEngine.Core.Definitions
+// File: ModelComponent.cs
+using SiegeEngine.Core.AssetParsing.Model;
 using Silk.NET.Maths;
 using System;
 using System.Numerics;
-using SiegeEngine.Core.Interfaces;  
+using SiegeEngine.Core.Interfaces;
+
 namespace SiegeEngine.Core.Definitions
 {
     public class ModelComponent : IComponent

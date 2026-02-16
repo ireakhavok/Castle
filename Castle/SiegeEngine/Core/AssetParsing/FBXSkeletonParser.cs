@@ -1,239 +1,225 @@
 ﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXSkeletonParser.cs
+// File: AssetParsing.V2/FBXSkeletonParser.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Numerics;
+using YamlDotNet.Serialization;
 
 namespace SiegeEngine.Core.AssetParsing
 {
-    // This static class parses skeleton (bones) from Model::LimbNode/Root/Null nodes, builds hierarchy.
     public static class FBXSkeletonParser
     {
-        // Parses all bones, their properties, remaps them, assigns indices.
-        // Returns bone index by ID and root bone indices.
-        public static (Dictionary<long, int> boneIndexById, List<int> rootIndices) ParseSkeleton(FBXModel model, BaseNode objectsNode, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns, int[] sourceToTarget, int[] signs, float modelScale)
+        public static (Dictionary<long, int> boneIndexById, List<int> rootIndices) ParseSkeleton(FBXModel model, BaseNode objectsNode, Dictionary<long, BaseNode> objectsById, List<(string type, long child, long parent, string prop)> conns,FBXSettings settings)// int[] sourceToTarget, int[] signs, float modelScale)
         {
-            var modelNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
-                ((string)n.properties[2].Value == "LimbNode" || (string)n.properties[2].Value == "Limb" ||
-                 (string)n.properties[2].Value == "Root" || (string)n.properties[2].Value == "Null")).ToList();
-            Dictionary<long, int> boneIndexById = new Dictionary<long, int>();
-            int boneIndex = 0;
-            foreach (var modelNode in modelNodes)
+            //var bonesToPrint = new List<int>
+            //{
+            //    0,1,2,3,4,5,6
+            //    // Add bone indices to print here, e.g.:
+            //    // 0,
+            //    // 1
+            //};
+
+            var boneIndexById = new Dictionary<long, int>();
+            var rootIndices = new List<int>();
+            var limbNodes = objectsNode.children.Where(n => n.Name == "Model" && n.properties.Count >= 3 &&
+                (n.properties[2].Value.ToString() == "LimbNode" || n.properties[2].Value.ToString() == "Limb" ||
+                 n.properties[2].Value.ToString() == "Root" || n.properties[2].Value.ToString() == "Null")).ToList();
+            int index = 0;
+            foreach (var limbNode in limbNodes)
             {
-                long id = (long)modelNode.properties[0].Value;
-                string fullName = ((string)modelNode.properties[1].Value).Split('\0')[0];
+                long id = (long)limbNode.properties[0].Value;
+                string fullName = ((string)limbNode.properties[1].Value).Split('\0')[0];
                 string[] nameParts = fullName.Split(new string[] { "::", "|" }, StringSplitOptions.None);
                 string name = nameParts[nameParts.Length - 1].Trim();
-                if (name.EndsWith("_end")) continue; // Skip Blender end bones
-                Bone bone = new Bone { Name = name, ParentIndex = -1, BindPose = Matrix4x4.Identity };
-                string boneType = (string)modelNode.properties[2].Value;
-                bone.BoneType = boneType;
-                // Parse properties
-                var props70 = modelNode.children.FirstOrDefault(c => c.Name == "Properties70");
+                if (name.EndsWith("_end")) continue;
+                var bone = new Bone { Name = name, ParentIndex = -1 };
+                //bone.BoneType = (string)limbNode.properties[2].Value;
+                var props70 = limbNode.children.FirstOrDefault(c => c.Name == "Properties70");
                 if (props70 != null)
                 {
-                    foreach (var p in props70.children)
+                    foreach (var p in props70.children.Where(c => c.Name == "P"))
                     {
-                        if (p.Name == "P" && p.properties.Count >= 5)
+                        string propName = (string)p.properties[0].Value;
+                         if (propName == "Lcl Translation")
                         {
-                            string pname = (string)p.properties[0].Value;
-                            if (pname == "Lcl Translation" && p.properties.Count >= 7)
-                            {
-                                float tx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float ty = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float tz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 t_source = new Vector3(tx, ty, tz);
-                                bone.LclTranslation = FBXCoordinateUtils.RemapVector(t_source, sourceToTarget, signs) * modelScale;
-                                Console.WriteLine($"FBXDebug: Bone {name} rest T: {bone.LclTranslation.X},{bone.LclTranslation.Y},{bone.LclTranslation.Z}");
-                            }
-                            else if (pname == "Lcl Rotation" && p.properties.Count >= 7)
-                            {
-                                float rx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float ry = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float rz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 r_source = new Vector3(rx, ry, rz);
-                                Vector3 r_remap = FBXCoordinateUtils.RemapRotation(r_source, sourceToTarget, signs);
-                                bone.LclRotation = bone.ToQuaternion(r_remap, bone.RotationOrder);
-                                Vector3 euler = bone.ToEuler(bone.LclRotation);
-                                Console.WriteLine($"FBXDebug: Bone {name} rest R: {euler.X},{euler.Y},{euler.Z}");
-                            }
-                            else if (pname == "Lcl Scaling" && p.properties.Count >= 7)
-                            {
-                                float sx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float sy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float sz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 s_source = new Vector3(sx, sy, sz);
-                                bone.LclScaling = FBXCoordinateUtils.RemapScale(s_source, sourceToTarget, signs);
-                                Console.WriteLine($"FBXDebug: Bone {name} rest S: {bone.LclScaling.X},{bone.LclScaling.Y},{bone.LclScaling.Z}");
-                            }
-                            else if (pname == "PreRotation" && p.properties.Count >= 7)
-                            {
-                                float prx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float pry = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float prz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 pr_source = new Vector3(prx, pry, prz);
-                                Vector3 pr_remap = FBXCoordinateUtils.RemapRotation(pr_source, sourceToTarget, signs);
-                                bone.PreRotation = bone.ToQuaternion(pr_remap, 0);
-                            }
-                            else if (pname == "PostRotation" && p.properties.Count >= 7)
-                            {
-                                float pox = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float poy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float poz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 po_source = new Vector3(pox, poy, poz);
-                                Vector3 po_remap = FBXCoordinateUtils.RemapRotation(po_source, sourceToTarget, signs);
-                                bone.PostRotation = bone.ToQuaternion(po_remap, 0);
-                            }
-                            else if (pname == "RotationPivot" && p.properties.Count >= 7)
-                            {
-                                float rpx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float rpy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float rpz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 rp_source = new Vector3(rpx, rpy, rpz);
-                                bone.RotationPivot = FBXCoordinateUtils.RemapVector(rp_source, sourceToTarget, signs) * modelScale;
-                            }
-                            else if (pname == "RotationOffset" && p.properties.Count >= 7)
-                            {
-                                float rox = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float roy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float roz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 ro_source = new Vector3(rox, roy, roz);
-                                bone.RotationOffset = FBXCoordinateUtils.RemapVector(ro_source, sourceToTarget, signs) * modelScale;
-                            }
-                            else if (pname == "ScalingPivot" && p.properties.Count >= 7)
-                            {
-                                float spx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float spy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float spz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 sp_source = new Vector3(spx, spy, spz);
-                                bone.ScalingPivot = FBXCoordinateUtils.RemapVector(sp_source, sourceToTarget, signs) * modelScale;
-                            }
-                            else if (pname == "ScalingOffset" && p.properties.Count >= 7)
-                            {
-                                float sox = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float soy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float soz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 so_source = new Vector3(sox, soy, soz);
-                                bone.ScalingOffset = FBXCoordinateUtils.RemapVector(so_source, sourceToTarget, signs) * modelScale;
-                            }
-                            else if (pname == "RotationOrder" && p.properties.Count >= 5)
-                            {
-                                int order_source = FBXParserUtils.GetPropertyInt(p.properties[4].Value);
-                                bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(order_source, sourceToTarget);
-                            }
-                            else if (pname == "Size" && p.properties.Count >= 5)
-                            {
-                                bone.Size = FBXParserUtils.GetPropertyFloat(p.properties[4].Value) * modelScale;
-                            }
-                            else if (pname == "GeometricTranslation" && p.properties.Count >= 7)
-                            {
-                                float gtx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float gty = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float gtz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 gt_source = new Vector3(gtx, gty, gtz);
-                                bone.GeometricTranslation = FBXCoordinateUtils.RemapVector(gt_source, sourceToTarget, signs) * modelScale;
-                            }
-                            else if (pname == "GeometricRotation" && p.properties.Count >= 7)
-                            {
-                                float grx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float gry = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float grz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 gr_source = new Vector3(grx, gry, grz);
-                                Vector3 gr_remap = FBXCoordinateUtils.RemapRotation(gr_source, sourceToTarget, signs);
-                                bone.GeometricRotation = bone.ToQuaternion(gr_remap, 0);
-                            }
-                            else if (pname == "GeometricScaling" && p.properties.Count >= 7)
-                            {
-                                float gsx = FBXParserUtils.GetPropertyFloat(p.properties[4].Value);
-                                float gsy = FBXParserUtils.GetPropertyFloat(p.properties[5].Value);
-                                float gsz = FBXParserUtils.GetPropertyFloat(p.properties[6].Value);
-                                Vector3 gs_source = new Vector3(gsx, gsy, gsz);
-                                bone.GeometricScaling = FBXCoordinateUtils.RemapScale(gs_source, sourceToTarget, signs);
-                            }
+
+                            double tx = (double)p.properties[4].Value;
+                            double ty = (double)p.properties[5].Value;
+                            double tz = (double)p.properties[6].Value;
+                            bone.LclTranslation = FBXCoordinateUtils.RemapVector(new Vector3((float)tx, (float)ty, (float)tz), settings.InternalAxisMapping, settings.InternalAxisSigns) * settings.ModelScale;
+                        }           
+                        else if (propName == "Lcl Rotation")
+                        {
+                            double rx = (double)p.properties[4].Value;
+                            double ry = (double)p.properties[5].Value;
+                            double rz = (double)p.properties[6].Value;
+                            Vector3 euler = FBXCoordinateUtils.RemapRotation(new Vector3((float)rx, (float)ry, (float)rz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                            bone.LclRotation = bone.ToQuaternion(euler);
+                        }
+                        else if (propName == "Lcl Scaling")
+                        {
+                            //if (name == "Armature")
+                            //{
+                            //    double sx = (double)p.properties[4].Value;
+                            //    double sy = (double)p.properties[5].Value;
+                            //    double sz = (double)p.properties[6].Value;
+                            //    bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                            //    settings.ModelScale = (bone.LclScaling.X + bone.LclScaling.Y + bone.LclScaling.Z) / 3;
+                            //    sx = (double)1;
+                            //    sy = (double)1;
+                            //    sz = (double)1;
+                            //    bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                            //}
+                            //else
+                            //{
+                                double sx = (double)p.properties[4].Value;
+                                double sy = (double)p.properties[5].Value;
+                                double sz = (double)p.properties[6].Value;
+                                bone.LclScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)sx, (float)sy, (float)sz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                            //}
+                        }
+                        else if (propName == "PreRotation")
+                        {
+                            double prx = (double)p.properties[4].Value;
+                            double pry = (double)p.properties[5].Value;
+                            double prz = (double)p.properties[6].Value;
+                            bone.PreRotation = FBXCoordinateUtils.RemapRotation(new Vector3((float)prx, (float)pry, (float)prz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                        }
+                        else if (propName == "PostRotation")
+                        {
+                            double pox = (double)p.properties[4].Value;
+                            double poy = (double)p.properties[5].Value;
+                            double poz = (double)p.properties[6].Value;
+                            bone.PostRotation = FBXCoordinateUtils.RemapRotation(new Vector3((float)pox, (float)poy, (float)poz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                        }
+                        else if (propName == "RotationPivot")
+                        {
+                            double rpx = (double)p.properties[4].Value;
+                            double rpy = (double)p.properties[5].Value;
+                            double rpz = (double)p.properties[6].Value;
+                            bone.RotationPivot = FBXCoordinateUtils.RemapVector(new Vector3((float)rpx, (float)rpy, (float)rpz), settings.InternalAxisMapping, settings.InternalAxisSigns) * settings.ModelScale;
+                        }
+                        else if (propName == "RotationOffset")
+                        {
+                            double rox = (double)p.properties[4].Value;
+                            double roy = (double)p.properties[5].Value;
+                            double roz = (double)p.properties[6].Value;
+                            bone.RotationOffset = FBXCoordinateUtils.RemapVector(new Vector3((float)rox, (float)roy, (float)roz), settings.InternalAxisMapping, settings.InternalAxisSigns) * settings.ModelScale;
+                        }
+                        else if (propName == "ScalingPivot")
+                        {
+                            double spx = (double)p.properties[4].Value;
+                            double spy = (double)p.properties[5].Value;
+                            double spz = (double)p.properties[6].Value;
+                            bone.ScalingPivot = FBXCoordinateUtils.RemapVector(new Vector3((float)spx, (float)spy, (float)spz), settings.InternalAxisMapping, settings.InternalAxisSigns) * settings.ModelScale;
+                        }
+                        else if (propName == "ScalingOffset")
+                        {
+                            double sox = (double)p.properties[4].Value;
+                            double soy = (double)p.properties[5].Value;
+                            double soz = (double)p.properties[6].Value;
+                            bone.ScalingOffset = FBXCoordinateUtils.RemapVector(new Vector3((float)sox, (float)soy, (float)soz), settings.InternalAxisMapping, settings.InternalAxisSigns) * settings.ModelScale;
+                        }
+                        else if (propName == "RotationOrder")
+                        {
+                            int rawOrder = (int)(double)p.properties[4].Value;
+                            bone.RotationOrder = FBXCoordinateUtils.RemapRotationOrder(settings.InternalAxisMapping, rawOrder);
+                        }
+                        else if (propName == "GeometricTranslation")
+                        {
+                            double gtx = (double)p.properties[4].Value;
+                            double gty = (double)p.properties[5].Value;
+                            double gtz = (double)p.properties[6].Value;
+                            bone.GeometricTranslation = FBXCoordinateUtils.RemapVector(new Vector3((float)gtx, (float)gty, (float)gtz), settings.InternalAxisMapping, settings.InternalAxisSigns) * settings.ModelScale;
+                        }
+                        else if (propName == "GeometricRotation")
+                        {
+                            double geoRx = (double)p.properties[4].Value;
+                            double geoRy = (double)p.properties[5].Value;
+                            double geoRz = (double)p.properties[6].Value;
+                            bone.GeometricRotation = FBXCoordinateUtils.RemapRotation(new Vector3((float)geoRx, (float)geoRy, (float)geoRz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                        }
+                        else if (propName == "GeometricScaling")
+                        {
+                            double gsx = (double)p.properties[4].Value;
+                            double gsy = (double)p.properties[5].Value;
+                            double gsz = (double)p.properties[6].Value;
+                            bone.GeometricScaling = FBXCoordinateUtils.RemapVector(new Vector3((float)gsx, (float)gsy, (float)gsz), settings.InternalAxisMapping, settings.InternalAxisSigns);
+                        }
+                        else if (propName == "InheritType")
+                        {
+                            bone.InheritType = Convert.ToInt32(p.properties[4].Value);
+                        }
+                        else
+                        {
+                            Console.WriteLine($"{propName}: not parsed.");
                         }
                     }
+                    bone.LocalRest = bone.ComputeLocal();
+                    // GeometricRotation as quaternion in fixed XYZ order
+                    float grx = bone.GeometricRotation.X * MathF.PI / 180f;
+                    float gry = bone.GeometricRotation.Y * MathF.PI / 180f;
+                    float grz = bone.GeometricRotation.Z * MathF.PI / 180f;
+                    Quaternion qxGeo = Quaternion.CreateFromAxisAngle(Vector3.UnitX, grx);
+                    Quaternion qyGeo = Quaternion.CreateFromAxisAngle(Vector3.UnitY, gry);
+                    Quaternion qzGeo = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, grz);
+                    Matrix4x4 geoR = Matrix4x4.CreateFromQuaternion(qzGeo * qyGeo * qxGeo);
+                    bone.GeometricTransform = Matrix4x4.CreateTranslation(bone.GeometricTranslation) * geoR * Matrix4x4.CreateScale(bone.GeometricScaling);
                 }
-                bone.LocalRest = bone.ComputeLocal();
-                bone.LocalRest = model.P4 * bone.LocalRest * model.InvP4;
                 model.Skeleton.Bones.Add(bone);
-                boneIndexById[id] = boneIndex++;
+                boneIndexById[id] = index;
+                FBXParserBase.Log($"Parsed bone: ID={id}, Index={index}, Name={name}, Type={limbNode.properties[2].Value}, Translation={bone.LclTranslation}, Rotation={bone.LclRotation}, Scaling={bone.LclScaling}");
+                index++;
             }
-            List<int> rootIndices = new List<int>();
-            for (int i = 0; i < model.Skeleton.Bones.Count; i++)
+            var boneIds = new HashSet<long>(boneIndexById.Keys);
+            var childBones = new HashSet<long>();
+            foreach (var conn in conns.Where(conn => conn.type == "OO" && boneIds.Contains(conn.child) && boneIds.Contains(conn.parent)))
             {
-                if (model.Skeleton.Bones[i].ParentIndex == -1)
+                childBones.Add(conn.child);
+                long parentId = conn.parent;
+                long childId = conn.child;
+                string parentName = model.Skeleton.Bones[boneIndexById[parentId]].Name;
+                string childName = model.Skeleton.Bones[boneIndexById[childId]].Name;
+                //FBXParserBase.Log($"Hierarchy connection: Parent ID={parentId} ({parentName}), Child ID={childId} ({childName})");
+            }
+            foreach (var bid in boneIds)
+            {
+                if (!childBones.Contains(bid))
                 {
-                    rootIndices.Add(i);
+                    int rootIdx = boneIndexById[bid];
+                    rootIndices.Add(rootIdx);
+                    string rootName = model.Skeleton.Bones[rootIdx].Name;
+                    FBXParserBase.Log($"Root bone: ID={bid}, Index={rootIdx}, Name={rootName}");
                 }
             }
-            // This commented code is incorrect but affects the skeleton orientation in some way.
-            // It maybe should be doing something similar to this, just to correct
-            // The orientation of the bones? I don't know why, but the coordinate remapping in
-            // FBXParser doesn't already do this? it's just annoying to try and figure out the right
-            // combination of transforms to apply here, or if it should be done earlier in the process?
-            // Should this be done at the local bone level too, including the root and all of the children? IDK. 
-
-            //// Build hierarchy before orientation correction
-            //BuildHierarchy(model, conns, boneIndexById);
-            //// Apply global flip to root bone to correct upside down
-            //if (rootIndices.Count > 0)
-            //{
-            //    int rootIdx = rootIndices[0];
-            //    var rootBone = model.Skeleton.Bones[rootIdx];
-            //    Quaternion flipRot = Quaternion.CreateFromAxisAngle(Vector3.UnitX, MathF.PI);
-            //    rootBone.PreRotation = flipRot * rootBone.PreRotation;
-            //    rootBone.LocalRest = rootBone.ComputeLocal();
-            //    rootBone.LocalRest = model.P4 * rootBone.LocalRest * model.InvP4;
-            //    Console.WriteLine($"Applied global flip to root bone {rootBone.Name}");
-            //}
             return (boneIndexById, rootIndices);
         }
-        // Builds bone hierarchy by setting parent-child relations from connections.
+        // Add helper (like in viewer)
+        private static void PrintMatrix(Matrix4x4 m)
+        {
+            Console.WriteLine($"({m.M11:F4}, {m.M12:F4}, {m.M13:F4}, {m.M14:F4})");
+            Console.WriteLine($"({m.M21:F4}, {m.M22:F4}, {m.M23:F4}, {m.M24:F4})");
+            Console.WriteLine($"({m.M31:F4}, {m.M32:F4}, {m.M33:F4}, {m.M34:F4})");
+            Console.WriteLine($"({m.M41:F4}, {m.M42:F4}, {m.M43:F4}, {m.M44:F4})");
+        }
         public static void BuildHierarchy(FBXModel model, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, int> boneIndexById)
         {
-            foreach (var conn in conns)
+            foreach (var bone in model.Skeleton.Bones)
             {
-                if (conn.type == "OO" && boneIndexById.ContainsKey(conn.child) && boneIndexById.ContainsKey(conn.parent))
-                {
-                    int childIdx = boneIndexById[conn.child];
-                    int parentIdx = boneIndexById[conn.parent];
-                    model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
-                    model.Skeleton.Bones[parentIdx].Children.Add(model.Skeleton.Bones[childIdx]);
-                }
+                bone.Children.Clear();
             }
-        }
-        // Recursively adds ancestors and descendants to a set of bone IDs, for gathering related bones.
-        private static void AddAncestorsAndDescendants(long boneId, HashSet<long> usedIds, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById)
-        {
-            // Add ancestors
-            var parentConn = conns.FirstOrDefault(c => c.type == "OO" && (c.child == boneId || c.parent == boneId));
-            if (parentConn.type != null)
+            foreach (var conn in conns.Where(conn => conn.type == "OO" && boneIndexById.ContainsKey(conn.child) && boneIndexById.ContainsKey(conn.parent)))
             {
-                long parentId = (parentConn.child == boneId) ? parentConn.parent : parentConn.child;
-                if (objectsById.ContainsKey(parentId) && objectsById[parentId].Name == "Model")
-                {
-                    if (usedIds.Add(parentId))
-                    {
-                        AddAncestorsAndDescendants(parentId, usedIds, conns, objectsById);
-                    }
-                }
+                int childIdx = boneIndexById[conn.child];
+                int parentIdx = boneIndexById[conn.parent];
+                model.Skeleton.Bones[childIdx].ParentIndex = parentIdx;
+                model.Skeleton.Bones[parentIdx].Children.Add(model.Skeleton.Bones[childIdx]);
             }
-            // Add descendants
-            var childConns = conns.Where(c => c.type == "OO" && (c.parent == boneId || c.child == boneId)).ToList();
-            foreach (var childConn in childConns)
-            {
-                long childId = (childConn.parent == boneId) ? childConn.child : childConn.parent;
-                if (objectsById.ContainsKey(childId) && objectsById[childId].Name == "Model")
-                {
-                    if (usedIds.Add(childId))
-                    {
-                        AddAncestorsAndDescendants(childId, usedIds, conns, objectsById);
-                    }
-                }
-            }
+            FBXParserBase.Log("Built hierarchy:");
         }
     }
 }

@@ -1,18 +1,19 @@
-﻿// Folder: SiegeEngine/Managers
+﻿// Folder: SiegeEngine.Core.Managers
 // File: SceneManager.cs
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Networking;
-using SiegeEngine.Core.Definitions;
-using SiegeEngine.PlayerSystem;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.UI;
+using SiegeEngine.PlayerSystem;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
 using System.Numerics;
 using System.Reflection;
-using SiegeEngine.Core.UI;
 
 namespace SiegeEngine.Core.Managers
 {
@@ -32,7 +33,6 @@ namespace SiegeEngine.Core.Managers
         private PlayerMovement _playerMovement;
         private ModelManager _modelManager;
         private IGameServer _server;
-
         public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, nint window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuPanel menuPanel)
         {
             _eventBus = eventBus;
@@ -46,7 +46,6 @@ namespace SiegeEngine.Core.Managers
             _menuPanel = menuPanel;
             _eventBus.Subscribe<SwitchSceneEvent>(OnSwitchScene);
         }
-
         public void Update(float deltaTime)
         {
             if (_currentScene != null)
@@ -54,7 +53,6 @@ namespace SiegeEngine.Core.Managers
                 _currentScene.Update(deltaTime);
             }
         }
-
         public void Render()
         {
             if (_currentScene != null)
@@ -62,7 +60,6 @@ namespace SiegeEngine.Core.Managers
                 _currentScene.Render(_server.GetEntities());
             }
         }
-
         public void Resize(int width, int height)
         {
             if (_currentScene != null)
@@ -70,7 +67,6 @@ namespace SiegeEngine.Core.Managers
                 _currentScene.Resize(width, height);
             }
         }
-
         public void Dispose()
         {
             if (_currentScene != null)
@@ -79,7 +75,6 @@ namespace SiegeEngine.Core.Managers
                 _currentScene = null;
             }
         }
-
         private void OnSwitchScene(SwitchSceneEvent e)
         {
             Console.WriteLine($"SceneManager: SwitchSceneEvent received for {e.SceneName}");
@@ -91,14 +86,16 @@ namespace SiegeEngine.Core.Managers
             _server = new ClientGameServerProxy(_eventBus); // Secure proxy
             var predictionSystem = new ClientPredictionSystem(_server, _eventBus);
             _server.AddSystem(predictionSystem);
-            _modelManager = new ModelManager("Mods/Models", "Assets/Models", _modManager, _renderContext);
-            _modelManager.LoadCharacters();
+            _modelManager = new ModelManager(_renderContext);
+            _modelManager.LoadModel(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx"));
             Vector3 startPos = new Vector3(10, 10, 0);
             _player = new Player(1, startPos, ((SteamEngine)_steamEngine).GetSteamId(), _modelManager);
             _player.InitializeCamera(_controlContext, _window);
             var playerEntity = new Entity { Id = 1, Type = "Player" };
             playerEntity.AddComponent(_player);
             playerEntity.AddComponent(_player.Physics);
+            var modelComp = new ModelComponent { Model = _player.Model, Key = "man_mesh" };
+            playerEntity.AddComponent(modelComp);
             _server.AddEntity(playerEntity);
             _playerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
             // Dynamic scene loading

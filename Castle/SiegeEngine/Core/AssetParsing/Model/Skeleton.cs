@@ -1,125 +1,168 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/Model/Skeleton.cs
-using SiegeEngine.Core.AssetObjects;
-using SiegeEngine.Core.AssetParsing.Model;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using SiegeEngine.Core.AssetObjects;
+
 namespace SiegeEngine.Core.AssetParsing.Model
 {
-    // Represents a skeleton with bones, computes hierarchical transforms (local to global to final skinning matrices).
     public class Skeleton
     {
         public List<Bone> Bones { get; set; } = new List<Bone>();
-        private Matrix4x4[] _currentTransforms;
-        // Gets current final transforms for skinning, initializes if null.
-        public Matrix4x4[] GetTransforms()
-        {
-            if (_currentTransforms == null)
-            {
-                _currentTransforms = new Matrix4x4[Bones.Count];
-                for (int i = 0; i < Bones.Count; i++)
-                    _currentTransforms[i] = Matrix4x4.Identity;
-            }
-            return _currentTransforms;
-        }
-        // Sets the current final transforms.
-        public void UpdateTransforms(Matrix4x4[] transforms)
-        {
-            _currentTransforms = transforms;
-        }
-        // Computes global transforms from local ones, starting from roots.
+
+        // Folder: SiegeEngine.Core.AssetParsing.V2.Model
+        // File: Skeleton.cs
+        // ADD this NEW method (do NOT modify the existing ComputeGlobalTransforms() or its recursive)
+
         public Matrix4x4[] ComputeGlobalTransforms(Matrix4x4[] localTransforms)
         {
-            var globalTransforms = new Matrix4x4[Bones.Count];
-            // Find roots
-            for (int i = 0; i < Bones.Count; i++)
+            if (localTransforms == null || localTransforms.Length != Bones.Count)
+                return ComputeGlobalTransforms(); // fallback to rest pose
+
+            Matrix4x4[] globals = new Matrix4x4[Bones.Count];
+
+            foreach (var bone in Bones.Where(b => b.ParentIndex == -1))
             {
-                if (Bones[i].ParentIndex == -1)
-                {
-                    ComputeGlobalRecursive(i, localTransforms, globalTransforms, Matrix4x4.Identity);
-                }
+                ComputeGlobalRecursiveAnimated(Bones.IndexOf(bone), Matrix4x4.Identity, globals, localTransforms);
             }
-            return globalTransforms;
+
+            return globals;
         }
-        // Recursive helper to compute global transform for a bone and its children.
-        private void ComputeGlobalRecursive(int idx, Matrix4x4[] localTransforms, Matrix4x4[] globalTransforms, Matrix4x4 parentGlobal)
+
+        private void ComputeGlobalRecursiveAnimated(int idx, Matrix4x4 parentGlobal, Matrix4x4[] globals, Matrix4x4[] localTransforms)
         {
-            globalTransforms[idx] = localTransforms[idx] * parentGlobal;
-            foreach (var child in Bones[idx].Children)
+            var bone = Bones[idx];
+            Matrix4x4 local = localTransforms[idx];
+
+            Matrix4x4 childGlobal;
+
+            if (!Matrix4x4.Decompose(parentGlobal, out Vector3 parentScale, out Quaternion parentRot, out Vector3 parentTrans))
+            {
+                parentScale = Vector3.One;
+                parentRot = Quaternion.Identity;
+                parentTrans = Vector3.Zero;
+            }
+
+            Matrix4x4 parentR = Matrix4x4.CreateFromQuaternion(parentRot);
+            Matrix4x4 parentT = Matrix4x4.CreateTranslation(parentTrans);
+            Matrix4x4 parentS = Matrix4x4.CreateScale(parentScale);
+
+            if (!Matrix4x4.Decompose(local, out Vector3 childScale, out Quaternion childRot, out Vector3 childTrans))
+            {
+                childScale = Vector3.One;
+                childRot = Quaternion.Identity;
+                childTrans = Vector3.Zero;
+            }
+
+            Matrix4x4 childR = Matrix4x4.CreateFromQuaternion(childRot);
+            Matrix4x4 childT = Matrix4x4.CreateTranslation(childTrans);
+            Matrix4x4 childS = Matrix4x4.CreateScale(childScale);
+
+            switch (bone.InheritType)
+            {
+                case 0: // eInheritRrSs
+                    childGlobal = childS * parentS * childR * childT * parentR * parentT;
+                    break;
+                case 1: // eInheritRSrs
+                    childGlobal = childS * childR * childT * parentS * parentR * parentT;
+                    break;
+                case 2: // eInheritRrs
+                    childGlobal = childS * childR * childT * parentR * parentT;
+                    break;
+                default:
+                    childGlobal = local * parentGlobal;
+                    break;
+            }
+
+            childGlobal = childGlobal * bone.GeometricTransform;
+            globals[idx] = childGlobal;
+
+            foreach (var child in bone.Children)
             {
                 int childIdx = Bones.IndexOf(child);
-                if (childIdx != -1)
+                ComputeGlobalRecursiveAnimated(childIdx, childGlobal, globals, localTransforms);
+            }
+        }
+        public Matrix4x4[] ComputeGlobalTransforms()
+        {
+            Matrix4x4[] globals = new Matrix4x4[Bones.Count];
+            foreach (var bone in Bones.Where(b => b.ParentIndex == -1))
+            {
+                ComputeGlobalRecursive(Bones.IndexOf(bone), Matrix4x4.Identity, globals);
+            }
+            if (Bones.Count > 0)
+            {
+                FBXParserBase.Log("Global Transforms:");
+                for (int i = 0; i < Math.Min(3, Bones.Count); i++)
                 {
-                    ComputeGlobalRecursive(childIdx, localTransforms, globalTransforms, globalTransforms[idx]);
+                    FBXParserBase.Log($"Bone {i} ({Bones[i].Name}) Global:");
+                    FBXParserUtils.PrintMatrix(globals[i]);
                 }
             }
+            return globals;
         }
-        // Computes final skinning matrices: global * bindPose (inverse bind pose actually, but named BindPose).
-        public Matrix4x4[] ComputeFinalTransforms(Matrix4x4[] globalTransforms)
+        private void ComputeGlobalRecursive(int idx, Matrix4x4 parentGlobal, Matrix4x4[] globals)
         {
-            var finalTransforms = new Matrix4x4[Bones.Count];
-            int unmappedCount = 0;
-            for (int i = 0; i < Bones.Count; i++)
+            var bone = Bones[idx];
+            Matrix4x4 local = bone.LocalRest;
+            Matrix4x4 childGlobal;
+            if (!Matrix4x4.Decompose(parentGlobal, out Vector3 parentScale, out Quaternion parentRot, out Vector3 parentTrans))
             {
-                finalTransforms[i] = Bones[i].BindPose * globalTransforms[i];
-                if (finalTransforms[i] == Matrix4x4.Identity)
-                    unmappedCount++;
+                parentScale = Vector3.One;
+                parentRot = Quaternion.Identity;
+                parentTrans = Vector3.Zero;
             }
-            if (unmappedCount > 0)
+            Matrix4x4 parentR = Matrix4x4.CreateFromQuaternion(parentRot);
+            Matrix4x4 parentT = Matrix4x4.CreateTranslation(parentTrans);
+            Matrix4x4 parentS = Matrix4x4.CreateScale(parentScale);
+            if (!Matrix4x4.Decompose(local, out Vector3 childScale, out Quaternion childRot, out Vector3 childTrans))
             {
-                Console.WriteLine($"Skeleton: {unmappedCount}/{Bones.Count} bones have identity final transforms - check mapping/skinning");
+                childScale = Vector3.One;
+                childRot = Quaternion.Identity;
+                childTrans = Vector3.Zero;
             }
-            return finalTransforms;
-        }
-        // Computes inverse bind poses as inverse of rest global transforms.
-        public void ComputeBindPoses()
-        {
-            if (Bones.Count == 0) return;
-            var restLocals = Bones.Select(b => b.LocalRest).ToArray();
-            var restGlobals = ComputeGlobalTransforms(restLocals);
-            for (int i = 0; i < Bones.Count; i++)
+            Matrix4x4 childR = Matrix4x4.CreateFromQuaternion(childRot);
+            Matrix4x4 childT = Matrix4x4.CreateTranslation(childTrans);
+            Matrix4x4 childS = Matrix4x4.CreateScale(childScale);
+            switch (bone.InheritType)
             {
-                if (!Matrix4x4.Invert(restGlobals[i], out Matrix4x4 invRestGlobal))
-                {
-                    Bones[i].BindPose = Matrix4x4.Identity;
-                    continue;
-                }
-                Bones[i].BindPose = invRestGlobal;
+                case 0: // eInheritRrSs
+                    childGlobal = childS * parentS * childR * childT * parentR * parentT;
+                    break;
+                case 1: // eInheritRSrs
+                    childGlobal = childS * childR * childT * parentS * parentR * parentT;
+                    break;
+                case 2: // eInheritRrs
+                    childGlobal = childS * childR * childT * parentR * parentT;
+                    break;
+                default:
+                    childGlobal = local * parentGlobal;
+                    break;
             }
-        }
-        // Computes local transforms from global ones by inverting parent globals.
-        public Matrix4x4[] ComputeLocalsFromGlobals(Matrix4x4[] globals)
-        {
-            var locals = new Matrix4x4[Bones.Count];
-            for (int i = 0; i < Bones.Count; i++)
-            {
-                if (Bones[i].ParentIndex == -1)
-                {
-                    ComputeLocalsRecursive(i, globals, locals, Matrix4x4.Identity);
-                }
-            }
-            return locals;
-        }
-        // Recursive helper to compute local transform for a bone and its children.
-        private void ComputeLocalsRecursive(int idx, Matrix4x4[] globals, Matrix4x4[] locals, Matrix4x4 parentGlobal)
-        {
-            if (Matrix4x4.Invert(parentGlobal, out var invParent))
-            {
-                locals[idx] = globals[idx] * invParent;
-            }
-            else
-            {
-                locals[idx] = globals[idx];
-            }
-            foreach (var child in Bones[idx].Children)
+            childGlobal = childGlobal * bone.GeometricTransform;
+            globals[idx] = childGlobal;
+            foreach (var child in bone.Children)
             {
                 int childIdx = Bones.IndexOf(child);
-                if (childIdx != -1)
-                {
-                    ComputeLocalsRecursive(childIdx, globals, locals, globals[idx]);
-                }
+                ComputeGlobalRecursive(childIdx, childGlobal, globals);
+            }
+        }
+        public void LogBoneHierarchy()
+        {
+            FBXParserBase.Log("Bone Hierarchy:");
+            foreach (var bone in Bones.Where(b => b.ParentIndex == -1))
+            {
+                LogBoneHierarchy(Bones, bone, 0);
+            }
+        }
+        public void LogBoneHierarchy(List<Bone> bones, Bone bone, int level)
+        {
+            string indent = new string(' ', level * 2);
+            int idx = bones.IndexOf(bone);
+            FBXParserBase.Log($"{indent}Bone {idx}: {bone.Name}, ParentIndex={bone.ParentIndex}, LocalRest Translation={bone.LocalRest.Translation}");
+            foreach (var child in bone.Children)
+            {
+                LogBoneHierarchy(bones, child, level + 1);
             }
         }
     }

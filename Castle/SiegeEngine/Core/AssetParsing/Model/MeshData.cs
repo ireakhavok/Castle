@@ -1,14 +1,16 @@
-﻿using SiegeEngine.Core.AssetParsing.Model;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing.V2/Model/MeshData.cs
+using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class MeshData
     {
         public List<FBXVertex> Vertices { get; set; } = new List<FBXVertex>();
         public List<uint> Indices { get; set; } = new List<uint>();
-        public Vector3 Bounds { get; set; }
-        public int[] PolygonMaterialIndices { get; set; }
         public List<Material> Materials { get; set; } = new List<Material>();
+        public Vector3 Bounds { get; set; }
     }
 }

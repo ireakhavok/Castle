@@ -1,4 +1,6 @@
-﻿namespace SiegeEngine.Core.Rendering.Shaders
+﻿// Folder: SiegeEngine.Core.Rendering.Shaders
+// File: ModelShader.cs
+namespace SiegeEngine.Core.Rendering.Shaders
 {
     public static class ModelShader
     {
@@ -9,7 +11,7 @@ layout (location = 2) in vec2 aTexCoord;
 layout (location = 3) in vec3 aNormal;
 layout (location = 4) in float aMaterialIndex;
 layout (location = 5) in vec3 aTangent;
-layout (location = 6) in ivec4 aBoneIDs;
+layout (location = 6) in vec4 aBoneIDs;
 layout (location = 7) in vec4 aBoneWeights;
 out vec2 vTexCoord;
 out vec3 vNormal;
@@ -29,7 +31,7 @@ void main()
     vec3 totalTangent = vec3(0.0);
     if (uHasBones == 1) {
         for (int i = 0; i < 4; i++) {
-            int id = aBoneIDs[i];
+            int id = int(aBoneIDs[i]);
             if (id < 0 || id >= 128) continue;
             mat4 boneMat = uBoneTransforms[id];
             vec4 localPos = boneMat * vec4(aPosition, 1.0);

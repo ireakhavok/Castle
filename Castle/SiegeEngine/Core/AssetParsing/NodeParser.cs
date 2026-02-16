@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing.V2/NodeParser.cs
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;

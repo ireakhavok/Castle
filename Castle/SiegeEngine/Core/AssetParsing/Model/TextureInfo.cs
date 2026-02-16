@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿// Folder: SiegeEngine.Core
+// File: AssetParsing.V2/Model/TextureInfo.cs
+using System;
 
 namespace SiegeEngine.Core.AssetParsing.Model
 {
