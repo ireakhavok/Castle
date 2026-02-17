@@ -1998,16 +1998,19 @@ Folder: SiegeEngine
       - ShaderProgram _terrainShader
       - uint _terrainTextureId
       - bool _hasColorTexture
+      - float _worldScaleX
+      - float _worldScaleZ
     - Methods:
       - void Initialize( int height, int width)
         - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
       - void BuildWireframeMesh(int step)
-        - Calls: GetHeight, _terrainBuffer.UpdateCustomWithUV
+        - Calls: ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV
       - void BuildTexturedMesh()
-        - Calls: BuildWireframeMesh, GetHeight, _terrainBuffer.UpdateCustomWithUV
+        - Calls: BuildWireframeMesh, ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV
+      - void ComputeWorldScale()
       - float GetHeight( float z, float x)
       - void LoadTerrain(string path)
-        - Calls: BuildWireframeMesh, TerrainParser.LoadUSGSDEM, TerrainParser.ParseGeoReference
+        - Calls: BuildWireframeMesh, ComputeWorldScale, TerrainParser.LoadUSGSDEM, TerrainParser.ParseGeoReference
       - void SetColorTexture(string path)
         - Calls: BuildTexturedMesh, TerrainParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
       - void Update(float deltaTime)
