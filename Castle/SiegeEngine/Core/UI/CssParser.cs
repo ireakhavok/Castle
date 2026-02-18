@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI
+﻿// Folder: SiegeEngine.Core.UI
 // File: CssParser.cs
 using System;
 using System.Collections.Generic;
@@ -558,6 +558,8 @@ nav {
                 style.Transform = tr;
             if (props.TryGetValue("overflow", out string ov))
                 style.Overflow = ov;
+            if (props.TryGetValue("overflow-y", out string ovy)) // NEW: support overflow-y:auto from FileSelectorTemplate.html
+                style.OverflowY = ovy;
         }
         public Vector4 ParseColor(string color)
         {

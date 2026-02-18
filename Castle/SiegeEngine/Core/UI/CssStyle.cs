@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI
+﻿// Folder: SiegeEngine.Core.UI
 // File: CssStyle.cs
 using System;
 using System.Numerics;
@@ -65,6 +65,7 @@ namespace SiegeEngine.Core.UI
         public string BorderRadiusStr { get; set; }
         public Vector4 BorderRadius { get; set; }
         public string Overflow { get; set; }
+        public string OverflowY { get; set; }
         public CssStyle Clone()
         {
             return (CssStyle)MemberwiseClone();
@@ -237,6 +238,9 @@ namespace SiegeEngine.Core.UI
                     break;
                 case "overflow":
                     Overflow = val;
+                    break;
+                case "overflow-y":
+                    OverflowY = val;
                     break;
                 default:
                     Console.WriteLine($"Unsupported CSS property: {key}");
