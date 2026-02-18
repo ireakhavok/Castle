@@ -97,9 +97,6 @@ namespace SiegeEngine.Core.UI
 
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
-            string id = Attributes.GetValueOrDefault("id", "");
-            string cls = Attributes.GetValueOrDefault("class", "");
-
             CssStyle effectiveStyle = Style;
             if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle ts))
             {
@@ -260,38 +257,50 @@ namespace SiegeEngine.Core.UI
                 }
             }
 
-            _contentFullHeight = CalculateFullContentHeight();
-
             string overflow = Style.Overflow ?? "";
             string overflowY = Style.OverflowY ?? "";
+            bool hasVerticalOverflow = (overflow == "auto" || overflow == "scroll" || overflowY == "auto" || overflowY == "scroll");
 
-            bool isFileContainer = id == "file-table" || cls.Contains("file-table") || cls.Contains("file-container");
+            if (hasVerticalOverflow)
+            {
+                // FULLY DYNAMIC: sum intrinsic heights of ALL content (rows, etc.)
+                _contentFullHeight = CalculateIntrinsicContentHeight(viewportWidth, viewportHeight, textRenderer, fs);
+            }
+            else
+            {
+                _contentFullHeight = 0f;
+                foreach (var child in Children)
+                {
+                    if (child.GetEffectiveDisplay() != "none")
+                    {
+                        _contentFullHeight = Math.Max(_contentFullHeight, child.ComputedPosition.Y + child.ComputedHeight - ComputedContentY);
+                    }
+                }
+            }
 
-            bool hasVerticalOverflow = (overflow == "auto" || overflow == "scroll" || overflowY == "auto" || overflowY == "scroll" || isFileContainer);
-
-            _needsVerticalScrollbar = hasVerticalOverflow && _contentFullHeight >= ComputedContentHeight;
+            _needsVerticalScrollbar = hasVerticalOverflow && _contentFullHeight > ComputedContentHeight + 0.1f;
 
             if (_needsVerticalScrollbar)
             {
-                ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0, Math.Max(0, _contentFullHeight - ComputedContentHeight));
+                ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0, _contentFullHeight - ComputedContentHeight);
             }
             else
             {
                 ScrollOffsetY = 0f;
             }
 
-            if (isFileContainer && !_scrollbarDebugLogged)
+            if (hasVerticalOverflow && !_scrollbarDebugLogged)
             {
-                Console.WriteLine($"[Scrollbar Debug] FINAL RESULT FOR FILE SELECTOR '{Tag}' id='{id}' class='{cls}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
+                Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id", "")}' class='{Attributes.GetValueOrDefault("class", "")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
                 _scrollbarDebugLogged = true;
             }
 
             ComputedTransform = ComputeTransform(viewportWidth, viewportHeight);
         }
 
-        private float CalculateFullContentHeight()
+        private float CalculateIntrinsicContentHeight(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
-            float maxBottom = 0f;
+            float total = 0f;
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
             foreach (var child in Children)
             {
@@ -302,14 +311,15 @@ namespace SiegeEngine.Core.UI
                 var elem = queue.Dequeue();
                 if (elem.GetEffectiveDisplay() != "none")
                 {
-                    maxBottom = Math.Max(maxBottom, elem.ComputedPosition.Y + elem.ComputedHeight - ComputedContentY);
+                    Vector2 intrinsic = elem.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                    total += intrinsic.Y;
                 }
                 foreach (var child in elem.Children)
                 {
                     queue.Enqueue(child);
                 }
             }
-            return maxBottom;
+            return total;
         }
 
         public virtual void UpdateFullTransforms(Matrix4x4 parentMatrix)
