@@ -147,6 +147,16 @@ namespace SiegeEngine.Core.UI
             float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
             float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
 
+            string overflow = effectiveStyle.Overflow ?? "";
+            string overflowY = effectiveStyle.OverflowY ?? "";
+            bool hasVerticalOverflow = (overflow == "auto" || overflow == "scroll" || overflowY == "auto" || overflowY == "scroll");
+
+            // THIS IS THE FIX YOU ASKED FOR: scrollbar tied to PANEL height, not the element's shrink-wrapped height
+            if (hasVerticalOverflow)
+            {
+                h = refHeight;   // force the scroll container to the available panel/parent height
+            }
+
             bool isBlockOrFlex = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex";
             bool isStaticOrRelative = string.IsNullOrEmpty(effectiveStyle.Position) || effectiveStyle.Position == "static" || effectiveStyle.Position == "relative";
             if (isBlockOrFlex && isStaticOrRelative && float.IsNaN(w))
@@ -255,10 +265,6 @@ namespace SiegeEngine.Core.UI
                 }
             }
 
-            string overflow = Style.Overflow ?? "";
-            string overflowY = Style.OverflowY ?? "";
-            bool hasVerticalOverflow = (overflow == "auto" || overflow == "scroll" || overflowY == "auto" || overflowY == "scroll");
-
             if (hasVerticalOverflow)
             {
                 _contentFullHeight = CalculateIntrinsicContentHeight(viewportWidth, viewportHeight, textRenderer, fs);
@@ -288,7 +294,7 @@ namespace SiegeEngine.Core.UI
 
             if (hasVerticalOverflow)
             {
-                Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id", "")}' class='{Attributes.GetValueOrDefault("class", "")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
+                Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id","")}' class='{Attributes.GetValueOrDefault("class","")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
             }
 
             ComputedTransform = ComputeTransform(viewportWidth, viewportHeight);
