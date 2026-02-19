@@ -151,7 +151,6 @@ namespace SiegeEngine.Core.UI
             string overflowY = effectiveStyle.OverflowY ?? "";
             bool hasVerticalOverflow = (overflow == "auto" || overflow == "scroll" || overflowY == "auto" || overflowY == "scroll");
 
-            // THIS IS THE FIX YOU ASKED FOR: scrollbar tied to PANEL height, not the element's shrink-wrapped height
             if (hasVerticalOverflow)
             {
                 h = refHeight;   // force the scroll container to the available panel/parent height
