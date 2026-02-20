@@ -271,8 +271,6 @@ namespace SiegeEngine.Core.Managers
         private const float SnapDistance = 20f;
         private int _lastWinW;
         private int _lastWinH;
-
-        // Minimal addition for fast-mouse dragging fix
         private IPanel _draggingFloatingPanel;
 
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
@@ -329,7 +327,7 @@ namespace SiegeEngine.Core.Managers
 
             bool handled = false;
 
-            // Find if there is modal
+            // === MODAL DRAG FIX (this is the only change) ===
             IPanel topModal = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -344,19 +342,29 @@ namespace SiegeEngine.Core.Managers
             {
                 Vector2 rel = mousePos - topModal.Position;
                 bool over = rel.X >= 0 && rel.X <= topModal.Size.X && rel.Y >= 0 && rel.Y <= topModal.Size.Y;
-                if (over)
+                bool overTitle = mousePos.Y >= topModal.Position.Y && mousePos.Y <= topModal.Position.Y + 20f;
+
+                // Start dragging on title bar click for modal panels too
+                if (mousePressed && overTitle && topModal.AllowDragging)
+                {
+                    _draggingFloatingPanel = topModal;
+                }
+
+                if (over || _draggingFloatingPanel == topModal)
                 {
                     topModal.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
                     handled = true;
                 }
-                if (!handled && mouseReleased)
+
+                if (!handled && mouseReleased && _draggingFloatingPanel != topModal)
                 {
                     eventBus.Publish(new ClosePanelEvent(topModal));
                 }
-                handled = true; // Block lower panels
+                handled = true;
             }
+            // === END MODAL DRAG FIX ===
 
-            // === FAST MOUSE DRAG FIX ===
+            // === FAST MOUSE DRAG FIX (your existing one) ===
             if (_draggingFloatingPanel != null)
             {
                 _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
@@ -380,7 +388,6 @@ namespace SiegeEngine.Core.Managers
                     if (over)
                     {
                         panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
-
                         // Detect start of drag
                         if (mousePressed && panel.AllowDragging && panel.DockState == DockState.Floating)
                         {
@@ -390,7 +397,6 @@ namespace SiegeEngine.Core.Managers
                                 _draggingFloatingPanel = panel;
                             }
                         }
-
                         handled = true;
                         break;
                     }
