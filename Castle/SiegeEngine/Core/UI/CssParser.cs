@@ -459,6 +459,10 @@ nav {
                 style.JustifyContent = jc;
             if (props.TryGetValue("flex", out string flex))
                 style.Flex = flex;
+            if (props.TryGetValue("flex-grow", out string fg))
+            {
+                if (float.TryParse(fg, out float g)) style.FlexGrow = g;
+            }
             if (props.TryGetValue("padding", out string pad))
             {
                 style.PaddingStr = pad;
@@ -558,7 +562,7 @@ nav {
                 style.Transform = tr;
             if (props.TryGetValue("overflow", out string ov))
                 style.Overflow = ov;
-            if (props.TryGetValue("overflow-y", out string ovy)) // NEW: support overflow-y:auto from FileSelectorTemplate.html
+            if (props.TryGetValue("overflow-y", out string ovy))
                 style.OverflowY = ovy;
         }
         public Vector4 ParseColor(string color)

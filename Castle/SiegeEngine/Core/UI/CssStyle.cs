@@ -31,6 +31,7 @@ namespace SiegeEngine.Core.UI
         public string AlignItems { get; set; }
         public string JustifyContent { get; set; }
         public string Flex { get; set; }
+        public float FlexGrow { get; set; }
         public string PaddingStr { get; set; }
         public string PaddingTopStr { get; set; }
         public string PaddingRightStr { get; set; }
@@ -142,6 +143,9 @@ namespace SiegeEngine.Core.UI
                     break;
                 case "flex":
                     Flex = val;
+                    break;
+                case "flex-grow":
+                    if (float.TryParse(val, out float fg)) FlexGrow = fg;
                     break;
                 case "padding":
                     PaddingStr = val;

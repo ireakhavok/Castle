@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.Core.UI
 {
     public class HtmlElement
@@ -47,17 +46,14 @@ namespace SiegeEngine.Core.UI
         public string OnFocusJS { get; set; }
         public string OnBlurJS { get; set; }
         public Dictionary<string, List<object>> EventListeners { get; } = new Dictionary<string, List<object>>();
-
         private BackgroundRenderer _bgRenderer;
         private string _baseDir;
         protected Matrix4x4 ComputedTransform;
         protected Matrix4x4 ComputedFullTransform;
-
         public float ScrollOffsetY { get; set; } = 0f;
         private float _contentFullHeight = 0f;
         private bool _needsVerticalScrollbar = false;
         private const float SCROLLBAR_WIDTH = 12f;
-
         public bool IsDescendantOf(HtmlElement ancestor)
         {
             var current = this;
@@ -68,7 +64,6 @@ namespace SiegeEngine.Core.UI
             }
             return false;
         }
-
         public string GetEffectiveDisplay()
         {
             CssStyle effective = Style;
@@ -82,7 +77,6 @@ namespace SiegeEngine.Core.UI
                 effective = a;
             return effective.Display;
         }
-
         private HtmlElement FindContainingBlock()
         {
             HtmlElement current = Parent;
@@ -92,7 +86,6 @@ namespace SiegeEngine.Core.UI
             }
             return current;
         }
-
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             CssStyle effectiveStyle = Style;
@@ -108,7 +101,6 @@ namespace SiegeEngine.Core.UI
                 ComputedHeight = 0;
                 return;
             }
-
             float baseX = parentPositionX;
             float baseY = parentPositionY;
             float refWidth = parentWidth;
@@ -135,59 +127,48 @@ namespace SiegeEngine.Core.UI
                 refWidth = parentWidth;
                 refHeight = parentHeight;
             }
-
             float fs = ParseSize(effectiveStyle.FontSizeStr, parentFs, viewportWidth, viewportHeight);
             if (float.IsNaN(fs)) fs = parentFs;
             Style.FontSize = fs;
-
             float left = ParseSize(effectiveStyle.LeftStr, refWidth, viewportWidth, viewportHeight);
             float top = ParseSize(effectiveStyle.TopStr, refHeight, viewportWidth, viewportHeight);
             float right = ParseSize(effectiveStyle.RightStr, refWidth, viewportWidth, viewportHeight);
             float bottom = ParseSize(effectiveStyle.BottomStr, refHeight, viewportWidth, viewportHeight);
             float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
             float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
-
             string overflow = effectiveStyle.Overflow ?? "";
             string overflowY = effectiveStyle.OverflowY ?? "";
             bool hasVerticalOverflow = (overflow == "auto" || overflow == "scroll" || overflowY == "auto" || overflowY == "scroll");
-
             if (hasVerticalOverflow)
             {
-                h = refHeight;   // force the scroll container to the available panel/parent height
+                h = refHeight; // force the scroll container to the available panel/parent height
             }
-
             bool isBlockOrFlex = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex";
             bool isStaticOrRelative = string.IsNullOrEmpty(effectiveStyle.Position) || effectiveStyle.Position == "static" || effectiveStyle.Position == "relative";
             if (isBlockOrFlex && isStaticOrRelative && float.IsNaN(w))
             {
                 w = refWidth;
             }
-
             float minW = ParseSize(effectiveStyle.MinWidthStr, refWidth, viewportWidth, viewportHeight);
             float minH = ParseSize(effectiveStyle.MinHeightStr, refHeight, viewportWidth, viewportHeight);
             float maxW = ParseSize(effectiveStyle.MaxWidthStr, refWidth, viewportWidth, viewportHeight);
             float maxH = ParseSize(effectiveStyle.MaxHeightStr, refHeight, viewportWidth, viewportHeight);
-
             Vector4 pad = ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight);
             Vector4 margin = ParseMargins(effectiveStyle, refWidth, viewportWidth, viewportHeight);
             Vector4 borderW = ParseBorderWidths(effectiveStyle, refWidth, viewportWidth, viewportHeight);
-
             if (Parent == null)
             {
                 if (float.IsNaN(w)) w = viewportWidth;
                 if (float.IsNaN(h)) h = viewportHeight;
             }
-
             if (float.IsNaN(w) || float.IsNaN(h))
             {
                 Vector2 intrinsic = ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
                 if (float.IsNaN(w)) w = intrinsic.X;
                 if (float.IsNaN(h)) h = intrinsic.Y;
             }
-
             if (!float.IsNaN(forcedWidth)) w = forcedWidth;
             if (!float.IsNaN(forcedHeight)) h = forcedHeight;
-
             string boxSizing = effectiveStyle.BoxSizing;
             float boxW, boxH, contentW, contentH;
             if (boxSizing == "border-box")
@@ -204,22 +185,18 @@ namespace SiegeEngine.Core.UI
                 boxW = contentW + pad.W + pad.Y + borderW.W + borderW.Y;
                 boxH = contentH + pad.X + pad.Z + borderW.X + borderW.Z;
             }
-
             if (!float.IsNaN(minW)) boxW = Math.Max(boxW, minW);
             if (!float.IsNaN(minH)) boxH = Math.Max(boxH, minH);
             if (!float.IsNaN(maxW)) boxW = Math.Min(boxW, maxW);
             if (!float.IsNaN(maxH)) boxH = Math.Min(boxH, maxH);
-
             if (float.IsNaN(boxW)) boxW = 0;
             if (float.IsNaN(boxH)) boxH = 0;
             if (float.IsNaN(contentW)) contentW = 0;
             if (float.IsNaN(contentH)) contentH = 0;
-
             ComputedWidth = boxW;
             ComputedHeight = boxH;
             ComputedContentWidth = contentW;
             ComputedContentHeight = contentH;
-
             float boxX = baseX;
             float boxY = baseY;
             if (effectiveStyle.Position == "absolute" || effectiveStyle.Position == "fixed")
@@ -241,7 +218,6 @@ namespace SiegeEngine.Core.UI
                     boxY += refHeight - bottom - boxH;
                 }
             }
-
             ComputedPosition = new Vector2(boxX, boxY);
             ComputedBackgroundX = boxX + borderW.W;
             ComputedBackgroundY = boxY + borderW.X;
@@ -251,7 +227,6 @@ namespace SiegeEngine.Core.UI
             ComputedContentY = ComputedBackgroundY + pad.X;
             BorderWidth = borderW;
             Style.Margin = margin;
-
             if (Children.Count > 0)
             {
                 if (effectiveStyle.Display == "flex")
@@ -263,7 +238,6 @@ namespace SiegeEngine.Core.UI
                     LayoutBlockChildren(viewportWidth, viewportHeight, textRenderer, fs);
                 }
             }
-
             if (hasVerticalOverflow)
             {
                 _contentFullHeight = CalculateIntrinsicContentHeight(viewportWidth, viewportHeight, textRenderer, fs);
@@ -279,9 +253,7 @@ namespace SiegeEngine.Core.UI
                     }
                 }
             }
-
             _needsVerticalScrollbar = hasVerticalOverflow && _contentFullHeight > ComputedContentHeight + 0.1f;
-
             if (_needsVerticalScrollbar)
             {
                 ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0, _contentFullHeight - ComputedContentHeight);
@@ -290,15 +262,12 @@ namespace SiegeEngine.Core.UI
             {
                 ScrollOffsetY = 0f;
             }
-
             if (hasVerticalOverflow)
             {
-                Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id","")}' class='{Attributes.GetValueOrDefault("class","")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
+                Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id", "")}' class='{Attributes.GetValueOrDefault("class", "")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
             }
-
             ComputedTransform = ComputeTransform(viewportWidth, viewportHeight);
         }
-
         private float CalculateIntrinsicContentHeight(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             float total = 0f;
@@ -322,7 +291,6 @@ namespace SiegeEngine.Core.UI
             }
             return total;
         }
-
         public virtual void UpdateFullTransforms(Matrix4x4 parentMatrix)
         {
             ComputedFullTransform = parentMatrix * ComputedTransform;
@@ -331,7 +299,6 @@ namespace SiegeEngine.Core.UI
                 child.UpdateFullTransforms(ComputedFullTransform);
             }
         }
-
         public void PrepareResources(string baseDir, IControlContext controlContext, nint window, IRenderContext renderContext, ShaderProgram shader)
         {
             _baseDir = baseDir;
@@ -355,7 +322,6 @@ namespace SiegeEngine.Core.UI
                 child.PrepareResources(baseDir, controlContext, window, renderContext, shader);
             }
         }
-
         private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
@@ -376,16 +342,14 @@ namespace SiegeEngine.Core.UI
             for (int i = 0; i < normalChildren.Count; i++)
             {
                 HtmlElement child = normalChildren[i];
-                float grow = 0;
-                float shrink = 1f;
-                if (!string.IsNullOrEmpty(child.Style.Flex))
+                float grow = child.Style.FlexGrow;
+                if (grow == 0 && !string.IsNullOrEmpty(child.Style.Flex))
                 {
                     var flexParts = child.Style.Flex.Split(' ');
                     if (flexParts.Length > 0) float.TryParse(flexParts[0], out grow);
-                    if (flexParts.Length > 1) float.TryParse(flexParts[1], out shrink);
                 }
                 childGrow.Add(grow);
-                childShrink.Add(shrink);
+                childShrink.Add(1f);
                 totalGrow += grow;
                 string main_str_raw = isRow ? child.Style.WidthStr : child.Style.HeightStr;
                 float mainStr = ParseSize(main_str_raw, availableMain, viewportWidth, viewportHeight);
@@ -405,7 +369,7 @@ namespace SiegeEngine.Core.UI
                 float baseMain;
                 if (float.IsNaN(mainStr))
                 {
-                    baseMain = isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y;
+                    baseMain = (grow > 0) ? 0f : (isRow ? child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).X : child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs).Y);
                 }
                 else
                 {
@@ -418,7 +382,7 @@ namespace SiegeEngine.Core.UI
                 }
                 childBaseMain.Add(baseMain);
                 totalBaseMain += baseMain;
-                totalShrink += shrink * baseMain;
+                totalShrink += 1f * baseMain;
             }
             float totalGap = gap * (normalChildren.Count - 1);
             float free = availableMain - totalBaseMain - totalGap;
@@ -664,7 +628,6 @@ namespace SiegeEngine.Core.UI
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
         }
-
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             float currentX = 0;
@@ -790,7 +753,6 @@ namespace SiegeEngine.Core.UI
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
         }
-
         private void ShiftX(HtmlElement e, float off)
         {
             e.ComputedPosition = new Vector2(e.ComputedPosition.X + off, e.ComputedPosition.Y);
@@ -798,7 +760,6 @@ namespace SiegeEngine.Core.UI
             e.ComputedContentX += off;
             foreach (var ch in e.Children) ShiftX(ch, off);
         }
-
         public virtual Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             if (Style.Display == "none") return new Vector2(0, 0);
@@ -978,7 +939,6 @@ namespace SiegeEngine.Core.UI
             if (float.IsNaN(ih)) ih = 0;
             return new Vector2(iw, ih);
         }
-
         public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
@@ -1001,9 +961,7 @@ namespace SiegeEngine.Core.UI
                 effectiveStyle = targetStyle;
             }
             if (effectiveStyle.Display == "none") return;
-
             Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
-
             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
@@ -1044,16 +1002,13 @@ namespace SiegeEngine.Core.UI
                 _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, viewportWidth, viewportHeight);
                 renderContext.Disable(renderContext.Enums.ScissorTest);
             }
-
             Matrix4x4 contentMatrix = localMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
-
             if (Style.Overflow == "hidden" || (Style.OverflowY ?? "") == "hidden")
             {
                 renderContext.Enable(renderContext.Enums.ScissorTest);
                 int scissorY = (int)(viewportHeight - (ComputedContentY + ComputedContentHeight));
                 renderContext.Scissor((int)ComputedContentX, scissorY, (uint)ComputedContentWidth, (uint)ComputedContentHeight);
             }
-
             foreach (var child in Children)
             {
                 if (child.Tag.ToLower() == "option" && this is SelectElement sel && sel.IsOpen)
@@ -1062,28 +1017,23 @@ namespace SiegeEngine.Core.UI
                 }
                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, contentMatrix);
             }
-
             if (Style.Overflow == "hidden" || (Style.OverflowY ?? "") == "hidden")
             {
                 renderContext.Disable(renderContext.Enums.ScissorTest);
             }
-
             if (_needsVerticalScrollbar)
             {
                 float trackX = ComputedBackgroundX + ComputedBackgroundWidth - SCROLLBAR_WIDTH;
                 float trackY = ComputedBackgroundY;
                 float trackH = ComputedBackgroundHeight;
-
                 float[] trackNdc = GetNdcQuad(trackX, trackY, SCROLLBAR_WIDTH, trackH, localMatrix, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.2f, 0.2f, 0.2f, 0.9f));
-
                 float thumbRatio = ComputedContentHeight / _contentFullHeight;
                 float thumbH = Math.Max(20f, trackH * thumbRatio);
                 float thumbY = trackY + (ScrollOffsetY / _contentFullHeight) * (trackH - thumbH);
                 float[] thumbNdc = GetNdcQuad(trackX + 2, thumbY, SCROLLBAR_WIDTH - 4, thumbH, localMatrix, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.6f, 0.6f, 0.6f, 1f));
             }
-
             bool drawSideBorders = !useShaderForBorder;
             if (drawSideBorders)
             {
@@ -1109,7 +1059,6 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
-
         public float ParseSize(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s) || s == "auto") return float.NaN;
@@ -1141,7 +1090,6 @@ namespace SiegeEngine.Core.UI
                 return float.NaN;
             }
         }
-
         protected Vector4 ParsePaddings(CssStyle style, float parent, float vw, float vh)
         {
             string allStr = style.PaddingStr;
@@ -1160,14 +1108,12 @@ namespace SiegeEngine.Core.UI
             if (float.IsNaN(values.W)) values.W = 0;
             return values;
         }
-
         protected Vector4 ParseMargins(CssStyle style, float parent, float vw, float vh)
         {
             string allStr = style.MarginStr;
             Vector4 values = string.IsNullOrEmpty(allStr) ? Vector4.Zero : ParseSides(allStr, parent, vw, vh);
             return values;
         }
-
         protected Vector4 ParseBorderWidths(CssStyle style, float parent, float vw, float vh)
         {
             Vector4 values = string.IsNullOrEmpty(style.BorderWidthStr) ? Vector4.Zero : ParseSides(style.BorderWidthStr, parent, vw, vh);
@@ -1181,7 +1127,6 @@ namespace SiegeEngine.Core.UI
             if (float.IsNaN(values.W)) values.W = 0;
             return values;
         }
-
         private Vector4 ParseSides(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s)) return Vector4.Zero;
@@ -1200,7 +1145,6 @@ namespace SiegeEngine.Core.UI
             float val4 = GetVal(3, val2);
             return new Vector4(val1, val2, val3, val4);
         }
-
         public virtual bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
@@ -1226,7 +1170,6 @@ namespace SiegeEngine.Core.UI
             bool isClickable = classes.Contains("button") || classes.Contains("toggle") || Tag == "select" || Tag == "label" || Tag == "a" || Attributes.ContainsKey("data-hook") || Attributes.ContainsKey("onclick") || classes.Contains("select-option") || Tag == "option" || Attributes.ContainsKey("onchange") || Attributes.ContainsKey("onmouseenter") || Attributes.ContainsKey("onmouseleave") || Attributes.ContainsKey("onmouseover") || Attributes.ContainsKey("onmouseout") || Attributes.ContainsKey("onmousedown") || Attributes.ContainsKey("onmouseup") || Attributes.ContainsKey("onfocus") || Attributes.ContainsKey("onblur") || Tag.ToLower() == "input";
             return isClickable;
         }
-
         public HtmlElement FindElementById(string id)
         {
             if (Attributes.GetValueOrDefault("id", "") == id) return this;
@@ -1237,7 +1180,6 @@ namespace SiegeEngine.Core.UI
             }
             return null;
         }
-
         private Matrix4x4 ComputeTransform(float viewportWidth, float viewportHeight)
         {
             if (string.IsNullOrEmpty(Style.Transform) || Style.Transform == "none") return Matrix4x4.Identity;
@@ -1312,7 +1254,6 @@ namespace SiegeEngine.Core.UI
             mat = fromOrigin * mat * toOrigin;
             return mat;
         }
-
         private float ParseAngle(string s)
         {
             if (string.IsNullOrEmpty(s)) return 0;
@@ -1340,7 +1281,6 @@ namespace SiegeEngine.Core.UI
             val = float.Parse(s);
             return val * MathF.PI / 180;
         }
-
         public static float[] GetNdcQuad(float x, float y, float w, float h, Matrix4x4 trans, float vw, float vh)
         {
             Vector4 bl = Vector4.Transform(new Vector4(x, y + h, 0, 1), trans);
