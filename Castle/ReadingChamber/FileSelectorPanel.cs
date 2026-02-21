@@ -139,7 +139,6 @@ namespace ReadingChamber
             }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.RefreshUI();
         }
         private string GetFileClass(string fileName)
         {
