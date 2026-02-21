@@ -107,7 +107,7 @@ namespace SiegeEngine.Core.UI
             // UI clicks only when mouse is over the panel
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
-            if (overPanel && !_isDragging )
+            if (overPanel && !_isDragging)
             {
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
@@ -187,7 +187,15 @@ namespace SiegeEngine.Core.UI
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
-            _uiOverlay.Render();
+            if (!_isDragging)
+            {
+                _uiOverlay.Render();
+            }
+            else
+            {
+                // During drag: render only simple backdrop (no heavy content traversal)
+                _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
+            }
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
             _quadRenderer.DrawQuad(0, Size.Y - bw, Size.X, bw, bc, Size.X, Size.Y);
