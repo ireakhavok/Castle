@@ -16,7 +16,7 @@ namespace SiegeEngine.Core.Managers
     public abstract class DockNode
     {
         [JsonIgnore]
-        public Vector4 Rect { get; protected set; } // x, y, w, h
+        public Vector4 Rect { get; protected set; }
         public abstract void ComputeLayout(float x, float y, float w, float h);
         public abstract bool HitTest(Vector2 mousePos, out IPanel hitPanel, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex);
         public abstract bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, EventBus eventBus);
@@ -62,7 +62,6 @@ namespace SiegeEngine.Core.Managers
                 return true;
             if (Right.HitTest(mousePos, out hitPanel, out isTitle, out isSplitter, out isTab, out tabIndex))
                 return true;
-            // Check splitter
             if (IsVertical)
             {
                 float splitY = Rect.Y + Rect.W * SplitRatio;
@@ -118,11 +117,9 @@ namespace SiegeEngine.Core.Managers
         {
             Left.Render(renderContext, winW, winH);
             Right.Render(renderContext, winW, winH);
-            // Render splitter line if desired
         }
         public override void AddPanel(IPanel panel)
         {
-            // Add to one side, e.g., Right
             if (Right == null)
             {
                 Right = new DockTabbedNode();
@@ -185,7 +182,6 @@ namespace SiegeEngine.Core.Managers
             if (Panels.Count == 0) return false;
             if (mousePos.Y < Rect.Y + _titleHeight)
             {
-                // Tab bar
                 float tabWidth = Rect.Z / Panels.Count;
                 tabIndex = (int)((mousePos.X - Rect.X) / tabWidth);
                 if (tabIndex >= 0 && tabIndex < Panels.Count)
@@ -197,7 +193,6 @@ namespace SiegeEngine.Core.Managers
             }
             else
             {
-                // Panel area
                 isTitle = false;
                 hitPanel = Panels[ActiveIndex];
                 return true;
@@ -304,7 +299,6 @@ namespace SiegeEngine.Core.Managers
             }
             if (_root.RemovePanel(panel))
             {
-                // If root empty, reset or something
             }
         }
 
@@ -325,9 +319,20 @@ namespace SiegeEngine.Core.Managers
             }
             _root.ComputeLayout(0, 0, winW, winH);
 
+            // ABSOLUTE HIGHEST PRIORITY - drag continuation for ALL panels (including modal FileSelectorPanel)
+            if (_draggingFloatingPanel != null)
+            {
+                _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
+                if (mouseReleased)
+                {
+                    _draggingFloatingPanel = null;
+                }
+                return;  // Skip everything else while dragging - this is why it's smooth
+            }
+
             bool handled = false;
 
-            // === MODAL DRAG FIX (this is the only change) ===
+            // Modal handling (FileSelectorPanel stays modal but drag works)
             IPanel topModal = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -340,11 +345,11 @@ namespace SiegeEngine.Core.Managers
             }
             if (topModal != null)
             {
-                Vector2 rel = mousePos - topModal.Position;
-                bool over = rel.X >= 0 && rel.X <= topModal.Size.X && rel.Y >= 0 && rel.Y <= topModal.Size.Y;
+                bool over = mousePos.X >= topModal.Position.X && mousePos.X <= topModal.Position.X + topModal.Size.X &&
+                            mousePos.Y >= topModal.Position.Y && mousePos.Y <= topModal.Position.Y + topModal.Size.Y;
+
                 bool overTitle = mousePos.Y >= topModal.Position.Y && mousePos.Y <= topModal.Position.Y + 20f;
 
-                // Start dragging on title bar click for modal panels too
                 if (mousePressed && overTitle && topModal.AllowDragging)
                 {
                     _draggingFloatingPanel = topModal;
@@ -362,23 +367,9 @@ namespace SiegeEngine.Core.Managers
                 }
                 handled = true;
             }
-            // === END MODAL DRAG FIX ===
-
-            // === FAST MOUSE DRAG FIX (your existing one) ===
-            if (_draggingFloatingPanel != null)
-            {
-                _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
-                if (mouseReleased)
-                {
-                    _draggingFloatingPanel = null;
-                }
-                handled = true;
-            }
-            // === END FIX ===
 
             if (!handled)
             {
-                // Update other floating panels
                 for (int i = _floatingPanels.Count - 1; i >= 0; i--)
                 {
                     var panel = _floatingPanels[i];
@@ -388,7 +379,6 @@ namespace SiegeEngine.Core.Managers
                     if (over)
                     {
                         panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
-                        // Detect start of drag
                         if (mousePressed && panel.AllowDragging && panel.DockState == DockState.Floating)
                         {
                             bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + 20f;
@@ -405,11 +395,9 @@ namespace SiegeEngine.Core.Managers
 
             if (!handled)
             {
-                // Update docked
                 _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, eventBus);
             }
 
-            // Dragging logic (your original)
             if (_draggingPanel != null)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -430,7 +418,6 @@ namespace SiegeEngine.Core.Managers
             }
             else
             {
-                // Check if starting drag from docked
                 if (_root.HitTest(mousePos, out IPanel hitPanel, out bool isTitle, out _, out _, out _))
                 {
                     if (isTitle && mousePressed)
@@ -453,7 +440,6 @@ namespace SiegeEngine.Core.Managers
             if (mousePos.X > winW - SnapDistance) return DockState.DockedRight;
             if (mousePos.Y < SnapDistance) return DockState.DockedTop;
             if (mousePos.Y > winH - SnapDistance) return DockState.DockedBottom;
-            // TODO: Check for tab drop on other panels
             return DockState.Floating;
         }
 
@@ -479,7 +465,6 @@ namespace SiegeEngine.Core.Managers
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             _root.Render(renderContext, winW, winH);
-            // Render floating
             foreach (var panel in _floatingPanels)
             {
                 if (!panel.Visible) continue;
