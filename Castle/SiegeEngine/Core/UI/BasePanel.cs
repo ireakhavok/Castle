@@ -37,6 +37,7 @@ namespace SiegeEngine.Core.UI
         protected float BaseHeight = 600f;
         public bool AllowDragging { get; set; } = true;
         protected UIQuadRenderer _quadRenderer;
+
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -68,7 +69,6 @@ namespace SiegeEngine.Core.UI
                 if (mouseDown)
                 {
                     Position = absMousePos - _dragOffset;
-                    // NO CLAMPING — panel can go completely off-screen during drag
                 }
                 if (mouseReleased)
                 {
@@ -112,6 +112,7 @@ namespace SiegeEngine.Core.UI
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
                 _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.Scroll(0f); // placeholder until real wheel delta is wired in next step
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }
@@ -189,11 +190,19 @@ namespace SiegeEngine.Core.UI
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
             if (!_isDragging)
             {
+                // === PANEL-LEVEL SCISSOR CLIPPING FOR CONTENT AREA (below title) ===
+                _controlContext.GetWindowSize(_window, out int winW, out int winH);
+                _renderContext.Enable(_renderContext.Enums.ScissorTest);
+                int scissorX = (int)Position.X;
+                int scissorY = winH - (int)(Position.Y + Size.Y);
+                uint scissorW = (uint)Size.X;
+                uint scissorH = (uint)(Size.Y - TitleHeight);
+                _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
                 _uiOverlay.Render();
+                _renderContext.Disable(_renderContext.Enums.ScissorTest);
             }
             else
             {
-                // During drag: render only simple backdrop (no heavy content traversal)
                 _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
             }
             float bw = 2f;
