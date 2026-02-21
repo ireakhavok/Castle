@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json.Serialization;
-
 namespace SiegeEngine.Core.Managers
 {
     [JsonDerivedType(typeof(DockSplitNode), "split")]
@@ -19,13 +18,12 @@ namespace SiegeEngine.Core.Managers
         public Vector4 Rect { get; protected set; }
         public abstract void ComputeLayout(float x, float y, float w, float h);
         public abstract bool HitTest(Vector2 mousePos, out IPanel hitPanel, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex);
-        public abstract bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, EventBus eventBus);
+        public abstract bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus);
         public abstract void Render(IRenderContext renderContext, int winW, int winH);
         public abstract void AddPanel(IPanel panel);
         public abstract bool RemovePanel(IPanel panel);
         public abstract DockNode FindNode(IPanel panel);
     }
-
     public class DockSplitNode : DockNode
     {
         public DockNode Left { get; set; }
@@ -84,11 +82,11 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-        public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, EventBus eventBus)
+        public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus)
         {
-            if (Left.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, eventBus))
+            if (Left.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus))
                 return true;
-            if (Right.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, eventBus))
+            if (Right.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus))
                 return true;
             bool isOverSplitter = HitTest(mousePos, out _, out _, out bool isSplitter, out _, out _);
             if (isOverSplitter && isSplitter)
@@ -155,7 +153,6 @@ namespace SiegeEngine.Core.Managers
             return null;
         }
     }
-
     public class DockTabbedNode : DockNode
     {
         public List<IPanel> Panels { get; set; } = new List<IPanel>();
@@ -199,7 +196,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-        public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, EventBus eventBus)
+        public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus)
         {
             if (HitTest(mousePos, out IPanel hit, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex))
             {
@@ -210,7 +207,7 @@ namespace SiegeEngine.Core.Managers
                 }
                 if (ActiveIndex >= 0 && ActiveIndex < Panels.Count)
                 {
-                    Panels[ActiveIndex].Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
+                    Panels[ActiveIndex].Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
                     return true;
                 }
             }
@@ -252,7 +249,6 @@ namespace SiegeEngine.Core.Managers
             return null;
         }
     }
-
     public class DockManager
     {
         private DockNode _root;
@@ -267,7 +263,6 @@ namespace SiegeEngine.Core.Managers
         private int _lastWinW;
         private int _lastWinH;
         private IPanel _draggingFloatingPanel;
-
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -275,7 +270,6 @@ namespace SiegeEngine.Core.Managers
             _eventBus = eventBus;
             _root = new DockTabbedNode();
         }
-
         public void AddPanel(IPanel panel)
         {
             if (panel.DockState == DockState.Floating)
@@ -289,7 +283,6 @@ namespace SiegeEngine.Core.Managers
                 panel.AllowDragging = false;
             }
         }
-
         public void RemovePanel(IPanel panel)
         {
             if (_floatingPanels.Remove(panel))
@@ -301,8 +294,7 @@ namespace SiegeEngine.Core.Managers
             {
             }
         }
-
-        public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, EventBus eventBus, int winW, int winH)
+        public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (winW != _lastWinW || winH != _lastWinH)
             {
@@ -318,20 +310,17 @@ namespace SiegeEngine.Core.Managers
                 _lastWinH = winH;
             }
             _root.ComputeLayout(0, 0, winW, winH);
-
             // ABSOLUTE HIGHEST PRIORITY - drag continuation for ALL panels (including modal FileSelectorPanel)
             if (_draggingFloatingPanel != null)
             {
-                _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
+                _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
                 if (mouseReleased)
                 {
                     _draggingFloatingPanel = null;
                 }
-                return;  // Skip everything else while dragging - this is why it's smooth
+                return; // Skip everything else while dragging - this is why it's smooth
             }
-
             bool handled = false;
-
             // Modal handling (FileSelectorPanel stays modal but drag works)
             IPanel topModal = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
@@ -347,27 +336,22 @@ namespace SiegeEngine.Core.Managers
             {
                 bool over = mousePos.X >= topModal.Position.X && mousePos.X <= topModal.Position.X + topModal.Size.X &&
                             mousePos.Y >= topModal.Position.Y && mousePos.Y <= topModal.Position.Y + topModal.Size.Y;
-
                 bool overTitle = mousePos.Y >= topModal.Position.Y && mousePos.Y <= topModal.Position.Y + 20f;
-
                 if (mousePressed && overTitle && topModal.AllowDragging)
                 {
                     _draggingFloatingPanel = topModal;
                 }
-
                 if (over || _draggingFloatingPanel == topModal)
                 {
-                    topModal.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
+                    topModal.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
                     handled = true;
                 }
-
                 if (!handled && mouseReleased && _draggingFloatingPanel != topModal)
                 {
                     eventBus.Publish(new ClosePanelEvent(topModal));
                 }
                 handled = true;
             }
-
             if (!handled)
             {
                 for (int i = _floatingPanels.Count - 1; i >= 0; i--)
@@ -378,7 +362,7 @@ namespace SiegeEngine.Core.Managers
                     bool over = rel.X >= 0 && rel.X <= panel.Size.X && rel.Y >= 0 && rel.Y <= panel.Size.Y;
                     if (over)
                     {
-                        panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased);
+                        panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
                         if (mousePressed && panel.AllowDragging && panel.DockState == DockState.Floating)
                         {
                             bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + 20f;
@@ -392,12 +376,10 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
-
             if (!handled)
             {
-                _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, eventBus);
+                _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
             }
-
             if (_draggingPanel != null)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -433,7 +415,6 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
-
         private DockState GetDockStateFromPosition(Vector2 mousePos, int winW, int winH)
         {
             if (mousePos.X < SnapDistance) return DockState.DockedLeft;
@@ -442,7 +423,6 @@ namespace SiegeEngine.Core.Managers
             if (mousePos.Y > winH - SnapDistance) return DockState.DockedBottom;
             return DockState.Floating;
         }
-
         private void DockPanel(IPanel panel, DockState state)
         {
             DockSplitNode split = new DockSplitNode();
@@ -461,7 +441,6 @@ namespace SiegeEngine.Core.Managers
             }
             _root = split;
         }
-
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             _root.Render(renderContext, winW, winH);

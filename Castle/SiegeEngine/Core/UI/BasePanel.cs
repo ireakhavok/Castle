@@ -60,7 +60,7 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-        public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
+        public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
             // Dragging continues as long as mouse button is held — no bounds check, no early return
@@ -112,7 +112,7 @@ namespace SiegeEngine.Core.UI
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
                 _uiOverlay.PanelHeight = Size.Y;
-                _uiOverlay.Scroll(0f); // placeholder until real wheel delta is wired in next step
+                _uiOverlay.Scroll(scrollDelta);
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }

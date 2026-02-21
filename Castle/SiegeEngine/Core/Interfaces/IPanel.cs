@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Interfaces
+﻿// Folder: SiegeEngine.Core.Interfaces
 // File: IPanel.cs
 using System.Numerics;
 namespace SiegeEngine.Core.Interfaces
@@ -15,7 +15,7 @@ namespace SiegeEngine.Core.Interfaces
     public interface IPanel
     {
         void Init();
-        void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased);
+        void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f);
         void Render();
         void Dispose();
         DockState DockState { get; set; }
