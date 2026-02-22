@@ -18,6 +18,11 @@ namespace SiegeEngine.Core.Managers
         private readonly EventBus _eventBus;
         private bool _prevMouseDown;
         private readonly List<IPanel> _panels = new List<IPanel>();
+
+        // === PANEL-LEVEL SCROLL CAPTURE (minimal addition using existing context) ===
+        private float _scrollDelta = 0f;
+        // =======================================================
+
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -27,6 +32,13 @@ namespace SiegeEngine.Core.Managers
             _dockManager = new DockManager(renderContext, controlContext, eventBus);
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
             _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
+
+            // === WIRE SCROLL WHEEL THROUGH EXISTING CONTEXT (no Launcher change) ===
+            _controlContext.SetScrollCallback(_window, (nint w, double xoffset, double yoffset) =>
+            {
+                _scrollDelta += (float)yoffset;
+            });
+            // =======================================================
         }
         private void OnOpenPanel(OpenPanelEvent e)
         {
@@ -51,7 +63,10 @@ namespace SiegeEngine.Core.Managers
             bool mouseReleased = _prevMouseDown && !currentMouseDown;
             _prevMouseDown = currentMouseDown;
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            _dockManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _eventBus, winW, winH);
+            _dockManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+
+            // Reset for next frame
+            _scrollDelta = 0f;
         }
         public void Render()
         {

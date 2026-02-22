@@ -139,7 +139,6 @@ namespace ReadingChamber
             }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.RefreshUI();
         }
         private string GetFileClass(string fileName)
         {
@@ -229,9 +228,9 @@ namespace ReadingChamber
                 UpdateFileList();
             }
         }
-        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
+        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
+            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
         }
     }
 }

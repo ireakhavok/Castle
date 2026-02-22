@@ -154,9 +154,9 @@ namespace SiegeEngine.Core.UI
                 Console.WriteLine($"MenuPanel: Failed to load menu {menuName}");
             }
         }
-        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
+        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased);
+            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
         }
         public override void OnPanelResize(float w, float h)
         {
