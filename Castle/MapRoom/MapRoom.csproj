@@ -21,4 +21,10 @@
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="TerrainCreatorUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

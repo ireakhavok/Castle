@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.Core.UI
 {
     public class HtmlElement
@@ -232,6 +233,10 @@ namespace SiegeEngine.Core.UI
                 if (effectiveStyle.Display == "flex")
                 {
                     LayoutFlexChildren(viewportWidth, viewportHeight, textRenderer, fs);
+                }
+                else if (effectiveStyle.Display == "grid")
+                {
+                    LayoutGridChildren(viewportWidth, viewportHeight, textRenderer, fs);
                 }
                 else
                 {
@@ -626,6 +631,33 @@ namespace SiegeEngine.Core.UI
             foreach (var child in positionedChildren)
             {
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
+            }
+        }
+        private void LayoutGridChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+        {
+            List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
+            if (visibleChildren.Count == 0) return;
+            float col1Width = 140f;
+            float colGap = 20f;
+            float col2Width = ComputedContentWidth - col1Width - colGap;
+            if (col2Width < 0) col2Width = ComputedContentWidth * 0.65f;
+            float currentY = ComputedContentY;
+            for (int i = 0; i < visibleChildren.Count; i += 2)
+            {
+                float rowHeight = 0f;
+                if (i < visibleChildren.Count)
+                {
+                    var label = visibleChildren[i];
+                    label.ComputeLayout(ComputedContentX, currentY, col1Width, float.NaN, viewportWidth, viewportHeight, textRenderer, fs);
+                    rowHeight = Math.Max(rowHeight, label.ComputedHeight);
+                }
+                if (i + 1 < visibleChildren.Count)
+                {
+                    var field = visibleChildren[i + 1];
+                    field.ComputeLayout(ComputedContentX + col1Width + colGap, currentY, col2Width, float.NaN, viewportWidth, viewportHeight, textRenderer, fs);
+                    rowHeight = Math.Max(rowHeight, field.ComputedHeight);
+                }
+                currentY += rowHeight + 12f;
             }
         }
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI
+﻿// Folder: SiegeEngine.Core.UI
 // File: InputElement.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
@@ -17,10 +17,12 @@ namespace SiegeEngine.Core.UI
         private bool _cursorVisible = true;
         private float _cursorTimer = 0f;
         private const float CursorBlinkRate = 0.5f;
+
         public InputElement()
         {
             Tag = "input";
         }
+
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             if (Type == "radio")
@@ -40,6 +42,7 @@ namespace SiegeEngine.Core.UI
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = fs * 1.5f;
             }
         }
+
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
@@ -83,6 +86,7 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
+
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             if (Type == "checkbox" || Type == "radio")
@@ -106,10 +110,12 @@ namespace SiegeEngine.Core.UI
             }
             return base.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
         }
+
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             return base.HandleClick(mousePos, viewportWidth, viewportHeight);
         }
+
         public bool Update(float deltaTime, IControlContext controlContext, nint window)
         {
             bool valueChanged = false;

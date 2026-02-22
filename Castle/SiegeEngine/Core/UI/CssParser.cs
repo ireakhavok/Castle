@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.Core.UI
 {
     public class CssParser
@@ -564,6 +565,8 @@ nav {
                 style.Overflow = ov;
             if (props.TryGetValue("overflow-y", out string ovy))
                 style.OverflowY = ovy;
+            if (props.TryGetValue("grid-template-columns", out string gtc))
+                style.GridTemplateColumnsStr = gtc;
         }
         public Vector4 ParseColor(string color)
         {
