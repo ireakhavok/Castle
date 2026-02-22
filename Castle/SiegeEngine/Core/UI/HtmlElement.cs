@@ -141,7 +141,7 @@ namespace SiegeEngine.Core.UI
             bool hasVerticalOverflow = (overflow == "auto" || overflow == "scroll" || overflowY == "auto" || overflowY == "scroll");
             if (hasVerticalOverflow)
             {
-                h = refHeight; // force the scroll container to the available panel/parent height
+                h = refHeight;
             }
             bool isBlockOrFlex = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex";
             bool isStaticOrRelative = string.IsNullOrEmpty(effectiveStyle.Position) || effectiveStyle.Position == "static" || effectiveStyle.Position == "relative";
@@ -636,50 +636,72 @@ namespace SiegeEngine.Core.UI
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             if (visibleChildren.Count == 0) return;
+
             string columnsStr = Style.GridTemplateColumnsStr;
+            if (string.IsNullOrEmpty(columnsStr))
+            {
+                LayoutBlockChildren(viewportWidth, viewportHeight, textRenderer, fs);
+                return;
+            }
             string[] colDefs = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
             string gapStr = Style.GapStr;
-            string[] gapDefs = gapStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            float rowGap = gapDefs.Length > 0 ? ParseSize(gapDefs[0], 0, viewportWidth, viewportHeight) : 12f;
-            float colGap = gapDefs.Length > 1 ? ParseSize(gapDefs[1], 0, viewportWidth, viewportHeight) : 20f;
-            if (float.IsNaN(rowGap)) rowGap = 12f;
-            if (float.IsNaN(colGap)) colGap = 20f;
-            float col1Width = 140f;
-            float col2Width = 0f;
-            if (colDefs.Length > 0)
+            string[] gapDefs = string.IsNullOrEmpty(gapStr) ? new string[0] : gapStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            float rowGap = gapDefs.Length > 0 ? ParseSize(gapDefs[0], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
+            float colGap = gapDefs.Length > 1 ? ParseSize(gapDefs[1], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
+
+            List<float> trackWidths = new List<float>();
+            float totalFixed = 0f;
+            int totalFr = 0;
+            foreach (string def in colDefs)
             {
-                col1Width = ParseSize(colDefs[0], ComputedContentWidth, viewportWidth, viewportHeight);
-                if (float.IsNaN(col1Width)) col1Width = 140f;
+                if (def.EndsWith("fr"))
+                {
+                    if (float.TryParse(def.Replace("fr", "").Trim(), out float frValue))
+                    {
+                        totalFr += (int)frValue;
+                        trackWidths.Add(-frValue);
+                    }
+                    else
+                    {
+                        trackWidths.Add(0f);
+                    }
+                }
+                else
+                {
+                    float fixedW = ParseSize(def, ComputedContentWidth, viewportWidth, viewportHeight);
+                    if (float.IsNaN(fixedW)) fixedW = 0f;
+                    trackWidths.Add(fixedW);
+                    totalFixed += fixedW;
+                }
             }
-            if (colDefs.Length > 1 && colDefs[1].Contains("fr"))
+            float remainingSpace = Math.Max(0f, ComputedContentWidth - totalFixed - colGap * Math.Max(0, trackWidths.Count - 1));
+            float frUnit = totalFr > 0 ? remainingSpace / totalFr : 0f;
+            for (int i = 0; i < trackWidths.Count; i++)
             {
-                col2Width = ComputedContentWidth - col1Width - colGap;
-                if (col2Width < 50f) col2Width = ComputedContentWidth * 0.65f;
+                if (trackWidths[i] < 0)
+                {
+                    trackWidths[i] = frUnit * Math.Abs(trackWidths[i]);
+                }
             }
-            else if (colDefs.Length > 1)
-            {
-                col2Width = ParseSize(colDefs[1], ComputedContentWidth, viewportWidth, viewportHeight);
-            }
-            if (col2Width < 50f) col2Width = ComputedContentWidth * 0.65f;
+
             float currentY = ComputedContentY;
-            for (int i = 0; i < visibleChildren.Count; i += 2)
+            for (int i = 0; i < visibleChildren.Count; i += trackWidths.Count)
             {
                 float rowMaxH = 0f;
-                if (i < visibleChildren.Count)
+                float currentX = ComputedContentX;
+                for (int col = 0; col < trackWidths.Count && i + col < visibleChildren.Count; col++)
                 {
-                    var label = visibleChildren[i];
-                    label.ComputeLayout(ComputedContentX, currentY, col1Width, float.NaN, viewportWidth, viewportHeight, textRenderer, fs, col1Width, float.NaN);
-                    rowMaxH = Math.Max(rowMaxH, label.ComputedHeight);
-                }
-                if (i + 1 < visibleChildren.Count)
-                {
-                    var field = visibleChildren[i + 1];
-                    if (string.IsNullOrEmpty(field.Style.WidthStr))
+                    HtmlElement child = visibleChildren[i + col];
+                    float trackW = trackWidths[col];
+                    if ((child is InputElement || child.Tag.ToLower() == "select" || child.Tag.ToLower() == "input") &&
+                        string.IsNullOrEmpty(child.Style.WidthStr))
                     {
-                        field.Style.WidthStr = "100%";
+                        child.Style.WidthStr = "100%";
                     }
-                    field.ComputeLayout(ComputedContentX + col1Width + colGap, currentY, col2Width, float.NaN, viewportWidth, viewportHeight, textRenderer, fs, col2Width, float.NaN);
-                    rowMaxH = Math.Max(rowMaxH, field.ComputedHeight);
+                    child.ComputeLayout(currentX, currentY, trackW, float.NaN, viewportWidth, viewportHeight, textRenderer, fs, trackW, float.NaN);
+                    rowMaxH = Math.Max(rowMaxH, child.ComputedHeight);
+                    currentX += trackW + colGap;
                 }
                 currentY += rowMaxH + rowGap;
             }
