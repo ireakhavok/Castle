@@ -187,6 +187,26 @@ Folder: GuildTower
   - Class: Class1 (Namespace: GuildTower)
 
 Folder: MapRoom
+- File: CreateTerrainEvent.cs
+  - Class: CreateTerrainEvent (Namespace: MapRoom)
+    - Inherits: IEvent
+    
+    - Dependencies: SiegeEngine.Core.Events, System.Text.Json
+    - Fields:
+      - string Type
+    - Methods:
+      - constructor CreateTerrainEvent(TerrainCreationParams parameters)
+      - byte[] Serialize()
+      - void Deserialize(byte[] data)
+- File: NewTerrainPanel.cs
+  - Class: NewTerrainUIOverlay (Namespace: MapRoom)
+    - Inherits: UIOverlay
+        
+    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics
+    - Fields:
+      - NewTerrainPanel _parent
+    - Methods:
+      - void HandleUIClick(HtmlElement elem)
 - File: TerrainCreatorPanel.cs
   - Class: TerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
@@ -2219,6 +2239,7 @@ Folder: SiegeEngine
       - void RecomputeLayout( float h, float w)
         - Calls: UpdateContentHeight, _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
       - void UpdateContentHeight()
+        - Calls: elem.GetEffectiveDisplay
       - void Scroll(float deltaY)
       - void Dispose()
         - Calls: _uiClickables.Clear
@@ -2424,6 +2445,8 @@ Citadel.Systems.PhysicsSystem
 FileSelectedEvent
 Foundation.Program
 GuildTower.Class1
+MapRoom.CreateTerrainEvent
+MapRoom.NewTerrainUIOverlay
 MapRoom.TerrainCreatorScene
 MapRoom.TerrainUIOverlay
 QuestHall.Class1

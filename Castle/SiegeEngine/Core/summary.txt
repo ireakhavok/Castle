@@ -1705,6 +1705,7 @@ Folder: UI
       - void RecomputeLayout( float h, float w)
         - Calls: UpdateContentHeight, _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
       - void UpdateContentHeight()
+        - Calls: elem.GetEffectiveDisplay
       - void Scroll(float deltaY)
       - void Dispose()
         - Calls: _uiClickables.Clear

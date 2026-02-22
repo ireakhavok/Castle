@@ -57,7 +57,7 @@ namespace MapRoom
 
         private void LoadNewTerrainFormUI()
         {
-            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MapRoom", "NewTerrainForm.html");
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NewTerrainForm.html");
             if (File.Exists(htmlPath))
             {
                 _uiOverlay.LoadUI(File.ReadAllText(htmlPath));

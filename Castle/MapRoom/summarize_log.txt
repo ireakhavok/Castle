@@ -1,0 +1,44 @@
+Log file opened successfully
+Getting current directory
+Repo path set to: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom
+Summary file opened successfully
+Starting scan
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\bin
+Found: CreateTerrainEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\CreateTerrainEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\CreateTerrainEvent.cs
+Read 1091 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\CreateTerrainEvent.cs
+Namespace: MapRoom
+Found 2 dependencies
+Found: HeirarchySummary.exe
+Found: MapRoom.csproj
+Found: NewTerrainForm.html
+Found: NewTerrainPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
+Read 5557 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
+Namespace: MapRoom
+Found 11 dependencies
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj
+Found: summarize_log.txt
+Found: summary.txt
+Found: TerrainCreatorPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Read 9571 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Namespace: MapRoom
+Found 12 dependencies
+Found: TerrainCreatorScene.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Read 1594 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Namespace: MapRoom
+Found 7 dependencies
+Found: TerrainCreatorUI.html
+Writing output for 1 folders
+Scan complete
