@@ -215,7 +215,7 @@ Folder: ReadingChamber
 - File: AnimationViewerPanel.cs
   - Class: AssetUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
-		
+        
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - AnimationViewerPanel _parent
@@ -370,12 +370,12 @@ Folder: SiegeEngine
         - Calls: UIOverlay
       - void Init()
         - Calls: UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
-      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
-        - Calls: ApplySnap, _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
+      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
+        - Calls: ApplySnap, _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI, _uiOverlay.Scroll
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
         - Calls: OnPanelResize
       - void Render()
-        - Calls: _quadRenderer.DrawQuad, _renderContext.Disable, _renderContext.Enable, _uiOverlay.RefreshUI
+        - Calls: _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _uiOverlay.RefreshUI
       - void Dispose()
       - void Detach()
       - void OnPanelResize( float h, float w)
@@ -1054,7 +1054,7 @@ Folder: SiegeEngine
     - Dependencies: System.Numerics
     - Methods:
       - void Init()
-      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
+      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
       - void Render()
       - void Dispose()
       - void Detach()
@@ -1568,9 +1568,10 @@ Folder: SiegeEngine
       - EventBus _eventBus
       - bool _prevMouseDown
       - List<IPanel> _panels
+      - float _scrollDelta
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: DockManager
+        - Calls: DockManager, _controlContext.SetScrollCallback
       - void OnOpenPanel(OpenPanelEvent e)
         - Calls: AddPanel
       - void OnClosePanel(ClosePanelEvent e)
@@ -2180,6 +2181,7 @@ Folder: SiegeEngine
       - double InitialRepeatDelay
       - double RepeatRate
       - HtmlElement FocusedElement
+      - bool _needsVerticalScrollbar
     - Methods:
       - constructor UIOverlay( IControlContext controlContext,  nint window, IRenderContext renderContext)
       - void Init()
@@ -2206,20 +2208,18 @@ Folder: SiegeEngine
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - void HandleUIClick(HtmlElement elem)
         - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _jsContext.RunWithThis
-      - select CloseAllOpenSelects()
-        - Calls: TriggerChange
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
         - Calls: CloseAllOpenSelects, FindElementsByTag, HandleUIClick, InvokeListeners, JSElement, RefreshUI, TriggerChange, _controlContext.GetKey, _controlContext.GetTime, _jsContext.RunWithThis, clickable.HandleClick, clickable.IsDescendantOf, openSelect.HandleClick
-      - it CloseAllOpenSelects()
-        - Calls: InvokeListeners, RefreshUI, TriggerChange, _controlContext.GetKey, _controlContext.GetTime, input.Update
       - void RenderUI( float h, float w)
-        - Calls: _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _uiRoot.Render, sel.RenderDropdown
+        - Calls: HtmlElement.GetNdcQuad, _quadRenderer.DrawNdcQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _uiRoot.Render, sel.RenderDropdown
       - void Render()
         - Calls: RenderUI
       - void RecomputeLayout( float h, float w)
-        - Calls: _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
+        - Calls: UpdateContentHeight, _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
+      - void UpdateContentHeight()
+      - void Scroll(float deltaY)
       - void Dispose()
         - Calls: _uiClickables.Clear
       - void TriggerChange(HtmlElement elem)

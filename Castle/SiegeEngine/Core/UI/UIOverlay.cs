@@ -38,7 +38,7 @@ namespace SiegeEngine.Core.UI
         public HtmlElement FocusedElement => _currentFocused;
         public float PanelWidth { get; set; }
         public float PanelHeight { get; set; }
-        // === PANEL-LEVEL SCROLLING FOUNDATION (minimal first change) ===
+        // === PANEL-LEVEL SCROLLING FOUNDATION ===
         public float ScrollOffsetY { get; set; } = 0f;
         public float ContentFullHeight { get; private set; } = 0f;
         private bool _needsVerticalScrollbar = false;
@@ -500,7 +500,7 @@ namespace SiegeEngine.Core.UI
             PanelWidth = panelW;
             PanelHeight = panelH;
 
-            // === SCROLL-ADJUSTED MOUSE FOR HIT-TESTING (final fix) ===
+            // === SCROLL-ADJUSTED MOUSE FOR HIT-TESTING ===
             Vector2 scrolledMousePos = new Vector2(relMousePos.X, relMousePos.Y + ScrollOffsetY);
             // =======================================================
 
@@ -697,14 +697,17 @@ namespace SiegeEngine.Core.UI
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-            // === PANEL-LEVEL SCROLL APPLIED TO ROOT (minimal first change) ===
+
+            // === PANEL-LEVEL SCROLL APPLIED TO ROOT ===
             Matrix4x4 scrollMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, scrollMatrix);
+
             foreach (var sel in _openSelects)
             {
                 sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
             }
-            // === PANEL-LEVEL VISUAL SCROLLBAR (third minimal change) ===
+
+            // === PANEL-LEVEL VISUAL SCROLLBAR ===
             if (_needsVerticalScrollbar)
             {
                 float trackX = w - 12f;
@@ -713,6 +716,7 @@ namespace SiegeEngine.Core.UI
                 float trackH = h;
                 float[] trackNdc = HtmlElement.GetNdcQuad(trackX, trackY, trackW, trackH, Matrix4x4.Identity, w, h);
                 _quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.15f, 0.15f, 0.15f, 0.95f));
+
                 float thumbRatio = h / ContentFullHeight;
                 float thumbH = Math.Max(30f, trackH * thumbRatio);
                 float thumbY = (ScrollOffsetY / (ContentFullHeight - h)) * (trackH - thumbH);
@@ -720,6 +724,7 @@ namespace SiegeEngine.Core.UI
                 _quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.55f, 0.55f, 0.55f, 1f));
             }
             // =======================================================
+
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
         public virtual void Render()
@@ -734,13 +739,28 @@ namespace SiegeEngine.Core.UI
             if (_uiRoot == null) return;
             _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f);
             _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
-            // === PANEL-LEVEL FULL CONTENT HEIGHT (minimal first change) ===
+            // === PANEL-LEVEL FULL CONTENT HEIGHT ===
             UpdateContentHeight();
         }
         private void UpdateContentHeight()
         {
             if (_uiRoot == null) return;
-            ContentFullHeight = _uiRoot.ComputedContentY + _uiRoot.ComputedContentHeight;
+            ContentFullHeight = 0f;
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(_uiRoot);
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                if (elem.GetEffectiveDisplay() != "none")
+                {
+                    float elemBottom = elem.ComputedPosition.Y + elem.ComputedHeight;
+                    ContentFullHeight = Math.Max(ContentFullHeight, elemBottom);
+                }
+                foreach (var child in elem.Children)
+                {
+                    queue.Enqueue(child);
+                }
+            }
             _needsVerticalScrollbar = ContentFullHeight > PanelHeight + 0.1f;
             if (_needsVerticalScrollbar)
             {
@@ -751,11 +771,10 @@ namespace SiegeEngine.Core.UI
                 ScrollOffsetY = 0f;
             }
         }
-        // Public API for wheel input (to be wired from BasePanel in next step)
         public void Scroll(float deltaY)
         {
             if (!_needsVerticalScrollbar) return;
-            ScrollOffsetY -= deltaY * 30f; // smooth wheel sensitivity
+            ScrollOffsetY -= deltaY * 30f;
             ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, ContentFullHeight - PanelHeight);
         }
         public virtual void Dispose()

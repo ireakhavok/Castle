@@ -76,7 +76,7 @@ namespace ReadingChamber
                 return;
             }
             string baseHtml = File.ReadAllText(htmlPath);
-            int insertIndex = baseHtml.IndexOf("</select>");
+            int insertIndex = baseHtml.IndexOf("");
             if (insertIndex == -1)
             {
                 return;
