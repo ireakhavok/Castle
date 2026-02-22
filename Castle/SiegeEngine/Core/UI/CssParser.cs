@@ -126,6 +126,12 @@ li {
 nav {
     display: block;
 }
+.form-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 12px 20px;
+    align-items: center;
+}
 ";
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
         public void Clear()
@@ -570,6 +576,8 @@ nav {
                 style.Overflow = ov;
             if (props.TryGetValue("overflow-y", out string ovy))
                 style.OverflowY = ovy;
+            if (props.TryGetValue("grid-template-columns", out string gtc))
+                style.GridTemplateColumnsStr = gtc;
         }
         public Vector4 ParseColor(string color)
         {

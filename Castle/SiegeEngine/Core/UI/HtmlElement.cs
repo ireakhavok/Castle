@@ -637,38 +637,60 @@ namespace SiegeEngine.Core.UI
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             if (visibleChildren.Count == 0) return;
+
+            string columnsStr = Style.GridTemplateColumnsStr;
+            string[] colDefs = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+            string gapStr = Style.GapStr;
+            string[] gapDefs = gapStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            float rowGap = gapDefs.Length > 0 ? ParseSize(gapDefs[0], 0, viewportWidth, viewportHeight) : 12f;
+            float colGap = gapDefs.Length > 1 ? ParseSize(gapDefs[1], 0, viewportWidth, viewportHeight) : 20f;
+            if (float.IsNaN(rowGap)) rowGap = 12f;
+            if (float.IsNaN(colGap)) colGap = 20f;
+
             float col1Width = 140f;
-            float colGap = 20f;
-            float col2Width = ComputedContentWidth - col1Width - colGap;
-            if (col2Width < 0) col2Width = ComputedContentWidth * 0.65f;
+            float col2Width = 0f;
+
+            if (colDefs.Length > 0)
+            {
+                col1Width = ParseSize(colDefs[0], ComputedContentWidth, viewportWidth, viewportHeight);
+                if (float.IsNaN(col1Width)) col1Width = 140f;
+            }
+            if (colDefs.Length > 1 && colDefs[1].Contains("fr"))
+            {
+                col2Width = ComputedContentWidth - col1Width - colGap;
+                if (col2Width < 50f) col2Width = ComputedContentWidth * 0.6f;
+            }
+            else if (colDefs.Length > 1)
+            {
+                col2Width = ParseSize(colDefs[1], ComputedContentWidth, viewportWidth, viewportHeight);
+            }
+            if (col2Width < 50f) col2Width = ComputedContentWidth * 0.6f;
+
             float currentY = ComputedContentY;
-            float maxRowBottom = currentY;
             for (int i = 0; i < visibleChildren.Count; i += 2)
             {
-                float rowHeight = 0f;
+                float rowMaxH = 0f;
+
                 if (i < visibleChildren.Count)
                 {
                     var label = visibleChildren[i];
                     label.ComputeLayout(ComputedContentX, currentY, col1Width, float.NaN, viewportWidth, viewportHeight, textRenderer, fs, col1Width, float.NaN);
-                    rowHeight = Math.Max(rowHeight, label.ComputedHeight);
+                    rowMaxH = Math.Max(rowMaxH, label.ComputedHeight);
                 }
                 if (i + 1 < visibleChildren.Count)
                 {
                     var field = visibleChildren[i + 1];
                     field.ComputeLayout(ComputedContentX + col1Width + colGap, currentY, col2Width, float.NaN, viewportWidth, viewportHeight, textRenderer, fs, col2Width, float.NaN);
-                    rowHeight = Math.Max(rowHeight, field.ComputedHeight);
+                    rowMaxH = Math.Max(rowMaxH, field.ComputedHeight);
                 }
-                currentY += rowHeight + 12f;
-                maxRowBottom = currentY;
+
+                currentY += rowMaxH + rowGap;
             }
-            float pad = 0f;
-            if (!string.IsNullOrEmpty(Style.PaddingStr))
-            {
-                Vector4 p = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-                pad = p.X + p.Z;
-            }
-            ComputedContentHeight = maxRowBottom - ComputedContentY;
-            ComputedHeight = ComputedContentHeight + pad;
+
+            ComputedContentHeight = currentY - ComputedContentY;
+            Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            ComputedHeight = ComputedContentHeight + pad.X + pad.Z;
             ComputedBackgroundHeight = ComputedHeight;
         }
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
