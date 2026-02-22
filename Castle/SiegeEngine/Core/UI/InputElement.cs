@@ -36,7 +36,7 @@ namespace SiegeEngine.Core.UI
                 if (float.IsNaN(ComputedWidth)) ComputedWidth = fs * 1.5f;
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = fs;
             }
-            else if (Type == "text")
+            else if (Type == "text" || Type == "number")
             {
                 float fs = Style.FontSize;
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = fs * 1.5f;
@@ -46,7 +46,7 @@ namespace SiegeEngine.Core.UI
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
-            if (Type == "text")
+            if (Type == "text" || Type == "number")
             {
                 float fs = Style.FontSize;
                 string displayText = string.IsNullOrEmpty(Value) ? Placeholder : Value;
@@ -97,7 +97,7 @@ namespace SiegeEngine.Core.UI
                 float ih = fs + pad.X + pad.Z + borderW.X + borderW.Z;
                 return new Vector2(iw, ih);
             }
-            if (Type == "text")
+            if (Type == "text" || Type == "number")
             {
                 string sizeText = string.IsNullOrEmpty(Value) ? string.IsNullOrEmpty(Placeholder) ? " " : Placeholder : Value;
                 float textW = textRenderer.GetTextSize(sizeText, fs).X;
@@ -119,7 +119,7 @@ namespace SiegeEngine.Core.UI
         public bool Update(float deltaTime, IControlContext controlContext, nint window)
         {
             bool valueChanged = false;
-            if (Type == "text" && IsFocused)
+            if ((Type == "text" || Type == "number") && IsFocused)
             {
                 _cursorTimer += deltaTime;
                 if (_cursorTimer >= CursorBlinkRate)

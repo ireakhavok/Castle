@@ -58,6 +58,11 @@ input[type=""text""] {
     min-height: 20px;
     border: 2px inset;
 }
+input[type=""number""] {
+    padding: 1px 2px;
+    min-height: 20px;
+    border: 2px inset;
+}
 input[type=""checkbox""] {
     width: 13px;
     height: 13px;
@@ -565,8 +570,6 @@ nav {
                 style.Overflow = ov;
             if (props.TryGetValue("overflow-y", out string ovy))
                 style.OverflowY = ovy;
-            if (props.TryGetValue("grid-template-columns", out string gtc))
-                style.GridTemplateColumnsStr = gtc;
         }
         public Vector4 ParseColor(string color)
         {
