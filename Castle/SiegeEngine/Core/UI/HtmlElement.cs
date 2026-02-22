@@ -143,9 +143,9 @@ namespace SiegeEngine.Core.UI
             {
                 h = refHeight;
             }
-            bool isBlockOrFlex = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex";
+            bool isBlockOrFlexOrGrid = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex" || effectiveStyle.Display == "grid";
             bool isStaticOrRelative = string.IsNullOrEmpty(effectiveStyle.Position) || effectiveStyle.Position == "static" || effectiveStyle.Position == "relative";
-            if (isBlockOrFlex && isStaticOrRelative && float.IsNaN(w))
+            if (isBlockOrFlexOrGrid && isStaticOrRelative && float.IsNaN(w))
             {
                 w = refWidth;
             }
