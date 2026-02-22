@@ -8,7 +8,6 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.Core.UI
 {
     public class HtmlElement
@@ -637,20 +636,16 @@ namespace SiegeEngine.Core.UI
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             if (visibleChildren.Count == 0) return;
-
             string columnsStr = Style.GridTemplateColumnsStr;
             string[] colDefs = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
             string gapStr = Style.GapStr;
             string[] gapDefs = gapStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             float rowGap = gapDefs.Length > 0 ? ParseSize(gapDefs[0], 0, viewportWidth, viewportHeight) : 12f;
             float colGap = gapDefs.Length > 1 ? ParseSize(gapDefs[1], 0, viewportWidth, viewportHeight) : 20f;
             if (float.IsNaN(rowGap)) rowGap = 12f;
             if (float.IsNaN(colGap)) colGap = 20f;
-
             float col1Width = 140f;
             float col2Width = 0f;
-
             if (colDefs.Length > 0)
             {
                 col1Width = ParseSize(colDefs[0], ComputedContentWidth, viewportWidth, viewportHeight);
@@ -659,19 +654,17 @@ namespace SiegeEngine.Core.UI
             if (colDefs.Length > 1 && colDefs[1].Contains("fr"))
             {
                 col2Width = ComputedContentWidth - col1Width - colGap;
-                if (col2Width < 50f) col2Width = ComputedContentWidth * 0.6f;
+                if (col2Width < 50f) col2Width = ComputedContentWidth * 0.65f;
             }
             else if (colDefs.Length > 1)
             {
                 col2Width = ParseSize(colDefs[1], ComputedContentWidth, viewportWidth, viewportHeight);
             }
-            if (col2Width < 50f) col2Width = ComputedContentWidth * 0.6f;
-
+            if (col2Width < 50f) col2Width = ComputedContentWidth * 0.65f;
             float currentY = ComputedContentY;
             for (int i = 0; i < visibleChildren.Count; i += 2)
             {
                 float rowMaxH = 0f;
-
                 if (i < visibleChildren.Count)
                 {
                     var label = visibleChildren[i];
@@ -681,13 +674,15 @@ namespace SiegeEngine.Core.UI
                 if (i + 1 < visibleChildren.Count)
                 {
                     var field = visibleChildren[i + 1];
+                    if (string.IsNullOrEmpty(field.Style.WidthStr))
+                    {
+                        field.Style.WidthStr = "100%";
+                    }
                     field.ComputeLayout(ComputedContentX + col1Width + colGap, currentY, col2Width, float.NaN, viewportWidth, viewportHeight, textRenderer, fs, col2Width, float.NaN);
                     rowMaxH = Math.Max(rowMaxH, field.ComputedHeight);
                 }
-
                 currentY += rowMaxH + rowGap;
             }
-
             ComputedContentHeight = currentY - ComputedContentY;
             Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
             ComputedHeight = ComputedContentHeight + pad.X + pad.Z;

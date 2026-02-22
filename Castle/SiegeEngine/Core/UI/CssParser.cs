@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.Core.UI
 {
     public class CssParser
@@ -158,7 +157,6 @@ nav {
         }
         public void ApplyAll(HtmlElement root)
         {
-            ApplyInlineStyles(root);
             foreach (var rule in _allRules)
             {
                 string selector = rule.Selector;
@@ -178,6 +176,7 @@ nav {
                     ApplyToElements(root, selector, rule.Props, null);
                 }
             }
+            ApplyInlineStyles(root);
         }
         public void ApplyInlineStyles(HtmlElement root)
         {
