@@ -1373,7 +1373,7 @@ Folder: UI
       - string GetEffectiveDisplay()
       - HtmlElement FindContainingBlock()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, ComputeTransform, FindContainingBlock, LayoutBlockChildren, LayoutFlexChildren, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, child.GetEffectiveDisplay
+        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, ComputeTransform, FindContainingBlock, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, child.GetEffectiveDisplay
       - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
       - void UpdateFullTransforms(Matrix4x4 parentMatrix)
@@ -1381,6 +1381,8 @@ Folder: UI
         - Calls: BackgroundRenderer, _bgRenderer.Initialize
       - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
+      - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: LayoutBlockChildren, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeLayout
       - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: ParseMargins, ParseSize, ShiftX, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, child.GetEffectiveDisplay, currentLine.Clear
       - void ShiftX( float off, HtmlElement e)
@@ -1430,7 +1432,7 @@ Folder: UI
   - Class: InputElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
     - Fields:
       - bool _cursorVisible
       - float _cursorTimer
