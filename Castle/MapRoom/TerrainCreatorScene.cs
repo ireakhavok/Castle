@@ -79,7 +79,6 @@ namespace MapRoom
 
                 Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain ({numCellsX}×{numCellsZ} cells, {cellSize}m spacing) at base height {parameters.InitialHeight}, vert exag {parameters.VerticalExaggeration}");
 
-                // CRITICAL FIX: Use step=1 for full resolution on custom small terrains
                 BuildWireframeMesh(cellSize);
             }
         }
