@@ -87,33 +87,33 @@ namespace MapRoom
             }
             else if (hook == "CreateTerrain")
             {
-                var nameElem = _uiOverlay.FindElementById("name");
-                var typeElem = _uiOverlay.FindElementById("type");
-                var widthElem = _uiOverlay.FindElementById("width");
-                var depthElem = _uiOverlay.FindElementById("depth");
-                var resElem = _uiOverlay.FindElementById("resolution");
-                var initHElem = _uiOverlay.FindElementById("initialHeight");
-                var exagElem = _uiOverlay.FindElementById("vertExag");
+                var nameInput = _uiOverlay.FindElementById("name") as InputElement;
+                var typeSelect = _uiOverlay.FindElementById("type");
+                var widthInput = _uiOverlay.FindElementById("width") as InputElement;
+                var depthInput = _uiOverlay.FindElementById("depth") as InputElement;
+                var resSelect = _uiOverlay.FindElementById("resolution");
+                var initHInput = _uiOverlay.FindElementById("initialHeight") as InputElement;
+                var exagInput = _uiOverlay.FindElementById("vertExag") as InputElement;
 
-                float cellSize = float.Parse(resElem.Attributes.GetValueOrDefault("value", "1.0"));
+                float cellSize = float.Parse(resSelect.Attributes.GetValueOrDefault("value", "1.0"));
 
                 var parameters = new TerrainCreationParams
                 {
-                    Name = nameElem.Attributes.GetValueOrDefault("value", "NewTerrain"),
-                    Type = typeElem.Attributes.GetValueOrDefault("value", "Flat"),
-                    Width = float.Parse(widthElem.Attributes.GetValueOrDefault("value", "2048")),
-                    Depth = float.Parse(depthElem.Attributes.GetValueOrDefault("value", "2048")),
-                    Resolution = (int)Math.Ceiling(float.Parse(widthElem.Attributes.GetValueOrDefault("value", "2048")) / cellSize),
-                    InitialHeight = float.Parse(initHElem.Attributes.GetValueOrDefault("value", "0")),
-                    VerticalExaggeration = float.Parse(exagElem.Attributes.GetValueOrDefault("value", "1.0")),
+                    Name = nameInput?.Value ?? "NewTerrain",
+                    Type = typeSelect.Attributes.GetValueOrDefault("value", "Flat"),
+                    Width = float.Parse(widthInput?.Value ?? "2048"),
+                    Depth = float.Parse(depthInput?.Value ?? "2048"),
+                    Resolution = cellSize,                    // grid spacing in meters per cell
+                    InitialHeight = float.Parse(initHInput?.Value ?? "0"),
+                    VerticalExaggeration = float.Parse(exagInput?.Value ?? "1.0"),
                     ImportPath = _selectedImportPath
                 };
 
-                // === DIRECT OPEN - THIS IS THE RELIABLE FIX ===
-                var terrainPanel = new TerrainCreatorPanel(_renderContext, _controlContext, _window, _eventBus, parameters.ImportPath);
+                Console.WriteLine($"[NewTerrainPanel] Creating {parameters.Width}m × {parameters.Depth}m terrain with grid spacing {parameters.Resolution}m per cell");
+
+                var terrainPanel = new TerrainCreatorPanel(_renderContext, _controlContext, _window, _eventBus, parameters);
                 _eventBus.Publish(new OpenPanelEvent(terrainPanel) { Mode = OpenMode.Replace });
 
-                // Close this form panel
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
             else if (hook == "CancelNewTerrain")

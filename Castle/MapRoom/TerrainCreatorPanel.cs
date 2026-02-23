@@ -39,9 +39,11 @@ namespace MapRoom
 
         private TerrainCreatorScene _terrainScene;
         private string _initialTerrainPath;
+        private TerrainCreationParams _creationParams;   // NEW: full parameters from form
         private bool _cameraMode = true;
         private bool _lastTab = false;
 
+        // ORIGINAL CONSTRUCTOR (kept for Import/Blank compatibility)
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialTerrainPath = null)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -50,6 +52,13 @@ namespace MapRoom
             BaseHeight = 720f;
             _initialTerrainPath = initialTerrainPath;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
+        }
+
+        // NEW CONSTRUCTOR - accepts full TerrainCreationParams from NewTerrainPanel
+        public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, TerrainCreationParams creationParams)
+            : this(renderContext, controlContext, window, eventBus, creationParams?.ImportPath)
+        {
+            _creationParams = creationParams;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -62,7 +71,12 @@ namespace MapRoom
             base.Init();
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
 
-            if (!string.IsNullOrEmpty(_initialTerrainPath))
+            if (_creationParams != null)
+            {
+                // Use full parameters from the form (width, depth, resolution, initial height, etc.)
+                _terrainScene.CreateTerrain(_creationParams);
+            }
+            else if (!string.IsNullOrEmpty(_initialTerrainPath))
             {
                 _terrainScene.LoadTerrain(_initialTerrainPath);
             }
@@ -161,12 +175,9 @@ namespace MapRoom
             }
         }
 
-        // ===================================================================
-        // NEW: Listen for CreateTerrainEvent from NewTerrainPanel
-        // ===================================================================
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            var panel = new TerrainCreatorPanel(renderContext, controlContext, window, eventBus, null);
+            var panel = new TerrainCreatorPanel(renderContext, controlContext, window, eventBus, (string)null);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = SiegeEngine.Core.Events.OpenMode.Replace });
         }
 
@@ -176,21 +187,18 @@ namespace MapRoom
             _staticControlContext = controlContext;
             _staticWindow = window;
             _staticEventBus = eventBus;
-
             if (!_subscriptionInitialized)
             {
                 eventBus.Subscribe<FileSelectedEvent>(StaticOnFileSelected);
-                eventBus.Subscribe<CreateTerrainEvent>(StaticOnCreateTerrain);   // <-- NEW
+                eventBus.Subscribe<CreateTerrainEvent>(StaticOnCreateTerrain);
                 _subscriptionInitialized = true;
             }
-
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             string terrainDir = Path.Combine(baseDir, "Assets", "Terrain");
             if (!Directory.Exists(terrainDir))
             {
                 Directory.CreateDirectory(terrainDir);
             }
-
             var fileSelector = new FileSelectorPanel(renderContext, controlContext, window, eventBus, terrainDir, ".tif", ".tiff");
             fileSelector.UserData = "TerrainImport";
             fileSelector.IsModal = true;
@@ -206,15 +214,12 @@ namespace MapRoom
             }
         }
 
-        // NEW HANDLER
         private static void StaticOnCreateTerrain(CreateTerrainEvent e)
         {
             if (_staticRenderContext == null) return;
-
-            var panel = new TerrainCreatorPanel(_staticRenderContext, _staticControlContext, _staticWindow, _staticEventBus, e.Params.ImportPath);
+            var panel = new TerrainCreatorPanel(_staticRenderContext, _staticControlContext, _staticWindow, _staticEventBus, e.Params);
             _staticEventBus.Publish(new OpenPanelEvent(panel) { Mode = SiegeEngine.Core.Events.OpenMode.Replace });
         }
-        // ===================================================================
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
@@ -228,9 +233,7 @@ namespace MapRoom
             {
                 _lastTab = false;
             }
-
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
             _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);

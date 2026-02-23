@@ -9,9 +9,9 @@ namespace MapRoom
     {
         public string Name { get; set; } = "NewTerrain";
         public string Type { get; set; } = "Flat";
-        public float Width { get; set; } = 2048f;
-        public float Depth { get; set; } = 2048f;
-        public int Resolution { get; set; } = 1024;
+        public float Width { get; set; } = 2048f;        // physical meters
+        public float Depth { get; set; } = 2048f;        // physical meters
+        public float Resolution { get; set; } = 1.0f;    // grid spacing = meters per cell (from form select)
         public float InitialHeight { get; set; } = 0f;
         public float VerticalExaggeration { get; set; } = 1f;
         public string ImportPath { get; set; } = null;

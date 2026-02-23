@@ -45,13 +45,13 @@ namespace SiegeEngine.Scenes
             BuildWireframeMesh(WireframeStep);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
         }
-        protected virtual void BuildWireframeMesh(int step)
+        protected virtual void BuildWireframeMesh(float step)
         {
             ComputeWorldScale();  // Ensure real-meter scaling before mesh build
             var vertices = new List<float>();
             var indices = new List<uint>();
-            int stepsX = _terrainWidth / step;
-            int stepsZ = _terrainHeight / step;
+            int stepsX = (int)Math.Floor(_terrainWidth / step);
+            int stepsZ = (int)Math.Floor(_terrainHeight / step);
             for (int x = 0; x <= stepsX; x++)
             {
                 for (int z = 0; z <= stepsZ; z++)
