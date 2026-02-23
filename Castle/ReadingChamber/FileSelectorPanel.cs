@@ -10,6 +10,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
+
 namespace ReadingChamber
 {
     public class FileSelectorPanel : BasePanel
@@ -26,6 +27,7 @@ namespace ReadingChamber
                 _parent.HandleUIClick(elem);
             }
         }
+
         private string _currentDir;
         private List<string> _history = new List<string>();
         private int _historyIndex = -1;
@@ -33,7 +35,8 @@ namespace ReadingChamber
         private string _sortBy = "name";
         private bool _sortAscending = true;
         private readonly string[] _allowedExtensions;
-        public object UserData { get; set; } // To pass context like hook
+        public object UserData { get; set; }
+
         public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialDir, params string[] allowedExtensions) : base(renderContext, controlContext, window, eventBus)
         {
             _currentDir = initialDir;
@@ -41,10 +44,12 @@ namespace ReadingChamber
             Scaling = ScalingMode.Fill;
             IsModal = true;
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new FileSelectorUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
@@ -53,6 +58,7 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void NavigateTo(string dir, bool addToHistory = true)
         {
             if (addToHistory)
@@ -67,6 +73,7 @@ namespace ReadingChamber
             _currentDir = dir;
             UpdateFileList();
         }
+
         private void UpdateFileList()
         {
             string templatePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "FileSelectorTemplate.html");
@@ -75,17 +82,23 @@ namespace ReadingChamber
                 Console.WriteLine($"FileSelectorPanel: Template HTML file not found at {templatePath}");
                 return;
             }
+
             string templateHtml = File.ReadAllText(templatePath);
+
+            // === CRITICAL FIX: remove the display:none that was hiding the entire table ===
+            templateHtml = templateHtml.Replace("style=\"display: none;\"", "");
+
             templateHtml = templateHtml.Replace("</style>", " .file-table td:not(:last-child), .file-table th:not(:last-child) { border-right: 1px solid #333333; } .file-table a { color: inherit; text-decoration: none; display: block; } .grid-item a { color: inherit; text-decoration: none; display: block; height: 100%; width: 100%; } \n</style>");
+
             StringBuilder dynamicItems = new StringBuilder();
-            // Get directories and files
+
             var dirs = Directory.GetDirectories(_currentDir);
             var files = Directory.GetFiles(_currentDir);
             if (_allowedExtensions != null && _allowedExtensions.Length > 0)
             {
                 files = files.Where(f => _allowedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant())).ToArray();
             }
-            // Combine and sort
+
             var items = new List<(string Name, string Path, bool IsDir, long Size, DateTime Modified)>();
             foreach (var dir in dirs)
             {
@@ -96,7 +109,7 @@ namespace ReadingChamber
                 var fi = new FileInfo(file);
                 items.Add((fi.Name, file, false, fi.Length, fi.LastWriteTime));
             }
-            // Sort
+
             if (_sortBy == "name")
             {
                 items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
@@ -109,7 +122,7 @@ namespace ReadingChamber
             {
                 items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Modified).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Modified).ToList();
             }
-            // Generate HTML table rows
+
             if (items.Count == 0)
             {
                 dynamicItems.Append("<tr><td colspan=\"4\" style=\"text-align: center; color: #888888;\">No files or directories found.</td></tr>");
@@ -126,34 +139,31 @@ namespace ReadingChamber
                     dynamicItems.Append($"<tr class='{cls}'><td><a data-hook=\"{hook}\">{icon}</a></td><td><a data-hook=\"{hook}\">{item.Name}</a></td><td><a data-hook=\"{hook}\">{sizeStr}</a></td><td><a data-hook=\"{hook}\">{dateStr}</a></td></tr>");
                 }
             }
+
             string currentDirEscaped = _currentDir.Replace("\\", "\\\\");
             string modifiedHtml = templateHtml.Replace("<!--CURRENT_DIR-->", currentDirEscaped).Replace("<!--DYNAMIC_ITEMS-->", dynamicItems.ToString());
             modifiedHtml = modifiedHtml.Replace("<h2>Files in <!--CURRENT_DIR--></h2>", "");
             modifiedHtml = modifiedHtml.Replace("class=\"file-table\"", $"class=\"file-table {_viewType}\"");
+
             _uiOverlay.LoadUI(modifiedHtml);
-            var fileTableElem = _uiOverlay.FindElementById("file-table");
-            if (fileTableElem != null)
-            {
-                fileTableElem.Style.AlignItems = "flex-start";
-                _uiOverlay.RefreshUI();
-            }
+
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();
         }
+
         private string GetFileClass(string fileName)
         {
             string ext = Path.GetExtension(fileName).ToLowerInvariant();
-            return "file" + (string.IsNullOrEmpty(ext) ? "" : ext.Replace(".", "-"));
+            return "file" + (string.IsNullOrEmpty(ext) ? "" : ext.Replace(".", " - "));
         }
+
         private string GetIcon(string cls)
         {
             if (cls == "dir") return "📁";
-            if (cls == "file-fbx") return "🗿";
-            if (cls == "file-png" || cls == "file-jpg" || cls == "file-jpeg" || cls == "file-gif") return "🖼️";
-            if (cls == "file-txt" || cls == "file-md") return "📝";
-            if (cls == "file-json" || cls == "file-xml") return "⚙️";
             return "📄";
         }
+
         private string FormatSize(long size)
         {
             if (size < 1024) return size + " B";
@@ -161,6 +171,7 @@ namespace ReadingChamber
             if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)) + " MB";
             return (size / (1024 * 1024 * 1024)) + " GB";
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -228,6 +239,7 @@ namespace ReadingChamber
                 UpdateFileList();
             }
         }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);

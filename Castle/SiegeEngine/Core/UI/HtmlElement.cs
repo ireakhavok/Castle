@@ -143,9 +143,9 @@ namespace SiegeEngine.Core.UI
             {
                 h = refHeight;
             }
-            bool isBlockOrFlexOrGrid = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex" || effectiveStyle.Display == "grid";
+            bool isBlockOrFlexOrGridOrTable = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex" || effectiveStyle.Display == "grid" || effectiveStyle.Display == "table";
             bool isStaticOrRelative = string.IsNullOrEmpty(effectiveStyle.Position) || effectiveStyle.Position == "static" || effectiveStyle.Position == "relative";
-            if (isBlockOrFlexOrGrid && isStaticOrRelative && float.IsNaN(w))
+            if (isBlockOrFlexOrGridOrTable && isStaticOrRelative && float.IsNaN(w))
             {
                 w = refWidth;
             }
@@ -636,7 +636,6 @@ namespace SiegeEngine.Core.UI
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             if (visibleChildren.Count == 0) return;
-
             string columnsStr = Style.GridTemplateColumnsStr;
             if (string.IsNullOrEmpty(columnsStr))
             {
@@ -644,12 +643,10 @@ namespace SiegeEngine.Core.UI
                 return;
             }
             string[] colDefs = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
             string gapStr = Style.GapStr;
             string[] gapDefs = string.IsNullOrEmpty(gapStr) ? new string[0] : gapStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             float rowGap = gapDefs.Length > 0 ? ParseSize(gapDefs[0], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
             float colGap = gapDefs.Length > 1 ? ParseSize(gapDefs[1], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
-
             List<float> trackWidths = new List<float>();
             float totalFixed = 0f;
             int totalFr = 0;
@@ -684,7 +681,6 @@ namespace SiegeEngine.Core.UI
                     trackWidths[i] = frUnit * Math.Abs(trackWidths[i]);
                 }
             }
-
             float currentY = ComputedContentY;
             for (int i = 0; i < visibleChildren.Count; i += trackWidths.Count)
             {
