@@ -11,7 +11,6 @@ using System;
 using System.IO;
 using System.Numerics;
 using ReadingChamber;
-
 namespace MapRoom
 {
     public class NewTerrainPanel : BasePanel
@@ -26,12 +25,11 @@ namespace MapRoom
             }
             protected override void HandleUIClick(HtmlElement elem)
             {
+                base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);
             }
         }
-
         private string _selectedImportPath = null;
-
         public NewTerrainPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -42,19 +40,16 @@ namespace MapRoom
             AllowDragging = true;
             DockState = SiegeEngine.Core.Interfaces.DockState.Floating;
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new NewTerrainUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             LoadNewTerrainFormUI();
         }
-
         private void LoadNewTerrainFormUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NewTerrainForm.html");
@@ -68,7 +63,6 @@ namespace MapRoom
             }
             _uiOverlay.RefreshUI();
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -93,9 +87,7 @@ namespace MapRoom
                 var resElem = _uiOverlay.FindElementById("resolution");
                 var initHElem = _uiOverlay.FindElementById("initialHeight");
                 var exagElem = _uiOverlay.FindElementById("vertExag");
-
                 float cellSize = float.Parse(resElem.Attributes.GetValueOrDefault("value", "1.0"));
-
                 var parameters = new TerrainCreationParams
                 {
                     Name = nameElem.Attributes.GetValueOrDefault("value", "NewTerrain"),
@@ -107,7 +99,6 @@ namespace MapRoom
                     VerticalExaggeration = float.Parse(exagElem.Attributes.GetValueOrDefault("value", "1.0")),
                     ImportPath = _selectedImportPath
                 };
-
                 _eventBus.Publish(new CreateTerrainEvent(parameters));
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
@@ -116,7 +107,6 @@ namespace MapRoom
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
         }
-
         private void OnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData as string == "NewTerrainImport")
@@ -124,13 +114,11 @@ namespace MapRoom
                 _selectedImportPath = e.Path;
             }
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new NewTerrainPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
-
         public override void Dispose()
         {
             base.Dispose();

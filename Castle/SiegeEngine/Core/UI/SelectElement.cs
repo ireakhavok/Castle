@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI
+﻿// Folder: SiegeEngine.Core.UI
 // File: SelectElement.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
