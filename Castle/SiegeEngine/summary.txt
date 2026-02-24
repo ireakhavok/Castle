@@ -1347,6 +1347,9 @@ Folder: Core
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
     - Methods:
       - constructor TdElement()
+- File: TerrainManager.cs
+  - Class: TerrainType (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.IO
 - File: TerrainParser.cs
   - Class: GeoReference (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.IO.Compression, System.Linq, System.Numerics
@@ -2017,6 +2020,7 @@ Folder: Scenes
       - bool _hasColorTexture
       - float _worldScaleX
       - float _worldScaleZ
+      - bool _useCustomScale
     - Methods:
       - void Initialize( int height, int width)
         - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
@@ -2027,7 +2031,7 @@ Folder: Scenes
       - void ComputeWorldScale()
       - float GetHeight( float z, float x)
       - void LoadTerrain(string path)
-        - Calls: BuildWireframeMesh, ComputeWorldScale, TerrainParser.LoadUSGSDEM, TerrainParser.ParseGeoReference
+        - Calls: BuildWireframeMesh, ComputeWorldScale, TerrainParser.ParseGeoReference
       - void SetColorTexture(string path)
         - Calls: BuildTexturedMesh, TerrainParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
       - void Update(float deltaTime)
@@ -2270,6 +2274,7 @@ SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
 SiegeEngine.Core.Terrain.GeoReference
 SiegeEngine.Core.Terrain.TerrainTextureParser
+SiegeEngine.Core.Terrain.TerrainType
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CssParser

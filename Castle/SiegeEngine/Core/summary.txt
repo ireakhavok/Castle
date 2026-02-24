@@ -1231,6 +1231,9 @@ Folder: Rendering
       - int y
 
 Folder: Terrain
+- File: TerrainManager.cs
+  - Class: TerrainType (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.IO
 - File: TerrainParser.cs
   - Class: GeoReference (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.IO.Compression, System.Linq, System.Numerics
@@ -1861,6 +1864,7 @@ SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
 SiegeEngine.Core.Terrain.GeoReference
 SiegeEngine.Core.Terrain.TerrainTextureParser
+SiegeEngine.Core.Terrain.TerrainType
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CssParser
