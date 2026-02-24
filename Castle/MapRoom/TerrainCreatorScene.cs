@@ -107,7 +107,7 @@ namespace MapRoom
             string tifPath = Path.Combine(saveDir, terrainName + ".tif");
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
             SaveAsPng(pngPath);
-            SaveAsTiff(tifPath);
+            CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
             Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → 32-bit float TIFF (cm-scale fidelity, no geo tags) + PNG preview");
         }
         private void SaveAsPng(string path)
@@ -127,10 +127,6 @@ namespace MapRoom
                 }
             }
             bmp.Save(path, ImageFormat.Png);
-        }
-        private void SaveAsTiff(string path)
-        {
-            TerrainParser.SaveFloatTiff(path, _heightmap, _worldScaleX, _worldScaleZ);
         }
     }
 }

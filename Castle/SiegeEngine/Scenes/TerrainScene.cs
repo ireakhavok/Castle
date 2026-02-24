@@ -27,8 +27,8 @@ namespace SiegeEngine.Scenes
         protected ShaderProgram _terrainShader;
         protected uint _terrainTextureId = 0;
         protected bool _hasColorTexture = false;
-        protected TerrainParser.GeoReference _colorGeoRef;
-        protected TerrainParser.GeoReference _terrainGeoRef;
+        protected GeoTiffParser.GeoReference _colorGeoRef;
+        protected GeoTiffParser.GeoReference _terrainGeoRef;
         protected float _worldScaleX = 1.0f; // Real meters per grid unit (set from header)
         protected float _worldScaleZ = 1.0f;
         protected bool _useCustomScale = false;
@@ -105,7 +105,7 @@ namespace SiegeEngine.Scenes
             }
             else
             {
-                var (e, n, z) = TerrainParser.ConvertLatLonToUTM(
+                var (e, n, z) = GeoTiffParser.ConvertLatLonToUTM(
                     _terrainGeoRef.TiePointModel.Y, _terrainGeoRef.TiePointModel.X);
                 tieEastMeters = e;
                 tieNorthMeters = n;
@@ -152,7 +152,7 @@ namespace SiegeEngine.Scenes
                     {
                         float real_deg_east = _terrainGeoRef.TiePointModel.X + fracX * (_terrainGeoRef.PixelScale.X * _terrainGeoRef.TextureWidth);
                         float real_deg_north = _terrainGeoRef.TiePointModel.Y + fracZ * (_terrainGeoRef.PixelScale.Y * _terrainGeoRef.TextureHeight);
-                        var (e, n, _) = TerrainParser.ConvertLatLonToUTM(real_deg_north, real_deg_east);
+                        var (e, n, _) = GeoTiffParser.ConvertLatLonToUTM(real_deg_north, real_deg_east);
                         meshEastMeters = (float)e;
                         meshNorthMeters = (float)n;
                     }
@@ -224,10 +224,8 @@ namespace SiegeEngine.Scenes
                 bool isCustomFlat;
                 float customScaleX, customScaleZ;
                 _heightmap = TerrainManager.LoadTerrain(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight, out isCustomFlat, out customScaleX, out customScaleZ);
-
-                _terrainGeoRef = TerrainParser.ParseGeoReference(path);
+                _terrainGeoRef = GeoTiffParser.ParseGeoReference(path);
                 Console.WriteLine($"[TerrainScene] Heightmap loaded: {_terrainWidth}x{_terrainHeight}, Height range: {_minHeight:F1} to {_maxHeight:F1}");
-
                 if (isCustomFlat)
                 {
                     _worldScaleX = customScaleX;
@@ -263,7 +261,7 @@ namespace SiegeEngine.Scenes
             _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, path);
             if (_terrainTextureId != 0)
             {
-                _colorGeoRef = TerrainParser.ParseGeoReference(path);
+                _colorGeoRef = GeoTiffParser.ParseGeoReference(path);
                 _hasColorTexture = _colorGeoRef.IsValid;
                 if (_terrainGeoRef.IsValid && _colorGeoRef.IsValid)
                 {

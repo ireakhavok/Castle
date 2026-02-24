@@ -1,5 +1,5 @@
 ﻿// Folder: SiegeEngine/Core/Terrain
-// File: TerrainParser.cs
+// File: GeoTiffParser.cs
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -47,7 +47,7 @@ namespace SiegeEngine.Core.Terrain
         public ushort SamplesPerPixel { get; set; } = 1;
         public ushort PlanarConfig { get; set; } = 1;
     }
-    public static class TerrainParser
+    public static class GeoTiffParser
     {
         private static readonly Dictionary<ushort, string> TagNames = new Dictionary<ushort, string>
         {
@@ -140,7 +140,7 @@ namespace SiegeEngine.Core.Terrain
                     }
                     else
                     {
-                        Console.WriteLine($"[TerrainParser] Invalid LZW code: {code} (next={nextCode}, size={codeSize}) at output {output.Count}");
+                        Console.WriteLine($"[GeoTiffParser] Invalid LZW code: {code} (next={nextCode}, size={codeSize}) at output {output.Count}");
                         break;
                     }
                     output.AddRange(entry);
@@ -159,7 +159,7 @@ namespace SiegeEngine.Core.Terrain
                     if (code < 0) break;
                 }
                 if (isFirstBlock)
-                    Console.WriteLine($"[TerrainParser] First 10 codes: {string.Join(", ", codes.Take(10))}");
+                    Console.WriteLine($"[GeoTiffParser] First 10 codes: {string.Join(", ", codes.Take(10))}");
                 return output.ToArray();
             }
         }
@@ -210,7 +210,7 @@ namespace SiegeEngine.Core.Terrain
             tiffFile.Ifd = new TiffIFD();
             tiffFile.Ifd.Offset = BitConverter.ToUInt32(bytes, 4);
             uint numEntries = BitConverter.ToUInt16(bytes, (int)tiffFile.Ifd.Offset);
-            Console.WriteLine($"[TerrainParser] IFD at {tiffFile.Ifd.Offset}, {numEntries} entries");
+            Console.WriteLine($"[GeoTiffParser] IFD at {tiffFile.Ifd.Offset}, {numEntries} entries");
             for (uint i = 0; i < numEntries; i++)
             {
                 uint entryOffset = tiffFile.Ifd.Offset + 2 + i * 12;
@@ -307,7 +307,7 @@ namespace SiegeEngine.Core.Terrain
                     }
                 }
             }
-            Console.WriteLine("[TerrainParser] All parsed TIFF tags (meaningful names):");
+            Console.WriteLine("[GeoTiffParser] All parsed TIFF tags (meaningful names):");
             foreach (var kv in tiffFile.Ifd.Tags.OrderBy(k => k.Key))
             {
                 var t = kv.Value;
@@ -322,7 +322,7 @@ namespace SiegeEngine.Core.Terrain
             if (tiffFile.Ifd.Tags.TryGetValue(42113, out var ndTag) && ndTag.Value is string ndStr && float.TryParse(ndStr, out float nd))
             {
                 noData = nd;
-                Console.WriteLine($"[TerrainParser] NoData value: {noData}");
+                Console.WriteLine($"[GeoTiffParser] NoData value: {noData}");
             }
             List<byte> fullRawData = new List<byte>((int)(tiffFile.ImageWidth * tiffFile.ImageHeight * 4));
             uint numTilesX = isTiled ? (tiffFile.ImageWidth + tiffFile.TileWidth - 1) / tiffFile.TileWidth : 1;
@@ -347,7 +347,7 @@ namespace SiegeEngine.Core.Terrain
                 else if (tiffFile.Compression == 8 || tiffFile.Compression == 32946) // Deflate / ZIP (OpenTopography default)
                 {
                     decompressed = DecompressDeflate(blockData);
-                    if (i == 0) Console.WriteLine($"[TerrainParser] Deflate decompressed {blockData.Length} → {decompressed.Length} bytes");
+                    if (i == 0) Console.WriteLine($"[GeoTiffParser] Deflate decompressed {blockData.Length} → {decompressed.Length} bytes");
                 }
                 else if (tiffFile.Compression == 1) // Uncompressed (USGS and custom)
                 {
@@ -429,7 +429,7 @@ namespace SiegeEngine.Core.Terrain
                         heightmap[x, y] = h;
                     }
             }
-            Console.WriteLine($"[TerrainParser] Loaded {width}x{height} terrain (32-bit float). Raw Min={minHeight:F1}m, Max={maxHeight:F1}m");
+            Console.WriteLine($"[GeoTiffParser] Loaded {width}x{height} terrain (32-bit float). Raw Min={minHeight:F1}m, Max={maxHeight:F1}m");
             bool debugPng = true;
             if (debugPng)
             {
@@ -445,7 +445,7 @@ namespace SiegeEngine.Core.Terrain
                         bmp.SetPixel(x, y, Color.FromArgb(val, val, val));
                     }
                 bmp.Save(pngPath, ImageFormat.Png);
-                Console.WriteLine($"[TerrainParser] Saved debug PNG: {pngPath}");
+                Console.WriteLine($"[GeoTiffParser] Saved debug PNG: {pngPath}");
             }
             return heightmap;
         }
@@ -482,7 +482,7 @@ namespace SiegeEngine.Core.Terrain
                 uint ifdOffset = BitConverter.ToUInt32(bytes, 4);
                 ushort numEntries = BitConverter.ToUInt16(bytes, (int)ifdOffset);
                 GeoReference geo = new GeoReference();
-                Console.WriteLine($"[TerrainParser] === Geo Tags for {Path.GetFileName(filePath)} ===");
+                Console.WriteLine($"[GeoTiffParser] === Geo Tags for {Path.GetFileName(filePath)} ===");
                 for (uint i = 0; i < numEntries; i++)
                 {
                     uint entry = ifdOffset + 2 + i * 12;
@@ -560,7 +560,7 @@ namespace SiegeEngine.Core.Terrain
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[TerrainParser] GeoReference parse failed for {filePath}: {ex.Message}");
+                Console.WriteLine($"[GeoTiffParser] GeoReference parse failed for {filePath}: {ex.Message}");
                 return new GeoReference();
             }
         }
@@ -587,77 +587,6 @@ namespace SiegeEngine.Core.Terrain
             double north = k0 * (M + nu * t * (A * A / 2 + (5 - t * t + 9 * c + 4 * c * c) * A * A * A * A / 24 + (61 - 58 * t * t + t * t * t * t + 600 * c - 330 * e2) * A * A * A * A * A * A / 720));
             if (lat < 0) north += 10000000;
             return (east, north, zone);
-        }
-        public static void SaveFloatTiff(string path, float[,] heightmap, float worldScaleX, float worldScaleZ)
-        {
-            int width = heightmap.GetLength(0);
-            int height = heightmap.GetLength(1);
-            using var fs = new FileStream(path, FileMode.Create);
-            using var bw = new BinaryWriter(fs);
-            bw.Write((ushort)0x4949);
-            bw.Write((ushort)42);
-            bw.Write((uint)8);
-            ushort numEntries = 12;
-            bw.Write(numEntries);
-            WriteTiffTag(bw, 256, 4, 1, (uint)width);
-            WriteTiffTag(bw, 257, 4, 1, (uint)height);
-            WriteTiffTag(bw, 258, 3, 1, 32);
-            WriteTiffTag(bw, 259, 3, 1, 1);
-            WriteTiffTag(bw, 262, 3, 1, 1);
-            WriteTiffTag(bw, 277, 3, 1, 1);
-            WriteTiffTag(bw, 278, 4, 1, (uint)height);
-            uint dataOffset = 8 + (uint)(numEntries * 12 + 4);
-            WriteTiffTag(bw, 273, 4, 1, dataOffset);
-            WriteTiffTag(bw, 279, 4, 1, (uint)(width * height * 4));
-            WriteTiffTag(bw, 339, 3, 1, 3);
-            WriteTiffTag(bw, 65000, 12, 1, dataOffset + 8);
-            WriteTiffTag(bw, 65001, 12, 1, dataOffset + 16);
-            bw.Write((uint)0);
-            bw.Write(worldScaleX);
-            bw.Write(worldScaleZ);
-            for (int y = 0; y < height; y++)
-                for (int x = 0; x < width; x++)
-                    bw.Write(heightmap[x, y]);
-            Console.WriteLine($"[TerrainParser] Saved plain flat 32-bit float TIFF: {width}x{height} @ {worldScaleX:F2}m/cell (private tags only - no geo tags, exact round-trip grid)");
-        }
-        private static void WriteTiffTag(BinaryWriter bw, ushort tag, ushort type, uint count, uint value)
-        {
-            bw.Write(tag);
-            bw.Write(type);
-            bw.Write(count);
-            bw.Write(value);
-        }
-        public static bool TryGetCustomScale(string filePath, out float scaleX, out float scaleZ)
-        {
-            scaleX = 1.0f;
-            scaleZ = 1.0f;
-            try
-            {
-                byte[] bytes = File.ReadAllBytes(filePath);
-                if (bytes.Length < 8 || bytes[0] != 'I' || bytes[1] != 'I') return false;
-                uint ifdOffset = BitConverter.ToUInt32(bytes, 4);
-                ushort numEntries = BitConverter.ToUInt16(bytes, (int)ifdOffset);
-                for (uint i = 0; i < numEntries; i++)
-                {
-                    uint entry = ifdOffset + 2 + i * 12;
-                    ushort tag = BitConverter.ToUInt16(bytes, (int)entry);
-                    if (tag == 65000)
-                    {
-                        uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
-                        scaleX = (float)BitConverter.ToDouble(bytes, (int)off);
-                    }
-                    if (tag == 65001)
-                    {
-                        uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
-                        scaleZ = (float)BitConverter.ToDouble(bytes, (int)off);
-                    }
-                }
-                return scaleX > 0 && scaleZ > 0;
-            }
-            catch
-            {
-                return false;
-            }
         }
     }
 }
