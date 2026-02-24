@@ -221,17 +221,37 @@ namespace SiegeEngine.Scenes
             Console.WriteLine($"[TerrainScene] Loading terrain from {path}");
             try
             {
-                _heightmap = TerrainParser.LoadUSGSDEM(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight);
+                bool isCustomFlat;
+                float customScaleX, customScaleZ;
+                _heightmap = TerrainManager.LoadTerrain(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight, out isCustomFlat, out customScaleX, out customScaleZ);
+
                 _terrainGeoRef = TerrainParser.ParseGeoReference(path);
                 Console.WriteLine($"[TerrainScene] Heightmap loaded: {_terrainWidth}x{_terrainHeight}, Height range: {_minHeight:F1} to {_maxHeight:F1}");
-                ComputeWorldScale();
-                // Center camera at real-world scale
-                float centerX = (_terrainWidth * _worldScaleX) / 2f;
-                float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
-                _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f, centerZ + 5000); // Above in real meters
-                _flyCamera.Yaw = 0f;
-                _flyCamera.Pitch = -MathF.PI / 6f;
-                BuildWireframeMesh(WireframeStep);
+
+                if (isCustomFlat)
+                {
+                    _worldScaleX = customScaleX;
+                    _worldScaleZ = customScaleZ;
+                    _useCustomScale = true;
+                    BuildWireframeMesh(1); // FULL resolution grid for custom flat TIFFs (fixes "5 squares")
+                    float centerX = (_terrainWidth * _worldScaleX) / 2f;
+                    float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
+                    float terrainSize = Math.Max(_terrainWidth * _worldScaleX, _terrainHeight * _worldScaleZ);
+                    float cameraHeight = Math.Max(_maxHeight * 1.5f + 100f, 120f); // high enough for flat terrain
+                    float cameraDistance = Math.Max(terrainSize * 0.6f + 50f, 80f);
+                    _flyCamera.Position = new Vector3(centerX, cameraHeight, centerZ + cameraDistance);
+                    _flyCamera.Yaw = 0f;
+                    _flyCamera.Pitch = -1.0f; // strong downward look to see the center of the flat grid
+                    Console.WriteLine($"[TerrainScene] Custom flat TIFF loaded with full resolution grid and camera pointed at center");
+                }
+                else
+                {
+                    ComputeWorldScale();
+                    BuildWireframeMesh(WireframeStep); // original step=8 for USGS DEMs
+                    float centerX = (_terrainWidth * _worldScaleX) / 2f;
+                    float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
+                    _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f, centerZ + 5000);
+                }
             }
             catch (Exception ex)
             {

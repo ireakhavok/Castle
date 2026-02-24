@@ -529,34 +529,25 @@ namespace SiegeEngine.Core.Terrain
                 }
                 if (geo.IsValid)
                 {
-                    // CRITICAL: Detect units from scale magnitude (DEM ~0.00009 degrees, NAIP ~0.6 meters)
-                    // This ensures NAIP (projected) is NEVER treated as geographic
                     bool isGeographic = Math.Abs(geo.PixelScale.X) < 0.01f;
                     geo.IsMeters = !isGeographic;
                     if (isGeographic)
                     {
-                        // ONLY for DEM geographic files: force negative Y-scale for correct north-up
                         geo.PixelScale.Y = -Math.Abs(geo.PixelScale.Y);
                         Console.WriteLine($"[Geo] Geographic DEM: Forced Y-scale negative for north-up ({geo.PixelScale.Y:F6})");
                     }
                     else
                     {
-                        // For NAIP projected meters: keep original positive Y-scale (tiepoint = north)
                         Console.WriteLine($"[Geo] Projected NAIP: Keeping original Y-scale (positive, north-up)");
                     }
-                    // EXACT bounds: tiepoint is ALWAYS upper-left (NW corner)
-                    // X: always increases east (positive scale)
                     geo.MinEast = geo.TiePointModel.X;
                     geo.MaxEast = geo.TiePointModel.X + Math.Abs(geo.PixelScale.X) * geo.TextureWidth;
-                    // Y: tiepoint Y = northern edge; subtract extent for southern edge (handles both sign conventions)
                     float northExtent = Math.Abs(geo.PixelScale.Y) * geo.TextureHeight;
-                    geo.MaxNorth = geo.TiePointModel.Y; // upper = north
-                    geo.MinNorth = geo.TiePointModel.Y - northExtent; // lower = south
-                    // Normalize
+                    geo.MaxNorth = geo.TiePointModel.Y;
+                    geo.MinNorth = geo.TiePointModel.Y - northExtent;
                     if (geo.MinEast > geo.MaxEast) (geo.MinEast, geo.MaxEast) = (geo.MaxEast, geo.MinEast);
                     if (geo.MinNorth > geo.MaxNorth) (geo.MinNorth, geo.MaxNorth) = (geo.MaxNorth, geo.MinNorth);
                     Console.WriteLine($"[Geo] EXACT top-left bounds (signed scale): East [{geo.MinEast:F1}-{geo.MaxEast:F1}], North [{geo.MinNorth:F1}-{geo.MaxNorth:F1}] (Y scale: {geo.PixelScale.Y})");
-                    // Compute UTM zone from tiepoint lon (for geographic files)
                     if (!geo.IsMeters)
                     {
                         geo.UtmZone = (int)Math.Floor((geo.TiePointModel.X + 180) / 6) + 1;
@@ -573,7 +564,6 @@ namespace SiegeEngine.Core.Terrain
                 return new GeoReference();
             }
         }
-        // VERIFIED WGS84 UTM (exact match to your expected meters)
         public static (double East, double North, int Zone) ConvertLatLonToUTM(double lat, double lon)
         {
             const double a = 6378137.0;
@@ -604,43 +594,27 @@ namespace SiegeEngine.Core.Terrain
             int height = heightmap.GetLength(1);
             using var fs = new FileStream(path, FileMode.Create);
             using var bw = new BinaryWriter(fs);
-            // TIFF Header (Little Endian, II*42)
             bw.Write((ushort)0x4949);
             bw.Write((ushort)42);
-            bw.Write((uint)8); // IFD starts at offset 8
+            bw.Write((uint)8);
             ushort numEntries = 12;
             bw.Write(numEntries);
-            // ImageWidth
             WriteTiffTag(bw, 256, 4, 1, (uint)width);
-            // ImageLength
             WriteTiffTag(bw, 257, 4, 1, (uint)height);
-            // BitsPerSample = 32
             WriteTiffTag(bw, 258, 3, 1, 32);
-            // Compression = 1 (Uncompressed)
             WriteTiffTag(bw, 259, 3, 1, 1);
-            // PhotometricInterpretation = 1 (MinIsBlack)
             WriteTiffTag(bw, 262, 3, 1, 1);
-            // SamplesPerPixel = 1
             WriteTiffTag(bw, 277, 3, 1, 1);
-            // RowsPerStrip = height
             WriteTiffTag(bw, 278, 4, 1, (uint)height);
-            // StripOffsets
             uint dataOffset = 8 + (uint)(numEntries * 12 + 4);
             WriteTiffTag(bw, 273, 4, 1, dataOffset);
-            // StripByteCounts
             WriteTiffTag(bw, 279, 4, 1, (uint)(width * height * 4));
-            // SampleFormat = 3 (IEEE floating point)
             WriteTiffTag(bw, 339, 3, 1, 3);
-            // Private tag 65000 - Custom Scale X (double)
-            WriteTiffTag(bw, 65000, 12, 1, 0);
-            // Private tag 65001 - Custom Scale Z (double)
-            WriteTiffTag(bw, 65001, 12, 1, 0);
-            bw.Write((uint)0); // No next IFD
-            // Write private scale values (after IFD, before pixel data)
-            long scaleOffset = fs.Position;
+            WriteTiffTag(bw, 65000, 12, 1, dataOffset + 8);
+            WriteTiffTag(bw, 65001, 12, 1, dataOffset + 16);
+            bw.Write((uint)0);
             bw.Write(worldScaleX);
             bw.Write(worldScaleZ);
-            // Write height data as 32-bit float (row-major, top-left origin)
             for (int y = 0; y < height; y++)
                 for (int x = 0; x < width; x++)
                     bw.Write(heightmap[x, y]);

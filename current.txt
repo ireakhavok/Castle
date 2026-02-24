@@ -1,0 +1,1 @@
+It loaded, but the grid lines are not the correct width I wanted it to look 100% the same as when I saved it with 5m spacing. the camera is far to far away.

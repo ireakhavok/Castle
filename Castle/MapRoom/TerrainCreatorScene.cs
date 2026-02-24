@@ -93,23 +93,6 @@ namespace MapRoom
         public override void LoadTerrain(string path)
         {
             base.LoadTerrain(path);
-            if (!_terrainGeoRef.IsValid)
-            {
-                float sX, sZ;
-                if (TerrainParser.TryGetCustomScale(path, out sX, out sZ))
-                {
-                    _worldScaleX = sX;
-                    _worldScaleZ = sZ;
-                    _useCustomScale = true;
-                    Console.WriteLine($"[TerrainCreatorScene] Restored exact custom scale from private tags: {sX:F2}m/cell");
-                    BuildWireframeMesh(1);
-                    float centerX = (_terrainWidth * _worldScaleX) / 2f;
-                    float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
-                    _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f + 10f, centerZ + 50f);
-                    _flyCamera.Yaw = 0f;
-                    _flyCamera.Pitch = -MathF.PI / 6f;
-                }
-            }
         }
         public void SetColorTexture(string path)
         {
