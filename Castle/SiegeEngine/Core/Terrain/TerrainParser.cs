@@ -608,7 +608,7 @@ namespace SiegeEngine.Core.Terrain
             bw.Write((ushort)0x4949);
             bw.Write((ushort)42);
             bw.Write((uint)8); // IFD starts at offset 8
-            ushort numEntries = 10; // NO geo tags - flat custom terrain, no geo references at all
+            ushort numEntries = 12;
             bw.Write(numEntries);
             // ImageWidth
             WriteTiffTag(bw, 256, 4, 1, (uint)width);
@@ -631,12 +631,20 @@ namespace SiegeEngine.Core.Terrain
             WriteTiffTag(bw, 279, 4, 1, (uint)(width * height * 4));
             // SampleFormat = 3 (IEEE floating point)
             WriteTiffTag(bw, 339, 3, 1, 3);
+            // Private tag 65000 - Custom Scale X (double)
+            WriteTiffTag(bw, 65000, 12, 1, 0);
+            // Private tag 65001 - Custom Scale Z (double)
+            WriteTiffTag(bw, 65001, 12, 1, 0);
             bw.Write((uint)0); // No next IFD
+            // Write private scale values (after IFD, before pixel data)
+            long scaleOffset = fs.Position;
+            bw.Write(worldScaleX);
+            bw.Write(worldScaleZ);
             // Write height data as 32-bit float (row-major, top-left origin)
             for (int y = 0; y < height; y++)
                 for (int x = 0; x < width; x++)
                     bw.Write(heightmap[x, y]);
-            Console.WriteLine($"[TerrainParser] Saved flat custom 32-bit float TIFF: {width}x{height} @ {worldScaleX:F2}m/cell (no geo references - straight flat heightmap)");
+            Console.WriteLine($"[TerrainParser] Saved plain flat 32-bit float TIFF: {width}x{height} @ {worldScaleX:F2}m/cell (private tags only - no geo tags, exact round-trip grid)");
         }
         private static void WriteTiffTag(BinaryWriter bw, ushort tag, ushort type, uint count, uint value)
         {
@@ -644,6 +652,38 @@ namespace SiegeEngine.Core.Terrain
             bw.Write(type);
             bw.Write(count);
             bw.Write(value);
+        }
+        public static bool TryGetCustomScale(string filePath, out float scaleX, out float scaleZ)
+        {
+            scaleX = 1.0f;
+            scaleZ = 1.0f;
+            try
+            {
+                byte[] bytes = File.ReadAllBytes(filePath);
+                if (bytes.Length < 8 || bytes[0] != 'I' || bytes[1] != 'I') return false;
+                uint ifdOffset = BitConverter.ToUInt32(bytes, 4);
+                ushort numEntries = BitConverter.ToUInt16(bytes, (int)ifdOffset);
+                for (uint i = 0; i < numEntries; i++)
+                {
+                    uint entry = ifdOffset + 2 + i * 12;
+                    ushort tag = BitConverter.ToUInt16(bytes, (int)entry);
+                    if (tag == 65000)
+                    {
+                        uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
+                        scaleX = (float)BitConverter.ToDouble(bytes, (int)off);
+                    }
+                    if (tag == 65001)
+                    {
+                        uint off = BitConverter.ToUInt32(bytes, (int)entry + 8);
+                        scaleZ = (float)BitConverter.ToDouble(bytes, (int)off);
+                    }
+                }
+                return scaleX > 0 && scaleZ > 0;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
