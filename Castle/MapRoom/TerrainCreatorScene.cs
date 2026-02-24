@@ -5,6 +5,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Terrain;
 using SiegeEngine.Scenes;
 using System;
 using System.Drawing;
@@ -107,7 +108,7 @@ namespace MapRoom
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
             SaveAsPng(pngPath);
             SaveAsTiff(tifPath);
-            Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → TIFF (8bpp grayscale) + PNG preview");
+            Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → 32-bit float TIFF (cm-scale fidelity) + PNG preview");
         }
         private void SaveAsPng(string path)
         {
@@ -129,34 +130,7 @@ namespace MapRoom
         }
         private void SaveAsTiff(string path)
         {
-            int w = _terrainWidth;
-            int h = _terrainHeight;
-            using var bmp = new Bitmap(w, h, PixelFormat.Format8bppIndexed);
-            // Create grayscale palette (0 = black, 255 = white)
-            ColorPalette palette = bmp.Palette;
-            for (int i = 0; i < 256; i++)
-            {
-                palette.Entries[i] = Color.FromArgb(i, i, i);
-            }
-            bmp.Palette = palette;
-            float range = _maxHeight - _minHeight;
-            if (range <= 0) range = 1f;
-            BitmapData data = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
-            unsafe
-            {
-                byte* ptr = (byte*)data.Scan0;
-                int stride = data.Stride;
-                for (int z = 0; z < h; z++)
-                {
-                    for (int x = 0; x < w; x++)
-                    {
-                        float norm = (_heightmap[x, z] - _minHeight) / range;
-                        ptr[z * stride + x] = (byte)Math.Clamp((int)(norm * 255), 0, 255);
-                    }
-                }
-            }
-            bmp.UnlockBits(data);
-            bmp.Save(path, ImageFormat.Tiff);
+            TerrainParser.SaveFloatTiff(path, _heightmap, _worldScaleX, _worldScaleZ);
         }
     }
 }

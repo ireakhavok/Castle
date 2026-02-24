@@ -8,7 +8,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Terrain
 {
     public class TiffTag
@@ -281,6 +280,15 @@ namespace SiegeEngine.Core.Terrain
                         case 323: tiffFile.TileLength = tagValue; break;
                         case 339: tiffFile.SampleFormat = tagValue; break;
                         case 266: tiffFile.FillOrder = tagValue; break;
+                        case 273:
+                            tiffFile.BlockOffsets = new List<uint> { tagValue };
+                            tiffFile.BlockOffsetsType = 4;
+                            tiffFile.NumBlocks = 1;
+                            break;
+                        case 279:
+                            tiffFile.BlockByteCounts = new List<uint> { tagValue };
+                            tiffFile.BlockByteCountsType = 4;
+                            break;
                     }
                 }
                 else
@@ -306,8 +314,8 @@ namespace SiegeEngine.Core.Terrain
                 Console.WriteLine($" Tag {t.Name} ({t.Tag}): type={t.Type}, count={t.Count}, value={t.Value}");
             }
             bool isTiled = tiffFile.TileWidth > 0 && tiffFile.TileLength > 0;
-            if (tiffFile.SampleFormat != 3 || tiffFile.BitsPerSample != 32)
-                throw new Exception($"Unsupported format: SampleFormat={tiffFile.SampleFormat}, BitsPerSample={tiffFile.BitsPerSample}");
+            if (tiffFile.BitsPerSample != 32)
+                throw new Exception($"Unsupported format: BitsPerSample={tiffFile.BitsPerSample} (only 32-bit float supported for both DEM and custom saved terrains)");
             if (tiffFile.NumBlocks == 0)
                 throw new Exception("No tiles or strips found");
             float noData = float.MinValue;
@@ -341,7 +349,7 @@ namespace SiegeEngine.Core.Terrain
                     decompressed = DecompressDeflate(blockData);
                     if (i == 0) Console.WriteLine($"[TerrainParser] Deflate decompressed {blockData.Length} → {decompressed.Length} bytes");
                 }
-                else if (tiffFile.Compression == 1) // Uncompressed (USGS)
+                else if (tiffFile.Compression == 1) // Uncompressed (USGS and custom)
                 {
                     decompressed = blockData;
                 }
@@ -421,7 +429,7 @@ namespace SiegeEngine.Core.Terrain
                         heightmap[x, y] = h;
                     }
             }
-            Console.WriteLine($"[TerrainParser] Loaded {width}x{height} USGS DEM. Raw Min={minHeight:F1}m, Max={maxHeight:F1}m");
+            Console.WriteLine($"[TerrainParser] Loaded {width}x{height} terrain (32-bit float). Raw Min={minHeight:F1}m, Max={maxHeight:F1}m");
             bool debugPng = true;
             if (debugPng)
             {
@@ -525,7 +533,6 @@ namespace SiegeEngine.Core.Terrain
                     // This ensures NAIP (projected) is NEVER treated as geographic
                     bool isGeographic = Math.Abs(geo.PixelScale.X) < 0.01f;
                     geo.IsMeters = !isGeographic;
-
                     if (isGeographic)
                     {
                         // ONLY for DEM geographic files: force negative Y-scale for correct north-up
@@ -537,21 +544,17 @@ namespace SiegeEngine.Core.Terrain
                         // For NAIP projected meters: keep original positive Y-scale (tiepoint = north)
                         Console.WriteLine($"[Geo] Projected NAIP: Keeping original Y-scale (positive, north-up)");
                     }
-
                     // EXACT bounds: tiepoint is ALWAYS upper-left (NW corner)
                     // X: always increases east (positive scale)
                     geo.MinEast = geo.TiePointModel.X;
                     geo.MaxEast = geo.TiePointModel.X + Math.Abs(geo.PixelScale.X) * geo.TextureWidth;
-
                     // Y: tiepoint Y = northern edge; subtract extent for southern edge (handles both sign conventions)
                     float northExtent = Math.Abs(geo.PixelScale.Y) * geo.TextureHeight;
-                    geo.MaxNorth = geo.TiePointModel.Y;           // upper = north
+                    geo.MaxNorth = geo.TiePointModel.Y; // upper = north
                     geo.MinNorth = geo.TiePointModel.Y - northExtent; // lower = south
-
                     // Normalize
                     if (geo.MinEast > geo.MaxEast) (geo.MinEast, geo.MaxEast) = (geo.MaxEast, geo.MinEast);
                     if (geo.MinNorth > geo.MaxNorth) (geo.MinNorth, geo.MaxNorth) = (geo.MaxNorth, geo.MinNorth);
-
                     Console.WriteLine($"[Geo] EXACT top-left bounds (signed scale): East [{geo.MinEast:F1}-{geo.MaxEast:F1}], North [{geo.MinNorth:F1}-{geo.MaxNorth:F1}] (Y scale: {geo.PixelScale.Y})");
                     // Compute UTM zone from tiepoint lon (for geographic files)
                     if (!geo.IsMeters)
@@ -594,6 +597,53 @@ namespace SiegeEngine.Core.Terrain
             double north = k0 * (M + nu * t * (A * A / 2 + (5 - t * t + 9 * c + 4 * c * c) * A * A * A * A / 24 + (61 - 58 * t * t + t * t * t * t + 600 * c - 330 * e2) * A * A * A * A * A * A / 720));
             if (lat < 0) north += 10000000;
             return (east, north, zone);
+        }
+        public static void SaveFloatTiff(string path, float[,] heightmap, float worldScaleX, float worldScaleZ)
+        {
+            int width = heightmap.GetLength(0);
+            int height = heightmap.GetLength(1);
+            using var fs = new FileStream(path, FileMode.Create);
+            using var bw = new BinaryWriter(fs);
+            // TIFF Header (Little Endian, II*42)
+            bw.Write((ushort)0x4949);
+            bw.Write((ushort)42);
+            bw.Write((uint)8); // IFD starts at offset 8
+            ushort numEntries = 10; // NO geo tags - flat custom terrain, no geo references at all
+            bw.Write(numEntries);
+            // ImageWidth
+            WriteTiffTag(bw, 256, 4, 1, (uint)width);
+            // ImageLength
+            WriteTiffTag(bw, 257, 4, 1, (uint)height);
+            // BitsPerSample = 32
+            WriteTiffTag(bw, 258, 3, 1, 32);
+            // Compression = 1 (Uncompressed)
+            WriteTiffTag(bw, 259, 3, 1, 1);
+            // PhotometricInterpretation = 1 (MinIsBlack)
+            WriteTiffTag(bw, 262, 3, 1, 1);
+            // SamplesPerPixel = 1
+            WriteTiffTag(bw, 277, 3, 1, 1);
+            // RowsPerStrip = height
+            WriteTiffTag(bw, 278, 4, 1, (uint)height);
+            // StripOffsets
+            uint dataOffset = 8 + (uint)(numEntries * 12 + 4);
+            WriteTiffTag(bw, 273, 4, 1, dataOffset);
+            // StripByteCounts
+            WriteTiffTag(bw, 279, 4, 1, (uint)(width * height * 4));
+            // SampleFormat = 3 (IEEE floating point)
+            WriteTiffTag(bw, 339, 3, 1, 3);
+            bw.Write((uint)0); // No next IFD
+            // Write height data as 32-bit float (row-major, top-left origin)
+            for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
+                    bw.Write(heightmap[x, y]);
+            Console.WriteLine($"[TerrainParser] Saved flat custom 32-bit float TIFF: {width}x{height} @ {worldScaleX:F2}m/cell (no geo references - straight flat heightmap)");
+        }
+        private static void WriteTiffTag(BinaryWriter bw, ushort tag, ushort type, uint count, uint value)
+        {
+            bw.Write(tag);
+            bw.Write(type);
+            bw.Write(count);
+            bw.Write(value);
         }
     }
 }
