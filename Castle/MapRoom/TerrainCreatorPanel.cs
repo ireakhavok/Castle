@@ -22,7 +22,6 @@ namespace MapRoom
         private static nint _staticWindow;
         private static EventBus _staticEventBus;
         private static bool _subscriptionInitialized = false;
-
         private class TerrainUIOverlay : UIOverlay
         {
             private readonly TerrainCreatorPanel _parent;
@@ -36,13 +35,11 @@ namespace MapRoom
                 _parent.HandleUIClick(elem);
             }
         }
-
         private TerrainCreatorScene _terrainScene;
         private string _initialTerrainPath;
-        private TerrainCreationParams _creationParams;   // NEW: full parameters from form
+        private TerrainCreationParams _creationParams; // NEW: full parameters from form
         private bool _cameraMode = true;
         private bool _lastTab = false;
-
         // ORIGINAL CONSTRUCTOR (kept for Import/Blank compatibility)
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialTerrainPath = null)
             : base(renderContext, controlContext, window, eventBus)
@@ -53,24 +50,20 @@ namespace MapRoom
             _initialTerrainPath = initialTerrainPath;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
-
         // NEW CONSTRUCTOR - accepts full TerrainCreationParams from NewTerrainPanel
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, TerrainCreationParams creationParams)
             : this(renderContext, controlContext, window, eventBus, creationParams?.ImportPath)
         {
             _creationParams = creationParams;
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new TerrainUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
-
             if (_creationParams != null)
             {
                 // Use full parameters from the form (width, depth, resolution, initial height, etc.)
@@ -84,69 +77,29 @@ namespace MapRoom
             {
                 _terrainScene.CreateBlank();
             }
-
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
             LoadTerrainControlsUI();
         }
-
         private void LoadTerrainControlsUI()
         {
-            string inlineHtml = @"
-<!DOCTYPE html>
-<html lang=""en"">
-<head>
-    <meta charset=""UTF-8"">
-    <style>
-        .ui-container {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(30, 30, 30, 0.8);
-            padding: 10px 20px;
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 15px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(100, 100, 100, 0.5);
-            flex-wrap: wrap;
-        }
-        .ui-button {
-            padding: 8px 16px;
-            background-color: #555;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s, transform 0.1s;
-        }
-        .ui-button:hover {
-            background-color: #777;
-        }
-        .ui-button:active {
-            transform: scale(0.98);
-            background-color: #444;
-        }
-    </style>
-</head>
-<body>
-    <div class=""ui-container"" id=""controls-bar"">
-        <button class=""ui-button"" data-hook=""LoadTerrainTexture"">Import Terrain Texture</button>
-    </div>
-</body>
-</html>";
-            _uiOverlay.LoadUI(inlineHtml);
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TerrainCreatorUI.html");
+            if (File.Exists(htmlPath))
+            {
+                _uiOverlay.LoadUI(File.ReadAllText(htmlPath));
+                Console.WriteLine($"[TerrainCreatorPanel] Loaded external TerrainCreatorUI.html");
+            }
+            else
+            {
+                return;
+            }
+            
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void OnFileSelected(FileSelectedEvent e)
         {
             string hook = e.UserData as string;
@@ -156,7 +109,6 @@ namespace MapRoom
                 Console.WriteLine($"[TerrainCreatorPanel] Color texture loaded: {e.Path}");
             }
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -173,14 +125,17 @@ namespace MapRoom
                 fileSelector.IsModal = true;
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = SiegeEngine.Core.Events.OpenMode.Overlay });
             }
+            else if (hook == "SaveTerrain")
+            {
+                string name = _creationParams?.Name ?? "UntitledTerrain";
+                _terrainScene.SaveTerrain(name);
+            }
         }
-
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new TerrainCreatorPanel(renderContext, controlContext, window, eventBus, (string)null);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = SiegeEngine.Core.Events.OpenMode.Replace });
         }
-
         public static void OpenImport(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _staticRenderContext = renderContext;
@@ -204,7 +159,6 @@ namespace MapRoom
             fileSelector.IsModal = true;
             eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = SiegeEngine.Core.Events.OpenMode.Overlay });
         }
-
         private static void StaticOnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData as string == "TerrainImport" && !string.IsNullOrEmpty(e.Path) && _staticRenderContext != null)
@@ -213,14 +167,12 @@ namespace MapRoom
                 _staticEventBus.Publish(new OpenPanelEvent(panel) { Mode = SiegeEngine.Core.Events.OpenMode.Replace });
             }
         }
-
         private static void StaticOnCreateTerrain(CreateTerrainEvent e)
         {
             if (_staticRenderContext == null) return;
             var panel = new TerrainCreatorPanel(_staticRenderContext, _staticControlContext, _staticWindow, _staticEventBus, e.Params);
             _staticEventBus.Publish(new OpenPanelEvent(panel) { Mode = SiegeEngine.Core.Events.OpenMode.Replace });
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             var tab = _controlContext.GetKey(_window, Key.Tab);
@@ -238,7 +190,6 @@ namespace MapRoom
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
             _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
         }
-
         public override void Render()
         {
             if (!Visible) return;
@@ -254,7 +205,6 @@ namespace MapRoom
             _terrainScene.Render(null);
             base.Render();
         }
-
         public override void Dispose()
         {
             _terrainScene?.Dispose();
