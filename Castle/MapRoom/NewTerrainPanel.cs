@@ -30,9 +30,7 @@ namespace MapRoom
                 _parent.HandleUIClick(elem);
             }
         }
-
         private string _selectedImportPath = null;
-
         public NewTerrainPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -43,19 +41,16 @@ namespace MapRoom
             AllowDragging = true;
             DockState = SiegeEngine.Core.Interfaces.DockState.Floating;
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new NewTerrainUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             LoadNewTerrainFormUI();
         }
-
         private void LoadNewTerrainFormUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NewTerrainForm.html");
@@ -69,7 +64,6 @@ namespace MapRoom
             }
             _uiOverlay.RefreshUI();
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -95,7 +89,19 @@ namespace MapRoom
                 var initHInput = _uiOverlay.FindElementById("initialHeight") as InputElement;
                 var exagInput = _uiOverlay.FindElementById("vertExag") as InputElement;
 
-                float cellSize = float.Parse(resSelect.Attributes.GetValueOrDefault("value", "1.0"));
+                float cellSize = 1.0f;
+                if (resSelect != null)
+                {
+                    var selectedOpt = resSelect.Children.OfType<OptionElement>().FirstOrDefault(o => o.Attributes.ContainsKey("selected"));
+                    if (selectedOpt != null)
+                    {
+                        string valStr = selectedOpt.Attributes.GetValueOrDefault("value", "1.0");
+                        if (float.TryParse(valStr, out float parsed))
+                        {
+                            cellSize = parsed;
+                        }
+                    }
+                }
 
                 var parameters = new TerrainCreationParams
                 {
@@ -103,17 +109,16 @@ namespace MapRoom
                     Type = typeSelect.Attributes.GetValueOrDefault("value", "Flat"),
                     Width = float.Parse(widthInput?.Value ?? "2048"),
                     Depth = float.Parse(depthInput?.Value ?? "2048"),
-                    Resolution = cellSize,                    // grid spacing in meters per cell
+                    Resolution = cellSize,
                     InitialHeight = float.Parse(initHInput?.Value ?? "0"),
                     VerticalExaggeration = float.Parse(exagInput?.Value ?? "1.0"),
                     ImportPath = _selectedImportPath
                 };
 
-                Console.WriteLine($"[NewTerrainPanel] Creating {parameters.Width}m × {parameters.Depth}m terrain with grid spacing {parameters.Resolution}m per cell");
+                Console.WriteLine($"[NewTerrainPanel] Creating {parameters.Width}m x {parameters.Depth}m terrain with grid spacing {parameters.Resolution:F1}m per cell");
 
                 var terrainPanel = new TerrainCreatorPanel(_renderContext, _controlContext, _window, _eventBus, parameters);
                 _eventBus.Publish(new OpenPanelEvent(terrainPanel) { Mode = OpenMode.Replace });
-
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
             else if (hook == "CancelNewTerrain")
@@ -121,7 +126,6 @@ namespace MapRoom
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
         }
-
         private void OnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData as string == "NewTerrainImport")
@@ -129,13 +133,11 @@ namespace MapRoom
                 _selectedImportPath = e.Path;
             }
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new NewTerrainPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
-
         public override void Dispose()
         {
             base.Dispose();

@@ -220,7 +220,7 @@ Folder: MapRoom
   - Class: TerrainCreatorScene (Namespace: MapRoom)
     - Inherits: TerrainScene
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Scenes, System
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Scenes, System, System.Drawing, System.Drawing.Imaging, System.IO
     - Methods:
       - void CreateBlank()
         - Calls: BuildWireframeMesh
@@ -228,6 +228,10 @@ Folder: MapRoom
         - Calls: BuildWireframeMesh, CreateBlank, LoadTerrain
       - void LoadTerrain(string path)
       - void SetColorTexture(string path)
+      - void SaveTerrain(string terrainName)
+        - Calls: SaveAsPng, SaveAsTiff
+      - void SaveAsPng(string path)
+      - void SaveAsTiff(string path)
 
 Folder: QuestHall
 - File: Class1.cs
