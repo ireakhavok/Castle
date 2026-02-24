@@ -29,7 +29,7 @@ namespace SiegeEngine.Scenes
         protected bool _hasColorTexture = false;
         protected GeoTiffParser.GeoReference _colorGeoRef;
         protected GeoTiffParser.GeoReference _terrainGeoRef;
-        protected float _worldScaleX = 1.0f; // Real meters per grid unit (set from header)
+        protected float _worldScaleX = 1.0f;
         protected float _worldScaleZ = 1.0f;
         protected bool _useCustomScale = false;
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
@@ -47,7 +47,7 @@ namespace SiegeEngine.Scenes
         }
         protected virtual void BuildWireframeMesh(float step)
         {
-            ComputeWorldScale(); // Ensure real-meter scaling before mesh build
+            ComputeWorldScale();
             var vertices = new List<float>();
             var indices = new List<uint>();
             int stepsX = (int)Math.Floor(_terrainWidth / step);
@@ -56,9 +56,9 @@ namespace SiegeEngine.Scenes
             {
                 for (int z = 0; z <= stepsZ; z++)
                 {
-                    float wx = x * step * _worldScaleX; // REAL METERS (from header pixel size)
+                    float wx = x * step * _worldScaleX;
                     float wz = z * step * _worldScaleZ;
-                    float y = GetHeight(wx, wz) * VerticalExaggeration; // Explicit (default 1.0)
+                    float y = GetHeight(wx, wz) * VerticalExaggeration;
                     vertices.Add(wx); vertices.Add(wz); vertices.Add(y);
                     vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
                     vertices.Add(0.0f); vertices.Add(0.0f);
@@ -85,13 +85,12 @@ namespace SiegeEngine.Scenes
                 BuildWireframeMesh(WireframeStep);
                 return;
             }
-            ComputeWorldScale(); // REAL METERS FOR HORIZONTAL
+            ComputeWorldScale();
             var vertices = new List<float>();
             var indices = new List<uint>();
             int step = WireframeStep;
             int stepsX = _terrainWidth / step;
             int stepsZ = _terrainHeight / step;
-            // DEM to meters (exact, signed scale) — DEM LOGIC UNCHANGED
             double tieEastMeters, tieNorthMeters;
             int demZone = 0;
             float scaleEastMeters, scaleNorthMeters;
@@ -101,7 +100,6 @@ namespace SiegeEngine.Scenes
                 tieNorthMeters = _terrainGeoRef.TiePointModel.Y;
                 scaleEastMeters = _terrainGeoRef.PixelScale.X;
                 scaleNorthMeters = _terrainGeoRef.PixelScale.Y;
-                Console.WriteLine($"[TerrainScene] DEM is projected (meters). Using direct coords.");
             }
             else
             {
@@ -112,35 +110,23 @@ namespace SiegeEngine.Scenes
                 demZone = z;
                 scaleEastMeters = (float)(_terrainGeoRef.PixelScale.X * 111319.9f * Math.Cos(_terrainGeoRef.TiePointModel.Y * Math.PI / 180.0));
                 scaleNorthMeters = _terrainGeoRef.PixelScale.Y * 111319.9f;
-                Console.WriteLine($"[TerrainScene] DEM is geographic (degrees). Converted to UTM Zone {demZone}.");
             }
-            // NAIP color: use EXACT parsed bounds from GeoReference (no assumptions, direct from header)
             float colorMinEast = _colorGeoRef.MinEast;
             float colorMaxEast = _colorGeoRef.MaxEast;
             float colorMinNorth = _colorGeoRef.MinNorth;
             float colorMaxNorth = _colorGeoRef.MaxNorth;
             float colorExtentEast = colorMaxEast - colorMinEast;
             float colorExtentNorth = colorMaxNorth - colorMinNorth;
-            // DETAILED DIAGNOSTIC LOGS (exact, matches gdalinfo)
-            Console.WriteLine($"[TerrainScene] DEM (meters, signed): East [{tieEastMeters:F1}-{tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth:F1}], North [{tieNorthMeters:F1}-{tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight:F1}]");
-            Console.WriteLine($"[TerrainScene] Color (meters, exact from header): East [{colorMinEast:F1}-{colorMaxEast:F1}], North [{colorMinNorth:F1}-{colorMaxNorth:F1}]");
-            bool overlaps = !(colorMaxEast < tieEastMeters ||
-                              colorMinEast > tieEastMeters + scaleEastMeters * _terrainGeoRef.TextureWidth ||
-                              colorMaxNorth < tieNorthMeters ||
-                              colorMinNorth > tieNorthMeters + scaleNorthMeters * _terrainGeoRef.TextureHeight);
-            Console.WriteLine($"[TerrainScene] Overlap: {overlaps}");
             float minU = float.MaxValue, maxU = float.MinValue;
             float minV = float.MaxValue, maxV = float.MinValue;
             for (int x = 0; x <= stepsX; x++)
             {
                 for (int z = 0; z <= stepsZ; z++)
                 {
-                    float wx = x * step * _worldScaleX; // REAL METERS
+                    float wx = x * step * _worldScaleX;
                     float wz = z * step * _worldScaleZ;
                     float y = GetHeight(wx, wz) * VerticalExaggeration;
-                    // EXACT mesh world (DEM top-left signed) — DEM LOGIC UNCHANGED
-                    // USE GRID FRACTIONS for geo lookup (fixes texture size/location)
-                    float fracX = (float)x / stepsX; // 0.0 to 1.0 across DEM grid
+                    float fracX = (float)x / stepsX;
                     float fracZ = (float)z / stepsZ;
                     float meshEastMeters, meshNorthMeters;
                     if (_terrainGeoRef.IsMeters)
@@ -156,9 +142,8 @@ namespace SiegeEngine.Scenes
                         meshEastMeters = (float)e;
                         meshNorthMeters = (float)n;
                     }
-                    // UV: East for u (horizontal), North for v (vertical) — exact normalized to color bounds
                     float u = (meshEastMeters - colorMinEast) / colorExtentEast;
-                    float v = 1.0f - (meshNorthMeters - colorMinNorth) / colorExtentNorth; // FLIP V for OpenGL
+                    float v = 1.0f - (meshNorthMeters - colorMinNorth) / colorExtentNorth;
                     minU = Math.Min(minU, u);
                     maxU = Math.Max(maxU, u);
                     minV = Math.Min(minV, v);
@@ -181,9 +166,6 @@ namespace SiegeEngine.Scenes
                 }
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
-            Console.WriteLine($"[TerrainScene] Rebuilt textured mesh with {vertices.Count / 9} verts, EXACT NAIP bounds from header");
-            Console.WriteLine($"[TerrainScene] UV range: U [{minU:F3}-{maxU:F3}], V [{minV:F3}-{maxV:F3}]");
-            Console.WriteLine($"[TerrainScene] World scale applied: X={_worldScaleX:F1}m/pixel, Z={_worldScaleZ:F1}m/pixel (peaks now 1:1 real meters)");
         }
         private void ComputeWorldScale()
         {
@@ -193,7 +175,7 @@ namespace SiegeEngine.Scenes
             }
             if (_terrainGeoRef == null || !_terrainGeoRef.IsValid)
             {
-                _worldScaleX = _worldScaleZ = 10.0f; // Fallback for 10m DEM
+                _worldScaleX = _worldScaleZ = 10.0f;
                 return;
             }
             if (_terrainGeoRef.IsMeters)
@@ -203,16 +185,14 @@ namespace SiegeEngine.Scenes
             }
             else
             {
-                // Geographic: degrees to meters (accurate at latitude)
                 double lat = _terrainGeoRef.TiePointModel.Y;
                 _worldScaleX = (float)(Math.Abs(_terrainGeoRef.PixelScale.X) * 111319.9 * Math.Cos(lat * Math.PI / 180.0));
                 _worldScaleZ = (float)(Math.Abs(_terrainGeoRef.PixelScale.Y) * 111319.9);
             }
-            Console.WriteLine($"[TerrainScene] Computed real world scale: {_worldScaleX:F2}m X, {_worldScaleZ:F2}m Z per grid unit");
         }
         protected float GetHeight(float x, float z)
         {
-            int ix = (int)Math.Clamp(x / _worldScaleX, 0, _terrainWidth - 1); // Convert world back to grid index
+            int ix = (int)Math.Clamp(x / _worldScaleX, 0, _terrainWidth - 1);
             int iz = (int)Math.Clamp(z / _worldScaleZ, 0, _terrainHeight - 1);
             return _heightmap[ix, iz];
         }
@@ -226,26 +206,30 @@ namespace SiegeEngine.Scenes
                 _heightmap = TerrainManager.LoadTerrain(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight, out isCustomFlat, out customScaleX, out customScaleZ);
                 _terrainGeoRef = GeoTiffParser.ParseGeoReference(path);
                 Console.WriteLine($"[TerrainScene] Heightmap loaded: {_terrainWidth}x{_terrainHeight}, Height range: {_minHeight:F1} to {_maxHeight:F1}");
+
                 if (isCustomFlat)
                 {
                     _worldScaleX = customScaleX;
                     _worldScaleZ = customScaleZ;
                     _useCustomScale = true;
-                    BuildWireframeMesh(1); // FULL resolution grid for custom flat TIFFs (fixes "5 squares")
-                    float centerX = (_terrainWidth * _worldScaleX) / 2f;
-                    float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
-                    float terrainSize = Math.Max(_terrainWidth * _worldScaleX, _terrainHeight * _worldScaleZ);
-                    float cameraHeight = Math.Max(_maxHeight * 1.5f + 100f, 120f); // high enough for flat terrain
-                    float cameraDistance = Math.Max(terrainSize * 0.6f + 50f, 80f);
-                    _flyCamera.Position = new Vector3(centerX, cameraHeight, centerZ + cameraDistance);
+                    BuildWireframeMesh(1);
+
+                    // EXACT CENTER OF THE MESH
+                    float centerX = ((_terrainWidth - 1) * _worldScaleX) * 0.5f;
+                    float centerZ = ((_terrainHeight - 1) * _worldScaleZ) * 0.5f;
+                    float centerHeight = GetHeight(centerX, centerZ);
+
+                    // CAMERA 5 METERS ABOVE THE CENTER, LOOKING AT THE CENTER
+                    _flyCamera.Position = new Vector3(centerX, centerHeight + 5f, centerZ + 8f);
                     _flyCamera.Yaw = 0f;
-                    _flyCamera.Pitch = -1.0f; // strong downward look to see the center of the flat grid
-                    Console.WriteLine($"[TerrainScene] Custom flat TIFF loaded with full resolution grid and camera pointed at center");
+                    _flyCamera.Pitch = -0.85f;   // strong downward angle looking directly at center
+
+                    Console.WriteLine($"[TerrainScene] Custom flat TIFF loaded - Camera at ({centerX:F1}, {centerHeight + 5f:F1}, {centerZ + 8f:F1}) looking at center");
                 }
                 else
                 {
                     ComputeWorldScale();
-                    BuildWireframeMesh(WireframeStep); // original step=8 for USGS DEMs
+                    BuildWireframeMesh(WireframeStep);
                     float centerX = (_terrainWidth * _worldScaleX) / 2f;
                     float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
                     _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f, centerZ + 5000);
@@ -265,7 +249,6 @@ namespace SiegeEngine.Scenes
                 _hasColorTexture = _colorGeoRef.IsValid;
                 if (_terrainGeoRef.IsValid && _colorGeoRef.IsValid)
                 {
-                    // Overlap using EXACT parsed Min/Max (no top-left assumptions)
                     bool overlaps = !(_colorGeoRef.MaxEast < _terrainGeoRef.MinEast ||
                                       _colorGeoRef.MinEast > _terrainGeoRef.MaxEast ||
                                       _colorGeoRef.MaxNorth < _terrainGeoRef.MinNorth ||
@@ -292,17 +275,14 @@ namespace SiegeEngine.Scenes
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             Matrix4x4 view = _flyCamera.ViewMatrix;
-            // FOV 65° (kept from previous)
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, (float)_width / _height, 0.1f, 50000f);
             _terrainShader.Use();
             _terrainShader.SetMatrix4("uView", view);
             _terrainShader.SetMatrix4("uProjection", projection);
             _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
             _terrainBuffer.Bind();
-            // Base: cyan wireframe lines (always)
             _terrainShader.SetUniform("uHasTexture", 0);
             _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            // Skin: filled triangles ONLY where UV in [0,1] (no rusty fill)
             if (_hasColorTexture && _terrainTextureId != 0)
             {
                 _terrainShader.SetUniform("uHasTexture", 1);
