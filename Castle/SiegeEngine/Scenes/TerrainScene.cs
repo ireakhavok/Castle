@@ -11,7 +11,6 @@ using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Scenes
 {
     public unsafe class TerrainScene : Scene
@@ -30,8 +29,9 @@ namespace SiegeEngine.Scenes
         protected bool _hasColorTexture = false;
         protected TerrainParser.GeoReference _colorGeoRef;
         protected TerrainParser.GeoReference _terrainGeoRef;
-        protected float _worldScaleX = 1.0f;  // Real meters per grid unit (set from header)
+        protected float _worldScaleX = 1.0f; // Real meters per grid unit (set from header)
         protected float _worldScaleZ = 1.0f;
+        protected bool _useCustomScale = false;
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -47,7 +47,7 @@ namespace SiegeEngine.Scenes
         }
         protected virtual void BuildWireframeMesh(float step)
         {
-            ComputeWorldScale();  // Ensure real-meter scaling before mesh build
+            ComputeWorldScale(); // Ensure real-meter scaling before mesh build
             var vertices = new List<float>();
             var indices = new List<uint>();
             int stepsX = (int)Math.Floor(_terrainWidth / step);
@@ -56,9 +56,9 @@ namespace SiegeEngine.Scenes
             {
                 for (int z = 0; z <= stepsZ; z++)
                 {
-                    float wx = x * step * _worldScaleX;  // REAL METERS (from header pixel size)
+                    float wx = x * step * _worldScaleX; // REAL METERS (from header pixel size)
                     float wz = z * step * _worldScaleZ;
-                    float y = GetHeight(wx, wz) * VerticalExaggeration;  // Explicit (default 1.0)
+                    float y = GetHeight(wx, wz) * VerticalExaggeration; // Explicit (default 1.0)
                     vertices.Add(wx); vertices.Add(wz); vertices.Add(y);
                     vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
                     vertices.Add(0.0f); vertices.Add(0.0f);
@@ -85,7 +85,7 @@ namespace SiegeEngine.Scenes
                 BuildWireframeMesh(WireframeStep);
                 return;
             }
-            ComputeWorldScale();  // REAL METERS FOR HORIZONTAL
+            ComputeWorldScale(); // REAL METERS FOR HORIZONTAL
             var vertices = new List<float>();
             var indices = new List<uint>();
             int step = WireframeStep;
@@ -135,12 +135,12 @@ namespace SiegeEngine.Scenes
             {
                 for (int z = 0; z <= stepsZ; z++)
                 {
-                    float wx = x * step * _worldScaleX;  // REAL METERS
+                    float wx = x * step * _worldScaleX; // REAL METERS
                     float wz = z * step * _worldScaleZ;
                     float y = GetHeight(wx, wz) * VerticalExaggeration;
                     // EXACT mesh world (DEM top-left signed) — DEM LOGIC UNCHANGED
                     // USE GRID FRACTIONS for geo lookup (fixes texture size/location)
-                    float fracX = (float)x / stepsX;  // 0.0 to 1.0 across DEM grid
+                    float fracX = (float)x / stepsX; // 0.0 to 1.0 across DEM grid
                     float fracZ = (float)z / stepsZ;
                     float meshEastMeters, meshNorthMeters;
                     if (_terrainGeoRef.IsMeters)
@@ -187,9 +187,13 @@ namespace SiegeEngine.Scenes
         }
         private void ComputeWorldScale()
         {
+            if (_useCustomScale)
+            {
+                return;
+            }
             if (_terrainGeoRef == null || !_terrainGeoRef.IsValid)
             {
-                _worldScaleX = _worldScaleZ = 10.0f;  // Fallback for 10m DEM
+                _worldScaleX = _worldScaleZ = 10.0f; // Fallback for 10m DEM
                 return;
             }
             if (_terrainGeoRef.IsMeters)
@@ -208,7 +212,7 @@ namespace SiegeEngine.Scenes
         }
         protected float GetHeight(float x, float z)
         {
-            int ix = (int)Math.Clamp(x / _worldScaleX, 0, _terrainWidth - 1);  // Convert world back to grid index
+            int ix = (int)Math.Clamp(x / _worldScaleX, 0, _terrainWidth - 1); // Convert world back to grid index
             int iz = (int)Math.Clamp(z / _worldScaleZ, 0, _terrainHeight - 1);
             return _heightmap[ix, iz];
         }
@@ -224,7 +228,7 @@ namespace SiegeEngine.Scenes
                 // Center camera at real-world scale
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
-                _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f, centerZ + 5000);  // Above in real meters
+                _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f, centerZ + 5000); // Above in real meters
                 _flyCamera.Yaw = 0f;
                 _flyCamera.Pitch = -MathF.PI / 6f;
                 BuildWireframeMesh(WireframeStep);

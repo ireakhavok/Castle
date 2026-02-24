@@ -10,7 +10,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-
+using System.Numerics;
 namespace MapRoom
 {
     public class TerrainCreatorScene : TerrainScene
@@ -35,9 +35,16 @@ namespace MapRoom
                 }
             }
             Console.WriteLine($"[TerrainCreatorScene] Created blank {_terrainWidth}×{_terrainHeight} terrain with height range {_minHeight:F1} to {_maxHeight:F1}");
-            BuildWireframeMesh(8); // default coarse step for blank/large terrain
+            _useCustomScale = true;
+            BuildWireframeMesh(1); // full resolution grid for custom editor terrain (step=1 in heightmap indices)
+            // Center camera at real-world scale
+            float centerX = (_terrainWidth * _worldScaleX) / 2f;
+            float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
+            _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f + 10f, centerZ + 50f);
+            _flyCamera.Yaw = 0f;
+            _flyCamera.Pitch = -MathF.PI / 6f;
         }
-        // FULL SUPPORT FOR ALL FORM FIELDS (Resolution = grid spacing in meters per cell)
+        // FULL SUPPORT FOR ALL FORM FIELDS (Resolution = grid cell size = meters per heightmap cell / data density)
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -51,7 +58,7 @@ namespace MapRoom
             int numCellsZ = (int)Math.Ceiling(parameters.Depth / cellSize);
             _terrainWidth = numCellsX + 1; // vertices
             _terrainHeight = numCellsZ + 1;
-            // World scale = meters per grid cell
+            // World scale = meters per grid cell (data density/sparsity) — unchanged
             _worldScaleX = cellSize;
             _worldScaleZ = cellSize;
             if (!string.IsNullOrEmpty(parameters.ImportPath))
@@ -72,7 +79,14 @@ namespace MapRoom
                     }
                 }
                 Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain ({numCellsX}×{numCellsZ} cells, {cellSize}m spacing) at base height {parameters.InitialHeight}, vert exag {parameters.VerticalExaggeration}");
-                BuildWireframeMesh(cellSize);
+                _useCustomScale = true;
+                BuildWireframeMesh(1); // full resolution grid for custom editor terrain (step=1 in heightmap indices) — Resolution controls data density, not render step
+                // Center camera at real-world scale
+                float centerX = (_terrainWidth * _worldScaleX) / 2f;
+                float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
+                _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f + 10f, centerZ + 50f);
+                _flyCamera.Yaw = 0f;
+                _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
         public override void LoadTerrain(string path)
@@ -83,24 +97,18 @@ namespace MapRoom
         {
             base.SetColorTexture(path);
         }
-
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
                 terrainName = "UntitledTerrain";
-
             string saveDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", "Saved");
             Directory.CreateDirectory(saveDir);
-
             string tifPath = Path.Combine(saveDir, terrainName + ".tif");
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
-
             SaveAsPng(pngPath);
             SaveAsTiff(tifPath);
-
             Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → TIFF (8bpp grayscale) + PNG preview");
         }
-
         private void SaveAsPng(string path)
         {
             int w = _terrainWidth;
@@ -119,13 +127,11 @@ namespace MapRoom
             }
             bmp.Save(path, ImageFormat.Png);
         }
-
         private void SaveAsTiff(string path)
         {
             int w = _terrainWidth;
             int h = _terrainHeight;
             using var bmp = new Bitmap(w, h, PixelFormat.Format8bppIndexed);
-
             // Create grayscale palette (0 = black, 255 = white)
             ColorPalette palette = bmp.Palette;
             for (int i = 0; i < 256; i++)
@@ -133,10 +139,8 @@ namespace MapRoom
                 palette.Entries[i] = Color.FromArgb(i, i, i);
             }
             bmp.Palette = palette;
-
             float range = _maxHeight - _minHeight;
             if (range <= 0) range = 1f;
-
             BitmapData data = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.WriteOnly, PixelFormat.Format8bppIndexed);
             unsafe
             {
@@ -152,7 +156,6 @@ namespace MapRoom
                 }
             }
             bmp.UnlockBits(data);
-
             bmp.Save(path, ImageFormat.Tiff);
         }
     }
