@@ -224,6 +224,8 @@ Folder: MapRoom
     - Methods:
       - void CreateBlank()
         - Calls: BuildWireframeMesh
+      - void CreateTerrain(TerrainCreationParams parameters)
+        - Calls: BuildWireframeMesh, CreateBlank, LoadTerrain
       - void LoadTerrain(string path)
       - void SetColorTexture(string path)
 
@@ -2029,7 +2031,7 @@ Folder: SiegeEngine
     - Methods:
       - void Initialize( int height, int width)
         - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
-      - void BuildWireframeMesh(int step)
+      - void BuildWireframeMesh(float step)
         - Calls: ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV
       - void BuildTexturedMesh()
         - Calls: BuildWireframeMesh, ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV
