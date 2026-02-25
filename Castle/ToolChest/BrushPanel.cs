@@ -11,10 +11,8 @@ using System.Numerics;
 
 namespace ToolChest
 {
-    public class BrushPanel : BasePanel
+    public class BrushPanel : CompanionPanel
     {
-        private static BrushPanel _currentInstance;
-
         private class BrushUIOverlay : UIOverlay
         {
             private readonly BrushPanel _parent;
@@ -36,12 +34,7 @@ namespace ToolChest
         public BrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
-            IsModal = false;
-            Scaling = ScalingMode.BestFit;
-            BaseWidth = 320f;
-            BaseHeight = 420f;
-            AllowDragging = true;
-            DockState = DockState.Floating;
+            // CompanionPanel already sets small defaults
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -52,7 +45,6 @@ namespace ToolChest
         public override void Init()
         {
             base.Init();
-            _currentInstance = this;
             LoadBrushUI();
         }
 
@@ -81,31 +73,8 @@ namespace ToolChest
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            if (_currentInstance != null && _currentInstance.Visible)
-            {
-                _currentInstance.BringToAttention();
-                return;
-            }
-
             var panel = new BrushPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
-        }
-
-        private void BringToAttention()
-        {
-            // Flicker effect for visual feedback when already open
-            Visible = false;
-            _uiOverlay.RefreshUI();
-            Visible = true;
-            _uiOverlay.RefreshUI();
-            Console.WriteLine("[BrushPanel] Already open - flicker triggered");
-        }
-
-        public override void Dispose()
-        {
-            if (_currentInstance == this)
-                _currentInstance = null;
-            base.Dispose();
         }
     }
 }
