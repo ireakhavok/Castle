@@ -1,18 +1,16 @@
-﻿// Folder: SiegeEngine.UI
+﻿// Folder: SiegeEngine.Core.UI
 // File: HtmlParser.cs
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-
 namespace SiegeEngine.Core.UI
 {
     public class HtmlParser
     {
         private string _html;
         private int _index;
-
         public HtmlElement Parse(string html)
         {
             _html = html;
@@ -21,7 +19,6 @@ namespace SiegeEngine.Core.UI
             ParseChildren(root);
             return root.Children.Count == 1 ? root.Children[0] : root;
         }
-
         private void ParseChildren(HtmlElement parent)
         {
             while (_index < _html.Length)
@@ -67,7 +64,26 @@ namespace SiegeEngine.Core.UI
                                 elem = new SelectElement();
                                 break;
                             case "input":
-                                elem = new InputElement();
+                                // Minimal targeted detection for type="range" - only this line added
+                                string inputType = "text";
+                                int typePos = _html.IndexOf("type=\"", _index);
+                                if (typePos != -1 && typePos < _html.IndexOf('>', _index))
+                                {
+                                    int start = typePos + 6;
+                                    int end = _html.IndexOf('"', start);
+                                    if (end > start)
+                                    {
+                                        inputType = _html.Substring(start, end - start).ToLower();
+                                    }
+                                }
+                                if (inputType == "range")
+                                {
+                                    elem = new RangeElement();
+                                }
+                                else
+                                {
+                                    elem = new InputElement();
+                                }
                                 break;
                             case "option":
                                 elem = new OptionElement();
@@ -202,7 +218,6 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
-
         private void SkipWhitespace()
         {
             while (_index < _html.Length && char.IsWhiteSpace(_html[_index]))
@@ -210,7 +225,6 @@ namespace SiegeEngine.Core.UI
                 _index++;
             }
         }
-
         private string ReadUntil(Func<char, bool> condition)
         {
             string result = "";
