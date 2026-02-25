@@ -214,6 +214,18 @@ Folder: Core
     - Methods:
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+- File: CustomTerrainParser.cs
+  - Class: CustomTerrainParser (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.IO
+    - Methods:
+      - void SaveFloatTiff( float worldScaleX,  float worldScaleZ, ] heightmap, string path)
+        - Calls: WriteTiffTag
+      - void WriteTiffTag( uint count,  uint value,  ushort tag,  ushort type, BinaryWriter bw)
+      - ] Load( out float,  out int, string filePath)
+        - Calls: LoadHeightmapOnly, TryGetCustomScale
+      - return LoadHeightmapOnly( out height,  out maxHeight,  out minHeight,  out width)
+      - ] LoadHeightmapOnly( out float,  out int, string filePath)
+      - bool TryGetCustomScale( out float, string filePath)
 - File: D3D12Native.cs
   - Class: D3D12_COMMAND_SIGNATURE_DESC (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: System, System.Runtime.InteropServices
@@ -528,6 +540,22 @@ Folder: Core
         - Calls: SetViewport
       - void Dispose()
         - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteVertexArray
+- File: GeoTiffParser.cs
+  - Class: GeoReference (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.IO.Compression, System.Linq, System.Numerics
+    - Fields:
+      - Vector2 PixelScale
+      - Vector3 TiePointModel
+      - bool IsValid
+      - int TextureWidth
+      - int TextureHeight
+      - string CRS
+      - bool IsMeters
+      - int UtmZone
+      - float MinEast
+      - float MaxEast
+      - float MinNorth
+      - float MaxNorth
 - File: GlfwControlContext.cs
   - Class: GlfwControlContext (Namespace: SiegeEngine.Core.ContextManagement)
     - Inherits: IControlContext
@@ -1350,22 +1378,6 @@ Folder: Core
 - File: TerrainManager.cs
   - Class: TerrainType (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: System, System.IO
-- File: TerrainParser.cs
-  - Class: GeoReference (Namespace: SiegeEngine.Core.Terrain)
-    - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.IO.Compression, System.Linq, System.Numerics
-    - Fields:
-      - Vector2 PixelScale
-      - Vector3 TiePointModel
-      - bool IsValid
-      - int TextureWidth
-      - int TextureHeight
-      - string CRS
-      - bool IsMeters
-      - int UtmZone
-      - float MinEast
-      - float MaxEast
-      - float MinNorth
-      - float MaxNorth
 - File: TerrainTextureParser.cs
   - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.IO
@@ -2031,9 +2043,9 @@ Folder: Scenes
       - void ComputeWorldScale()
       - float GetHeight( float z, float x)
       - void LoadTerrain(string path)
-        - Calls: BuildWireframeMesh, ComputeWorldScale, TerrainParser.ParseGeoReference
+        - Calls: BuildWireframeMesh, ComputeWorldScale, GeoTiffParser.ParseGeoReference, GetHeight
       - void SetColorTexture(string path)
-        - Calls: BuildTexturedMesh, TerrainParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
+        - Calls: BuildTexturedMesh, GeoTiffParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
       - void Update(float deltaTime)
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
       - void Render(IReadOnlyList<Entity> entities)
@@ -2272,6 +2284,7 @@ SiegeEngine.Core.Rendering.TextureLoader
 SiegeEngine.Core.Rendering.UIQuadRenderer
 SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
+SiegeEngine.Core.Terrain.CustomTerrainParser
 SiegeEngine.Core.Terrain.GeoReference
 SiegeEngine.Core.Terrain.TerrainTextureParser
 SiegeEngine.Core.Terrain.TerrainType
