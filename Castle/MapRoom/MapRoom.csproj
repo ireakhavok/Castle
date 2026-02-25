@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ReadingChamber\ReadingChamber.csproj" />
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
+    <ProjectReference Include="..\ToolChest\ToolChest.csproj" />
   </ItemGroup>
 
   <ItemGroup>

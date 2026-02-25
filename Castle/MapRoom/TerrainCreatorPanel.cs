@@ -1,6 +1,4 @@
-﻿// Folder: MapRoom
-// File: TerrainCreatorPanel.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Networking;
@@ -12,6 +10,7 @@ using System;
 using System.IO;
 using System.Numerics;
 using System.Text;
+using ToolChest;
 
 namespace MapRoom
 {
@@ -37,10 +36,9 @@ namespace MapRoom
         }
         private TerrainCreatorScene _terrainScene;
         private string _initialTerrainPath;
-        private TerrainCreationParams _creationParams; // NEW: full parameters from form
+        private TerrainCreationParams _creationParams;
         private bool _cameraMode = true;
         private bool _lastTab = false;
-        // ORIGINAL CONSTRUCTOR (kept for Import/Blank compatibility)
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialTerrainPath = null)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -50,7 +48,6 @@ namespace MapRoom
             _initialTerrainPath = initialTerrainPath;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
-        // NEW CONSTRUCTOR - accepts full TerrainCreationParams from NewTerrainPanel
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, TerrainCreationParams creationParams)
             : this(renderContext, controlContext, window, eventBus, creationParams?.ImportPath)
         {
@@ -66,7 +63,6 @@ namespace MapRoom
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
             if (_creationParams != null)
             {
-                // Use full parameters from the form (width, depth, resolution, initial height, etc.)
                 _terrainScene.CreateTerrain(_creationParams);
             }
             else if (!string.IsNullOrEmpty(_initialTerrainPath))
@@ -95,7 +91,7 @@ namespace MapRoom
             {
                 return;
             }
-            
+
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
@@ -129,6 +125,10 @@ namespace MapRoom
             {
                 string name = _creationParams?.Name ?? "UntitledTerrain";
                 _terrainScene.SaveTerrain(name);
+            }
+            else if (hook == "OpenBrushPanel")
+            {
+                BrushPanel.Open(_renderContext, _controlContext, _window, _eventBus);
             }
         }
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -209,6 +209,10 @@ namespace MapRoom
         {
             _terrainScene?.Dispose();
             base.Dispose();
+        }
+        public static void OpenBrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            BrushPanel.Open(renderContext, controlContext, window, eventBus);
         }
     }
 }
