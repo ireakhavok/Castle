@@ -1,5 +1,5 @@
 ﻿// Folder: SiegeEngine/Core/Terrain
-// File: TerrainParser.cs
+// File: GeoTiffParser.cs
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -8,7 +8,6 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Terrain
 {
     public class TiffTag
@@ -48,7 +47,7 @@ namespace SiegeEngine.Core.Terrain
         public ushort SamplesPerPixel { get; set; } = 1;
         public ushort PlanarConfig { get; set; } = 1;
     }
-    public static class TerrainParser
+    public static class GeoTiffParser
     {
         private static readonly Dictionary<ushort, string> TagNames = new Dictionary<ushort, string>
         {
@@ -141,7 +140,7 @@ namespace SiegeEngine.Core.Terrain
                     }
                     else
                     {
-                        Console.WriteLine($"[TerrainParser] Invalid LZW code: {code} (next={nextCode}, size={codeSize}) at output {output.Count}");
+                        Console.WriteLine($"[GeoTiffParser] Invalid LZW code: {code} (next={nextCode}, size={codeSize}) at output {output.Count}");
                         break;
                     }
                     output.AddRange(entry);
@@ -160,7 +159,7 @@ namespace SiegeEngine.Core.Terrain
                     if (code < 0) break;
                 }
                 if (isFirstBlock)
-                    Console.WriteLine($"[TerrainParser] First 10 codes: {string.Join(", ", codes.Take(10))}");
+                    Console.WriteLine($"[GeoTiffParser] First 10 codes: {string.Join(", ", codes.Take(10))}");
                 return output.ToArray();
             }
         }
@@ -211,7 +210,7 @@ namespace SiegeEngine.Core.Terrain
             tiffFile.Ifd = new TiffIFD();
             tiffFile.Ifd.Offset = BitConverter.ToUInt32(bytes, 4);
             uint numEntries = BitConverter.ToUInt16(bytes, (int)tiffFile.Ifd.Offset);
-            Console.WriteLine($"[TerrainParser] IFD at {tiffFile.Ifd.Offset}, {numEntries} entries");
+            Console.WriteLine($"[GeoTiffParser] IFD at {tiffFile.Ifd.Offset}, {numEntries} entries");
             for (uint i = 0; i < numEntries; i++)
             {
                 uint entryOffset = tiffFile.Ifd.Offset + 2 + i * 12;
@@ -281,6 +280,15 @@ namespace SiegeEngine.Core.Terrain
                         case 323: tiffFile.TileLength = tagValue; break;
                         case 339: tiffFile.SampleFormat = tagValue; break;
                         case 266: tiffFile.FillOrder = tagValue; break;
+                        case 273:
+                            tiffFile.BlockOffsets = new List<uint> { tagValue };
+                            tiffFile.BlockOffsetsType = 4;
+                            tiffFile.NumBlocks = 1;
+                            break;
+                        case 279:
+                            tiffFile.BlockByteCounts = new List<uint> { tagValue };
+                            tiffFile.BlockByteCountsType = 4;
+                            break;
                     }
                 }
                 else
@@ -299,22 +307,22 @@ namespace SiegeEngine.Core.Terrain
                     }
                 }
             }
-            Console.WriteLine("[TerrainParser] All parsed TIFF tags (meaningful names):");
+            Console.WriteLine("[GeoTiffParser] All parsed TIFF tags (meaningful names):");
             foreach (var kv in tiffFile.Ifd.Tags.OrderBy(k => k.Key))
             {
                 var t = kv.Value;
                 Console.WriteLine($" Tag {t.Name} ({t.Tag}): type={t.Type}, count={t.Count}, value={t.Value}");
             }
             bool isTiled = tiffFile.TileWidth > 0 && tiffFile.TileLength > 0;
-            if (tiffFile.SampleFormat != 3 || tiffFile.BitsPerSample != 32)
-                throw new Exception($"Unsupported format: SampleFormat={tiffFile.SampleFormat}, BitsPerSample={tiffFile.BitsPerSample}");
+            if (tiffFile.BitsPerSample != 32)
+                throw new Exception($"Unsupported format: BitsPerSample={tiffFile.BitsPerSample} (only 32-bit float supported for both DEM and custom saved terrains)");
             if (tiffFile.NumBlocks == 0)
                 throw new Exception("No tiles or strips found");
             float noData = float.MinValue;
             if (tiffFile.Ifd.Tags.TryGetValue(42113, out var ndTag) && ndTag.Value is string ndStr && float.TryParse(ndStr, out float nd))
             {
                 noData = nd;
-                Console.WriteLine($"[TerrainParser] NoData value: {noData}");
+                Console.WriteLine($"[GeoTiffParser] NoData value: {noData}");
             }
             List<byte> fullRawData = new List<byte>((int)(tiffFile.ImageWidth * tiffFile.ImageHeight * 4));
             uint numTilesX = isTiled ? (tiffFile.ImageWidth + tiffFile.TileWidth - 1) / tiffFile.TileWidth : 1;
@@ -339,9 +347,9 @@ namespace SiegeEngine.Core.Terrain
                 else if (tiffFile.Compression == 8 || tiffFile.Compression == 32946) // Deflate / ZIP (OpenTopography default)
                 {
                     decompressed = DecompressDeflate(blockData);
-                    if (i == 0) Console.WriteLine($"[TerrainParser] Deflate decompressed {blockData.Length} → {decompressed.Length} bytes");
+                    if (i == 0) Console.WriteLine($"[GeoTiffParser] Deflate decompressed {blockData.Length} → {decompressed.Length} bytes");
                 }
-                else if (tiffFile.Compression == 1) // Uncompressed (USGS)
+                else if (tiffFile.Compression == 1) // Uncompressed (USGS and custom)
                 {
                     decompressed = blockData;
                 }
@@ -421,7 +429,7 @@ namespace SiegeEngine.Core.Terrain
                         heightmap[x, y] = h;
                     }
             }
-            Console.WriteLine($"[TerrainParser] Loaded {width}x{height} USGS DEM. Raw Min={minHeight:F1}m, Max={maxHeight:F1}m");
+            Console.WriteLine($"[GeoTiffParser] Loaded {width}x{height} terrain (32-bit float). Raw Min={minHeight:F1}m, Max={maxHeight:F1}m");
             bool debugPng = true;
             if (debugPng)
             {
@@ -437,7 +445,7 @@ namespace SiegeEngine.Core.Terrain
                         bmp.SetPixel(x, y, Color.FromArgb(val, val, val));
                     }
                 bmp.Save(pngPath, ImageFormat.Png);
-                Console.WriteLine($"[TerrainParser] Saved debug PNG: {pngPath}");
+                Console.WriteLine($"[GeoTiffParser] Saved debug PNG: {pngPath}");
             }
             return heightmap;
         }
@@ -474,7 +482,7 @@ namespace SiegeEngine.Core.Terrain
                 uint ifdOffset = BitConverter.ToUInt32(bytes, 4);
                 ushort numEntries = BitConverter.ToUInt16(bytes, (int)ifdOffset);
                 GeoReference geo = new GeoReference();
-                Console.WriteLine($"[TerrainParser] === Geo Tags for {Path.GetFileName(filePath)} ===");
+                Console.WriteLine($"[GeoTiffParser] === Geo Tags for {Path.GetFileName(filePath)} ===");
                 for (uint i = 0; i < numEntries; i++)
                 {
                     uint entry = ifdOffset + 2 + i * 12;
@@ -521,39 +529,25 @@ namespace SiegeEngine.Core.Terrain
                 }
                 if (geo.IsValid)
                 {
-                    // CRITICAL: Detect units from scale magnitude (DEM ~0.00009 degrees, NAIP ~0.6 meters)
-                    // This ensures NAIP (projected) is NEVER treated as geographic
                     bool isGeographic = Math.Abs(geo.PixelScale.X) < 0.01f;
                     geo.IsMeters = !isGeographic;
-
                     if (isGeographic)
                     {
-                        // ONLY for DEM geographic files: force negative Y-scale for correct north-up
                         geo.PixelScale.Y = -Math.Abs(geo.PixelScale.Y);
                         Console.WriteLine($"[Geo] Geographic DEM: Forced Y-scale negative for north-up ({geo.PixelScale.Y:F6})");
                     }
                     else
                     {
-                        // For NAIP projected meters: keep original positive Y-scale (tiepoint = north)
                         Console.WriteLine($"[Geo] Projected NAIP: Keeping original Y-scale (positive, north-up)");
                     }
-
-                    // EXACT bounds: tiepoint is ALWAYS upper-left (NW corner)
-                    // X: always increases east (positive scale)
                     geo.MinEast = geo.TiePointModel.X;
                     geo.MaxEast = geo.TiePointModel.X + Math.Abs(geo.PixelScale.X) * geo.TextureWidth;
-
-                    // Y: tiepoint Y = northern edge; subtract extent for southern edge (handles both sign conventions)
                     float northExtent = Math.Abs(geo.PixelScale.Y) * geo.TextureHeight;
-                    geo.MaxNorth = geo.TiePointModel.Y;           // upper = north
-                    geo.MinNorth = geo.TiePointModel.Y - northExtent; // lower = south
-
-                    // Normalize
+                    geo.MaxNorth = geo.TiePointModel.Y;
+                    geo.MinNorth = geo.TiePointModel.Y - northExtent;
                     if (geo.MinEast > geo.MaxEast) (geo.MinEast, geo.MaxEast) = (geo.MaxEast, geo.MinEast);
                     if (geo.MinNorth > geo.MaxNorth) (geo.MinNorth, geo.MaxNorth) = (geo.MaxNorth, geo.MinNorth);
-
                     Console.WriteLine($"[Geo] EXACT top-left bounds (signed scale): East [{geo.MinEast:F1}-{geo.MaxEast:F1}], North [{geo.MinNorth:F1}-{geo.MaxNorth:F1}] (Y scale: {geo.PixelScale.Y})");
-                    // Compute UTM zone from tiepoint lon (for geographic files)
                     if (!geo.IsMeters)
                     {
                         geo.UtmZone = (int)Math.Floor((geo.TiePointModel.X + 180) / 6) + 1;
@@ -566,11 +560,10 @@ namespace SiegeEngine.Core.Terrain
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[TerrainParser] GeoReference parse failed for {filePath}: {ex.Message}");
+                Console.WriteLine($"[GeoTiffParser] GeoReference parse failed for {filePath}: {ex.Message}");
                 return new GeoReference();
             }
         }
-        // VERIFIED WGS84 UTM (exact match to your expected meters)
         public static (double East, double North, int Zone) ConvertLatLonToUTM(double lat, double lon)
         {
             const double a = 6378137.0;

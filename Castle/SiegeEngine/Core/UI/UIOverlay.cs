@@ -10,7 +10,6 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.Shaders;
-
 namespace SiegeEngine.Core.UI
 {
     public class UIOverlay
@@ -38,11 +37,9 @@ namespace SiegeEngine.Core.UI
         public HtmlElement FocusedElement => _currentFocused;
         public float PanelWidth { get; set; }
         public float PanelHeight { get; set; }
-        // === PANEL-LEVEL SCROLLING FOUNDATION ===
         public float ScrollOffsetY { get; set; } = 0f;
         public float ContentFullHeight { get; private set; } = 0f;
         private bool _needsVerticalScrollbar = false;
-        // =======================================================
         public bool DidHandleClick { get; private set; }
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
         {
@@ -152,7 +149,7 @@ namespace SiegeEngine.Core.UI
                     elem.Style.FontSizeStr = parent.Style.FontSizeStr;
                 if (string.IsNullOrEmpty(elem.Style.TextAlign))
                     elem.Style.TextAlign = parent.Style.TextAlign;
-                if (elem is InputElement inp && inp.Type == "text" && elem.Style.BackgroundColor == Vector4.Zero)
+                if (elem is InputElement inp && (inp.Type == "text" || inp.Type == "number") && elem.Style.BackgroundColor == Vector4.Zero)
                     elem.Style.BackgroundColor = parent.Style.BackgroundColor;
             }
             foreach (var child in elem.Children)
@@ -305,7 +302,7 @@ namespace SiegeEngine.Core.UI
                             RefreshUI();
                             Console.WriteLine($"UIOverlay: Handled checkbox label click for {forId}");
                         }
-                        else if (type == "text")
+                        else if (type == "text" || type == "number")
                         {
                             if (!input.IsFocused)
                             {
@@ -316,7 +313,7 @@ namespace SiegeEngine.Core.UI
                                 InvokeListeners(input, "focus");
                                 input.IsFocused = true;
                                 _currentFocused = input;
-                                Console.WriteLine($"UIOverlay: Focused text input via label {forId}");
+                                Console.WriteLine($"UIOverlay: Focused {(type == "number" ? "number" : "text")} input via label {forId}");
                             }
                         }
                     }
@@ -350,7 +347,7 @@ namespace SiegeEngine.Core.UI
                         valueChanged = true;
                         RefreshUI();
                     }
-                    else if (input.Type == "text")
+                    else if (input.Type == "text" || input.Type == "number")
                     {
                         if (!input.IsFocused)
                         {
@@ -361,7 +358,7 @@ namespace SiegeEngine.Core.UI
                             InvokeListeners(input, "focus");
                             input.IsFocused = true;
                             _currentFocused = input;
-                            Console.WriteLine($"UIOverlay: Focused text input {input.Attributes.GetValueOrDefault("id", "")}");
+                            Console.WriteLine($"UIOverlay: Focused {(input.Type == "number" ? "number" : "text")} input {input.Attributes.GetValueOrDefault("id", "")}");
                         }
                     }
                 }
@@ -418,8 +415,24 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
-        private char? GetCharFromKey(Key key, bool shiftPressed)
+        private char? GetCharFromKey(Key key, bool shiftPressed, string inputType)
         {
+            if (inputType == "number")
+            {
+                if (key >= Key.Key0 && key <= Key.Key9)
+                {
+                    return (char)((int)key - (int)Key.Key0 + '0');
+                }
+                if (key == Key.Period)
+                {
+                    return '.';
+                }
+                if (key == Key.Minus)
+                {
+                    return '-';
+                }
+                return null;
+            }
             if (key >= Key.A && key <= Key.Z)
             {
                 return (char)((int)key - (int)Key.A + (shiftPressed ? 'A' : 'a'));
@@ -499,11 +512,7 @@ namespace SiegeEngine.Core.UI
             DidHandleClick = false;
             PanelWidth = panelW;
             PanelHeight = panelH;
-
-            // === SCROLL-ADJUSTED MOUSE FOR HIT-TESTING ===
             Vector2 scrolledMousePos = new Vector2(relMousePos.X, relMousePos.Y + ScrollOffsetY);
-            // =======================================================
-
             bool mousePress = !_prevMouseDown && currentMouseDown;
             bool mouseRelease = _prevMouseDown && !currentMouseDown;
             float vw = PanelWidth;
@@ -618,7 +627,7 @@ namespace SiegeEngine.Core.UI
             _prevMouseDown = currentMouseDown;
             bool needsRefresh = false;
             bool changed = false;
-            if (_currentFocused is InputElement input && input.Type == "text")
+            if (_currentFocused is InputElement input && (input.Type == "text" || input.Type == "number"))
             {
                 bool shiftPressed = _controlContext.GetKey(_window, Key.LeftShift) == InputAction.Press ||
                                     _controlContext.GetKey(_window, Key.RightShift) == InputAction.Press;
@@ -643,9 +652,15 @@ namespace SiegeEngine.Core.UI
                             }
                             else
                             {
-                                char? ch = GetCharFromKey(key, shiftPressed);
+                                char? ch = GetCharFromKey(key, shiftPressed, input.Type);
                                 if (ch.HasValue)
                                 {
+                                    if (input.Type == "number")
+                                    {
+                                        if (ch == '.' && input.Value.Contains('.')) continue;
+                                        if (ch == '-' && input.Value.Length > 0 && !input.Value.StartsWith("-")) continue;
+                                        if (ch == '-' && input.Value.StartsWith("-")) continue;
+                                    }
                                     input.Value += ch.Value;
                                     changed = true;
                                 }
@@ -664,9 +679,15 @@ namespace SiegeEngine.Core.UI
                             }
                             else
                             {
-                                char? ch = GetCharFromKey(key, shiftPressed);
+                                char? ch = GetCharFromKey(key, shiftPressed, input.Type);
                                 if (ch.HasValue)
                                 {
+                                    if (input.Type == "number")
+                                    {
+                                        if (ch == '.' && input.Value.Contains('.')) continue;
+                                        if (ch == '-' && input.Value.Length > 0 && !input.Value.StartsWith("-")) continue;
+                                        if (ch == '-' && input.Value.StartsWith("-")) continue;
+                                    }
                                     input.Value += ch.Value;
                                     changed = true;
                                 }
@@ -697,17 +718,12 @@ namespace SiegeEngine.Core.UI
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-
-            // === PANEL-LEVEL SCROLL APPLIED TO ROOT ===
             Matrix4x4 scrollMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, scrollMatrix);
-
             foreach (var sel in _openSelects)
             {
                 sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
             }
-
-            // === PANEL-LEVEL VISUAL SCROLLBAR ===
             if (_needsVerticalScrollbar)
             {
                 float trackX = w - 12f;
@@ -716,15 +732,12 @@ namespace SiegeEngine.Core.UI
                 float trackH = h;
                 float[] trackNdc = HtmlElement.GetNdcQuad(trackX, trackY, trackW, trackH, Matrix4x4.Identity, w, h);
                 _quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.15f, 0.15f, 0.15f, 0.95f));
-
                 float thumbRatio = h / ContentFullHeight;
                 float thumbH = Math.Max(30f, trackH * thumbRatio);
                 float thumbY = (ScrollOffsetY / (ContentFullHeight - h)) * (trackH - thumbH);
                 float[] thumbNdc = HtmlElement.GetNdcQuad(trackX + 1f, thumbY, trackW - 2f, thumbH, Matrix4x4.Identity, w, h);
                 _quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.55f, 0.55f, 0.55f, 1f));
             }
-            // =======================================================
-
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
         public virtual void Render()
@@ -739,7 +752,6 @@ namespace SiegeEngine.Core.UI
             if (_uiRoot == null) return;
             _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f);
             _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
-            // === PANEL-LEVEL FULL CONTENT HEIGHT ===
             UpdateContentHeight();
         }
         private void UpdateContentHeight()

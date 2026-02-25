@@ -4,11 +4,28 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="NewTerrainForm.html" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="NewTerrainForm.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ReadingChamber\ReadingChamber.csproj" />
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="TerrainCreatorUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

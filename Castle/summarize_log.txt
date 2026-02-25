@@ -449,21 +449,37 @@ Found: .
 Found: ..
 Found: bin
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\bin
+Found: CreateTerrainEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\CreateTerrainEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\CreateTerrainEvent.cs
+Read 1201 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\CreateTerrainEvent.cs
+Namespace: MapRoom
+Found 2 dependencies
+Found: HeirarchySummary.exe
 Found: MapRoom.csproj
+Found: map_room_summary.txt
+Found: NewTerrainForm.html
+Found: NewTerrainPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
+Read 6284 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
+Namespace: MapRoom
+Found 11 dependencies
 Found: obj
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\obj
+Found: summarize_log.txt
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
-Read 9571 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Read 9810 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 12 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
-Read 1594 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Read 6170 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
-Found 7 dependencies
+Found 12 dependencies
 Found: TerrainCreatorUI.html
 Found: QuestHall
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall
@@ -487,7 +503,7 @@ Found: ..
 Found: AnimationViewerPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
-Read 9331 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
+Read 9322 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Namespace: ReadingChamber
 Found 18 dependencies
 Found: AssetViewerUI.html
@@ -496,7 +512,7 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Read
 Found: FileSelectorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
-Read 10696 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Read 10215 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Namespace: ReadingChamber
 Found 10 dependencies
 Found: FileSelectorTemplate.html
@@ -1264,12 +1280,24 @@ Found: Terrain
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain
 Found: .
 Found: ..
-Found: TerrainParser.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainParser.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainParser.cs
-Read 31698 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainParser.cs
+Found: CustomTerrainParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\CustomTerrainParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\CustomTerrainParser.cs
+Read 7569 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\CustomTerrainParser.cs
+Namespace: SiegeEngine.Core.Terrain
+Found 2 dependencies
+Found: GeoTiffParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\GeoTiffParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\GeoTiffParser.cs
+Read 31306 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\GeoTiffParser.cs
 Namespace: SiegeEngine.Core.Terrain
 Found 8 dependencies
+Found: TerrainManager.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainManager.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainManager.cs
+Read 2068 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainManager.cs
+Namespace: SiegeEngine.Core.Terrain
+Found 2 dependencies
 Found: TerrainTextureParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
@@ -1295,13 +1323,13 @@ Found 5 dependencies
 Found: CssParser.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
-Read 25238 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
+Read 25577 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
 Namespace: SiegeEngine.Core.UI
 Found 5 dependencies
 Found: CssStyle.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssStyle.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssStyle.cs
-Read 9670 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssStyle.cs
+Read 9854 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssStyle.cs
 Namespace: SiegeEngine.Core.UI
 Found 2 dependencies
 Found: DivElement.cs
@@ -1310,10 +1338,11 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\U
 Read 163 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\DivElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 0 dependencies
+Found: HeirarchySummary.exe
 Found: HtmlElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\HtmlElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\HtmlElement.cs
-Read 67817 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\HtmlElement.cs
+Read 71861 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\HtmlElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 8 dependencies
 Found: HtmlParser.cs
@@ -1325,9 +1354,9 @@ Found 5 dependencies
 Found: InputElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\InputElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\InputElement.cs
-Read 6489 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\InputElement.cs
+Read 6432 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\InputElement.cs
 Namespace: SiegeEngine.Core.UI
-Found 6 dependencies
+Found 4 dependencies
 Found: JSParser
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser
 Found: .
@@ -1408,9 +1437,10 @@ Found 4 dependencies
 Found: SelectElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\SelectElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\SelectElement.cs
-Read 12814 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\SelectElement.cs
+Read 12819 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\SelectElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 6 dependencies
+Found: summarize_log.txt
 Found: TableElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\TableElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\TableElement.cs
@@ -1444,9 +1474,10 @@ Found 3 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 35144 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 36583 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 10 dependencies
+Found: UI_summary.txt
 Found: UlElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
@@ -1509,7 +1540,7 @@ Found 5 dependencies
 Found: FlyCameraController.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\FlyCameraController.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\FlyCameraController.cs
-Read 4916 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\FlyCameraController.cs
+Read 4917 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\PlayerSystem\FlyCameraController.cs
 Namespace: SiegeEngine.Scenes
 Found 4 dependencies
 Found: InputHandler.cs
@@ -1571,7 +1602,7 @@ Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 16309 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 14762 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: SiegeEngine.csproj

@@ -1231,7 +1231,19 @@ Folder: Rendering
       - int y
 
 Folder: Terrain
-- File: TerrainParser.cs
+- File: CustomTerrainParser.cs
+  - Class: CustomTerrainParser (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.IO
+    - Methods:
+      - void SaveFloatTiff( float worldScaleX,  float worldScaleZ, ] heightmap, string path)
+        - Calls: WriteTiffTag
+      - void WriteTiffTag( uint count,  uint value,  ushort tag,  ushort type, BinaryWriter bw)
+      - ] Load( out float,  out int, string filePath)
+        - Calls: LoadHeightmapOnly, TryGetCustomScale
+      - return LoadHeightmapOnly( out height,  out maxHeight,  out minHeight,  out width)
+      - ] LoadHeightmapOnly( out float,  out int, string filePath)
+      - bool TryGetCustomScale( out float, string filePath)
+- File: GeoTiffParser.cs
   - Class: GeoReference (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.IO.Compression, System.Linq, System.Numerics
     - Fields:
@@ -1247,6 +1259,9 @@ Folder: Terrain
       - float MaxEast
       - float MinNorth
       - float MaxNorth
+- File: TerrainManager.cs
+  - Class: TerrainType (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.IO
 - File: TerrainTextureParser.cs
   - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.IO
@@ -1373,7 +1388,7 @@ Folder: UI
       - string GetEffectiveDisplay()
       - HtmlElement FindContainingBlock()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, ComputeTransform, FindContainingBlock, LayoutBlockChildren, LayoutFlexChildren, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, child.GetEffectiveDisplay
+        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, ComputeTransform, FindContainingBlock, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, child.GetEffectiveDisplay
       - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
       - void UpdateFullTransforms(Matrix4x4 parentMatrix)
@@ -1381,6 +1396,8 @@ Folder: UI
         - Calls: BackgroundRenderer, _bgRenderer.Initialize
       - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
+      - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: LayoutBlockChildren, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeLayout
       - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: ParseMargins, ParseSize, ShiftX, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, child.GetEffectiveDisplay, currentLine.Clear
       - void ShiftX( float off, HtmlElement e)
@@ -1430,7 +1447,7 @@ Folder: UI
   - Class: InputElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
     - Fields:
       - bool _cursorVisible
       - float _cursorTimer
@@ -1705,6 +1722,7 @@ Folder: UI
       - void RecomputeLayout( float h, float w)
         - Calls: UpdateContentHeight, _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
       - void UpdateContentHeight()
+        - Calls: elem.GetEffectiveDisplay
       - void Scroll(float deltaY)
       - void Dispose()
         - Calls: _uiClickables.Clear
@@ -1856,8 +1874,10 @@ SiegeEngine.Core.Rendering.TextureLoader
 SiegeEngine.Core.Rendering.UIQuadRenderer
 SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
+SiegeEngine.Core.Terrain.CustomTerrainParser
 SiegeEngine.Core.Terrain.GeoReference
 SiegeEngine.Core.Terrain.TerrainTextureParser
+SiegeEngine.Core.Terrain.TerrainType
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CssParser

@@ -2,6 +2,7 @@
 // File: CssStyle.cs
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.UI
 {
     public class CssStyle
@@ -67,6 +68,8 @@ namespace SiegeEngine.Core.UI
         public Vector4 BorderRadius { get; set; }
         public string Overflow { get; set; }
         public string OverflowY { get; set; }
+        public string GridTemplateColumnsStr { get; set; }
+
         public CssStyle Clone()
         {
             return (CssStyle)MemberwiseClone();
@@ -245,6 +248,9 @@ namespace SiegeEngine.Core.UI
                     break;
                 case "overflow-y":
                     OverflowY = val;
+                    break;
+                case "grid-template-columns":
+                    GridTemplateColumnsStr = val;
                     break;
                 default:
                     Console.WriteLine($"Unsupported CSS property: {key}");

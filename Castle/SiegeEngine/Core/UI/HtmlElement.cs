@@ -141,11 +141,11 @@ namespace SiegeEngine.Core.UI
             bool hasVerticalOverflow = (overflow == "auto" || overflow == "scroll" || overflowY == "auto" || overflowY == "scroll");
             if (hasVerticalOverflow)
             {
-                h = refHeight; // force the scroll container to the available panel/parent height
+                h = refHeight;
             }
-            bool isBlockOrFlex = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex";
+            bool isBlockOrFlexOrGridOrTable = effectiveStyle.Display == "block" || effectiveStyle.Display == "flex" || effectiveStyle.Display == "grid" || effectiveStyle.Display == "table";
             bool isStaticOrRelative = string.IsNullOrEmpty(effectiveStyle.Position) || effectiveStyle.Position == "static" || effectiveStyle.Position == "relative";
-            if (isBlockOrFlex && isStaticOrRelative && float.IsNaN(w))
+            if (isBlockOrFlexOrGridOrTable && isStaticOrRelative && float.IsNaN(w))
             {
                 w = refWidth;
             }
@@ -232,6 +232,10 @@ namespace SiegeEngine.Core.UI
                 if (effectiveStyle.Display == "flex")
                 {
                     LayoutFlexChildren(viewportWidth, viewportHeight, textRenderer, fs);
+                }
+                else if (effectiveStyle.Display == "grid")
+                {
+                    LayoutGridChildren(viewportWidth, viewportHeight, textRenderer, fs);
                 }
                 else
                 {
@@ -627,6 +631,80 @@ namespace SiegeEngine.Core.UI
             {
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
+        }
+        private void LayoutGridChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+        {
+            List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
+            if (visibleChildren.Count == 0) return;
+            string columnsStr = Style.GridTemplateColumnsStr;
+            if (string.IsNullOrEmpty(columnsStr))
+            {
+                LayoutBlockChildren(viewportWidth, viewportHeight, textRenderer, fs);
+                return;
+            }
+            string[] colDefs = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string gapStr = Style.GapStr;
+            string[] gapDefs = string.IsNullOrEmpty(gapStr) ? new string[0] : gapStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            float rowGap = gapDefs.Length > 0 ? ParseSize(gapDefs[0], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
+            float colGap = gapDefs.Length > 1 ? ParseSize(gapDefs[1], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
+            List<float> trackWidths = new List<float>();
+            float totalFixed = 0f;
+            int totalFr = 0;
+            foreach (string def in colDefs)
+            {
+                if (def.EndsWith("fr"))
+                {
+                    if (float.TryParse(def.Replace("fr", "").Trim(), out float frValue))
+                    {
+                        totalFr += (int)frValue;
+                        trackWidths.Add(-frValue);
+                    }
+                    else
+                    {
+                        trackWidths.Add(0f);
+                    }
+                }
+                else
+                {
+                    float fixedW = ParseSize(def, ComputedContentWidth, viewportWidth, viewportHeight);
+                    if (float.IsNaN(fixedW)) fixedW = 0f;
+                    trackWidths.Add(fixedW);
+                    totalFixed += fixedW;
+                }
+            }
+            float remainingSpace = Math.Max(0f, ComputedContentWidth - totalFixed - colGap * Math.Max(0, trackWidths.Count - 1));
+            float frUnit = totalFr > 0 ? remainingSpace / totalFr : 0f;
+            for (int i = 0; i < trackWidths.Count; i++)
+            {
+                if (trackWidths[i] < 0)
+                {
+                    trackWidths[i] = frUnit * Math.Abs(trackWidths[i]);
+                }
+            }
+            float currentY = ComputedContentY;
+            for (int i = 0; i < visibleChildren.Count; i += trackWidths.Count)
+            {
+                float rowMaxH = 0f;
+                float currentX = ComputedContentX;
+                for (int col = 0; col < trackWidths.Count && i + col < visibleChildren.Count; col++)
+                {
+                    HtmlElement child = visibleChildren[i + col];
+                    float trackW = trackWidths[col];
+                    if ((child is InputElement || child.Tag.ToLower() == "select" || child.Tag.ToLower() == "input") &&
+                        string.IsNullOrEmpty(child.Style.WidthStr))
+                    {
+                        child.Style.WidthStr = "100%";
+                    }
+                    child.ComputeLayout(currentX, currentY, trackW, float.NaN, viewportWidth, viewportHeight, textRenderer, fs, trackW, float.NaN);
+                    rowMaxH = Math.Max(rowMaxH, child.ComputedHeight);
+                    currentX += trackW + colGap;
+                }
+                currentY += rowMaxH + rowGap;
+            }
+            ComputedContentHeight = currentY - ComputedContentY;
+            Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            ComputedHeight = ComputedContentHeight + pad.X + pad.Z;
+            ComputedBackgroundHeight = ComputedHeight;
         }
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {

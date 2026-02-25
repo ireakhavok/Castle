@@ -57,6 +57,11 @@ input[type=""text""] {
     min-height: 20px;
     border: 2px inset;
 }
+input[type=""number""] {
+    padding: 1px 2px;
+    min-height: 20px;
+    border: 2px inset;
+}
 input[type=""checkbox""] {
     width: 13px;
     height: 13px;
@@ -120,6 +125,12 @@ li {
 nav {
     display: block;
 }
+.form-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 12px 20px;
+    align-items: center;
+}
 ";
         private List<(string Selector, Dictionary<string, string> Props)> _allRules = new List<(string, Dictionary<string, string>)>();
         public void Clear()
@@ -146,7 +157,6 @@ nav {
         }
         public void ApplyAll(HtmlElement root)
         {
-            ApplyInlineStyles(root);
             foreach (var rule in _allRules)
             {
                 string selector = rule.Selector;
@@ -166,6 +176,7 @@ nav {
                     ApplyToElements(root, selector, rule.Props, null);
                 }
             }
+            ApplyInlineStyles(root);
         }
         public void ApplyInlineStyles(HtmlElement root)
         {
@@ -564,6 +575,8 @@ nav {
                 style.Overflow = ov;
             if (props.TryGetValue("overflow-y", out string ovy))
                 style.OverflowY = ovy;
+            if (props.TryGetValue("grid-template-columns", out string gtc))
+                style.GridTemplateColumnsStr = gtc;
         }
         public Vector4 ParseColor(string color)
         {

@@ -187,6 +187,26 @@ Folder: GuildTower
   - Class: Class1 (Namespace: GuildTower)
 
 Folder: MapRoom
+- File: CreateTerrainEvent.cs
+  - Class: CreateTerrainEvent (Namespace: MapRoom)
+    - Inherits: IEvent
+    
+    - Dependencies: SiegeEngine.Core.Events, System.Text.Json
+    - Fields:
+      - string Type
+    - Methods:
+      - constructor CreateTerrainEvent(TerrainCreationParams parameters)
+      - byte[] Serialize()
+      - void Deserialize(byte[] data)
+- File: NewTerrainPanel.cs
+  - Class: NewTerrainUIOverlay (Namespace: MapRoom)
+    - Inherits: UIOverlay
+        
+    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics
+    - Fields:
+      - NewTerrainPanel _parent
+    - Methods:
+      - void HandleUIClick(HtmlElement elem)
 - File: TerrainCreatorPanel.cs
   - Class: TerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
@@ -200,12 +220,17 @@ Folder: MapRoom
   - Class: TerrainCreatorScene (Namespace: MapRoom)
     - Inherits: TerrainScene
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Scenes, System
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
     - Methods:
       - void CreateBlank()
         - Calls: BuildWireframeMesh
+      - void CreateTerrain(TerrainCreationParams parameters)
+        - Calls: BuildWireframeMesh, CreateBlank, LoadTerrain
       - void LoadTerrain(string path)
       - void SetColorTexture(string path)
+      - void SaveTerrain(string terrainName)
+        - Calls: CustomTerrainParser.SaveFloatTiff, SaveAsPng
+      - void SaveAsPng(string path)
 
 Folder: QuestHall
 - File: Class1.cs
@@ -562,6 +587,18 @@ Folder: SiegeEngine
     - Methods:
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+- File: CustomTerrainParser.cs
+  - Class: CustomTerrainParser (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.IO
+    - Methods:
+      - void SaveFloatTiff( float worldScaleX,  float worldScaleZ, ] heightmap, string path)
+        - Calls: WriteTiffTag
+      - void WriteTiffTag( uint count,  uint value,  ushort tag,  ushort type, BinaryWriter bw)
+      - ] Load( out float,  out int, string filePath)
+        - Calls: LoadHeightmapOnly, TryGetCustomScale
+      - return LoadHeightmapOnly( out height,  out maxHeight,  out minHeight,  out width)
+      - ] LoadHeightmapOnly( out float,  out int, string filePath)
+      - bool TryGetCustomScale( out float, string filePath)
 - File: D3D12Native.cs
   - Class: D3D12_COMMAND_SIGNATURE_DESC (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: System, System.Runtime.InteropServices
@@ -939,6 +976,22 @@ Folder: SiegeEngine
       - IGameServer _server
     - Methods:
       - constructor GameSystem(IGameServer server)
+- File: GeoTiffParser.cs
+  - Class: GeoReference (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.IO.Compression, System.Linq, System.Numerics
+    - Fields:
+      - Vector2 PixelScale
+      - Vector3 TiePointModel
+      - bool IsValid
+      - int TextureWidth
+      - int TextureHeight
+      - string CRS
+      - bool IsMeters
+      - int UtmZone
+      - float MinEast
+      - float MaxEast
+      - float MinNorth
+      - float MaxNorth
 - File: GlfwControlContext.cs
   - Class: GlfwControlContext (Namespace: SiegeEngine.Core.ContextManagement)
     - Inherits: IControlContext
@@ -990,7 +1043,7 @@ Folder: SiegeEngine
       - string GetEffectiveDisplay()
       - HtmlElement FindContainingBlock()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, ComputeTransform, FindContainingBlock, LayoutBlockChildren, LayoutFlexChildren, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, child.GetEffectiveDisplay
+        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, ComputeTransform, FindContainingBlock, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, child.GetEffectiveDisplay
       - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
       - void UpdateFullTransforms(Matrix4x4 parentMatrix)
@@ -998,6 +1051,8 @@ Folder: SiegeEngine
         - Calls: BackgroundRenderer, _bgRenderer.Initialize
       - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
+      - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: LayoutBlockChildren, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeLayout
       - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: ParseMargins, ParseSize, ShiftX, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, child.GetEffectiveDisplay, currentLine.Clear
       - void ShiftX( float off, HtmlElement e)
@@ -1079,7 +1134,7 @@ Folder: SiegeEngine
   - Class: InputElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
     - Fields:
       - bool _cursorVisible
       - float _cursorTimer
@@ -1969,22 +2024,9 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
     - Methods:
       - constructor TdElement()
-- File: TerrainParser.cs
-  - Class: GeoReference (Namespace: SiegeEngine.Core.Terrain)
-    - Dependencies: System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.IO.Compression, System.Linq, System.Numerics
-    - Fields:
-      - Vector2 PixelScale
-      - Vector3 TiePointModel
-      - bool IsValid
-      - int TextureWidth
-      - int TextureHeight
-      - string CRS
-      - bool IsMeters
-      - int UtmZone
-      - float MinEast
-      - float MaxEast
-      - float MinNorth
-      - float MaxNorth
+- File: TerrainManager.cs
+  - Class: TerrainType (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: System, System.IO
 - File: TerrainScene.cs
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
@@ -2004,19 +2046,20 @@ Folder: SiegeEngine
       - bool _hasColorTexture
       - float _worldScaleX
       - float _worldScaleZ
+      - bool _useCustomScale
     - Methods:
       - void Initialize( int height, int width)
         - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
-      - void BuildWireframeMesh(int step)
+      - void BuildWireframeMesh(float step)
         - Calls: ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV
       - void BuildTexturedMesh()
         - Calls: BuildWireframeMesh, ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV
       - void ComputeWorldScale()
       - float GetHeight( float z, float x)
       - void LoadTerrain(string path)
-        - Calls: BuildWireframeMesh, ComputeWorldScale, TerrainParser.LoadUSGSDEM, TerrainParser.ParseGeoReference
+        - Calls: BuildWireframeMesh, ComputeWorldScale, GeoTiffParser.ParseGeoReference, GetHeight
       - void SetColorTexture(string path)
-        - Calls: BuildTexturedMesh, TerrainParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
+        - Calls: BuildTexturedMesh, GeoTiffParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
       - void Update(float deltaTime)
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
       - void Render(IReadOnlyList<Entity> entities)
@@ -2219,6 +2262,7 @@ Folder: SiegeEngine
       - void RecomputeLayout( float h, float w)
         - Calls: UpdateContentHeight, _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
       - void UpdateContentHeight()
+        - Calls: elem.GetEffectiveDisplay
       - void Scroll(float deltaY)
       - void Dispose()
         - Calls: _uiClickables.Clear
@@ -2424,6 +2468,8 @@ Citadel.Systems.PhysicsSystem
 FileSelectedEvent
 Foundation.Program
 GuildTower.Class1
+MapRoom.CreateTerrainEvent
+MapRoom.NewTerrainUIOverlay
 MapRoom.TerrainCreatorScene
 MapRoom.TerrainUIOverlay
 QuestHall.Class1
@@ -2542,8 +2588,10 @@ SiegeEngine.Core.Rendering.TextureLoader
 SiegeEngine.Core.Rendering.UIQuadRenderer
 SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
+SiegeEngine.Core.Terrain.CustomTerrainParser
 SiegeEngine.Core.Terrain.GeoReference
 SiegeEngine.Core.Terrain.TerrainTextureParser
+SiegeEngine.Core.Terrain.TerrainType
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CssParser

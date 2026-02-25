@@ -65,7 +65,7 @@ namespace SiegeEngine.Scenes
             {
                 _firstMouseMove = true;
             }
-            float moveSpeed = 20.0f * deltaTime;
+            float moveSpeed = 200.0f * deltaTime;
             if (_controlContext.GetKey(_window, Key.LeftShift) == InputAction.Press)
             {
                 moveSpeed *= 10f;
