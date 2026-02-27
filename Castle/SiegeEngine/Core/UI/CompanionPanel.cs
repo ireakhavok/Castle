@@ -20,7 +20,7 @@ namespace SiegeEngine.Core.UI
         {
             IsModal = false;
             Scaling = ScalingMode.BestFit;
-            BaseWidth = 300f;   // much smaller default
+            BaseWidth = 320f;   // much smaller default
             BaseHeight = 450f;
             AllowDragging = true;
             DockState = DockState.Floating;
