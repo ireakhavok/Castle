@@ -1,9 +1,8 @@
-﻿// Folder: SiegeEngine.UI/JSParser
+﻿// Folder: SiegeEngine.Core.UI.JSParser
 // File: JSParser.cs
 using System;
 using System.Collections.Generic;
 using System.Text;
-
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSParser
@@ -28,6 +27,10 @@ namespace SiegeEngine.Core.UI.JSParser
             {
                 _currentChar = '\0';
             }
+        }
+        private char PeekNext()
+        {
+            return _position < _source.Length ? _source[_position] : '\0';
         }
         private void SkipWhitespaceAndComments()
         {
@@ -66,7 +69,7 @@ namespace SiegeEngine.Core.UI.JSParser
             while (_currentChar != '\0')
             {
                 SkipWhitespaceAndComments();
-                if (char.IsLetter(_currentChar) || _currentChar == '_')
+                if (char.IsLetter(_currentChar) || _currentChar == '_' || _currentChar == '$')
                 {
                     string id = ParseIdentifier();
                     Token token;
@@ -94,25 +97,16 @@ namespace SiegeEngine.Core.UI.JSParser
                     {
                         token = new Token(TokenType.Identifier, id);
                     }
-                    //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                     return token;
                 }
                 if (char.IsDigit(_currentChar))
                 {
                     Token token = new Token(TokenType.Number, ParseNumber());
-                    //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                     return token;
                 }
-                if (_currentChar == '"')
+                if (_currentChar == '"' || _currentChar == '\'')
                 {
                     Token token = new Token(TokenType.String, ParseString());
-                    //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
-                    return token;
-                }
-                if (_currentChar == '\'')
-                {
-                    Token token = new Token(TokenType.String, ParseString());
-                    //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                     return token;
                 }
                 if (_currentChar == '/')
@@ -123,7 +117,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     if (regex != null)
                     {
                         Token token = new Token(TokenType.Regex, regex);
-                        //Console.WriteLine($"Processed token: {token.Type} /{regex.Pattern}/{regex.Flags}");
                         return token;
                     }
                     _position = savePos;
@@ -137,18 +130,15 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Advance();
                             Token token = new Token(TokenType.EqualEqual, "==");
-                            //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                             return token;
                         }
                         if (_currentChar == '>')
                         {
                             Advance();
                             Token token = new Token(TokenType.Arrow, "=>");
-                            //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                             return token;
                         }
                         Token token1 = new Token(TokenType.Assign, "=");
-                        //Console.WriteLine($"Processed token: {token1.Type} {token1.Value ?? "null"}");
                         return token1;
                     case '!':
                         Advance();
@@ -156,11 +146,9 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Advance();
                             Token token = new Token(TokenType.NotEqual, "!=");
-                            //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                             return token;
                         }
                         Token token2 = new Token(TokenType.Not, "!");
-                        //Console.WriteLine($"Processed token: {token2.Type} {token2.Value ?? "null"}");
                         return token2;
                     case '<':
                         Advance();
@@ -168,11 +156,9 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Advance();
                             Token token = new Token(TokenType.LessEqual, "<=");
-                            //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                             return token;
                         }
                         Token token3 = new Token(TokenType.Less, "<");
-                        //Console.WriteLine($"Processed token: {token3.Type} {token3.Value ?? "null"}");
                         return token3;
                     case '>':
                         Advance();
@@ -180,11 +166,9 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Advance();
                             Token token = new Token(TokenType.GreaterEqual, ">=");
-                            //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                             return token;
                         }
                         Token token4 = new Token(TokenType.Greater, ">");
-                        //Console.WriteLine($"Processed token: {token4.Type} {token4.Value ?? "null"}");
                         return token4;
                     case '+':
                         Advance();
@@ -192,11 +176,9 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Advance();
                             Token token = new Token(TokenType.PlusPlus, "++");
-                            //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                             return token;
                         }
                         Token token5 = new Token(TokenType.Plus, "+");
-                        //Console.WriteLine($"Processed token: {token5.Type} {token5.Value ?? "null"}");
                         return token5;
                     case '-':
                         Advance();
@@ -204,81 +186,65 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Advance();
                             Token token = new Token(TokenType.MinusMinus, "--");
-                            //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                             return token;
                         }
                         Token token6 = new Token(TokenType.Minus, "-");
-                        //Console.WriteLine($"Processed token: {token6.Type} {token6.Value ?? "null"}");
                         return token6;
                     case '*':
                         Advance();
                         Token token7 = new Token(TokenType.Multiply, "*");
-                        //Console.WriteLine($"Processed token: {token7.Type} {token7.Value ?? "null"}");
                         return token7;
                     case '/':
                         Advance();
                         Token token8 = new Token(TokenType.Divide, "/");
-                        //Console.WriteLine($"Processed token: {token8.Type} {token8.Value ?? "null"}");
                         return token8;
                     case '%':
                         Advance();
                         Token token9 = new Token(TokenType.Modulo, "%");
-                        //Console.WriteLine($"Processed token: {token9.Type} {token9.Value ?? "null"}");
                         return token9;
                     case '(':
                         Advance();
                         Token token10 = new Token(TokenType.LeftParen, "(");
-                        //Console.WriteLine($"Processed token: {token10.Type} {token10.Value ?? "null"}");
                         return token10;
                     case ')':
                         Advance();
                         Token token11 = new Token(TokenType.RightParen, ")");
-                        //Console.WriteLine($"Processed token: {token11.Type} {token11.Value ?? "null"}");
                         return token11;
                     case '{':
                         Advance();
                         Token token12 = new Token(TokenType.LeftBrace, "{");
-                        //Console.WriteLine($"Processed token: {token12.Type} {token12.Value ?? "null"}");
                         return token12;
                     case '}':
                         Advance();
                         Token token13 = new Token(TokenType.RightBrace, "}");
-                        //Console.WriteLine($"Processed token: {token13.Type} {token13.Value ?? "null"}");
                         return token13;
                     case '[':
                         Advance();
                         Token token14 = new Token(TokenType.LeftBracket, "[");
-                        //Console.WriteLine($"Processed token: {token14.Type} {token14.Value ?? "null"}");
                         return token14;
                     case ']':
                         Advance();
                         Token token15 = new Token(TokenType.RightBracket, "]");
-                        //Console.WriteLine($"Processed token: {token15.Type} {token15.Value ?? "null"}");
                         return token15;
                     case ';':
                         Advance();
                         Token token16 = new Token(TokenType.Semicolon, ";");
-                        //Console.WriteLine($"Processed token: {token16.Type} {token16.Value ?? "null"}");
                         return token16;
                     case ',':
                         Advance();
                         Token token17 = new Token(TokenType.Comma, ",");
-                        //Console.WriteLine($"Processed token: {token17.Type} {token17.Value ?? "null"}");
                         return token17;
                     case '.':
                         Advance();
                         Token token18 = new Token(TokenType.Dot, ".");
-                        //Console.WriteLine($"Processed token: {token18.Type} {token18.Value ?? "null"}");
                         return token18;
                     case '?':
                         Advance();
                         Token token19 = new Token(TokenType.Question, "?");
-                        //Console.WriteLine($"Processed token: {token19.Type} {token19.Value ?? "null"}");
                         return token19;
                     case ':':
                         Advance();
                         Token token20 = new Token(TokenType.Colon, ":");
-                        //Console.WriteLine($"Processed token: {token20.Type} {token20.Value ?? "null"}");
                         return token20;
                     case '&':
                         Advance();
@@ -286,11 +252,9 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Advance();
                             Token token = new Token(TokenType.AndAnd, "&&");
-                            //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                             return token;
                         }
                         Token token21 = new Token(TokenType.And, "&");
-                        //Console.WriteLine($"Processed token: {token21.Type} {token21.Value ?? "null"}");
                         return token21;
                     case '|':
                         Advance();
@@ -298,34 +262,29 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Advance();
                             Token token = new Token(TokenType.OrOr, "||");
-                            //Console.WriteLine($"Processed token: {token.Type} {token.Value ?? "null"}");
                             return token;
                         }
                         Token token22 = new Token(TokenType.Or, "|");
-                        //Console.WriteLine($"Processed token: {token22.Type} {token22.Value ?? "null"}");
                         return token22;
                     case '^':
                         Advance();
                         Token token23 = new Token(TokenType.Xor, "^");
-                        //Console.WriteLine($"Processed token: {token23.Type} {token23.Value ?? "null"}");
                         return token23;
                     case '~':
                         Advance();
                         Token token24 = new Token(TokenType.Tilde, "~");
-                        //Console.WriteLine($"Processed token: {token24.Type} {token24.Value ?? "null"}");
                         return token24;
                     default:
                         throw new Exception($"Unexpected character: {_currentChar}");
                 }
             }
             Token token25 = new Token(TokenType.EOF, null);
-            //Console.WriteLine($"Processed token: {token25.Type} {token25.Value ?? "null"}");
             return token25;
         }
         private string ParseIdentifier()
         {
             StringBuilder sb = new StringBuilder();
-            while (char.IsLetterOrDigit(_currentChar) || _currentChar == '_')
+            while (char.IsLetterOrDigit(_currentChar) || _currentChar == '_' || _currentChar == '$')
             {
                 sb.Append(_currentChar);
                 Advance();
@@ -566,7 +525,11 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             ConsumeKeyword("return");
             SkipWhitespaceAndComments();
-            ASTNode argument = ParseExpression();
+            ASTNode argument = null;
+            if (_currentChar != ';' && _currentChar != '}' && _currentChar != '\0')
+            {
+                argument = ParseExpression();
+            }
             SkipWhitespaceAndComments();
             if (_currentChar == ';')
             {
@@ -841,7 +804,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 case TokenType.Function:
                     string name = null;
                     SkipWhitespaceAndComments();
-                    if (char.IsLetter(_currentChar) || _currentChar == '_')
+                    if (char.IsLetter(_currentChar) || _currentChar == '_' || _currentChar == '$')
                     {
                         name = ParseIdentifier();
                     }
@@ -867,9 +830,10 @@ namespace SiegeEngine.Core.UI.JSParser
                 case TokenType.Identifier:
                     string idName = (string)token.Value;
                     SkipWhitespaceAndComments();
-                    if (Match("=>"))
+                    if (_currentChar == '=' && PeekNext() == '>')
                     {
-                        GetOperator(); // consume =>
+                        Advance(); // =
+                        Advance(); // >
                         SkipWhitespaceAndComments();
                         ASTNode arrowBody;
                         if (_currentChar == '{')
@@ -883,10 +847,6 @@ namespace SiegeEngine.Core.UI.JSParser
                         return new ArrowExpressionNode(new List<ASTNode> { new IdentifierNode(idName) }, arrowBody);
                     }
                     return new IdentifierNode(idName);
-                case TokenType.Number:
-                    return new LiteralNode(double.Parse((string)token.Value));
-                case TokenType.String:
-                    return new LiteralNode((string)token.Value);
                 case TokenType.LeftParen:
                     SkipWhitespaceAndComments();
                     List<ASTNode> paramList = new List<ASTNode>();
@@ -904,9 +864,10 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     Consume(TokenType.RightParen);
                     SkipWhitespaceAndComments();
-                    if (Match("=>"))
+                    if (_currentChar == '=' && PeekNext() == '>')
                     {
-                        GetOperator(); // consume =>
+                        Advance(); // =
+                        Advance(); // >
                         SkipWhitespaceAndComments();
                         ASTNode arrowBody;
                         if (_currentChar == '{')
@@ -927,6 +888,10 @@ namespace SiegeEngine.Core.UI.JSParser
                         }
                         throw new Exception("Invalid grouped expression");
                     }
+                case TokenType.Number:
+                    return new LiteralNode(double.Parse((string)token.Value));
+                case TokenType.String:
+                    return new LiteralNode((string)token.Value);
                 case TokenType.LeftBracket:
                     return ParseArrayLiteral();
                 case TokenType.LeftBrace:
@@ -1050,7 +1015,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 sb.Append(_currentChar);
                 Advance();
             }
-            _position--; // back up for next token
+            //_position--; // back up for next token
             return sb.ToString();
         }
     }
