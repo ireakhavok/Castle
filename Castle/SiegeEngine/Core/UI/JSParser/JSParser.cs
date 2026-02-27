@@ -1015,7 +1015,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 sb.Append(_currentChar);
                 Advance();
             }
-            //_position--; // back up for next token
             return sb.ToString();
         }
     }
