@@ -20,10 +20,12 @@ namespace ToolChest
             {
                 _parent = parent;
             }
-            protected override void HandleUIClick(HtmlElement elem)
+            protected override void HandleDataHook(string hook)
             {
-                base.HandleUIClick(elem);
-                _parent.HandleUIClick(elem);
+                if (hook.StartsWith("Brush"))
+                {
+                    Console.WriteLine($"[BrushPanel] Hook triggered: {hook}");
+                }
             }
         }
         private Brush _currentBrush = new Brush();
