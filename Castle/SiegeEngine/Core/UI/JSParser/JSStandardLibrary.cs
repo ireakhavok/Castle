@@ -34,7 +34,14 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (o is double d) return double.IsNaN(d);
                 return false;
             }));
-            evaluator.RegisterGlobal("parseFloat", new Func<string, double>(s => double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out double d) ? d : double.NaN));
+            evaluator.RegisterGlobal("parseFloat", new Func<object, double>(o =>
+            {
+                if (o is double d) return d;
+                if (o is float f) return f;
+                if (o is int i) return i;
+                string s = o?.ToString() ?? "";
+                return double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed) ? parsed : double.NaN;
+            }));
             evaluator.RegisterGlobal("parseInt", new Func<string, int, double>((s, radix) =>
             {
                 if (radix < 2 || radix > 36) return double.NaN;

@@ -190,6 +190,14 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
             }
         }
+        public float min
+        {
+            get { return elem is RangeElement r ? r.Min : 0f; }
+        }
+        public float max
+        {
+            get { return elem is RangeElement r ? r.Max : 100f; }
+        }
         public void appendChild(JSElement child)
         {
             elem.Children.Add(child.elem);
