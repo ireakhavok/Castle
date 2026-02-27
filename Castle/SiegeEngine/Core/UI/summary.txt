@@ -12,7 +12,7 @@ Folder: JSParser
       - constructor JSContext()
         - Calls: JSEvaluator, JSStandardLibrary.Register
       - object Run(string code)
-        - Calls: Evaluator.Evaluate, parser.Parse
+        - Calls: Evaluator.Evaluate, JSParser, parser.Parse
       - object RunWithThis( object thisObj, string code)
         - Calls: Evaluator.CurrentScope, Evaluator.PopScope, Evaluator.PushScope, Run
 - File: JSDocument.cs
@@ -79,7 +79,7 @@ Folder: JSParser
       - constructor Token( object value, TokenType type)
 - File: JSStandardLibrary.cs
   - Class: JSDate (Namespace: SiegeEngine.Core.UI.JSParser)
-    - Dependencies: System, System.Collections.Generic, System.Globalization, System.Linq, System.Text.Json, System.Text.RegularExpressions
+    - Dependencies: System, System.Collections.Generic, System.Globalization, System.Linq, System.Text.Json, System.Text.RegularExpressions, YamlDotNet.Core.Tokens
     - Methods:
       - constructor JSDate()
       - constructor JSDate(double ms)
@@ -142,6 +142,17 @@ Folder: Root
         - Calls: Invoke
       - void AttachHook(string hookStr)
         - Calls: mi.Invoke
+- File: CompanionPanel.cs
+  - Class: CompanionPanel (Namespace: SiegeEngine.Core.UI)
+    - Inherits: BasePanel
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Numerics
+    - Methods:
+      - UIOverlay CreateUIOverlay()
+        - Calls: UIOverlay
+      - void Init()
+        - Calls: OnPanelResize
+      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
 - File: CssParser.cs
   - Class: CssParser (Namespace: SiegeEngine.Core.UI)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
@@ -205,13 +216,15 @@ Folder: Root
       - string GetEffectiveDisplay()
       - HtmlElement FindContainingBlock()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, ComputeTransform, FindContainingBlock, LayoutBlockChildren, LayoutFlexChildren, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, child.GetEffectiveDisplay
+        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, ComputeTransform, FindContainingBlock, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, child.GetEffectiveDisplay
       - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
       - void UpdateFullTransforms(Matrix4x4 parentMatrix)
       - void PrepareResources( IControlContext controlContext,  IRenderContext renderContext,  ShaderProgram shader,  nint window, string baseDir)
       - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
+      - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: LayoutBlockChildren, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeLayout
       - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: ParseMargins, ParseSize, ShiftX, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, child.GetEffectiveDisplay, currentLine.Clear
       - void ShiftX( float off, HtmlElement e)
@@ -251,7 +264,7 @@ Folder: Root
       - HtmlElement Parse(string html)
         - Calls: ParseChildren
       - void ParseChildren(HtmlElement parent)
-        - Calls: ButtonElement, DivElement, HtmlParser, InputElement, LiElement, NavElement, OlElement, OptionElement, ReadUntil, SelectElement, SkipWhitespace, TableElement, TdElement, ThElement, TrElement, UlElement, btn.AttachHook, incParser.Parse
+        - Calls: ButtonElement, DivElement, HtmlParser, InputElement, LiElement, NavElement, OlElement, OptionElement, RangeElement, ReadUntil, SelectElement, SkipWhitespace, TableElement, TdElement, ThElement, TrElement, UlElement, btn.AttachHook, incParser.Parse
       - recursively ParseChildren()
         - Calls: HtmlParser, incParser.Parse
       - constructor HtmlParser()
@@ -261,7 +274,7 @@ Folder: Root
   - Class: InputElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
     - Fields:
       - bool _cursorVisible
       - float _cursorTimer
@@ -323,6 +336,17 @@ Folder: Root
       - constructor OptionElement()
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
+- File: RangeElement.cs
+  - Class: RangeElement (Namespace: SiegeEngine.Core.UI)
+    - Inherits: InputElement
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Methods:
+      - constructor RangeElement()
+      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+      - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
+        - Calls: GetNdcQuad
+      - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
 - File: SelectElement.cs
   - Class: SelectElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
@@ -466,6 +490,7 @@ Folder: Root
 Class Hierarchy:
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
+SiegeEngine.Core.UI.CompanionPanel
 SiegeEngine.Core.UI.CssParser
 SiegeEngine.Core.UI.CssStyle
 SiegeEngine.Core.UI.DivElement
@@ -484,6 +509,7 @@ SiegeEngine.Core.UI.MenuUIOverlay
 SiegeEngine.Core.UI.NavElement
 SiegeEngine.Core.UI.OlElement
 SiegeEngine.Core.UI.OptionElement
+SiegeEngine.Core.UI.RangeElement
 SiegeEngine.Core.UI.SelectElement
 SiegeEngine.Core.UI.TableElement
 SiegeEngine.Core.UI.TdElement

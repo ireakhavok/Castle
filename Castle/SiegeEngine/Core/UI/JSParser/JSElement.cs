@@ -4,6 +4,7 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Globalization;
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSElement
@@ -69,6 +70,10 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 else if (tag == "input")
                 {
+                    if (elem is RangeElement range)
+                    {
+                        return range.Value.ToString(CultureInfo.InvariantCulture);
+                    }
                     if (elem is InputElement inp)
                     {
                         return inp.Value ?? "";
@@ -82,11 +87,24 @@ namespace SiegeEngine.Core.UI.JSParser
                 string tag = elem.Tag.ToLower();
                 string newVal = value?.ToString() ?? "";
                 bool valueChanged = false;
-
                 if (tag == "input")
                 {
                     string oldValue = "";
-                    if (elem is InputElement inp)
+                    if (elem is RangeElement range)
+                    {
+                        if (double.TryParse(newVal, NumberStyles.Any, CultureInfo.InvariantCulture, out double f))
+                        {
+                            oldValue = range.Value.ToString(CultureInfo.InvariantCulture);
+                            range.Value = (float)f;
+                            valueChanged = oldValue != newVal;
+                        }
+                        else
+                        {
+                            range.Value = 0f;
+                            valueChanged = true;
+                        }
+                    }
+                    else if (elem is InputElement inp)
                     {
                         oldValue = inp.Value ?? "";
                         if (oldValue != newVal)
@@ -128,7 +146,6 @@ namespace SiegeEngine.Core.UI.JSParser
                         valueChanged = true;
                     }
                 }
-
                 if (valueChanged)
                 {
                     overlay.RefreshUI();

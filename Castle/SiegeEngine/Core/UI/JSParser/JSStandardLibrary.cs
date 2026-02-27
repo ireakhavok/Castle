@@ -90,14 +90,14 @@ namespace SiegeEngine.Core.UI.JSParser
             math["exp"] = new Func<double, double>(Math.Exp);
             math["floor"] = new Func<double, double>(Math.Floor);
             math["fround"] = new Func<double, double>(d => (float)d);
-            math["hypot"] = new Func<object[], double>(args => Math.Sqrt(args.Sum(a => Math.Pow((double)a, 2))));
+            math["hypot"] = new Func<object[], object>(args => (object)Math.Sqrt(args.Sum(a => Math.Pow((double)a, 2))));
             math["imul"] = new Func<double, double, double>((x, y) => (int)x * (int)y);
             math["log"] = new Func<double, double>(Math.Log);
             math["log1p"] = new Func<double, double>(x => Math.Log(1 + x));
             math["log10"] = new Func<double, double>(Math.Log10);
             math["log2"] = new Func<double, double>(Math.Log2);
-            math["max"] = new Func<object[], double>(args => args.Any() ? args.Max(a => (double)a) : double.NegativeInfinity);
-            math["min"] = new Func<object[], double>(args => args.Any() ? args.Min(a => (double)a) : double.PositiveInfinity);
+            math["max"] = new Func<object[], object>(args => args.Any() ? (object)args.Max(a => (double)a) : double.NegativeInfinity);
+            math["min"] = new Func<object[], object>(args => args.Any() ? (object)args.Min(a => (double)a) : double.PositiveInfinity);
             math["pow"] = new Func<double, double, double>(Math.Pow);
             math["random"] = new Func<double>(() => new Random().NextDouble());
             math["round"] = new Func<double, double>(Math.Round);
@@ -115,7 +115,6 @@ namespace SiegeEngine.Core.UI.JSParser
             json["parse"] = new Func<string, object>(s => JsonSerializer.Deserialize<object>(s));
             json["stringify"] = new Func<object, string>(o => JsonSerializer.Serialize(o));
             evaluator.RegisterGlobal("JSON", json);
-
             // Minimal window global for BrushPanelUI.html (supports the exact usage: window.addEventListener('load', () => {...}))
             var windowObj = new Dictionary<object, object>();
             windowObj["addEventListener"] = new Action<string, object>((eventName, callback) =>
@@ -127,7 +126,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
             });
             evaluator.RegisterGlobal("window", windowObj);
-
             // Date
             evaluator.RegisterGlobal("Date", new Func<object[], object>(args =>
             {
