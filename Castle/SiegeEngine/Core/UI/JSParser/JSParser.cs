@@ -73,30 +73,12 @@ namespace SiegeEngine.Core.UI.JSParser
                 {
                     string id = ParseIdentifier();
                     Token token;
-                    if (id == "true")
-                    {
-                        token = new Token(TokenType.True, true);
-                    }
-                    else if (id == "false")
-                    {
-                        token = new Token(TokenType.False, false);
-                    }
-                    else if (id == "null")
-                    {
-                        token = new Token(TokenType.Null, null);
-                    }
-                    else if (id == "this")
-                    {
-                        token = new Token(TokenType.This, null);
-                    }
-                    else if (id == "function")
-                    {
-                        token = new Token(TokenType.Function, null);
-                    }
-                    else
-                    {
-                        token = new Token(TokenType.Identifier, id);
-                    }
+                    if (id == "true") token = new Token(TokenType.True, true);
+                    else if (id == "false") token = new Token(TokenType.False, false);
+                    else if (id == "null") token = new Token(TokenType.Null, null);
+                    else if (id == "this") token = new Token(TokenType.This, null);
+                    else if (id == "function") token = new Token(TokenType.Function, null);
+                    else token = new Token(TokenType.Identifier, id);
                     return token;
                 }
                 if (char.IsDigit(_currentChar))
@@ -129,157 +111,123 @@ namespace SiegeEngine.Core.UI.JSParser
                         if (_currentChar == '=')
                         {
                             Advance();
-                            Token token = new Token(TokenType.EqualEqual, "==");
-                            return token;
+                            return new Token(TokenType.EqualEqual, "==");
                         }
                         if (_currentChar == '>')
                         {
                             Advance();
-                            Token token = new Token(TokenType.Arrow, "=>");
-                            return token;
+                            return new Token(TokenType.Arrow, "=>");
                         }
-                        Token token1 = new Token(TokenType.Assign, "=");
-                        return token1;
+                        return new Token(TokenType.Assign, "=");
                     case '!':
                         Advance();
                         if (_currentChar == '=')
                         {
                             Advance();
-                            Token token = new Token(TokenType.NotEqual, "!=");
-                            return token;
+                            return new Token(TokenType.NotEqual, "!=");
                         }
-                        Token token2 = new Token(TokenType.Not, "!");
-                        return token2;
+                        return new Token(TokenType.Not, "!");
                     case '<':
                         Advance();
                         if (_currentChar == '=')
                         {
                             Advance();
-                            Token token = new Token(TokenType.LessEqual, "<=");
-                            return token;
+                            return new Token(TokenType.LessEqual, "<=");
                         }
-                        Token token3 = new Token(TokenType.Less, "<");
-                        return token3;
+                        return new Token(TokenType.Less, "<");
                     case '>':
                         Advance();
                         if (_currentChar == '=')
                         {
                             Advance();
-                            Token token = new Token(TokenType.GreaterEqual, ">=");
-                            return token;
+                            return new Token(TokenType.GreaterEqual, ">=");
                         }
-                        Token token4 = new Token(TokenType.Greater, ">");
-                        return token4;
+                        return new Token(TokenType.Greater, ">");
                     case '+':
                         Advance();
                         if (_currentChar == '+')
                         {
                             Advance();
-                            Token token = new Token(TokenType.PlusPlus, "++");
-                            return token;
+                            return new Token(TokenType.PlusPlus, "++");
                         }
-                        Token token5 = new Token(TokenType.Plus, "+");
-                        return token5;
+                        return new Token(TokenType.Plus, "+");
                     case '-':
                         Advance();
                         if (_currentChar == '-')
                         {
                             Advance();
-                            Token token = new Token(TokenType.MinusMinus, "--");
-                            return token;
+                            return new Token(TokenType.MinusMinus, "--");
                         }
-                        Token token6 = new Token(TokenType.Minus, "-");
-                        return token6;
+                        return new Token(TokenType.Minus, "-");
                     case '*':
                         Advance();
-                        Token token7 = new Token(TokenType.Multiply, "*");
-                        return token7;
+                        return new Token(TokenType.Multiply, "*");
                     case '/':
                         Advance();
-                        Token token8 = new Token(TokenType.Divide, "/");
-                        return token8;
+                        return new Token(TokenType.Divide, "/");
                     case '%':
                         Advance();
-                        Token token9 = new Token(TokenType.Modulo, "%");
-                        return token9;
+                        return new Token(TokenType.Modulo, "%");
                     case '(':
                         Advance();
-                        Token token10 = new Token(TokenType.LeftParen, "(");
-                        return token10;
+                        return new Token(TokenType.LeftParen, "(");
                     case ')':
                         Advance();
-                        Token token11 = new Token(TokenType.RightParen, ")");
-                        return token11;
+                        return new Token(TokenType.RightParen, ")");
                     case '{':
                         Advance();
-                        Token token12 = new Token(TokenType.LeftBrace, "{");
-                        return token12;
+                        return new Token(TokenType.LeftBrace, "{");
                     case '}':
                         Advance();
-                        Token token13 = new Token(TokenType.RightBrace, "}");
-                        return token13;
+                        return new Token(TokenType.RightBrace, "}");
                     case '[':
                         Advance();
-                        Token token14 = new Token(TokenType.LeftBracket, "[");
-                        return token14;
+                        return new Token(TokenType.LeftBracket, "[");
                     case ']':
                         Advance();
-                        Token token15 = new Token(TokenType.RightBracket, "]");
-                        return token15;
+                        return new Token(TokenType.RightBracket, "]");
                     case ';':
                         Advance();
-                        Token token16 = new Token(TokenType.Semicolon, ";");
-                        return token16;
+                        return new Token(TokenType.Semicolon, ";");
                     case ',':
                         Advance();
-                        Token token17 = new Token(TokenType.Comma, ",");
-                        return token17;
+                        return new Token(TokenType.Comma, ",");
                     case '.':
                         Advance();
-                        Token token18 = new Token(TokenType.Dot, ".");
-                        return token18;
+                        return new Token(TokenType.Dot, ".");
                     case '?':
                         Advance();
-                        Token token19 = new Token(TokenType.Question, "?");
-                        return token19;
+                        return new Token(TokenType.Question, "?");
                     case ':':
                         Advance();
-                        Token token20 = new Token(TokenType.Colon, ":");
-                        return token20;
+                        return new Token(TokenType.Colon, ":");
                     case '&':
                         Advance();
                         if (_currentChar == '&')
                         {
                             Advance();
-                            Token token = new Token(TokenType.AndAnd, "&&");
-                            return token;
+                            return new Token(TokenType.AndAnd, "&&");
                         }
-                        Token token21 = new Token(TokenType.And, "&");
-                        return token21;
+                        return new Token(TokenType.And, "&");
                     case '|':
                         Advance();
                         if (_currentChar == '|')
                         {
                             Advance();
-                            Token token = new Token(TokenType.OrOr, "||");
-                            return token;
+                            return new Token(TokenType.OrOr, "||");
                         }
-                        Token token22 = new Token(TokenType.Or, "|");
-                        return token22;
+                        return new Token(TokenType.Or, "|");
                     case '^':
                         Advance();
-                        Token token23 = new Token(TokenType.Xor, "^");
-                        return token23;
+                        return new Token(TokenType.Xor, "^");
                     case '~':
                         Advance();
-                        Token token24 = new Token(TokenType.Tilde, "~");
-                        return token24;
+                        return new Token(TokenType.Tilde, "~");
                     default:
                         throw new Exception($"Unexpected character: {_currentChar}");
                 }
             }
-            Token token25 = new Token(TokenType.EOF, null);
-            return token25;
+            return new Token(TokenType.EOF, null);
         }
         private string ParseIdentifier()
         {
@@ -311,16 +259,13 @@ namespace SiegeEngine.Core.UI.JSParser
                 sb.Append(_currentChar);
                 Advance();
             }
-            if (_currentChar == quote)
-            {
-                Advance();
-            }
+            if (_currentChar == quote) Advance();
             return sb.ToString();
         }
         private JSRegex ParseRegex()
         {
             if (_currentChar != '/') return null;
-            Advance(); // skip /
+            Advance();
             StringBuilder body = new StringBuilder();
             while (_currentChar != '\0' && _currentChar != '/')
             {
@@ -341,7 +286,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
             }
             if (_currentChar != '/') return null;
-            Advance(); // skip closing /
+            Advance();
             StringBuilder flags = new StringBuilder();
             while (char.IsLetter(_currentChar))
             {
@@ -352,14 +297,11 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         private void SkipSingleLineComment()
         {
-            while (_currentChar != '\0' && _currentChar != '\n')
-            {
-                Advance();
-            }
+            while (_currentChar != '\0' && _currentChar != '\n') Advance();
         }
         private void SkipMultiLineComment()
         {
-            Advance(); // skip *
+            Advance();
             while (_currentChar != '\0')
             {
                 if (_currentChar == '*' && _position < _source.Length && _source[_position] == '/')
@@ -387,34 +329,13 @@ namespace SiegeEngine.Core.UI.JSParser
         private ASTNode ParseStatement()
         {
             SkipWhitespaceAndComments();
-            if (PeekKeyword("var") || PeekKeyword("let") || PeekKeyword("const"))
-            {
-                return ParseVariableDeclaration();
-            }
-            if (PeekKeyword("function"))
-            {
-                return ParseFunctionDeclaration();
-            }
-            if (PeekKeyword("if"))
-            {
-                return ParseIfStatement();
-            }
-            if (PeekKeyword("while"))
-            {
-                return ParseWhileStatement();
-            }
-            if (PeekKeyword("for"))
-            {
-                return ParseForStatement();
-            }
-            if (PeekKeyword("return"))
-            {
-                return ParseReturnStatement();
-            }
-            if (_currentChar == '{')
-            {
-                return ParseBlockStatement();
-            }
+            if (PeekKeyword("var") || PeekKeyword("let") || PeekKeyword("const")) return ParseVariableDeclaration();
+            if (PeekKeyword("function")) return ParseFunctionDeclaration();
+            if (PeekKeyword("if")) return ParseIfStatement();
+            if (PeekKeyword("while")) return ParseWhileStatement();
+            if (PeekKeyword("for")) return ParseForStatement();
+            if (PeekKeyword("return")) return ParseReturnStatement();
+            if (_currentChar == '{') return ParseBlockStatement();
             return ParseExpressionStatement();
         }
         private bool PeekKeyword(string keyword)
@@ -428,7 +349,7 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         private ASTNode ParseVariableDeclaration()
         {
-            string kind = ParseIdentifier(); // var, let, const
+            string kind = ParseIdentifier();
             SkipWhitespaceAndComments();
             string name = ParseIdentifier();
             SkipWhitespaceAndComments();
@@ -436,10 +357,7 @@ namespace SiegeEngine.Core.UI.JSParser
             SkipWhitespaceAndComments();
             ASTNode initializer = ParseExpression();
             SkipWhitespaceAndComments();
-            if (_currentChar == ';')
-            {
-                Advance();
-            }
+            if (_currentChar == ';') Advance();
             return new VariableDeclarationNode(kind, name, initializer);
         }
         private ASTNode ParseFunctionDeclaration()
@@ -531,10 +449,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 argument = ParseExpression();
             }
             SkipWhitespaceAndComments();
-            if (_currentChar == ';')
-            {
-                Advance();
-            }
+            if (_currentChar == ';') Advance();
             return new ReturnStatementNode(argument);
         }
         private ASTNode ParseBlockStatement()
@@ -554,10 +469,7 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             ASTNode expr = ParseExpression();
             SkipWhitespaceAndComments();
-            if (_currentChar == ';')
-            {
-                Advance();
-            }
+            if (_currentChar == ';') Advance();
             return new ExpressionStatementNode(expr);
         }
         private ASTNode ParseStatementNoSemi()
@@ -731,9 +643,18 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         private ASTNode ParseUnaryExpression()
         {
-            if (_currentChar == '+' || _currentChar == '-' || _currentChar == '!' || _currentChar == '~')
+            // Handle single-char unary operators directly (no GetOperator, no position corruption)
+            if (_currentChar == '!')
             {
-                string op = GetOperator();
+                Advance();
+                SkipWhitespaceAndComments();
+                ASTNode argument = ParseUnaryExpression();
+                return new UnaryExpressionNode("!", argument);
+            }
+            if (_currentChar == '+' || _currentChar == '-' || _currentChar == '~')
+            {
+                string op = _currentChar.ToString();
+                Advance();
                 SkipWhitespaceAndComments();
                 ASTNode argument = ParseUnaryExpression();
                 return new UnaryExpressionNode(op, argument);
@@ -919,7 +840,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (_currentChar == ',')
                 {
                     Advance();
-                    elements.Add(null); // elision
+                    elements.Add(null);
                     SkipWhitespaceAndComments();
                     continue;
                 }
@@ -941,10 +862,7 @@ namespace SiegeEngine.Core.UI.JSParser
             while (_currentChar != '}')
             {
                 Token keyToken = GetNextToken();
-                if (keyToken.Type == TokenType.RightBrace)
-                {
-                    break;
-                }
+                if (keyToken.Type == TokenType.RightBrace) break;
                 ASTNode keyNode;
                 if (keyToken.Type == TokenType.Identifier)
                 {
@@ -1007,6 +925,7 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         private string GetOperator()
         {
+            // Only called for multi-char operators - no single-char unary here
             StringBuilder sb = new StringBuilder();
             sb.Append(_currentChar);
             Advance();
@@ -1015,6 +934,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 sb.Append(_currentChar);
                 Advance();
             }
+            _position--; // back up for next token
             return sb.ToString();
         }
     }
