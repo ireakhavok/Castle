@@ -4,6 +4,7 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Numerics;
+using System.Globalization;
 
 namespace SiegeEngine.Core.UI
 {
@@ -22,6 +23,24 @@ namespace SiegeEngine.Core.UI
 
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
+            // Parse ALL value properties from HTML attributes (this is why they were not being taken in)
+            if (Attributes.TryGetValue("min", out string minStr) && float.TryParse(minStr, NumberStyles.Any, CultureInfo.InvariantCulture, out float minVal))
+            {
+                Min = minVal;
+            }
+            if (Attributes.TryGetValue("max", out string maxStr) && float.TryParse(maxStr, NumberStyles.Any, CultureInfo.InvariantCulture, out float maxVal))
+            {
+                Max = maxVal;
+            }
+            if (Attributes.TryGetValue("step", out string stepStr) && float.TryParse(stepStr, NumberStyles.Any, CultureInfo.InvariantCulture, out float stepVal) && stepVal > 0f)
+            {
+                Step = stepVal;
+            }
+            if (Attributes.TryGetValue("value", out string valStr) && float.TryParse(valStr, NumberStyles.Any, CultureInfo.InvariantCulture, out float parsed))
+            {
+                Value = parsed;
+            }
+
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
             if (float.IsNaN(ComputedWidth)) ComputedWidth = 220f;
             if (float.IsNaN(ComputedHeight)) ComputedHeight = 32f;
