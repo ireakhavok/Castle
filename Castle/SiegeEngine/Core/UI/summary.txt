@@ -1,4 +1,9 @@
 Folder: JSParser
+- File: AstNodes.cs
+  - Class: JSRegex (Namespace: None)
+    - Dependencies: System.Collections.Generic
+    - Methods:
+      - constructor JSRegex( string flags, string pattern)
 - File: JSBinding.cs
   - Class: JSBinding (Namespace: SiegeEngine.Core.UI.JSParser)
     - Dependencies: System, System.Collections.Generic
@@ -68,10 +73,10 @@ Folder: JSParser
       - void addEventListener( object callback, string eventName)
       - void removeEventListener( object callback, string eventName)
 - File: JSEvaluator.cs
-  - Class: JSRegex (Namespace: SiegeEngine.Core.UI.JSParser)
+  - Class: ReturnException (Namespace: SiegeEngine.Core.UI.JSParser)
+    - Inherits: Exception
+    
     - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Reflection, System.Text.RegularExpressions
-    - Methods:
-      - constructor JSRegex( string flags, string pattern)
 - File: JSParser.cs
   - Class: Token (Namespace: SiegeEngine.Core.UI.JSParser)
     - Dependencies: System, System.Collections.Generic, System.Text
@@ -488,6 +493,7 @@ Folder: Root
       - constructor UlElement()
 
 Class Hierarchy:
+JSRegex
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.ButtonElement
 SiegeEngine.Core.UI.CompanionPanel
@@ -502,7 +508,7 @@ SiegeEngine.Core.UI.JSParser.JSContext
 SiegeEngine.Core.UI.JSParser.JSDate
 SiegeEngine.Core.UI.JSParser.JSDocument
 SiegeEngine.Core.UI.JSParser.JSElement
-SiegeEngine.Core.UI.JSParser.JSRegex
+SiegeEngine.Core.UI.JSParser.ReturnException
 SiegeEngine.Core.UI.JSParser.Token
 SiegeEngine.Core.UI.LiElement
 SiegeEngine.Core.UI.MenuUIOverlay
