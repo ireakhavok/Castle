@@ -30,37 +30,19 @@ namespace SiegeEngine.Core.UI
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
-
             float trackY = ComputedContentY + (ComputedContentHeight - 6f) / 2f;
-
             // Track background
             float[] trackNdc = GetNdcQuad(ComputedContentX, trackY, ComputedContentWidth, 6f, parentMatrix, viewportWidth, viewportHeight);
             quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.35f, 0.35f, 0.35f, 1f));
-
             // Filled portion
             float percent = Math.Clamp((Value - Min) / (Max - Min), 0f, 1f);
             float filledW = percent * ComputedContentWidth;
             float[] filledNdc = GetNdcQuad(ComputedContentX, trackY, filledW, 6f, parentMatrix, viewportWidth, viewportHeight);
             quadRenderer.DrawNdcQuad(filledNdc, new Vector4(0.2f, 0.6f, 1f, 1f));
-
             // Thumb
             float thumbX = ComputedContentX + filledW - 8f;
             float[] thumbNdc = GetNdcQuad(thumbX, ComputedContentY + 4f, 16f, ComputedContentHeight - 8f, parentMatrix, viewportWidth, viewportHeight);
             quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.95f, 0.95f, 0.95f, 1f));
-        }
-
-        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
-        {
-            bool over = base.HandleClick(mousePos, viewportWidth, viewportHeight);
-            if (over && IsActive) // ONLY update on actual mouse press + drag
-            {
-                float relX = Math.Clamp(mousePos.X - ComputedContentX, 0f, ComputedContentWidth);
-                float percent = relX / ComputedContentWidth;
-                Value = Min + percent * (Max - Min);
-                if (Step > 0) Value = (float)Math.Round(Value / Step) * Step;
-                Value = Math.Clamp(Value, Min, Max);
-            }
-            return over;
         }
     }
 }
