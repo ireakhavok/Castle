@@ -45,6 +45,16 @@ namespace SiegeEngine.Core.UI
             ComputedContentHeight = singleContentH;
             ComputedHeight = singleBoxH;
             ComputedBackgroundHeight = singleBoxH - borderW.X - borderW.Z;
+            // Respect the width allocated by flex container (.control-row + select { flex: 1 })
+            // This makes the select span the full remaining space after the label, matching browser behavior
+            if (!float.IsNaN(parentWidth) && parentWidth > ComputedWidth)
+            {
+                ComputedWidth = parentWidth;
+                ComputedBackgroundWidth = ComputedWidth - borderW.W - borderW.Y;
+                if (ComputedBackgroundWidth < 0) ComputedBackgroundWidth = 0;
+                ComputedContentWidth = ComputedBackgroundWidth - pad.W - pad.Y;
+                if (ComputedContentWidth < 0) ComputedContentWidth = 0;
+            }
             if (IsOpen)
             {
                 float currentY = ComputedPosition.Y + ComputedHeight;
