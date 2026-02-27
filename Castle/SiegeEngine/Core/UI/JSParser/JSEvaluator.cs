@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 namespace SiegeEngine.Core.UI.JSParser
 {
@@ -353,7 +354,9 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Console.WriteLine($"[JSElement] Triggering input listeners after C# value set on {tag}#{id}");
                             jsElem.overlay.RefreshUI();
-                            jsElem.overlay.InvokeListeners(jsElem.elem, "input");
+                            // PROGRAMMATIC .value = FROM JS ARROW FUNCTIONS MUST NOT RE-FIRE 'input' (prevents two-way loop)
+                            // User typing still fires via UIOverlay keyboard path only
+                            // jsElem.overlay.InvokeListeners(jsElem.elem, "input");
                             jsElem.overlay.TriggerChange(jsElem.elem);
                         }
                     }
@@ -432,7 +435,7 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             if (callee is JSArrowClosure closure)
             {
-                Console.WriteLine($"[ArrowCall] Invoking closure - captured keys: {string.Join(",", closure.Captured.Keys)}  args.Count={args.Count}");
+                Console.WriteLine($"[ArrowCall] Invoking closure - captured keys: {string.Join(",", closure.Captured.Keys)} args.Count={args.Count}");
                 if (closure.Params.Count != args.Count)
                 {
                     throw new Exception("Argument count mismatch");
@@ -547,14 +550,12 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             _globalScope[name] = value;
         }
-
         private class JSArrowClosure
         {
             public List<ASTNode> Params { get; }
             public ASTNode Body { get; }
             public Dictionary<string, object> Captured { get; }
             public JSEvaluator Evaluator { get; }
-
             public JSArrowClosure(List<ASTNode> paramsList, ASTNode body, Dictionary<string, object> captured, JSEvaluator evaluator)
             {
                 Params = paramsList;

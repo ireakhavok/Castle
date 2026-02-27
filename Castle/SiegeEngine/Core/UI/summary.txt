@@ -38,7 +38,7 @@ Folder: JSParser
         - Calls: css.Matches
 - File: JSElement.cs
   - Class: JSElement (Namespace: SiegeEngine.Core.UI.JSParser)
-    - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq
+    - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.Globalization, System.Linq
     - Fields:
       - HtmlElement elem
       - UIOverlay overlay
