@@ -22,6 +22,7 @@ namespace ToolChest
             }
             protected override void HandleUIClick(HtmlElement elem)
             {
+                base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);
             }
         }
