@@ -58,6 +58,38 @@
                 background: rgba(124, 255, 203, 0.2);
             }
 
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 28px;
+            left: 0;
+            background: #252526;
+            border: 1px solid #383838;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            min-width: 180px;
+            z-index: 1000;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            color: #7CFFCB;
+            white-space: nowrap;
+        }
+
+            .dropdown-item:hover {
+                background: #383838;
+                color: #a0ffdb;
+            }
+
         .ide-title {
             margin-left: auto;
             padding: 0 20px 0 12px;
@@ -79,16 +111,30 @@
     <div id="ide-root">
         <!-- Professional SiegeEngine IDE Menu Bar -->
         <nav id="ide-menu-bar">
-            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenTerrain">Castle</div>
-            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenAnimation">Animation</div>
-            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenAssetBrowser">Assets</div>
-            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenProperties">Properties</div>
-            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenTreeView">Hierarchy</div>
+            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenFile">File</div>
+            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenEdit">Edit</div>
+            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenView">View</div>
+            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenCastle">Castle</div>
+            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenTools">Tools</div>
+            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenWindow">Window</div>
+            <div class="menu-item" data-hook="CastleBuilder.MenuCommands.OpenHelp">Help</div>
+
+            <!-- Panels submenu -->
+            <div class="menu-item dropdown">
+                Panels
+                <div class="dropdown-content">
+                    <div class="dropdown-item" data-hook="MapRoom.TerrainCreatorPanel.OpenBlank">Terrain Creator</div>
+                    <div class="dropdown-item" data-hook="ReadingChamber.AnimationViewerPanel.Open">Animation Viewer</div>
+                    <div class="dropdown-item" data-hook="ToolChest.AssetBrowserPanel.Open">Asset Browser</div>
+                    <div class="dropdown-item" data-hook="ToolChest.PropertiesPanel.Open">Properties</div>
+                    <div class="dropdown-item" data-hook="ToolChest.TreeViewPanel.Open">Hierarchy</div>
+                </div>
+            </div>
 
             <div class="ide-title">SiegeEngine IDE</div>
         </nav>
 
-        <!-- Content area for all panels -->
+        <!-- Content area -->
         <div id="ide-content"></div>
     </div>
 </body>
