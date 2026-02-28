@@ -14,7 +14,7 @@ namespace CastleBuilder
 {
     public class IDEBasePanel : BasePanel
     {
-        private const float NavBarHeight = 28f; // Matches the new menu bar height
+        private const float NavBarHeight = 28f;
 
         private class IDEUIOverlay : UIOverlay
         {
@@ -37,12 +37,17 @@ namespace CastleBuilder
                 string className = parts[1];
                 string methodName = parts[2];
 
-                string fullTypeName = $"{ns}.{className}";
-                Type type = Type.GetType(fullTypeName) ?? Type.GetType(fullTypeName + ", CastleBuilder");
+                // Robust type resolution (searches all loaded assemblies)
+                Type type = null;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    type = asm.GetType($"{ns}.{className}");
+                    if (type != null) break;
+                }
 
                 if (type == null)
                 {
-                    Console.WriteLine($"[IDE Menu] Type not found: {fullTypeName}");
+                    Console.WriteLine($"[IDE Menu] Type not found: {ns}.{className}");
                     return;
                 }
 
@@ -52,7 +57,7 @@ namespace CastleBuilder
                     try
                     {
                         method.Invoke(null, new object[] { _renderContext, _controlContext, _window, _eventBus });
-                        Console.WriteLine($"[IDE Menu] Successfully opened panel: {hook}");
+                        Console.WriteLine($"[IDE Menu] SUCCESS: Opened panel via {hook}");
                     }
                     catch (Exception ex)
                     {
@@ -61,7 +66,7 @@ namespace CastleBuilder
                 }
                 else
                 {
-                    Console.WriteLine($"[IDE Menu] Static method {methodName} not found on {fullTypeName}");
+                    Console.WriteLine($"[IDE Menu] Method '{methodName}' not found on {ns}.{className}");
                 }
             }
         }
@@ -69,7 +74,7 @@ namespace CastleBuilder
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
-            AllowDragging = true;     // Keep the standard title bar for dragging
+            AllowDragging = true;
             DockState = DockState.Tabbed;
             IsModal = false;
         }
