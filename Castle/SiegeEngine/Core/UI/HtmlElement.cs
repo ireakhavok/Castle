@@ -126,6 +126,15 @@ namespace SiegeEngine.Core.UI
                 baseY = parentPositionY;
                 refWidth = parentWidth;
                 refHeight = parentHeight;
+                if (Parent != null)
+                {
+                    Vector4 pPad = ParsePaddings(Parent.Style, 0, viewportWidth, viewportHeight);
+                    Vector4 pBorder = ParseBorderWidths(Parent.Style, 0, viewportWidth, viewportHeight);
+                    refWidth = parentWidth - pPad.W - pPad.Y - pBorder.W - pBorder.Y;
+                    refHeight = parentHeight - pPad.X - pPad.Z - pBorder.X - pBorder.Z;
+                    if (refWidth < 0) refWidth = 0;
+                    if (refHeight < 0) refHeight = 0;
+                }
             }
             float fs = ParseSize(effectiveStyle.FontSizeStr, parentFs, viewportWidth, viewportHeight);
             if (float.IsNaN(fs)) fs = parentFs;
