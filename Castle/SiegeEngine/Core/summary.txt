@@ -681,6 +681,7 @@ Folder: Managers
       - int _lastWinW
       - int _lastWinH
       - IPanel _draggingFloatingPanel
+      - bool _needsLayout
     - Methods:
       - constructor DockManager( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
       - void AddPanel(IPanel panel)
@@ -1463,7 +1464,7 @@ Folder: UI
   - Class: InputElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Globalization, System.Numerics
     - Fields:
       - bool _cursorVisible
       - float _cursorTimer
@@ -1476,6 +1477,7 @@ Folder: UI
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: ParseBorderWidths, ParsePaddings, textRenderer.GetTextSize
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: newValue.ToString
       - bool Update( IControlContext controlContext,  nint window, float deltaTime)
 - File: JSBinding.cs
   - Class: JSBinding (Namespace: SiegeEngine.Core.UI.JSParser)
@@ -1615,13 +1617,12 @@ Folder: UI
   - Class: RangeElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: InputElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Globalization, System.Numerics
     - Methods:
       - constructor RangeElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: GetNdcQuad, quadRenderer.DrawNdcQuad
-      - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
 - File: SelectElement.cs
   - Class: SelectElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
