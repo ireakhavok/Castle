@@ -17,4 +17,14 @@
   </None>
 </ItemGroup>
 
+<ItemGroup>
+  <None Remove="IDE_UI.html" />
+</ItemGroup>
+
+<ItemGroup>
+  <Content Include="IDE_UI.html">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </Content>
+</ItemGroup>
+
 </Project>
