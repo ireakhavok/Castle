@@ -263,6 +263,7 @@ namespace SiegeEngine.Core.Managers
         private int _lastWinW;
         private int _lastWinH;
         private IPanel _draggingFloatingPanel;
+        private bool _needsLayout = true;
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -282,16 +283,19 @@ namespace SiegeEngine.Core.Managers
                 _root.AddPanel(panel);
                 panel.AllowDragging = false;
             }
+            _needsLayout = true;
         }
         public void RemovePanel(IPanel panel)
         {
             if (_floatingPanels.Remove(panel))
             {
                 if (_draggingFloatingPanel == panel) _draggingFloatingPanel = null;
+                _needsLayout = true;
                 return;
             }
             if (_root.RemovePanel(panel))
             {
+                _needsLayout = true;
             }
         }
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
@@ -308,8 +312,13 @@ namespace SiegeEngine.Core.Managers
                 }
                 _lastWinW = winW;
                 _lastWinH = winH;
+                _needsLayout = true;
             }
-            _root.ComputeLayout(0, 0, winW, winH);
+            if (_needsLayout)
+            {
+                _root.ComputeLayout(0, 0, winW, winH);
+                _needsLayout = false;
+            }
             // ABSOLUTE HIGHEST PRIORITY - drag continuation for ALL panels (including modal FileSelectorPanel)
             if (_draggingFloatingPanel != null)
             {
@@ -440,6 +449,7 @@ namespace SiegeEngine.Core.Managers
                 split.Right = newTabbed;
             }
             _root = split;
+            _needsLayout = true;
         }
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
