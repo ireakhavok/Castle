@@ -6,6 +6,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using System;
+using System.IO;
 using System.Numerics;
 
 namespace CastleBuilder
@@ -34,12 +35,15 @@ namespace CastleBuilder
             _navBar = new NavElement();
             _navBar.SetupIDEMenu();
 
-            string ideHtml = @"
-<div style='display:flex;flex-direction:column;height:100%;width:100%;'>
-  <nav id='ide-menu-bar' style='height:20px;background:#121212;color:#ddd;display:flex;align-items:center;padding:0 8px;font-size:13px;gap:16px;border-bottom:1px solid #444;user-select:none;'></nav>
-  <div id='ide-content' style='flex:1;overflow:auto;'></div>
-</div>";
-            _uiOverlay.LoadUI(ideHtml);
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
+            if (!File.Exists(htmlPath))
+            {
+                Console.WriteLine($"[IDEBasePanel] ERROR: IDE_UI.html not found at {htmlPath}. Please place the file in the executable directory.");
+                return;
+            }
+
+            string html = File.ReadAllText(htmlPath);
+            _uiOverlay.LoadUI(html);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
@@ -66,6 +70,12 @@ namespace CastleBuilder
         public override void Dispose()
         {
             base.Dispose();
+        }
+
+        public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            var panel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
     }
 }
