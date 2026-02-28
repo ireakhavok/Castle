@@ -1,0 +1,81 @@
+// Folder: CastleBuilder
+// File: IDE_UI.html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CastleBuilder IDE</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            height: 100%;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 13px;
+            background: #1e1e1e;
+            color: #ddd;
+            overflow: hidden;
+        }
+
+        #ide-root {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        #ide-menu-bar {
+            height: 20px;
+            background: #121212;
+            color: #ddd;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            font-size: 13px;
+            gap: 16px;
+            border-bottom: 1px solid #444;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+            #ide-menu-bar > div {
+                padding: 0 12px;
+                height: 100%;
+                line-height: 20px;
+                cursor: pointer;
+            }
+
+                #ide-menu-bar > div:hover {
+                    background: #2a2a2a;
+                }
+
+        #ide-content {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div id="ide-root">
+        <!-- Static 20px IDE Menu Bar (populated by NavElement.SetupIDEMenu) -->
+        <nav id="ide-menu-bar">
+            <div data-hook="CastleBuilder.File.NewProject">File</div>
+            <div data-hook="CastleBuilder.Edit.Undo">Edit</div>
+            <div data-hook="ToolChest.AssetBrowserPanel.Open">View</div>
+            <div data-hook="MapRoom.TerrainCreatorPanel.OpenBlank">Castle</div>
+            <div data-hook="ToolChest.AssetBrowserPanel.Open">Tools</div>
+            <div data-hook="CastleBuilder.Window.Properties">Window</div>
+            <div data-hook="CastleBuilder.Help.About">Help</div>
+        </nav>
+
+        <!-- Content area for all component panels / DockManager -->
+        <div id="ide-content">
+            <!-- All other panels (ReadingChamber, MapRoom, ToolChest) will dock here -->
+        </div>
+    </div>
+</body>
+</html>
