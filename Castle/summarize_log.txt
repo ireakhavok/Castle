@@ -1692,6 +1692,13 @@ Found: ToolChest
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest
 Found: .
 Found: ..
+Found: AssetBrowserPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\AssetBrowserPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\AssetBrowserPanel.cs
+Read 5487 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\AssetBrowserPanel.cs
+Namespace: ToolChest
+Found 10 dependencies
+Found: AssetBrowserPanelUI.html
 Found: bin
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\bin
 Found: Brush.cs
@@ -1707,9 +1714,30 @@ Read 2639 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\
 Namespace: ToolChest
 Found 8 dependencies
 Found: BrushPanelUI.html
+Found: ConsolePanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
+Read 188 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
+Namespace: ToolChest
+Found 5 dependencies
+Found: ConsolePanelUI.html
 Found: obj
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\obj
+Found: PropertiesPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
+Read 191 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
+Namespace: ToolChest
+Found 5 dependencies
+Found: PropertiesPanelUI.html
 Found: ToolChest.csproj
+Found: TreeViewPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
+Read 6585 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
+Namespace: ToolChest
+Found 9 dependencies
+Found: TreeViewPanelUI.html
 Found: Trebuchet
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet
 Found: .

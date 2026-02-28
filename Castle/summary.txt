@@ -2459,6 +2459,16 @@ Folder: ThroneRoom
   - Class: Class1 (Namespace: ThroneRoom)
 
 Folder: ToolChest
+- File: AssetBrowserPanel.cs
+  - Class: AssetBrowserUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Text
+    - Fields:
+      - AssetBrowserPanel _parent
+    - Methods:
+      - void HandleDataHook(string hook)
+      - void HandleUIClick(HtmlElement elem)
 - File: Brush.cs
   - Class: Brush (Namespace: ToolChest)
     - Dependencies: System.Numerics
@@ -2471,6 +2481,15 @@ Folder: ToolChest
       - BrushPanel _parent
     - Methods:
       - void HandleDataHook(string hook)
+- File: ConsolePanel.cs
+  - Class: ConsolePanel (Namespace: ToolChest)
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
+- File: PropertiesPanel.cs
+  - Class: PropertiesPanel (Namespace: ToolChest)
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
+- File: TreeViewPanel.cs
+  - Class: TreeNode (Namespace: ToolChest)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Text
 
 Folder: Trebuchet
 - File: Launcher.cs
@@ -2691,6 +2710,10 @@ SiegeEngine.Systems.LightingSystem
 SiegeEngine.Systems.PlayerControllerSystem
 SwitchSceneEvent
 ThroneRoom.Class1
+ToolChest.AssetBrowserUIOverlay
 ToolChest.Brush
 ToolChest.BrushUIOverlay
+ToolChest.ConsolePanel
+ToolChest.PropertiesPanel
+ToolChest.TreeNode
 Trebuchet.Launcher
