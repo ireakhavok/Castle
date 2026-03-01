@@ -447,12 +447,12 @@ namespace SiegeEngine.Core.UI
                 float trackY = 0f;
                 float trackW = 12f;
                 float trackH = h;
-                float[] trackNdc = HtmlElement.GetNdcQuad(trackX, trackY, trackW, trackH, Matrix4x4.Identity, w, h);
+                float[] trackNdc = HtmlLayoutUtils.GetNdcQuad(trackX, trackY, trackW, trackH, Matrix4x4.Identity, w, h);
                 _quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.15f, 0.15f, 0.15f, 0.95f));
                 float thumbRatio = h / ContentFullHeight;
                 float thumbH = Math.Max(30f, trackH * thumbRatio);
                 float thumbY = (ScrollOffsetY / (ContentFullHeight - h)) * (trackH - thumbH);
-                float[] thumbNdc = HtmlElement.GetNdcQuad(trackX + 1f, thumbY, trackW - 2f, thumbH, Matrix4x4.Identity, w, h);
+                float[] thumbNdc = HtmlLayoutUtils.GetNdcQuad(trackX + 1f, thumbY, trackW - 2f, thumbH, Matrix4x4.Identity, w, h);
                 _quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.55f, 0.55f, 0.55f, 1f));
             }
             _renderContext.Enable(_renderContext.Enums.DepthTest);

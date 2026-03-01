@@ -1,11 +1,10 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: SelectElement.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.UI
 {
     public class SelectElement : HtmlElement
@@ -17,7 +16,7 @@ namespace SiegeEngine.Core.UI
         }
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
-            float fs = ParseSize(Style.FontSizeStr, parentFs, viewportWidth, viewportHeight);
+            float fs = HtmlLayoutUtils.ParseSize(Style.FontSizeStr, parentFs, viewportWidth, viewportHeight);
             if (float.IsNaN(fs)) fs = parentFs;
             Style.FontSize = fs;
             float lineH = textRenderer.GetLineHeight(fs, Style.FontFamily ?? "Arial");
@@ -39,8 +38,8 @@ namespace SiegeEngine.Core.UI
             Style.Overflow = "hidden";
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
             float singleContentH = lineH;
-            Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-            Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+            Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
             float singleBoxH = singleContentH + pad.X + pad.Z + borderW.X + borderW.Z;
             ComputedContentHeight = singleContentH;
             ComputedHeight = singleBoxH;
@@ -91,7 +90,7 @@ namespace SiegeEngine.Core.UI
             // Draw select background
             if (effectiveStyle.BackgroundColor != Vector4.Zero)
             {
-                float[] selectNdc = GetNdcQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, local, viewportWidth, viewportHeight);
+                float[] selectNdc = HtmlLayoutUtils.GetNdcQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(selectNdc, effectiveStyle.BackgroundColor);
             }
             // Borders for select
@@ -106,22 +105,22 @@ namespace SiegeEngine.Core.UI
             Vector4 borderW = BorderWidth;
             if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderTopC);
             }
             if (borderBottomS != "none" && borderBottomC != Vector4.Zero && borderW.Z > 0)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW.Z, ComputedWidth, borderW.Z, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW.Z, ComputedWidth, borderW.Z, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderBottomC);
             }
             if (borderLeftS != "none" && borderLeftC != Vector4.Zero && borderW.W > 0)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, borderW.W, ComputedHeight, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, borderW.W, ComputedHeight, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderLeftC);
             }
             if (borderRightS != "none" && borderRightC != Vector4.Zero && borderW.Y > 0)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderRightC);
             }
             // Render children (only selected when not open)
@@ -159,7 +158,7 @@ namespace SiegeEngine.Core.UI
             // Draw dropdown background
             if (effectiveStyle.BackgroundColor != Vector4.Zero)
             {
-                float[] dropdownNdc = GetNdcQuad(ComputedBackgroundX, dropdownY, ComputedBackgroundWidth, dropdownH, local, viewportWidth, viewportHeight);
+                float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(ComputedBackgroundX, dropdownY, ComputedBackgroundWidth, dropdownH, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(dropdownNdc, effectiveStyle.BackgroundColor);
             }
             // Dropdown borders
@@ -174,22 +173,22 @@ namespace SiegeEngine.Core.UI
             Vector4 borderW = BorderWidth;
             if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X, dropdownY, ComputedWidth, borderW.X, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, dropdownY, ComputedWidth, borderW.X, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderTopC);
             }
             if (borderBottomS != "none" && borderBottomC != Vector4.Zero && borderW.Z > 0)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X, dropdownY + dropdownH - borderW.Z, ComputedWidth, borderW.Z, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, dropdownY + dropdownH - borderW.Z, ComputedWidth, borderW.Z, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderBottomC);
             }
             if (borderLeftS != "none" && borderLeftC != Vector4.Zero && borderW.W > 0)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X, dropdownY, borderW.W, dropdownH, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, dropdownY, borderW.W, dropdownH, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderLeftC);
             }
             if (borderRightS != "none" && borderRightC != Vector4.Zero && borderW.Y > 0)
             {
-                float[] ndc = GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, dropdownY, borderW.Y, dropdownH, local, viewportWidth, viewportHeight);
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, dropdownY, borderW.Y, dropdownH, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderRightC);
             }
             // Render options
@@ -214,8 +213,8 @@ namespace SiegeEngine.Core.UI
                 }
             }
             if (maxW == 0) maxW = 100; // Default width if no options
-            Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-            Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+            Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
             float iw = maxW + pad.W + pad.Y + borderW.W + borderW.Y;
             float ih = textH + pad.X + pad.Z + borderW.X + borderW.Z;
             return new Vector2(iw, ih);

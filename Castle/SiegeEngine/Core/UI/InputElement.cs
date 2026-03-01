@@ -66,7 +66,7 @@ namespace SiegeEngine.Core.UI
                     float cursorY = ComputedContentY;
                     float cursorH = fs;
                     float cursorW = 2f;
-                    float[] cursorNdc = GetNdcQuad(cursorX, cursorY, cursorW, cursorH, parentMatrix, viewportWidth, viewportHeight);
+                    float[] cursorNdc = HtmlLayoutUtils.GetNdcQuad(cursorX, cursorY, cursorW, cursorH, parentMatrix, viewportWidth, viewportHeight);
                     quadRenderer.DrawNdcQuad(cursorNdc, Style.TextColor != Vector4.Zero ? Style.TextColor : new Vector4(0f, 0f, 0f, 1f));
                 }
             }
@@ -97,8 +97,8 @@ namespace SiegeEngine.Core.UI
         {
             if (Type == "checkbox" || Type == "radio")
             {
-                Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-                Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+                Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+                Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
                 float iw = fs + pad.W + pad.Y + borderW.W + borderW.Y;
                 float ih = fs + pad.X + pad.Z + borderW.X + borderW.Z;
                 return new Vector2(iw, ih);
@@ -108,8 +108,8 @@ namespace SiegeEngine.Core.UI
                 string sizeText = string.IsNullOrEmpty(Value) ? string.IsNullOrEmpty(Placeholder) ? " " : Placeholder : Value;
                 float textW = textRenderer.GetTextSize(sizeText, fs).X;
                 float textH = textRenderer.GetTextSize("A", fs).Y;
-                Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-                Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+                Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+                Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
                 float iw = textW + pad.W + pad.Y + borderW.W + borderW.Y;
                 float ih = textH + pad.X + pad.Z + borderW.X + borderW.Z;
                 return new Vector2(iw, ih);

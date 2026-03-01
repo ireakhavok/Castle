@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: HtmlElement.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
@@ -8,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.Core.UI
 {
     public class HtmlElement
@@ -76,7 +75,6 @@ namespace SiegeEngine.Core.UI
             if (IsActive && PseudoStyles.TryGetValue("active", out CssStyle a))
                 effective = a;
             string display = effective.Display;
-
             // ONLY for nav submenus (nav > ul > li > ul and deeper) - exactly like SelectElement visibility toggle
             // Non-nav <ul>/<li> completely untouched
             if (Tag.ToLower() == "ul")
@@ -101,7 +99,6 @@ namespace SiegeEngine.Core.UI
                     }
                 }
             }
-
             return display;
         }
         private HtmlElement FindContainingBlock()
@@ -155,23 +152,23 @@ namespace SiegeEngine.Core.UI
                 refHeight = parentHeight;
                 if (Parent != null)
                 {
-                    Vector4 pPad = ParsePaddings(Parent.Style, 0, viewportWidth, viewportHeight);
-                    Vector4 pBorder = ParseBorderWidths(Parent.Style, 0, viewportWidth, viewportHeight);
+                    Vector4 pPad = HtmlLayoutUtils.ParsePaddings(Parent.Style, 0, viewportWidth, viewportHeight);
+                    Vector4 pBorder = HtmlLayoutUtils.ParseBorderWidths(Parent.Style, 0, viewportWidth, viewportHeight);
                     refWidth = parentWidth - pPad.W - pPad.Y - pBorder.W - pBorder.Y;
                     refHeight = parentHeight - pPad.X - pPad.Z - pBorder.X - pBorder.Z;
                     if (refWidth < 0) refWidth = 0;
                     if (refHeight < 0) refHeight = 0;
                 }
             }
-            float fs = ParseSize(effectiveStyle.FontSizeStr, parentFs, viewportWidth, viewportHeight);
+            float fs = HtmlLayoutUtils.ParseSize(effectiveStyle.FontSizeStr, parentFs, viewportWidth, viewportHeight);
             if (float.IsNaN(fs)) fs = parentFs;
             Style.FontSize = fs;
-            float left = ParseSize(effectiveStyle.LeftStr, refWidth, viewportWidth, viewportHeight);
-            float top = ParseSize(effectiveStyle.TopStr, refHeight, viewportWidth, viewportHeight);
-            float right = ParseSize(effectiveStyle.RightStr, refWidth, viewportWidth, viewportHeight);
-            float bottom = ParseSize(effectiveStyle.BottomStr, refHeight, viewportWidth, viewportHeight);
-            float w = ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
-            float h = ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
+            float left = HtmlLayoutUtils.ParseSize(effectiveStyle.LeftStr, refWidth, viewportWidth, viewportHeight);
+            float top = HtmlLayoutUtils.ParseSize(effectiveStyle.TopStr, refHeight, viewportWidth, viewportHeight);
+            float right = HtmlLayoutUtils.ParseSize(effectiveStyle.RightStr, refWidth, viewportWidth, viewportHeight);
+            float bottom = HtmlLayoutUtils.ParseSize(effectiveStyle.BottomStr, refHeight, viewportWidth, viewportHeight);
+            float w = HtmlLayoutUtils.ParseSize(effectiveStyle.WidthStr, refWidth, viewportWidth, viewportHeight);
+            float h = HtmlLayoutUtils.ParseSize(effectiveStyle.HeightStr, refHeight, viewportWidth, viewportHeight);
             string overflow = effectiveStyle.Overflow ?? "";
             string overflowY = effectiveStyle.OverflowY ?? "";
             bool hasVerticalOverflow = (overflow == "auto" || overflow == "scroll" || overflowY == "auto" || overflowY == "scroll");
@@ -185,13 +182,13 @@ namespace SiegeEngine.Core.UI
             {
                 w = refWidth;
             }
-            float minW = ParseSize(effectiveStyle.MinWidthStr, refWidth, viewportWidth, viewportHeight);
-            float minH = ParseSize(effectiveStyle.MinHeightStr, refHeight, viewportWidth, viewportHeight);
-            float maxW = ParseSize(effectiveStyle.MaxWidthStr, refWidth, viewportWidth, viewportHeight);
-            float maxH = ParseSize(effectiveStyle.MaxHeightStr, refHeight, viewportWidth, viewportHeight);
-            Vector4 pad = ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight);
-            Vector4 margin = ParseMargins(effectiveStyle, refWidth, viewportWidth, viewportHeight);
-            Vector4 borderW = ParseBorderWidths(effectiveStyle, refWidth, viewportWidth, viewportHeight);
+            float minW = HtmlLayoutUtils.ParseSize(effectiveStyle.MinWidthStr, refWidth, viewportWidth, viewportHeight);
+            float minH = HtmlLayoutUtils.ParseSize(effectiveStyle.MinHeightStr, refHeight, viewportWidth, viewportHeight);
+            float maxW = HtmlLayoutUtils.ParseSize(effectiveStyle.MaxWidthStr, refWidth, viewportWidth, viewportHeight);
+            float maxH = HtmlLayoutUtils.ParseSize(effectiveStyle.MaxHeightStr, refHeight, viewportWidth, viewportHeight);
+            Vector4 pad = HtmlLayoutUtils.ParsePaddings(effectiveStyle, refWidth, viewportWidth, viewportHeight);
+            Vector4 margin = HtmlLayoutUtils.ParseMargins(effectiveStyle, refWidth, viewportWidth, viewportHeight);
+            Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(effectiveStyle, refWidth, viewportWidth, viewportHeight);
             if (Parent == null)
             {
                 if (float.IsNaN(w)) w = viewportWidth;
@@ -306,7 +303,7 @@ namespace SiegeEngine.Core.UI
             {
                 Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id", "")}' class='{Attributes.GetValueOrDefault("class", "")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
             }
-            ComputedTransform = ComputeTransform(viewportWidth, viewportHeight);
+            ComputedTransform = HtmlLayoutUtils.ComputeTransform(this, viewportWidth, viewportHeight);
         }
         private float CalculateIntrinsicContentHeight(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
@@ -371,7 +368,7 @@ namespace SiegeEngine.Core.UI
             bool isRow = string.IsNullOrEmpty(Style.FlexDirection) || Style.FlexDirection == "row";
             float availableMain = isRow ? ComputedContentWidth : ComputedContentHeight;
             float availableCross = isRow ? ComputedContentHeight : ComputedContentWidth;
-            float gap = ParseSize(Style.GapStr, availableMain, viewportWidth, viewportHeight);
+            float gap = HtmlLayoutUtils.ParseSize(Style.GapStr, availableMain, viewportWidth, viewportHeight);
             if (float.IsNaN(gap)) gap = 0;
             List<float> childBaseMain = new List<float>();
             List<float> childGrow = new List<float>();
@@ -392,16 +389,16 @@ namespace SiegeEngine.Core.UI
                 childShrink.Add(1f);
                 totalGrow += grow;
                 string main_str_raw = isRow ? child.Style.WidthStr : child.Style.HeightStr;
-                float mainStr = ParseSize(main_str_raw, availableMain, viewportWidth, viewportHeight);
-                float min_main = ParseSize(isRow ? child.Style.MinWidthStr : child.Style.MinHeightStr, availableMain, viewportWidth, viewportHeight);
-                float max_main = ParseSize(isRow ? child.Style.MaxWidthStr : child.Style.MaxHeightStr, availableMain, viewportWidth, viewportHeight);
+                float mainStr = HtmlLayoutUtils.ParseSize(main_str_raw, availableMain, viewportWidth, viewportHeight);
+                float min_main = HtmlLayoutUtils.ParseSize(isRow ? child.Style.MinWidthStr : child.Style.MinHeightStr, availableMain, viewportWidth, viewportHeight);
+                float max_main = HtmlLayoutUtils.ParseSize(isRow ? child.Style.MaxWidthStr : child.Style.MaxHeightStr, availableMain, viewportWidth, viewportHeight);
                 if (!float.IsNaN(mainStr))
                 {
                     if (!float.IsNaN(min_main)) mainStr = Math.Max(mainStr, min_main);
                     if (!float.IsNaN(max_main)) mainStr = Math.Min(mainStr, max_main);
                 }
-                Vector4 pad = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
-                Vector4 border_w = ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
+                Vector4 pad = HtmlLayoutUtils.ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
+                Vector4 border_w = HtmlLayoutUtils.ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
                 float pad_start = isRow ? pad.W : pad.X;
                 float pad_end = isRow ? pad.Y : pad.Z;
                 float border_start = isRow ? border_w.W : border_w.X;
@@ -451,8 +448,8 @@ namespace SiegeEngine.Core.UI
             for (int i = 0; i < normalChildren.Count; i++)
             {
                 HtmlElement child = normalChildren[i];
-                float min_main = ParseSize(isRow ? child.Style.MinWidthStr : child.Style.MinHeightStr, availableMain, viewportWidth, viewportHeight);
-                float max_main = ParseSize(isRow ? child.Style.MaxWidthStr : child.Style.MaxHeightStr, availableMain, viewportWidth, viewportHeight);
+                float min_main = HtmlLayoutUtils.ParseSize(isRow ? child.Style.MinWidthStr : child.Style.MinHeightStr, availableMain, viewportWidth, viewportHeight);
+                float max_main = HtmlLayoutUtils.ParseSize(isRow ? child.Style.MaxWidthStr : child.Style.MaxHeightStr, availableMain, viewportWidth, viewportHeight);
                 if (!float.IsNaN(min_main)) childBaseMain[i] = Math.Max(childBaseMain[i], min_main);
                 if (!float.IsNaN(max_main)) childBaseMain[i] = Math.Min(childBaseMain[i], max_main);
             }
@@ -464,7 +461,7 @@ namespace SiegeEngine.Core.UI
             for (int i = 0; i < normalChildren.Count; i++)
             {
                 HtmlElement child = normalChildren[i];
-                Vector4 parsedMargin = ParseMargins(child.Style, availableMain, viewportWidth, viewportHeight);
+                Vector4 parsedMargin = HtmlLayoutUtils.ParseMargins(child.Style, availableMain, viewportWidth, viewportHeight);
                 float start = isRow ? parsedMargin.W : parsedMargin.X;
                 float end = isRow ? parsedMargin.Y : parsedMargin.Z;
                 float c_start = float.IsNaN(start) ? 0 : start;
@@ -484,7 +481,7 @@ namespace SiegeEngine.Core.UI
             for (int i = 0; i < normalChildren.Count; i++)
             {
                 HtmlElement child = normalChildren[i];
-                Vector4 parsedMargin = ParseMargins(child.Style, availableMain, viewportWidth, viewportHeight);
+                Vector4 parsedMargin = HtmlLayoutUtils.ParseMargins(child.Style, availableMain, viewportWidth, viewportHeight);
                 float start = isRow ? parsedMargin.W : parsedMargin.X;
                 float end = isRow ? parsedMargin.Y : parsedMargin.Z;
                 if (float.IsNaN(start)) childMarginStart[i] = auto_size;
@@ -548,9 +545,9 @@ namespace SiegeEngine.Core.UI
                 float item_start = current_main + childMarginStart[i];
                 float child_main = childBaseMain[i];
                 string cross_str = isRow ? child.Style.HeightStr : child.Style.WidthStr;
-                float child_cross_str = ParseSize(cross_str, availableCross, viewportWidth, viewportHeight);
-                Vector4 pad_child = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
-                Vector4 border_child = ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
+                float child_cross_str = HtmlLayoutUtils.ParseSize(cross_str, availableCross, viewportWidth, viewportHeight);
+                Vector4 pad_child = HtmlLayoutUtils.ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
+                Vector4 border_child = HtmlLayoutUtils.ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
                 float pad_cross_start = isRow ? pad_child.X : pad_child.W;
                 float pad_cross_end = isRow ? pad_child.Z : pad_child.Y;
                 float border_cross_start = isRow ? border_child.X : border_child.W;
@@ -569,11 +566,11 @@ namespace SiegeEngine.Core.UI
                         child_cross += pad_cross_start + pad_cross_end + border_cross_start + border_cross_end;
                     }
                 }
-                float max_cross = ParseSize(isRow ? child.Style.MaxHeightStr : child.Style.MaxWidthStr, availableCross, viewportWidth, viewportHeight);
+                float max_cross = HtmlLayoutUtils.ParseSize(isRow ? child.Style.MaxHeightStr : child.Style.MaxWidthStr, availableCross, viewportWidth, viewportHeight);
                 if (!float.IsNaN(max_cross)) child_cross = Math.Min(child_cross, max_cross);
-                float min_cross = ParseSize(isRow ? child.Style.MinHeightStr : child.Style.MinWidthStr, availableCross, viewportWidth, viewportHeight);
+                float min_cross = HtmlLayoutUtils.ParseSize(isRow ? child.Style.MinHeightStr : child.Style.MinWidthStr, availableCross, viewportWidth, viewportHeight);
                 if (!float.IsNaN(min_cross)) child_cross = Math.Max(child_cross, min_cross);
-                Vector4 parsedMarginCross = ParseMargins(child.Style, availableCross, viewportWidth, viewportHeight);
+                Vector4 parsedMarginCross = HtmlLayoutUtils.ParseMargins(child.Style, availableCross, viewportWidth, viewportHeight);
                 float m_cross_start = isRow ? parsedMarginCross.X : parsedMarginCross.W;
                 float m_cross_end = isRow ? parsedMarginCross.Z : parsedMarginCross.Y;
                 float c_m_cross_start = float.IsNaN(m_cross_start) ? 0 : m_cross_start;
@@ -681,8 +678,8 @@ namespace SiegeEngine.Core.UI
             string[] colDefs = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             string gapStr = Style.GapStr;
             string[] gapDefs = string.IsNullOrEmpty(gapStr) ? new string[0] : gapStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            float rowGap = gapDefs.Length > 0 ? ParseSize(gapDefs[0], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
-            float colGap = gapDefs.Length > 1 ? ParseSize(gapDefs[1], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
+            float rowGap = gapDefs.Length > 0 ? HtmlLayoutUtils.ParseSize(gapDefs[0], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
+            float colGap = gapDefs.Length > 1 ? HtmlLayoutUtils.ParseSize(gapDefs[1], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
             List<float> trackWidths = new List<float>();
             float totalFixed = 0f;
             int totalFr = 0;
@@ -702,7 +699,7 @@ namespace SiegeEngine.Core.UI
                 }
                 else
                 {
-                    float fixedW = ParseSize(def, ComputedContentWidth, viewportWidth, viewportHeight);
+                    float fixedW = HtmlLayoutUtils.ParseSize(def, ComputedContentWidth, viewportWidth, viewportHeight);
                     if (float.IsNaN(fixedW)) fixedW = 0f;
                     trackWidths.Add(fixedW);
                     totalFixed += fixedW;
@@ -738,7 +735,7 @@ namespace SiegeEngine.Core.UI
                 currentY += rowMaxH + rowGap;
             }
             ComputedContentHeight = currentY - ComputedContentY;
-            Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
             ComputedHeight = ComputedContentHeight + pad.X + pad.Z;
             ComputedBackgroundHeight = ComputedHeight;
         }
@@ -758,9 +755,9 @@ namespace SiegeEngine.Core.UI
                 HtmlElement child = normalChildren[i];
                 string childDisplay = child.GetEffectiveDisplay();
                 bool isInline = childDisplay.StartsWith("inline");
-                float childW = ParseSize(child.Style.WidthStr, ComputedContentWidth, viewportWidth, viewportHeight);
-                float childH = ParseSize(child.Style.HeightStr, ComputedContentHeight, viewportWidth, viewportHeight);
-                Vector4 parsedMargin = ParseMargins(child.Style, ComputedContentHeight, viewportWidth, viewportHeight);
+                float childW = HtmlLayoutUtils.ParseSize(child.Style.WidthStr, ComputedContentWidth, viewportWidth, viewportHeight);
+                float childH = HtmlLayoutUtils.ParseSize(child.Style.HeightStr, ComputedContentHeight, viewportWidth, viewportHeight);
+                Vector4 parsedMargin = HtmlLayoutUtils.ParseMargins(child.Style, ComputedContentHeight, viewportWidth, viewportHeight);
                 float m_top = parsedMargin.X;
                 float m_bottom = parsedMargin.Z;
                 float m_left = parsedMargin.W;
@@ -879,8 +876,8 @@ namespace SiegeEngine.Core.UI
             if (Style.Display == "none") return new Vector2(0, 0);
             float iw = 0;
             float ih = 0;
-            Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-            Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+            Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
             List<HtmlElement> normalChildren = visibleChildren.Where(c => c.Style.Position != "absolute" && c.Style.Position != "fixed").ToList();
             if (visibleChildren.Count == 0)
@@ -897,7 +894,7 @@ namespace SiegeEngine.Core.UI
                 if (Style.Display == "flex")
                 {
                     bool isRow = string.IsNullOrEmpty(Style.FlexDirection) || Style.FlexDirection == "row";
-                    float gap = ParseSize(Style.GapStr, 0, viewportWidth, viewportHeight);
+                    float gap = HtmlLayoutUtils.ParseSize(Style.GapStr, 0, viewportWidth, viewportHeight);
                     if (float.IsNaN(gap)) gap = 0;
                     int count = normalChildren.Count;
                     float totalGap = gap * (count - 1);
@@ -907,7 +904,7 @@ namespace SiegeEngine.Core.UI
                     {
                         HtmlElement child = normalChildren[i];
                         Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                        Vector4 parsedMargin = ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
+                        Vector4 parsedMargin = HtmlLayoutUtils.ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
                         float m_start = isRow ? parsedMargin.W : parsedMargin.X;
                         float m_end = isRow ? parsedMargin.Y : parsedMargin.Z;
                         float m_cross_start = isRow ? parsedMargin.X : parsedMargin.W;
@@ -939,7 +936,7 @@ namespace SiegeEngine.Core.UI
                         string childDisplay = child.GetEffectiveDisplay();
                         bool isInline = childDisplay.StartsWith("inline");
                         Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                        Vector4 parsedMargin = ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
+                        Vector4 parsedMargin = HtmlLayoutUtils.ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
                         float m_top = parsedMargin.X;
                         float m_bottom = parsedMargin.Z;
                         float m_left = parsedMargin.W;
@@ -973,13 +970,13 @@ namespace SiegeEngine.Core.UI
                             float childSpecW = float.NaN;
                             if (!string.IsNullOrEmpty(child.Style.WidthStr) && !child.Style.WidthStr.Trim().EndsWith("%"))
                             {
-                                childSpecW = ParseSize(child.Style.WidthStr, 0, viewportWidth, viewportHeight);
+                                childSpecW = HtmlLayoutUtils.ParseSize(child.Style.WidthStr, 0, viewportWidth, viewportHeight);
                             }
                             if (!float.IsNaN(childSpecW))
                             {
                                 string childBox = child.Style.BoxSizing;
-                                Vector4 childPad = ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
-                                Vector4 childBorder = ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
+                                Vector4 childPad = HtmlLayoutUtils.ParsePaddings(child.Style, 0, viewportWidth, viewportHeight);
+                                Vector4 childBorder = HtmlLayoutUtils.ParseBorderWidths(child.Style, 0, viewportWidth, viewportHeight);
                                 float specboxW;
                                 if (childBox == "border-box")
                                 {
@@ -1013,7 +1010,7 @@ namespace SiegeEngine.Core.UI
             string boxSizing = Style.BoxSizing;
             if (!string.IsNullOrEmpty(Style.WidthStr) && !Style.WidthStr.Trim().EndsWith("%"))
             {
-                float spec = ParseSize(Style.WidthStr, 0, viewportWidth, viewportHeight);
+                float spec = HtmlLayoutUtils.ParseSize(Style.WidthStr, 0, viewportWidth, viewportHeight);
                 if (!float.IsNaN(spec))
                 {
                     if (boxSizing == "border-box")
@@ -1028,7 +1025,7 @@ namespace SiegeEngine.Core.UI
             }
             if (!string.IsNullOrEmpty(Style.HeightStr) && !Style.HeightStr.Trim().EndsWith("%"))
             {
-                float spec = ParseSize(Style.HeightStr, 0, viewportWidth, viewportHeight);
+                float spec = HtmlLayoutUtils.ParseSize(Style.HeightStr, 0, viewportWidth, viewportHeight);
                 if (!float.IsNaN(spec))
                 {
                     if (boxSizing == "border-box")
@@ -1089,7 +1086,7 @@ namespace SiegeEngine.Core.UI
             bool uniformColor = borderTopC == borderRightC && borderRightC == borderBottomC && borderBottomC == borderLeftC;
             bool uniformStyle = borderTopS == borderRightS && borderRightS == borderBottomS && borderBottomS == borderLeftS && borderTopS != "none";
             bool hasUniformBorder = uniformBorder && uniformColor && uniformStyle && borderW.X > 0;
-            Vector4 br = ParseSides(effectiveStyle.BorderRadiusStr, ComputedBackgroundWidth, viewportWidth, viewportHeight);
+            Vector4 br = HtmlLayoutUtils.ParseSides(effectiveStyle.BorderRadiusStr, ComputedBackgroundWidth, viewportWidth, viewportHeight);
             float minRad = Math.Min(ComputedBackgroundWidth / 2, ComputedBackgroundHeight / 2);
             br.X = Math.Min(br.X, minRad);
             br.Y = Math.Min(br.Y, minRad);
@@ -1105,7 +1102,7 @@ namespace SiegeEngine.Core.UI
             Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
             if (hasBg || useShaderForBorder)
             {
-                float[] bgNdc = GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
+                float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(drawW, drawH), bw, borderC);
             }
             if (_bgRenderer != null)
@@ -1140,12 +1137,12 @@ namespace SiegeEngine.Core.UI
                 float trackX = ComputedBackgroundX + ComputedBackgroundWidth - SCROLLBAR_WIDTH;
                 float trackY = ComputedBackgroundY;
                 float trackH = ComputedBackgroundHeight;
-                float[] trackNdc = GetNdcQuad(trackX, trackY, SCROLLBAR_WIDTH, trackH, localMatrix, viewportWidth, viewportHeight);
+                float[] trackNdc = HtmlLayoutUtils.GetNdcQuad(trackX, trackY, SCROLLBAR_WIDTH, trackH, localMatrix, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.2f, 0.2f, 0.2f, 0.9f));
                 float thumbRatio = ComputedContentHeight / _contentFullHeight;
                 float thumbH = Math.Max(20f, trackH * thumbRatio);
                 float thumbY = trackY + (ScrollOffsetY / _contentFullHeight) * (trackH - thumbH);
-                float[] thumbNdc = GetNdcQuad(trackX + 2, thumbY, SCROLLBAR_WIDTH - 4, thumbH, localMatrix, viewportWidth, viewportHeight);
+                float[] thumbNdc = HtmlLayoutUtils.GetNdcQuad(trackX + 2, thumbY, SCROLLBAR_WIDTH - 4, thumbH, localMatrix, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.6f, 0.6f, 0.6f, 1f));
             }
             bool drawSideBorders = !useShaderForBorder;
@@ -1153,116 +1150,30 @@ namespace SiegeEngine.Core.UI
             {
                 if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
                 {
-                    float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, localMatrix, viewportWidth, viewportHeight);
+                    float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, localMatrix, viewportWidth, viewportHeight);
                     quadRenderer.DrawNdcQuad(ndc, borderTopC);
                 }
                 if (borderBottomS != "none" && borderBottomC != Vector4.Zero && borderW.Z > 0)
                 {
-                    float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW.Z, ComputedWidth, borderW.Z, localMatrix, viewportWidth, viewportHeight);
+                    float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW.Z, ComputedWidth, borderW.Z, localMatrix, viewportWidth, viewportHeight);
                     quadRenderer.DrawNdcQuad(ndc, borderBottomC);
                 }
                 if (borderLeftS != "none" && borderLeftC != Vector4.Zero && borderW.W > 0)
                 {
-                    float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, borderW.W, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
+                    float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, borderW.W, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
                     quadRenderer.DrawNdcQuad(ndc, borderLeftC);
                 }
                 if (borderRightS != "none" && borderRightC != Vector4.Zero && borderW.Y > 0)
                 {
-                    float[] ndc = GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
+                    float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
                     quadRenderer.DrawNdcQuad(ndc, borderRightC);
                 }
             }
         }
-        public float ParseSize(string s, float parent, float vw, float vh)
-        {
-            if (string.IsNullOrEmpty(s) || s == "auto") return float.NaN;
-            s = s.Trim();
-            float value;
-            if (float.TryParse(s, out value)) return value;
-            if (s.EndsWith("%"))
-            {
-                value = float.Parse(s.Replace("%", ""));
-                return value / 100 * parent;
-            }
-            else if (s.EndsWith("vh"))
-            {
-                value = float.Parse(s.Replace("vh", ""));
-                return value / 100 * vh;
-            }
-            else if (s.EndsWith("vw"))
-            {
-                value = float.Parse(s.Replace("vw", ""));
-                return value / 100 * vw;
-            }
-            else if (s.EndsWith("px"))
-            {
-                value = float.Parse(s.Replace("px", ""));
-                return value;
-            }
-            else
-            {
-                return float.NaN;
-            }
-        }
-        protected Vector4 ParsePaddings(CssStyle style, float parent, float vw, float vh)
-        {
-            string allStr = style.PaddingStr;
-            Vector4 values = string.IsNullOrEmpty(allStr) ? Vector4.Zero : ParseSides(allStr, parent, vw, vh);
-            string topStr = style.PaddingTopStr;
-            string rightStr = style.PaddingRightStr;
-            string bottomStr = style.PaddingBottomStr;
-            string leftStr = style.PaddingLeftStr;
-            if (!string.IsNullOrEmpty(topStr)) values.X = ParseSize(topStr, parent, vw, vh);
-            if (!string.IsNullOrEmpty(rightStr)) values.Y = ParseSize(rightStr, parent, vw, vh);
-            if (!string.IsNullOrEmpty(bottomStr)) values.Z = ParseSize(bottomStr, parent, vw, vh);
-            if (!string.IsNullOrEmpty(leftStr)) values.W = ParseSize(leftStr, parent, vw, vh);
-            if (float.IsNaN(values.X)) values.X = 0;
-            if (float.IsNaN(values.Y)) values.Y = 0;
-            if (float.IsNaN(values.Z)) values.Z = 0;
-            if (float.IsNaN(values.W)) values.W = 0;
-            return values;
-        }
-        protected Vector4 ParseMargins(CssStyle style, float parent, float vw, float vh)
-        {
-            string allStr = style.MarginStr;
-            Vector4 values = string.IsNullOrEmpty(allStr) ? Vector4.Zero : ParseSides(allStr, parent, vw, vh);
-            return values;
-        }
-        protected Vector4 ParseBorderWidths(CssStyle style, float parent, float vw, float vh)
-        {
-            Vector4 values = string.IsNullOrEmpty(style.BorderWidthStr) ? Vector4.Zero : ParseSides(style.BorderWidthStr, parent, vw, vh);
-            if (!string.IsNullOrEmpty(style.BorderTopWidthStr)) values.X = ParseSize(style.BorderTopWidthStr, parent, vw, vh);
-            if (!string.IsNullOrEmpty(style.BorderRightWidthStr)) values.Y = ParseSize(style.BorderRightWidthStr, parent, vw, vh);
-            if (!string.IsNullOrEmpty(style.BorderBottomWidthStr)) values.Z = ParseSize(style.BorderBottomWidthStr, parent, vw, vh);
-            if (!string.IsNullOrEmpty(style.BorderLeftWidthStr)) values.W = ParseSize(style.BorderLeftWidthStr, parent, vw, vh);
-            if (float.IsNaN(values.X)) values.X = 0;
-            if (float.IsNaN(values.Y)) values.Y = 0;
-            if (float.IsNaN(values.Z)) values.Z = 0;
-            if (float.IsNaN(values.W)) values.W = 0;
-            return values;
-        }
-        private Vector4 ParseSides(string s, float parent, float vw, float vh)
-        {
-            if (string.IsNullOrEmpty(s)) return Vector4.Zero;
-            var parts = s.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            float GetVal(int index, float defaultVal)
-            {
-                if (index < parts.Length)
-                {
-                    return ParseSize(parts[index], parent, vw, vh);
-                }
-                return defaultVal;
-            }
-            float val1 = GetVal(0, 0);
-            float val2 = GetVal(1, val1);
-            float val3 = GetVal(2, val1);
-            float val4 = GetVal(3, val2);
-            return new Vector4(val1, val2, val3, val4);
-        }
         public virtual bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
-            float[] ndc = GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+            float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             for (int k = 0; k < 4; k++)
             {
@@ -1293,127 +1204,6 @@ namespace SiegeEngine.Core.UI
                 if (found != null) return found;
             }
             return null;
-        }
-        private Matrix4x4 ComputeTransform(float viewportWidth, float viewportHeight)
-        {
-            if (string.IsNullOrEmpty(Style.Transform) || Style.Transform == "none") return Matrix4x4.Identity;
-            Matrix4x4 mat = Matrix4x4.Identity;
-            var matches = Regex.Matches(Style.Transform, @"(\w+)\((.+?)\)");
-            foreach (Match m in matches)
-            {
-                string func = m.Groups[1].Value.ToLower();
-                string args = m.Groups[2].Value;
-                var argParts = args.Split(',').Select(a => a.Trim()).ToArray();
-                Matrix4x4 fmat = Matrix4x4.Identity;
-                switch (func)
-                {
-                    case "translate":
-                        {
-                            float tx = ParseSize(argParts[0], ComputedWidth, viewportWidth, viewportHeight);
-                            float ty = argParts.Length > 1 ? ParseSize(argParts[1], ComputedHeight, viewportWidth, viewportHeight) : 0;
-                            fmat = Matrix4x4.CreateTranslation(tx, ty, 0);
-                            break;
-                        }
-                    case "translatex":
-                        {
-                            float tx = ParseSize(argParts[0], ComputedWidth, viewportWidth, viewportHeight);
-                            fmat = Matrix4x4.CreateTranslation(tx, 0, 0);
-                            break;
-                        }
-                    case "rotate":
-                        {
-                            float angle = ParseAngle(argParts[0]);
-                            fmat = Matrix4x4.CreateRotationZ(angle);
-                            break;
-                        }
-                    case "scale":
-                        {
-                            float sx = float.Parse(argParts[0]);
-                            float sy = argParts.Length > 1 ? float.Parse(argParts[1]) : sx;
-                            fmat = Matrix4x4.CreateScale(sx, sy, 1);
-                            break;
-                        }
-                    case "skew":
-                        {
-                            float ax = ParseAngle(argParts[0]);
-                            float ay = argParts.Length > 1 ? ParseAngle(argParts[1]) : 0;
-                            fmat = new Matrix4x4(
-                                1, MathF.Tan(ay), 0, 0,
-                                MathF.Tan(ax), 1, 0, 0,
-                                0, 0, 1, 0,
-                                0, 0, 0, 1);
-                            break;
-                        }
-                    case "matrix":
-                        {
-                            float a = float.Parse(argParts[0]);
-                            float b = float.Parse(argParts[1]);
-                            float c = float.Parse(argParts[2]);
-                            float d = float.Parse(argParts[3]);
-                            float tx = float.Parse(argParts[4]);
-                            float ty = float.Parse(argParts[5]);
-                            fmat = new Matrix4x4(
-                                a, b, 0, 0,
-                                c, d, 0, 0,
-                                0, 0, 1, 0,
-                                tx, ty, 0, 1);
-                            break;
-                        }
-                }
-                mat = mat * fmat;
-            }
-            Vector3 origin = new Vector3(ComputedWidth / 2, ComputedHeight / 2, 0);
-            Matrix4x4 toOrigin = Matrix4x4.CreateTranslation(-origin);
-            Matrix4x4 fromOrigin = Matrix4x4.CreateTranslation(origin);
-            mat = fromOrigin * mat * toOrigin;
-            return mat;
-        }
-        private float ParseAngle(string s)
-        {
-            if (string.IsNullOrEmpty(s)) return 0;
-            float val;
-            if (s.EndsWith("deg"))
-            {
-                val = float.Parse(s.Replace("deg", ""));
-                return val * MathF.PI / 180;
-            }
-            else if (s.EndsWith("rad"))
-            {
-                val = float.Parse(s.Replace("rad", ""));
-                return val;
-            }
-            else if (s.EndsWith("turn"))
-            {
-                val = float.Parse(s.Replace("turn", ""));
-                return val * MathF.PI * 2;
-            }
-            else if (s.EndsWith("grad"))
-            {
-                val = float.Parse(s.Replace("grad", ""));
-                return val * MathF.PI / 200;
-            }
-            val = float.Parse(s);
-            return val * MathF.PI / 180;
-        }
-        public static float[] GetNdcQuad(float x, float y, float w, float h, Matrix4x4 trans, float vw, float vh)
-        {
-            Vector4 bl = Vector4.Transform(new Vector4(x, y + h, 0, 1), trans);
-            Vector4 br = Vector4.Transform(new Vector4(x + w, y + h, 0, 1), trans);
-            Vector4 tr = Vector4.Transform(new Vector4(x + w, y, 0, 1), trans);
-            Vector4 tl = Vector4.Transform(new Vector4(x, y, 0, 1), trans);
-            bl /= bl.W;
-            br /= br.W;
-            tr /= tr.W;
-            tl /= tl.W;
-            float blx = 2 * bl.X / vw - 1;
-            float bly = 1 - 2 * bl.Y / vh;
-            float brx = 2 * br.X / vw - 1;
-            float bry = 1 - 2 * br.Y / vh;
-            float trx = 2 * tr.X / vw - 1;
-            float try_ = 1 - 2 * tr.Y / vh;
-            float tlx = 2 * tl.X / vw - 1;
-            float tly = 1 - 2 * tl.Y / vh;
-            return new float[] { blx, bly, brx, bry, trx, try_, tlx, tly };
         }
     }
 }
