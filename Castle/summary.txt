@@ -1346,7 +1346,7 @@ Folder: SiegeEngine
     - Methods:
       - constructor LiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: textRenderer.GetTextSize
+        - Calls: ParsePaddings, c.GetEffectiveDisplay, textRenderer.GetTextSize
 - File: LightComponent.cs
   - Class: LightComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -1581,7 +1581,6 @@ Folder: SiegeEngine
     - Methods:
       - constructor NavElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: textRenderer.GetTextSize
 - File: NodeParser.cs
   - Class: NodeParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Text
@@ -2388,7 +2387,6 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
     - Methods:
       - constructor UlElement()
-      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
 - File: UnityAssetFileType.cs
   - Class: UnityAssetFileType (Namespace: SiegeEngine.Core.UnityAssetLoader)
 - File: UnityAssetScanner.cs

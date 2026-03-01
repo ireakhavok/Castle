@@ -98,7 +98,7 @@ Found 5 dependencies
 Found: JSEvaluator.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
-Read 23469 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
+Read 25173 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
 Namespace: SiegeEngine.Core.UI.JSParser
 Found 6 dependencies
 Found: JSParser.cs
@@ -116,7 +116,7 @@ Found 7 dependencies
 Found: LiElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
-Read 980 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
+Read 2095 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 5 dependencies
 Found: MenuPanel.cs
@@ -128,7 +128,7 @@ Found 9 dependencies
 Found: NavElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavElement.cs
-Read 2963 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavElement.cs
+Read 3922 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 5 dependencies
 Found: OlElement.cs
@@ -196,7 +196,7 @@ Found 10 dependencies
 Found: UlElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
-Read 1312 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
+Read 573 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 3 dependencies
 Writing output for 2 folders

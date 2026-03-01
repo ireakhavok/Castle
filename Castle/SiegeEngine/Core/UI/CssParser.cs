@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.Core.UI
 {
     public class CssParser
@@ -123,7 +124,64 @@ li {
     display: list-item;
 }
 nav {
+    display: flex;
+    background-color: #1f1f1f;
+    height: 28px;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 8px;
+    font-size: 14px;
+    color: #e0e0e0;
+}
+nav ul {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    height: 28px;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+nav li {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 22px;
+    margin: 0;
+    white-space: nowrap;
+    box-sizing: border-box;
+    position: relative;
+    list-style-type: none;
+}
+nav li:hover {
+    background-color: #383838;
+}
+nav li:hover ul {
     display: block;
+}
+nav ul ul {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #2d2d2d;
+    padding: 4px 0;
+    min-width: 160px;
+    border: 1px solid #737373;
+    list-style-type: none;
+    margin: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+}
+nav ul ul li {
+    padding: 6px 16px;
+    height: auto;
+    justify-content: flex-start;
+    white-space: nowrap;
+}
+nav ul ul li:hover {
+    background-color: #454545;
 }
 .form-grid {
     display: grid;

@@ -302,6 +302,7 @@ Folder: Root
     - Methods:
       - constructor LiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: ParsePaddings, c.GetEffectiveDisplay
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
@@ -489,7 +490,6 @@ Folder: Root
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
     - Methods:
       - constructor UlElement()
-      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
 
 Class Hierarchy:
 JSRegex
