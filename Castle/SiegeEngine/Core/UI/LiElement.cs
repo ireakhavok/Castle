@@ -97,15 +97,41 @@ namespace SiegeEngine.Core.UI
 
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
-            // Critical fix: ensure the dropdown parent li ("Panels") gets IsHover=true when mouse is over its text or area
             bool hit = base.HandleClick(mousePos, viewportWidth, viewportHeight);
 
-            if (IsNavDropdownParent() || IsTopLevelNavItem())
+            if (IsNavDropdownParent())
             {
                 IsHover = hit;
             }
 
             return hit;
+        }
+
+        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+        {
+            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
+            bool isdropparent = IsNavDropdownParent();
+            if (isdropparent && IsHover)
+            {
+                var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
+                if (dropdownUl != null)
+                {
+                    float dropdownY = ComputedPosition.Y + ComputedHeight;
+                    float dropdownX = ComputedPosition.X;
+
+                    dropdownUl.Style.Display = "block";
+                    dropdownUl.ComputeLayout(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, viewportWidth, viewportHeight, textRenderer, Style.FontSize);
+
+                    CssStyle ulStyle = dropdownUl.Style;
+                    if (ulStyle.BackgroundColor != Vector4.Zero)
+                    {
+                        float[] dropdownNdc = GetNdcQuad(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+                        quadRenderer.DrawNdcQuad(dropdownNdc, ulStyle.BackgroundColor);
+                    }
+
+                    dropdownUl.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, ComputedFullTransform);
+                }
+            }
         }
 
         private bool IsTopLevelNavItem()
@@ -117,10 +143,18 @@ namespace SiegeEngine.Core.UI
 
         private bool IsNavDropdownParent()
         {
-            if (Parent == null || Parent.Tag.ToLower() != "ul") return false;
-            HtmlElement grandParent = Parent.Parent;
-            if (grandParent == null || grandParent.Tag.ToLower() != "nav") return false;
-            return Children.Any(c => c.Tag.ToLower() == "ul");
+            if (Tag.ToLower() != "li") return false;
+
+            string classes = Attributes.GetValueOrDefault("class", "");
+            if (classes.Contains("nav-dropdown")) return true;
+
+            HtmlElement current = Parent;
+            while (current != null)
+            {
+                if (current.Tag.ToLower() == "nav") return Children.Any(c => c.Tag.ToLower() == "ul");
+                current = current.Parent;
+            }
+            return false;
         }
     }
 }
