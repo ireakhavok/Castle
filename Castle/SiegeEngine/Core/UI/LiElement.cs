@@ -27,7 +27,7 @@ namespace SiegeEngine.Core.UI
             float totalHeight = 0f;
             string foundText = "";
 
-            bool isTopLevelNavItem = IsTopLevelNavItem();
+            bool isNavDropdownParent = IsNavDropdownParent();
 
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
             foreach (var child in Children)
@@ -50,9 +50,7 @@ namespace SiegeEngine.Core.UI
                 }
             }
 
-            // ONLY for normal (non-nav) nested lists include sub-ul size in height
-            // This fixes "the second item of the first level of the nesting not taking the first parent's children into account"
-            if (!isTopLevelNavItem)
+            if (!isNavDropdownParent)
             {
                 foreach (var child in Children.Where(c => c.GetEffectiveDisplay() != "none"))
                 {
@@ -61,6 +59,17 @@ namespace SiegeEngine.Core.UI
                         Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
                         maxWidth = Math.Max(maxWidth, childSize.X);
                         totalHeight += childSize.Y;
+                    }
+                }
+            }
+            else
+            {
+                foreach (var child in Children.Where(c => c.GetEffectiveDisplay() != "none"))
+                {
+                    if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
+                    {
+                        Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                        maxWidth = Math.Max(maxWidth, childSize.X);
                     }
                 }
             }
@@ -78,9 +87,7 @@ namespace SiegeEngine.Core.UI
 
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
-            // ONLY force intrinsic width for TOP-LEVEL nav items (nav > ul > li)
-            // This fixes hover box width and text alignment in the nav bar WITHOUT breaking normal nested lists or submenu items
-            if (IsTopLevelNavItem())
+            if (IsNavDropdownParent() || IsTopLevelNavItem())
             {
                 Vector2 intrinsic = ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, parentFs);
                 forcedWidth = intrinsic.X;
@@ -88,11 +95,32 @@ namespace SiegeEngine.Core.UI
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
         }
 
+        public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
+        {
+            // Critical fix: ensure the dropdown parent li ("Panels") gets IsHover=true when mouse is over its text or area
+            bool hit = base.HandleClick(mousePos, viewportWidth, viewportHeight);
+
+            if (IsNavDropdownParent() || IsTopLevelNavItem())
+            {
+                IsHover = hit;
+            }
+
+            return hit;
+        }
+
         private bool IsTopLevelNavItem()
         {
             if (Parent == null || Parent.Tag.ToLower() != "ul") return false;
             HtmlElement grandParent = Parent.Parent;
             return grandParent != null && grandParent.Tag.ToLower() == "nav";
+        }
+
+        private bool IsNavDropdownParent()
+        {
+            if (Parent == null || Parent.Tag.ToLower() != "ul") return false;
+            HtmlElement grandParent = Parent.Parent;
+            if (grandParent == null || grandParent.Tag.ToLower() != "nav") return false;
+            return Children.Any(c => c.Tag.ToLower() == "ul");
         }
     }
 }

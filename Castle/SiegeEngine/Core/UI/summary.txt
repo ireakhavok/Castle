@@ -164,6 +164,7 @@ Folder: Root
     - Fields:
       - string DefaultUserAgentCss
     - Methods:
+      - 8px rgba()
       - void Clear()
       - void Apply(string css)
         - Calls: ParseProperties, ReadUntil, SkipWhitespaceAndComments
@@ -259,6 +260,7 @@ Folder: Root
       - float ParseAngle(string s)
         - Calls: float.Parse
       - float[] GetNdcQuad( Matrix4x4 trans,  float h,  float vh,  float vw,  float w,  float y, float x)
+      - bool IsUnderNav(HtmlElement elem)
 - File: HtmlParser.cs
   - Class: HtmlParser (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq
@@ -298,11 +300,14 @@ Folder: Root
   - Class: LiElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - constructor LiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: ParsePaddings, c.GetEffectiveDisplay
+        - Calls: IsTopLevelNavItem, ParseBorderWidths, ParsePaddings, c.GetEffectiveDisplay
+      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+        - Calls: ComputeIntrinsicSize, IsTopLevelNavItem
+      - bool IsTopLevelNavItem()
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
@@ -324,7 +329,6 @@ Folder: Root
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Linq, System.Numerics
     - Methods:
       - constructor NavElement()
-      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
 - File: OlElement.cs
   - Class: OlElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
