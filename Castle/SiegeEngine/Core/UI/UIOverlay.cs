@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: UIOverlay.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -23,31 +21,25 @@ namespace SiegeEngine.Core.UI
         protected UIQuadRenderer _quadRenderer;
         protected CssParser _cssParser;
         public HtmlElement _uiRoot;
-        protected List<HtmlElement> _uiClickables = new List<HtmlElement>();
+        public List<HtmlElement> _uiClickables = new List<HtmlElement>();
         protected string _currentBaseDir = "";
-        private bool _justOpenedSelect = false;
-        private bool _prevMouseDown = false;
-        private List<SelectElement> _openSelects = new List<SelectElement>();
-        private JSContext _jsContext = new JSContext();
+        public JSContext _jsContext = new JSContext();
         public JSDocument _document;
-        private HtmlElement _currentFocused;
-        private readonly Dictionary<Key, double> _keyDownTime = new Dictionary<Key, double>();
-        private readonly Dictionary<Key, double> _lastAddTime = new Dictionary<Key, double>();
-        private const double InitialRepeatDelay = 0.5;
-        private const double RepeatRate = 0.05;
-        public HtmlElement FocusedElement => _currentFocused;
         public float PanelWidth { get; set; }
         public float PanelHeight { get; set; }
         public float ScrollOffsetY { get; set; } = 0f;
         public float ContentFullHeight { get; private set; } = 0f;
         private bool _needsVerticalScrollbar = false;
-        public bool DidHandleClick { get; private set; }
+        public bool DidHandleClick { get; set; }
+        private UIInteractionLayer _interactionLayer;
+
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _window = window;
         }
+
         public virtual void Init()
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -55,7 +47,9 @@ namespace SiegeEngine.Core.UI
             _textRenderer.Initialize(_uiShader);
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _cssParser = new CssParser();
+            _interactionLayer = new UIInteractionLayer(this, _controlContext, _window);
         }
+
         public void LoadUI(string html, string baseDir = "")
         {
             _currentBaseDir = baseDir;
@@ -107,6 +101,7 @@ namespace SiegeEngine.Core.UI
             }
             RefreshUI();
         }
+
         private void InitializeElementProperties(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -137,6 +132,7 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
+
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -156,6 +152,7 @@ namespace SiegeEngine.Core.UI
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
+
         private void CollectClickables(HtmlElement elem)
         {
             if (elem.GetEffectiveDisplay() == "none") return;
@@ -168,9 +165,11 @@ namespace SiegeEngine.Core.UI
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
+
         protected virtual void HandleDataHook(string hook)
         {
         }
+
         protected virtual void HandleLink(string href)
         {
             if (string.IsNullOrEmpty(href)) return;
@@ -184,6 +183,7 @@ namespace SiegeEngine.Core.UI
                 Console.WriteLine($"UIOverlay: Failed to load relative path: {resolvedPath}");
             }
         }
+
         public void RefreshUI()
         {
             if (_uiRoot == null) return;
@@ -193,10 +193,12 @@ namespace SiegeEngine.Core.UI
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
         }
+
         public HtmlElement FindElementById(string id)
         {
             return FindElementById(_uiRoot, id);
         }
+
         protected HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root == null) return null;
@@ -208,10 +210,12 @@ namespace SiegeEngine.Core.UI
             }
             return null;
         }
+
         public List<HtmlElement> FindElementsByClass(string className)
         {
             return FindElementsByClass(_uiRoot, className);
         }
+
         protected List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             if (root == null) return new List<HtmlElement>();
@@ -227,10 +231,12 @@ namespace SiegeEngine.Core.UI
             }
             return list;
         }
+
         public List<HtmlElement> FindElementsByTag(string tag)
         {
             return FindElementsByTag(_uiRoot, tag);
         }
+
         protected List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             if (root == null) return new List<HtmlElement>();
@@ -245,7 +251,8 @@ namespace SiegeEngine.Core.UI
             }
             return list;
         }
-        protected virtual void HandleUIClick(HtmlElement elem)
+
+        public virtual void HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return;
             Console.WriteLine($"UIOverlay: Handling click for element Tag={elem.Tag}, Class={elem.Attributes.GetValueOrDefault("class", "")}, ID={elem.Attributes.GetValueOrDefault("id", "")}");
@@ -313,7 +320,7 @@ namespace SiegeEngine.Core.UI
                                 }
                                 InvokeListeners(input, "focus");
                                 input.IsFocused = true;
-                                _currentFocused = input;
+                                _interactionLayer._currentFocused = input;
                                 Console.WriteLine($"UIOverlay: Focused {(type == "number" ? "number" : "text")} input via label {forId}");
                             }
                         }
@@ -352,7 +359,7 @@ namespace SiegeEngine.Core.UI
                             }
                             InvokeListeners(input, "focus");
                             input.IsFocused = true;
-                            _currentFocused = input;
+                            _interactionLayer._currentFocused = input;
                             Console.WriteLine($"UIOverlay: Focused {(input.Type == "number" ? "number" : "text")} input {input.Attributes.GetValueOrDefault("id", "")}");
                         }
                     }
@@ -365,7 +372,7 @@ namespace SiegeEngine.Core.UI
                 {
                     CloseAllOpenSelects();
                     select.IsOpen = !select.IsOpen;
-                    _justOpenedSelect = select.IsOpen;
+                    _interactionLayer._justOpenedSelect = select.IsOpen;
                     RefreshUI();
                 }
             }
@@ -388,7 +395,7 @@ namespace SiegeEngine.Core.UI
                     {
                         CloseAllOpenSelects();
                         select.IsOpen = true;
-                        _justOpenedSelect = true;
+                        _interactionLayer._justOpenedSelect = true;
                     }
                     RefreshUI();
                 }
@@ -405,7 +412,8 @@ namespace SiegeEngine.Core.UI
             }
             RefreshUI();
         }
-        private void CloseAllOpenSelects()
+
+        public void CloseAllOpenSelects()
         {
             var selects = FindElementsByTag("select");
             foreach (var s in selects)
@@ -416,320 +424,12 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
-        private char? GetCharFromKey(Key key, bool shiftPressed, string inputType)
-        {
-            if (inputType == "number")
-            {
-                if (key >= Key.Key0 && key <= Key.Key9)
-                {
-                    return (char)((int)key - (int)Key.Key0 + '0');
-                }
-                if (key == Key.Period)
-                {
-                    return '.';
-                }
-                if (key == Key.Minus)
-                {
-                    return '-';
-                }
-                return null;
-            }
-            if (key >= Key.A && key <= Key.Z)
-            {
-                return (char)((int)key - (int)Key.A + (shiftPressed ? 'A' : 'a'));
-            }
-            else if (key >= Key.Key0 && key <= Key.Key9)
-            {
-                char noShift = (char)((int)key - (int)Key.Key0 + '0');
-                char withShift = key switch
-                {
-                    Key.Key0 => ')',
-                    Key.Key1 => '!',
-                    Key.Key2 => '@',
-                    Key.Key3 => '#',
-                    Key.Key4 => '$',
-                    Key.Key5 => '%',
-                    Key.Key6 => '^',
-                    Key.Key7 => '&',
-                    Key.Key8 => '*',
-                    Key.Key9 => '(',
-                    _ => noShift
-                };
-                return shiftPressed ? withShift : noShift;
-            }
-            else if (key == Key.Space)
-            {
-                return ' ';
-            }
-            else if (key == Key.Minus)
-            {
-                return shiftPressed ? '_' : '-';
-            }
-            else if (key == Key.Equal)
-            {
-                return shiftPressed ? '+' : '=';
-            }
-            else if (key == Key.LeftBracket)
-            {
-                return shiftPressed ? '{' : '[';
-            }
-            else if (key == Key.RightBracket)
-            {
-                return shiftPressed ? '}' : ']';
-            }
-            else if (key == Key.Backslash)
-            {
-                return shiftPressed ? '|' : '\\';
-            }
-            else if (key == Key.Semicolon)
-            {
-                return shiftPressed ? ':' : ';';
-            }
-            else if (key == Key.Apostrophe)
-            {
-                return shiftPressed ? '"' : '\'';
-            }
-            else if (key == Key.Comma)
-            {
-                return shiftPressed ? '<' : ',';
-            }
-            else if (key == Key.Period)
-            {
-                return shiftPressed ? '>' : '.';
-            }
-            else if (key == Key.Slash)
-            {
-                return shiftPressed ? '?' : '/';
-            }
-            else if (key == Key.GraveAccent)
-            {
-                return shiftPressed ? '~' : '`';
-            }
-            return null;
-        }
+
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
-            if (_uiRoot == null) return;
-            DidHandleClick = false;
-            PanelWidth = panelW;
-            PanelHeight = panelH;
-            Vector2 scrolledMousePos = new Vector2(relMousePos.X, relMousePos.Y + ScrollOffsetY);
-            bool mousePress = !_prevMouseDown && currentMouseDown;
-            bool mouseRelease = _prevMouseDown && !currentMouseDown;
-            float vw = PanelWidth;
-            float vh = PanelHeight;
-            HtmlElement clickedElem = null;
-            bool isClickOnOpenSelect = false;
-            _openSelects = FindElementsByTag("select").Where(s => (s as SelectElement)?.IsOpen ?? false).Cast<SelectElement>().ToList();
-            SelectElement openSelect = _openSelects.FirstOrDefault();
-            if (openSelect != null)
-            {
-                if (openSelect.HandleClick(scrolledMousePos, vw, vh))
-                {
-                    isClickOnOpenSelect = true;
-                }
-            }
-            // Full snapshot to prevent "Collection was modified" when RefreshUI() is called from JS callbacks
-            var clickablesSnapshot = _uiClickables.ToList();
-            // Collect ranges that need 'input' event (for real-time slider → number field)
-            var rangesNeedingInput = new List<HtmlElement>();
-            foreach (var clickable in clickablesSnapshot)
-            {
-                if (openSelect != null && !clickable.IsDescendantOf(openSelect) && !(clickable == openSelect))
-                {
-                    continue;
-                }
-                bool wasHover = clickable.IsHover;
-                bool wasActive = clickable.IsActive;
-                bool over = clickable.HandleClick(scrolledMousePos, vw, vh);
-                if (over && mousePress)
-                {
-                    if (!string.IsNullOrEmpty(clickable.OnMouseDownJS))
-                    {
-                        _jsContext.RunWithThis(clickable.OnMouseDownJS, new JSElement(clickable, this));
-                    }
-                    InvokeListeners(clickable, "mousedown");
-                    clickable.IsActive = true;
-                }
-                if (over && mouseRelease)
-                {
-                    if (!string.IsNullOrEmpty(clickable.OnMouseUpJS))
-                    {
-                        _jsContext.RunWithThis(clickable.OnMouseUpJS, new JSElement(clickable, this));
-                    }
-                    InvokeListeners(clickable, "mouseup");
-                }
-                if (over && mouseRelease && wasActive)
-                {
-                    clickedElem = clickable;
-                }
-                if (!wasHover && over)
-                {
-                    if (!string.IsNullOrEmpty(clickable.OnMouseEnterJS))
-                    {
-                        _jsContext.RunWithThis(clickable.OnMouseEnterJS, new JSElement(clickable, this));
-                    }
-                    InvokeListeners(clickable, "mouseenter");
-                    if (!string.IsNullOrEmpty(clickable.OnMouseOverJS))
-                    {
-                        _jsContext.RunWithThis(clickable.OnMouseOverJS, new JSElement(clickable, this));
-                    }
-                    InvokeListeners(clickable, "mouseover");
-                }
-                if (wasHover && !over)
-                {
-                    if (!string.IsNullOrEmpty(clickable.OnMouseLeaveJS))
-                    {
-                        _jsContext.RunWithThis(clickable.OnMouseLeaveJS, new JSElement(clickable, this));
-                    }
-                    InvokeListeners(clickable, "mouseleave");
-                    if (!string.IsNullOrEmpty(clickable.OnMouseOutJS))
-                    {
-                        _jsContext.RunWithThis(clickable.OnMouseOutJS, new JSElement(clickable, this));
-                    }
-                    InvokeListeners(clickable, "mouseout");
-                }
-                clickable.IsHover = over;
-                if (mouseRelease)
-                {
-                    clickable.IsActive = false;
-                }
-                // Collect for real-time 'input' event (slider drag)
-                if (over && clickable.IsActive && clickable is InputElement inp && inp.Type == "range")
-                {
-                    rangesNeedingInput.Add(clickable);
-                }
-            }
-            if (clickedElem != null)
-            {
-                DidHandleClick = true;
-                bool focusable = clickedElem.Tag.ToLower() == "input" || clickedElem.Tag.ToLower() == "select" || clickedElem.Tag.ToLower() == "button" || clickedElem.Attributes.ContainsKey("tabindex") || !string.IsNullOrEmpty(clickedElem.OnFocusJS) || !string.IsNullOrEmpty(clickedElem.OnBlurJS);
-                if (focusable)
-                {
-                    if (_currentFocused != null && _currentFocused != clickedElem)
-                    {
-                        if (!string.IsNullOrEmpty(_currentFocused.OnBlurJS))
-                        {
-                            _jsContext.RunWithThis(_currentFocused.OnBlurJS, new JSElement(_currentFocused, this));
-                        }
-                        InvokeListeners(_currentFocused, "blur");
-                        _currentFocused.IsFocused = false;
-                    }
-                    if (!clickedElem.IsFocused)
-                    {
-                        if (!string.IsNullOrEmpty(clickedElem.OnFocusJS))
-                        {
-                            _jsContext.RunWithThis(clickedElem.OnFocusJS, new JSElement(clickedElem, this));
-                        }
-                        InvokeListeners(clickedElem, "focus");
-                        clickedElem.IsFocused = true;
-                        _currentFocused = clickedElem;
-                    }
-                }
-                HandleUIClick(clickedElem);
-            }
-            else if (mouseRelease && openSelect != null && !isClickOnOpenSelect && !_justOpenedSelect)
-            {
-                CloseAllOpenSelects();
-                RefreshUI();
-            }
-            _justOpenedSelect = false;
-            _prevMouseDown = currentMouseDown;
-            // Fire real-time 'input' for sliders AFTER enumeration - prevents Collection modified
-            // This is what makes the arrow function update the paired number field instantly
-            foreach (var rangeElem in rangesNeedingInput)
-            {
-                InvokeListeners(rangeElem, "input");
-                TriggerChange(rangeElem);
-            }
-            bool needsRefresh = false;
-            bool changed = false;
-            if (_currentFocused is InputElement input && (input.Type == "text" || input.Type == "number"))
-            {
-                bool shiftPressed = _controlContext.GetKey(_window, Key.LeftShift) == InputAction.Press ||
-                                    _controlContext.GetKey(_window, Key.RightShift) == InputAction.Press;
-                double currentTime = _controlContext.GetTime();
-                changed = false;
-                foreach (Key key in Enum.GetValues(typeof(Key)))
-                {
-                    InputAction state = _controlContext.GetKey(_window, key);
-                    if (state == InputAction.Press)
-                    {
-                        if (!_keyDownTime.ContainsKey(key))
-                        {
-                            _keyDownTime[key] = currentTime;
-                            _lastAddTime[key] = currentTime;
-                            if (key == Key.Backspace)
-                            {
-                                if (input.Value.Length > 0)
-                                {
-                                    input.Value = input.Value.Substring(0, input.Value.Length - 1);
-                                    changed = true;
-                                }
-                            }
-                            else
-                            {
-                                char? ch = GetCharFromKey(key, shiftPressed, input.Type);
-                                if (ch.HasValue)
-                                {
-                                    if (input.Type == "number")
-                                    {
-                                        if (ch == '.' && input.Value.Contains('.')) continue;
-                                        if (ch == '-' && input.Value.Length > 0 && !input.Value.StartsWith("-")) continue;
-                                        if (ch == '-' && input.Value.StartsWith("-")) continue;
-                                    }
-                                    input.Value += ch.Value;
-                                    changed = true;
-                                }
-                            }
-                        }
-                        else if (currentTime - _keyDownTime[key] > InitialRepeatDelay && currentTime - _lastAddTime[key] > RepeatRate)
-                        {
-                            _lastAddTime[key] = currentTime;
-                            if (key == Key.Backspace)
-                            {
-                                if (input.Value.Length > 0)
-                                {
-                                    input.Value = input.Value.Substring(0, input.Value.Length - 1);
-                                    changed = true;
-                                }
-                            }
-                            else
-                            {
-                                char? ch = GetCharFromKey(key, shiftPressed, input.Type);
-                                if (ch.HasValue)
-                                {
-                                    if (input.Type == "number")
-                                    {
-                                        if (ch == '.' && input.Value.Contains('.')) continue;
-                                        if (ch == '-' && input.Value.Length > 0 && !input.Value.StartsWith("-")) continue;
-                                        if (ch == '-' && input.Value.StartsWith("-")) continue;
-                                    }
-                                    input.Value += ch.Value;
-                                    changed = true;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        _keyDownTime.Remove(key);
-                        _lastAddTime.Remove(key);
-                    }
-                }
-                if (changed)
-                {
-                    RefreshUI();
-                    InvokeListeners(input, "input");
-                    TriggerChange(input);
-                }
-                needsRefresh = input.Update(deltaTime, _controlContext, _window);
-            }
-            if (needsRefresh)
-            {
-                RefreshUI();
-            }
+            _interactionLayer.Update(deltaTime, relMousePos, currentMouseDown, panelW, panelH);
         }
+
         protected virtual void RenderUI(float w, float h)
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -737,7 +437,7 @@ namespace SiegeEngine.Core.UI
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             Matrix4x4 scrollMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, scrollMatrix);
-            foreach (var sel in _openSelects)
+            foreach (var sel in _interactionLayer._openSelects)
             {
                 sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
             }
@@ -757,6 +457,7 @@ namespace SiegeEngine.Core.UI
             }
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
+
         public virtual void Render()
         {
             if (_uiRoot != null)
@@ -764,6 +465,7 @@ namespace SiegeEngine.Core.UI
                 RenderUI(PanelWidth, PanelHeight);
             }
         }
+
         public void RecomputeLayout(float w, float h)
         {
             if (_uiRoot == null) return;
@@ -771,6 +473,7 @@ namespace SiegeEngine.Core.UI
             _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             UpdateContentHeight();
         }
+
         private void UpdateContentHeight()
         {
             if (_uiRoot == null) return;
@@ -800,12 +503,14 @@ namespace SiegeEngine.Core.UI
                 ScrollOffsetY = 0f;
             }
         }
+
         public void Scroll(float deltaY)
         {
             if (!_needsVerticalScrollbar) return;
             ScrollOffsetY -= deltaY * 30f;
             ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, ContentFullHeight - PanelHeight);
         }
+
         public virtual void Dispose()
         {
             _uiShader.Dispose();
@@ -813,6 +518,7 @@ namespace SiegeEngine.Core.UI
             _uiRoot = null;
             _uiClickables.Clear();
         }
+
         public virtual void TriggerChange(HtmlElement elem)
         {
             var current = elem;
@@ -826,6 +532,7 @@ namespace SiegeEngine.Core.UI
                 current = current.Parent;
             }
         }
+
         public void InvokeListeners(HtmlElement elem, string eventName)
         {
             if (elem.EventListeners.ContainsKey(eventName))

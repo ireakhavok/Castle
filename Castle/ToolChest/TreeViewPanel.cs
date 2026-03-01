@@ -29,7 +29,7 @@ namespace ToolChest
                 _parent.HandleDataHook(hook);
             }
 
-            protected override void HandleUIClick(HtmlElement elem)
+            public override void HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
             }

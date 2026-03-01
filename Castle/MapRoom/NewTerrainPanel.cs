@@ -24,7 +24,7 @@ namespace MapRoom
             {
                 _parent = parent;
             }
-            protected override void HandleUIClick(HtmlElement elem)
+            public override void HandleUIClick(HtmlElement elem)
             {
                 base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);

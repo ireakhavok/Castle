@@ -1,7 +1,6 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: InputElement.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Definitions;
 using System;
 using System.Numerics;
 using System.Globalization;
@@ -16,19 +15,16 @@ namespace SiegeEngine.Core.UI
         private bool _cursorVisible = true;
         private float _cursorTimer = 0f;
         private const float CursorBlinkRate = 0.5f;
-
         public InputElement()
         {
             Tag = "input";
         }
-
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             if (Type == "radio")
             {
                 Style.Display = "none";
             }
-
             // Range value sync from attribute (for JS .value = ... from number field)
             if (Type == "range" && this is RangeElement range && Attributes.TryGetValue("value", out string valStr))
             {
@@ -37,9 +33,7 @@ namespace SiegeEngine.Core.UI
                     range.Value = parsed;
                 }
             }
-
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
-
             if (Type == "checkbox" || Type == "radio")
             {
                 float fs = Style.FontSize;
@@ -56,7 +50,6 @@ namespace SiegeEngine.Core.UI
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = 32f;
             }
         }
-
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
@@ -100,7 +93,6 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
-
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             if (Type == "checkbox" || Type == "radio")
@@ -124,11 +116,9 @@ namespace SiegeEngine.Core.UI
             }
             return base.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
         }
-
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             bool over = base.HandleClick(mousePos, viewportWidth, viewportHeight);
-
             // ALL range drag handling now lives here in InputElement class (as requested)
             if (Type == "range" && this is RangeElement range && over && IsActive)
             {
@@ -137,7 +127,6 @@ namespace SiegeEngine.Core.UI
                 float newValue = range.Min + percent * (range.Max - range.Min);
                 if (range.Step > 0) newValue = (float)Math.Round(newValue / range.Step) * range.Step;
                 newValue = Math.Clamp(newValue, range.Min, range.Max);
-
                 if (Math.Abs(range.Value - newValue) > 0.0001f)
                 {
                     range.Value = newValue;
@@ -145,10 +134,8 @@ namespace SiegeEngine.Core.UI
                     Attributes["value"] = Value;
                 }
             }
-
             return over;
         }
-
         public bool Update(float deltaTime, IControlContext controlContext, nint window)
         {
             bool valueChanged = false;
@@ -163,6 +150,97 @@ namespace SiegeEngine.Core.UI
                 }
             }
             return valueChanged;
+        }
+        public static char? GetCharFromKey(Key key, bool shiftPressed, string inputType)
+        {
+            if (inputType == "number")
+            {
+                if (key >= Key.Key0 && key <= Key.Key9)
+                {
+                    return (char)((int)key - (int)Key.Key0 + '0');
+                }
+                if (key == Key.Period)
+                {
+                    return '.';
+                }
+                if (key == Key.Minus)
+                {
+                    return '-';
+                }
+                return null;
+            }
+            if (key >= Key.A && key <= Key.Z)
+            {
+                return (char)((int)key - (int)Key.A + (shiftPressed ? 'A' : 'a'));
+            }
+            else if (key >= Key.Key0 && key <= Key.Key9)
+            {
+                char noShift = (char)((int)key - (int)Key.Key0 + '0');
+                char withShift = key switch
+                {
+                    Key.Key0 => ')',
+                    Key.Key1 => '!',
+                    Key.Key2 => '@',
+                    Key.Key3 => '#',
+                    Key.Key4 => '$',
+                    Key.Key5 => '%',
+                    Key.Key6 => '^',
+                    Key.Key7 => '&',
+                    Key.Key8 => '*',
+                    Key.Key9 => '(',
+                    _ => noShift
+                };
+                return shiftPressed ? withShift : noShift;
+            }
+            else if (key == Key.Space)
+            {
+                return ' ';
+            }
+            else if (key == Key.Minus)
+            {
+                return shiftPressed ? '_' : '-';
+            }
+            else if (key == Key.Equal)
+            {
+                return shiftPressed ? '+' : '=';
+            }
+            else if (key == Key.LeftBracket)
+            {
+                return shiftPressed ? '{' : '[';
+            }
+            else if (key == Key.RightBracket)
+            {
+                return shiftPressed ? '}' : ']';
+            }
+            else if (key == Key.Backslash)
+            {
+                return shiftPressed ? '|' : '\\';
+            }
+            else if (key == Key.Semicolon)
+            {
+                return shiftPressed ? ':' : ';';
+            }
+            else if (key == Key.Apostrophe)
+            {
+                return shiftPressed ? '"' : '\'';
+            }
+            else if (key == Key.Comma)
+            {
+                return shiftPressed ? '<' : ',';
+            }
+            else if (key == Key.Period)
+            {
+                return shiftPressed ? '>' : '.';
+            }
+            else if (key == Key.Slash)
+            {
+                return shiftPressed ? '?' : '/';
+            }
+            else if (key == Key.GraveAccent)
+            {
+                return shiftPressed ? '~' : '`';
+            }
+            return null;
         }
     }
 }
