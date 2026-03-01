@@ -3,8 +3,9 @@
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
-using System.Numerics;
+using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace SiegeEngine.Core.UI
 {
@@ -22,38 +23,76 @@ namespace SiegeEngine.Core.UI
 
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
-            float iw = 0f;
-            float ih = 0f;
+            float maxWidth = 0f;
+            float totalHeight = 0f;
+            string foundText = "";
 
-            // Text content (for both horizontal nav and vertical lists)
-            var textChild = Children.OfType<TextElement>().FirstOrDefault();
-            if (textChild != null && !string.IsNullOrWhiteSpace(textChild.Content))
+            bool isTopLevelNavItem = IsTopLevelNavItem();
+
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            foreach (var child in Children)
             {
-                Vector2 textSize = textRenderer.GetTextSize(textChild.Content.Trim(), fs, Style.FontFamily ?? "Arial");
-                iw = Math.Max(iw, textSize.X);
-                ih += textSize.Y;
+                queue.Enqueue(child);
             }
-
-            // Recursively add height from nested lists (ul/ol inside this li) - this fixes sibling spacing
-            foreach (var child in Children.Where(c => c.GetEffectiveDisplay() != "none"))
+            while (queue.Count > 0)
             {
-                if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
+                var elem = queue.Dequeue();
+                if (elem is TextElement textElem && !string.IsNullOrWhiteSpace(textElem.Content))
                 {
-                    Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                    iw = Math.Max(iw, childSize.X);
-                    ih += childSize.Y;
+                    foundText = textElem.Content.Trim();
+                    Vector2 textSize = textRenderer.GetTextSize(foundText, fs, elem.Style.FontFamily ?? Style.FontFamily ?? "Arial");
+                    maxWidth = Math.Max(maxWidth, textSize.X);
+                    totalHeight = Math.Max(totalHeight, textSize.Y);
+                }
+                foreach (var c in elem.Children)
+                {
+                    queue.Enqueue(c);
                 }
             }
 
-            // Add padding (standard for lists)
+            // ONLY for normal (non-nav) nested lists include sub-ul size in height
+            // This fixes "the second item of the first level of the nesting not taking the first parent's children into account"
+            if (!isTopLevelNavItem)
+            {
+                foreach (var child in Children.Where(c => c.GetEffectiveDisplay() != "none"))
+                {
+                    if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
+                    {
+                        Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                        maxWidth = Math.Max(maxWidth, childSize.X);
+                        totalHeight += childSize.Y;
+                    }
+                }
+            }
+
             Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-            iw += pad.W + pad.Y;
-            ih += pad.X + pad.Z;
+            Vector4 borderW = ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+            float finalWidth = maxWidth + pad.W + pad.Y + borderW.W + borderW.Y;
+            float finalHeight = totalHeight + pad.X + pad.Z + borderW.X + borderW.Z;
 
-            if (float.IsNaN(iw)) iw = 90f;
-            if (float.IsNaN(ih)) ih = 28f;
+            if (float.IsNaN(finalWidth) || finalWidth < 30f) finalWidth = 120f;
+            if (float.IsNaN(finalHeight) || finalHeight < 20f) finalHeight = 28f;
 
-            return new Vector2(iw, ih);
+            return new Vector2(finalWidth, finalHeight);
+        }
+
+        public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
+        {
+            // ONLY force intrinsic width for TOP-LEVEL nav items (nav > ul > li)
+            // This fixes hover box width and text alignment in the nav bar WITHOUT breaking normal nested lists or submenu items
+            if (IsTopLevelNavItem())
+            {
+                Vector2 intrinsic = ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, parentFs);
+                forcedWidth = intrinsic.X;
+            }
+            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
+        }
+
+        private bool IsTopLevelNavItem()
+        {
+            if (Parent == null || Parent.Tag.ToLower() != "ul") return false;
+            HtmlElement grandParent = Parent.Parent;
+            return grandParent != null && grandParent.Tag.ToLower() == "nav";
         }
     }
 }

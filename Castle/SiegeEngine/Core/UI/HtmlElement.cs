@@ -75,7 +75,32 @@ namespace SiegeEngine.Core.UI
                 effective = hs;
             if (IsActive && PseudoStyles.TryGetValue("active", out CssStyle a))
                 effective = a;
-            return effective.Display;
+            string display = effective.Display;
+
+            if (Tag.ToLower() == "ul")
+            {
+                var parentLi = Parent as LiElement;
+                if (parentLi != null)
+                {
+                    HtmlElement current = parentLi;
+                    bool isUnderNav = false;
+                    while (current != null)
+                    {
+                        if (current.Tag.ToLower() == "nav")
+                        {
+                            isUnderNav = true;
+                            break;
+                        }
+                        current = current.Parent;
+                    }
+                    if (isUnderNav && parentLi.IsHover)
+                    {
+                        display = "block";
+                    }
+                }
+            }
+
+            return display;
         }
         private HtmlElement FindContainingBlock()
         {
@@ -274,10 +299,6 @@ namespace SiegeEngine.Core.UI
             else
             {
                 ScrollOffsetY = 0f;
-            }
-            if (hasVerticalOverflow)
-            {
-                Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id", "")}' class='{Attributes.GetValueOrDefault("class", "")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
             }
             ComputedTransform = ComputeTransform(viewportWidth, viewportHeight);
         }
@@ -1387,6 +1408,16 @@ namespace SiegeEngine.Core.UI
             float tlx = 2 * tl.X / vw - 1;
             float tly = 1 - 2 * tl.Y / vh;
             return new float[] { blx, bly, brx, bry, trx, try_, tlx, tly };
+        }
+        private bool IsUnderNav(HtmlElement elem)
+        {
+            var current = elem;
+            while (current != null)
+            {
+                if (current.Tag.ToLower() == "nav") return true;
+                current = current.Parent;
+            }
+            return false;
         }
     }
 }
