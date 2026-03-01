@@ -260,7 +260,6 @@ Folder: Root
       - float ParseAngle(string s)
         - Calls: float.Parse
       - float[] GetNdcQuad( Matrix4x4 trans,  float h,  float vh,  float vw,  float w,  float y, float x)
-      - bool IsUnderNav(HtmlElement elem)
 - File: HtmlParser.cs
   - Class: HtmlParser (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq
@@ -304,10 +303,15 @@ Folder: Root
     - Methods:
       - constructor LiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: IsTopLevelNavItem, ParseBorderWidths, ParsePaddings, c.GetEffectiveDisplay
+        - Calls: IsNavDropdownParent, ParseBorderWidths, ParsePaddings, c.GetEffectiveDisplay
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: ComputeIntrinsicSize, IsTopLevelNavItem
+        - Calls: ComputeIntrinsicSize, IsNavDropdownParent, IsTopLevelNavItem
+      - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem
+      - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
+        - Calls: GetNdcQuad, IsNavDropdownParent, dropdownUl.ComputeLayout
       - bool IsTopLevelNavItem()
+      - bool IsNavDropdownParent()
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
