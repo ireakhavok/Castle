@@ -10,6 +10,7 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.Shaders;
+
 namespace SiegeEngine.Core.UI
 {
     public class UIOverlay
@@ -160,7 +161,7 @@ namespace SiegeEngine.Core.UI
             if (elem.GetEffectiveDisplay() == "none") return;
             string classes = elem.Attributes.GetValueOrDefault("class", "");
             string tagLower = elem.Tag.ToLower();
-            if (classes.Contains("button") || classes.Contains("toggle") || tagLower == "select" || tagLower == "label" || tagLower == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || tagLower == "option" || elem.Attributes.ContainsKey("onchange") || elem.Attributes.ContainsKey("onmouseenter") || elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") || elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") || elem.Attributes.ContainsKey("onblur") || tagLower == "input")
+            if (classes.Contains("button") || classes.Contains("toggle") || tagLower == "select" || tagLower == "label" || tagLower == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || tagLower == "option" || elem.Attributes.ContainsKey("onchange") || elem.Attributes.ContainsKey("onmouseenter") || elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") || elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") || elem.Attributes.ContainsKey("onblur") || tagLower == "input" || (tagLower == "li" && (classes.Contains("nav-dropdown") || elem.Children.Any(c => c.Tag.ToLower() == "ul"))))
             {
                 _uiClickables.Add(elem);
             }
