@@ -353,7 +353,6 @@ namespace SiegeEngine.Core.UI.JSParser
                         {
                             Console.WriteLine($"[JSElement] Triggering input listeners after C# value set on {tag}#{id}");
                             jsElem.overlay.RefreshUI();
-                            // jsElem.overlay.InvokeListeners(jsElem.elem, "input");
                             jsElem.overlay.TriggerChange(jsElem.elem);
                         }
                     }
@@ -403,6 +402,8 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         public object CallFunction(object callee, List<object> args)
         {
+            Console.WriteLine($"[CallFunction Debug] Callee type: {callee?.GetType().FullName ?? "null"} | Args count: {args.Count} | Args types: {string.Join(", ", args.Select(a => a?.GetType().Name ?? "null"))}");
+
             if (callee is FunctionDeclarationNode func)
             {
                 Console.WriteLine("Debug: Calling function " + func.Name ?? "anonymous");
@@ -470,14 +471,48 @@ namespace SiegeEngine.Core.UI.JSParser
             {
                 return funcObj(args.ToArray());
             }
-            if (callee is Action<object> act)
+            if (callee is Action action)
             {
-                act.DynamicInvoke(args[0]);
+                action();
+                return null;
+            }
+            if (callee is Action<object[]> variadicAction)
+            {
+                variadicAction(args.ToArray());
+                return null;
+            }
+            if (callee.GetType().IsGenericType && callee.GetType().GetGenericTypeDefinition() == typeof(Action<>))
+            {
+                object arg = args.Count > 0 ? args[0] : null;
+                ((dynamic)callee).Invoke(arg);
                 return null;
             }
             if (callee is Delegate del)
             {
-                return del.DynamicInvoke(args.ToArray());
+                object[] invokeArgs = args.ToArray();
+                try
+                {
+                    return del.DynamicInvoke(invokeArgs);
+                }
+                catch (TargetParameterCountException)
+                {
+                    if (invokeArgs.Length == 0 || (invokeArgs.Length == 1 && invokeArgs[0] == null))
+                    {
+                        return del.DynamicInvoke(Array.Empty<object>());
+                    }
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[CallFunction Error] DynamicInvoke failed: {ex.Message} | Callee: {del.GetType().Name} | Args: {string.Join(", ", invokeArgs.Select(a => a?.ToString() ?? "null"))}");
+                    throw;
+                }
+            }
+            // Guard for arrays/lists being passed as callee (common in array method lookups in JSStandardLibrary)
+            if (callee is System.Collections.IEnumerable || callee is Array)
+            {
+                Console.WriteLine($"[CallFunction WARNING] Array/list passed as callee - skipping (likely array method or console.log resolution)");
+                return null;
             }
             throw new Exception("Not callable");
         }

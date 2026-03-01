@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI
+﻿// Folder: SiegeEngine.Core.UI
 // File: UlElement.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
@@ -11,9 +11,13 @@ namespace SiegeEngine.Core.UI
         public UlElement()
         {
             Tag = "ul";
-            Style.Display = "block";
-            Style.ListStyleType = "disc";
-            Style.PaddingLeftStr = "40px";
+            Style.Display = "flex";
+            Style.FlexDirection = "row";
+            Style.AlignItems = "center";
+            Style.ListStyleType = "none";
+            Style.PaddingStr = "0";
+            Style.MarginStr = "0";
+            Style.HeightStr = "28px";
         }
     }
 }

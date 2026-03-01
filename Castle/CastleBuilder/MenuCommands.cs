@@ -11,43 +11,43 @@ namespace CastleBuilder
 {
     public static class MenuCommands
     {
-        // === Original menu stubs ===
+        // Original top-level menu stubs
         public static void OpenFile(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] File → New Project (stub)");
+            Console.WriteLine("[Menu] File opened (stub)");
         }
 
         public static void OpenEdit(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] Edit → Undo (stub)");
+            Console.WriteLine("[Menu] Edit opened (stub)");
         }
 
         public static void OpenView(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] View (stub)");
+            Console.WriteLine("[Menu] View opened (stub)");
         }
 
         public static void OpenCastle(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] Castle (stub)");
+            Console.WriteLine("[Menu] Castle opened (stub)");
         }
 
         public static void OpenTools(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] Tools (stub)");
+            Console.WriteLine("[Menu] Tools opened (stub)");
         }
 
         public static void OpenWindow(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] Window (stub)");
+            Console.WriteLine("[Menu] Window opened (stub)");
         }
 
         public static void OpenHelp(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] Help → About (stub)");
+            Console.WriteLine("[Menu] Help opened (stub)");
         }
 
-        // === Panels submenu (real opens) ===
+        // Panels submenu - all requested panels
         public static void OpenTerrain(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             TerrainCreatorPanel.OpenBlank(renderContext, controlContext, window, eventBus);

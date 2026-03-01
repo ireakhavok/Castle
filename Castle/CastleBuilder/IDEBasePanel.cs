@@ -14,8 +14,6 @@ namespace CastleBuilder
 {
     public class IDEBasePanel : BasePanel
     {
-        private const float NavBarHeight = 28f;
-
         private class IDEUIOverlay : UIOverlay
         {
             private readonly EventBus _eventBus;
@@ -29,28 +27,22 @@ namespace CastleBuilder
             protected override void HandleDataHook(string hook)
             {
                 Console.WriteLine($"[IDE Menu] Clicked: {hook}");
-
                 var parts = hook.Split('.');
                 if (parts.Length < 3) return;
-
                 string ns = parts[0];
                 string className = parts[1];
                 string methodName = parts[2];
-
-                // Robust type resolution (searches all loaded assemblies)
                 Type type = null;
                 foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
                 {
                     type = asm.GetType($"{ns}.{className}");
                     if (type != null) break;
                 }
-
                 if (type == null)
                 {
                     Console.WriteLine($"[IDE Menu] Type not found: {ns}.{className}");
                     return;
                 }
-
                 var method = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public);
                 if (method != null)
                 {
@@ -74,7 +66,7 @@ namespace CastleBuilder
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
-            AllowDragging = true;
+            AllowDragging = false;
             DockState = DockState.Tabbed;
             IsModal = false;
         }
@@ -87,6 +79,10 @@ namespace CastleBuilder
         public override void Init()
         {
             base.Init();
+            // Force exactly 28px high menu bar at top of window, full width
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            Size = new Vector2(winW, 28f);
+            Position = Vector2.Zero;
 
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))
@@ -94,12 +90,36 @@ namespace CastleBuilder
                 Console.WriteLine($"[IDEBasePanel] ERROR: IDE_UI.html not found at {htmlPath}");
                 return;
             }
-
             string html = File.ReadAllText(htmlPath);
             _uiOverlay.LoadUI(html);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+        }
+
+        public override void Render()
+        {
+            if (!Visible) return;
+            if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
+            {
+                _lastW = (int)Size.X;
+                _lastH = (int)Size.Y;
+                _uiOverlay.PanelWidth = Size.X;
+                _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.RefreshUI();
+            }
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
+            _uiOverlay.Render();
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+        }
+
+        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
+        {
+            if (!Visible) return;
+            Vector2 relMousePos = absMousePos - Position;
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

@@ -328,6 +328,19 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Even
 Read 731 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events\SaveProjectEvent.cs
 Namespace: CastleBuilder.Events
 Found 4 dependencies
+Found: IDEBasePanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
+Read 4634 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
+Namespace: CastleBuilder
+Found 9 dependencies
+Found: IDE_UI.html
+Found: MenuCommands.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Read 3079 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Namespace: CastleBuilder
+Found 6 dependencies
 Found: obj
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj
 Found: Program.cs
@@ -1418,9 +1431,9 @@ Found 7 dependencies
 Found: LiElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
-Read 2996 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
+Read 980 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
 Namespace: SiegeEngine.Core.UI
-Found 4 dependencies
+Found 5 dependencies
 Found: MenuPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
@@ -1430,9 +1443,9 @@ Found 9 dependencies
 Found: NavElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavElement.cs
-Read 349 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavElement.cs
+Read 2963 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavElement.cs
 Namespace: SiegeEngine.Core.UI
-Found 3 dependencies
+Found 5 dependencies
 Found: OlElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\OlElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\OlElement.cs
@@ -1498,7 +1511,7 @@ Found 10 dependencies
 Found: UlElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
-Read 430 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
+Read 1312 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UlElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 3 dependencies
 Found: UnityAssetLoader
@@ -1717,18 +1730,18 @@ Found: BrushPanelUI.html
 Found: ConsolePanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
-Read 188 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
+Read 4621 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
 Namespace: ToolChest
-Found 5 dependencies
+Found 9 dependencies
 Found: ConsolePanelUI.html
 Found: obj
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\obj
 Found: PropertiesPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
-Read 191 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
+Read 7337 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
 Namespace: ToolChest
-Found 5 dependencies
+Found 13 dependencies
 Found: PropertiesPanelUI.html
 Found: ToolChest.csproj
 Found: TreeViewPanel.cs

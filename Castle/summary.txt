@@ -22,6 +22,16 @@ Folder: CastleBuilder
       - void LoadIDEState()
       - void SaveIDEState()
         - Calls: JsonSerializer.Serialize
+- File: IDEBasePanel.cs
+  - Class: IDEUIOverlay (Namespace: CastleBuilder)
+    - Inherits: UIOverlay
+        
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.IO, System.Numerics, System.Reflection
+    - Fields:
+      - EventBus _eventBus
+    - Methods:
+      - void HandleDataHook(string hook)
+        - Calls: method.Invoke
 - File: LoadProjectEvent.cs
   - Class: LoadProjectEvent (Namespace: CastleBuilder.Events)
     - Inherits: IEvent
@@ -32,6 +42,27 @@ Folder: CastleBuilder
     - Methods:
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+- File: MenuCommands.cs
+  - Class: MenuCommands (Namespace: CastleBuilder)
+    - Dependencies: MapRoom, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, ToolChest
+    - Methods:
+      - void OpenFile( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - void OpenEdit( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - void OpenView( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - void OpenCastle( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - void OpenTools( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - void OpenWindow( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - void OpenHelp( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - void OpenTerrain( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: TerrainCreatorPanel.OpenBlank
+      - void OpenAnimation( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: AnimationViewerPanel.Open
+      - void OpenAssetBrowser( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: AssetBrowserPanel.Open
+      - void OpenProperties( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: PropertiesPanel.Open
+      - void OpenHierarchy( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: TreeViewPanel.Open
 - File: NewProjectEvent.cs
   - Class: NewProjectEvent (Namespace: CastleBuilder.Events)
     - Inherits: IEvent
@@ -1311,13 +1342,11 @@ Folder: SiegeEngine
   - Class: LiElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Linq, System.Numerics
     - Methods:
       - constructor LiElement()
-      - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: ToRoman, textRenderer.GetTextSize, textRenderer.RenderText
-      - string ToRoman( bool lower, int number)
-        - Calls: number.ToString
+      - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: textRenderer.GetTextSize
 - File: LightComponent.cs
   - Class: LightComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -1548,9 +1577,11 @@ Folder: SiegeEngine
   - Class: NavElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Linq, System.Numerics
     - Methods:
       - constructor NavElement()
+      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+        - Calls: textRenderer.GetTextSize
 - File: NodeParser.cs
   - Class: NodeParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Text
@@ -2357,6 +2388,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
     - Methods:
       - constructor UlElement()
+      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
 - File: UnityAssetFileType.cs
   - Class: UnityAssetFileType (Namespace: SiegeEngine.Core.UnityAssetLoader)
 - File: UnityAssetScanner.cs
@@ -2482,11 +2514,25 @@ Folder: ToolChest
     - Methods:
       - void HandleDataHook(string hook)
 - File: ConsolePanel.cs
-  - Class: ConsolePanel (Namespace: ToolChest)
-    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
+  - Class: ConsoleUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Text
+    - Fields:
+      - ConsolePanel _parent
+    - Methods:
+      - void HandleDataHook(string hook)
+      - void HandleUIClick(HtmlElement elem)
 - File: PropertiesPanel.cs
-  - Class: PropertiesPanel (Namespace: ToolChest)
-    - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
+  - Class: PropertiesUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.ComponentModel, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text
+    - Fields:
+      - PropertiesPanel _parent
+    - Methods:
+      - void HandleDataHook(string hook)
+      - void HandleUIClick(HtmlElement elem)
 - File: TreeViewPanel.cs
   - Class: TreeNode (Namespace: ToolChest)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Text
@@ -2520,6 +2566,8 @@ CastleBuilder.BlueprintManager
 CastleBuilder.Events.LoadProjectEvent
 CastleBuilder.Events.NewProjectEvent
 CastleBuilder.Events.SaveProjectEvent
+CastleBuilder.IDEUIOverlay
+CastleBuilder.MenuCommands
 Citadel.Network.NetworkManager
 Citadel.Server.EntityDeltaTracker
 Citadel.Server.GameServer
@@ -2713,7 +2761,7 @@ ThroneRoom.Class1
 ToolChest.AssetBrowserUIOverlay
 ToolChest.Brush
 ToolChest.BrushUIOverlay
-ToolChest.ConsolePanel
-ToolChest.PropertiesPanel
+ToolChest.ConsoleUIOverlay
+ToolChest.PropertiesUIOverlay
 ToolChest.TreeNode
 Trebuchet.Launcher
