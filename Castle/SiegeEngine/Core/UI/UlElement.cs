@@ -11,13 +11,11 @@ namespace SiegeEngine.Core.UI
         public UlElement()
         {
             Tag = "ul";
-            Style.Display = "flex";
-            Style.FlexDirection = "row";
-            Style.AlignItems = "center";
-            Style.ListStyleType = "none";
-            Style.PaddingStr = "0";
-            Style.MarginStr = "0";
-            Style.HeightStr = "28px";
+            // Default to standard vertical block list (NavElement overrides its ul to flex row)
+            Style.Display = "block";
+            Style.ListStyleType = "disc";
+            Style.PaddingStr = "0 0 0 40px";
+            Style.MarginStr = "8px 0";
         }
     }
 }

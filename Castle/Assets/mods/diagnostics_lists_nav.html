@@ -1,0 +1,195 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nav / UL / LI Diagnostic - Load this file to see console logs + visual placement issues</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #ddd;
+            font-family: Arial, sans-serif;
+        }
+
+        h2 {
+            color: #aaa;
+            margin-top: 30px;
+        }
+
+        /* Test 1: Standard horizontal nav (target for NavElement override) */
+        nav#main-nav {
+            background: #252526;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border-bottom: 1px solid #444;
+            margin-bottom: 20px;
+        }
+
+            nav#main-nav ul.horizontal {
+                display: flex;
+                flex-direction: row;
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                gap: 4px;
+            }
+
+            nav#main-nav li {
+                padding: 0 22px; /* exactly matches LiElement default */
+                height: 40px;
+                display: flex;
+                align-items: center;
+                cursor: pointer;
+                white-space: nowrap;
+                background: #3a3a3a;
+            }
+
+                nav#main-nav li:hover {
+                    background: #555 !important; /* forces hover test */
+                }
+
+        /* Test 2: Vertical UL with default block behavior */
+        .vertical-ul {
+            background: #2d2d2d;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+            .vertical-ul ul {
+                list-style-type: disc;
+                padding-left: 40px;
+                margin: 8px 0;
+            }
+
+            .vertical-ul li {
+                padding: 4px 8px;
+                margin: 2px 0;
+            }
+
+        /* Test 3: Nested lists */
+        .nested-test ul {
+            list-style-type: circle;
+        }
+
+        /* Test 4: Ordered list */
+        .ordered-test ol {
+            list-style-type: decimal;
+            padding-left: 40px;
+        }
+
+        /* Test 5: Mixed nav with dropdown (triggers NavElement nested-ul logic) */
+        nav#dropdown-nav {
+            background: #252526;
+            padding: 8px 16px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+            nav#dropdown-nav ul {
+                display: flex;
+                list-style: none;
+                margin: 0;
+                padding: 0;
+            }
+
+            nav#dropdown-nav li {
+                position: relative;
+                padding: 8px 20px;
+            }
+
+                nav#dropdown-nav li:hover > ul {
+                    display: block;
+                }
+
+            nav#dropdown-nav ul ul {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                background: #1e1e1e;
+                border: 1px solid #555;
+                min-width: 140px;
+                z-index: 100;
+            }
+    </style>
+</head>
+<body>
+    <h1>Nav / UL / LI Diagnostic (v1.0)</h1>
+    <p>Load this file in the engine → watch C# console for [Nav Debug], [Scrollbar Debug], intrinsic size logs, and layout prints. Hover items, note background sizes, spacing, dropdowns, vertical indentation, etc.</p>
+
+    <!-- Test 1: Horizontal Nav (triggers NavElement.cs override) -->
+    <h2>1. Horizontal Nav (NavElement)</h2>
+    <nav id="main-nav">
+        <ul class="horizontal">
+            <li data-hook="file">File</li>
+            <li data-hook="edit">Edit</li>
+            <li data-hook="view">View</li>
+            <li data-hook="help">Help (longer text to test intrinsic)</li>
+        </ul>
+    </nav>
+
+    <!-- Test 2: Vertical UL -->
+    <h2>2. Vertical Unordered List (block behavior)</h2>
+    <div class="vertical-ul">
+        <ul>
+            <li>Basic list item</li>
+            <li>Item with longer descriptive text that should cause proper line height and padding</li>
+            <li>Short item</li>
+        </ul>
+    </div>
+
+    <!-- Test 3: Nested Lists -->
+    <h2>3. Nested Lists (dropdown simulation)</h2>
+    <div class="nested-test vertical-ul">
+        <ul>
+            <li>
+                Parent A
+                <ul>
+                    <li>Child A1</li>
+                    <li>Child A2 with long text</li>
+                </ul>
+            </li>
+            <li>Parent B</li>
+        </ul>
+    </div>
+
+    <!-- Test 4: Ordered List -->
+    <h2>4. Ordered List</h2>
+    <div class="ordered-test vertical-ul">
+        <ol>
+            <li>First ordered item</li>
+            <li>Second item with very long text that wraps and tests intrinsic height</li>
+            <li>Third item</li>
+        </ol>
+    </div>
+
+    <!-- Test 5: Dropdown Nav (nested ul inside li) -->
+    <h2>5. Nav with Dropdown Submenu</h2>
+    <nav id="dropdown-nav">
+        <ul>
+            <li>
+                File
+                <ul>
+                    <li>New Project</li>
+                    <li>Open...</li>
+                    <li>Save</li>
+                </ul>
+            </li>
+            <li>
+                Edit
+                <ul>
+                    <li>Undo</li>
+                    <li>Redo</li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+
+    <script>
+        console.log("[JS] Diagnostic HTML fully loaded - ready for engine console inspection");
+    </script>
+</body>
+</html>

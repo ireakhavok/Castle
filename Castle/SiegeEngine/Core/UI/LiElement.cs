@@ -13,22 +13,47 @@ namespace SiegeEngine.Core.UI
         public LiElement()
         {
             Tag = "li";
-            Style.Display = "flex";
+            Style.Display = "block";
             Style.AlignItems = "center";
             Style.ListStyleType = "none";
-            Style.PaddingStr = "0 22px";
-            Style.HeightStr = "28px";
+            Style.PaddingStr = "4px 8px";
+            Style.MarginStr = "2px 0";
         }
 
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
+            float iw = 0f;
+            float ih = 0f;
+
+            // Text content (for both horizontal nav and vertical lists)
             var textChild = Children.OfType<TextElement>().FirstOrDefault();
             if (textChild != null && !string.IsNullOrWhiteSpace(textChild.Content))
             {
                 Vector2 textSize = textRenderer.GetTextSize(textChild.Content.Trim(), fs, Style.FontFamily ?? "Arial");
-                return new Vector2(textSize.X + 44f, 28f);
+                iw = Math.Max(iw, textSize.X);
+                ih += textSize.Y;
             }
-            return new Vector2(90f, 28f);
+
+            // Recursively add height from nested lists (ul/ol inside this li) - this fixes sibling spacing
+            foreach (var child in Children.Where(c => c.GetEffectiveDisplay() != "none"))
+            {
+                if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
+                {
+                    Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                    iw = Math.Max(iw, childSize.X);
+                    ih += childSize.Y;
+                }
+            }
+
+            // Add padding (standard for lists)
+            Vector4 pad = ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            iw += pad.W + pad.Y;
+            ih += pad.X + pad.Z;
+
+            if (float.IsNaN(iw)) iw = 90f;
+            if (float.IsNaN(ih)) ih = 28f;
+
+            return new Vector2(iw, ih);
         }
     }
 }

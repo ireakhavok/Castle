@@ -20,4 +20,10 @@
     <PackageReference Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Configs\diagnostics_lists_nav.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
