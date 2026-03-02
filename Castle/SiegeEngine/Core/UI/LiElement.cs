@@ -1,10 +1,11 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.UI
+// File: LiElement.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public class LiElement : HtmlElement
@@ -18,7 +19,6 @@ namespace SiegeEngine.Core.UI
             float maxWidth = 0f;
             float totalHeight = 0f;
             string foundText = "";
-            bool isNavDropdownParent = IsNavDropdownParent();
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
             foreach (var child in Children)
             {
@@ -39,27 +39,14 @@ namespace SiegeEngine.Core.UI
                     queue.Enqueue(c);
                 }
             }
-            if (!isNavDropdownParent)
+
+            foreach (var child in Children.Where(c => c.GetEffectiveDisplay() != "none"))
             {
-                foreach (var child in Children.Where(c => c.GetEffectiveDisplay() != "none"))
+                if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
                 {
-                    if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
-                    {
-                        Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                        maxWidth = Math.Max(maxWidth, childSize.X);
-                        totalHeight += childSize.Y;
-                    }
-                }
-            }
-            else
-            {
-                foreach (var child in Children.Where(c => c.GetEffectiveDisplay() != "none"))
-                {
-                    if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
-                    {
-                        Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                        maxWidth = Math.Max(maxWidth, childSize.X);
-                    }
+                    Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                    maxWidth = Math.Max(maxWidth, childSize.X);
+                    totalHeight += childSize.Y;
                 }
             }
             Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
@@ -72,16 +59,10 @@ namespace SiegeEngine.Core.UI
         }
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
-            if (IsNavDropdownParent() || IsTopLevelNavItem())
-            {
-                Vector2 intrinsic = ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, parentFs);
-                forcedWidth = intrinsic.X;
-            }
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
         }
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
-            // FIRST - direct hit test on THIS li box (this is what was missing for "Panels")
             bool hit = false;
             if (ComputedWidth > 0 && ComputedHeight > 0)
             {
@@ -100,12 +81,6 @@ namespace SiegeEngine.Core.UI
                 float my = 1 - 2 * mousePos.Y / viewportHeight;
                 hit = !(mx < minX || mx > maxX || my < minY || my > maxY);
             }
-            // Set hover state for nav dropdown parents (including "Panels")
-            if (IsNavDropdownParent() || IsTopLevelNavItem())
-            {
-                IsHover = hit;
-            }
-            // THEN recurse to children (text + submenu) so clicks still work
             if (hit)
             {
                 for (int i = Children.Count - 1; i >= 0; i--)
@@ -118,43 +93,6 @@ namespace SiegeEngine.Core.UI
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
-            if (IsNavDropdownParent() && IsHover)
-            {
-                var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
-                if (dropdownUl != null)
-                {
-                    float dropdownY = ComputedPosition.Y + ComputedHeight;
-                    float dropdownX = ComputedPosition.X;
-                    dropdownUl.Style.Display = "block";
-                    dropdownUl.ComputeLayout(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, viewportWidth, viewportHeight, textRenderer, Style.FontSize);
-                    CssStyle ulStyle = dropdownUl.Style;
-                    if (ulStyle.BackgroundColor != Vector4.Zero)
-                    {
-                        float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
-                        quadRenderer.DrawNdcQuad(dropdownNdc, ulStyle.BackgroundColor);
-                    }
-                    dropdownUl.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, ComputedFullTransform);
-                }
-            }
-        }
-        private bool IsTopLevelNavItem()
-        {
-            if (Parent == null || Parent.Tag.ToLower() != "ul") return false;
-            HtmlElement grandParent = Parent.Parent;
-            return grandParent != null && grandParent.Tag.ToLower() == "nav";
-        }
-        private bool IsNavDropdownParent()
-        {
-            if (Tag.ToLower() != "li") return false;
-            string classes = Attributes.GetValueOrDefault("class", "");
-            if (classes.Contains("nav-dropdown")) return true;
-            HtmlElement current = Parent;
-            while (current != null)
-            {
-                if (current.Tag.ToLower() == "nav") return Children.Any(c => c.Tag.ToLower() == "ul");
-                current = current.Parent;
-            }
-            return false;
         }
     }
 }

@@ -1,9 +1,11 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.UI
+// File: NavLiElement.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public class NavLiElement : HtmlElement
@@ -49,8 +51,7 @@ namespace SiegeEngine.Core.UI
         }
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
-            IsHover = false;
-            bool selfHit = false;
+            bool hit = false;
             if (ComputedWidth > 0 && ComputedHeight > 0)
             {
                 float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
@@ -66,15 +67,64 @@ namespace SiegeEngine.Core.UI
                 }
                 float mx = 2 * mousePos.X / viewportWidth - 1;
                 float my = 1 - 2 * mousePos.Y / viewportHeight;
-                selfHit = !(mx < minX || mx > maxX || my < minY || my > maxY);
+                hit = !(mx < minX || mx > maxX || my < minY || my > maxY);
             }
-            // Recurse for clicks only (no hover propagation)
-            for (int i = Children.Count - 1; i >= 0; i--)
+            if (IsNavDropdownParent() || IsTopLevelNavItem())
             {
-                Children[i].HandleClick(mousePos, viewportWidth, viewportHeight);
+                IsHover = hit;
             }
-            IsHover = selfHit;
-            return selfHit;
+            if (hit)
+            {
+                for (int i = Children.Count - 1; i >= 0; i--)
+                {
+                    if (Children[i].HandleClick(mousePos, viewportWidth, viewportHeight)) return true;
+                }
+            }
+            return hit;
+        }
+        public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+        {
+            base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
+            if (IsNavDropdownParent() && IsHover)
+            {
+                var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
+                if (dropdownUl != null)
+                {
+                    float dropdownY = ComputedPosition.Y + ComputedHeight;
+                    float dropdownX = ComputedPosition.X;
+                    dropdownUl.Style.Display = "block";
+                    dropdownUl.ComputeLayout(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, viewportWidth, viewportHeight, textRenderer, Style.FontSize);
+                    CssStyle ulStyle = dropdownUl.Style;
+                    if (ulStyle.BackgroundColor != Vector4.Zero)
+                    {
+                        float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+                        quadRenderer.DrawNdcQuad(dropdownNdc, ulStyle.BackgroundColor);
+                    }
+                    // localized bypass only for nav dropdown submenu - renders below the 28px IDE menu bar on top of everything else
+                    renderContext.Disable(renderContext.Enums.ScissorTest);
+                    dropdownUl.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, ComputedFullTransform);
+                    renderContext.Enable(renderContext.Enums.ScissorTest);
+                }
+            }
+        }
+        private bool IsTopLevelNavItem()
+        {
+            if (Parent == null || Parent.Tag.ToLower() != "ul") return false;
+            HtmlElement grandParent = Parent.Parent;
+            return grandParent != null && grandParent.Tag.ToLower() == "nav";
+        }
+        private bool IsNavDropdownParent()
+        {
+            if (Tag.ToLower() != "li") return false;
+            string classes = Attributes.GetValueOrDefault("class", "");
+            if (classes.Contains("nav-dropdown")) return true;
+            HtmlElement current = Parent;
+            while (current != null)
+            {
+                if (current.Tag.ToLower() == "nav") return Children.Any(c => c.Tag.ToLower() == "ul");
+                current = current.Parent;
+            }
+            return false;
         }
     }
 }
