@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI.JSParser
+﻿// Folder: SiegeEngine/Core/UI/JSParser
 // File: JSStandardLibrary.cs
 using System;
 using System.Collections.Generic;
@@ -385,7 +385,15 @@ namespace SiegeEngine.Core.UI.JSParser
                 case "filter": return new Func<object, List<object>>(callback => arr.Where(item => JSEvaluator.IsTruthy(eval.CallFunction(callback, new List<object> { item }))).ToList());
                 case "find": return new Func<object, object>(callback => arr.FirstOrDefault(item => JSEvaluator.IsTruthy(eval.CallFunction(callback, new List<object> { item }))));
                 case "findIndex": return new Func<object, double>(callback => arr.FindIndex(item => JSEvaluator.IsTruthy(eval.CallFunction(callback, new List<object> { item }))));
-                case "forEach": return new Action<object>(callback => arr.ForEach(item => eval.CallFunction(callback, new List<object> { item })));
+                case "forEach":
+                    return new Action<object>(callback =>
+                    {
+                        Console.WriteLine($"[JSArray.forEach] callback type: {callback?.GetType().FullName ?? "null"}");
+                        foreach (var item in arr)
+                        {
+                            eval.CallFunction(callback, new List<object> { item });
+                        }
+                    });
                 case "includes": return new Func<object, bool>(value => arr.Contains(value));
                 case "indexOf": return new Func<object, double>(value => arr.IndexOf(value));
                 case "join": return new Func<string, string>(separator => string.Join(separator, arr.Select(a => a?.ToString() ?? "")));

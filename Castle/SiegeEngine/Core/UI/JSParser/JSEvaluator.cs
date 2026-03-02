@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI.JSParser
+﻿// Folder: SiegeEngine/Core/UI/JSParser
 // File: JSEvaluator.cs
 using SiegeEngine.Core.UI;
 using System;
@@ -56,7 +56,7 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     return funcDecl;
                 case ArrowExpressionNode arrow:
-                    Console.WriteLine($"[JSEval] Arrow literal evaluated - capturing {CurrentScope().Count} vars (keys: {string.Join(",", CurrentScope().Keys)})");
+                    Console.WriteLine($"[JSEval] Arrow literal evaluated - capturing {CurrentScope().Count} vars");
                     var captured = new Dictionary<string, object>(CurrentScope());
                     return new JSArrowClosure(arrow.Params, arrow.Body, captured, this);
                 case ReturnStatementNode ret:
@@ -275,19 +275,76 @@ namespace SiegeEngine.Core.UI.JSParser
             {
                 return JSStandardLibrary.GetDateMember(this, date, propValue.ToString());
             }
-            if (propValue is string propName)
+            // Explicit JSElement handling (appendChild, value, innerHTML, textContent, style) - NO early return
+            if (objValue is JSElement jsElem && propValue is string jsProp)
             {
+                if (jsProp == "appendChild")
+                {
+                    Console.WriteLine("[GetMember Debug] Found appendChild on JSElement - returning callable Func");
+                    return new Action<JSElement>(child => jsElem.appendChild(child));
+                }
+                if (jsProp == "value")
+                {
+                    string tag = jsElem.elem.Tag.ToLower();
+                    string id = jsElem.elem.Attributes.GetValueOrDefault("id", "(no-id)");
+                    Console.WriteLine($"[JSElement.value getter] Getting {tag}#{id}");
+                    if (tag == "select")
+                    {
+                        var selected = jsElem.elem.Children.FirstOrDefault(c => c.Attributes.ContainsKey("selected"));
+                        return selected?.Attributes.GetValueOrDefault("value", ((TextElement)selected?.Children.FirstOrDefault())?.Content ?? "") ?? "";
+                    }
+                    else if (tag == "option")
+                    {
+                        return jsElem.elem.Attributes.GetValueOrDefault("value", ((TextElement)jsElem.elem.Children.FirstOrDefault())?.Content ?? "");
+                    }
+                    else if (tag == "input")
+                    {
+                        if (jsElem.elem is InputElement inp)
+                        {
+                            return inp.Value ?? "";
+                        }
+                        return jsElem.elem.Attributes.GetValueOrDefault("value", "");
+                    }
+                    return "";
+                }
+                if (jsProp == "innerHTML")
+                {
+                    return string.Join("", jsElem.elem.Children.OfType<TextElement>().Select(t => t.Content));
+                }
+                if (jsProp == "textContent")
+                {
+                    return string.Join("", jsElem.elem.Children.OfType<TextElement>().Select(t => t.Content));
+                }
+                if (jsProp == "style")
+                {
+                    return new Dictionary<object, object>();
+                }
+                // NO return here - fall through to reflection for other methods
+            }
+            // Explicit JSDocument handling for createElement
+            if (objValue is JSDocument jsDoc && propValue is string docProp && docProp == "createElement")
+            {
+                Console.WriteLine("[GetMember Debug] Found createElement on JSDocument - returning callable Func");
+                return new Func<string, JSElement>(tag => jsDoc.createElement(tag));
+            }
+            // General reflection lookup for any other properties/methods
+            if (propValue is string reflectionProp)
+            {
+                Console.WriteLine($"[GetMember Debug] Reflection lookup for '{reflectionProp}' on type {objValue?.GetType().FullName ?? "null"}");
                 var type = objValue?.GetType();
-                var prop = type?.GetProperty(propName);
+                var prop = type?.GetProperty(reflectionProp);
                 if (prop != null)
                 {
+                    Console.WriteLine($"[GetMember Debug] Found property '{reflectionProp}'");
                     return prop.GetValue(objValue);
                 }
-                var meth = type?.GetMethod(propName, BindingFlags.Instance | BindingFlags.Public);
+                var meth = type?.GetMethod(reflectionProp, BindingFlags.Instance | BindingFlags.Public);
                 if (meth != null)
                 {
+                    Console.WriteLine($"[GetMember Debug] Found method '{reflectionProp}' - returning callable Func");
                     return new Func<object[], object>(args => meth.Invoke(objValue, args));
                 }
+                Console.WriteLine($"[GetMember Debug] No property or method found for '{reflectionProp}'");
             }
             return null;
         }
@@ -402,8 +459,61 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         public object CallFunction(object callee, List<object> args)
         {
+            // Defensive unwrap for arrow callback wrapped as Object[1] (JSArrowClosure)
+            if (callee is object[] arr && arr.Length == 1)
+            {
+                Console.WriteLine($"[CallFunction Debug] Unwrapping Object[1] wrapper -> type {arr[0]?.GetType().FullName ?? "null"}");
+                callee = arr[0];
+            }
+
             Console.WriteLine($"[CallFunction Debug] Callee type: {callee?.GetType().FullName ?? "null"} | Args count: {args.Count} | Args types: {string.Join(", ", args.Select(a => a?.GetType().Name ?? "null"))}");
 
+            if (callee is JSArrowClosure closure)
+            {
+                Console.WriteLine($"[ArrowCall] Invoking closure with {args.Count} args");
+                if (closure.Params.Count != args.Count)
+                {
+                    throw new Exception("Argument count mismatch");
+                }
+                PushScope();
+                foreach (var kv in closure.Captured)
+                {
+                    if (!CurrentScope().ContainsKey(kv.Key))
+                    {
+                        CurrentScope()[kv.Key] = kv.Value;
+                    }
+                }
+                for (int i = 0; i < args.Count; i++)
+                {
+                    string paramName = ((IdentifierNode)closure.Params[i]).Name;
+                    CurrentScope()[paramName] = args[i];
+                }
+                object result = null;
+                try
+                {
+                    if (closure.Body is BlockStatementNode block)
+                    {
+                        foreach (var stmt in block.Body)
+                        {
+                            result = Evaluate(stmt);
+                            if (result is ReturnValue) break;
+                        }
+                    }
+                    else
+                    {
+                        result = closure.Evaluator.Evaluate(closure.Body);
+                    }
+                }
+                catch (ReturnException re)
+                {
+                    result = re.Value;
+                }
+                finally
+                {
+                    PopScope();
+                }
+                return result;
+            }
             if (callee is FunctionDeclarationNode func)
             {
                 Console.WriteLine("Debug: Calling function " + func.Name ?? "anonymous");
@@ -420,42 +530,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 try
                 {
                     result = Evaluate(func.Body);
-                }
-                catch (ReturnException re)
-                {
-                    result = re.Value;
-                }
-                finally
-                {
-                    PopScope();
-                }
-                return result;
-            }
-            if (callee is JSArrowClosure closure)
-            {
-                Console.WriteLine($"[ArrowCall] Invoking closure - captured keys: {string.Join(",", closure.Captured.Keys)} args.Count={args.Count}");
-                if (closure.Params.Count != args.Count)
-                {
-                    throw new Exception("Argument count mismatch");
-                }
-                PushScope();
-                foreach (var kv in closure.Captured)
-                {
-                    if (!CurrentScope().ContainsKey(kv.Key))
-                    {
-                        CurrentScope()[kv.Key] = kv.Value;
-                        Console.WriteLine($"[ArrowCall] Restored captured var '{kv.Key}' = {kv.Value}");
-                    }
-                }
-                for (int i = 0; i < args.Count; i++)
-                {
-                    string paramName = ((IdentifierNode)closure.Params[i]).Name;
-                    CurrentScope()[paramName] = args[i];
-                }
-                object result = null;
-                try
-                {
-                    result = closure.Evaluator.Evaluate(closure.Body);
                 }
                 catch (ReturnException re)
                 {
@@ -484,7 +558,15 @@ namespace SiegeEngine.Core.UI.JSParser
             if (callee.GetType().IsGenericType && callee.GetType().GetGenericTypeDefinition() == typeof(Action<>))
             {
                 object arg = args.Count > 0 ? args[0] : null;
-                ((dynamic)callee).Invoke(arg);
+                try
+                {
+                    ((Delegate)callee).DynamicInvoke(arg);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[CallFunction Error] Action<> DynamicInvoke failed: {ex.Message}");
+                    throw;
+                }
                 return null;
             }
             if (callee is Delegate del)
@@ -504,15 +586,9 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[CallFunction Error] DynamicInvoke failed: {ex.Message} | Callee: {del.GetType().Name} | Args: {string.Join(", ", invokeArgs.Select(a => a?.ToString() ?? "null"))}");
+                    Console.WriteLine($"[CallFunction Error] DynamicInvoke failed: {ex.Message}");
                     throw;
                 }
-            }
-            // Guard for arrays/lists being passed as callee (common in array method lookups in JSStandardLibrary)
-            if (callee is System.Collections.IEnumerable || callee is Array)
-            {
-                Console.WriteLine($"[CallFunction WARNING] Array/list passed as callee - skipping (likely array method or console.log resolution)");
-                return null;
             }
             throw new Exception("Not callable");
         }

@@ -222,44 +222,25 @@ Folder: Root
       - string GetEffectiveDisplay()
       - HtmlElement FindContainingBlock()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, ComputeTransform, FindContainingBlock, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, child.GetEffectiveDisplay
+        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, FindContainingBlock, HtmlLayoutUtils.ComputeTransform, HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, child.GetEffectiveDisplay
       - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
       - void UpdateFullTransforms(Matrix4x4 parentMatrix)
       - void PrepareResources( IControlContext controlContext,  IRenderContext renderContext,  ShaderProgram shader,  nint window, string baseDir)
       - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
       - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: LayoutBlockChildren, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.ComputeLayout
+        - Calls: HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, c.GetEffectiveDisplay, child.ComputeLayout
       - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: ParseMargins, ParseSize, ShiftX, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, child.GetEffectiveDisplay, currentLine.Clear
+        - Calls: HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParseSize, ShiftX, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, child.GetEffectiveDisplay, currentLine.Clear
       - void ShiftX( float off, HtmlElement e)
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: ParseBorderWidths, ParseMargins, ParsePaddings, ParseSize, c.GetEffectiveDisplay, child.GetEffectiveDisplay
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.GetEffectiveDisplay
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: GetNdcQuad, ParseSides
-      - float ParseSize( float parent,  float vh,  float vw, string s)
-        - Calls: float.Parse
-      - Vector4 ParsePaddings( float parent,  float vh,  float vw, CssStyle style)
-        - Calls: ParseSides, ParseSize
-      - Vector4 ParseMargins( float parent,  float vh,  float vw, CssStyle style)
-        - Calls: ParseSides
-      - Vector4 ParseBorderWidths( float parent,  float vh,  float vw, CssStyle style)
-        - Calls: ParseSides, ParseSize
-      - Vector4 ParseSides( float parent,  float vh,  float vw, string s)
-        - Calls: GetVal, ParseSize
-      - float GetVal( float defaultVal, int index)
-        - Calls: ParseSize
-      - return ParseSize()
-        - Calls: GetNdcQuad, HandleClick
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: GetNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad
       - HtmlElement FindElementById(string id)
-      - Matrix4x4 ComputeTransform( float viewportHeight, float viewportWidth)
-        - Calls: ParseAngle, ParseSize, Regex.Matches, float.Parse
-      - float ParseAngle(string s)
-        - Calls: float.Parse
-      - float[] GetNdcQuad( Matrix4x4 trans,  float h,  float vh,  float vw,  float w,  float y, float x)
 - File: HtmlLayoutUtils.cs
   - Class: HtmlLayoutUtils (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.Rendering, System, System.Linq, System.Numerics, System.Text.RegularExpressions
@@ -277,12 +258,12 @@ Folder: Root
       - float GetVal( float defaultVal, int index)
         - Calls: ParseSize
       - return ParseSize()
-        - Calls: float.Parse
+        - Calls: ParseAngle, Regex.Matches, float.Parse
+      - Matrix4x4 ComputeTransform( float viewportHeight,  float viewportWidth, HtmlElement elem)
+        - Calls: ParseAngle, ParseSize, Regex.Matches, float.Parse
       - float ParseAngle(string s)
         - Calls: float.Parse
       - float[] GetNdcQuad( Matrix4x4 trans,  float h,  float vh,  float vw,  float w,  float y, float x)
-      - Matrix4x4 ComputeTransform( float viewportHeight,  float viewportWidth, HtmlElement elem)
-        - Calls: ParseAngle, ParseSize, Regex.Matches, float.Parse
 - File: HtmlParser.cs
   - Class: HtmlParser (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq
@@ -300,7 +281,7 @@ Folder: Root
   - Class: InputElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Globalization, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Globalization, System.Numerics
     - Fields:
       - bool _cursorVisible
       - float _cursorTimer
@@ -309,9 +290,9 @@ Folder: Root
       - constructor InputElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: GetNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: ParseBorderWidths, ParsePaddings
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
         - Calls: newValue.ToString
       - bool Update( IControlContext controlContext,  nint window, float deltaTime)
@@ -323,13 +304,13 @@ Folder: Root
     - Methods:
       - constructor LiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: IsNavDropdownParent, ParseBorderWidths, ParsePaddings, c.GetEffectiveDisplay
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, IsNavDropdownParent, c.GetEffectiveDisplay
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
         - Calls: ComputeIntrinsicSize, IsNavDropdownParent, IsTopLevelNavItem
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem
+        - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: GetNdcQuad, IsNavDropdownParent, dropdownUl.ComputeLayout
+        - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, dropdownUl.ComputeLayout
       - bool IsTopLevelNavItem()
       - bool IsNavDropdownParent()
 - File: MenuPanel.cs
@@ -361,11 +342,11 @@ Folder: Root
     - Methods:
       - constructor NavLiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: ParseBorderWidths, ParsePaddings
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
         - Calls: ComputeIntrinsicSize
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: GetNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad
 - File: NavUlElement.cs
   - Class: NavUlElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
@@ -398,7 +379,7 @@ Folder: Root
       - constructor RangeElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: GetNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad
 - File: SelectElement.cs
   - Class: SelectElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
@@ -407,13 +388,13 @@ Folder: Root
     - Methods:
       - constructor SelectElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: ParseBorderWidths, ParsePaddings, ParseSize
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: GetNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad
       - void RenderDropdown( TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: GetNdcQuad, opt.Render
+        - Calls: HtmlLayoutUtils.GetNdcQuad, opt.Render
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: ParseBorderWidths, ParsePaddings
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
 - File: TableElement.cs
   - Class: TableElement (Namespace: SiegeEngine.Core.UI)
@@ -463,6 +444,23 @@ Folder: Root
     - Methods:
       - constructor TrElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+- File: UIInteractionLayer.cs
+  - Class: UIInteractionLayer (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - UIOverlay _overlay
+      - IControlContext _controlContext
+      - nint _window
+      - bool _prevMouseDown
+      - bool _justOpenedSelect
+      - List<SelectElement> _openSelects
+      - HtmlElement _currentFocused
+      - double InitialRepeatDelay
+      - double RepeatRate
+    - Methods:
+      - constructor UIInteractionLayer( IControlContext controlContext,  nint window, UIOverlay overlay)
+      - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
+        - Calls: JSElement, RefreshUI, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.HandleClick, clickable.IsDescendantOf, openSelect.HandleClick
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
@@ -477,19 +475,14 @@ Folder: Root
       - HtmlElement _uiRoot
       - List<HtmlElement> _uiClickables
       - string _currentBaseDir
-      - bool _justOpenedSelect
-      - bool _prevMouseDown
-      - List<SelectElement> _openSelects
       - JSContext _jsContext
       - JSDocument _document
-      - HtmlElement _currentFocused
-      - double InitialRepeatDelay
-      - double RepeatRate
-      - HtmlElement FocusedElement
       - bool _needsVerticalScrollbar
+      - UIInteractionLayer _interactionLayer
     - Methods:
       - constructor UIOverlay( IControlContext controlContext,  nint window, IRenderContext renderContext)
       - void Init()
+        - Calls: UIInteractionLayer
       - void LoadUI( string baseDir = "", string html)
         - Calls: CollectClickables, InheritProperties, InitializeElementProperties, JSDocument, RefreshUI, _cssParser.Apply, _cssParser.ApplyAll, _cssParser.ApplyInlineStyles, _cssParser.Clear, _jsContext.Evaluator.RegisterGlobal, _jsContext.Run, _uiClickables.Clear, _uiRoot.PrepareResources, parser.Parse
       - void InitializeElementProperties(HtmlElement root)
@@ -515,9 +508,8 @@ Folder: Root
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: CloseAllOpenSelects, FindElementsByTag, HandleUIClick, InvokeListeners, JSElement, RefreshUI, TriggerChange, _jsContext.RunWithThis, clickable.HandleClick, clickable.IsDescendantOf, openSelect.HandleClick
       - void RenderUI( float h, float w)
-        - Calls: HtmlElement.GetNdcQuad, _uiRoot.Render, sel.RenderDropdown
+        - Calls: HtmlLayoutUtils.GetNdcQuad, _uiRoot.Render, sel.RenderDropdown
       - void Render()
         - Calls: RenderUI
       - void RecomputeLayout( float h, float w)
@@ -572,5 +564,6 @@ SiegeEngine.Core.UI.TdElement
 SiegeEngine.Core.UI.TextElement
 SiegeEngine.Core.UI.ThElement
 SiegeEngine.Core.UI.TrElement
+SiegeEngine.Core.UI.UIInteractionLayer
 SiegeEngine.Core.UI.UIOverlay
 SiegeEngine.Core.UI.UlElement
