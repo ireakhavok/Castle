@@ -886,7 +886,7 @@ Found 7 dependencies
 Found: LiElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
-Read 7937 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
+Read 4714 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\LiElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 6 dependencies
 Found: MenuPanel.cs
@@ -904,13 +904,13 @@ Found 5 dependencies
 Found: NavLiElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
-Read 3999 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
+Read 6753 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
 Namespace: SiegeEngine.Core.UI
-Found 5 dependencies
+Found 6 dependencies
 Found: NavUlElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavUlElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavUlElement.cs
-Read 476 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavUlElement.cs
+Read 475 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavUlElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 3 dependencies
 Found: OlElement.cs

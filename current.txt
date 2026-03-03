@@ -1,1 +1,14 @@
-I need you to completely rework the UI system lifecycle and organizational architecture. you could do this by creating something like the classes HtmlLayoutUtils, UIInteractionLayer, and Other helper classes to aide in the reduction of complexity and band-aids inside of htmlelement and inside of UIoverlay. It needs to make the lifecycle more efficient with less overall checks for hit detection hover, etc. all element classes need to handle their responsibilities and not be bloated inside of the parent class - things like computelayout, handleclick, onhover, onmouseout, all of that needs to be handled in a better way.  the method calls in handleclick are also not being treated as a handle click method, they have too much responsibility and are returning if it is under the mouse position. you need to completely revamp the lifecycle of the HTML UI system in iterative steps, starting with the UIInteratctionLayer that handles all of the lifecycle events, the js event handling, and all of the triggering. I am not happy with the current code base as it is extremely bloated, full of band-aids, and just plain not organized. 
+I need you to fix some issues we're having with the nested lists inside my nav menu bar. the nested unordered list and list items being parsed from HTML into my game engine. The IDEBasePanel.cs is a panel that is designed to be a replacement for the basepanel.cs file, but I don't want it to be inside of my core engine project because the would risk exposure to the game engine during running. it is made for an IDE uses only.
+
+The panel is designed to add a menu bar at the top of the IDE window that allows for navigation to several different parts of the IDE, but most importantly to open up different developer panels to aide in game development. this panel is designed to be really thin at the top of the window, and then allow all other panels to be Along side it. it is reduced in height across the top to allow for other panels to butt up underneath it so it is really thin. 
+
+Right now I am able to hover over the list item representing the unordered list and it does display the list in a dropdown, however when I leave the hover, there is an artifact of the list that is cutoff I believe by the panel's default size. 
+
+The hover over logic, otherwise is working perfectly, except for one thing:
+
+I would like the hover over to not close if I move the mouse down on to one of the descendants of the list item representing the nested unordered list. 
+
+Next, Through a possible override in the IDEBasePanel, I would like to be able to click the parent list item to keep the list open and then click the same list item to close it, like a file edit menu functions in a standard window. 
+
+There some other css values that I would like to tweak, but for now these two aspects are my main focus. 
+

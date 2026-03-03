@@ -304,15 +304,11 @@ Folder: Root
     - Methods:
       - constructor LiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, IsNavDropdownParent, c.GetEffectiveDisplay
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, c.GetEffectiveDisplay
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: ComputeIntrinsicSize, IsNavDropdownParent, IsTopLevelNavItem
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem
+        - Calls: HtmlLayoutUtils.GetNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, dropdownUl.ComputeLayout
-      - bool IsTopLevelNavItem()
-      - bool IsNavDropdownParent()
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
     - Inherits: UIOverlay
@@ -338,7 +334,7 @@ Folder: Root
   - Class: NavLiElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - constructor NavLiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
@@ -346,7 +342,11 @@ Folder: Root
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
         - Calls: ComputeIntrinsicSize
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: HtmlLayoutUtils.GetNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem
+      - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
+        - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, dropdownUl.ComputeLayout
+      - bool IsTopLevelNavItem()
+      - bool IsNavDropdownParent()
 - File: NavUlElement.cs
   - Class: NavUlElement (Namespace: SiegeEngine.Core.UI)
     - Inherits: HtmlElement
