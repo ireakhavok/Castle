@@ -337,7 +337,7 @@ Found 4 dependencies
 Found: IDEBasePanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
-Read 4990 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
+Read 5216 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
 Namespace: CastleBuilder
 Found 9 dependencies
 Found: IDE_UI.html
@@ -1461,7 +1461,7 @@ Found 5 dependencies
 Found: NavLiElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
-Read 6753 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
+Read 8195 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 6 dependencies
 Found: NavUlElement.cs

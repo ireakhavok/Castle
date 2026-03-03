@@ -342,7 +342,7 @@ Folder: Root
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
         - Calls: ComputeIntrinsicSize
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem
+        - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem, dropdownUl.GetEffectiveDisplay
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, dropdownUl.ComputeLayout
       - bool IsTopLevelNavItem()
