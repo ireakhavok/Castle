@@ -9,7 +9,6 @@ using System;
 using System.IO;
 using System.Numerics;
 using System.Reflection;
-
 namespace CastleBuilder
 {
     public class IDEBasePanel : BasePanel
@@ -17,13 +16,11 @@ namespace CastleBuilder
         private class IDEUIOverlay : UIOverlay
         {
             private readonly EventBus _eventBus;
-
             public IDEUIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
                 : base(renderContext, controlContext, window)
             {
                 _eventBus = eventBus;
             }
-
             protected override void HandleDataHook(string hook)
             {
                 Console.WriteLine($"[IDE Menu] Clicked: {hook}");
@@ -62,7 +59,6 @@ namespace CastleBuilder
                 }
             }
         }
-
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -70,12 +66,10 @@ namespace CastleBuilder
             DockState = DockState.Tabbed;
             IsModal = false;
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new IDEUIOverlay(_renderContext, _controlContext, _window, _eventBus);
         }
-
         public override void Init()
         {
             base.Init();
@@ -83,7 +77,6 @@ namespace CastleBuilder
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             Size = new Vector2(winW, 28f);
             Position = Vector2.Zero;
-
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))
             {
@@ -96,7 +89,6 @@ namespace CastleBuilder
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         public override void Render()
         {
             if (!Visible) return;
@@ -112,16 +104,19 @@ namespace CastleBuilder
             _uiOverlay.Render();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
-            Vector2 relMousePos = absMousePos - Position;
-            _uiOverlay.PanelWidth = Size.X;
-            _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
-        }
 
+            // CRITICAL: Use full window height for mouse interaction so dropdowns below the 28px bar receive hover detection
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            Vector2 relMousePos = absMousePos - Position;
+
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = winH; // Full height for hit testing
+
+            _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, winH);
+        }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
