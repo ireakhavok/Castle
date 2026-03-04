@@ -1,14 +1,109 @@
-I need you to fix some issues we're having with the nested lists inside my nav menu bar. the nested unordered list and list items being parsed from HTML into my game engine. The IDEBasePanel.cs is a panel that is designed to be a replacement for the basepanel.cs file, but I don't want it to be inside of my core engine project because the would risk exposure to the game engine during running. it is made for an IDE uses only.
-
-The panel is designed to add a menu bar at the top of the IDE window that allows for navigation to several different parts of the IDE, but most importantly to open up different developer panels to aide in game development. this panel is designed to be really thin at the top of the window, and then allow all other panels to be Along side it. it is reduced in height across the top to allow for other panels to butt up underneath it so it is really thin. 
-
-Right now I am able to hover over the list item representing the unordered list and it does display the list in a dropdown, however when I leave the hover, there is an artifact of the list that is cutoff I believe by the panel's default size. 
-
-The hover over logic, otherwise is working perfectly, except for one thing:
-
-I would like the hover over to not close if I move the mouse down on to one of the descendants of the list item representing the nested unordered list. 
-
-Next, Through a possible override in the IDEBasePanel, I would like to be able to click the parent list item to keep the list open and then click the same list item to close it, like a file edit menu functions in a standard window. 
-
-There some other css values that I would like to tweak, but for now these two aspects are my main focus. 
-
+yeah, so now it just wont close, untill I click off of it, but when I click off of it the hover over stops working entirely? Here are the logs AFTER I click the mouse anywhere. these logs don't trigger until I click, so that means that the handle click is actually functioning as both a click and as a hover over, which means we need to rework the lifecycle to segment out the hover over vs the click logic, possibly. I would prefer to create an interface, separate out the logic and make the lifecycle better. I would probably include onmouseover, onmouseout, onclick, etc.
+[CallFunction Debug] Callee type: FunctionDeclarationNode | Args count: 0 | Args types:
+Debug: Calling function updateResolutions
+[GetMember Debug] Reflection lookup for 'getElementById' on type SiegeEngine.Core.UI.JSParser.JSDocument
+[GetMember Debug] Found method 'getElementById' - returning callable Func
+[CallFunction Debug] Callee type: System.Func2[[System.Object[], System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Object, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]] | Args count: 1 | Args types: String [JSElement.value getter] Getting select#aspect-ratio [GetMember Debug] Reflection lookup for 'getElementById' on type SiegeEngine.Core.UI.JSParser.JSDocument [GetMember Debug] Found method 'getElementById' - returning callable Func [CallFunction Debug] Callee type: System.Func2[[System.Object[], System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[System.Object, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]] | Args count: 1 | Args types: String
+Debug: Setting innerHTML
+[JSEval] Arrow literal evaluated - capturing 2 vars
+[CallFunction Debug] Callee type: System.Action1[[System.Object, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]] | Args count: 1 | Args types: JSArrowClosure [JSArray.forEach] callback type: System.Object[] [CallFunction Debug] Unwrapping Object[1] wrapper -> type SiegeEngine.Core.UI.JSParser.JSEvaluator+JSArrowClosure [CallFunction Debug] Callee type: SiegeEngine.Core.UI.JSParser.JSEvaluator+JSArrowClosure | Args count: 1 | Args types: String [ArrowCall] Invoking closure with 1 args [GetMember Debug] Found createElement on JSDocument - returning callable Func [CallFunction Debug] Callee type: System.Func2[[System.String, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[SiegeEngine.Core.UI.JSParser.JSElement, SiegeEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] | Args count: 1 | Args types: String
+[JSElement.value setter] Setting option#(no-id) value = 1280x720
+[GetMember Debug] Found appendChild on JSElement - returning callable Func
+[CallFunction Debug] Callee type: System.Action1[[SiegeEngine.Core.UI.JSParser.JSElement, SiegeEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] | Args count: 1 | Args types: JSElement [CallFunction Debug] Unwrapping Object[1] wrapper -> type SiegeEngine.Core.UI.JSParser.JSEvaluator+JSArrowClosure [CallFunction Debug] Callee type: SiegeEngine.Core.UI.JSParser.JSEvaluator+JSArrowClosure | Args count: 1 | Args types: String [ArrowCall] Invoking closure with 1 args [GetMember Debug] Found createElement on JSDocument - returning callable Func [CallFunction Debug] Callee type: System.Func2[[System.String, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[SiegeEngine.Core.UI.JSParser.JSElement, SiegeEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] | Args count: 1 | Args types: String
+[JSElement.value setter] Setting option#(no-id) value = 1920x1080
+[GetMember Debug] Found appendChild on JSElement - returning callable Func
+[CallFunction Debug] Callee type: System.Action1[[SiegeEngine.Core.UI.JSParser.JSElement, SiegeEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] | Args count: 1 | Args types: JSElement [CallFunction Debug] Unwrapping Object[1] wrapper -> type SiegeEngine.Core.UI.JSParser.JSEvaluator+JSArrowClosure [CallFunction Debug] Callee type: SiegeEngine.Core.UI.JSParser.JSEvaluator+JSArrowClosure | Args count: 1 | Args types: String [ArrowCall] Invoking closure with 1 args [GetMember Debug] Found createElement on JSDocument - returning callable Func [CallFunction Debug] Callee type: System.Func2[[System.String, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[SiegeEngine.Core.UI.JSParser.JSElement, SiegeEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] | Args count: 1 | Args types: String
+[JSElement.value setter] Setting option#(no-id) value = 2560x1440
+[GetMember Debug] Found appendChild on JSElement - returning callable Func
+[CallFunction Debug] Callee type: System.Action1[[SiegeEngine.Core.UI.JSParser.JSElement, SiegeEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] | Args count: 1 | Args types: JSElement [CallFunction Debug] Unwrapping Object[1] wrapper -> type SiegeEngine.Core.UI.JSParser.JSEvaluator+JSArrowClosure [CallFunction Debug] Callee type: SiegeEngine.Core.UI.JSParser.JSEvaluator+JSArrowClosure | Args count: 1 | Args types: String [ArrowCall] Invoking closure with 1 args [GetMember Debug] Found createElement on JSDocument - returning callable Func [CallFunction Debug] Callee type: System.Func2[[System.String, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e],[SiegeEngine.Core.UI.JSParser.JSElement, SiegeEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] | Args count: 1 | Args types: String
+[JSElement.value setter] Setting option#(no-id) value = 3840x2160
+[GetMember Debug] Found appendChild on JSElement - returning callable Func
+[CallFunction Debug] Callee type: System.Action`1[[SiegeEngine.Core.UI.JSParser.JSElement, SiegeEngine, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]] | Args count: 1 | Args types: JSElement
+InputHandler: Mouse callback - Button: Left, Action: Press, Pos: <190, 469>, Callbacks: 1
+InputHandler: Sent mouse button input over Steam network: Input:MouseButton:0:1:76561197983064416
+InputHandler: Invoking mouse callback with ID: ui
+InputHandler: Mouse callback - Button: Left, Action: Release, Pos: <190, 469>, Callbacks: 1
+InputHandler: Sent mouse button input over Steam network: Input:MouseButton:0:0:76561197983064416
+InputHandler: Invoking mouse callback with ID: ui
+UIOverlay: Handling click for element Tag=a, Class=button, ID=
+UIOverlay: Handled anchor click to #
+UIOverlay: Processing data-hook: CastleBuilder.IDEBasePanel.Open
+EventBus: Published OpenPanelEvent
+EventBus: Published ClosePanelEvent
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from False -> True | mouseY=48.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=45.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item' hover CHANGED from False -> True | mouseY=21.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=False
+[NAV DROPOUT DEBUG] NavLi 'nav-item' hover CHANGED from False -> True | mouseY=22.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=False
+[NAV DROPOUT DEBUG] NavLi 'nav-item' hover CHANGED from True -> False | mouseY=22.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=False
+[NAV DROPOUT DEBUG] NavLi 'nav-item' hover CHANGED from False -> True | mouseY=27.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=False
+[NAV DROPOUT DEBUG] NavLi 'nav-item' hover CHANGED from True -> False | mouseY=27.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=False
+[NAV DROPOUT DEBUG] NavLi 'nav-item' hover CHANGED from True -> False | mouseY=49.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=False
+InputHandler: Mouse callback - Button: Left, Action: Press, Pos: <358, 283>, Callbacks: 1
+InputHandler: Sent mouse button input over Steam network: Input:MouseButton:0:1:76561197983064416
+InputHandler: Invoking mouse callback with ID: ui
+InputHandler: Mouse callback - Button: Left, Action: Release, Pos: <357, 282>, Callbacks: 1
+InputHandler: Sent mouse button input over Steam network: Input:MouseButton:0:0:76561197983064416
+InputHandler: Invoking mouse callback with ID: ui
+UIOverlay: Handling click for element Tag=li, Class=nav-item nav-dropdown, ID=
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from True -> False | mouseY=283.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=283.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] DROPOUT DETECTED - Dropdown HIDDEN because IsHover=false | mouseY would be >28
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from False -> True | mouseY=47.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from True -> False | mouseY=20.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] DROPOUT DETECTED - Dropdown HIDDEN because IsHover=false | mouseY would be >28
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from False -> True | mouseY=21.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=57.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from True -> False | mouseY=84.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] DROPOUT DETECTED - Dropdown HIDDEN because IsHover=false | mouseY would be >28
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=92.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=92.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=130.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=130.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=166.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=166.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=202.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=202.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=199.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=199.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=162.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=162.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=127.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=127.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=88.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=88.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=53.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from False -> True | mouseY=48.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from True -> False | mouseY=51.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] DROPOUT DETECTED - Dropdown HIDDEN because IsHover=false | mouseY would be >28
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=55.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=91.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=91.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=90.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=90.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=53.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from False -> True | mouseY=48.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from True -> False | mouseY=49.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] DROPOUT DETECTED - Dropdown HIDDEN because IsHover=false | mouseY would be >28
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=54.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=53.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from False -> True | mouseY=48.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from True -> False | mouseY=51.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] DROPOUT DETECTED - Dropdown HIDDEN because IsHover=false | mouseY would be >28
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=54.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=53.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from False -> True | mouseY=48.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+InputHandler: Mouse callback - Button: Left, Action: Press, Pos: <731, 32>, Callbacks: 1
+InputHandler: Sent mouse button input over Steam network: Input:MouseButton:0:1:76561197983064416
+InputHandler: Invoking mouse callback with ID: ui
+InputHandler: Mouse callback - Button: Left, Action: Release, Pos: <731, 32>, Callbacks: 1
+InputHandler: Sent mouse button input over Steam network: Input:MouseButton:0:0:76561197983064416
+InputHandler: Invoking mouse callback with ID: ui
+UIOverlay: Handling click for element Tag=li, Class=nav-item nav-dropdown, ID=
+[NAV DROPOUT DEBUG] NavLi 'nav-item nav-dropdown' hover CHANGED from True -> False | mouseY=50.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] DROPOUT DETECTED - Dropdown HIDDEN because IsHover=false | mouseY would be >28
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=56.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=93.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=93.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=128.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from False -> True | mouseY=128.0 | hitOnLi=True | dropdownHit=False | IsDropdownParent=True
+[NAV DROPOUT DEBUG] NavLi 'nav-dropdown-item' hover CHANGED from True -> False | mouseY=148.0 | hitOnLi=False | dropdownHit=False | IsDropdownParent=True

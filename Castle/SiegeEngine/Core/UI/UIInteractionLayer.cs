@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.UI
+// File: UIInteractionLayer.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.UI.JSParser;
 using System;
@@ -51,19 +53,23 @@ namespace SiegeEngine.Core.UI
                     isClickOnOpenSelect = true;
                 }
             }
-            // Full snapshot to prevent "Collection was modified" when RefreshUI() is called from JS callbacks
+
+            // === HOVER PASS FIRST (new clean lifecycle) ===
             var clickablesSnapshot = _overlay._uiClickables.ToList();
-            // Collect ranges that need 'input' event (for real-time slider → number field)
-            var rangesNeedingInput = new List<HtmlElement>();
+            foreach (var clickable in clickablesSnapshot)
+            {
+                clickable.UpdateHover(scrolledMousePos, vw, vh);
+            }
+
+            // === CLICK PASS (only real clicks) ===
             foreach (var clickable in clickablesSnapshot)
             {
                 if (openSelect != null && !clickable.IsDescendantOf(openSelect) && !(clickable == openSelect))
                 {
                     continue;
                 }
-                bool wasHover = clickable.IsHover;
                 bool wasActive = clickable.IsActive;
-                bool over = clickable.HandleClick(scrolledMousePos, vw, vh);
+                bool over = clickable.IsHover;
                 if (over && mousePress)
                 {
                     if (!string.IsNullOrEmpty(clickable.OnMouseDownJS))
@@ -85,43 +91,12 @@ namespace SiegeEngine.Core.UI
                 {
                     clickedElem = clickable;
                 }
-                if (!wasHover && over)
-                {
-                    if (!string.IsNullOrEmpty(clickable.OnMouseEnterJS))
-                    {
-                        _overlay._jsContext.RunWithThis(clickable.OnMouseEnterJS, new JSElement(clickable, _overlay));
-                    }
-                    _overlay.InvokeListeners(clickable, "mouseenter");
-                    if (!string.IsNullOrEmpty(clickable.OnMouseOverJS))
-                    {
-                        _overlay._jsContext.RunWithThis(clickable.OnMouseOverJS, new JSElement(clickable, _overlay));
-                    }
-                    _overlay.InvokeListeners(clickable, "mouseover");
-                }
-                if (wasHover && !over)
-                {
-                    if (!string.IsNullOrEmpty(clickable.OnMouseLeaveJS))
-                    {
-                        _overlay._jsContext.RunWithThis(clickable.OnMouseLeaveJS, new JSElement(clickable, _overlay));
-                    }
-                    _overlay.InvokeListeners(clickable, "mouseleave");
-                    if (!string.IsNullOrEmpty(clickable.OnMouseOutJS))
-                    {
-                        _overlay._jsContext.RunWithThis(clickable.OnMouseOutJS, new JSElement(clickable, _overlay));
-                    }
-                    _overlay.InvokeListeners(clickable, "mouseout");
-                }
-                clickable.IsHover = over;
                 if (mouseRelease)
                 {
                     clickable.IsActive = false;
                 }
-                // Collect for real-time 'input' event (slider drag)
-                if (over && clickable.IsActive && clickable is InputElement inp && inp.Type == "range")
-                {
-                    rangesNeedingInput.Add(clickable);
-                }
             }
+
             if (clickedElem != null)
             {
                 _overlay.DidHandleClick = true;
@@ -157,13 +132,7 @@ namespace SiegeEngine.Core.UI
             }
             _justOpenedSelect = false;
             _prevMouseDown = currentMouseDown;
-            // Fire real-time 'input' for sliders AFTER enumeration - prevents Collection modified
-            // This is what makes the arrow function update the paired number field instantly
-            foreach (var rangeElem in rangesNeedingInput)
-            {
-                _overlay.InvokeListeners(rangeElem, "input");
-                _overlay.TriggerChange(rangeElem);
-            }
+
             bool needsRefresh = false;
             bool changed = false;
             if (_currentFocused is InputElement input && (input.Type == "text" || input.Type == "number"))
