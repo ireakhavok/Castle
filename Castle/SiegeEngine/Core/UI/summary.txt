@@ -240,6 +240,8 @@ Folder: Root
         - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
         - Calls: HtmlLayoutUtils.GetNdcQuad
+      - bool UpdateHover( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: HtmlLayoutUtils.GetNdcQuad
       - HtmlElement FindElementById(string id)
 - File: HtmlLayoutUtils.cs
   - Class: HtmlLayoutUtils (Namespace: SiegeEngine.Core.UI)
@@ -335,14 +337,18 @@ Folder: Root
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - bool _lastHoverState
     - Methods:
       - constructor NavLiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
         - Calls: ComputeIntrinsicSize
-      - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+      - bool UpdateHover( float viewportHeight,  float viewportWidth, Vector2 mousePos)
         - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem, dropdownUl.GetEffectiveDisplay
+      - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: UpdateHover
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, dropdownUl.ComputeLayout
       - bool IsTopLevelNavItem()
@@ -460,7 +466,7 @@ Folder: Root
     - Methods:
       - constructor UIInteractionLayer( IControlContext controlContext,  nint window, UIOverlay overlay)
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: JSElement, RefreshUI, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.HandleClick, clickable.IsDescendantOf, openSelect.HandleClick
+        - Calls: JSElement, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.IsDescendantOf, clickable.UpdateHover, openSelect.HandleClick
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics

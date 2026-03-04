@@ -1111,6 +1111,8 @@ Folder: SiegeEngine
         - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, quadRenderer.DrawNdcQuad, renderContext.Disable, renderContext.Enable, renderContext.Scissor
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
         - Calls: HtmlLayoutUtils.GetNdcQuad
+      - bool UpdateHover( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: HtmlLayoutUtils.GetNdcQuad
       - HtmlElement FindElementById(string id)
 - File: HtmlLayoutUtils.cs
   - Class: HtmlLayoutUtils (Namespace: SiegeEngine.Core.UI)
@@ -1591,14 +1593,18 @@ Folder: SiegeEngine
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - bool _lastHoverState
     - Methods:
       - constructor NavLiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, textRenderer.GetTextSize
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
         - Calls: ComputeIntrinsicSize
-      - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+      - bool UpdateHover( float viewportHeight,  float viewportWidth, Vector2 mousePos)
         - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem, dropdownUl.GetEffectiveDisplay
+      - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: UpdateHover
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, dropdownUl.ComputeLayout, quadRenderer.DrawNdcQuad, renderContext.Disable, renderContext.Enable
       - bool IsTopLevelNavItem()
@@ -2262,7 +2268,7 @@ Folder: SiegeEngine
     - Methods:
       - constructor UIInteractionLayer( IControlContext controlContext,  nint window, UIOverlay overlay)
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: JSElement, RefreshUI, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.HandleClick, clickable.IsDescendantOf, openSelect.HandleClick
+        - Calls: JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.IsDescendantOf, clickable.UpdateHover, openSelect.HandleClick
 - File: UIManager.cs
   - Class: UIManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
