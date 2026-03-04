@@ -150,7 +150,7 @@ namespace SiegeEngine.Core.UI
             return grandParent != null && grandParent.Tag.ToLower() == "nav";
         }
 
-        private bool IsNavDropdownParent()
+        public bool IsNavDropdownParent()
         {
             if (Tag.ToLower() != "li") return false;
             string classes = Attributes.GetValueOrDefault("class", "");

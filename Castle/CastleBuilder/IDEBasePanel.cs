@@ -9,6 +9,7 @@ using System;
 using System.IO;
 using System.Numerics;
 using System.Reflection;
+
 namespace CastleBuilder
 {
     public class IDEBasePanel : BasePanel
@@ -59,6 +60,7 @@ namespace CastleBuilder
                 }
             }
         }
+
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -66,14 +68,15 @@ namespace CastleBuilder
             DockState = DockState.Tabbed;
             IsModal = false;
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new IDEUIOverlay(_renderContext, _controlContext, _window, _eventBus);
         }
+
         public override void Init()
         {
             base.Init();
-            // Force exactly 28px high menu bar at top of window, full width
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             Size = new Vector2(winW, 28f);
             Position = Vector2.Zero;
@@ -89,6 +92,26 @@ namespace CastleBuilder
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
+        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
+        {
+            if (!Visible) return;
+
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+
+            Vector2 relMousePos = absMousePos - Position;
+
+            // FORCE full window height for hover detection (dropdowns below 28px bar now receive mouse immediately)
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = winH;
+
+            // FORCE hover pass every frame (no click required to "wake up" hover)
+            _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, winH);
+
+            // FORCE refresh so _uiClickables and layout are always up-to-date on first mouse move
+            _uiOverlay.RefreshUI();
+        }
+
         public override void Render()
         {
             if (!Visible) return;
@@ -104,19 +127,7 @@ namespace CastleBuilder
             _uiOverlay.Render();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-        public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
-        {
-            if (!Visible) return;
 
-            // CRITICAL: Use full window height for mouse interaction so dropdowns below the 28px bar receive hover detection
-            _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            Vector2 relMousePos = absMousePos - Position;
-
-            _uiOverlay.PanelWidth = Size.X;
-            _uiOverlay.PanelHeight = winH; // Full height for hit testing
-
-            _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, winH);
-        }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
