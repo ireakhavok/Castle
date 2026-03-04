@@ -154,9 +154,6 @@ nav li {
     position: relative;
     list-style-type: none;
 }
-nav li:hover {
-    background-color: #383838;
-}
 nav li:hover ul {
     display: block;
 }
@@ -179,9 +176,6 @@ nav ul ul li {
     height: auto;
     justify-content: flex-start;
     white-space: nowrap;
-}
-nav ul ul li:hover {
-    background-color: #454545;
 }
 .form-grid {
     display: grid;
