@@ -20,32 +20,77 @@ namespace SiegeEngine.Core.UI
 
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
+            // Special case for submenu items inside .nav-dropdown-content
+            // This forces them to fill the parent ul width (200px) so they are standardized
+            bool isSubmenuItem = false;
+            if (Parent != null)
+            {
+                string parentClass = Parent.Attributes.GetValueOrDefault("class", "");
+                if (parentClass.Contains("nav-dropdown-content"))
+                {
+                    isSubmenuItem = true;
+                }
+            }
+
+            if (isSubmenuItem && Parent != null && Parent.ComputedContentWidth > 0)
+            {
+                // Use full width of the parent dropdown ul
+                Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+                Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+
+                float fullWidth = Parent.ComputedContentWidth;
+
+                // Height still based on text content
+                float submenuHeight = 0f;
+                string foundText = "";
+                Queue<HtmlElement> queue = new Queue<HtmlElement>(Children);
+                while (queue.Count > 0)
+                {
+                    var elem = queue.Dequeue();
+                    if (elem is TextElement textElem && !string.IsNullOrWhiteSpace(textElem.Content))
+                    {
+                        foundText = textElem.Content.Trim();
+                        Vector2 textSize = textRenderer.GetTextSize(foundText, fs, elem.Style.FontFamily ?? Style.FontFamily ?? "Arial");
+                        submenuHeight = Math.Max(submenuHeight, textSize.Y);
+                    }
+                    foreach (var c in elem.Children)
+                        queue.Enqueue(c);
+                }
+
+                float finalHeight = submenuHeight + pad.X + pad.Z + borderW.X + borderW.Z;
+                if (float.IsNaN(finalHeight) || finalHeight < 28f) finalHeight = 28f;
+
+                return new Vector2(fullWidth, finalHeight);
+            }
+
+            // Original behavior for top-level nav items (unchanged)
             float maxWidth = 0f;
             float totalHeight = 0f;
-            string foundText = "";
-            Queue<HtmlElement> queue = new Queue<HtmlElement>();
-            foreach (var child in Children)
-                queue.Enqueue(child);
-            while (queue.Count > 0)
+            string foundText2 = "";
+            Queue<HtmlElement> queue2 = new Queue<HtmlElement>(Children);
+            while (queue2.Count > 0)
             {
-                var elem = queue.Dequeue();
+                var elem = queue2.Dequeue();
                 if (elem is TextElement textElem && !string.IsNullOrWhiteSpace(textElem.Content))
                 {
-                    foundText = textElem.Content.Trim();
-                    Vector2 textSize = textRenderer.GetTextSize(foundText, fs, elem.Style.FontFamily ?? Style.FontFamily ?? "Arial");
+                    foundText2 = textElem.Content.Trim();
+                    Vector2 textSize = textRenderer.GetTextSize(foundText2, fs, elem.Style.FontFamily ?? Style.FontFamily ?? "Arial");
                     maxWidth = Math.Max(maxWidth, textSize.X);
                     totalHeight = Math.Max(totalHeight, textSize.Y);
                 }
                 foreach (var c in elem.Children)
-                    queue.Enqueue(c);
+                    queue2.Enqueue(c);
             }
-            Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
-            Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
-            float finalWidth = maxWidth + pad.W + pad.Y + borderW.W + borderW.Y;
-            float finalHeight = totalHeight + pad.X + pad.Z + borderW.X + borderW.Z;
+
+            Vector4 pad2 = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            Vector4 borderW2 = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+            float finalWidth = maxWidth + pad2.W + pad2.Y + borderW2.W + borderW2.Y;
+            float finalHeight2 = totalHeight + pad2.X + pad2.Z + borderW2.X + borderW2.Z;
+
             if (float.IsNaN(finalWidth) || finalWidth < 30f) finalWidth = 120f;
-            if (float.IsNaN(finalHeight) || finalHeight < 20f) finalHeight = 28f;
-            return new Vector2(finalWidth, finalHeight);
+            if (float.IsNaN(finalHeight2) || finalHeight2 < 20f) finalHeight2 = 28f;
+
+            return new Vector2(finalWidth, finalHeight2);
         }
 
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
@@ -64,7 +109,6 @@ namespace SiegeEngine.Core.UI
             {
                 dropdownHit = dropdownUl.UpdateHover(mousePos, viewportWidth, viewportHeight);
             }
-
             // 2. Normal li hit test
             bool hitOnLi = false;
             if (ComputedWidth > 0 && ComputedHeight > 0)
@@ -84,9 +128,7 @@ namespace SiegeEngine.Core.UI
                 float my = 1 - 2 * mousePos.Y / viewportHeight;
                 hitOnLi = !(mx < minX || mx > maxX || my < minY || my > maxY);
             }
-
             bool hit = hitOnLi || dropdownHit;
-
             if (IsNavDropdownParent() || IsTopLevelNavItem())
             {
                 if (IsHover != hit)
@@ -95,7 +137,6 @@ namespace SiegeEngine.Core.UI
                 }
                 IsHover = hit;
             }
-
             return hit;
         }
 
