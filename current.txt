@@ -1,1 +1,5 @@
-Great, now can you explain to me why the list items inside of the UL are different highlight widths, and there is also an offset, padding, or margin being applied. to the left side of all of the list items incorrectly?
+I need us to implement / fix auto margins for the html tag: '            <div class="ide-title">SiegeEngine IDE</div>' in my video game engine. 
+
+
+
+right now there is no auto margin being applied to the element, or it is not being utilized in the layout. 
