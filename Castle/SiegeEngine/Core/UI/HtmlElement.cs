@@ -685,23 +685,42 @@ namespace SiegeEngine.Core.UI
             float colGap = gapDefs.Length > 1 ? HtmlLayoutUtils.ParseSize(gapDefs[1], ComputedContentWidth, viewportWidth, viewportHeight) : rowGap;
             List<float> trackWidths = new List<float>();
             float totalFixedCols = 0f;
-            int totalFrCols = 0;
+            float totalFrCols = 0f;
+            List<bool> isAutoCol = new List<bool>();
+            List<float> frValuesCol = new List<float>();
             if (!string.IsNullOrEmpty(columnsStr))
             {
-                string[] colDefs = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (string def in colDefs)
+                Match repeatMatch = Regex.Match(columnsStr, @"repeat\(['""]?(\d+)['""]?\s*,\s*(.*)\s*\)");
+                List<string> colDefsList = new List<string>();
+                if (repeatMatch.Success)
                 {
-                    if (def.EndsWith("fr"))
+                    int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
+                    string repeatUnit = repeatMatch.Groups[2].Value;
+                    for (int k = 0; k < repeatNum; k++)
                     {
-                        if (float.TryParse(def.Replace("fr", "").Trim(), out float frValue))
-                        {
-                            totalFrCols += (int)frValue;
-                            trackWidths.Add(-frValue);
-                        }
-                        else
-                        {
-                            trackWidths.Add(0f);
-                        }
+                        colDefsList.Add(repeatUnit);
+                    }
+                }
+                else
+                {
+                    colDefsList = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                }
+                foreach (string def in colDefsList)
+                {
+                    if (def == "auto")
+                    {
+                        trackWidths.Add(0f);
+                        isAutoCol.Add(true);
+                        frValuesCol.Add(0f);
+                    }
+                    else if (def.EndsWith("fr"))
+                    {
+                        string frStr = def.Replace("fr", "").Trim();
+                        float frValue = string.IsNullOrEmpty(frStr) ? 1f : float.Parse(frStr);
+                        totalFrCols += frValue;
+                        trackWidths.Add(0f);
+                        isAutoCol.Add(false);
+                        frValuesCol.Add(frValue);
                     }
                     else
                     {
@@ -709,42 +728,55 @@ namespace SiegeEngine.Core.UI
                         if (float.IsNaN(fixedW)) fixedW = 0f;
                         trackWidths.Add(fixedW);
                         totalFixedCols += fixedW;
+                        isAutoCol.Add(false);
+                        frValuesCol.Add(0f);
                     }
                 }
             }
             else
             {
-                trackWidths.Add(-1f);
-                totalFrCols = 1;
-            }
-            float remainingSpaceCols = Math.Max(0f, ComputedContentWidth - totalFixedCols - colGap * Math.Max(0, trackWidths.Count - 1));
-            float frUnitCols = totalFrCols > 0 ? remainingSpaceCols / totalFrCols : 0f;
-            for (int i = 0; i < trackWidths.Count; i++)
-            {
-                if (trackWidths[i] < 0)
-                {
-                    trackWidths[i] = frUnitCols * Math.Abs(trackWidths[i]);
-                }
+                trackWidths.Add(0f);
+                isAutoCol.Add(true);
+                frValuesCol.Add(0f);
             }
             List<float> trackHeights = new List<float>();
             float totalFixedRows = 0f;
-            int totalFrRows = 0;
+            float totalFrRows = 0f;
+            List<bool> isAutoRow = new List<bool>();
+            List<float> frValuesRow = new List<float>();
             if (!string.IsNullOrEmpty(rowsStr))
             {
-                string[] rowDefs = rowsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (string def in rowDefs)
+                Match repeatMatch = Regex.Match(rowsStr, @"repeat\(['""]?(\d+)['""]?\s*,\s*(.*)\s*\)");
+                List<string> rowDefsList = new List<string>();
+                if (repeatMatch.Success)
                 {
-                    if (def.EndsWith("fr"))
+                    int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
+                    string repeatUnit = repeatMatch.Groups[2].Value;
+                    for (int k = 0; k < repeatNum; k++)
                     {
-                        if (float.TryParse(def.Replace("fr", "").Trim(), out float frValue))
-                        {
-                            totalFrRows += (int)frValue;
-                            trackHeights.Add(-frValue);
-                        }
-                        else
-                        {
-                            trackHeights.Add(0f);
-                        }
+                        rowDefsList.Add(repeatUnit);
+                    }
+                }
+                else
+                {
+                    rowDefsList = rowsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                }
+                foreach (string def in rowDefsList)
+                {
+                    if (def == "auto")
+                    {
+                        trackHeights.Add(0f);
+                        isAutoRow.Add(true);
+                        frValuesRow.Add(0f);
+                    }
+                    else if (def.EndsWith("fr"))
+                    {
+                        string frStr = def.Replace("fr", "").Trim();
+                        float frValue = string.IsNullOrEmpty(frStr) ? 1f : float.Parse(frStr);
+                        totalFrRows += frValue;
+                        trackHeights.Add(0f);
+                        isAutoRow.Add(false);
+                        frValuesRow.Add(frValue);
                     }
                     else
                     {
@@ -752,104 +784,205 @@ namespace SiegeEngine.Core.UI
                         if (float.IsNaN(fixedH)) fixedH = 0f;
                         trackHeights.Add(fixedH);
                         totalFixedRows += fixedH;
+                        isAutoRow.Add(false);
+                        frValuesRow.Add(0f);
                     }
                 }
+            }
+            else
+            {
+                trackHeights.Add(0f);
+                isAutoRow.Add(true);
+                frValuesRow.Add(0f);
             }
             string autoFlow = Style.GridAutoFlow.ToLower();
-            bool isRowDense = autoFlow.Contains("dense") && autoFlow.StartsWith("row");
-            bool isColumnDense = autoFlow.Contains("dense") && autoFlow.StartsWith("column");
             bool isColumnFlow = autoFlow.StartsWith("column");
-            int explicitRows = trackHeights.Count;
-            int explicitCols = trackWidths.Count;
-            List<List<HtmlElement>> gridCells = new List<List<HtmlElement>>();
-            for (int r = 0; r < explicitRows; r++)
+            int majorTracks = isColumnFlow ? trackHeights.Count : trackWidths.Count;
+            int minorTracks = isColumnFlow ? trackWidths.Count : trackHeights.Count;
+            int numChildren = visibleChildren.Count;
+            if (majorTracks == 0) majorTracks = 1;
+            int neededMinor = (numChildren + majorTracks - 1) / majorTracks;
+            while (minorTracks < neededMinor)
             {
-                gridCells.Add(new List<HtmlElement>(new HtmlElement[explicitCols]));
-            }
-            for (int i = 0; i < visibleChildren.Count; i++)
-            {
-                HtmlElement child = visibleChildren[i];
-                if ((child is InputElement || child.Tag.ToLower() == "select" || child.Tag.ToLower() == "input") &&
-                    string.IsNullOrEmpty(child.Style.WidthStr))
-                {
-                    child.Style.WidthStr = "100%";
-                }
-                int rowStart = 0;
-                int colStart = 0;
                 if (isColumnFlow)
                 {
-                    rowStart = i % explicitRows;
-                    colStart = i / explicitRows;
+                    trackWidths.Add(0f);
+                    isAutoCol.Add(true);
+                    frValuesCol.Add(0f);
                 }
                 else
                 {
-                    rowStart = i / explicitCols;
-                    colStart = i % explicitCols;
+                    trackHeights.Add(0f);
+                    isAutoRow.Add(true);
+                    frValuesRow.Add(0f);
                 }
-                if (rowStart < explicitRows && colStart < explicitCols)
+                minorTracks++;
+            }
+            List<List<HtmlElement>> gridCells = new List<List<HtmlElement>>();
+            for (int r = 0; r < trackHeights.Count; r++)
+            {
+                gridCells.Add(Enumerable.Repeat((HtmlElement)null, trackWidths.Count).ToList());
+            }
+            for (int i = 0; i < numChildren; i++)
+            {
+                int row, col;
+                if (isColumnFlow)
                 {
-                    gridCells[rowStart][colStart] = child;
+                    row = i % trackHeights.Count;
+                    col = i / trackHeights.Count;
                 }
                 else
                 {
-                    if (rowStart >= trackHeights.Count)
+                    row = i / trackWidths.Count;
+                    col = i % trackWidths.Count;
+                }
+                while (row >= trackHeights.Count)
+                {
+                    trackHeights.Add(0f);
+                    isAutoRow.Add(true);
+                    frValuesRow.Add(0f);
+                    gridCells.Add(Enumerable.Repeat((HtmlElement)null, trackWidths.Count).ToList());
+                }
+                while (col >= trackWidths.Count)
+                {
+                    trackWidths.Add(0f);
+                    isAutoCol.Add(true);
+                    frValuesCol.Add(0f);
+                    for (int r = 0; r < gridCells.Count; r++)
                     {
-                        trackHeights.Add(0f);
-                        gridCells.Add(new List<HtmlElement>(new HtmlElement[explicitCols]));
+                        gridCells[r].Add(null);
                     }
-                    if (colStart >= trackWidths.Count)
+                }
+                gridCells[row][col] = visibleChildren[i];
+            }
+            float[] minTrackW = new float[trackWidths.Count];
+            for (int col = 0; col < trackWidths.Count; col++)
+            {
+                float maxInCol = 0f;
+                for (int row = 0; row < trackHeights.Count; row++)
+                {
+                    HtmlElement child = gridCells[row][col];
+                    if (child != null)
                     {
-                        trackWidths.Add(0f);
-                        for (int r = 0; r < gridCells.Count; r++)
-                        {
-                            gridCells[r].Add(null);
-                        }
+                        Vector2 intrinsic = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                        maxInCol = Math.Max(maxInCol, intrinsic.X);
                     }
-                    gridCells[rowStart][colStart] = child;
+                }
+                minTrackW[col] = maxInCol;
+            }
+            float sumMinCols = 0f;
+            totalFixedCols = 0f;
+            totalFrCols = 0f;
+            for (int col = 0; col < trackWidths.Count; col++)
+            {
+                float baseSize;
+                if (isAutoCol[col])
+                {
+                    baseSize = minTrackW[col];
+                }
+                else if (frValuesCol[col] > 0)
+                {
+                    baseSize = 0f;
+                    totalFrCols += frValuesCol[col];
+                }
+                else
+                {
+                    baseSize = trackWidths[col];
+                }
+                baseSize = Math.Max(baseSize, minTrackW[col]);
+                trackWidths[col] = baseSize;
+                sumMinCols += baseSize;
+                if (frValuesCol[col] > 0)
+                {
+                    // nothing
+                }
+                else
+                {
+                    totalFixedCols += baseSize;
+                }
+            }
+            float remainingSpaceCols = Math.Max(0f, ComputedContentWidth - totalFixedCols - colGap * Math.Max(0, trackWidths.Count - 1));
+            float frUnitCols = totalFrCols > 0 ? remainingSpaceCols / totalFrCols : 0f;
+            for (int col = 0; col < trackWidths.Count; col++)
+            {
+                if (frValuesCol[col] > 0)
+                {
+                    trackWidths[col] += frValuesCol[col] * frUnitCols;
+                    trackWidths[col] = Math.Max(trackWidths[col], minTrackW[col]);
+                }
+            }
+            float[] minTrackH = new float[trackHeights.Count];
+            for (int row = 0; row < trackHeights.Count; row++)
+            {
+                float maxInRow = 0f;
+                for (int col = 0; col < trackWidths.Count; col++)
+                {
+                    HtmlElement child = gridCells[row][col];
+                    if (child != null)
+                    {
+                        Vector2 intrinsic = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                        maxInRow = Math.Max(maxInRow, intrinsic.Y);
+                    }
+                }
+                minTrackH[row] = maxInRow;
+            }
+            float sumMinRows = 0f;
+            totalFixedRows = 0f;
+            totalFrRows = 0f;
+            for (int row = 0; row < trackHeights.Count; row++)
+            {
+                float baseSize;
+                if (isAutoRow[row])
+                {
+                    baseSize = minTrackH[row];
+                }
+                else if (frValuesRow[row] > 0)
+                {
+                    baseSize = 0f;
+                    totalFrRows += frValuesRow[row];
+                }
+                else
+                {
+                    baseSize = trackHeights[row];
+                }
+                baseSize = Math.Max(baseSize, minTrackH[row]);
+                trackHeights[row] = baseSize;
+                sumMinRows += baseSize;
+                if (frValuesRow[row] > 0)
+                {
+                    // nothing
+                }
+                else
+                {
+                    totalFixedRows += baseSize;
                 }
             }
             float remainingSpaceRows = Math.Max(0f, ComputedContentHeight - totalFixedRows - rowGap * Math.Max(0, trackHeights.Count - 1));
             float frUnitRows = totalFrRows > 0 ? remainingSpaceRows / totalFrRows : 0f;
-            for (int i = 0; i < trackHeights.Count; i++)
+            for (int row = 0; row < trackHeights.Count; row++)
             {
-                if (trackHeights[i] < 0)
+                if (frValuesRow[row] > 0)
                 {
-                    trackHeights[i] = frUnitRows * Math.Abs(trackHeights[i]);
-                }
-            }
-            for (int r = 0; r < trackHeights.Count; r++)
-            {
-                if (trackHeights[r] == 0f)
-                {
-                    float maxInRow = 0f;
-                    for (int c = 0; c < trackWidths.Count; c++)
-                    {
-                        HtmlElement child = gridCells[r][c];
-                        if (child != null)
-                        {
-                            Vector2 intrinsic = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                            maxInRow = Math.Max(maxInRow, intrinsic.Y);
-                        }
-                    }
-                    trackHeights[r] = maxInRow;
+                    trackHeights[row] += frValuesRow[row] * frUnitRows;
+                    trackHeights[row] = Math.Max(trackHeights[row], minTrackH[row]);
                 }
             }
             float currentY = ComputedContentY;
-            for (int r = 0; r < trackHeights.Count; r++)
+            for (int row = 0; row < trackHeights.Count; row++)
             {
-                float rowH = trackHeights[r];
+                float trackH = trackHeights[row];
                 float currentX = ComputedContentX;
-                for (int c = 0; c < trackWidths.Count; c++)
+                for (int col = 0; col < trackWidths.Count; col++)
                 {
-                    HtmlElement child = gridCells[r][c];
+                    HtmlElement child = gridCells[row][col];
                     if (child != null)
                     {
-                        float trackW = trackWidths[c];
-                        child.ComputeLayout(currentX, currentY, trackW, rowH, viewportWidth, viewportHeight, textRenderer, fs, trackW, rowH);
+                        float trackW = trackWidths[col];
+                        child.ComputeLayout(currentX, currentY, trackW, trackH, viewportWidth, viewportHeight, textRenderer, fs, trackW, trackH);
                     }
-                    currentX += trackWidths[c] + colGap;
+                    currentX += trackWidths[col] + colGap;
                 }
-                currentY += rowH + rowGap;
+                currentY += trackHeights[row] + rowGap;
             }
             ComputedContentHeight = currentY - ComputedContentY - rowGap;
             Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
@@ -1050,36 +1183,133 @@ namespace SiegeEngine.Core.UI
                     string[] gapDefs = string.IsNullOrEmpty(gapStr) ? new string[0] : gapStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
                     float rowGap = gapDefs.Length > 0 ? HtmlLayoutUtils.ParseSize(gapDefs[0], 0, viewportWidth, viewportHeight) : 0f;
                     float colGap = gapDefs.Length > 1 ? HtmlLayoutUtils.ParseSize(gapDefs[1], 0, viewportWidth, viewportHeight) : rowGap;
-                    int numCols = 1;
+                    List<float> trackWidthsIntrinsic = new List<float>();
+                    List<float> frValuesColIntrinsic = new List<float>();
+                    List<string> colDefsList = new List<string>();
                     if (!string.IsNullOrEmpty(columnsStr))
                     {
-                        numCols = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                    }
-                    int numRows = visibleChildren.Count / numCols + (visibleChildren.Count % numCols > 0 ? 1 : 0);
-                    if (!string.IsNullOrEmpty(rowsStr))
-                    {
-                        numRows = rowsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                    }
-                    float sumH = 0f;
-                    float maxW = 0f;
-                    for (int r = 0; r < numRows; r++)
-                    {
-                        float rowMaxH = 0f;
-                        for (int c = 0; c < numCols; c++)
+                        Match repeatMatch = Regex.Match(columnsStr, @"repeat\(['""]?(\d+)['""]?\s*,\s*(.*)\s*\)");
+                        if (repeatMatch.Success)
                         {
-                            int idx = r * numCols + c;
-                            if (idx < visibleChildren.Count)
+                            int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
+                            string repeatUnit = repeatMatch.Groups[2].Value;
+                            for (int k = 0; k < repeatNum; k++)
                             {
-                                HtmlElement child = visibleChildren[idx];
-                                Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                                rowMaxH = Math.Max(rowMaxH, childSize.Y);
-                                maxW = Math.Max(maxW, childSize.X);
+                                colDefsList.Add(repeatUnit);
                             }
                         }
-                        sumH += rowMaxH;
-                        if (r < numRows - 1) sumH += rowGap;
+                        else
+                        {
+                            colDefsList = columnsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                        }
+                        foreach (string def in colDefsList)
+                        {
+                            if (def.EndsWith("fr"))
+                            {
+                                string frStr = def.Replace("fr", "").Trim();
+                                float frValue = string.IsNullOrEmpty(frStr) ? 1f : float.Parse(frStr);
+                                trackWidthsIntrinsic.Add(0f);
+                                frValuesColIntrinsic.Add(frValue);
+                            }
+                            else
+                            {
+                                float w = HtmlLayoutUtils.ParseSize(def, 0, viewportWidth, viewportHeight);
+                                trackWidthsIntrinsic.Add(float.IsNaN(w) ? 0f : w);
+                                frValuesColIntrinsic.Add(0f);
+                            }
+                        }
                     }
-                    iw = maxW * numCols + colGap * (numCols - 1);
+                    else
+                    {
+                        trackWidthsIntrinsic.Add(0f);
+                        frValuesColIntrinsic.Add(0f);
+                    }
+                    List<float> trackHeightsIntrinsic = new List<float>();
+                    List<float> frValuesRowIntrinsic = new List<float>();
+                    List<string> rowDefsList = new List<string>();
+                    if (!string.IsNullOrEmpty(rowsStr))
+                    {
+                        Match repeatMatch = Regex.Match(rowsStr, @"repeat\(['""]?(\d+)['""]?\s*,\s*(.*)\s*\)");
+                        if (repeatMatch.Success)
+                        {
+                            int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
+                            string repeatUnit = repeatMatch.Groups[2].Value;
+                            for (int k = 0; k < repeatNum; k++)
+                            {
+                                rowDefsList.Add(repeatUnit);
+                            }
+                        }
+                        else
+                        {
+                            rowDefsList = rowsStr.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                        }
+                        foreach (string def in rowDefsList)
+                        {
+                            if (def.EndsWith("fr"))
+                            {
+                                string frStr = def.Replace("fr", "").Trim();
+                                float frValue = string.IsNullOrEmpty(frStr) ? 1f : float.Parse(frStr);
+                                trackHeightsIntrinsic.Add(0f);
+                                frValuesRowIntrinsic.Add(frValue);
+                            }
+                            else
+                            {
+                                float h = HtmlLayoutUtils.ParseSize(def, 0, viewportWidth, viewportHeight);
+                                trackHeightsIntrinsic.Add(float.IsNaN(h) ? 0f : h);
+                                frValuesRowIntrinsic.Add(0f);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        trackHeightsIntrinsic.Add(0f);
+                        frValuesRowIntrinsic.Add(0f);
+                    }
+                    string autoFlow = Style.GridAutoFlow.ToLower();
+                    bool isColumnFlow = autoFlow.StartsWith("column");
+                    int numCols = trackWidthsIntrinsic.Count;
+                    int numRows = trackHeightsIntrinsic.Count;
+                    if (isColumnFlow)
+                    {
+                        numRows = Math.Max(numRows, (visibleChildren.Count + numCols - 1) / numCols);
+                    }
+                    else
+                    {
+                        numCols = Math.Max(numCols, (visibleChildren.Count + numRows - 1) / numRows);
+                    }
+                    float[] maxColW = new float[numCols];
+                    float[] maxRowH = new float[numRows];
+                    for (int i = 0; i < visibleChildren.Count; i++)
+                    {
+                        int row, col;
+                        if (isColumnFlow)
+                        {
+                            row = i % numRows;
+                            col = i / numRows;
+                        }
+                        else
+                        {
+                            row = i / numCols;
+                            col = i % numCols;
+                        }
+                        HtmlElement child = visibleChildren[i];
+                        Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                        maxRowH[row] = Math.Max(maxRowH[row], childSize.Y);
+                        maxColW[col] = Math.Max(maxColW[col], childSize.X);
+                    }
+                    float sumW = 0f;
+                    for (int col = 0; col < numCols; col++)
+                    {
+                        sumW += maxColW[col];
+                    }
+                    sumW += colGap * (numCols - 1);
+                    float sumH = 0f;
+                    for (int row = 0; row < numRows; row++)
+                    {
+                        sumH += maxRowH[row];
+                    }
+                    sumH += rowGap * (numRows - 1);
+                    iw = sumW;
                     ih = sumH;
                 }
                 else
@@ -1239,6 +1469,8 @@ namespace SiegeEngine.Core.UI
             }
             if (effectiveStyle.Display == "none") return;
             Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
+            Matrix4x4 scrollMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
+            Matrix4x4 contentMatrix = localMatrix * scrollMatrix;
             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
@@ -1279,7 +1511,6 @@ namespace SiegeEngine.Core.UI
                 _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, viewportWidth, viewportHeight);
                 renderContext.Disable(renderContext.Enums.ScissorTest);
             }
-            Matrix4x4 contentMatrix = localMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
             if (Style.Overflow == "hidden" || (Style.OverflowY ?? "") == "hidden")
             {
                 renderContext.Enable(renderContext.Enums.ScissorTest);

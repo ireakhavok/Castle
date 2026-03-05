@@ -416,8 +416,7 @@ namespace SiegeEngine.Core.UI
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-            Matrix4x4 scrollMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
-            _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, scrollMatrix);
+            _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0));
             foreach (var sel in _interactionLayer._openSelects)
             {
                 sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
