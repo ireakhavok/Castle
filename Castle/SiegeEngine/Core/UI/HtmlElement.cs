@@ -684,13 +684,13 @@ namespace SiegeEngine.Core.UI
             float rowGap = gapDefs.Length > 0 ? HtmlLayoutUtils.ParseSize(gapDefs[0], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
             float colGap = gapDefs.Length > 1 ? HtmlLayoutUtils.ParseSize(gapDefs[1], ComputedContentWidth, viewportWidth, viewportHeight) : rowGap;
             List<float> trackWidths = new List<float>();
-            float totalFixedCols = 0f;
+            float totalMinCols = 0f;
             float totalFrCols = 0f;
             List<bool> isAutoCol = new List<bool>();
             List<float> frValuesCol = new List<float>();
             if (!string.IsNullOrEmpty(columnsStr))
             {
-                Match repeatMatch = Regex.Match(columnsStr, @"repeat\(['""]?(\d+)['""]?\s*,\s*(.*)\s*\)");
+                Match repeatMatch = Regex.Match(columnsStr, @"repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
                 List<string> colDefsList = new List<string>();
                 if (repeatMatch.Success)
                 {
@@ -727,7 +727,6 @@ namespace SiegeEngine.Core.UI
                         float fixedW = HtmlLayoutUtils.ParseSize(def, ComputedContentWidth, viewportWidth, viewportHeight);
                         if (float.IsNaN(fixedW)) fixedW = 0f;
                         trackWidths.Add(fixedW);
-                        totalFixedCols += fixedW;
                         isAutoCol.Add(false);
                         frValuesCol.Add(0f);
                     }
@@ -740,13 +739,13 @@ namespace SiegeEngine.Core.UI
                 frValuesCol.Add(0f);
             }
             List<float> trackHeights = new List<float>();
-            float totalFixedRows = 0f;
+            float totalMinRows = 0f;
             float totalFrRows = 0f;
             List<bool> isAutoRow = new List<bool>();
             List<float> frValuesRow = new List<float>();
             if (!string.IsNullOrEmpty(rowsStr))
             {
-                Match repeatMatch = Regex.Match(rowsStr, @"repeat\(['""]?(\d+)['""]?\s*,\s*(.*)\s*\)");
+                Match repeatMatch = Regex.Match(rowsStr, @"repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
                 List<string> rowDefsList = new List<string>();
                 if (repeatMatch.Success)
                 {
@@ -783,7 +782,6 @@ namespace SiegeEngine.Core.UI
                         float fixedH = HtmlLayoutUtils.ParseSize(def, ComputedContentHeight, viewportWidth, viewportHeight);
                         if (float.IsNaN(fixedH)) fixedH = 0f;
                         trackHeights.Add(fixedH);
-                        totalFixedRows += fixedH;
                         isAutoRow.Add(false);
                         frValuesRow.Add(0f);
                     }
@@ -870,45 +868,25 @@ namespace SiegeEngine.Core.UI
                 }
                 minTrackW[col] = maxInCol;
             }
-            float sumMinCols = 0f;
-            totalFixedCols = 0f;
-            totalFrCols = 0f;
+            totalMinCols = 0f;
             for (int col = 0; col < trackWidths.Count; col++)
             {
-                float baseSize;
-                if (isAutoCol[col])
-                {
-                    baseSize = minTrackW[col];
-                }
-                else if (frValuesCol[col] > 0)
+                float baseSize = trackWidths[col];
+                if (isAutoCol[col] || frValuesCol[col] > 0)
                 {
                     baseSize = 0f;
-                    totalFrCols += frValuesCol[col];
-                }
-                else
-                {
-                    baseSize = trackWidths[col];
                 }
                 baseSize = Math.Max(baseSize, minTrackW[col]);
                 trackWidths[col] = baseSize;
-                sumMinCols += baseSize;
-                if (frValuesCol[col] > 0)
-                {
-                    // nothing
-                }
-                else
-                {
-                    totalFixedCols += baseSize;
-                }
+                totalMinCols += baseSize;
             }
-            float remainingSpaceCols = Math.Max(0f, ComputedContentWidth - totalFixedCols - colGap * Math.Max(0, trackWidths.Count - 1));
+            float remainingSpaceCols = Math.Max(0f, ComputedContentWidth - totalMinCols - colGap * Math.Max(0, trackWidths.Count - 1));
             float frUnitCols = totalFrCols > 0 ? remainingSpaceCols / totalFrCols : 0f;
             for (int col = 0; col < trackWidths.Count; col++)
             {
                 if (frValuesCol[col] > 0)
                 {
                     trackWidths[col] += frValuesCol[col] * frUnitCols;
-                    trackWidths[col] = Math.Max(trackWidths[col], minTrackW[col]);
                 }
             }
             float[] minTrackH = new float[trackHeights.Count];
@@ -926,45 +904,25 @@ namespace SiegeEngine.Core.UI
                 }
                 minTrackH[row] = maxInRow;
             }
-            float sumMinRows = 0f;
-            totalFixedRows = 0f;
-            totalFrRows = 0f;
+            totalMinRows = 0f;
             for (int row = 0; row < trackHeights.Count; row++)
             {
-                float baseSize;
-                if (isAutoRow[row])
-                {
-                    baseSize = minTrackH[row];
-                }
-                else if (frValuesRow[row] > 0)
+                float baseSize = trackHeights[row];
+                if (isAutoRow[row] || frValuesRow[row] > 0)
                 {
                     baseSize = 0f;
-                    totalFrRows += frValuesRow[row];
-                }
-                else
-                {
-                    baseSize = trackHeights[row];
                 }
                 baseSize = Math.Max(baseSize, minTrackH[row]);
                 trackHeights[row] = baseSize;
-                sumMinRows += baseSize;
-                if (frValuesRow[row] > 0)
-                {
-                    // nothing
-                }
-                else
-                {
-                    totalFixedRows += baseSize;
-                }
+                totalMinRows += baseSize;
             }
-            float remainingSpaceRows = Math.Max(0f, ComputedContentHeight - totalFixedRows - rowGap * Math.Max(0, trackHeights.Count - 1));
+            float remainingSpaceRows = Math.Max(0f, ComputedContentHeight - totalMinRows - rowGap * Math.Max(0, trackHeights.Count - 1));
             float frUnitRows = totalFrRows > 0 ? remainingSpaceRows / totalFrRows : 0f;
             for (int row = 0; row < trackHeights.Count; row++)
             {
                 if (frValuesRow[row] > 0)
                 {
                     trackHeights[row] += frValuesRow[row] * frUnitRows;
-                    trackHeights[row] = Math.Max(trackHeights[row], minTrackH[row]);
                 }
             }
             float currentY = ComputedContentY;
@@ -1188,7 +1146,7 @@ namespace SiegeEngine.Core.UI
                     List<string> colDefsList = new List<string>();
                     if (!string.IsNullOrEmpty(columnsStr))
                     {
-                        Match repeatMatch = Regex.Match(columnsStr, @"repeat\(['""]?(\d+)['""]?\s*,\s*(.*)\s*\)");
+                        Match repeatMatch = Regex.Match(columnsStr, @"repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
                         if (repeatMatch.Success)
                         {
                             int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
@@ -1229,7 +1187,7 @@ namespace SiegeEngine.Core.UI
                     List<string> rowDefsList = new List<string>();
                     if (!string.IsNullOrEmpty(rowsStr))
                     {
-                        Match repeatMatch = Regex.Match(rowsStr, @"repeat\(['""]?(\d+)['""]?\s*,\s*(.*)\s*\)");
+                        Match repeatMatch = Regex.Match(rowsStr, @"repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
                         if (repeatMatch.Success)
                         {
                             int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
@@ -1300,13 +1258,19 @@ namespace SiegeEngine.Core.UI
                     float sumW = 0f;
                     for (int col = 0; col < numCols; col++)
                     {
-                        sumW += maxColW[col];
+                        float trackMin = maxColW[col];
+                        float trackBase = col < trackWidthsIntrinsic.Count ? trackWidthsIntrinsic[col] : 0f;
+                        float baseSize = Math.Max(trackBase, trackMin);
+                        sumW += baseSize;
                     }
                     sumW += colGap * (numCols - 1);
                     float sumH = 0f;
                     for (int row = 0; row < numRows; row++)
                     {
-                        sumH += maxRowH[row];
+                        float trackMin = maxRowH[row];
+                        float trackBase = row < trackHeightsIntrinsic.Count ? trackHeightsIntrinsic[row] : 0f;
+                        float baseSize = Math.Max(trackBase, trackMin);
+                        sumH += baseSize;
                     }
                     sumH += rowGap * (numRows - 1);
                     iw = sumW;
@@ -1470,7 +1434,7 @@ namespace SiegeEngine.Core.UI
             if (effectiveStyle.Display == "none") return;
             Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
             Matrix4x4 scrollMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
-            Matrix4x4 contentMatrix = localMatrix * scrollMatrix;
+            Matrix4x4 contentMatrix = parentMatrix * scrollMatrix * ComputedTransform;
             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
