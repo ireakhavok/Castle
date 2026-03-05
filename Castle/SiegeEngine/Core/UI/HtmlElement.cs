@@ -944,7 +944,6 @@ namespace SiegeEngine.Core.UI
                 }
             }
             float currentY = ComputedContentY;
-            float maxCurrentX = 0f;
             for (int row = 0; row < trackHeights.Count; row++)
             {
                 float trackH = trackHeights[row];
@@ -965,19 +964,21 @@ namespace SiegeEngine.Core.UI
                         float posX = currentX + m_left;
                         float posY = currentY + m_top;
                         child.ComputeLayout(posX, posY, forcedW, forcedH, viewportWidth, viewportHeight, textRenderer, fs, forcedW, forcedH);
-                        maxCurrentX = Math.Max(maxCurrentX, posX + child.ComputedWidth + m_right);
                     }
                     currentX += trackWidths[col] + colGap;
                 }
                 currentY += trackHeights[row] + rowGap;
             }
             ComputedContentHeight = currentY - ComputedContentY - rowGap;
-            ComputedContentWidth = maxCurrentX - ComputedContentX;
+            float maxChildBottom = 0f;
+            foreach (var child in visibleChildren)
+            {
+                maxChildBottom = Math.Max(maxChildBottom, child.ComputedPosition.Y + child.ComputedHeight - ComputedContentY);
+            }
+            ComputedContentHeight = Math.Max(ComputedContentHeight, maxChildBottom);
             Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
             ComputedHeight = ComputedContentHeight + pad.X + pad.Z;
             ComputedBackgroundHeight = ComputedHeight;
-            ComputedWidth = ComputedContentWidth + pad.W + pad.Y;
-            ComputedBackgroundWidth = ComputedWidth;
         }
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
@@ -1564,8 +1565,6 @@ namespace SiegeEngine.Core.UI
         public virtual bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
-            float effectiveMouseY = mousePos.Y + ScrollOffsetY;
-            Vector2 effectiveMousePos = new Vector2(mousePos.X, effectiveMouseY);
             float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             for (int k = 0; k < 4; k++)
@@ -1577,12 +1576,12 @@ namespace SiegeEngine.Core.UI
                 minY = Math.Min(minY, ny);
                 maxY = Math.Max(maxY, ny);
             }
-            float mx = 2 * effectiveMousePos.X / viewportWidth - 1;
-            float my = 1 - 2 * effectiveMousePos.Y / viewportHeight;
+            float mx = 2 * mousePos.X / viewportWidth - 1;
+            float my = 1 - 2 * mousePos.Y / viewportHeight;
             if (mx < minX || mx > maxX || my < minY || my > maxY) return false;
             for (int i = Children.Count - 1; i >= 0; i--)
             {
-                if (Children[i].HandleClick(effectiveMousePos, viewportWidth, viewportHeight)) return true;
+                if (Children[i].HandleClick(mousePos, viewportWidth, viewportHeight)) return true;
             }
             string classes = Attributes.GetValueOrDefault("class", "");
             bool isClickable = classes.Contains("button") || classes.Contains("toggle") || Tag == "select" || Tag == "label" || Tag == "a" || Attributes.ContainsKey("data-hook") || Attributes.ContainsKey("onclick") || classes.Contains("select-option") || Tag == "option" || Attributes.ContainsKey("onchange") || Attributes.ContainsKey("onmouseenter") || Attributes.ContainsKey("onmouseleave") || Attributes.ContainsKey("onmouseover") || Attributes.ContainsKey("onmouseout") || Attributes.ContainsKey("onmousedown") || Attributes.ContainsKey("onmouseup") || Attributes.ContainsKey("onfocus") || Attributes.ContainsKey("onblur") || Tag.ToLower() == "input";
@@ -1591,8 +1590,6 @@ namespace SiegeEngine.Core.UI
         public virtual bool UpdateHover(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
-            float effectiveMouseY = mousePos.Y + ScrollOffsetY;
-            Vector2 effectiveMousePos = new Vector2(mousePos.X, effectiveMouseY);
             float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             for (int k = 0; k < 4; k++)
@@ -1604,8 +1601,8 @@ namespace SiegeEngine.Core.UI
                 minY = Math.Min(minY, ny);
                 maxY = Math.Max(maxY, ny);
             }
-            float mx = 2 * effectiveMousePos.X / viewportWidth - 1;
-            float my = 1 - 2 * effectiveMousePos.Y / viewportHeight;
+            float mx = 2 * mousePos.X / viewportWidth - 1;
+            float my = 1 - 2 * mousePos.Y / viewportHeight;
             bool over = !(mx < minX || mx > maxX || my < minY || my > maxY);
             bool changed = false;
             if (over && !IsHover)
@@ -1620,7 +1617,7 @@ namespace SiegeEngine.Core.UI
             }
             for (int i = Children.Count - 1; i >= 0; i--)
             {
-                if (Children[i].UpdateHover(effectiveMousePos, viewportWidth, viewportHeight)) return true;
+                if (Children[i].UpdateHover(mousePos, viewportWidth, viewportHeight)) return true;
             }
             return over;
         }
