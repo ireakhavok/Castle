@@ -72,6 +72,8 @@ namespace SiegeEngine.Core.UI
         public string Overflow { get; set; }
         public string OverflowY { get; set; }
         public string GridTemplateColumnsStr { get; set; }
+        public string GridTemplateRowsStr { get; set; }
+        public string GridAutoFlow { get; set; } = "row";
         public CssStyle Clone()
         {
             return (CssStyle)MemberwiseClone();
@@ -265,6 +267,12 @@ namespace SiegeEngine.Core.UI
                     break;
                 case "grid-template-columns":
                     GridTemplateColumnsStr = val;
+                    break;
+                case "grid-template-rows":
+                    GridTemplateRowsStr = val;
+                    break;
+                case "grid-auto-flow":
+                    GridAutoFlow = val;
                     break;
                 default:
                     Console.WriteLine($"Unsupported CSS property: {key}");

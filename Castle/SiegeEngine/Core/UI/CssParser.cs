@@ -629,6 +629,10 @@ nav ul ul {
                 style.OverflowY = ovy;
             if (props.TryGetValue("grid-template-columns", out string gtc))
                 style.GridTemplateColumnsStr = gtc;
+            if (props.TryGetValue("grid-template-rows", out string gtr))
+                style.GridTemplateRowsStr = gtr;
+            if (props.TryGetValue("grid-auto-flow", out string gaf))
+                style.GridAutoFlow = gaf;
         }
         public Vector4 ParseColor(string color)
         {
