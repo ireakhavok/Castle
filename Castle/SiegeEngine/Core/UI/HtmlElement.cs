@@ -684,13 +684,13 @@ namespace SiegeEngine.Core.UI
             float rowGap = gapDefs.Length > 0 ? HtmlLayoutUtils.ParseSize(gapDefs[0], ComputedContentWidth, viewportWidth, viewportHeight) : 0f;
             float colGap = gapDefs.Length > 1 ? HtmlLayoutUtils.ParseSize(gapDefs[1], ComputedContentWidth, viewportWidth, viewportHeight) : rowGap;
             List<float> trackWidths = new List<float>();
-            float totalMinCols = 0f;
+            float totalNonGrowableCols = 0f;
             float totalFrCols = 0f;
             List<bool> isAutoCol = new List<bool>();
             List<float> frValuesCol = new List<float>();
             if (!string.IsNullOrEmpty(columnsStr))
             {
-                Match repeatMatch = Regex.Match(columnsStr, @"repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
+                Match repeatMatch = Regex.Match(columnsStr, @"\s*repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
                 List<string> colDefsList = new List<string>();
                 if (repeatMatch.Success)
                 {
@@ -739,13 +739,13 @@ namespace SiegeEngine.Core.UI
                 frValuesCol.Add(0f);
             }
             List<float> trackHeights = new List<float>();
-            float totalMinRows = 0f;
+            float totalNonGrowableRows = 0f;
             float totalFrRows = 0f;
             List<bool> isAutoRow = new List<bool>();
             List<float> frValuesRow = new List<float>();
             if (!string.IsNullOrEmpty(rowsStr))
             {
-                Match repeatMatch = Regex.Match(rowsStr, @"repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
+                Match repeatMatch = Regex.Match(rowsStr, @"\s*repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
                 List<string> rowDefsList = new List<string>();
                 if (repeatMatch.Success)
                 {
@@ -819,7 +819,7 @@ namespace SiegeEngine.Core.UI
             List<List<HtmlElement>> gridCells = new List<List<HtmlElement>>();
             for (int r = 0; r < trackHeights.Count; r++)
             {
-                gridCells.Add(Enumerable.Repeat((HtmlElement)null, trackWidths.Count).ToList());
+                gridCells.Add(new List<HtmlElement>(new HtmlElement[trackWidths.Count]));
             }
             for (int i = 0; i < numChildren; i++)
             {
@@ -839,7 +839,7 @@ namespace SiegeEngine.Core.UI
                     trackHeights.Add(0f);
                     isAutoRow.Add(true);
                     frValuesRow.Add(0f);
-                    gridCells.Add(Enumerable.Repeat((HtmlElement)null, trackWidths.Count).ToList());
+                    gridCells.Add(new List<HtmlElement>(new HtmlElement[trackWidths.Count]));
                 }
                 while (col >= trackWidths.Count)
                 {
@@ -863,30 +863,39 @@ namespace SiegeEngine.Core.UI
                     if (child != null)
                     {
                         Vector2 intrinsic = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                        maxInCol = Math.Max(maxInCol, intrinsic.X);
+                        Vector4 childMargin = HtmlLayoutUtils.ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
+                        float m_left = float.IsNaN(childMargin.W) ? 0 : childMargin.W;
+                        float m_right = float.IsNaN(childMargin.Y) ? 0 : childMargin.Y;
+                        maxInCol = Math.Max(maxInCol, intrinsic.X + m_left + m_right);
                     }
                 }
                 minTrackW[col] = maxInCol;
             }
-            totalMinCols = 0f;
             for (int col = 0; col < trackWidths.Count; col++)
             {
-                float baseSize = trackWidths[col];
-                if (isAutoCol[col] || frValuesCol[col] > 0)
+                if (isAutoCol[col])
                 {
-                    baseSize = 0f;
+                    trackWidths[col] = minTrackW[col];
+                    totalNonGrowableCols += trackWidths[col];
                 }
-                baseSize = Math.Max(baseSize, minTrackW[col]);
-                trackWidths[col] = baseSize;
-                totalMinCols += baseSize;
+                else if (frValuesCol[col] > 0)
+                {
+                    trackWidths[col] = 0f;
+                }
+                else // fixed
+                {
+                    trackWidths[col] = Math.Max(trackWidths[col], minTrackW[col]);
+                    totalNonGrowableCols += trackWidths[col];
+                }
             }
-            float remainingSpaceCols = Math.Max(0f, ComputedContentWidth - totalMinCols - colGap * Math.Max(0, trackWidths.Count - 1));
+            float remainingSpaceCols = Math.Max(0f, ComputedContentWidth - totalNonGrowableCols - colGap * Math.Max(0, trackWidths.Count - 1));
             float frUnitCols = totalFrCols > 0 ? remainingSpaceCols / totalFrCols : 0f;
             for (int col = 0; col < trackWidths.Count; col++)
             {
                 if (frValuesCol[col] > 0)
                 {
                     trackWidths[col] += frValuesCol[col] * frUnitCols;
+                    trackWidths[col] = Math.Max(trackWidths[col], minTrackW[col]);
                 }
             }
             float[] minTrackH = new float[trackHeights.Count];
@@ -899,33 +908,43 @@ namespace SiegeEngine.Core.UI
                     if (child != null)
                     {
                         Vector2 intrinsic = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                        maxInRow = Math.Max(maxInRow, intrinsic.Y);
+                        Vector4 childMargin = HtmlLayoutUtils.ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
+                        float m_top = float.IsNaN(childMargin.X) ? 0 : childMargin.X;
+                        float m_bottom = float.IsNaN(childMargin.Z) ? 0 : childMargin.Z;
+                        maxInRow = Math.Max(maxInRow, intrinsic.Y + m_top + m_bottom);
                     }
                 }
                 minTrackH[row] = maxInRow;
             }
-            totalMinRows = 0f;
             for (int row = 0; row < trackHeights.Count; row++)
             {
-                float baseSize = trackHeights[row];
-                if (isAutoRow[row] || frValuesRow[row] > 0)
+                if (isAutoRow[row])
                 {
-                    baseSize = 0f;
+                    trackHeights[row] = minTrackH[row];
+                    totalNonGrowableRows += trackHeights[row];
                 }
-                baseSize = Math.Max(baseSize, minTrackH[row]);
-                trackHeights[row] = baseSize;
-                totalMinRows += baseSize;
+                else if (frValuesRow[row] > 0)
+                {
+                    trackHeights[row] = 0f;
+                }
+                else // fixed
+                {
+                    trackHeights[row] = Math.Max(trackHeights[row], minTrackH[row]);
+                    totalNonGrowableRows += trackHeights[row];
+                }
             }
-            float remainingSpaceRows = Math.Max(0f, ComputedContentHeight - totalMinRows - rowGap * Math.Max(0, trackHeights.Count - 1));
+            float remainingSpaceRows = Math.Max(0f, ComputedContentHeight - totalNonGrowableRows - rowGap * Math.Max(0, trackHeights.Count - 1));
             float frUnitRows = totalFrRows > 0 ? remainingSpaceRows / totalFrRows : 0f;
             for (int row = 0; row < trackHeights.Count; row++)
             {
                 if (frValuesRow[row] > 0)
                 {
                     trackHeights[row] += frValuesRow[row] * frUnitRows;
+                    trackHeights[row] = Math.Max(trackHeights[row], minTrackH[row]);
                 }
             }
             float currentY = ComputedContentY;
+            float maxCurrentX = 0f;
             for (int row = 0; row < trackHeights.Count; row++)
             {
                 float trackH = trackHeights[row];
@@ -936,16 +955,29 @@ namespace SiegeEngine.Core.UI
                     if (child != null)
                     {
                         float trackW = trackWidths[col];
-                        child.ComputeLayout(currentX, currentY, trackW, trackH, viewportWidth, viewportHeight, textRenderer, fs, trackW, trackH);
+                        Vector4 childMargin = HtmlLayoutUtils.ParseMargins(child.Style, trackW, viewportWidth, viewportHeight);
+                        float m_left = float.IsNaN(childMargin.W) ? 0 : childMargin.W;
+                        float m_right = float.IsNaN(childMargin.Y) ? 0 : childMargin.Y;
+                        float m_top = float.IsNaN(childMargin.X) ? 0 : childMargin.X;
+                        float m_bottom = float.IsNaN(childMargin.Z) ? 0 : childMargin.Z;
+                        float forcedW = trackW - m_left - m_right;
+                        float forcedH = trackH - m_top - m_bottom;
+                        float posX = currentX + m_left;
+                        float posY = currentY + m_top;
+                        child.ComputeLayout(posX, posY, forcedW, forcedH, viewportWidth, viewportHeight, textRenderer, fs, forcedW, forcedH);
+                        maxCurrentX = Math.Max(maxCurrentX, posX + child.ComputedWidth + m_right);
                     }
                     currentX += trackWidths[col] + colGap;
                 }
                 currentY += trackHeights[row] + rowGap;
             }
             ComputedContentHeight = currentY - ComputedContentY - rowGap;
+            ComputedContentWidth = maxCurrentX - ComputedContentX;
             Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
             ComputedHeight = ComputedContentHeight + pad.X + pad.Z;
             ComputedBackgroundHeight = ComputedHeight;
+            ComputedWidth = ComputedContentWidth + pad.W + pad.Y;
+            ComputedBackgroundWidth = ComputedWidth;
         }
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
@@ -1146,7 +1178,7 @@ namespace SiegeEngine.Core.UI
                     List<string> colDefsList = new List<string>();
                     if (!string.IsNullOrEmpty(columnsStr))
                     {
-                        Match repeatMatch = Regex.Match(columnsStr, @"repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
+                        Match repeatMatch = Regex.Match(columnsStr, @"\s*repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
                         if (repeatMatch.Success)
                         {
                             int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
@@ -1187,7 +1219,7 @@ namespace SiegeEngine.Core.UI
                     List<string> rowDefsList = new List<string>();
                     if (!string.IsNullOrEmpty(rowsStr))
                     {
-                        Match repeatMatch = Regex.Match(rowsStr, @"repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
+                        Match repeatMatch = Regex.Match(rowsStr, @"\s*repeat\s*\(\s*(\d+)\s*,\s*(.*?)\s*\)");
                         if (repeatMatch.Success)
                         {
                             int repeatNum = int.Parse(repeatMatch.Groups[1].Value);
@@ -1252,25 +1284,24 @@ namespace SiegeEngine.Core.UI
                         }
                         HtmlElement child = visibleChildren[i];
                         Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                        maxRowH[row] = Math.Max(maxRowH[row], childSize.Y);
-                        maxColW[col] = Math.Max(maxColW[col], childSize.X);
+                        Vector4 childMargin = HtmlLayoutUtils.ParseMargins(child.Style, 0, viewportWidth, viewportHeight);
+                        float m_left = float.IsNaN(childMargin.W) ? 0 : childMargin.W;
+                        float m_right = float.IsNaN(childMargin.Y) ? 0 : childMargin.Y;
+                        float m_top = float.IsNaN(childMargin.X) ? 0 : childMargin.X;
+                        float m_bottom = float.IsNaN(childMargin.Z) ? 0 : childMargin.Z;
+                        maxRowH[row] = Math.Max(maxRowH[row], childSize.Y + m_top + m_bottom);
+                        maxColW[col] = Math.Max(maxColW[col], childSize.X + m_left + m_right);
                     }
                     float sumW = 0f;
                     for (int col = 0; col < numCols; col++)
                     {
-                        float trackMin = maxColW[col];
-                        float trackBase = col < trackWidthsIntrinsic.Count ? trackWidthsIntrinsic[col] : 0f;
-                        float baseSize = Math.Max(trackBase, trackMin);
-                        sumW += baseSize;
+                        sumW += maxColW[col];
                     }
                     sumW += colGap * (numCols - 1);
                     float sumH = 0f;
                     for (int row = 0; row < numRows; row++)
                     {
-                        float trackMin = maxRowH[row];
-                        float trackBase = row < trackHeightsIntrinsic.Count ? trackHeightsIntrinsic[row] : 0f;
-                        float baseSize = Math.Max(trackBase, trackMin);
-                        sumH += baseSize;
+                        sumH += maxRowH[row];
                     }
                     sumH += rowGap * (numRows - 1);
                     iw = sumW;
@@ -1433,8 +1464,7 @@ namespace SiegeEngine.Core.UI
             }
             if (effectiveStyle.Display == "none") return;
             Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
-            Matrix4x4 scrollMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
-            Matrix4x4 contentMatrix = parentMatrix * scrollMatrix * ComputedTransform;
+            Matrix4x4 contentMatrix = localMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
@@ -1534,6 +1564,8 @@ namespace SiegeEngine.Core.UI
         public virtual bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
+            float effectiveMouseY = mousePos.Y + ScrollOffsetY;
+            Vector2 effectiveMousePos = new Vector2(mousePos.X, effectiveMouseY);
             float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             for (int k = 0; k < 4; k++)
@@ -1545,12 +1577,12 @@ namespace SiegeEngine.Core.UI
                 minY = Math.Min(minY, ny);
                 maxY = Math.Max(maxY, ny);
             }
-            float mx = 2 * mousePos.X / viewportWidth - 1;
-            float my = 1 - 2 * mousePos.Y / viewportHeight;
+            float mx = 2 * effectiveMousePos.X / viewportWidth - 1;
+            float my = 1 - 2 * effectiveMousePos.Y / viewportHeight;
             if (mx < minX || mx > maxX || my < minY || my > maxY) return false;
             for (int i = Children.Count - 1; i >= 0; i--)
             {
-                if (Children[i].HandleClick(mousePos, viewportWidth, viewportHeight)) return true;
+                if (Children[i].HandleClick(effectiveMousePos, viewportWidth, viewportHeight)) return true;
             }
             string classes = Attributes.GetValueOrDefault("class", "");
             bool isClickable = classes.Contains("button") || classes.Contains("toggle") || Tag == "select" || Tag == "label" || Tag == "a" || Attributes.ContainsKey("data-hook") || Attributes.ContainsKey("onclick") || classes.Contains("select-option") || Tag == "option" || Attributes.ContainsKey("onchange") || Attributes.ContainsKey("onmouseenter") || Attributes.ContainsKey("onmouseleave") || Attributes.ContainsKey("onmouseover") || Attributes.ContainsKey("onmouseout") || Attributes.ContainsKey("onmousedown") || Attributes.ContainsKey("onmouseup") || Attributes.ContainsKey("onfocus") || Attributes.ContainsKey("onblur") || Tag.ToLower() == "input";
@@ -1559,6 +1591,8 @@ namespace SiegeEngine.Core.UI
         public virtual bool UpdateHover(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
+            float effectiveMouseY = mousePos.Y + ScrollOffsetY;
+            Vector2 effectiveMousePos = new Vector2(mousePos.X, effectiveMouseY);
             float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             for (int k = 0; k < 4; k++)
@@ -1570,8 +1604,8 @@ namespace SiegeEngine.Core.UI
                 minY = Math.Min(minY, ny);
                 maxY = Math.Max(maxY, ny);
             }
-            float mx = 2 * mousePos.X / viewportWidth - 1;
-            float my = 1 - 2 * mousePos.Y / viewportHeight;
+            float mx = 2 * effectiveMousePos.X / viewportWidth - 1;
+            float my = 1 - 2 * effectiveMousePos.Y / viewportHeight;
             bool over = !(mx < minX || mx > maxX || my < minY || my > maxY);
             bool changed = false;
             if (over && !IsHover)
@@ -1586,7 +1620,7 @@ namespace SiegeEngine.Core.UI
             }
             for (int i = Children.Count - 1; i >= 0; i--)
             {
-                if (Children[i].UpdateHover(mousePos, viewportWidth, viewportHeight)) return true;
+                if (Children[i].UpdateHover(effectiveMousePos, viewportWidth, viewportHeight)) return true;
             }
             return over;
         }
