@@ -115,7 +115,6 @@ ul, ol {
     display: block;
     list-style-type: disc;
     margin: 1em 0;
-    padding-left: 40px;
 }
 ol {
     list-style-type: decimal;
@@ -163,19 +162,13 @@ nav ul ul {
     top: 100%;
     left: 0;
     background-color: #2d2d2d;
-    padding: 0px 0;
-    min-width: 160px;
-    border: 1px solid #737373;
+    padding: 4px 0;
+    min-width: 200px;
+    border: 1px solid #383838;
     list-style-type: none;
     margin: 0;
     z-index: 1000;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-}
-nav ul ul li {
-    padding: 0px 16px;
-    height: auto;
-    justify-content: flex-start;
-    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }
 .form-grid {
     display: grid;
