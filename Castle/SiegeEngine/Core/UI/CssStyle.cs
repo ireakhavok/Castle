@@ -2,7 +2,6 @@
 // File: CssStyle.cs
 using System;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public class CssStyle
@@ -39,6 +38,10 @@ namespace SiegeEngine.Core.UI
         public string PaddingBottomStr { get; set; }
         public string PaddingLeftStr { get; set; }
         public string MarginStr { get; set; }
+        public string MarginTopStr { get; set; }
+        public string MarginRightStr { get; set; }
+        public string MarginBottomStr { get; set; }
+        public string MarginLeftStr { get; set; }
         public Vector4 Margin { get; set; }
         public string GapStr { get; set; }
         public string TextAlign { get; set; }
@@ -69,7 +72,6 @@ namespace SiegeEngine.Core.UI
         public string Overflow { get; set; }
         public string OverflowY { get; set; }
         public string GridTemplateColumnsStr { get; set; }
-
         public CssStyle Clone()
         {
             return (CssStyle)MemberwiseClone();
@@ -167,6 +169,18 @@ namespace SiegeEngine.Core.UI
                     break;
                 case "margin":
                     MarginStr = val;
+                    break;
+                case "margin-top":
+                    MarginTopStr = val;
+                    break;
+                case "margin-right":
+                    MarginRightStr = val;
+                    break;
+                case "margin-bottom":
+                    MarginBottomStr = val;
+                    break;
+                case "margin-left":
+                    MarginLeftStr = val;
                     break;
                 case "gap":
                     GapStr = val;

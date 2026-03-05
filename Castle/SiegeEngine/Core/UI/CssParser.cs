@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.Core.UI
 {
     public class CssParser
@@ -535,6 +534,14 @@ nav ul ul {
             {
                 style.MarginStr = margin;
             }
+            if (props.TryGetValue("margin-top", out string mtop))
+                style.MarginTopStr = mtop;
+            if (props.TryGetValue("margin-right", out string mright))
+                style.MarginRightStr = mright;
+            if (props.TryGetValue("margin-bottom", out string mbottom))
+                style.MarginBottomStr = mbottom;
+            if (props.TryGetValue("margin-left", out string mleft))
+                style.MarginLeftStr = mleft;
             if (props.TryGetValue("gap", out string gap))
                 style.GapStr = gap;
             if (props.TryGetValue("text-align", out string ta))

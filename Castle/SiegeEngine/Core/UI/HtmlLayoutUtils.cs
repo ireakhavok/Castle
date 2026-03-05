@@ -3,7 +3,6 @@ using System;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.Core.UI
 {
     public static class HtmlLayoutUtils
@@ -39,7 +38,6 @@ namespace SiegeEngine.Core.UI
                 return float.NaN;
             }
         }
-
         public static Vector4 ParsePaddings(CssStyle style, float parent, float vw, float vh)
         {
             string allStr = style.PaddingStr;
@@ -58,14 +56,20 @@ namespace SiegeEngine.Core.UI
             if (float.IsNaN(values.W)) values.W = 0;
             return values;
         }
-
         public static Vector4 ParseMargins(CssStyle style, float parent, float vw, float vh)
         {
             string allStr = style.MarginStr;
             Vector4 values = string.IsNullOrEmpty(allStr) ? Vector4.Zero : ParseSides(allStr, parent, vw, vh);
+            string topStr = style.MarginTopStr;
+            string rightStr = style.MarginRightStr;
+            string bottomStr = style.MarginBottomStr;
+            string leftStr = style.MarginLeftStr;
+            if (!string.IsNullOrEmpty(topStr)) values.X = ParseSize(topStr, parent, vw, vh);
+            if (!string.IsNullOrEmpty(rightStr)) values.Y = ParseSize(rightStr, parent, vw, vh);
+            if (!string.IsNullOrEmpty(bottomStr)) values.Z = ParseSize(bottomStr, parent, vw, vh);
+            if (!string.IsNullOrEmpty(leftStr)) values.W = ParseSize(leftStr, parent, vw, vh);
             return values;
         }
-
         public static Vector4 ParseBorderWidths(CssStyle style, float parent, float vw, float vh)
         {
             Vector4 values = string.IsNullOrEmpty(style.BorderWidthStr) ? Vector4.Zero : ParseSides(style.BorderWidthStr, parent, vw, vh);
@@ -79,7 +83,6 @@ namespace SiegeEngine.Core.UI
             if (float.IsNaN(values.W)) values.W = 0;
             return values;
         }
-
         public static Vector4 ParseSides(string s, float parent, float vw, float vh)
         {
             if (string.IsNullOrEmpty(s)) return Vector4.Zero;
@@ -98,7 +101,6 @@ namespace SiegeEngine.Core.UI
             float val4 = GetVal(3, val2);
             return new Vector4(val1, val2, val3, val4);
         }
-
         public static Matrix4x4 ComputeTransform(HtmlElement elem, float viewportWidth, float viewportHeight)
         {
             if (string.IsNullOrEmpty(elem.Style.Transform) || elem.Style.Transform == "none") return Matrix4x4.Identity;
@@ -173,7 +175,6 @@ namespace SiegeEngine.Core.UI
             mat = fromOrigin * mat * toOrigin;
             return mat;
         }
-
         public static float ParseAngle(string s)
         {
             if (string.IsNullOrEmpty(s)) return 0;
@@ -201,7 +202,6 @@ namespace SiegeEngine.Core.UI
             val = float.Parse(s);
             return val * MathF.PI / 180;
         }
-
         public static float[] GetNdcQuad(float x, float y, float w, float h, Matrix4x4 trans, float vw, float vh)
         {
             Vector4 bl = Vector4.Transform(new Vector4(x, y + h, 0, 1), trans);
