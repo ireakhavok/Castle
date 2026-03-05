@@ -20,8 +20,6 @@ namespace SiegeEngine.Core.UI
 
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
-            // Special case for submenu items inside .nav-dropdown-content
-            // This forces them to fill the parent ul width (200px) so they are standardized
             bool isSubmenuItem = false;
             if (Parent != null)
             {
@@ -34,13 +32,11 @@ namespace SiegeEngine.Core.UI
 
             if (isSubmenuItem && Parent != null && Parent.ComputedContentWidth > 0)
             {
-                // Use full width of the parent dropdown ul
                 Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
                 Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
 
                 float fullWidth = Parent.ComputedContentWidth;
 
-                // Height still based on text content
                 float submenuHeight = 0f;
                 string foundText = "";
                 Queue<HtmlElement> queue = new Queue<HtmlElement>(Children);
@@ -63,7 +59,7 @@ namespace SiegeEngine.Core.UI
                 return new Vector2(fullWidth, finalHeight);
             }
 
-            // Original behavior for top-level nav items (unchanged)
+            // Top-level nav items
             float maxWidth = 0f;
             float totalHeight = 0f;
             string foundText2 = "";
@@ -102,14 +98,13 @@ namespace SiegeEngine.Core.UI
 
         public override bool UpdateHover(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
-            // 1. Give dropdown children first chance (priority)
             bool dropdownHit = false;
             var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
             if (IsNavDropdownParent() && dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
             {
                 dropdownHit = dropdownUl.UpdateHover(mousePos, viewportWidth, viewportHeight);
             }
-            // 2. Normal li hit test
+
             bool hitOnLi = false;
             if (ComputedWidth > 0 && ComputedHeight > 0)
             {
@@ -128,13 +123,10 @@ namespace SiegeEngine.Core.UI
                 float my = 1 - 2 * mousePos.Y / viewportHeight;
                 hitOnLi = !(mx < minX || mx > maxX || my < minY || my > maxY);
             }
+
             bool hit = hitOnLi || dropdownHit;
             if (IsNavDropdownParent() || IsTopLevelNavItem())
             {
-                if (IsHover != hit)
-                {
-                    Console.WriteLine($"[NAV HOVER] NavLi '{(Attributes.GetValueOrDefault("class", "") ?? "no-class")}' hover CHANGED from {IsHover} -> {hit} | mouseY={mousePos.Y:F1} | li={hitOnLi} | dropdownHit={dropdownHit}");
-                }
                 IsHover = hit;
             }
             return hit;
@@ -156,31 +148,34 @@ namespace SiegeEngine.Core.UI
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
+
             var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
             if (IsNavDropdownParent() && IsHover && dropdownUl != null)
             {
+                // FIXED: Use content box start (after padding) instead of border-box start
+                // This removes the unwanted right offset caused by the parent li's 22px padding
+                float dropdownX = ComputedContentX;
                 float dropdownY = ComputedPosition.Y + ComputedHeight;
-                float dropdownX = ComputedPosition.X;
+
                 dropdownUl.Style.Display = "block";
                 dropdownUl.ComputeLayout(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, viewportWidth, viewportHeight, textRenderer, Style.FontSize);
+
                 CssStyle ulStyle = dropdownUl.Style;
                 if (ulStyle.BackgroundColor != Vector4.Zero)
                 {
                     float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
                     quadRenderer.DrawNdcQuad(dropdownNdc, ulStyle.BackgroundColor);
                 }
+
                 renderContext.Disable(renderContext.Enums.ScissorTest);
                 dropdownUl.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, ComputedFullTransform);
                 renderContext.Enable(renderContext.Enums.ScissorTest);
             }
             else if (dropdownUl != null)
             {
-                if (_lastHoverState)
-                {
-                    Console.WriteLine($"[NAV DROPOUT DEBUG] DROPOUT DETECTED - Dropdown HIDDEN because IsHover=false");
-                }
                 dropdownUl.Style.Display = "none";
             }
+
             _lastHoverState = IsHover;
         }
 
