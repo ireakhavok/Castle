@@ -13,6 +13,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
+using System.Collections.Generic;
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -21,10 +22,11 @@ namespace MapRoom
         private Vector3 _ghostPosition;
         private bool _ghostVisible = false;
         private VertexBuffer _ghostBuffer;
-
+        private HashSet<Guid> _processedModifications = new HashSet<Guid>();
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
+            _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
         }
         public void CreateBlank()
         {
@@ -45,8 +47,8 @@ namespace MapRoom
             _useCustomScale = true;
             BuildWireframeMesh(1);
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
-            float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
-            _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f + 10f, centerZ + 50f);
+            float centerY = (_terrainHeight * _worldScaleZ) / 2f;
+            _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
@@ -59,9 +61,9 @@ namespace MapRoom
             }
             float cellSize = parameters.Resolution > 0 ? parameters.Resolution : 1.0f;
             int numCellsX = (int)Math.Ceiling(parameters.Width / cellSize);
-            int numCellsZ = (int)Math.Ceiling(parameters.Depth / cellSize);
+            int numCellsY = (int)Math.Ceiling(parameters.Depth / cellSize);
             _terrainWidth = numCellsX + 1;
-            _terrainHeight = numCellsZ + 1;
+            _terrainHeight = numCellsY + 1;
             _worldScaleX = cellSize;
             _worldScaleZ = cellSize;
             if (!string.IsNullOrEmpty(parameters.ImportPath))
@@ -76,17 +78,17 @@ namespace MapRoom
                 _maxHeight = parameters.InitialHeight;
                 for (int x = 0; x < _terrainWidth; x++)
                 {
-                    for (int z = 0; z < _terrainHeight; z++)
+                    for (int y = 0; y < _terrainHeight; y++)
                     {
-                        _heightmap[x, z] = parameters.InitialHeight * parameters.VerticalExaggeration;
+                        _heightmap[x, y] = parameters.InitialHeight * parameters.VerticalExaggeration;
                     }
                 }
                 Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain");
                 _useCustomScale = true;
                 BuildWireframeMesh(1);
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
-                float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
-                _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f + 10f, centerZ + 50f);
+                float centerY = (_terrainHeight * _worldScaleZ) / 2f;
+                _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
                 _flyCamera.Yaw = 0f;
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
@@ -120,11 +122,11 @@ namespace MapRoom
             if (range <= 0) range = 1f;
             for (int x = 0; x < w; x++)
             {
-                for (int z = 0; z < h; z++)
+                for (int y = 0; y < h; y++)
                 {
-                    float norm = (_heightmap[x, z] - _minHeight) / range;
+                    float norm = (_heightmap[x, y] - _minHeight) / range;
                     byte gray = (byte)Math.Clamp((int)(norm * 255), 0, 255);
-                    bmp.SetPixel(x, z, Color.FromArgb(gray, gray, gray));
+                    bmp.SetPixel(x, y, Color.FromArgb(gray, gray, gray));
                 }
             }
             bmp.Save(path, ImageFormat.Png);
@@ -149,8 +151,8 @@ namespace MapRoom
             {
                 float angle = i * MathF.PI * 2f / segments;
                 float x = MathF.Cos(angle) * r;
-                float z = MathF.Sin(angle) * r;
-                vertices.Add(x); vertices.Add(0f); vertices.Add(z);
+                float y = MathF.Sin(angle) * r;
+                vertices.Add(x); vertices.Add(y); vertices.Add(0f);
                 vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(1f);
                 vertices.Add(0f); vertices.Add(0f);
             }
@@ -171,33 +173,58 @@ namespace MapRoom
             }
             Vector3 rayOrigin = _flyCamera.Position;
             Vector3 rayDir = GetLookDirection();
-            if (MathF.Abs(rayDir.Y) > 0.001f)
+            if (RayTerrainIntersect(rayOrigin, rayDir, out var hit))
             {
-                float t = -rayOrigin.Y / rayDir.Y;
-                if (t > 0.1f)
-                {
-                    _ghostPosition = rayOrigin + rayDir * t;
-                    float terrainHeight = GetHeight(_ghostPosition.X, _ghostPosition.Z);
-                    _ghostPosition.Y = terrainHeight + 0.1f;
-                    _ghostVisible = true;
-                    UpdateGhostMesh();
-                }
+                _ghostPosition = hit;
+                _ghostPosition.Z += 0.1f;
+                _ghostVisible = true;
+                UpdateGhostMesh();
+            }
+            else
+            {
+                _ghostVisible = false;
             }
             if (mouseDown && _activeBrush != null && _ghostVisible)
             {
-                Vector2 gridPos = new Vector2(_ghostPosition.X, _ghostPosition.Z);
-                _activeBrush.Apply(ref _heightmap, gridPos, _worldScaleX, _worldScaleZ);
-                BuildWireframeMesh(1);
+                var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, _activeBrush.Intensity, _activeBrush.Mode.ToString().ToLower(), 0);
+                _eventBus.Publish(evt, true);
             }
+        }
+        private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
+        {
+            hitPoint = Vector3.Zero;
+            const float maxDist = 10000f;
+            const float step = 1f;
+            for (float t = 0; t < maxDist; t += step)
+            {
+                Vector3 p = origin + dir * t;
+                float h = GetHeight(p.X, p.Y);
+                if (p.Z <= h)
+                {
+                    float tLow = t - step;
+                    float tHigh = t;
+                    for (int i = 0; i < 10; i++)
+                    {
+                        float tMid = (tLow + tHigh) / 2;
+                        p = origin + dir * tMid;
+                        h = GetHeight(p.X, p.Y);
+                        if (p.Z <= h) tHigh = tMid;
+                        else tLow = tMid;
+                    }
+                    hitPoint = origin + dir * tHigh;
+                    return true;
+                }
+            }
+            return false;
         }
         private Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
             float pitchRad = _flyCamera.Pitch * (MathF.PI / 180f);
             return Vector3.Normalize(new Vector3(
-                MathF.Sin(yawRad) * MathF.Cos(pitchRad),
-                MathF.Sin(pitchRad),
-                MathF.Cos(yawRad) * MathF.Cos(pitchRad)
+                MathF.Cos(pitchRad) * MathF.Sin(yawRad),
+                MathF.Cos(pitchRad) * MathF.Cos(yawRad),
+                MathF.Sin(pitchRad)
             ));
         }
         public override void Render(IReadOnlyList<Entity> entities)
@@ -247,6 +274,37 @@ namespace MapRoom
             _terrainShader?.Dispose();
             _ghostBuffer?.Dispose();
             base.Dispose();
+        }
+        private void OnTerrainModified(TerrainModifiedEvent e)
+        {
+            if (_processedModifications.Contains(e.Id)) return;
+            ApplyModification(e);
+            _processedModifications.Add(e.Id);
+        }
+        private void ApplyModification(TerrainModifiedEvent e)
+        {
+            int width = _heightmap.GetLength(0);
+            int height = _heightmap.GetLength(1);
+            int centerX = (int)Math.Clamp(e.WorldPos.X / _worldScaleX, 0, width - 1);
+            int centerY = (int)Math.Clamp(e.WorldPos.Y / _worldScaleZ, 0, height - 1);
+            float radiusInCells = e.Radius / Math.Max(_worldScaleX, _worldScaleZ);
+            for (int x = Math.Max(0, centerX - (int)radiusInCells - 1); x < Math.Min(width, centerX + (int)radiusInCells + 1); x++)
+            {
+                for (int y = Math.Max(0, centerY - (int)radiusInCells - 1); y < Math.Min(height, centerY + (int)radiusInCells + 1); y++)
+                {
+                    float dx = x - centerX;
+                    float dy = y - centerY;
+                    float dist = MathF.Sqrt(dx * dx + dy * dy);
+                    if (dist > radiusInCells) continue;
+                    float falloff = 1f - (dist / radiusInCells);
+                    float delta = e.Strength * falloff * 1f;
+                    if (e.Operation == "raise")
+                        _heightmap[x, y] += delta;
+                    else if (e.Operation == "lower")
+                        _heightmap[x, y] -= delta;
+                }
+            }
+            BuildWireframeMesh(1);
         }
     }
 }

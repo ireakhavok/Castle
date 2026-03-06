@@ -109,7 +109,12 @@ namespace MapRoom
         }
         private void OnBrushSelected(SelectBrushEvent e)
         {
-            var brush = new ToolChest.Brush();
+            var brush = new ToolChest.Brush
+            {
+                Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.BrushMode, true),
+                Size = e.Size,
+                Intensity = e.Intensity
+            };
             _terrainScene.SetActiveBrush(brush);
         }
         private void OnTerrainModified(TerrainModifiedEvent e)

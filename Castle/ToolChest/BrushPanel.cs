@@ -8,7 +8,6 @@ using SiegeEngine.Core.UI;
 using System;
 using System.IO;
 using System.Numerics;
-
 namespace ToolChest
 {
     public class BrushPanel : CompanionPanel
@@ -72,7 +71,7 @@ namespace ToolChest
                     _currentBrush.Intensity = intensity;
                 }
             }
-            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString()), true);
+            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity), true);
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
