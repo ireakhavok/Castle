@@ -34,9 +34,14 @@ namespace SiegeEngine.Scenes
         protected float _worldScaleZ = 1.0f;
         protected bool _useCustomScale = false;
 
-        // Cached vertex and index data for surgical updates (extracted once)
+        // Cached vertex and index data for surgical updates
         protected List<float> _terrainVertices = new List<float>();
         protected List<uint> _terrainIndices = new List<uint>();
+
+        // Exact mesh resolution when the current buffer was built (critical for DEMs with step 4/8)
+        protected int _meshVertsX = 0;
+        protected int _meshVertsY = 0;
+        protected int _currentMeshStep = 1;
 
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -58,9 +63,12 @@ namespace SiegeEngine.Scenes
             ComputeWorldScale();
             _terrainVertices.Clear();
             _terrainIndices.Clear();
+            _currentMeshStep = (int)step;
 
             int stepsX = (int)Math.Floor(_terrainWidth / step);
             int stepsY = (int)Math.Floor(_terrainHeight / step);
+            _meshVertsX = stepsX + 1;
+            _meshVertsY = stepsY + 1;
 
             for (int x = 0; x <= stepsX; x++)
             {
@@ -101,10 +109,13 @@ namespace SiegeEngine.Scenes
             ComputeWorldScale();
             _terrainVertices.Clear();
             _terrainIndices.Clear();
+            _currentMeshStep = WireframeStep;
 
             int step = WireframeStep;
             int stepsX = _terrainWidth / step;
             int stepsY = _terrainHeight / step;
+            _meshVertsX = stepsX + 1;
+            _meshVertsY = stepsY + 1;
 
             double tieEastMeters, tieNorthMeters;
             int demZone = 0;
@@ -182,44 +193,42 @@ namespace SiegeEngine.Scenes
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
         }
 
-        // Surgical replacement of affected vertices only (Z updated from heightmap, UV/color untouched)
+        // Robust surgical update that works for editor (step=1) AND real DEMs (step=4/8+)
         protected void UpdateAffectedVertices(Vector3 worldPos, float radius)
         {
-            if (_terrainVertices.Count == 0 || _heightmap == null)
+            if (_terrainVertices.Count == 0 || _heightmap == null || _currentMeshStep < 1 || _meshVertsX == 0)
             {
                 BuildWireframeMesh(1);
                 return;
             }
 
             int stride = 9;
-            float cellSize = Math.Max(_worldScaleX, _worldScaleZ);
-            float radiusCells = radius / cellSize + 2f; // padding for safety
+            float worldCellSize = Math.Max(_worldScaleX, _worldScaleZ);
+            float radiusInMeshCells = (radius / worldCellSize) / _currentMeshStep + 2f; // convert to mesh grid space
 
-            int centerX = (int)Math.Clamp(worldPos.X / _worldScaleX, 0, _terrainWidth - 1);
-            int centerZ = (int)Math.Clamp(worldPos.Y / _worldScaleZ, 0, _terrainHeight - 1);
+            // Center in mesh-grid coordinates
+            int centerMeshX = (int)Math.Clamp(worldPos.X / (_worldScaleX * _currentMeshStep), 0, _meshVertsX - 1);
+            int centerMeshY = (int)Math.Clamp(worldPos.Y / (_worldScaleZ * _currentMeshStep), 0, _meshVertsY - 1);
 
-            int minX = Math.Max(0, (int)(centerX - radiusCells));
-            int maxX = Math.Min(_terrainWidth, (int)(centerX + radiusCells));
-            int minZ = Math.Max(0, (int)(centerZ - radiusCells));
-            int maxZ = Math.Min(_terrainHeight, (int)(centerZ + radiusCells));
+            int minMeshX = Math.Max(0, (int)(centerMeshX - radiusInMeshCells));
+            int maxMeshX = Math.Min(_meshVertsX - 1, (int)(centerMeshX + radiusInMeshCells));
+            int minMeshY = Math.Max(0, (int)(centerMeshY - radiusInMeshCells));
+            int maxMeshY = Math.Min(_meshVertsY - 1, (int)(centerMeshY + radiusInMeshCells));
 
-            int vertsPerRow = (int)Math.Floor(_terrainHeight / 1f) + 1; // step=1 case for editor
-
-            for (int x = minX; x < maxX; x++)
+            for (int mx = minMeshX; mx <= maxMeshX; mx++)
             {
-                for (int z = minZ; z < maxZ; z++)
+                for (int my = minMeshY; my <= maxMeshY; my++)
                 {
-                    int vertexIndex = (x * vertsPerRow + z) * stride + 2; // Z component offset
+                    int vertexIndex = (mx * _meshVertsY + my) * stride + 2; // Z offset
                     if (vertexIndex + 1 < _terrainVertices.Count)
                     {
-                        float wx = x * _worldScaleX;
-                        float wy = z * _worldScaleZ;
+                        float wx = mx * _currentMeshStep * _worldScaleX;
+                        float wy = my * _currentMeshStep * _worldScaleZ;
                         _terrainVertices[vertexIndex] = GetHeight(wx, wy) * VerticalExaggeration;
                     }
                 }
             }
 
-            // Surgical GPU upload of updated vertex data (no index rebuild, no full regeneration)
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
         }
 

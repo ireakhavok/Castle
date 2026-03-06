@@ -206,23 +206,21 @@ namespace MapRoom
             if (mousePressed && _ghostVisible)
             {
                 _isBrushing = true;
-                _lastBrushUpdateTime = (float)_controlContext.GetTime(); // reset timer on press
+                _lastBrushUpdateTime = (float)_controlContext.GetTime();
             }
             if (mouseDown && _isBrushing && _ghostVisible)
             {
                 float currentTime = (float)_controlContext.GetTime();
-                float distanceMoved = (float)Vector3.Distance(_ghostPosition, _lastGhostPosition);
+                float distanceMoved = Vector3.Distance(_ghostPosition, _lastGhostPosition);
 
-                // Throttle + movement threshold: dramatically reduces uploads on large maps while staying responsive
                 if (currentTime - _lastBrushUpdateTime > BrushUpdateInterval || distanceMoved > BrushMoveThreshold)
                 {
                     var strength = _activeBrush.Intensity * deltaTime;
                     var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
                     _eventBus.Publish(evt, true);
 
-                    // Surgical vertex replacement (no full mesh rebuild)
                     UpdateAffectedVertices(_ghostPosition, _activeBrush.Size);
-                    if (_hasColorTexture) BuildTexturedMesh();
+                    // REMOVED: BuildTexturedMesh() — it was overwriting surgical Z updates on DEMs
 
                     _lastBrushUpdateTime = currentTime;
                     _lastGhostPosition = _ghostPosition;
@@ -342,7 +340,6 @@ namespace MapRoom
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
 
-            // Surgical vertex replacement (no full mesh rebuild)
             UpdateAffectedVertices(e.WorldPos, e.Radius);
         }
     }
