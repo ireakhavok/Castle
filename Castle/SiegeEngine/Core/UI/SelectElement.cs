@@ -1,15 +1,50 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.UI
+// File: SelectElement.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public class SelectElement : HtmlElement
     {
         public bool IsOpen { get; set; } = false;
+        public string Value
+        {
+            get
+            {
+                var options = Children.Where(c => c.Tag.ToLower() == "option").ToList();
+                var selectedOpt = options.FirstOrDefault(o => o.Attributes.ContainsKey("selected"));
+                if (selectedOpt == null && options.Count > 0)
+                {
+                    selectedOpt = options[0];
+                }
+                if (selectedOpt != null)
+                {
+                    if (selectedOpt.Attributes.TryGetValue("value", out string val))
+                    {
+                        return val;
+                    }
+                    return string.Join("", selectedOpt.Children.OfType<TextElement>().Select(t => t.Content));
+                }
+                return "";
+            }
+            set
+            {
+                var options = Children.Where(c => c.Tag.ToLower() == "option").ToList();
+                foreach (var opt in options)
+                {
+                    opt.Attributes.Remove("selected");
+                    string optVal = opt.Attributes.GetValueOrDefault("value", string.Join("", opt.Children.OfType<TextElement>().Select(t => t.Content)));
+                    if (optVal == value)
+                    {
+                        opt.Attributes["selected"] = "";
+                    }
+                }
+            }
+        }
         public SelectElement()
         {
             Tag = "select";

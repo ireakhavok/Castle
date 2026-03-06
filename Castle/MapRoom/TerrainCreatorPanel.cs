@@ -118,6 +118,7 @@ namespace MapRoom
             {
                 Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.BrushMode, true),
                 Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.BrushShape, true),
+                Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.BrushFalloff, true),
                 Size = e.Size,
                 Intensity = e.Intensity
             };

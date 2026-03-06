@@ -23,7 +23,6 @@ namespace MapRoom
         private bool _ghostVisible = false;
         private VertexBuffer _ghostBuffer;
         private HashSet<Guid> _processedModifications = new HashSet<Guid>();
-        private bool _needsRebuild = false;
         private bool _isBrushing = false;
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -192,19 +191,15 @@ namespace MapRoom
             }
             if (mouseDown && _isBrushing && _ghostVisible)
             {
-                var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, _activeBrush.Intensity, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), 0);
+                var strength = _activeBrush.Intensity * deltaTime;
+                var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
                 _eventBus.Publish(evt, true);
-                _needsRebuild = true;
+                BuildWireframeMesh(1);
+                if (_hasColorTexture) BuildTexturedMesh();
             }
             if (mouseReleased)
             {
                 _isBrushing = false;
-                if (_needsRebuild)
-                {
-                    BuildWireframeMesh(1);
-                    if (_hasColorTexture) BuildTexturedMesh();
-                    _needsRebuild = false;
-                }
             }
         }
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
@@ -304,11 +299,11 @@ namespace MapRoom
             {
                 Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.Operation, true),
                 Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.Shape, true),
+                Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.Falloff, true),
                 Size = e.Radius,
                 Intensity = e.Strength
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
-            _needsRebuild = true;
         }
     }
 }

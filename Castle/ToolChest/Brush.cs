@@ -7,9 +7,12 @@ namespace ToolChest
     public enum BrushShape
     {
         Circle,
-        Square,
-        GaussianCircle,
-        GaussianSquare
+        Square
+    }
+    public enum BrushFalloff
+    {
+        Linear,
+        Gaussian
     }
     public enum BrushMode
     {
@@ -22,7 +25,8 @@ namespace ToolChest
     }
     public class Brush
     {
-        public BrushShape Shape { get; set; } = BrushShape.GaussianCircle;
+        public BrushShape Shape { get; set; } = BrushShape.Circle;
+        public BrushFalloff Falloff { get; set; } = BrushFalloff.Gaussian;
         public BrushMode Mode { get; set; } = BrushMode.Raise;
         public float Size { get; set; } = 10f;
         public float Intensity { get; set; } = 1f;
@@ -105,10 +109,8 @@ namespace ToolChest
             switch (Shape)
             {
                 case BrushShape.Circle:
-                case BrushShape.GaussianCircle:
                     return MathF.Sqrt(dx * dx + dz * dz) <= radius;
                 case BrushShape.Square:
-                case BrushShape.GaussianSquare:
                     return Math.Abs(dx) <= radius && Math.Abs(dz) <= radius;
                 default:
                     return false;
@@ -120,23 +122,19 @@ namespace ToolChest
             switch (Shape)
             {
                 case BrushShape.Circle:
-                case BrushShape.GaussianCircle:
                     dist = MathF.Sqrt(dx * dx + dz * dz);
                     break;
                 case BrushShape.Square:
-                case BrushShape.GaussianSquare:
                     dist = Math.Max(Math.Abs(dx), Math.Abs(dz));
                     break;
             }
             float normDist = dist / radius;
             if (normDist >= 1f) return 0f;
-            switch (Shape)
+            switch (Falloff)
             {
-                case BrushShape.Circle:
-                case BrushShape.Square:
+                case BrushFalloff.Linear:
                     return 1f - normDist;
-                case BrushShape.GaussianCircle:
-                case BrushShape.GaussianSquare:
+                case BrushFalloff.Gaussian:
                     return (float)Math.Exp(-(normDist * normDist) / (2 * 0.25f)); // sigma=0.5 for sharper gaussian
                 default:
                     return 1f;

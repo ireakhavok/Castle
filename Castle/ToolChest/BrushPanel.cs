@@ -38,7 +38,7 @@ namespace ToolChest
         {
             base.Init();
             LoadBrushUI();
-            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString()), true);
+            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString(), _currentBrush.Falloff.ToString()), true);
         }
         private void LoadBrushUI()
         {
@@ -54,40 +54,50 @@ namespace ToolChest
             bool changed = false;
             if (hook == "BrushSizeChanged")
             {
-                var slider = _uiOverlay.FindElementById("sizeSlider");
+                var slider = _uiOverlay.FindElementById("sizeSlider") as InputElement;
                 if (slider != null)
                 {
-                    float size = float.Parse(slider.Attributes.GetValueOrDefault("value", "10"));
+                    float size = float.Parse(slider.Value ?? "10");
                     _currentBrush.Size = size;
                     changed = true;
                 }
             }
             else if (hook == "BrushIntensityChanged")
             {
-                var slider = _uiOverlay.FindElementById("intensitySlider");
+                var slider = _uiOverlay.FindElementById("intensitySlider") as InputElement;
                 if (slider != null)
                 {
-                    float intensity = float.Parse(slider.Attributes.GetValueOrDefault("value", "1"));
+                    float intensity = float.Parse(slider.Value ?? "1");
                     _currentBrush.Intensity = intensity;
                     changed = true;
                 }
             }
             else if (hook == "BrushShapeChanged")
             {
-                var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushShapeChanged");
+                var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushShapeChanged") as SelectElement;
                 if (select != null)
                 {
-                    string shapeStr = select.Attributes.GetValueOrDefault("value", "GaussianCircle");
+                    string shapeStr = select.Value ?? "Circle";
                     _currentBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), shapeStr);
+                    changed = true;
+                }
+            }
+            else if (hook == "BrushFalloffChanged")
+            {
+                var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushFalloffChanged") as SelectElement;
+                if (select != null)
+                {
+                    string falloffStr = select.Value ?? "Gaussian";
+                    _currentBrush.Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), falloffStr);
                     changed = true;
                 }
             }
             else if (hook == "BrushModeChanged")
             {
-                var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushModeChanged");
+                var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushModeChanged") as SelectElement;
                 if (select != null)
                 {
-                    string modeStr = select.Attributes.GetValueOrDefault("value", "Raise");
+                    string modeStr = select.Value ?? "Raise";
                     _currentBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), modeStr);
                     changed = true;
                 }
@@ -98,12 +108,12 @@ namespace ToolChest
             }
             if (changed)
             {
-                _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString()), true);
+                _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString(), _currentBrush.Falloff.ToString()), true);
             }
         }
         public override void Detach()
         {
-            _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, ""), true);
+            _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, "", ""), true);
             base.Detach();
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

@@ -14,19 +14,21 @@ namespace MapRoom
         public float Strength { get; set; }
         public string Operation { get; set; } // "raise" or "lower"
         public string Shape { get; set; }
+        public string Falloff { get; set; }
         public ulong PlayerId { get; set; }
         public Guid Id { get; set; }
         public TerrainModifiedEvent()
         {
             Id = Guid.NewGuid();
         }
-        public TerrainModifiedEvent(Vector3 worldPos, float radius, float strength, string operation, string shape, ulong playerId)
+        public TerrainModifiedEvent(Vector3 worldPos, float radius, float strength, string operation, string shape, string falloff, ulong playerId)
         {
             WorldPos = worldPos;
             Radius = radius;
             Strength = strength;
             Operation = operation;
             Shape = shape;
+            Falloff = falloff;
             PlayerId = playerId;
             Id = Guid.NewGuid();
         }
@@ -40,6 +42,7 @@ namespace MapRoom
                 Strength,
                 Operation,
                 Shape,
+                Falloff,
                 PlayerId,
                 Id = Id.ToString()
             });
@@ -54,6 +57,7 @@ namespace MapRoom
             Strength = float.Parse(obj["Strength"].ToString());
             Operation = obj["Operation"].ToString();
             Shape = obj["Shape"].ToString();
+            Falloff = obj["Falloff"].ToString();
             PlayerId = ulong.Parse(obj["PlayerId"].ToString());
             Id = Guid.Parse(obj["Id"].ToString());
         }
