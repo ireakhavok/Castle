@@ -22,10 +22,7 @@ namespace ToolChest
             }
             protected override void HandleDataHook(string hook)
             {
-                if (hook.StartsWith("Brush"))
-                {
-                    _parent.HandleBrushDataHook(hook);
-                }
+                _parent.HandleBrushDataHook(hook);
             }
         }
         private Brush _currentBrush = new Brush();
@@ -94,6 +91,10 @@ namespace ToolChest
                     _currentBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), modeStr);
                     changed = true;
                 }
+            }
+            else if (hook == "ClosePanel")
+            {
+                _eventBus.Publish(new ClosePanelEvent(this));
             }
             if (changed)
             {
