@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: Citadel
+// File: GameServer.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -11,7 +13,6 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
-
 namespace Citadel.Server
 {
     public class GameServer : IGameServer
@@ -27,11 +28,13 @@ namespace Citadel.Server
         private readonly Dictionary<(int, int), List<Entity>> _spatialGrid = new();
         private const float GridCellSize = 10f;
         private readonly Queue<IEvent> _networkEventQueue = new Queue<IEvent>();
-        public GameServer(EventBus eventBus, NetworkManager networkManager = null)
+        private readonly bool _isEditor;
+        public GameServer(EventBus eventBus, NetworkManager networkManager = null, bool isEditor = false)
         {
             _eventBus = eventBus;
             _networkManager = networkManager;
             _validationSystem = new ServerValidationSystem(this);
+            _isEditor = isEditor;
             AddSystem(new PhysicsSystem(this));
             AddSystem(_validationSystem);
             AddSystem(new AudioSystem(this, _eventBus, true, _validationSystem));
@@ -42,6 +45,19 @@ namespace Citadel.Server
             _eventBus.Subscribe<PlayerExitedEditorEvent>(OnPlayerExitedEditor);
             _eventBus.Subscribe<MouseInputEvent>(OnMouseInput);
             _eventBus.Subscribe<KeyInputEvent>(OnKeyInput);
+            if (_isEditor)
+            {
+                var typeName = "MapRoom.TerrainModifiedEvent";
+                var type = Type.GetType(typeName);
+                if (type != null)
+                {
+                    var objHandler = new Action<object>(OnTerrainModifiedGeneric);
+                    var handlerType = typeof(Action<>).MakeGenericType(type);
+                    var typedHandler = Delegate.CreateDelegate(handlerType, objHandler.Target, objHandler.Method);
+                    var subscribeMethod = typeof(EventBus).GetMethod("Subscribe").MakeGenericMethod(type);
+                    subscribeMethod.Invoke(_eventBus, new[] { typedHandler });
+                }
+            }
         }
         public void AddEntity(Entity entity)
         {
@@ -406,6 +422,16 @@ namespace Citadel.Server
         public void QueueNetworkEvent(IEvent e)
         {
             _networkEventQueue.Enqueue(e);
+        }
+        private void OnTerrainModifiedGeneric(object evtObj)
+        {
+            bool valid = true;
+            if (valid)
+            {
+                var type = evtObj.GetType();
+                var publishMethod = typeof(GameServer).GetMethod("Publish").MakeGenericMethod(type);
+                publishMethod.Invoke(this, new[] { evtObj, true });
+            }
         }
     }
 }

@@ -490,16 +490,22 @@ Found: summarize_log.txt
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
-Read 9792 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Read 10240 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 13 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
-Read 6170 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Read 11249 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
-Found 12 dependencies
+Found 13 dependencies
 Found: TerrainCreatorUI.html
+Found: TerrainModifiedEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainModifiedEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainModifiedEvent.cs
+Read 1249 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainModifiedEvent.cs
+Namespace: MapRoom
+Found 3 dependencies
 Found: QuestHall
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall
 Found: .
@@ -1526,9 +1532,9 @@ Found 3 dependencies
 Found: UIInteractionLayer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
-Read 10394 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
+Read 12201 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Namespace: SiegeEngine.Core.UI
-Found 7 dependencies
+Found 8 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
@@ -1744,13 +1750,13 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Tool
 Found: Brush.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\Brush.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\Brush.cs
-Read 573 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\Brush.cs
+Read 1973 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\Brush.cs
 Namespace: ToolChest
-Found 1 dependencies
+Found 2 dependencies
 Found: BrushPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
-Read 2639 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
+Read 3040 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Namespace: ToolChest
 Found 8 dependencies
 Found: BrushPanelUI.html

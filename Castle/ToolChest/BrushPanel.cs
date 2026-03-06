@@ -8,6 +8,7 @@ using SiegeEngine.Core.UI;
 using System;
 using System.IO;
 using System.Numerics;
+
 namespace ToolChest
 {
     public class BrushPanel : CompanionPanel
@@ -24,7 +25,7 @@ namespace ToolChest
             {
                 if (hook.StartsWith("Brush"))
                 {
-                    Console.WriteLine($"[BrushPanel] Hook triggered: {hook}");
+                    _parent.HandleBrushDataHook(hook);
                 }
             }
         }
@@ -32,7 +33,6 @@ namespace ToolChest
         public BrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
-            // CompanionPanel already sets small defaults
         }
         protected override UIOverlay CreateUIOverlay()
         {
@@ -50,19 +50,29 @@ namespace ToolChest
             {
                 _uiOverlay.LoadUI(File.ReadAllText(htmlPath));
             }
-            else
-            {
-                Console.WriteLine($"[BrushPanel] BrushPanelUI.html not found at {htmlPath}");
-            }
             _uiOverlay.RefreshUI();
         }
-        public void HandleUIClick(HtmlElement elem)
+        private void HandleBrushDataHook(string hook)
         {
-            string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
-            if (hook.StartsWith("Brush"))
+            if (hook == "BrushSizeChanged")
             {
-                Console.WriteLine($"[BrushPanel] Hook triggered: {hook}");
+                var slider = _uiOverlay.FindElementById("sizeSlider");
+                if (slider != null)
+                {
+                    float size = float.Parse(slider.Attributes.GetValueOrDefault("value", "10"));
+                    _currentBrush.Size = size;
+                }
             }
+            else if (hook == "BrushIntensityChanged")
+            {
+                var slider = _uiOverlay.FindElementById("intensitySlider");
+                if (slider != null)
+                {
+                    float intensity = float.Parse(slider.Attributes.GetValueOrDefault("value", "1"));
+                    _currentBrush.Intensity = intensity;
+                }
+            }
+            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString()), true);
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {

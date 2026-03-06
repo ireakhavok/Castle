@@ -7,6 +7,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Terrain;
 using SiegeEngine.Scenes;
+using ToolChest;
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -14,8 +15,13 @@ using System.IO;
 using System.Numerics;
 namespace MapRoom
 {
-    public class TerrainCreatorScene : TerrainScene
+    public unsafe class TerrainCreatorScene : TerrainScene
     {
+        private ToolChest.Brush _activeBrush = new ToolChest.Brush();
+        private Vector3 _ghostPosition;
+        private bool _ghostVisible = false;
+        private VertexBuffer _ghostBuffer;
+
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -37,15 +43,13 @@ namespace MapRoom
             }
             Console.WriteLine($"[TerrainCreatorScene] Created blank {_terrainWidth}×{_terrainHeight} terrain with height range {_minHeight:F1} to {_maxHeight:F1}");
             _useCustomScale = true;
-            BuildWireframeMesh(1); // full resolution grid for custom editor terrain (step=1 in heightmap indices)
-            // Center camera at real-world scale
+            BuildWireframeMesh(1);
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
             float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
             _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f + 10f, centerZ + 50f);
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
-        // FULL SUPPORT FOR ALL FORM FIELDS (Resolution = grid cell size = meters per heightmap cell / data density)
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -54,12 +58,10 @@ namespace MapRoom
                 return;
             }
             float cellSize = parameters.Resolution > 0 ? parameters.Resolution : 1.0f;
-            // Calculate number of grid cells from physical size + cell size
             int numCellsX = (int)Math.Ceiling(parameters.Width / cellSize);
             int numCellsZ = (int)Math.Ceiling(parameters.Depth / cellSize);
-            _terrainWidth = numCellsX + 1; // vertices
+            _terrainWidth = numCellsX + 1;
             _terrainHeight = numCellsZ + 1;
-            // World scale = meters per grid cell (data density/sparsity) — unchanged
             _worldScaleX = cellSize;
             _worldScaleZ = cellSize;
             if (!string.IsNullOrEmpty(parameters.ImportPath))
@@ -79,10 +81,9 @@ namespace MapRoom
                         _heightmap[x, z] = parameters.InitialHeight * parameters.VerticalExaggeration;
                     }
                 }
-                Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain ({numCellsX}×{numCellsZ} cells, {cellSize}m spacing) at base height {parameters.InitialHeight}, vert exag {parameters.VerticalExaggeration}");
+                Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain");
                 _useCustomScale = true;
-                BuildWireframeMesh(1); // full resolution grid for custom editor terrain (step=1 in heightmap indices) — Resolution controls data density, not render step
-                // Center camera at real-world scale
+                BuildWireframeMesh(1);
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerZ = (_terrainHeight * _worldScaleZ) / 2f;
                 _flyCamera.Position = new Vector3(centerX, _maxHeight * 1.5f + 10f, centerZ + 50f);
@@ -108,7 +109,7 @@ namespace MapRoom
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
             SaveAsPng(pngPath);
             CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
-            Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → 32-bit float TIFF (cm-scale fidelity, no geo tags) + PNG preview");
+            Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}'");
         }
         private void SaveAsPng(string path)
         {
@@ -127,6 +128,125 @@ namespace MapRoom
                 }
             }
             bmp.Save(path, ImageFormat.Png);
+        }
+        public void SetActiveBrush(ToolChest.Brush brush)
+        {
+            _activeBrush = brush ?? new ToolChest.Brush();
+        }
+        public override void Initialize(int width, int height)
+        {
+            base.Initialize(width, height);
+            _ghostBuffer = new VertexBuffer(_renderContext);
+        }
+        private void UpdateGhostMesh()
+        {
+            if (_ghostBuffer == null) return;
+            var vertices = new List<float>();
+            var indices = new List<uint>();
+            int segments = 48;
+            float r = Math.Max(_activeBrush.Size, 1f);
+            for (int i = 0; i <= segments; i++)
+            {
+                float angle = i * MathF.PI * 2f / segments;
+                float x = MathF.Cos(angle) * r;
+                float z = MathF.Sin(angle) * r;
+                vertices.Add(x); vertices.Add(0f); vertices.Add(z);
+                vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(1f);
+                vertices.Add(0f); vertices.Add(0f);
+            }
+            for (int i = 0; i < segments; i++)
+            {
+                indices.Add((uint)i);
+                indices.Add((uint)((i + 1) % segments));
+            }
+            _ghostBuffer.UpdateCustomWithUV(vertices, indices);
+        }
+        public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
+        {
+            base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
+            if (_heightmap == null)
+            {
+                _ghostVisible = false;
+                return;
+            }
+            Vector3 rayOrigin = _flyCamera.Position;
+            Vector3 rayDir = GetLookDirection();
+            if (MathF.Abs(rayDir.Y) > 0.001f)
+            {
+                float t = -rayOrigin.Y / rayDir.Y;
+                if (t > 0.1f)
+                {
+                    _ghostPosition = rayOrigin + rayDir * t;
+                    float terrainHeight = GetHeight(_ghostPosition.X, _ghostPosition.Z);
+                    _ghostPosition.Y = terrainHeight + 0.1f;
+                    _ghostVisible = true;
+                    UpdateGhostMesh();
+                }
+            }
+            if (mouseDown && _activeBrush != null && _ghostVisible)
+            {
+                Vector2 gridPos = new Vector2(_ghostPosition.X, _ghostPosition.Z);
+                _activeBrush.Apply(ref _heightmap, gridPos, _worldScaleX, _worldScaleZ);
+                BuildWireframeMesh(1);
+            }
+        }
+        private Vector3 GetLookDirection()
+        {
+            float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
+            float pitchRad = _flyCamera.Pitch * (MathF.PI / 180f);
+            return Vector3.Normalize(new Vector3(
+                MathF.Sin(yawRad) * MathF.Cos(pitchRad),
+                MathF.Sin(pitchRad),
+                MathF.Cos(yawRad) * MathF.Cos(pitchRad)
+            ));
+        }
+        public override void Render(IReadOnlyList<Entity> entities)
+        {
+            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
+            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            Matrix4x4 view = _flyCamera.ViewMatrix;
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, (float)_width / _height, 0.1f, 50000f);
+            _terrainShader.Use();
+            _terrainShader.SetMatrix4("uView", view);
+            _terrainShader.SetMatrix4("uProjection", projection);
+            _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
+            _terrainBuffer.Bind();
+            _terrainShader.SetUniform("uHasTexture", 0);
+            _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            if (_hasColorTexture && _terrainTextureId != 0)
+            {
+                _terrainShader.SetUniform("uHasTexture", 1);
+                _renderContext.ActiveTexture(0);
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
+                _terrainShader.SetUniform("uTexture", 0);
+                _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            }
+            if (_ghostVisible && _ghostBuffer != null)
+            {
+                _renderContext.Enable(_renderContext.Enums.Blend);
+                _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+                _renderContext.Disable(_renderContext.Enums.DepthTest);
+                Matrix4x4 model = Matrix4x4.CreateTranslation(_ghostPosition);
+                _terrainShader.SetMatrix4("uModel", model);
+                _terrainShader.SetUniform("uHasTexture", 0);
+                _ghostBuffer.Bind();
+                _renderContext.DrawElements(_renderContext.Enums.Lines, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _renderContext.Enable(_renderContext.Enums.DepthTest);
+                _renderContext.Disable(_renderContext.Enums.Blend);
+            }
+        }
+        public override void Dispose()
+        {
+            if (_terrainTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_terrainTextureId);
+                _terrainTextureId = 0;
+            }
+            _terrainBuffer?.Dispose();
+            _terrainShader?.Dispose();
+            _ghostBuffer?.Dispose();
+            base.Dispose();
         }
     }
 }

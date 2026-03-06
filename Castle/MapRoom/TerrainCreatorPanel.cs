@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: MapRoom
+// File: TerrainCreatorPanel.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Networking;
@@ -11,7 +13,6 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using ToolChest;
-
 namespace MapRoom
 {
     public class TerrainCreatorPanel : BasePanel
@@ -74,6 +75,8 @@ namespace MapRoom
                 _terrainScene.CreateBlank();
             }
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
+            _eventBus.Subscribe<SelectBrushEvent>(OnBrushSelected);
+            _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
@@ -103,6 +106,14 @@ namespace MapRoom
                 _terrainScene.SetColorTexture(e.Path);
                 Console.WriteLine($"[TerrainCreatorPanel] Color texture loaded: {e.Path}");
             }
+        }
+        private void OnBrushSelected(SelectBrushEvent e)
+        {
+            var brush = new ToolChest.Brush();
+            _terrainScene.SetActiveBrush(brush);
+        }
+        private void OnTerrainModified(TerrainModifiedEvent e)
+        {
         }
         public void HandleUIClick(HtmlElement elem)
         {
