@@ -192,7 +192,7 @@ namespace MapRoom
             }
             if (mouseDown && _isBrushing && _ghostVisible)
             {
-                var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, _activeBrush.Intensity, _activeBrush.Mode.ToString().ToLower(), 0);
+                var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, _activeBrush.Intensity, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), 0);
                 _eventBus.Publish(evt, true);
                 _needsRebuild = true;
             }
@@ -300,27 +300,14 @@ namespace MapRoom
         }
         private void ApplyModification(TerrainModifiedEvent e)
         {
-            int width = _heightmap.GetLength(0);
-            int height = _heightmap.GetLength(1);
-            int centerX = (int)Math.Clamp(e.WorldPos.X / _worldScaleX, 0, width - 1);
-            int centerY = (int)Math.Clamp(e.WorldPos.Y / _worldScaleZ, 0, height - 1);
-            float radiusInCells = e.Radius / Math.Max(_worldScaleX, _worldScaleZ);
-            for (int x = Math.Max(0, centerX - (int)radiusInCells - 1); x < Math.Min(width, centerX + (int)radiusInCells + 1); x++)
+            var brush = new ToolChest.Brush
             {
-                for (int y = Math.Max(0, centerY - (int)radiusInCells - 1); y < Math.Min(height, centerY + (int)radiusInCells + 1); y++)
-                {
-                    float dx = x - centerX;
-                    float dy = y - centerY;
-                    float dist = MathF.Sqrt(dx * dx + dy * dy);
-                    if (dist > radiusInCells) continue;
-                    float falloff = 1f - (dist / radiusInCells);
-                    float delta = e.Strength * falloff * 1f;
-                    if (e.Operation == "raise")
-                        _heightmap[x, y] += delta;
-                    else if (e.Operation == "lower")
-                        _heightmap[x, y] -= delta;
-                }
-            }
+                Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.Operation, true),
+                Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.Shape, true),
+                Size = e.Radius,
+                Intensity = e.Strength
+            };
+            brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
             _needsRebuild = true;
         }
     }

@@ -13,18 +13,20 @@ namespace MapRoom
         public float Radius { get; set; }
         public float Strength { get; set; }
         public string Operation { get; set; } // "raise" or "lower"
+        public string Shape { get; set; }
         public ulong PlayerId { get; set; }
         public Guid Id { get; set; }
         public TerrainModifiedEvent()
         {
             Id = Guid.NewGuid();
         }
-        public TerrainModifiedEvent(Vector3 worldPos, float radius, float strength, string operation, ulong playerId)
+        public TerrainModifiedEvent(Vector3 worldPos, float radius, float strength, string operation, string shape, ulong playerId)
         {
             WorldPos = worldPos;
             Radius = radius;
             Strength = strength;
             Operation = operation;
+            Shape = shape;
             PlayerId = playerId;
             Id = Guid.NewGuid();
         }
@@ -37,6 +39,7 @@ namespace MapRoom
                 Radius,
                 Strength,
                 Operation,
+                Shape,
                 PlayerId,
                 Id = Id.ToString()
             });
@@ -50,6 +53,7 @@ namespace MapRoom
             Radius = float.Parse(obj["Radius"].ToString());
             Strength = float.Parse(obj["Strength"].ToString());
             Operation = obj["Operation"].ToString();
+            Shape = obj["Shape"].ToString();
             PlayerId = ulong.Parse(obj["PlayerId"].ToString());
             Id = Guid.Parse(obj["Id"].ToString());
         }
