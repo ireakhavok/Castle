@@ -26,6 +26,12 @@ namespace MapRoom
         private HashSet<Guid> _processedModifications = new HashSet<Guid>();
         private bool _isBrushing = false;
 
+        // Throttling to prevent full mesh uploads on every single mouse tick (critical for large maps)
+        private float _lastBrushUpdateTime = 0f;
+        private Vector3 _lastGhostPosition = Vector3.Zero;
+        private const float BrushUpdateInterval = 0.033f; // ~30 Hz - responsive but dramatically lower GPU load
+        private const float BrushMoveThreshold = 0.3f;    // only update if brush moved meaningfully
+
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -200,16 +206,27 @@ namespace MapRoom
             if (mousePressed && _ghostVisible)
             {
                 _isBrushing = true;
+                _lastBrushUpdateTime = (float)_controlContext.GetTime(); // reset timer on press
             }
             if (mouseDown && _isBrushing && _ghostVisible)
             {
-                var strength = _activeBrush.Intensity * deltaTime;
-                var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
-                _eventBus.Publish(evt, true);
+                float currentTime = (float)_controlContext.GetTime();
+                float distanceMoved = (float)Vector3.Distance(_ghostPosition, _lastGhostPosition);
 
-                // Surgical vertex replacement (no full mesh rebuild)
-                UpdateAffectedVertices(_ghostPosition, _activeBrush.Size);
-                if (_hasColorTexture) BuildTexturedMesh();
+                // Throttle + movement threshold: dramatically reduces uploads on large maps while staying responsive
+                if (currentTime - _lastBrushUpdateTime > BrushUpdateInterval || distanceMoved > BrushMoveThreshold)
+                {
+                    var strength = _activeBrush.Intensity * deltaTime;
+                    var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
+                    _eventBus.Publish(evt, true);
+
+                    // Surgical vertex replacement (no full mesh rebuild)
+                    UpdateAffectedVertices(_ghostPosition, _activeBrush.Size);
+                    if (_hasColorTexture) BuildTexturedMesh();
+
+                    _lastBrushUpdateTime = currentTime;
+                    _lastGhostPosition = _ghostPosition;
+                }
             }
             if (mouseReleased)
             {
@@ -325,7 +342,7 @@ namespace MapRoom
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
 
-            // Surgical vertex replacement (only affected Z updated in cache + GPU upload)
+            // Surgical vertex replacement (no full mesh rebuild)
             UpdateAffectedVertices(e.WorldPos, e.Radius);
         }
     }
