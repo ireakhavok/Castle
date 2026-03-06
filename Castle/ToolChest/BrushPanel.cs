@@ -71,7 +71,25 @@ namespace ToolChest
                     _currentBrush.Intensity = intensity;
                 }
             }
-            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity), true);
+            else if (hook == "BrushShapeChanged")
+            {
+                var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushShapeChanged");
+                if (select != null)
+                {
+                    string shapeStr = select.Attributes.GetValueOrDefault("value", "GaussianCircle");
+                    _currentBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), shapeStr);
+                }
+            }
+            else if (hook == "BrushModeChanged")
+            {
+                var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushModeChanged");
+                if (select != null)
+                {
+                    string modeStr = select.Attributes.GetValueOrDefault("value", "Raise");
+                    _currentBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), modeStr);
+                }
+            }
+            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString()), true);
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {

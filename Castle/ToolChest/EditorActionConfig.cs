@@ -16,7 +16,7 @@ namespace ToolChest
             if (_steamEngine != null)
             {
                 ulong playerId = _steamEngine.GetSteamId();
-                _eventBus.Publish(new SelectBrushEvent(playerId, brushType, 10f, 1f), true);
+                _eventBus.Publish(new SelectBrushEvent(playerId, brushType, 10f, 1f, "GaussianCircle"), true);
                 Console.WriteLine($"EditorActionConfig: Published SelectBrushEvent for {brushType}, PlayerId: {playerId}");
             }
         }

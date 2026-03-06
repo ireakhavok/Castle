@@ -23,6 +23,8 @@ namespace MapRoom
         private bool _ghostVisible = false;
         private VertexBuffer _ghostBuffer;
         private HashSet<Guid> _processedModifications = new HashSet<Guid>();
+        private bool _needsRebuild = false;
+        private bool _isBrushing = false;
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -35,10 +37,10 @@ namespace MapRoom
             _maxHeight = float.MinValue;
             for (int x = 0; x < _terrainWidth; x++)
             {
-                for (int z = 0; z < _terrainHeight; z++)
+                for (int y = 0; y < _terrainHeight; y++)
                 {
                     float h = 0f;
-                    _heightmap[x, z] = h;
+                    _heightmap[x, y] = h;
                     if (h < _minHeight) _minHeight = h;
                     if (h > _maxHeight) _maxHeight = h;
                 }
@@ -184,10 +186,25 @@ namespace MapRoom
             {
                 _ghostVisible = false;
             }
-            if (mouseDown && _activeBrush != null && _ghostVisible)
+            if (mousePressed && _activeBrush != null && _ghostVisible)
+            {
+                _isBrushing = true;
+            }
+            if (mouseDown && _isBrushing && _activeBrush != null && _ghostVisible)
             {
                 var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, _activeBrush.Intensity, _activeBrush.Mode.ToString().ToLower(), 0);
                 _eventBus.Publish(evt, true);
+                _needsRebuild = true;
+            }
+            if (mouseReleased)
+            {
+                _isBrushing = false;
+                if (_needsRebuild)
+                {
+                    BuildWireframeMesh(1);
+                    if (_hasColorTexture) BuildTexturedMesh();
+                    _needsRebuild = false;
+                }
             }
         }
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
@@ -304,7 +321,7 @@ namespace MapRoom
                         _heightmap[x, y] -= delta;
                 }
             }
-            BuildWireframeMesh(1);
+            _needsRebuild = true;
         }
     }
 }

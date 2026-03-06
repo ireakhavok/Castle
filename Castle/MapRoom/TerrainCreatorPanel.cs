@@ -112,6 +112,7 @@ namespace MapRoom
             var brush = new ToolChest.Brush
             {
                 Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.BrushMode, true),
+                Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.BrushShape, true),
                 Size = e.Size,
                 Intensity = e.Intensity
             };

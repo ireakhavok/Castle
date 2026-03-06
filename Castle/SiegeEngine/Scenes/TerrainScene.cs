@@ -22,7 +22,7 @@ namespace SiegeEngine.Scenes
         protected float _minHeight = 0;
         protected float _maxHeight = 0;
         protected const float VerticalExaggeration = 1.0f;
-        protected const int WireframeStep = 8;
+        protected int WireframeStep = 8;
         protected VertexBuffer _terrainBuffer;
         protected ShaderProgram _terrainShader;
         protected uint _terrainTextureId = 0;
@@ -202,14 +202,17 @@ namespace SiegeEngine.Scenes
             try
             {
                 bool isCustomFlat;
-                float customScaleX, customScaleY;
-                _heightmap = TerrainManager.LoadTerrain(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight, out isCustomFlat, out customScaleX, out customScaleY);
+                float customScaleX, customScaleZ;
+                _heightmap = TerrainManager.LoadTerrain(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight, out isCustomFlat, out customScaleX, out customScaleZ);
                 _terrainGeoRef = GeoTiffParser.ParseGeoReference(path);
                 Console.WriteLine($"[TerrainScene] Heightmap loaded: {_terrainWidth}x{_terrainHeight}, Height range: {_minHeight:F1} to {_maxHeight:F1}");
+                float avgScale = (_worldScaleX + _worldScaleZ) / 2f;
+                WireframeStep = avgScale > 5f ? 8 : avgScale > 2f ? 4 : 1;
+                Console.WriteLine($"[TerrainScene] Adjusted wireframe step to {WireframeStep} based on scale ~{avgScale:F1}m/cell");
                 if (isCustomFlat)
                 {
                     _worldScaleX = customScaleX;
-                    _worldScaleZ = customScaleY;
+                    _worldScaleZ = customScaleZ;
                     _useCustomScale = true;
                     BuildWireframeMesh(1);
                     // EXACT CENTER OF THE MESH
