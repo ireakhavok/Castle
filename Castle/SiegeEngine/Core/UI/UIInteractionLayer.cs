@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Globalization;
 
 namespace SiegeEngine.Core.UI
 {
@@ -23,6 +24,8 @@ namespace SiegeEngine.Core.UI
         private readonly Dictionary<Key, double> _lastAddTime = new Dictionary<Key, double>();
         private const double InitialRepeatDelay = 0.5;
         private const double RepeatRate = 0.05;
+        private RangeElement _draggingSlider = null;
+        private float _sliderOldValue;
 
         public UIInteractionLayer(UIOverlay overlay, IControlContext controlContext, nint window)
         {
@@ -53,14 +56,12 @@ namespace SiegeEngine.Core.UI
                     isClickOnOpenSelect = true;
                 }
             }
-
             // === HOVER PASS FIRST (new clean lifecycle) ===
             var clickablesSnapshot = _overlay._uiClickables.ToList();
             foreach (var clickable in clickablesSnapshot)
             {
                 clickable.UpdateHover(scrolledMousePos, vw, vh);
             }
-
             // === CLICK PASS (only real clicks) ===
             foreach (var clickable in clickablesSnapshot)
             {
@@ -78,6 +79,11 @@ namespace SiegeEngine.Core.UI
                     }
                     _overlay.InvokeListeners(clickable, "mousedown");
                     clickable.IsActive = true;
+                    if (clickable.Tag.ToLower() == "input" && (clickable as InputElement)?.Type == "range")
+                    {
+                        _draggingSlider = clickable as RangeElement;
+                        _sliderOldValue = _draggingSlider.Value;
+                    }
                 }
                 if (over && mouseRelease)
                 {
@@ -96,7 +102,22 @@ namespace SiegeEngine.Core.UI
                     clickable.IsActive = false;
                 }
             }
-
+            if (currentMouseDown && _draggingSlider != null)
+            {
+                float relX = Math.Clamp(relMousePos.X - _draggingSlider.ComputedContentX, 0f, _draggingSlider.ComputedContentWidth);
+                float percent = relX / _draggingSlider.ComputedContentWidth;
+                float newValue = _draggingSlider.Min + percent * (_draggingSlider.Max - _draggingSlider.Min);
+                if (_draggingSlider.Step > 0) newValue = (float)Math.Round(newValue / _draggingSlider.Step) * _draggingSlider.Step;
+                newValue = Math.Clamp(newValue, _draggingSlider.Min, _draggingSlider.Max);
+                if (Math.Abs(_draggingSlider.Value - newValue) > 0.0001f)
+                {
+                    _draggingSlider.Value = newValue;
+                    string syncedValue = newValue.ToString(CultureInfo.InvariantCulture);
+                    ((InputElement)_draggingSlider).Value = syncedValue;
+                    _draggingSlider.Attributes["value"] = syncedValue;
+                    _overlay.InvokeListeners(_draggingSlider, "input");
+                }
+            }
             if (clickedElem != null)
             {
                 _overlay.DidHandleClick = true;
@@ -130,9 +151,16 @@ namespace SiegeEngine.Core.UI
                 _overlay.CloseAllOpenSelects();
                 _overlay.RefreshUI();
             }
+            if (mouseRelease && _draggingSlider != null)
+            {
+                if (Math.Abs(_sliderOldValue - _draggingSlider.Value) > 0.0001f)
+                {
+                    _overlay.TriggerChange(_draggingSlider);
+                }
+                _draggingSlider = null;
+            }
             _justOpenedSelect = false;
             _prevMouseDown = currentMouseDown;
-
             bool needsRefresh = false;
             bool changed = false;
             if (_currentFocused is InputElement input && (input.Type == "text" || input.Type == "number"))
