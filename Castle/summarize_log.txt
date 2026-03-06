@@ -490,20 +490,20 @@ Found: summarize_log.txt
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
-Read 10680 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Read 10776 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 13 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
-Read 13596 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Read 13535 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 14 dependencies
 Found: TerrainCreatorUI.html
 Found: TerrainModifiedEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainModifiedEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainModifiedEvent.cs
-Read 2111 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainModifiedEvent.cs
+Read 2276 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainModifiedEvent.cs
 Namespace: MapRoom
 Found 4 dependencies
 Found: QuestHall
@@ -999,7 +999,7 @@ Found 1 dependencies
 Found: SelectBrushEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
-Read 1381 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
+Read 1551 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
 Namespace: SiegeEngine.Core.Events
 Found 2 dependencies
 Found: SoundEmissionEvent.cs
@@ -1496,7 +1496,7 @@ Found 5 dependencies
 Found: SelectElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\SelectElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\SelectElement.cs
-Read 13668 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\SelectElement.cs
+Read 15096 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\SelectElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 6 dependencies
 Found: TableElement.cs
@@ -1750,13 +1750,13 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Tool
 Found: Brush.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\Brush.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\Brush.cs
-Read 6478 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\Brush.cs
+Read 6291 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\Brush.cs
 Namespace: ToolChest
 Found 2 dependencies
 Found: BrushPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
-Read 4737 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
+Read 5289 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Namespace: ToolChest
 Found 8 dependencies
 Found: BrushPanelUI.html
@@ -1770,7 +1770,7 @@ Found: ConsolePanelUI.html
 Found: EditorActionConfig.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\EditorActionConfig.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\EditorActionConfig.cs
-Read 912 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\EditorActionConfig.cs
+Read 916 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\EditorActionConfig.cs
 Namespace: ToolChest
 Found 4 dependencies
 Found: obj

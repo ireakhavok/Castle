@@ -260,7 +260,6 @@ Folder: MapRoom
       - bool _ghostVisible
       - VertexBuffer _ghostBuffer
       - HashSet<Guid> _processedModifications
-      - bool _needsRebuild
       - bool _isBrushing
     - Methods:
       - void CreateBlank()
@@ -278,7 +277,7 @@ Folder: MapRoom
       - void UpdateGhostMesh()
         - Calls: _ghostBuffer.UpdateCustomWithUV
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
-        - Calls: BuildTexturedMesh, BuildWireframeMesh, GetLookDirection, RayTerrainIntersect, TerrainModifiedEvent, UpdateGhostMesh, _activeBrush.Mode.ToString, _activeBrush.Shape.ToString
+        - Calls: BuildTexturedMesh, BuildWireframeMesh, GetLookDirection, RayTerrainIntersect, TerrainModifiedEvent, UpdateGhostMesh, _activeBrush.Falloff.ToString, _activeBrush.Mode.ToString, _activeBrush.Shape.ToString
       - bool RayTerrainIntersect( Vector3 dir,  out Vector3, Vector3 origin)
         - Calls: GetHeight
       - Vector3 GetLookDirection()
@@ -299,7 +298,7 @@ Folder: MapRoom
       - string Type
     - Methods:
       - constructor TerrainModifiedEvent()
-      - constructor TerrainModifiedEvent( float radius,  float strength,  string operation,  string shape,  ulong playerId, Vector3 worldPos)
+      - constructor TerrainModifiedEvent( float radius,  float strength,  string falloff,  string operation,  string shape,  ulong playerId, Vector3 worldPos)
       - byte[] Serialize()
         - Calls: Id.ToString
       - void Deserialize(byte[] data)
@@ -2036,7 +2035,7 @@ Folder: SiegeEngine
     - Fields:
       - string Type
     - Methods:
-      - constructor SelectBrushEvent( float intensity,  float size,  string brushMode,  string brushShape, ulong playerId)
+      - constructor SelectBrushEvent( float intensity,  float size,  string brushFalloff,  string brushMode,  string brushShape, ulong playerId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: SelectElement.cs

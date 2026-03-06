@@ -14,6 +14,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using System.Collections.Generic;
+
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -24,11 +25,13 @@ namespace MapRoom
         private VertexBuffer _ghostBuffer;
         private HashSet<Guid> _processedModifications = new HashSet<Guid>();
         private bool _isBrushing = false;
+
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
         }
+
         public void CreateBlank()
         {
             _heightmap = new float[_terrainWidth, _terrainHeight];
@@ -53,6 +56,7 @@ namespace MapRoom
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
+
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -94,14 +98,17 @@ namespace MapRoom
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
+
         public override void LoadTerrain(string path)
         {
             base.LoadTerrain(path);
         }
+
         public void SetColorTexture(string path)
         {
             base.SetColorTexture(path);
         }
+
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -114,6 +121,7 @@ namespace MapRoom
             CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
             Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}'");
         }
+
         private void SaveAsPng(string path)
         {
             int w = _terrainWidth;
@@ -132,15 +140,18 @@ namespace MapRoom
             }
             bmp.Save(path, ImageFormat.Png);
         }
+
         public void SetActiveBrush(ToolChest.Brush brush)
         {
             _activeBrush = brush;
         }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
+
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
@@ -164,6 +175,7 @@ namespace MapRoom
             }
             _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
+
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -194,7 +206,9 @@ namespace MapRoom
                 var strength = _activeBrush.Intensity * deltaTime;
                 var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
                 _eventBus.Publish(evt, true);
-                BuildWireframeMesh(1);
+
+                // Surgical vertex replacement (no full mesh rebuild)
+                UpdateAffectedVertices(_ghostPosition, _activeBrush.Size);
                 if (_hasColorTexture) BuildTexturedMesh();
             }
             if (mouseReleased)
@@ -202,6 +216,7 @@ namespace MapRoom
                 _isBrushing = false;
             }
         }
+
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -229,6 +244,7 @@ namespace MapRoom
             }
             return false;
         }
+
         private Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
@@ -239,6 +255,7 @@ namespace MapRoom
                 MathF.Sin(pitchRad)
             ));
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -275,6 +292,7 @@ namespace MapRoom
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
+
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -287,12 +305,14 @@ namespace MapRoom
             _ghostBuffer?.Dispose();
             base.Dispose();
         }
+
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
+
         private void ApplyModification(TerrainModifiedEvent e)
         {
             var brush = new ToolChest.Brush
@@ -304,6 +324,9 @@ namespace MapRoom
                 Intensity = e.Strength
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
+
+            // Surgical vertex replacement (only affected Z updated in cache + GPU upload)
+            UpdateAffectedVertices(e.WorldPos, e.Radius);
         }
     }
 }

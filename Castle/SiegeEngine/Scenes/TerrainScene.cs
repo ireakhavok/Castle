@@ -11,6 +11,7 @@ using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Scenes
 {
     public unsafe class TerrainScene : Scene
@@ -32,11 +33,17 @@ namespace SiegeEngine.Scenes
         protected float _worldScaleX = 1.0f;
         protected float _worldScaleZ = 1.0f;
         protected bool _useCustomScale = false;
+
+        // Cached vertex and index data for surgical updates (extracted once)
+        protected List<float> _terrainVertices = new List<float>();
+        protected List<uint> _terrainIndices = new List<uint>();
+
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
             _flyCamera = new FlyCameraController(controlContext, window);
         }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
@@ -45,13 +52,16 @@ namespace SiegeEngine.Scenes
             BuildWireframeMesh(WireframeStep);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
         }
+
         protected virtual void BuildWireframeMesh(float step)
         {
             ComputeWorldScale();
-            var vertices = new List<float>();
-            var indices = new List<uint>();
+            _terrainVertices.Clear();
+            _terrainIndices.Clear();
+
             int stepsX = (int)Math.Floor(_terrainWidth / step);
             int stepsY = (int)Math.Floor(_terrainHeight / step);
+
             for (int x = 0; x <= stepsX; x++)
             {
                 for (int y = 0; y <= stepsY; y++)
@@ -59,11 +69,12 @@ namespace SiegeEngine.Scenes
                     float wx = x * step * _worldScaleX;
                     float wy = y * step * _worldScaleZ;
                     float z = GetHeight(wx, wy) * VerticalExaggeration;
-                    vertices.Add(wx); vertices.Add(wy); vertices.Add(z);
-                    vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
-                    vertices.Add(0.0f); vertices.Add(0.0f);
+                    _terrainVertices.Add(wx); _terrainVertices.Add(wy); _terrainVertices.Add(z);
+                    _terrainVertices.Add(0.7f); _terrainVertices.Add(0.9f); _terrainVertices.Add(1.0f); _terrainVertices.Add(1.0f);
+                    _terrainVertices.Add(0.0f); _terrainVertices.Add(0.0f);
                 }
             }
+
             for (int x = 0; x < stepsX; x++)
             {
                 for (int y = 0; y < stepsY; y++)
@@ -72,12 +83,14 @@ namespace SiegeEngine.Scenes
                     uint tr = tl + 1;
                     uint bl = tl + (uint)(stepsY + 1);
                     uint br = bl + 1;
-                    indices.Add(tl); indices.Add(tr);
-                    indices.Add(tl); indices.Add(bl);
+                    _terrainIndices.Add(tl); _terrainIndices.Add(tr);
+                    _terrainIndices.Add(tl); _terrainIndices.Add(bl);
                 }
             }
-            _terrainBuffer.UpdateCustomWithUV(vertices, indices);
+
+            _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
         }
+
         protected virtual void BuildTexturedMesh()
         {
             if (!_hasColorTexture || !_colorGeoRef.IsValid || !_terrainGeoRef.IsValid)
@@ -86,11 +99,13 @@ namespace SiegeEngine.Scenes
                 return;
             }
             ComputeWorldScale();
-            var vertices = new List<float>();
-            var indices = new List<uint>();
+            _terrainVertices.Clear();
+            _terrainIndices.Clear();
+
             int step = WireframeStep;
             int stepsX = _terrainWidth / step;
             int stepsY = _terrainHeight / step;
+
             double tieEastMeters, tieNorthMeters;
             int demZone = 0;
             float scaleEastMeters, scaleNorthMeters;
@@ -111,14 +126,14 @@ namespace SiegeEngine.Scenes
                 scaleEastMeters = (float)(_terrainGeoRef.PixelScale.X * 111319.9f * Math.Cos(_terrainGeoRef.TiePointModel.Y * Math.PI / 180.0));
                 scaleNorthMeters = _terrainGeoRef.PixelScale.Y * 111319.9f;
             }
+
             float colorMinEast = _colorGeoRef.MinEast;
             float colorMaxEast = _colorGeoRef.MaxEast;
             float colorMinNorth = _colorGeoRef.MinNorth;
             float colorMaxNorth = _colorGeoRef.MaxNorth;
             float colorExtentEast = colorMaxEast - colorMinEast;
             float colorExtentNorth = colorMaxNorth - colorMinNorth;
-            float minU = float.MaxValue, maxU = float.MinValue;
-            float minV = float.MaxValue, maxV = float.MinValue;
+
             for (int x = 0; x <= stepsX; x++)
             {
                 for (int y = 0; y <= stepsY; y++)
@@ -126,8 +141,9 @@ namespace SiegeEngine.Scenes
                     float wx = x * step * _worldScaleX;
                     float wy = y * step * _worldScaleZ;
                     float z = GetHeight(wx, wy) * VerticalExaggeration;
-                    vertices.Add(wx); vertices.Add(wy); vertices.Add(z);
-                    vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
+                    _terrainVertices.Add(wx); _terrainVertices.Add(wy); _terrainVertices.Add(z);
+                    _terrainVertices.Add(0.7f); _terrainVertices.Add(0.9f); _terrainVertices.Add(1.0f); _terrainVertices.Add(1.0f);
+
                     float fracX = (float)x / stepsX;
                     float fracY = (float)y / stepsY;
                     float meshEastMeters, meshNorthMeters;
@@ -146,13 +162,10 @@ namespace SiegeEngine.Scenes
                     }
                     float u = (meshEastMeters - colorMinEast) / colorExtentEast;
                     float v = 1.0f - (meshNorthMeters - colorMinNorth) / colorExtentNorth;
-                    minU = Math.Min(minU, u);
-                    maxU = Math.Max(maxU, u);
-                    minV = Math.Min(minV, v);
-                    maxV = Math.Max(maxV, v);
-                    vertices.Add(u); vertices.Add(v);
+                    _terrainVertices.Add(u); _terrainVertices.Add(v);
                 }
             }
+
             for (int x = 0; x < stepsX; x++)
             {
                 for (int y = 0; y < stepsY; y++)
@@ -161,12 +174,55 @@ namespace SiegeEngine.Scenes
                     uint tr = tl + 1;
                     uint bl = tl + (uint)(stepsY + 1);
                     uint br = bl + 1;
-                    indices.Add(tl); indices.Add(tr); indices.Add(bl);
-                    indices.Add(tr); indices.Add(br); indices.Add(bl);
+                    _terrainIndices.Add(tl); _terrainIndices.Add(tr); _terrainIndices.Add(bl);
+                    _terrainIndices.Add(tr); _terrainIndices.Add(br); _terrainIndices.Add(bl);
                 }
             }
-            _terrainBuffer.UpdateCustomWithUV(vertices, indices);
+
+            _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
         }
+
+        // Surgical replacement of affected vertices only (Z updated from heightmap, UV/color untouched)
+        protected void UpdateAffectedVertices(Vector3 worldPos, float radius)
+        {
+            if (_terrainVertices.Count == 0 || _heightmap == null)
+            {
+                BuildWireframeMesh(1);
+                return;
+            }
+
+            int stride = 9;
+            float cellSize = Math.Max(_worldScaleX, _worldScaleZ);
+            float radiusCells = radius / cellSize + 2f; // padding for safety
+
+            int centerX = (int)Math.Clamp(worldPos.X / _worldScaleX, 0, _terrainWidth - 1);
+            int centerZ = (int)Math.Clamp(worldPos.Y / _worldScaleZ, 0, _terrainHeight - 1);
+
+            int minX = Math.Max(0, (int)(centerX - radiusCells));
+            int maxX = Math.Min(_terrainWidth, (int)(centerX + radiusCells));
+            int minZ = Math.Max(0, (int)(centerZ - radiusCells));
+            int maxZ = Math.Min(_terrainHeight, (int)(centerZ + radiusCells));
+
+            int vertsPerRow = (int)Math.Floor(_terrainHeight / 1f) + 1; // step=1 case for editor
+
+            for (int x = minX; x < maxX; x++)
+            {
+                for (int z = minZ; z < maxZ; z++)
+                {
+                    int vertexIndex = (x * vertsPerRow + z) * stride + 2; // Z component offset
+                    if (vertexIndex + 1 < _terrainVertices.Count)
+                    {
+                        float wx = x * _worldScaleX;
+                        float wy = z * _worldScaleZ;
+                        _terrainVertices[vertexIndex] = GetHeight(wx, wy) * VerticalExaggeration;
+                    }
+                }
+            }
+
+            // Surgical GPU upload of updated vertex data (no index rebuild, no full regeneration)
+            _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
+        }
+
         private void ComputeWorldScale()
         {
             if (_useCustomScale)
@@ -190,12 +246,14 @@ namespace SiegeEngine.Scenes
                 _worldScaleZ = (float)(Math.Abs(_terrainGeoRef.PixelScale.Y) * 111319.9);
             }
         }
+
         protected float GetHeight(float x, float y)
         {
             int ix = (int)Math.Clamp(x / _worldScaleX, 0, _terrainWidth - 1);
             int iy = (int)Math.Clamp(y / _worldScaleZ, 0, _terrainHeight - 1);
             return _heightmap[ix, iy];
         }
+
         public virtual void LoadTerrain(string path)
         {
             Console.WriteLine($"[TerrainScene] Loading terrain from {path}");
@@ -215,15 +273,12 @@ namespace SiegeEngine.Scenes
                     _worldScaleZ = customScaleZ;
                     _useCustomScale = true;
                     BuildWireframeMesh(1);
-                    // EXACT CENTER OF THE MESH
                     float centerX = ((_terrainWidth - 1) * _worldScaleX) * 0.5f;
                     float centerY = ((_terrainHeight - 1) * _worldScaleZ) * 0.5f;
                     float centerHeight = GetHeight(centerX, centerY);
-                    // CAMERA 5 METERS ABOVE THE CENTER, LOOKING AT THE CENTER
                     _flyCamera.Position = new Vector3(centerX, centerY + 8f, centerHeight + 5f);
                     _flyCamera.Yaw = 0f;
-                    _flyCamera.Pitch = -0.85f; // strong downward angle looking directly at center
-                    Console.WriteLine($"[TerrainScene] Custom flat TIFF loaded - Camera at ({centerX:F1}, {centerY + 8f:F1}, {centerHeight + 5f:F1}) looking at center");
+                    _flyCamera.Pitch = -0.85f;
                 }
                 else
                 {
@@ -239,6 +294,7 @@ namespace SiegeEngine.Scenes
                 Console.WriteLine($"[TerrainScene] Failed to load TIFF: {ex.Message}");
             }
         }
+
         public void SetColorTexture(string path)
         {
             _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, path);
@@ -258,16 +314,19 @@ namespace SiegeEngine.Scenes
                 BuildTexturedMesh();
             }
         }
+
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
             _flyCamera.Update(deltaTime, 0f, true);
         }
+
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime);
             _flyCamera.Update(deltaTime, 0f, cameraMode);
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -291,6 +350,7 @@ namespace SiegeEngine.Scenes
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
         }
+
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
