@@ -107,9 +107,10 @@ Folder: Citadel
       - EntityDeltaTracker _deltaTracker
       - float GridCellSize
       - Queue<IEvent> _networkEventQueue
+      - bool _isEditor
     - Methods:
-      - constructor GameServer( NetworkManager networkManager = null, EventBus eventBus)
-        - Calls: AddSystem
+      - constructor GameServer( NetworkManager networkManager = null,  bool isEditor = false, EventBus eventBus)
+        - Calls: AddSystem, subscribeMethod.Invoke
       - void AddEntity(Entity entity)
         - Calls: UpdateSpatialGrid
       - void RemoveEntity(int id)
@@ -147,6 +148,8 @@ Folder: Citadel
       - void RemoveFromSpatialGrid(Entity entity)
       - IEnumerable<Entity> GetNearbyEntities(Vector3 position)
       - void QueueNetworkEvent(IEvent e)
+      - void OnTerrainModifiedGeneric(object evtObj)
+        - Calls: publishMethod.Invoke
 - File: NetworkManager.cs
   - Class: NetworkManager (Namespace: Citadel.Network)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System
@@ -251,11 +254,14 @@ Folder: MapRoom
   - Class: TerrainCreatorScene (Namespace: MapRoom)
     - Inherits: TerrainScene
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, ToolChest
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, ToolChest
     - Fields:
       - Vector3 _ghostPosition
       - bool _ghostVisible
       - VertexBuffer _ghostBuffer
+      - HashSet<Guid> _processedModifications
+      - bool _needsRebuild
+      - bool _isBrushing
     - Methods:
       - void CreateBlank()
         - Calls: BuildWireframeMesh
@@ -272,22 +278,32 @@ Folder: MapRoom
       - void UpdateGhostMesh()
         - Calls: _ghostBuffer.UpdateCustomWithUV
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
-        - Calls: BuildWireframeMesh, GetHeight, GetLookDirection, UpdateGhostMesh, _activeBrush.Apply
+        - Calls: BuildTexturedMesh, BuildWireframeMesh, GetLookDirection, RayTerrainIntersect, TerrainModifiedEvent, UpdateGhostMesh, _activeBrush.Mode.ToString, _activeBrush.Shape.ToString
+      - bool RayTerrainIntersect( Vector3 dir,  out Vector3, Vector3 origin)
+        - Calls: GetHeight
       - Vector3 GetLookDirection()
       - void Render(IReadOnlyList<Entity> entities)
         - Calls: _ghostBuffer.Bind, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BlendFunc, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _terrainBuffer.Bind, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use
       - void Dispose()
         - Calls: _renderContext.DeleteTexture
+      - void OnTerrainModified(TerrainModifiedEvent e)
+        - Calls: ApplyModification
+      - void ApplyModification(TerrainModifiedEvent e)
+        - Calls: Enum.Parse, brush.Apply
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
     
-    - Dependencies: SiegeEngine.Core.Events, System.Numerics, System.Text.Json
+    - Dependencies: SiegeEngine.Core.Events, System, System.Numerics, System.Text.Json
     - Fields:
       - string Type
     - Methods:
+      - constructor TerrainModifiedEvent()
+      - constructor TerrainModifiedEvent( float radius,  float strength,  string operation,  string shape,  ulong playerId, Vector3 worldPos)
       - byte[] Serialize()
+        - Calls: Id.ToString
       - void Deserialize(byte[] data)
+        - Calls: Guid.Parse, ToString, float.Parse, ulong.Parse
 
 Folder: QuestHall
 - File: Class1.cs
@@ -329,9 +345,6 @@ Folder: SiegeEngine
 - File: AbstractRenderEnums.cs
   - Class: AbstractRenderEnums (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: System
-- File: ActionConfig.cs
-  - Class: SwitchMenuEvent (Namespace: SiegeEngine.PlayerSystem)
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic
 - File: Animation.cs
   - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
@@ -1009,6 +1022,9 @@ Folder: SiegeEngine
       - void Update( bool isGameActive,  float scrollDelta, float deltaTime)
         - Calls: UpdateCamera, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.GetWindowSize, _controlContext.SetCursorPos, _controlContext.SetInputMode
       - void UpdateCamera()
+- File: GameActionConfig.cs
+  - Class: SwitchMenuEvent (Namespace: SiegeEngine.PlayerSystem)
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Collections.Generic
 - File: GameMode.cs
   - Class: GameMode (Namespace: SiegeEngine.Core.Definitions)
 - File: GameModeManager.cs
@@ -1751,7 +1767,7 @@ Folder: SiegeEngine
       - void Render()
         - Calls: _controlContext.GetWindowSize, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
-        - Calls: panel.Dispose
+        - Calls: panel.Detach, panel.Dispose
 - File: PhysicsCollisionEvent.cs
   - Class: PhysicsCollisionEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -2020,7 +2036,7 @@ Folder: SiegeEngine
     - Fields:
       - string Type
     - Methods:
-      - constructor SelectBrushEvent( string brushType, ulong playerId)
+      - constructor SelectBrushEvent( float intensity,  float size,  string brushMode,  string brushShape, ulong playerId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: SelectElement.cs
@@ -2178,7 +2194,7 @@ Folder: SiegeEngine
       - void BuildTexturedMesh()
         - Calls: BuildWireframeMesh, ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV
       - void ComputeWorldScale()
-      - float GetHeight( float z, float x)
+      - float GetHeight( float y, float x)
       - void LoadTerrain(string path)
         - Calls: BuildWireframeMesh, ComputeWorldScale, GeoTiffParser.ParseGeoReference, GetHeight
       - void SetColorTexture(string path)
@@ -2581,6 +2597,10 @@ Folder: ToolChest
     - Dependencies: System, System.Numerics
     - Methods:
       - void Apply( Vector2 gridPos,  float worldScaleX,  float worldScaleZ, ] heightmap, ref float)
+        - Calls: GetFalloff, GetNeighborAverage, IsInShape
+      - bool IsInShape( float dz,  float radius, float dx)
+      - float GetFalloff( float dz,  float radius, float dx)
+      - float GetNeighborAverage( int height,  int width,  int x,  int z, ] heightmap)
 - File: BrushPanel.cs
   - Class: BrushUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -2601,6 +2621,13 @@ Folder: ToolChest
     - Methods:
       - void HandleDataHook(string hook)
       - void HandleUIClick(HtmlElement elem)
+- File: EditorActionConfig.cs
+  - Class: EditorActionConfig (Namespace: ToolChest)
+    - Inherits: GameActionConfig 
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.PlayerSystem, System
+    - Methods:
+      - void TriggerSelectBrush(string brushType)
+        - Calls: SelectBrushEvent, _steamEngine.GetSteamId
 - File: PropertiesPanel.cs
   - Class: PropertiesUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay

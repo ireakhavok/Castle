@@ -1154,7 +1154,7 @@ Folder: Core
       - void Render()
         - Calls: _controlContext.GetWindowSize, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
-        - Calls: panel.Dispose
+        - Calls: panel.Detach, panel.Dispose
 - File: PhysicsCollisionEvent.cs
   - Class: PhysicsCollisionEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -1314,7 +1314,7 @@ Folder: Core
     - Fields:
       - string Type
     - Methods:
-      - constructor SelectBrushEvent( string brushType, ulong playerId)
+      - constructor SelectBrushEvent( float intensity,  float size,  string brushMode,  string brushShape, ulong playerId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: SelectElement.cs
@@ -1539,7 +1539,7 @@ Folder: Core
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
 - File: UIInteractionLayer.cs
   - Class: UIInteractionLayer (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
     - Fields:
       - UIOverlay _overlay
       - IControlContext _controlContext
@@ -1550,10 +1550,12 @@ Folder: Core
       - HtmlElement _currentFocused
       - double InitialRepeatDelay
       - double RepeatRate
+      - RangeElement _draggingSlider
+      - float _sliderOldValue
     - Methods:
       - constructor UIInteractionLayer( IControlContext controlContext,  nint window, UIOverlay overlay)
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.IsDescendantOf, clickable.UpdateHover, openSelect.HandleClick
+        - Calls: JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.IsDescendantOf, clickable.UpdateHover, newValue.ToString, openSelect.HandleClick
 - File: UIManager.cs
   - Class: UIManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
@@ -1823,9 +1825,6 @@ Folder: PlayerSystem
         - Calls: camera.SetYawInternal
       - void SetYawInternal( float yaw, this CameraController)
         - Calls: SetValue
-- File: ActionConfig.cs
-  - Class: SwitchMenuEvent (Namespace: SiegeEngine.PlayerSystem)
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic
 - File: CameraController.cs
   - Class: CameraController (Namespace: SiegeEngine.PlayerSystem)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, System, System.Numerics
@@ -1885,6 +1884,9 @@ Folder: PlayerSystem
       - void Update( bool isGameActive,  float scrollDelta, float deltaTime)
         - Calls: UpdateCamera, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.GetWindowSize, _controlContext.SetCursorPos, _controlContext.SetInputMode
       - void UpdateCamera()
+- File: GameActionConfig.cs
+  - Class: SwitchMenuEvent (Namespace: SiegeEngine.PlayerSystem)
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Collections.Generic
 - File: InputHandler.cs
   - Class: InputHandler (Namespace: SiegeEngine.PlayerSystem)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Networking, System, System.Collections.Generic, System.Numerics, System.Text
@@ -2117,7 +2119,7 @@ Folder: Scenes
       - void BuildTexturedMesh()
         - Calls: BuildWireframeMesh, ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV
       - void ComputeWorldScale()
-      - float GetHeight( float z, float x)
+      - float GetHeight( float y, float x)
       - void LoadTerrain(string path)
         - Calls: BuildWireframeMesh, ComputeWorldScale, GeoTiffParser.ParseGeoReference, GetHeight
       - void SetColorTexture(string path)
