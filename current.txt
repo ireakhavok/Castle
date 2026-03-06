@@ -1,5 +1,6 @@
-I need us to implement / fix auto margins for the html tag: '            <div class="ide-title">SiegeEngine IDE</div>' in my video game engine. 
+Now that we have created the sliders for the brush panel, we need to implement the actual brush events such that you can raise and lower terrain in the terraincreatorpanel. The brushpanel does not and will not have all the mathematics for raising and lowering the terrain, but it will have some of the base methods that get called from inside the map room project. The context of the brush's parameters will be in the map room, with the base equations implemented in the ToolChest, such that other brushes implemented in future projects can set the settings for the minima and maximum and rates for the events. 
 
+The goal is to have a projected cursor onto the terrain via a ghosted circle indicating the area to be affected I believe the terraincreatorpanel will need to implement some of the subscriptions for brush selection and event triggers. You may want to implement some kind of terrainmodified event such that it could be a networked event. 
 
+I believe I've given you enough to investigate and come up with an implementation plan. I don't want code right now, just the plan, and if it's sound, we'll proceed, if not we'll iterate on the plan until it is sound. 
 
-right now there is no auto margin being applied to the element, or it is not being utilized in the layout. 

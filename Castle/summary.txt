@@ -591,7 +591,7 @@ Folder: SiegeEngine
     - Fields:
       - string DefaultUserAgentCss
     - Methods:
-      - 8px rgba()
+      - 12px rgba()
       - void Clear()
       - void Apply(string css)
         - Calls: ParseProperties, ReadUntil, SkipWhitespaceAndComments
@@ -1087,7 +1087,13 @@ Folder: SiegeEngine
       - float _contentFullHeight
       - bool _needsVerticalScrollbar
       - float SCROLLBAR_WIDTH
+      - Vector2 _cachedIntrinsicSize
+      - float _cachedViewportWidth
+      - float _cachedViewportHeight
+      - float _cachedFs
+      - bool _intrinsicDirty
     - Methods:
+      - void MarkIntrinsicDirty()
       - bool IsDescendantOf(HtmlElement ancestor)
       - string GetEffectiveDisplay()
       - HtmlElement FindContainingBlock()
@@ -1101,12 +1107,12 @@ Folder: SiegeEngine
       - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
       - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, c.GetEffectiveDisplay, child.ComputeLayout
+        - Calls: HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, float.Parse, int.Parse
       - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParseSize, ShiftX, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, child.GetEffectiveDisplay, currentLine.Clear
       - void ShiftX( float off, HtmlElement e)
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.GetEffectiveDisplay, textRenderer.GetTextSize
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.GetEffectiveDisplay, float.Parse, int.Parse, textRenderer.GetTextSize
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, quadRenderer.DrawNdcQuad, renderContext.Disable, renderContext.Enable, renderContext.Scissor
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
@@ -1123,7 +1129,7 @@ Folder: SiegeEngine
       - Vector4 ParsePaddings( float parent,  float vh,  float vw, CssStyle style)
         - Calls: ParseSides, ParseSize
       - Vector4 ParseMargins( float parent,  float vh,  float vw, CssStyle style)
-        - Calls: ParseSides
+        - Calls: ParseSides, ParseSize
       - Vector4 ParseBorderWidths( float parent,  float vh,  float vw, CssStyle style)
         - Calls: ParseSides, ParseSize
       - Vector4 ParseSides( float parent,  float vh,  float vw, string s)
@@ -2341,7 +2347,7 @@ Folder: SiegeEngine
       - void HandleLink(string href)
         - Calls: LoadUI
       - void RefreshUI()
-        - Calls: CollectClickables, InheritProperties, RecomputeLayout, _cssParser.ApplyAll, _uiClickables.Clear
+        - Calls: CollectClickables, InheritProperties, RecomputeLayout, _cssParser.ApplyAll, _uiClickables.Clear, _uiRoot.MarkIntrinsicDirty
       - HtmlElement FindElementById(string id)
       - return FindElementById()
       - HtmlElement FindElementById( string id, HtmlElement root)
