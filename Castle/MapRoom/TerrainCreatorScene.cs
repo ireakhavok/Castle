@@ -18,7 +18,7 @@ namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
     {
-        private ToolChest.Brush _activeBrush = new ToolChest.Brush();
+        private ToolChest.Brush _activeBrush = null;
         private Vector3 _ghostPosition;
         private bool _ghostVisible = false;
         private VertexBuffer _ghostBuffer;
@@ -135,7 +135,7 @@ namespace MapRoom
         }
         public void SetActiveBrush(ToolChest.Brush brush)
         {
-            _activeBrush = brush ?? new ToolChest.Brush();
+            _activeBrush = brush;
         }
         public override void Initialize(int width, int height)
         {
@@ -168,7 +168,7 @@ namespace MapRoom
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
-            if (_heightmap == null)
+            if (_heightmap == null || _activeBrush == null)
             {
                 _ghostVisible = false;
                 return;
@@ -186,11 +186,11 @@ namespace MapRoom
             {
                 _ghostVisible = false;
             }
-            if (mousePressed && _activeBrush != null && _ghostVisible)
+            if (mousePressed && _ghostVisible)
             {
                 _isBrushing = true;
             }
-            if (mouseDown && _isBrushing && _activeBrush != null && _ghostVisible)
+            if (mouseDown && _isBrushing && _ghostVisible)
             {
                 var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, _activeBrush.Intensity, _activeBrush.Mode.ToString().ToLower(), 0);
                 _eventBus.Publish(evt, true);

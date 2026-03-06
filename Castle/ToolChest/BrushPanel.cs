@@ -41,6 +41,7 @@ namespace ToolChest
         {
             base.Init();
             LoadBrushUI();
+            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString()), true);
         }
         private void LoadBrushUI()
         {
@@ -53,6 +54,7 @@ namespace ToolChest
         }
         private void HandleBrushDataHook(string hook)
         {
+            bool changed = false;
             if (hook == "BrushSizeChanged")
             {
                 var slider = _uiOverlay.FindElementById("sizeSlider");
@@ -60,6 +62,7 @@ namespace ToolChest
                 {
                     float size = float.Parse(slider.Attributes.GetValueOrDefault("value", "10"));
                     _currentBrush.Size = size;
+                    changed = true;
                 }
             }
             else if (hook == "BrushIntensityChanged")
@@ -69,6 +72,7 @@ namespace ToolChest
                 {
                     float intensity = float.Parse(slider.Attributes.GetValueOrDefault("value", "1"));
                     _currentBrush.Intensity = intensity;
+                    changed = true;
                 }
             }
             else if (hook == "BrushShapeChanged")
@@ -78,6 +82,7 @@ namespace ToolChest
                 {
                     string shapeStr = select.Attributes.GetValueOrDefault("value", "GaussianCircle");
                     _currentBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), shapeStr);
+                    changed = true;
                 }
             }
             else if (hook == "BrushModeChanged")
@@ -87,9 +92,18 @@ namespace ToolChest
                 {
                     string modeStr = select.Attributes.GetValueOrDefault("value", "Raise");
                     _currentBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), modeStr);
+                    changed = true;
                 }
             }
-            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString()), true);
+            if (changed)
+            {
+                _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString()), true);
+            }
+        }
+        public override void Detach()
+        {
+            _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, ""), true);
+            base.Detach();
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
