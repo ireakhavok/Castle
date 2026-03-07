@@ -416,17 +416,6 @@ Folder: Definitions
   - Class: WeatherState (Namespace: SiegeEngine.Core.Definitions)
 
 Folder: Events
-- File: BrushRegistryUpdateEvent.cs
-  - Class: BrushRegistryUpdateEvent (Namespace: SiegeEngine.Core.Events)
-    - Inherits: IEvent
-    
-    - Dependencies: System, System.Numerics, System.Text.Json
-    - Fields:
-      - string Type
-    - Methods:
-      - constructor BrushRegistryUpdateEvent( Vector3 size,  int textureId, string brushType)
-      - byte[] Serialize()
-      - void Deserialize(byte[] data)
 - File: ClosePanelEvent.cs
   - Class: ClosePanelEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -592,7 +581,7 @@ Folder: Events
     - Fields:
       - string Type
     - Methods:
-      - constructor SelectBrushEvent( float intensity,  float size,  string brushMode,  string brushShape, ulong playerId)
+      - constructor SelectBrushEvent( float intensity,  float size,  string brushFalloff,  string brushMode,  string brushShape, ulong playerId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: SoundEmissionEvent.cs
@@ -1216,6 +1205,8 @@ Folder: Rendering
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer
       - void UpdateWithPositionNormalUV( List<uint> indices, List<float> vertices)
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer
+      - void UpdateVerticesPartial( int startVertexIndex,  int vertexCount, List<float> vertices)
+        - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferSubData
 - File: WaterShader.cs
   - Class: WaterShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1892,7 +1883,6 @@ SiegeEngine.Core.Definitions.UnityAssetData
 SiegeEngine.Core.Definitions.WallComponent
 SiegeEngine.Core.Definitions.WeatherState
 SiegeEngine.Core.Definitions.WindowAttribute
-SiegeEngine.Core.Events.BrushRegistryUpdateEvent
 SiegeEngine.Core.Events.ClosePanelEvent
 SiegeEngine.Core.Events.CustomEvent
 SiegeEngine.Core.Events.EntityAddedEvent

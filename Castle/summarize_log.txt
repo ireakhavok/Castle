@@ -308,9 +308,9 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Cast
 Found: BlueprintManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
-Read 6571 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Read 7559 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Namespace: CastleBuilder
-Found 7 dependencies
+Found 10 dependencies
 Found: CastleBuilder.csproj
 Found: Events
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Events
@@ -344,9 +344,9 @@ Found: IDE_UI.html
 Found: MenuCommands.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
-Read 3079 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Read 2856 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
 Namespace: CastleBuilder
-Found 6 dependencies
+Found 7 dependencies
 Found: obj
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\obj
 Found: Program.cs
@@ -355,6 +355,13 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Prog
 Read 103 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\Program.cs
 Namespace: None
 Found 0 dependencies
+Found: SaveProjectForm.html
+Found: SaveProjectPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
+Read 2440 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
+Namespace: CastleBuilder
+Found 8 dependencies
 Found: Citadel
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Citadel
 Found: .
@@ -899,12 +906,6 @@ Found: Events
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events
 Found: .
 Found: ..
-Found: BrushRegistryUpdateEvent.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\BrushRegistryUpdateEvent.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\BrushRegistryUpdateEvent.cs
-Read 1080 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\BrushRegistryUpdateEvent.cs
-Namespace: SiegeEngine.Core.Events
-Found 3 dependencies
 Found: ClosePanelEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\ClosePanelEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\ClosePanelEvent.cs
@@ -1538,7 +1539,7 @@ Found 8 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 23659 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 24286 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 10 dependencies
 Found: UlElement.cs
@@ -1799,9 +1800,9 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Treb
 Found: Launcher.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 6453 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 6576 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
-Found 20 dependencies
+Found 19 dependencies
 Found: obj
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj
 Found: Trebuchet.csproj
