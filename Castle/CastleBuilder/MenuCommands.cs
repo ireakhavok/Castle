@@ -6,68 +6,52 @@ using SiegeEngine.Core.Interfaces;
 using MapRoom;
 using ReadingChamber;
 using ToolChest;
+using System.IO;
 
 namespace CastleBuilder
 {
     public static class MenuCommands
     {
-        // Original top-level menu stubs
-        public static void OpenFile(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        private static readonly string DefaultProjectsPath = @"C:\Users\ireak\source\CastleBuilder\Projects";
+
+        // File menu - Save / Save As
+        public static void LoadProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] File opened (stub)");
+            if (!Directory.Exists(DefaultProjectsPath)) Directory.CreateDirectory(DefaultProjectsPath);
+            var selector = new FileSelectorPanel(renderContext, controlContext, window, eventBus, DefaultProjectsPath);
+            selector.UserData = "LoadProject";
+            selector.IsModal = true;
+            eventBus.Publish(new OpenPanelEvent(selector) { Mode = OpenMode.Overlay });
         }
 
-        public static void OpenEdit(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        public static void SaveProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] Edit opened (stub)");
+            BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
         }
 
-        public static void OpenView(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        public static void SaveProjectAs(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[Menu] View opened (stub)");
+            var savePanel = new SaveProjectPanel(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new OpenPanelEvent(savePanel) { Mode = OpenMode.Overlay });
         }
 
-        public static void OpenCastle(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-        {
-            Console.WriteLine("[Menu] Castle opened (stub)");
-        }
-
-        public static void OpenTools(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-        {
-            Console.WriteLine("[Menu] Tools opened (stub)");
-        }
-
-        public static void OpenWindow(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-        {
-            Console.WriteLine("[Menu] Window opened (stub)");
-        }
-
-        public static void OpenHelp(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-        {
-            Console.WriteLine("[Menu] Help opened (stub)");
-        }
-
-        // Panels submenu - all requested panels
+        // Existing panel methods (unchanged)
         public static void OpenTerrain(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             TerrainCreatorPanel.OpenBlank(renderContext, controlContext, window, eventBus);
         }
-
         public static void OpenAnimation(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             AnimationViewerPanel.Open(renderContext, controlContext, window, eventBus);
         }
-
         public static void OpenAssetBrowser(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             AssetBrowserPanel.Open(renderContext, controlContext, window, eventBus);
         }
-
         public static void OpenProperties(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             PropertiesPanel.Open(renderContext, controlContext, window, eventBus);
         }
-
         public static void OpenHierarchy(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             TreeViewPanel.Open(renderContext, controlContext, window, eventBus);

@@ -1,3 +1,5 @@
+<!-- Folder: CastleBuilder (or your HTML folder) -->
+<!-- File: IDE_UI.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -112,7 +114,14 @@
     <div id="ide-root">
         <nav id="ide-menu-bar">
             <ul>
-                <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenFile">File</li>
+                <li class="nav-item nav-dropdown">
+                    File
+                    <ul class="nav-dropdown-content">
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.LoadProject">Open Project...</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.SaveProject">Save</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.SaveProjectAs">Save As...</li>
+                    </ul>
+                </li>
                 <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenEdit">Edit</li>
                 <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenView">View</li>
                 <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenCastle">Castle</li>

@@ -22,10 +22,14 @@
 
 <ItemGroup>
   <None Remove="IDE_UI.html" />
+  <None Remove="SaveProjectForm.html" />
 </ItemGroup>
 
 <ItemGroup>
   <Content Include="IDE_UI.html">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </Content>
+  <Content Include="SaveProjectForm.html">
     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </Content>
 </ItemGroup>

@@ -1,0 +1,51 @@
+<!-- Folder: CastleBuilder (place next to IDE_UI.html) -->
+<!-- File: SaveProjectForm.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            background: #252526;
+            color: #e0e0e0;
+            font-family: Segoe UI;
+            padding: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            background: #1e1e1e;
+            color: #fff;
+            border: 1px solid #383838;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 8px 16px;
+            background: #7CFFCB;
+            color: #000;
+            border: none;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #a0ffdb;
+            }
+    </style>
+</head>
+<body>
+    <label>Project Name</label>
+    <input id="projectName" type="text" value="MyNewProject">
+
+    <label>Project Folder</label>
+    <input id="projectFolder" type="text" value="C:\Users\ireak\source\CastleBuilder\Projects">
+
+    <button data-hook="SaveProjectConfirm">Save Project</button>
+    <button data-hook="Cancel">Cancel</button>
+</body>
+</html>
