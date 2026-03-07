@@ -219,9 +219,7 @@ namespace MapRoom
                     var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
                     _eventBus.Publish(evt, true);
 
-                    UpdateAffectedVertices(_ghostPosition, _activeBrush.Size);
-                    // REMOVED: BuildTexturedMesh() — it was overwriting surgical Z updates on DEMs
-
+                    // REMOVED local UpdateAffectedVertices here - now only called after heightmap is modified in ApplyModification
                     _lastBrushUpdateTime = currentTime;
                     _lastGhostPosition = _ghostPosition;
                 }
@@ -340,6 +338,7 @@ namespace MapRoom
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
 
+            // Now guaranteed to run AFTER heightmap is modified
             UpdateAffectedVertices(e.WorldPos, e.Radius);
         }
     }

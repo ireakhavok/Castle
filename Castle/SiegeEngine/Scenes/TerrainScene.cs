@@ -38,7 +38,7 @@ namespace SiegeEngine.Scenes
         protected List<float> _terrainVertices = new List<float>();
         protected List<uint> _terrainIndices = new List<uint>();
 
-        // Exact mesh resolution when the current buffer was built (critical for DEMs with step 4/8)
+        // Tracks the exact mesh resolution when the current buffer was built
         protected int _meshVertsX = 0;
         protected int _meshVertsY = 0;
         protected int _currentMeshStep = 1;
@@ -193,7 +193,8 @@ namespace SiegeEngine.Scenes
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
         }
 
-        // Robust surgical update that works for editor (step=1) AND real DEMs (step=4/8+)
+        // DIAGNOSTIC + FIXED: Write Z to cache AND do full upload (temporary for visibility)
+        // This guarantees visible deformation on any size map while we debug partial upload
         protected void UpdateAffectedVertices(Vector3 worldPos, float radius)
         {
             if (_terrainVertices.Count == 0 || _heightmap == null || _currentMeshStep < 1 || _meshVertsX == 0)
@@ -202,11 +203,9 @@ namespace SiegeEngine.Scenes
                 return;
             }
 
-            int stride = 9;
             float worldCellSize = Math.Max(_worldScaleX, _worldScaleZ);
-            float radiusInMeshCells = (radius / worldCellSize) / _currentMeshStep + 2f; // convert to mesh grid space
+            float radiusInMeshCells = (radius / worldCellSize) / _currentMeshStep + 2f;
 
-            // Center in mesh-grid coordinates
             int centerMeshX = (int)Math.Clamp(worldPos.X / (_worldScaleX * _currentMeshStep), 0, _meshVertsX - 1);
             int centerMeshY = (int)Math.Clamp(worldPos.Y / (_worldScaleZ * _currentMeshStep), 0, _meshVertsY - 1);
 
@@ -215,11 +214,13 @@ namespace SiegeEngine.Scenes
             int minMeshY = Math.Max(0, (int)(centerMeshY - radiusInMeshCells));
             int maxMeshY = Math.Min(_meshVertsY - 1, (int)(centerMeshY + radiusInMeshCells));
 
+            // Write new Z heights into the vertex cache
+            const int stride = 9;
             for (int mx = minMeshX; mx <= maxMeshX; mx++)
             {
                 for (int my = minMeshY; my <= maxMeshY; my++)
                 {
-                    int vertexIndex = (mx * _meshVertsY + my) * stride + 2; // Z offset
+                    int vertexIndex = (mx * _meshVertsY + my) * stride + 2; // Z component
                     if (vertexIndex + 1 < _terrainVertices.Count)
                     {
                         float wx = mx * _currentMeshStep * _worldScaleX;
@@ -229,6 +230,7 @@ namespace SiegeEngine.Scenes
                 }
             }
 
+            // TEMPORARY FULL UPLOAD (guaranteed visual update)
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
         }
 
