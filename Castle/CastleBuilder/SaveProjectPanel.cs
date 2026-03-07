@@ -31,7 +31,7 @@ namespace CastleBuilder
                 {
                     var nameElem = FindElementById("projectName") as InputElement;
                     var folderElem = FindElementById("projectFolder") as InputElement;
-                    string name = nameElem?.Value ?? "Untitled";
+                    string name = nameElem?.Value ?? "NewProject";
                     string folder = folderElem?.Value ?? @"C:\Users\ireak\source\CastleBuilder\Projects";
                     BlueprintManager.SaveProjectAs(folder, name, _eventBus);
                     _eventBus.Publish(new ClosePanelEvent(_parent));
@@ -61,10 +61,6 @@ namespace CastleBuilder
             if (File.Exists(htmlPath))
             {
                 _uiOverlay.LoadUI(File.ReadAllText(htmlPath));
-            }
-            else
-            {
-                Console.WriteLine("[SaveProjectPanel] SaveProjectForm.html not found - add a simple form later");
             }
             _uiOverlay.RefreshUI();
         }

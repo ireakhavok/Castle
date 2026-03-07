@@ -14,7 +14,6 @@ namespace CastleBuilder
     {
         private static readonly string DefaultProjectsPath = @"C:\Users\ireak\source\CastleBuilder\Projects";
 
-        // File menu - Save / Save As
         public static void LoadProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             if (!Directory.Exists(DefaultProjectsPath)) Directory.CreateDirectory(DefaultProjectsPath);
@@ -35,7 +34,7 @@ namespace CastleBuilder
             eventBus.Publish(new OpenPanelEvent(savePanel) { Mode = OpenMode.Overlay });
         }
 
-        // Existing panel methods (unchanged)
+        // All editor panels now open as Overlay (so IDE menu bar never disappears)
         public static void OpenTerrain(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             TerrainCreatorPanel.OpenBlank(renderContext, controlContext, window, eventBus);
