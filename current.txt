@@ -1,6 +1,26 @@
-Now that we have created the sliders for the brush panel, we need to implement the actual brush events such that you can raise and lower terrain in the terraincreatorpanel. The brushpanel does not and will not have all the mathematics for raising and lowering the terrain, but it will have some of the base methods that get called from inside the map room project. The context of the brush's parameters will be in the map room, with the base equations implemented in the ToolChest, such that other brushes implemented in future projects can set the settings for the minima and maximum and rates for the events. 
+1. Permanent IDE Menubar Enforcement (Phase 1 — we do this first, exactly as you requested)
 
-The goal is to have a projected cursor onto the terrain via a ghosted circle indicating the area to be affected I believe the terraincreatorpanel will need to implement some of the subscriptions for brush selection and event triggers. You may want to implement some kind of terrainmodified event such that it could be a networked event. 
+The IDE basepanel (your DockedHeader panel) stays fixed at top, full width, non-draggable.
+All other panels (docked or floating) are clamped so their title bar can never go above headerHeight.
+Dock root always computes layout starting at Y = headerHeight.
+When dragging a panel to the top edge it now snaps to “DockedTop below menubar”, never overlapping.
 
-I believe I've given you enough to investigate and come up with an implementation plan. I don't want code right now, just the plan, and if it's sound, we'll proceed, if not we'll iterate on the plan until it is sound. 
+2. Resizing (Phase 2)
 
+Floating panels get 5-pixel resize grips on all 4 edges + corners.
+Docked panels keep the existing splitter dragging (DockSplitNode) + gain visible grip highlights.
+Live size preview during resize (ghost outline).
+
+3. Panel-to-Panel Edge Snapping + Live Preview (Phase 3)
+
+While dragging a floating panel, we show a semi-transparent ghost rectangle + highlight the target edge.
+Snap tolerance = 15 px to any docked panel’s edge (left/right/top/bottom) or screen edge (respecting header).
+Drop near edge → automatically inserts a new DockSplitNode at that exact spot.
+Drop in center of a tab group → converts to tab.
+This solves your concern about floating panels behaving badly over other panels.
+
+4. Extra Polish (Phase 4)
+
+Double-click title = maximize within usable area.
+Right-click title = dock/float/close menu.
+All changes use your existing UIQuadRenderer for previews (no new dependencies).
