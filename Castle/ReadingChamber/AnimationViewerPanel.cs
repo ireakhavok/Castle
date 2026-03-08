@@ -1,6 +1,4 @@
-﻿// Folder: ReadingChamber
-// File: AnimationViewerPanel.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -18,6 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace ReadingChamber
 {
     public unsafe class AnimationViewerPanel : BasePanel
@@ -27,22 +26,27 @@ namespace ReadingChamber
             var panel = new AnimationViewerPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
+
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AnimationViewerPanel _parent;
+
             public AssetUIOverlay(AnimationViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
+
             public override void HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
             }
         }
+
         private ModelViewerScene _viewerScene;
         private EditorTextRenderer _textRenderer;
         private ShaderProgram _textShader;
         private List<string> _animationFiles = new List<string>();
+
         public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             Scaling = ScalingMode.BestFit;
@@ -50,10 +54,12 @@ namespace ReadingChamber
             BaseHeight = 720f;
             _viewerScene = new ModelViewerScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
@@ -68,6 +74,7 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void UpdateUIControls()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetViewerUI.html");
@@ -95,6 +102,7 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void OnFileSelected(FileSelectedEvent e)
         {
             string hook = e.UserData as string;
@@ -115,6 +123,7 @@ namespace ReadingChamber
                 _viewerScene.LoadAnimation(e.Path);
             }
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -175,6 +184,7 @@ namespace ReadingChamber
                 }
             }
         }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -182,6 +192,7 @@ namespace ReadingChamber
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
             _viewerScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
         }
+
         public override void Render()
         {
             if (!Visible) return;
@@ -194,14 +205,29 @@ namespace ReadingChamber
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
-            // Render the 3D scene content (no title or border here anymore)
+
+            // Set scissor to content area (below title bar)
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            _renderContext.Enable(_renderContext.Enums.ScissorTest);
+            int scissorX = (int)Position.X;
+            int scissorY = winH - (int)(Position.Y + Size.Y) + (int)TitleHeight;
+            uint scissorW = (uint)Size.X;
+            uint scissorH = (uint)(Size.Y - TitleHeight);
+            _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
+
+            // Render the 3D scene content
             _viewerScene.Render(null);
-            // Let BasePanel handle title bar, UI overlay, and borders
+
+            // Disable scissor after scene render
+            _renderContext.Disable(_renderContext.Enums.ScissorTest);
+
             base.Render();
+
             // Frame info text (specific to this panel)
             string frameInfo = _viewerScene.GetFrameInfo();
             _textRenderer.RenderText(frameInfo, 10, TitleHeight + 10, (int)Size.X, (int)Size.Y, 12f);
         }
+
         public override void Dispose()
         {
             _viewerScene.Dispose();
