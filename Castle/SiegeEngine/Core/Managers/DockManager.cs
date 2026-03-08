@@ -279,6 +279,7 @@ namespace SiegeEngine.Core.Managers
             {
                 _headerPanel = panel;
                 panel.AllowDragging = false;
+                panel.HeaderHeight = GetHeaderHeight();
                 _needsLayout = true;
                 return;
             }
@@ -286,11 +287,13 @@ namespace SiegeEngine.Core.Managers
             {
                 _floatingPanels.Add(panel);
                 panel.AllowDragging = true;
+                panel.HeaderHeight = GetHeaderHeight();
             }
             else
             {
                 _root.AddPanel(panel);
                 panel.AllowDragging = false;
+                panel.HeaderHeight = GetHeaderHeight();
             }
             _needsLayout = true;
         }
@@ -350,7 +353,7 @@ namespace SiegeEngine.Core.Managers
             {
                 float headerH = GetHeaderHeight();
                 _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-                // PHASE 1: clamp so no panel can ever go above the IDE menubar
+                // PHASE 1 + 2: clamp so no panel can ever go above the IDE menubar (covers resize too)
                 if (_draggingFloatingPanel.Position.Y < headerH)
                 {
                     _draggingFloatingPanel.Position = new Vector2(_draggingFloatingPanel.Position.X, headerH);

@@ -27,5 +27,6 @@ namespace SiegeEngine.Core.Interfaces
         void OnPanelResize(float w, float h);
         bool AllowDragging { get; set; }
         bool IsModal { get; set; }
+        float HeaderHeight { get; set; }   // Phase 2: used for resize clamping above IDE menubar
     }
 }
