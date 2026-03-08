@@ -671,6 +671,7 @@ Folder: Managers
       - int _lastWinH
       - IPanel _draggingFloatingPanel
       - bool _needsLayout
+      - IPanel _headerPanel
     - Methods:
       - constructor DockManager( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
       - void AddPanel(IPanel panel)
@@ -1617,6 +1618,8 @@ Folder: UI
         - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, IsTopLevelNavItem, dropdownUl.GetEffectiveDisplay
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
         - Calls: UpdateHover
+      - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
+        - Calls: HtmlLayoutUtils.GetNdcQuad, IsNavDropdownParent, dropdownUl.ComputeLayout, quadRenderer.DrawNdcQuad, renderContext.Disable, renderContext.Enable
       - bool IsTopLevelNavItem()
       - bool IsNavDropdownParent()
 - File: NavUlElement.cs
