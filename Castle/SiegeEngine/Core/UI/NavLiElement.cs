@@ -6,18 +6,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public class NavLiElement : HtmlElement
     {
         private bool _lastHoverState = false;
-
         public NavLiElement()
         {
             Tag = "li";
         }
-
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             bool isSubmenuItem = false;
@@ -29,14 +26,11 @@ namespace SiegeEngine.Core.UI
                     isSubmenuItem = true;
                 }
             }
-
             if (isSubmenuItem && Parent != null && Parent.ComputedContentWidth > 0)
             {
                 Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
                 Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
-
                 float fullWidth = Parent.ComputedContentWidth;
-
                 float submenuHeight = 0f;
                 string foundText = "";
                 Queue<HtmlElement> queue = new Queue<HtmlElement>(Children);
@@ -52,50 +46,44 @@ namespace SiegeEngine.Core.UI
                     foreach (var c in elem.Children)
                         queue.Enqueue(c);
                 }
-
                 float finalHeight = submenuHeight + pad.X + pad.Z + borderW.X + borderW.Z;
                 if (float.IsNaN(finalHeight) || finalHeight < 28f) finalHeight = 28f;
-
                 return new Vector2(fullWidth, finalHeight);
             }
 
-            // Top-level nav items
+            // === TOP-LEVEL NAV ITEMS (File, Edit, Panels, etc.) ===
+            // Only measure direct text label. Skip dropdown <ul> child entirely (absolute-positioned, should never affect parent width).
+            // This prevents submenu text ("Terrain Creator", "Open Project...") from inflating the top-level nav items.
+            string foundText2 = "";
             float maxWidth = 0f;
             float totalHeight = 0f;
-            string foundText2 = "";
-            Queue<HtmlElement> queue2 = new Queue<HtmlElement>(Children);
-            while (queue2.Count > 0)
+            foreach (var child in Children)
             {
-                var elem = queue2.Dequeue();
-                if (elem is TextElement textElem && !string.IsNullOrWhiteSpace(textElem.Content))
+                if (child.Tag.ToLower() == "ul") continue; // explicit skip for dropdowns (the root cause)
+                if (child is TextElement textElem && !string.IsNullOrWhiteSpace(textElem.Content))
                 {
                     foundText2 = textElem.Content.Trim();
-                    Vector2 textSize = textRenderer.GetTextSize(foundText2, fs, elem.Style.FontFamily ?? Style.FontFamily ?? "Arial");
+                    Vector2 textSize = textRenderer.GetTextSize(foundText2, fs, child.Style.FontFamily ?? Style.FontFamily ?? "Arial");
                     maxWidth = Math.Max(maxWidth, textSize.X);
                     totalHeight = Math.Max(totalHeight, textSize.Y);
+                    break; // only the label text
                 }
-                foreach (var c in elem.Children)
-                    queue2.Enqueue(c);
             }
 
             Vector4 pad2 = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
             Vector4 borderW2 = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
             float finalWidth = maxWidth + pad2.W + pad2.Y + borderW2.W + borderW2.Y;
             float finalHeight2 = totalHeight + pad2.X + pad2.Z + borderW2.X + borderW2.Z;
-
-            if (float.IsNaN(finalWidth) || finalWidth < 30f) finalWidth = 120f;
+            if (float.IsNaN(finalWidth) || finalWidth < 40f) finalWidth = 72f; // reasonable minimum (text + CSS padding 0 22px)
             if (float.IsNaN(finalHeight2) || finalHeight2 < 20f) finalHeight2 = 28f;
-
             return new Vector2(finalWidth, finalHeight2);
         }
-
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             Vector2 intrinsic = ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, parentFs);
             forcedWidth = intrinsic.X;
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
         }
-
         public override bool UpdateHover(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             bool dropdownHit = false;
@@ -104,7 +92,6 @@ namespace SiegeEngine.Core.UI
             {
                 dropdownHit = dropdownUl.UpdateHover(mousePos, viewportWidth, viewportHeight);
             }
-
             bool hitOnLi = false;
             if (ComputedWidth > 0 && ComputedHeight > 0)
             {
@@ -123,7 +110,6 @@ namespace SiegeEngine.Core.UI
                 float my = 1 - 2 * mousePos.Y / viewportHeight;
                 hitOnLi = !(mx < minX || mx > maxX || my < minY || my > maxY);
             }
-
             bool hit = hitOnLi || dropdownHit;
             if (IsNavDropdownParent() || IsTopLevelNavItem())
             {
@@ -131,7 +117,6 @@ namespace SiegeEngine.Core.UI
             }
             return hit;
         }
-
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (UpdateHover(mousePos, viewportWidth, viewportHeight))
@@ -144,29 +129,22 @@ namespace SiegeEngine.Core.UI
             }
             return false;
         }
-
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
-
             var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
             if (IsNavDropdownParent() && IsHover && dropdownUl != null)
             {
-                // FIXED: Use content box start (after padding) instead of border-box start
-                // This removes the unwanted right offset caused by the parent li's 22px padding
                 float dropdownX = ComputedContentX;
                 float dropdownY = ComputedPosition.Y + ComputedHeight;
-
                 dropdownUl.Style.Display = "block";
                 dropdownUl.ComputeLayout(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, viewportWidth, viewportHeight, textRenderer, Style.FontSize);
-
                 CssStyle ulStyle = dropdownUl.Style;
                 if (ulStyle.BackgroundColor != Vector4.Zero)
                 {
                     float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(dropdownX, dropdownY, dropdownUl.ComputedWidth, dropdownUl.ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
                     quadRenderer.DrawNdcQuad(dropdownNdc, ulStyle.BackgroundColor);
                 }
-
                 renderContext.Disable(renderContext.Enums.ScissorTest);
                 dropdownUl.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, ComputedFullTransform);
                 renderContext.Enable(renderContext.Enums.ScissorTest);
@@ -175,17 +153,14 @@ namespace SiegeEngine.Core.UI
             {
                 dropdownUl.Style.Display = "none";
             }
-
             _lastHoverState = IsHover;
         }
-
         private bool IsTopLevelNavItem()
         {
             if (Parent == null || Parent.Tag.ToLower() != "ul") return false;
             HtmlElement grandParent = Parent.Parent;
             return grandParent != null && grandParent.Tag.ToLower() == "nav";
         }
-
         public bool IsNavDropdownParent()
         {
             if (Tag.ToLower() != "li") return false;
