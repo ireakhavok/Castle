@@ -264,10 +264,8 @@ namespace SiegeEngine.Core.Managers
         private int _lastWinH;
         private IPanel _draggingFloatingPanel;
         private bool _needsLayout = true;
-
         // Permanent top header (IDE menubar) - always updated/rendered first
         private IPanel _headerPanel;
-
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -315,6 +313,10 @@ namespace SiegeEngine.Core.Managers
                 _needsLayout = true;
             }
         }
+        private float GetHeaderHeight()
+        {
+            return _headerPanel != null && _headerPanel.Visible ? _headerPanel.Size.Y : 0f;
+        }
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (winW != _lastWinW || winH != _lastWinH)
@@ -333,22 +335,26 @@ namespace SiegeEngine.Core.Managers
             }
             if (_needsLayout)
             {
-                float headerH = _headerPanel != null ? _headerPanel.Size.Y : 0f;
+                float headerH = GetHeaderHeight();
                 _root.ComputeLayout(0, headerH, winW, winH - headerH);
                 _needsLayout = false;
             }
-
             // ALWAYS update the permanent header (IDE menubar) every frame
             // This fixes "nothing shows until hover"
             if (_headerPanel != null && _headerPanel.Visible)
             {
                 _headerPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             }
-
             // ABSOLUTE HIGHEST PRIORITY - drag continuation for ALL panels (including modal FileSelectorPanel)
             if (_draggingFloatingPanel != null)
             {
+                float headerH = GetHeaderHeight();
                 _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                // PHASE 1: clamp so no panel can ever go above the IDE menubar
+                if (_draggingFloatingPanel.Position.Y < headerH)
+                {
+                    _draggingFloatingPanel.Position = new Vector2(_draggingFloatingPanel.Position.X, headerH);
+                }
                 if (mouseReleased)
                 {
                     _draggingFloatingPanel = null;
@@ -418,6 +424,11 @@ namespace SiegeEngine.Core.Managers
             if (_draggingPanel != null)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
+                float headerH = GetHeaderHeight();
+                if (_draggingPanel.Position.Y < headerH)
+                {
+                    _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, headerH);
+                }
                 if (mouseReleased)
                 {
                     DockState newState = GetDockStateFromPosition(mousePos, winW, winH);
@@ -452,9 +463,10 @@ namespace SiegeEngine.Core.Managers
         }
         private DockState GetDockStateFromPosition(Vector2 mousePos, int winW, int winH)
         {
+            float headerH = GetHeaderHeight();
             if (mousePos.X < SnapDistance) return DockState.DockedLeft;
             if (mousePos.X > winW - SnapDistance) return DockState.DockedRight;
-            if (mousePos.Y < SnapDistance) return DockState.DockedTop;
+            if (mousePos.Y < headerH + SnapDistance) return DockState.DockedTop;
             if (mousePos.Y > winH - SnapDistance) return DockState.DockedBottom;
             return DockState.Floating;
         }

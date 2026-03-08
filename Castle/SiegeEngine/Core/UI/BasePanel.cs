@@ -37,7 +37,6 @@ namespace SiegeEngine.Core.UI
         protected float BaseHeight = 600f;
         public bool AllowDragging { get; set; } = true;
         protected UIQuadRenderer _quadRenderer;
-
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
