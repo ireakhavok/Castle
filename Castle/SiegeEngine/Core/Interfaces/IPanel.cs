@@ -10,7 +10,8 @@ namespace SiegeEngine.Core.Interfaces
         DockedRight,
         DockedTop,
         DockedBottom,
-        Tabbed
+        Tabbed,
+        DockedHeader
     }
     public interface IPanel
     {

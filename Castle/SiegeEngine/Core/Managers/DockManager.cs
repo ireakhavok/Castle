@@ -264,6 +264,10 @@ namespace SiegeEngine.Core.Managers
         private int _lastWinH;
         private IPanel _draggingFloatingPanel;
         private bool _needsLayout = true;
+
+        // Permanent top header (IDE menubar) - always updated/rendered first
+        private IPanel _headerPanel;
+
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -273,6 +277,13 @@ namespace SiegeEngine.Core.Managers
         }
         public void AddPanel(IPanel panel)
         {
+            if (panel.DockState == DockState.DockedHeader)
+            {
+                _headerPanel = panel;
+                panel.AllowDragging = false;
+                _needsLayout = true;
+                return;
+            }
             if (panel.DockState == DockState.Floating)
             {
                 _floatingPanels.Add(panel);
@@ -287,6 +298,12 @@ namespace SiegeEngine.Core.Managers
         }
         public void RemovePanel(IPanel panel)
         {
+            if (_headerPanel == panel)
+            {
+                _headerPanel = null;
+                _needsLayout = true;
+                return;
+            }
             if (_floatingPanels.Remove(panel))
             {
                 if (_draggingFloatingPanel == panel) _draggingFloatingPanel = null;
@@ -316,9 +333,18 @@ namespace SiegeEngine.Core.Managers
             }
             if (_needsLayout)
             {
-                _root.ComputeLayout(0, 0, winW, winH);
+                float headerH = _headerPanel != null ? _headerPanel.Size.Y : 0f;
+                _root.ComputeLayout(0, headerH, winW, winH - headerH);
                 _needsLayout = false;
             }
+
+            // ALWAYS update the permanent header (IDE menubar) every frame
+            // This fixes "nothing shows until hover"
+            if (_headerPanel != null && _headerPanel.Visible)
+            {
+                _headerPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+            }
+
             // ABSOLUTE HIGHEST PRIORITY - drag continuation for ALL panels (including modal FileSelectorPanel)
             if (_draggingFloatingPanel != null)
             {
@@ -453,6 +479,11 @@ namespace SiegeEngine.Core.Managers
         }
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
+            // Render permanent header (IDE menubar) first
+            if (_headerPanel != null && _headerPanel.Visible)
+            {
+                _headerPanel.Render();
+            }
             _root.Render(renderContext, winW, winH);
             foreach (var panel in _floatingPanels)
             {
