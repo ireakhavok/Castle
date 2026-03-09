@@ -264,8 +264,15 @@ namespace SiegeEngine.Core.Managers
         private int _lastWinH;
         private IPanel _draggingFloatingPanel;
         private bool _needsLayout = true;
-        // Permanent top header (IDE menubar) - always updated/rendered first
         private IPanel _headerPanel;
+
+        // === PHASE 2: Resizing now managed by DockManager (EXACTLY like dragging) ===
+        private IPanel _resizingPanel;
+        private ResizeHandle _activeResizeHandle = ResizeHandle.None;
+        private Vector2 _resizeStartMousePos;
+        private Vector2 _resizeStartPosition;
+        private Vector2 _resizeStartSize;
+
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -308,6 +315,7 @@ namespace SiegeEngine.Core.Managers
             if (_floatingPanels.Remove(panel))
             {
                 if (_draggingFloatingPanel == panel) _draggingFloatingPanel = null;
+                if (_resizingPanel == panel) _resizingPanel = null;
                 _needsLayout = true;
                 return;
             }
@@ -342,30 +350,37 @@ namespace SiegeEngine.Core.Managers
                 _root.ComputeLayout(0, headerH, winW, winH - headerH);
                 _needsLayout = false;
             }
-            // ALWAYS update the permanent header (IDE menubar) every frame
-            // This fixes "nothing shows until hover"
             if (_headerPanel != null && _headerPanel.Visible)
             {
                 _headerPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             }
-            // ABSOLUTE HIGHEST PRIORITY - drag continuation for ALL panels (including modal FileSelectorPanel)
+
+            // 1. Dragging (existing - highest priority)
             if (_draggingFloatingPanel != null)
             {
-                float headerH = GetHeaderHeight();
                 _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-                // PHASE 1 + 2: clamp so no panel can ever go above the IDE menubar (covers resize too)
-                if (_draggingFloatingPanel.Position.Y < headerH)
+                if (mouseReleased) _draggingFloatingPanel = null;
+                return;
+            }
+
+            // 2. Resizing (NEW - EXACTLY same pattern as dragging)
+            if (_resizingPanel != null)
+            {
+                _resizingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                float headerH = GetHeaderHeight();
+                if (_resizingPanel.Position.Y < headerH)
                 {
-                    _draggingFloatingPanel.Position = new Vector2(_draggingFloatingPanel.Position.X, headerH);
+                    _resizingPanel.Position = new Vector2(_resizingPanel.Position.X, headerH);
                 }
                 if (mouseReleased)
                 {
-                    _draggingFloatingPanel = null;
+                    _resizingPanel = null;
+                    _activeResizeHandle = ResizeHandle.None;
                 }
-                return; // Skip everything else while dragging - this is why it's smooth
+                return; // mouse capture - skip everything else
             }
+
             bool handled = false;
-            // Modal handling (FileSelectorPanel stays modal but drag works)
             IPanel topModal = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -413,6 +428,20 @@ namespace SiegeEngine.Core.Managers
                             if (overTitle)
                             {
                                 _draggingFloatingPanel = panel;
+                            }
+                            else
+                            {
+                                // PHASE 2: Try start resize (DockManager now owns it)
+                                ResizeHandle handle = panel.GetResizeHandle(mousePos);
+                                if (handle != ResizeHandle.None)
+                                {
+                                    _resizingPanel = panel;
+                                    _activeResizeHandle = handle;
+                                    _resizeStartMousePos = mousePos;
+                                    _resizeStartPosition = panel.Position;
+                                    _resizeStartSize = panel.Size;
+                                    panel.StartResize(mousePos, handle);
+                                }
                             }
                         }
                         handled = true;
@@ -494,7 +523,6 @@ namespace SiegeEngine.Core.Managers
         }
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
-            // Render permanent header (IDE menubar) first
             if (_headerPanel != null && _headerPanel.Visible)
             {
                 _headerPanel.Render();

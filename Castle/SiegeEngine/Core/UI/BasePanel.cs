@@ -37,14 +37,12 @@ namespace SiegeEngine.Core.UI
         protected float BaseHeight = 600f;
         public bool AllowDragging { get; set; } = true;
         protected UIQuadRenderer _quadRenderer;
-        // === PHASE 2: Resize grips (5px) + live preview ===
-        private enum ResizeHandle { None, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight }
-        private ResizeHandle _resizeHandle = ResizeHandle.None;
-        private bool _isResizing;
+        // PHASE 2: Only detection + execution (state owned by DockManager)
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
-        public float HeaderHeight { get; set; } = 0f;   // set by DockManager
+        private ResizeHandle _currentResizeHandle = ResizeHandle.None;
+        public float HeaderHeight { get; set; } = 0f;
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -70,7 +68,8 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
-            // Title dragging (existing)
+
+            // Dragging (existing - DockManager already owns the session)
             if (_isDragging)
             {
                 if (mouseDown)
@@ -87,84 +86,72 @@ namespace SiegeEngine.Core.UI
                     }
                     _isDragging = false;
                 }
+                return;
             }
-            // PHASE 2: Resize logic for floating panels
-            if (DockState == DockState.Floating && AllowDragging && !_isDragging)
+
+            // PHASE 2: Resize execution (only when DockManager tells us we are the active resizing panel)
+            if (_currentResizeHandle != ResizeHandle.None)
             {
-                if (_isResizing)
+                if (mouseDown)
                 {
-                    if (mouseDown)
+                    Vector2 delta = absMousePos - _resizeStartMousePos;
+                    Vector2 newPos = _resizeStartPosition;
+                    Vector2 newSize = _resizeStartSize;
+
+                    switch (_currentResizeHandle)
                     {
-                        Vector2 delta = absMousePos - _resizeStartMousePos;
-                        Vector2 newPos = _resizeStartPosition;
-                        Vector2 newSize = _resizeStartSize;
-                        switch (_resizeHandle)
-                        {
-                            case ResizeHandle.Left:
-                                newPos.X = _resizeStartPosition.X + delta.X;
-                                newSize.X = _resizeStartSize.X - delta.X;
-                                break;
-                            case ResizeHandle.Right:
-                                newSize.X = _resizeStartSize.X + delta.X;
-                                break;
-                            case ResizeHandle.Top:
-                                newPos.Y = _resizeStartPosition.Y + delta.Y;
-                                newSize.Y = _resizeStartSize.Y - delta.Y;
-                                break;
-                            case ResizeHandle.Bottom:
-                                newSize.Y = _resizeStartSize.Y + delta.Y;
-                                break;
-                            case ResizeHandle.TopLeft:
-                                newPos.X = _resizeStartPosition.X + delta.X;
-                                newSize.X = _resizeStartSize.X - delta.X;
-                                newPos.Y = _resizeStartPosition.Y + delta.Y;
-                                newSize.Y = _resizeStartSize.Y - delta.Y;
-                                break;
-                            case ResizeHandle.TopRight:
-                                newSize.X = _resizeStartSize.X + delta.X;
-                                newPos.Y = _resizeStartPosition.Y + delta.Y;
-                                newSize.Y = _resizeStartSize.Y - delta.Y;
-                                break;
-                            case ResizeHandle.BottomLeft:
-                                newPos.X = _resizeStartPosition.X + delta.X;
-                                newSize.X = _resizeStartSize.X - delta.X;
-                                newSize.Y = _resizeStartSize.Y + delta.Y;
-                                break;
-                            case ResizeHandle.BottomRight:
-                                newSize.X = _resizeStartSize.X + delta.X;
-                                newSize.Y = _resizeStartSize.Y + delta.Y;
-                                break;
-                        }
-                        // Clamp
-                        newSize.X = Math.Max(newSize.X, 200f);
-                        newSize.Y = Math.Max(newSize.Y, 150f);
-                        newPos.X = Math.Max(newPos.X, 0f);
-                        newPos.Y = Math.Max(newPos.Y, HeaderHeight);
-                        Position = newPos;
-                        Size = newSize;
-                        OnPanelResize(Size.X, Size.Y);
+                        case ResizeHandle.Left:
+                            newSize.X = _resizeStartSize.X - delta.X;
+                            newPos.X = _resizeStartPosition.X + _resizeStartSize.X - newSize.X;
+                            break;
+                        case ResizeHandle.Right:
+                            newSize.X = _resizeStartSize.X + delta.X;
+                            break;
+                        case ResizeHandle.Top:
+                            newSize.Y = _resizeStartSize.Y - delta.Y;
+                            newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
+                            break;
+                        case ResizeHandle.Bottom:
+                            newSize.Y = _resizeStartSize.Y + delta.Y;
+                            break;
+                        case ResizeHandle.TopLeft:
+                            newSize.X = _resizeStartSize.X - delta.X;
+                            newPos.X = _resizeStartPosition.X + _resizeStartSize.X - newSize.X;
+                            newSize.Y = _resizeStartSize.Y - delta.Y;
+                            newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
+                            break;
+                        case ResizeHandle.TopRight:
+                            newSize.X = _resizeStartSize.X + delta.X;
+                            newSize.Y = _resizeStartSize.Y - delta.Y;
+                            newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
+                            break;
+                        case ResizeHandle.BottomLeft:
+                            newSize.X = _resizeStartSize.X - delta.X;
+                            newPos.X = _resizeStartPosition.X + _resizeStartSize.X - newSize.X;
+                            newSize.Y = _resizeStartSize.Y + delta.Y;
+                            break;
+                        case ResizeHandle.BottomRight:
+                            newSize.X = _resizeStartSize.X + delta.X;
+                            newSize.Y = _resizeStartSize.Y + delta.Y;
+                            break;
                     }
-                    if (mouseReleased)
-                    {
-                        _isResizing = false;
-                        _resizeHandle = ResizeHandle.None;
-                    }
+
+                    newSize.X = Math.Max(newSize.X, 200f);
+                    newSize.Y = Math.Max(newSize.Y, 150f);
+                    Position = newPos;
+                    Size = newSize;
+                    OnPanelResize(Size.X, Size.Y);
                 }
-                else
+                if (mouseReleased)
                 {
-                    _resizeHandle = GetResizeHandle(absMousePos);
-                    if (_resizeHandle != ResizeHandle.None && mousePressed)
-                    {
-                        _isResizing = true;
-                        _resizeStartMousePos = absMousePos;
-                        _resizeStartPosition = Position;
-                        _resizeStartSize = Size;
-                    }
+                    _currentResizeHandle = ResizeHandle.None;
                 }
+                return;
             }
-            // Start title dragging only when clicking title bar
+
+            // Title drag start + normal UI
             bool overTitle = absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + TitleHeight;
-            if (AllowDragging && DockState == DockState.Floating && mousePressed && overTitle && _resizeHandle == ResizeHandle.None)
+            if (AllowDragging && DockState == DockState.Floating && mousePressed && overTitle)
             {
                 double currentTime = _controlContext.GetTime();
                 if (currentTime - _lastClickTime < DoubleClickTime)
@@ -185,10 +172,10 @@ namespace SiegeEngine.Core.UI
                     _lastClickTime = currentTime;
                 }
             }
-            // UI clicks only when mouse is over the panel
+
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
-            if (overPanel && !_isDragging && !_isResizing)
+            if (overPanel && !_isDragging)
             {
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
@@ -197,22 +184,29 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }
-        private ResizeHandle GetResizeHandle(Vector2 absMousePos)
+        public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {
             float left = absMousePos.X - Position.X;
             float right = Position.X + Size.X - absMousePos.X;
             float top = absMousePos.Y - Position.Y;
             float bottom = Position.Y + Size.Y - absMousePos.Y;
-            const float grip = 5f;
+            const float grip = 8f;
             if (left < grip && top < grip) return ResizeHandle.TopLeft;
             if (right < grip && top < grip) return ResizeHandle.TopRight;
             if (left < grip && bottom < grip) return ResizeHandle.BottomLeft;
             if (right < grip && bottom < grip) return ResizeHandle.BottomRight;
             if (left < grip) return ResizeHandle.Left;
             if (right < grip) return ResizeHandle.Right;
-            if (top < grip) return ResizeHandle.Top;
+            if (top < grip && top > TitleHeight) return ResizeHandle.Top;
             if (bottom < grip) return ResizeHandle.Bottom;
             return ResizeHandle.None;
+        }
+        public void StartResize(Vector2 mousePos, ResizeHandle handle)
+        {
+            _currentResizeHandle = handle;
+            _resizeStartMousePos = mousePos;
+            _resizeStartPosition = Position;
+            _resizeStartSize = Size;
         }
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
@@ -286,9 +280,8 @@ namespace SiegeEngine.Core.UI
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
-            if (!_isDragging && !_isResizing)
+            if (!_isDragging && _currentResizeHandle == ResizeHandle.None)
             {
-                // === PANEL-LEVEL SCISSOR CLIPPING FOR CONTENT AREA (below title) ===
                 _controlContext.GetWindowSize(_window, out int winW, out int winH);
                 _renderContext.Enable(_renderContext.Enums.ScissorTest);
                 int scissorX = (int)Position.X;
@@ -303,8 +296,7 @@ namespace SiegeEngine.Core.UI
             {
                 _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
             }
-            // PHASE 2: live ghost preview during resize
-            if (_isResizing)
+            if (_currentResizeHandle != ResizeHandle.None)
             {
                 _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
             }
