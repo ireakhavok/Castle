@@ -37,11 +37,11 @@ namespace SiegeEngine.Core.UI
         protected float BaseHeight = 600f;
         public bool AllowDragging { get; set; } = true;
         protected UIQuadRenderer _quadRenderer;
-        // PHASE 2: Only detection + execution (state owned by DockManager)
+        private ResizeHandle _currentResizeHandle = ResizeHandle.None;
+        // === Resize session state (sticky mouse capture like dragging) ===
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
-        private ResizeHandle _currentResizeHandle = ResizeHandle.None;
         public float HeaderHeight { get; set; } = 0f;
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -68,8 +68,6 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
-
-            // Dragging (existing - DockManager already owns the session)
             if (_isDragging)
             {
                 if (mouseDown)
@@ -88,8 +86,6 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
-
-            // PHASE 2: Resize execution (only when DockManager tells us we are the active resizing panel)
             if (_currentResizeHandle != ResizeHandle.None)
             {
                 if (mouseDown)
@@ -97,7 +93,6 @@ namespace SiegeEngine.Core.UI
                     Vector2 delta = absMousePos - _resizeStartMousePos;
                     Vector2 newPos = _resizeStartPosition;
                     Vector2 newSize = _resizeStartSize;
-
                     switch (_currentResizeHandle)
                     {
                         case ResizeHandle.Left:
@@ -135,7 +130,6 @@ namespace SiegeEngine.Core.UI
                             newSize.Y = _resizeStartSize.Y + delta.Y;
                             break;
                     }
-
                     newSize.X = Math.Max(newSize.X, 200f);
                     newSize.Y = Math.Max(newSize.Y, 150f);
                     Position = newPos;
@@ -148,8 +142,6 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
-
-            // Title drag start + normal UI
             bool overTitle = absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + TitleHeight;
             if (AllowDragging && DockState == DockState.Floating && mousePressed && overTitle)
             {
@@ -172,7 +164,6 @@ namespace SiegeEngine.Core.UI
                     _lastClickTime = currentTime;
                 }
             }
-
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
             if (overPanel && !_isDragging)
@@ -278,9 +269,14 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
+            // === GHOST PREVIEW FIRST (absolute panel space - fixes offset on large panels) ===
+            if (_currentResizeHandle != ResizeHandle.None)
+            {
+                _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
+            }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
-            if (!_isDragging && _currentResizeHandle == ResizeHandle.None)
+            if (_currentResizeHandle == ResizeHandle.None)
             {
                 _controlContext.GetWindowSize(_window, out int winW, out int winH);
                 _renderContext.Enable(_renderContext.Enums.ScissorTest);
@@ -295,10 +291,6 @@ namespace SiegeEngine.Core.UI
             else
             {
                 _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
-            }
-            if (_currentResizeHandle != ResizeHandle.None)
-            {
-                _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
             }
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
@@ -315,6 +307,11 @@ namespace SiegeEngine.Core.UI
         public virtual void OnPanelResize(float w, float h)
         {
             Size = new Vector2(w, h);
+            // === ALWAYS butt up against IDE menubar bottom (floating panels) ===
+            if (DockState == DockState.Floating && Position.Y < HeaderHeight)
+            {
+                Position = new Vector2(Position.X, HeaderHeight);
+            }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();

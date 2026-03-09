@@ -14,7 +14,6 @@ namespace SiegeEngine.Core.Interfaces
         DockedHeader
     }
 
-    // PHASE 2: Shared resize enum (used by DockManager + BasePanel for consistency)
     public enum ResizeHandle
     {
         None,
@@ -44,7 +43,6 @@ namespace SiegeEngine.Core.Interfaces
         bool IsModal { get; set; }
         float HeaderHeight { get; set; }
 
-        // PHASE 2: DockManager-controlled resize (sticky capture)
         ResizeHandle GetResizeHandle(Vector2 absMousePos);
         void StartResize(Vector2 mousePos, ResizeHandle handle);
     }

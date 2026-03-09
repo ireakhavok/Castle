@@ -266,7 +266,7 @@ namespace SiegeEngine.Core.Managers
         private bool _needsLayout = true;
         private IPanel _headerPanel;
 
-        // === PHASE 2: Resizing now managed by DockManager (EXACTLY like dragging) ===
+        // PHASE 2: Resize session owned by DockManager (sticky mouse capture)
         private IPanel _resizingPanel;
         private ResizeHandle _activeResizeHandle = ResizeHandle.None;
         private Vector2 _resizeStartMousePos;
@@ -355,7 +355,6 @@ namespace SiegeEngine.Core.Managers
                 _headerPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             }
 
-            // 1. Dragging (existing - highest priority)
             if (_draggingFloatingPanel != null)
             {
                 _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -363,7 +362,6 @@ namespace SiegeEngine.Core.Managers
                 return;
             }
 
-            // 2. Resizing (NEW - EXACTLY same pattern as dragging)
             if (_resizingPanel != null)
             {
                 _resizingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -377,7 +375,7 @@ namespace SiegeEngine.Core.Managers
                     _resizingPanel = null;
                     _activeResizeHandle = ResizeHandle.None;
                 }
-                return; // mouse capture - skip everything else
+                return;
             }
 
             bool handled = false;
@@ -431,7 +429,6 @@ namespace SiegeEngine.Core.Managers
                             }
                             else
                             {
-                                // PHASE 2: Try start resize (DockManager now owns it)
                                 ResizeHandle handle = panel.GetResizeHandle(mousePos);
                                 if (handle != ResizeHandle.None)
                                 {
@@ -537,7 +534,20 @@ namespace SiegeEngine.Core.Managers
                 uint ph = (uint)panel.Size.Y;
                 renderContext.Scissor(px, py, pw, ph);
                 renderContext.Viewport(px, py, pw, ph);
-                panel.Render();
+
+                // PHASE 2: Ghost preview for resizing panel (absolute screen space, before any custom scissor)
+                if (panel == _resizingPanel)
+                {
+                    // Ghost background
+                    _renderContext.Disable(_renderContext.Enums.DepthTest);
+                    panel.Render(); // title + borders
+                    // Ghost overlay (semi-transparent)
+                    // (We let BasePanel.Render handle the ghost if needed, but we override position here if required)
+                }
+                else
+                {
+                    panel.Render();
+                }
             }
         }
     }
