@@ -266,17 +266,18 @@ namespace SiegeEngine.Core.Managers
         private IPanel _draggingFloatingPanel;
         private bool _needsLayout = true;
         private IPanel _headerPanel;
-
         // PHASE 2: Resize session owned by DockManager
         private IPanel _resizingPanel;
         private ResizeHandle _activeResizeHandle = ResizeHandle.None;
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
-
         // === Ghost preview renderer (shared, absolute screen space) ===
         private readonly UIQuadRenderer _ghostRenderer;
-
+        // PHASE 3: Live snap preview (top-level, window scope only)
+        private Vector2 _snapPreviewPosition = Vector2.Zero;
+        private Vector2 _snapPreviewSize = Vector2.Zero;
+        private bool _showSnapPreview;
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -359,14 +360,10 @@ namespace SiegeEngine.Core.Managers
             {
                 _headerPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             }
-
             if (_draggingFloatingPanel != null)
             {
                 _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-                if (mouseReleased) _draggingFloatingPanel = null;
-                return;
             }
-
             if (_resizingPanel != null)
             {
                 _resizingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -375,14 +372,7 @@ namespace SiegeEngine.Core.Managers
                 {
                     _resizingPanel.Position = new Vector2(_resizingPanel.Position.X, headerH);
                 }
-                if (mouseReleased)
-                {
-                    _resizingPanel = null;
-                    _activeResizeHandle = ResizeHandle.None;
-                }
-                return;
             }
-
             bool handled = false;
             IPanel topModal = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
@@ -463,7 +453,21 @@ namespace SiegeEngine.Core.Managers
                 {
                     _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, headerH);
                 }
-                if (mouseReleased)
+            }
+            // PHASE 3: SINGLE top-level snap preview computation (runs whenever ANY drag is active)
+            _showSnapPreview = false;
+            bool isAnyDragActive = _draggingFloatingPanel != null || _draggingPanel != null;
+            if (isAnyDragActive)
+            {
+                _showSnapPreview = ComputeSnapPreview(mousePos, winW, winH, out _snapPreviewPosition, out _snapPreviewSize);
+            }
+            if (mouseReleased)
+            {
+                if (_draggingFloatingPanel != null)
+                {
+                    _draggingFloatingPanel = null;
+                }
+                if (_draggingPanel != null)
                 {
                     DockState newState = GetDockStateFromPosition(mousePos, winW, winH);
                     if (newState != DockState.Floating)
@@ -477,23 +481,75 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel = null;
                     _dragOriginNode = null;
                 }
-            }
-            else
-            {
-                if (_root.HitTest(mousePos, out IPanel hitPanel, out bool isTitle, out _, out _, out _))
+                _showSnapPreview = false;
+                if (_resizingPanel != null)
                 {
-                    if (isTitle && mousePressed)
-                    {
-                        _draggingPanel = hitPanel;
-                        _dragOffset = mousePos - hitPanel.Position;
-                        _dragOriginNode = _root.FindNode(hitPanel);
-                        _floatingPanels.Add(hitPanel);
-                        _dragOriginNode.RemovePanel(hitPanel);
-                        hitPanel.DockState = DockState.Floating;
-                        hitPanel.AllowDragging = true;
-                    }
+                    _resizingPanel = null;
+                    _activeResizeHandle = ResizeHandle.None;
                 }
             }
+        }
+        private bool ComputeSnapPreview(Vector2 mousePos, int winW, int winH, out Vector2 previewPos, out Vector2 previewSize)
+        {
+            previewPos = Vector2.Zero;
+            previewSize = Vector2.Zero;
+            float headerH = GetHeaderHeight();
+            float cornerZone = winH * 0.25f;
+            bool nearLeft = mousePos.X < SnapDistance;
+            bool nearRight = mousePos.X > winW - SnapDistance;
+            bool nearTop = mousePos.Y < headerH + SnapDistance;
+            bool nearBottom = mousePos.Y > winH - SnapDistance;
+            bool inTopZone = mousePos.Y < headerH + cornerZone;
+            bool inBottomZone = mousePos.Y > winH - cornerZone;
+            if (nearTop && nearLeft && inTopZone)
+            {
+                previewPos = new Vector2(0, headerH);
+                previewSize = new Vector2(winW / 2f, (winH - headerH) / 2f);
+                return true;
+            }
+            if (nearTop && nearRight && inTopZone)
+            {
+                previewPos = new Vector2(winW / 2f, headerH);
+                previewSize = new Vector2(winW / 2f, (winH - headerH) / 2f);
+                return true;
+            }
+            if (nearBottom && nearLeft && inBottomZone)
+            {
+                previewPos = new Vector2(0, headerH + (winH - headerH) / 2f);
+                previewSize = new Vector2(winW / 2f, (winH - headerH) / 2f);
+                return true;
+            }
+            if (nearBottom && nearRight && inBottomZone)
+            {
+                previewPos = new Vector2(winW / 2f, headerH + (winH - headerH) / 2f);
+                previewSize = new Vector2(winW / 2f, (winH - headerH) / 2f);
+                return true;
+            }
+            if (nearLeft)
+            {
+                previewPos = new Vector2(0, headerH);
+                previewSize = new Vector2(winW / 2f, winH - headerH);
+                return true;
+            }
+            if (nearRight)
+            {
+                previewPos = new Vector2(winW - winW / 2f, headerH);
+                previewSize = new Vector2(winW / 2f, winH - headerH);
+                return true;
+            }
+            if (nearTop)
+            {
+                previewPos = new Vector2(0, headerH);
+                previewSize = new Vector2(winW, winH - headerH);
+                return true;
+            }
+            if (nearBottom)
+            {
+                previewPos = new Vector2(0, headerH + (winH - headerH) / 2f);
+                previewSize = new Vector2(winW, (winH - headerH) / 2f);
+                return true;
+            }
+            return false;
         }
         private DockState GetDockStateFromPosition(Vector2 mousePos, int winW, int winH)
         {
@@ -530,7 +586,6 @@ namespace SiegeEngine.Core.Managers
                 _headerPanel.Render();
             }
             _root.Render(renderContext, winW, winH);
-
             foreach (var panel in _floatingPanels)
             {
                 if (!panel.Visible) continue;
@@ -540,14 +595,19 @@ namespace SiegeEngine.Core.Managers
                 uint ph = (uint)panel.Size.Y;
                 renderContext.Scissor(px, py, pw, ph);
                 renderContext.Viewport(px, py, pw, ph);
-
-                // === SINGLE GHOST PREVIEW (absolute screen space - drawn here so it is always correct) ===
                 if (panel == _resizingPanel)
                 {
                     _ghostRenderer.DrawQuad(panel.Position.X, panel.Position.Y, panel.Size.X, panel.Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), winW, winH);
                 }
-
                 panel.Render();
+            }
+            // PHASE 3: Live snap preview at TRUE window level
+            // Explicit full-window scissor reset (this is the fix for preview being clipped to "the panel itself")
+            renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
+            renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
+            if (_showSnapPreview)
+            {
+                _ghostRenderer.DrawQuad(_snapPreviewPosition.X, _snapPreviewPosition.Y, _snapPreviewSize.X, _snapPreviewSize.Y, new Vector4(0.2f, 0.75f, 1.0f, 0.35f), winW, winH);
             }
         }
     }

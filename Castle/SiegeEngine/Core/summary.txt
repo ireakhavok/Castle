@@ -656,7 +656,7 @@ Folder: Interfaces
 Folder: Managers
 - File: DockManager.cs
   - Class: DockManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
     - Fields:
       - DockNode _root
       - List<IPanel> _floatingPanels
@@ -672,15 +672,27 @@ Folder: Managers
       - IPanel _draggingFloatingPanel
       - bool _needsLayout
       - IPanel _headerPanel
+      - IPanel _resizingPanel
+      - ResizeHandle _activeResizeHandle
+      - Vector2 _resizeStartMousePos
+      - Vector2 _resizeStartPosition
+      - Vector2 _resizeStartSize
+      - UIQuadRenderer _ghostRenderer
     - Methods:
       - constructor DockManager( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
+        - Calls: UIQuadRenderer
       - void AddPanel(IPanel panel)
+        - Calls: GetHeaderHeight
       - void RemovePanel(IPanel panel)
+      - float GetHeaderHeight()
+      - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
+        - Calls: ClosePanelEvent, DockPanel, GetDockStateFromPosition, GetHeaderHeight, _dragOriginNode.RemovePanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, panel.GetResizeHandle, panel.OnPanelResize, panel.StartResize
       - DockState GetDockStateFromPosition( int winH,  int winW, Vector2 mousePos)
+        - Calls: GetHeaderHeight
       - void DockPanel( DockState state, IPanel panel)
         - Calls: newTabbed.AddPanel
       - void Render( int winH,  int winW, IRenderContext renderContext)
-        - Calls: renderContext.Scissor, renderContext.Viewport
+        - Calls: _ghostRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
 - File: GameModeManager.cs
   - Class: GameModeManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.Definitions, System
@@ -1292,6 +1304,11 @@ Folder: UI
       - float BaseWidth
       - float BaseHeight
       - UIQuadRenderer _quadRenderer
+      - ResizeHandle _currentResizeHandle
+      - Vector2 _resizeStartMousePos
+      - Vector2 _resizeStartPosition
+      - Vector2 _resizeStartSize
+      - bool IsResizing
     - Methods:
       - constructor BasePanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: CreateUIOverlay
@@ -1300,7 +1317,9 @@ Folder: UI
       - void Init()
         - Calls: UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: ApplySnap, _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI, _uiOverlay.Scroll
+        - Calls: ApplySnap, OnPanelResize, _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI, _uiOverlay.Scroll
+      - ResizeHandle GetResizeHandle(Vector2 absMousePos)
+      - void StartResize( ResizeHandle handle, Vector2 mousePos)
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
         - Calls: OnPanelResize
       - void Render()
