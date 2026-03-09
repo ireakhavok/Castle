@@ -1,9 +1,10 @@
 ﻿// Folder: SiegeEngine.Core.Managers
 // File: DockManager.cs
 using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -266,12 +267,15 @@ namespace SiegeEngine.Core.Managers
         private bool _needsLayout = true;
         private IPanel _headerPanel;
 
-        // PHASE 2: Resize session owned by DockManager (sticky mouse capture)
+        // PHASE 2: Resize session owned by DockManager
         private IPanel _resizingPanel;
         private ResizeHandle _activeResizeHandle = ResizeHandle.None;
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
+
+        // === Ghost preview renderer (shared, absolute screen space) ===
+        private readonly UIQuadRenderer _ghostRenderer;
 
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
@@ -279,6 +283,7 @@ namespace SiegeEngine.Core.Managers
             _controlContext = controlContext;
             _eventBus = eventBus;
             _root = new DockTabbedNode();
+            _ghostRenderer = new UIQuadRenderer(renderContext);
         }
         public void AddPanel(IPanel panel)
         {
@@ -525,6 +530,7 @@ namespace SiegeEngine.Core.Managers
                 _headerPanel.Render();
             }
             _root.Render(renderContext, winW, winH);
+
             foreach (var panel in _floatingPanels)
             {
                 if (!panel.Visible) continue;
@@ -535,19 +541,13 @@ namespace SiegeEngine.Core.Managers
                 renderContext.Scissor(px, py, pw, ph);
                 renderContext.Viewport(px, py, pw, ph);
 
-                // PHASE 2: Ghost preview for resizing panel (absolute screen space, before any custom scissor)
+                // === SINGLE GHOST PREVIEW (absolute screen space - drawn here so it is always correct) ===
                 if (panel == _resizingPanel)
                 {
-                    // Ghost background
-                    _renderContext.Disable(_renderContext.Enums.DepthTest);
-                    panel.Render(); // title + borders
-                    // Ghost overlay (semi-transparent)
-                    // (We let BasePanel.Render handle the ghost if needed, but we override position here if required)
+                    _ghostRenderer.DrawQuad(panel.Position.X, panel.Position.Y, panel.Size.X, panel.Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), winW, winH);
                 }
-                else
-                {
-                    panel.Render();
-                }
+
+                panel.Render();
             }
         }
     }

@@ -38,11 +38,14 @@ namespace SiegeEngine.Core.UI
         public bool AllowDragging { get; set; } = true;
         protected UIQuadRenderer _quadRenderer;
         private ResizeHandle _currentResizeHandle = ResizeHandle.None;
-        // === Resize session state (sticky mouse capture like dragging) ===
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
         public float HeaderHeight { get; set; } = 0f;
+
+        // NEW: Used by custom panels to skip 3D scene render during live resize
+        protected bool IsResizing => _currentResizeHandle != ResizeHandle.None;
+
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -269,14 +272,14 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
-            // === GHOST PREVIEW FIRST (absolute panel space - fixes offset on large panels) ===
-            if (_currentResizeHandle != ResizeHandle.None)
+            // === CLEAN SINGLE GHOST (drawn first, absolute panel space) ===
+            if (IsResizing)
             {
                 _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
-            if (_currentResizeHandle == ResizeHandle.None)
+            if (!IsResizing)
             {
                 _controlContext.GetWindowSize(_window, out int winW, out int winH);
                 _renderContext.Enable(_renderContext.Enums.ScissorTest);
@@ -307,7 +310,6 @@ namespace SiegeEngine.Core.UI
         public virtual void OnPanelResize(float w, float h)
         {
             Size = new Vector2(w, h);
-            // === ALWAYS butt up against IDE menubar bottom (floating panels) ===
             if (DockState == DockState.Floating && Position.Y < HeaderHeight)
             {
                 Position = new Vector2(Position.X, HeaderHeight);
