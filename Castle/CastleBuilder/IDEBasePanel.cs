@@ -63,7 +63,7 @@ namespace CastleBuilder
             : base(renderContext, controlContext, window, eventBus)
         {
             AllowDragging = false;
-            DockState = DockState.DockedHeader;   // ← permanent top parent
+            DockState = DockState.Tabbed;
             IsModal = false;
         }
         protected override UIOverlay CreateUIOverlay()
@@ -91,12 +91,10 @@ namespace CastleBuilder
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
-            _controlContext.GetWindowSize(_window, out int winW, out int winH);
             Vector2 relMousePos = absMousePos - Position;
             _uiOverlay.PanelWidth = Size.X;
-            _uiOverlay.PanelHeight = winH;
-            _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, winH);
-            _uiOverlay.RefreshUI();
+            _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
         }
         public override void Render()
         {

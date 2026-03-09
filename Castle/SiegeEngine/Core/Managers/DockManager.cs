@@ -265,7 +265,6 @@ namespace SiegeEngine.Core.Managers
         private int _lastWinH;
         private IPanel _draggingFloatingPanel;
         private bool _needsLayout = true;
-        private IPanel _headerPanel;
         // PHASE 2: Resize session owned by DockManager
         private IPanel _resizingPanel;
         private ResizeHandle _activeResizeHandle = ResizeHandle.None;
@@ -288,14 +287,6 @@ namespace SiegeEngine.Core.Managers
         }
         public void AddPanel(IPanel panel)
         {
-            if (panel.DockState == DockState.DockedHeader)
-            {
-                _headerPanel = panel;
-                panel.AllowDragging = false;
-                panel.HeaderHeight = GetHeaderHeight();
-                _needsLayout = true;
-                return;
-            }
             if (panel.DockState == DockState.Floating)
             {
                 _floatingPanels.Add(panel);
@@ -312,12 +303,6 @@ namespace SiegeEngine.Core.Managers
         }
         public void RemovePanel(IPanel panel)
         {
-            if (_headerPanel == panel)
-            {
-                _headerPanel = null;
-                _needsLayout = true;
-                return;
-            }
             if (_floatingPanels.Remove(panel))
             {
                 if (_draggingFloatingPanel == panel) _draggingFloatingPanel = null;
@@ -332,7 +317,7 @@ namespace SiegeEngine.Core.Managers
         }
         private float GetHeaderHeight()
         {
-            return _headerPanel != null && _headerPanel.Visible ? _headerPanel.Size.Y : 0f;
+            return 0f;
         }
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
@@ -352,13 +337,8 @@ namespace SiegeEngine.Core.Managers
             }
             if (_needsLayout)
             {
-                float headerH = GetHeaderHeight();
-                _root.ComputeLayout(0, headerH, winW, winH - headerH);
+                _root.ComputeLayout(0, 0, winW, winH);
                 _needsLayout = false;
-            }
-            if (_headerPanel != null && _headerPanel.Visible)
-            {
-                _headerPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             }
             if (_draggingFloatingPanel != null)
             {
@@ -367,10 +347,9 @@ namespace SiegeEngine.Core.Managers
             if (_resizingPanel != null)
             {
                 _resizingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-                float headerH = GetHeaderHeight();
-                if (_resizingPanel.Position.Y < headerH)
+                if (_resizingPanel.Position.Y < 0)
                 {
-                    _resizingPanel.Position = new Vector2(_resizingPanel.Position.X, headerH);
+                    _resizingPanel.Position = new Vector2(_resizingPanel.Position.X, 0);
                 }
             }
             bool handled = false;
@@ -448,10 +427,9 @@ namespace SiegeEngine.Core.Managers
             if (_draggingPanel != null)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
-                float headerH = GetHeaderHeight();
-                if (_draggingPanel.Position.Y < headerH)
+                if (_draggingPanel.Position.Y < 0)
                 {
-                    _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, headerH);
+                    _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, 0);
                 }
             }
             // PHASE 3: SINGLE top-level snap preview computation (runs whenever ANY drag is active)
@@ -493,7 +471,7 @@ namespace SiegeEngine.Core.Managers
         {
             previewPos = Vector2.Zero;
             previewSize = Vector2.Zero;
-            float headerH = GetHeaderHeight();
+            float headerH = 0f;
             float cornerZone = winH * 0.25f;
             bool nearLeft = mousePos.X < SnapDistance;
             bool nearRight = mousePos.X > winW - SnapDistance;
@@ -553,7 +531,7 @@ namespace SiegeEngine.Core.Managers
         }
         private DockState GetDockStateFromPosition(Vector2 mousePos, int winW, int winH)
         {
-            float headerH = GetHeaderHeight();
+            float headerH = 0f;
             if (mousePos.X < SnapDistance) return DockState.DockedLeft;
             if (mousePos.X > winW - SnapDistance) return DockState.DockedRight;
             if (mousePos.Y < headerH + SnapDistance) return DockState.DockedTop;
@@ -581,10 +559,6 @@ namespace SiegeEngine.Core.Managers
         }
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
-            if (_headerPanel != null && _headerPanel.Visible)
-            {
-                _headerPanel.Render();
-            }
             _root.Render(renderContext, winW, winH);
             foreach (var panel in _floatingPanels)
             {
