@@ -671,13 +671,15 @@ Folder: Managers
       - int _lastWinH
       - IPanel _draggingFloatingPanel
       - bool _needsLayout
-      - IPanel _headerPanel
       - IPanel _resizingPanel
       - ResizeHandle _activeResizeHandle
       - Vector2 _resizeStartMousePos
       - Vector2 _resizeStartPosition
       - Vector2 _resizeStartSize
       - UIQuadRenderer _ghostRenderer
+      - Vector2 _snapPreviewPosition
+      - Vector2 _snapPreviewSize
+      - bool _showSnapPreview
     - Methods:
       - constructor DockManager( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
         - Calls: UIQuadRenderer
@@ -686,9 +688,9 @@ Folder: Managers
       - void RemovePanel(IPanel panel)
       - float GetHeaderHeight()
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: ClosePanelEvent, DockPanel, GetDockStateFromPosition, GetHeaderHeight, _dragOriginNode.RemovePanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, panel.GetResizeHandle, panel.OnPanelResize, panel.StartResize
+        - Calls: ClosePanelEvent, ComputeSnapPreview, DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, panel.GetResizeHandle, panel.OnPanelResize, panel.StartResize
+      - bool ComputeSnapPreview( int winH,  int winW,  out Vector2, Vector2 mousePos)
       - DockState GetDockStateFromPosition( int winH,  int winW, Vector2 mousePos)
-        - Calls: GetHeaderHeight
       - void DockPanel( DockState state, IPanel panel)
         - Calls: newTabbed.AddPanel
       - void Render( int winH,  int winW, IRenderContext renderContext)
