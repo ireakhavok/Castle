@@ -272,15 +272,27 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
-            // === CLEAN SINGLE GHOST (drawn first, absolute panel space) ===
-            if (IsResizing)
-            {
-                _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
-            }
+
             _renderContext.Disable(_renderContext.Enums.DepthTest);
+
+            // === TITLE BAR ALWAYS VISIBLE ===
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
-            if (!IsResizing)
+
+            // === GHOST + FROZEN CONTENT DURING DRAG OR RESIZE (exactly like before) ===
+            if (_isDragging || IsResizing)
             {
+                // Gray overlay (the "graying that stuff out" you want)
+                _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
+
+                // Single ghost preview (absolute panel space)
+                if (IsResizing)
+                {
+                    _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
+                }
+            }
+            else
+            {
+                // Normal UI content with scissor
                 _controlContext.GetWindowSize(_window, out int winW, out int winH);
                 _renderContext.Enable(_renderContext.Enums.ScissorTest);
                 int scissorX = (int)Position.X;
@@ -291,15 +303,14 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Render();
                 _renderContext.Disable(_renderContext.Enums.ScissorTest);
             }
-            else
-            {
-                _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
-            }
+
+            // Borders
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
             _quadRenderer.DrawQuad(0, Size.Y - bw, Size.X, bw, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
+
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
         public virtual void Dispose()
