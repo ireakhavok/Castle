@@ -7,6 +7,7 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
@@ -44,6 +45,16 @@ namespace SiegeEngine.Core.UI
         public float HeaderHeight { get; set; } = 0f;
         protected bool IsResizing => _currentResizeHandle != ResizeHandle.None;
         public virtual bool WantsContinuousUpdate => false;
+
+        // === DOCKING CONTROL ===
+        // true = can dock to edges and other panels (default for editor panels)
+        // false = can still float, be dragged, and resized freely, but will NEVER snap to edges or other panels
+        private bool _dockable = true;
+        public virtual bool Dockable
+        {
+            get => _dockable;
+            set => _dockable = value;
+        }
 
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {

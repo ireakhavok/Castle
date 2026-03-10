@@ -489,6 +489,7 @@ Folder: SiegeEngine
       - Vector2 _resizeStartPosition
       - Vector2 _resizeStartSize
       - bool IsResizing
+      - bool _dockable
     - Methods:
       - constructor BasePanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: CreateUIOverlay
@@ -497,7 +498,7 @@ Folder: SiegeEngine
       - void Init()
         - Calls: UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: ApplySnap, OnPanelResize, _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI, _uiOverlay.Scroll
+        - Calls: ApplySnap, OnLiveResize, OnPanelResize, _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI, _uiOverlay.Scroll
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
@@ -508,6 +509,7 @@ Folder: SiegeEngine
       - void Detach()
       - void OnPanelResize( float h, float w)
         - Calls: _uiOverlay.RefreshUI
+      - void OnLiveResize( float h, float w)
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
@@ -568,6 +570,21 @@ Folder: SiegeEngine
         - Calls: ChangePerspective, UpdateCamera, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.SetInputMode
       - void ChangePerspective()
       - void UpdateCamera()
+- File: CaptureManager.cs
+  - Class: CaptureManager (Namespace: SiegeEngine.Core.Managers)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System.Numerics
+    - Fields:
+      - IControlContext _controlContext
+      - IPanel _currentOwner
+      - IPanel CurrentOwner
+      - bool IsCapturing
+    - Methods:
+      - constructor CaptureManager(IControlContext controlContext)
+      - void RequestCapture(IPanel panel)
+        - Calls: ReleaseCapture, Viewport, _controlContext.PushViewport
+      - void ReleaseCapture()
+        - Calls: _controlContext.PopViewport
+      - void Update( Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta, float deltaTime)
 - File: ClientGameServerProxy.cs
   - Class: ClientGameServerProxy (Namespace: SiegeEngine.Core.Networking)
     - Inherits: IGameServer
@@ -1052,7 +1069,7 @@ Folder: SiegeEngine
       - constructor FlyCameraController( IntPtr window, IControlContext controlContext)
         - Calls: UpdateCamera
       - void Update( bool isGameActive,  float scrollDelta, float deltaTime)
-        - Calls: UpdateCamera, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.GetWindowSize, _controlContext.SetCursorPos, _controlContext.SetInputMode
+        - Calls: UpdateCamera, _controlContext.GetCurrentViewport, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.SetCursorPos, _controlContext.SetInputMode
       - void UpdateCamera()
 - File: GameActionConfig.cs
   - Class: SwitchMenuEvent (Namespace: SiegeEngine.PlayerSystem)
@@ -1119,9 +1136,11 @@ Folder: SiegeEngine
   - Class: GlfwControlContext (Namespace: SiegeEngine.Core.ContextManagement)
     - Inherits: IControlContext
     
-    - Dependencies: SiegeEngine.Core.Definitions, Silk.NET.GLFW, System
+    - Dependencies: SiegeEngine.Core.Definitions, Silk.NET.GLFW, System, System.Collections.Generic
     - Fields:
       - Glfw _glfw
+      - Stack<Viewport> _viewportStack
+      - nint _mainWindow
     - Methods:
       - constructor GlfwControlContext(Glfw glfw)
       - void SetCursorPosCallback(CursorPosCallback callback, nint window)
@@ -1144,6 +1163,11 @@ Folder: SiegeEngine
       - void SwapBuffers(nint window)
       - void GetWindowSize( out int, nint window)
       - double GetTime()
+      - void PushViewport(Viewport viewport)
+      - void PopViewport()
+      - Viewport GetCurrentViewport()
+        - Calls: GetWindowSize
+      - window GetWindowSize( out int)
       - Key MapGlfwKey(Keys glfwKey)
       - Keys MapEngineKey(Key engineKey)
       - MouseButton MapGlfwMouseButton(MouseButton glfwButton)
@@ -1787,9 +1811,10 @@ Folder: SiegeEngine
       - bool _prevMouseDown
       - List<IPanel> _panels
       - float _scrollDelta
+      - CaptureManager _captureManager
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: DockManager, _controlContext.SetScrollCallback
+        - Calls: CaptureManager, DockManager, _controlContext.SetScrollCallback
       - void OnOpenPanel(OpenPanelEvent e)
         - Calls: AddPanel
       - void OnClosePanel(ClosePanelEvent e)
@@ -1801,7 +1826,7 @@ Folder: SiegeEngine
       - void Render()
         - Calls: _controlContext.GetWindowSize, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
-        - Calls: panel.Detach, panel.Dispose
+        - Calls: _captureManager.ReleaseCapture, panel.Detach, panel.Dispose
 - File: PhysicsCollisionEvent.cs
   - Class: PhysicsCollisionEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -2565,6 +2590,13 @@ Folder: SiegeEngine
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer
       - void UpdateVerticesPartial( int startVertexIndex,  int vertexCount, List<float> vertices)
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferSubData
+- File: Viewport.cs
+  - Class: Viewport (Namespace: SiegeEngine.Core.ContextManagement)
+    - Dependencies: System.Numerics
+    - Fields:
+      - Vector2 Center
+    - Methods:
+      - constructor Viewport( float height,  float width,  float y, float x)
 - File: VulkanNative.cs
   - Class: VkDeviceCreateInfo (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: System, System.Runtime.InteropServices

@@ -9,6 +9,7 @@ using System;
 using System.IO;
 using System.Numerics;
 using System.Reflection;
+
 namespace CastleBuilder
 {
     public class IDEBasePanel : BasePanel
@@ -59,6 +60,7 @@ namespace CastleBuilder
                 }
             }
         }
+
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -66,16 +68,19 @@ namespace CastleBuilder
             DockState = DockState.Tabbed;
             IsModal = false;
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new IDEUIOverlay(_renderContext, _controlContext, _window, _eventBus);
         }
+
         public override void Init()
         {
             base.Init();
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             Size = new Vector2(winW, 28f);
             Position = Vector2.Zero;
+
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))
             {
@@ -88,14 +93,21 @@ namespace CastleBuilder
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
+
             Vector2 relMousePos = absMousePos - Position;
+
+            // Force full refresh on every frame for the top menu bar (ensures hover works on first mouse move)
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();                     // <-- this line fixes the "only after click" problem
+
             _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
         }
+
         public override void Render()
         {
             if (!Visible) return;
@@ -111,6 +123,7 @@ namespace CastleBuilder
             _uiOverlay.Render();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
+
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
