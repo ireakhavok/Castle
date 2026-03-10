@@ -11,7 +11,6 @@ using SiegeEngine.Systems;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Scenes
 {
     public abstract class Scene : IDisposable
@@ -21,17 +20,12 @@ namespace SiegeEngine.Scenes
         protected readonly IntPtr _window;
         protected readonly IGameServer _server;
         protected readonly EventBus _eventBus;
-
         protected int _width;
         protected int _height;
         protected bool _disposed;
-
         protected readonly List<GameSystem> _systems = new List<GameSystem>();
         protected Player _player;
-
-        // Shared renderer for all model rendering (removes duplication)
         protected ModelRenderer _modelRenderer;
-
         public Scene(IRenderContext renderContext, IControlContext controlContext, IntPtr window, IGameServer server, EventBus eventBus)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
@@ -39,12 +33,9 @@ namespace SiegeEngine.Scenes
             _window = window;
             _server = server ?? throw new ArgumentNullException(nameof(server));
             _eventBus = eventBus;
-
             _modelRenderer = new ModelRenderer(_renderContext);
         }
-
         public void SetPlayer(Player player) => _player = player;
-
         public virtual void Initialize(int width, int height)
         {
             _width = width;
@@ -52,17 +43,14 @@ namespace SiegeEngine.Scenes
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
             _modelRenderer.Initialize();
         }
-
         public virtual void Resize(int width, int height)
         {
             _width = width;
             _height = height;
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
         }
-
         public virtual void Update(float deltaTime)
         {
             foreach (var system in _systems)
@@ -74,30 +62,21 @@ namespace SiegeEngine.Scenes
                 system.Update(deltaTime);
             }
         }
-
         public virtual void Render(IReadOnlyList<Entity> entities)
         {
             if (_disposed) return;
-
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-
             Matrix4x4 view = _player?.Camera?.ViewMatrix ?? Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, 0.1f, 1000f);
-
             RenderContent(entities, view, projection);
         }
-
-        // Derived scenes override this instead of the full Render method
         protected virtual void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            // Default does nothing. Override in derived scenes.
         }
-
         public virtual void AddSystem(GameSystem system)
         {
             _systems.Add(system);
         }
-
         public virtual void Dispose()
         {
             if (_disposed) return;

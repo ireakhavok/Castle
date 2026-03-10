@@ -213,7 +213,6 @@ namespace MapRoom
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
 
-            // === OPTION C: Push/Pop the panel content viewport ===
             if (_cameraMode)
             {
                 var contentViewport = new Viewport(Position.X, Position.Y + TitleHeight, Size.X, Size.Y - TitleHeight);
@@ -253,6 +252,10 @@ namespace MapRoom
             _terrainScene.Render(null);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             base.Render();
+        }
+        public override void OnLiveResize(float w, float h)
+        {
+            _terrainScene.Resize((int)w, (int)h);
         }
         public override void Dispose()
         {

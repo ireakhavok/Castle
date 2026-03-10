@@ -1,5 +1,5 @@
 ﻿// Folder: ReadingChamber
-// File: AnimationViewerPanel.cs (updated)
+// File: AnimationViewerPanel.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -185,14 +185,11 @@ namespace ReadingChamber
         public override void Render()
         {
             if (!Visible) return;
-
-            // SKIP 3D SCENE RENDER DURING LIVE RESIZE (prevents the "second ghost")
             if (IsResizing)
             {
                 base.Render();
                 return;
             }
-
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
@@ -214,6 +211,10 @@ namespace ReadingChamber
             base.Render();
             string frameInfo = _viewerScene.GetFrameInfo();
             _textRenderer.RenderText(frameInfo, 10, TitleHeight + 10, (int)Size.X, (int)Size.Y, 12f);
+        }
+        public override void OnLiveResize(float w, float h)
+        {
+            _viewerScene.Resize((int)w, (int)h);
         }
         public override void Dispose()
         {
