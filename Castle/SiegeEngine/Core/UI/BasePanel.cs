@@ -7,6 +7,7 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
@@ -42,9 +43,10 @@ namespace SiegeEngine.Core.UI
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
         public float HeaderHeight { get; set; } = 0f;
-
-        // NEW: Used by custom panels to skip 3D scene render during live resize
         protected bool IsResizing => _currentResizeHandle != ResizeHandle.None;
+
+        // === NEW: Continuous Update Support (for animations, 3D scenes, etc.) ===
+        public virtual bool WantsContinuousUpdate => false;
 
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -54,10 +56,12 @@ namespace SiegeEngine.Core.UI
             _eventBus = eventBus;
             _uiOverlay = CreateUIOverlay();
         }
+
         protected virtual UIOverlay CreateUIOverlay()
         {
             return new UIOverlay(_renderContext, _controlContext, _window);
         }
+
         public virtual void Init()
         {
             _uiOverlay.Init();
@@ -68,9 +72,11 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
+
             if (_isDragging)
             {
                 if (mouseDown)
@@ -89,6 +95,7 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
+
             if (_currentResizeHandle != ResizeHandle.None)
             {
                 if (mouseDown)
@@ -145,6 +152,7 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
+
             bool overTitle = absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + TitleHeight;
             if (AllowDragging && DockState == DockState.Floating && mousePressed && overTitle)
             {
@@ -167,9 +175,12 @@ namespace SiegeEngine.Core.UI
                     _lastClickTime = currentTime;
                 }
             }
+
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
-            if (overPanel && !_isDragging)
+
+            // === NEW: Continuous Update for animations / 3D scenes ===
+            if (overPanel || WantsContinuousUpdate)
             {
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
@@ -178,6 +189,7 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }
+
         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {
             float left = absMousePos.X - Position.X;
@@ -195,6 +207,7 @@ namespace SiegeEngine.Core.UI
             if (bottom < grip) return ResizeHandle.Bottom;
             return ResizeHandle.None;
         }
+
         public void StartResize(Vector2 mousePos, ResizeHandle handle)
         {
             _currentResizeHandle = handle;
@@ -202,6 +215,7 @@ namespace SiegeEngine.Core.UI
             _resizeStartPosition = Position;
             _resizeStartSize = Size;
         }
+
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
             float cornerZone = winH * 0.25f;
@@ -261,6 +275,7 @@ namespace SiegeEngine.Core.UI
             Size = newSize;
             OnPanelResize(newSize.X, newSize.Y);
         }
+
         public virtual void Render()
         {
             if (!Visible) return;
@@ -272,19 +287,11 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
-
             _renderContext.Disable(_renderContext.Enums.DepthTest);
-
-            // === TITLE BAR ALWAYS VISIBLE ===
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
-
-            // === GHOST + FROZEN CONTENT DURING DRAG OR RESIZE (exactly like before) ===
             if (_isDragging || IsResizing)
             {
-                // Gray overlay (the "graying that stuff out" you want)
                 _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
-
-                // Single ghost preview (absolute panel space)
                 if (IsResizing)
                 {
                     _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
@@ -292,7 +299,6 @@ namespace SiegeEngine.Core.UI
             }
             else
             {
-                // Normal UI content with scissor
                 _controlContext.GetWindowSize(_window, out int winW, out int winH);
                 _renderContext.Enable(_renderContext.Enums.ScissorTest);
                 int scissorX = (int)Position.X;
@@ -303,16 +309,14 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Render();
                 _renderContext.Disable(_renderContext.Enums.ScissorTest);
             }
-
-            // Borders
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
             _quadRenderer.DrawQuad(0, Size.Y - bw, Size.X, bw, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
-
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
+
         public virtual void Dispose()
         {
             _uiOverlay.Dispose();

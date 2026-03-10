@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json.Serialization;
+
 namespace SiegeEngine.Core.Managers
 {
     [JsonDerivedType(typeof(DockSplitNode), "split")]
@@ -25,6 +26,7 @@ namespace SiegeEngine.Core.Managers
         public abstract bool RemovePanel(IPanel panel);
         public abstract DockNode FindNode(IPanel panel);
     }
+
     public class DockSplitNode : DockNode
     {
         public DockNode Left { get; set; }
@@ -33,6 +35,7 @@ namespace SiegeEngine.Core.Managers
         public bool IsVertical { get; set; }
         private bool _draggingSplitter;
         private float _splitterSize = 5f;
+
         public override void ComputeLayout(float x, float y, float w, float h)
         {
             Rect = new Vector4(x, y, w, h);
@@ -50,6 +53,7 @@ namespace SiegeEngine.Core.Managers
                 Right.ComputeLayout(x + splitX, y, w - splitX, h);
             }
         }
+
         public override bool HitTest(Vector2 mousePos, out IPanel hitPanel, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex)
         {
             hitPanel = null;
@@ -83,6 +87,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus)
         {
             if (Left.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus))
@@ -112,11 +117,13 @@ namespace SiegeEngine.Core.Managers
                 _draggingSplitter = false;
             return false;
         }
+
         public override void Render(IRenderContext renderContext, int winW, int winH)
         {
             Left.Render(renderContext, winW, winH);
             Right.Render(renderContext, winW, winH);
         }
+
         public override void AddPanel(IPanel panel)
         {
             if (Right == null)
@@ -125,6 +132,7 @@ namespace SiegeEngine.Core.Managers
             }
             Right.AddPanel(panel);
         }
+
         public override bool RemovePanel(IPanel panel)
         {
             if (Left.RemovePanel(panel))
@@ -145,6 +153,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override DockNode FindNode(IPanel panel)
         {
             var leftNode = Left.FindNode(panel);
@@ -154,11 +163,13 @@ namespace SiegeEngine.Core.Managers
             return null;
         }
     }
+
     public class DockTabbedNode : DockNode
     {
         public List<IPanel> Panels { get; set; } = new List<IPanel>();
         public int ActiveIndex { get; set; } = -1;
         private float _titleHeight = 20f;
+
         public override void ComputeLayout(float x, float y, float w, float h)
         {
             Rect = new Vector4(x, y, w, h);
@@ -169,6 +180,7 @@ namespace SiegeEngine.Core.Managers
                 panel.OnPanelResize(w, h);
             }
         }
+
         public override bool HitTest(Vector2 mousePos, out IPanel hitPanel, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex)
         {
             hitPanel = null;
@@ -197,6 +209,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus)
         {
             if (HitTest(mousePos, out IPanel hit, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex))
@@ -214,6 +227,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override void Render(IRenderContext renderContext, int winW, int winH)
         {
             if (ActiveIndex < 0 || ActiveIndex >= Panels.Count) return;
@@ -225,11 +239,13 @@ namespace SiegeEngine.Core.Managers
             renderContext.Viewport(px, py, pw, ph);
             Panels[ActiveIndex].Render();
         }
+
         public override void AddPanel(IPanel panel)
         {
             Panels.Add(panel);
             ActiveIndex = Panels.Count - 1;
         }
+
         public override bool RemovePanel(IPanel panel)
         {
             int idx = Panels.IndexOf(panel);
@@ -244,12 +260,14 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override DockNode FindNode(IPanel panel)
         {
             if (Panels.Contains(panel)) return this;
             return null;
         }
     }
+
     public class DockManager
     {
         private DockNode _root;
@@ -265,18 +283,16 @@ namespace SiegeEngine.Core.Managers
         private int _lastWinH;
         private IPanel _draggingFloatingPanel;
         private bool _needsLayout = true;
-        // PHASE 2: Resize session owned by DockManager
         private IPanel _resizingPanel;
         private ResizeHandle _activeResizeHandle = ResizeHandle.None;
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
-        // === Ghost preview renderer (shared, absolute screen space) ===
         private readonly UIQuadRenderer _ghostRenderer;
-        // PHASE 3: Live snap preview (top-level, window scope only)
         private Vector2 _snapPreviewPosition = Vector2.Zero;
         private Vector2 _snapPreviewSize = Vector2.Zero;
         private bool _showSnapPreview;
+
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -285,6 +301,7 @@ namespace SiegeEngine.Core.Managers
             _root = new DockTabbedNode();
             _ghostRenderer = new UIQuadRenderer(renderContext);
         }
+
         public void AddPanel(IPanel panel)
         {
             if (panel.DockState == DockState.Floating)
@@ -301,6 +318,7 @@ namespace SiegeEngine.Core.Managers
             }
             _needsLayout = true;
         }
+
         public void RemovePanel(IPanel panel)
         {
             if (_floatingPanels.Remove(panel))
@@ -315,10 +333,12 @@ namespace SiegeEngine.Core.Managers
                 _needsLayout = true;
             }
         }
+
         private float GetHeaderHeight()
         {
             return 0f;
         }
+
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (winW != _lastWinW || winH != _lastWinH)
@@ -340,6 +360,7 @@ namespace SiegeEngine.Core.Managers
                 _root.ComputeLayout(0, 0, winW, winH);
                 _needsLayout = false;
             }
+
             if (_draggingFloatingPanel != null)
             {
                 _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -352,6 +373,7 @@ namespace SiegeEngine.Core.Managers
                     _resizingPanel.Position = new Vector2(_resizingPanel.Position.X, 0);
                 }
             }
+
             bool handled = false;
             IPanel topModal = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
@@ -383,6 +405,7 @@ namespace SiegeEngine.Core.Managers
                 }
                 handled = true;
             }
+
             if (!handled)
             {
                 for (int i = _floatingPanels.Count - 1; i >= 0; i--)
@@ -420,10 +443,12 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
+
             if (!handled)
             {
                 _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
             }
+
             if (_draggingPanel != null)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -432,13 +457,14 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, 0);
                 }
             }
-            // PHASE 3: SINGLE top-level snap preview computation (runs whenever ANY drag is active)
+
             _showSnapPreview = false;
             bool isAnyDragActive = _draggingFloatingPanel != null || _draggingPanel != null;
             if (isAnyDragActive)
             {
                 _showSnapPreview = ComputeSnapPreview(mousePos, winW, winH, out _snapPreviewPosition, out _snapPreviewSize);
             }
+
             if (mouseReleased)
             {
                 if (_draggingFloatingPanel != null)
@@ -467,6 +493,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
+
         private bool ComputeSnapPreview(Vector2 mousePos, int winW, int winH, out Vector2 previewPos, out Vector2 previewSize)
         {
             previewPos = Vector2.Zero;
@@ -529,6 +556,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         private DockState GetDockStateFromPosition(Vector2 mousePos, int winW, int winH)
         {
             float headerH = 0f;
@@ -538,6 +566,7 @@ namespace SiegeEngine.Core.Managers
             if (mousePos.Y > winH - SnapDistance) return DockState.DockedBottom;
             return DockState.Floating;
         }
+
         private void DockPanel(IPanel panel, DockState state)
         {
             DockSplitNode split = new DockSplitNode();
@@ -557,6 +586,7 @@ namespace SiegeEngine.Core.Managers
             _root = split;
             _needsLayout = true;
         }
+
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             _root.Render(renderContext, winW, winH);
@@ -575,8 +605,6 @@ namespace SiegeEngine.Core.Managers
                 }
                 panel.Render();
             }
-            // PHASE 3: Live snap preview at TRUE window level
-            // Explicit full-window scissor reset (this is the fix for preview being clipped to "the panel itself")
             renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
             if (_showSnapPreview)
