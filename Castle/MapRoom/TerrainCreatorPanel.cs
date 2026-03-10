@@ -242,12 +242,13 @@ namespace MapRoom
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
+            var contentRect = GetContentRect();
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             _renderContext.Enable(_renderContext.Enums.ScissorTest);
-            int scissorX = (int)Position.X;
-            int scissorY = winH - (int)(Position.Y + Size.Y) + (int)TitleHeight;
-            uint scissorW = (uint)Size.X;
-            uint scissorH = (uint)(Size.Y - TitleHeight);
+            int scissorX = (int)contentRect.X;
+            int scissorY = winH - (int)(contentRect.Y + contentRect.Height);
+            uint scissorW = (uint)contentRect.Width;
+            uint scissorH = (uint)contentRect.Height;
             _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
             _terrainScene.Render(null);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);

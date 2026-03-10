@@ -44,6 +44,7 @@ namespace SiegeEngine.Core.UI
         public float HeaderHeight { get; set; } = 0f;
         protected bool IsResizing => _currentResizeHandle != ResizeHandle.None;
         public virtual bool WantsContinuousUpdate => false;
+
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -136,7 +137,6 @@ namespace SiegeEngine.Core.UI
                     Position = newPos;
                     Size = newSize;
                     OnPanelResize(Size.X, Size.Y);
-                    // === NEW: Live resize notification for 3D scenes ===
                     OnLiveResize(Size.X, Size.Y);
                 }
                 if (mouseReleased)
@@ -284,12 +284,13 @@ namespace SiegeEngine.Core.UI
             }
             else
             {
+                var contentRect = GetContentRect();
                 _controlContext.GetWindowSize(_window, out int winW, out int winH);
                 _renderContext.Enable(_renderContext.Enums.ScissorTest);
-                int scissorX = (int)Position.X;
-                int scissorY = winH - (int)(Position.Y + Size.Y);
-                uint scissorW = (uint)Size.X;
-                uint scissorH = (uint)(Size.Y - TitleHeight);
+                int scissorX = (int)contentRect.X;
+                int scissorY = winH - (int)(contentRect.Y + contentRect.Height);
+                uint scissorW = (uint)contentRect.Width;
+                uint scissorH = (uint)contentRect.Height;
                 _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
                 _uiOverlay.Render();
                 _renderContext.Disable(_renderContext.Enums.ScissorTest);
@@ -300,6 +301,10 @@ namespace SiegeEngine.Core.UI
             _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+        }
+        protected (float X, float Y, float Width, float Height) GetContentRect()
+        {
+            return (Position.X, Position.Y + TitleHeight, Size.X, Size.Y - TitleHeight);
         }
         public virtual void Dispose()
         {
@@ -317,10 +322,9 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-        // === NEW: Live resize hook called every frame during drag-resize ===
         public virtual void OnLiveResize(float w, float h)
         {
-            // Default does nothing. Derived panels override to update 3D scenes live.
+            // Derived panels override this to update their 3D scene live during drag-resize
         }
     }
 }
