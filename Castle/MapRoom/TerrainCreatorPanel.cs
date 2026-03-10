@@ -1,5 +1,5 @@
 ﻿// Folder: MapRoom
-// File: TerrainCreatorPanel.cs (updated)
+// File: TerrainCreatorPanel.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -13,6 +13,7 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using ToolChest;
+
 namespace MapRoom
 {
     public class TerrainCreatorPanel : BasePanel
@@ -208,21 +209,31 @@ namespace MapRoom
                 _lastTab = false;
             }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
+
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
+
+            // === OPTION C: Push/Pop the panel content viewport ===
+            if (_cameraMode)
+            {
+                var contentViewport = new Viewport(Position.X, Position.Y + TitleHeight, Size.X, Size.Y - TitleHeight);
+                _controlContext.PushViewport(contentViewport);
+            }
+            else
+            {
+                _controlContext.PopViewport();
+            }
+
             _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
         }
         public override void Render()
         {
             if (!Visible) return;
-
-            // SKIP 3D SCENE RENDER DURING LIVE RESIZE (prevents the "second ghost")
             if (IsResizing)
             {
                 base.Render();
                 return;
             }
-
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
