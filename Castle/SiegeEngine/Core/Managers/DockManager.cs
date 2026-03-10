@@ -412,6 +412,11 @@ namespace SiegeEngine.Core.Managers
                 {
                     var panel = _floatingPanels[i];
                     if (!panel.Visible || panel.IsModal) continue;
+
+                    // === FIXED: Skip the panel if it is currently being dragged by title bar ===
+                    // This eliminates the double Update() call that was making animations run twice as fast
+                    if (panel == _draggingFloatingPanel) continue;
+
                     Vector2 rel = mousePos - panel.Position;
                     bool over = rel.X >= 0 && rel.X <= panel.Size.X && rel.Y >= 0 && rel.Y <= panel.Size.Y;
                     if (over)
