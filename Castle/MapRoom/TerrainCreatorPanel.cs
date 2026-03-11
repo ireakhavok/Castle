@@ -16,7 +16,7 @@ using ToolChest;
 
 namespace MapRoom
 {
-    public class TerrainCreatorPanel : BasePanel
+    public class TerrainCreatorPanel : ClosablePanel
     {
         private static IRenderContext _staticRenderContext;
         private static IControlContext _staticControlContext;

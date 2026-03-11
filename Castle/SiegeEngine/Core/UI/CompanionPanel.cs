@@ -10,7 +10,7 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.UI
 {
-    public class CompanionPanel : BasePanel
+    public class CompanionPanel : ClosablePanel
     {
         public IPanel AttachedTo { get; set; } = null;
         public bool IsResizable { get; set; } = true; // for future splitter support

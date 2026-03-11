@@ -13,7 +13,7 @@ using SiegeEngine.Core.UI;
 
 namespace ReadingChamber
 {
-    public class FileSelectorPanel : BasePanel
+    public class FileSelectorPanel : ClosablePanel
     {
         private class FileSelectorUIOverlay : UIOverlay
         {

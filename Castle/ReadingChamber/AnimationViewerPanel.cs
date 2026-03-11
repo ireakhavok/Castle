@@ -20,7 +20,7 @@ using System.Numerics;
 using System.Text;
 namespace ReadingChamber
 {
-    public unsafe class AnimationViewerPanel : BasePanel
+    public unsafe class AnimationViewerPanel : ClosablePanel
     {
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
