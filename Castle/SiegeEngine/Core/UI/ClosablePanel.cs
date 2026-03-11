@@ -48,17 +48,29 @@ namespace SiegeEngine.Core.UI
         {
             if (!Visible) return;
 
-            // Draw everything from BasePanel first (title bar background, content, borders)
+            // Draw everything from BasePanel first (title bar background, content, borders, HTML UI)
             base.Render();
 
-            // === CLEAN BLACK X - drawn LAST using new DrawLine helper ===
+            // === CLEAN BLACK X - drawn LAST with exact title bar background color + robust state ===
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.Blend);
+            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+
+            // Tiny background rect exactly matching title bar color so X is always visible
+            float btnX = Size.X - 26f;
+            float btnY = 3f;
+            float btnW = 20f;
+            float btnH = TitleHeight - 6f;
+            _quadRenderer.DrawQuad(btnX, btnY, btnW, btnH, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
+
+            // The X itself (two diagonals)
             float closeX = Size.X - 24f;
-            float closeY = (TitleHeight - 14f) * 0.5f; // vertically centered
+            float closeY = (TitleHeight - 14f) * 0.5f;
             float len = 14f;
-            float thick = 2f;
+            float thick = 2.5f;
             Vector4 black = new Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
-            // Diagonal 1: top-left  → bottom-right
+            // Diagonal 1: top-left → bottom-right
             _quadRenderer.DrawLine(
                 closeX, closeY,
                 closeX + len, closeY + len,
@@ -69,6 +81,8 @@ namespace SiegeEngine.Core.UI
                 closeX + len, closeY,
                 closeX, closeY + len,
                 thick, black, Size.X, Size.Y);
+
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
     }
 }
