@@ -33,7 +33,6 @@ namespace SiegeEngine.Core.UI
                 float closeX = Position.X + Size.X - 24f;
                 bool overClose = absMousePos.X >= closeX && absMousePos.X <= Position.X + Size.X &&
                                  absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + TitleHeight;
-
                 if (overClose)
                 {
                     _eventBus.Publish(new ClosePanelEvent(this));
@@ -52,19 +51,24 @@ namespace SiegeEngine.Core.UI
             // Draw everything from BasePanel first (title bar background, content, borders)
             base.Render();
 
-            // === CLEAN BLACK X - drawn LAST to guarantee it's on top ===
-            float closeX = Size.X - 23f;
-            float closeY = 4f;
+            // === CLEAN BLACK X - drawn LAST using new DrawLine helper ===
+            float closeX = Size.X - 24f;
+            float closeY = (TitleHeight - 14f) * 0.5f; // vertically centered
             float len = 14f;
             float thick = 2f;
-
             Vector4 black = new Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
-            // Diagonal 1: top-left to bottom-right (positive width/height)
-            _quadRenderer.DrawQuad(closeX + 2, closeY + 2, len - 3, thick, black, Size.X, Size.Y);
+            // Diagonal 1: top-left  → bottom-right
+            _quadRenderer.DrawLine(
+                closeX, closeY,
+                closeX + len, closeY + len,
+                thick, black, Size.X, Size.Y);
 
-            // Diagonal 2: top-right to bottom-left (positive width/height)
-            _quadRenderer.DrawQuad(closeX + len - 1, closeY + 2, -(len - 3), thick, black, Size.X, Size.Y);
+            // Diagonal 2: top-right → bottom-left
+            _quadRenderer.DrawLine(
+                closeX + len, closeY,
+                closeX, closeY + len,
+                thick, black, Size.X, Size.Y);
         }
     }
 }
