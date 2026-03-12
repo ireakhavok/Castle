@@ -337,7 +337,7 @@ Found 4 dependencies
 Found: IDEBasePanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
-Read 4903 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
+Read 5136 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
 Namespace: CastleBuilder
 Found 9 dependencies
 Found: IDE_UI.html
@@ -497,7 +497,7 @@ Found: summarize_log.txt
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
-Read 11927 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Read 11931 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 13 dependencies
 Found: TerrainCreatorScene.cs
@@ -535,7 +535,7 @@ Found: ..
 Found: AnimationViewerPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
-Read 9929 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
+Read 9951 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Namespace: ReadingChamber
 Found 18 dependencies
 Found: AssetViewerUI.html
@@ -544,7 +544,7 @@ Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Read
 Found: FileSelectorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
-Read 10212 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Read 10216 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Namespace: ReadingChamber
 Found 10 dependencies
 Found: FileSelectorTemplate.html
@@ -1291,7 +1291,7 @@ Found 8 dependencies
 Found: UIQuadRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
-Read 6147 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
+Read 9092 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 6 dependencies
 Found: Vertex.cs
@@ -1358,10 +1358,16 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\U
 Read 2914 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\ButtonElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 5 dependencies
+Found: ClosablePanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\ClosablePanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\ClosablePanel.cs
+Read 3519 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\ClosablePanel.cs
+Namespace: SiegeEngine.Core.UI
+Found 7 dependencies
 Found: CompanionPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CompanionPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CompanionPanel.cs
-Read 1878 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CompanionPanel.cs
+Read 1882 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CompanionPanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 7 dependencies
 Found: CssParser.cs
@@ -1479,7 +1485,7 @@ Found 5 dependencies
 Found: NavLiElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
-Read 9385 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
+Read 9863 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\NavLiElement.cs
 Namespace: SiegeEngine.Core.UI
 Found 6 dependencies
 Found: NavUlElement.cs

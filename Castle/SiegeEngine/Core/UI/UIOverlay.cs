@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: UIOverlay.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -393,7 +391,6 @@ namespace SiegeEngine.Core.UI
                         elem.Attributes["selected"] = "";
                         select.IsOpen = false;
                         valueChanged = true;
-
                         // MINIMAL FIX: explicitly fire the data-hook that lives on the <select> (BrushModeChanged etc.)
                         // This ensures HandleBrushDataHook runs immediately after the selected state is updated
                         // (previously only the option was checked for data-hook, causing the "one behind" lag)
@@ -495,6 +492,11 @@ namespace SiegeEngine.Core.UI
                 var elem = queue.Dequeue();
                 if (elem.GetEffectiveDisplay() != "none")
                 {
+                    // Skip dropdown options when open to prevent affecting content height
+                    if (elem.Tag.ToLower() == "option" && elem.Parent is SelectElement s && s.IsOpen)
+                    {
+                        continue;
+                    }
                     float elemBottom = elem.ComputedPosition.Y + elem.ComputedHeight;
                     ContentFullHeight = Math.Max(ContentFullHeight, elemBottom);
                 }

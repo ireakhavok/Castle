@@ -170,6 +170,8 @@ Folder: Core
     - Methods:
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
         - Calls: ClosePanelEvent
+      - void Render()
+        - Calls: _quadRenderer.DrawLine, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable
 - File: ClosePanelEvent.cs
   - Class: ClosePanelEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -1720,6 +1722,8 @@ Folder: Core
       - void DrawQuad( Vector4 color,  float posY,  float sizeX,  float sizeY,  float viewportHeight,  float viewportWidth, float posX)
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.Enable, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
       - void DrawNdcQuad( Vector4 color, float[] ndc)
+      - void DrawLine( Vector4 color,  float thickness,  float viewportHeight,  float viewportWidth,  float x2,  float y1,  float y2, float x1)
+        - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.Enable, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
 - File: UISettingsManager.cs
   - Class: UISettingsManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: System, System.Collections.Generic, System.IO, System.Text.Json

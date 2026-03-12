@@ -1,16 +1,16 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: SelectElement.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.UI
 {
     public class SelectElement : HtmlElement
     {
         public bool IsOpen { get; set; } = false;
+
         public string Value
         {
             get
@@ -45,10 +45,12 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
+
         public SelectElement()
         {
             Tag = "select";
         }
+
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             float fs = HtmlLayoutUtils.ParseSize(Style.FontSizeStr, parentFs, viewportWidth, viewportHeight);
@@ -91,7 +93,18 @@ namespace SiegeEngine.Core.UI
             }
             if (IsOpen)
             {
-                float currentY = ComputedPosition.Y + ComputedHeight;
+                float dropdownH = options.Count * lineH;
+                float spaceBelow = viewportHeight - (ComputedPosition.Y + ComputedHeight);
+                bool openUp = spaceBelow < dropdownH && ComputedPosition.Y > dropdownH;
+                float currentY;
+                if (openUp)
+                {
+                    currentY = ComputedPosition.Y - dropdownH;
+                }
+                else
+                {
+                    currentY = ComputedPosition.Y + ComputedHeight;
+                }
                 foreach (var opt in options)
                 {
                     opt.Style.Display = "block";
@@ -101,6 +114,7 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
+
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
@@ -164,6 +178,7 @@ namespace SiegeEngine.Core.UI
                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, local);
             }
         }
+
         public void RenderDropdown(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
         {
             Matrix4x4 local = ComputedFullTransform;
@@ -232,6 +247,7 @@ namespace SiegeEngine.Core.UI
                 opt.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, local);
             }
         }
+
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             string fontFamily = Style.FontFamily ?? "Arial";
@@ -254,6 +270,7 @@ namespace SiegeEngine.Core.UI
             float ih = textH + pad.X + pad.Z + borderW.X + borderW.Z;
             return new Vector2(iw, ih);
         }
+
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             return base.HandleClick(mousePos, viewportWidth, viewportHeight);

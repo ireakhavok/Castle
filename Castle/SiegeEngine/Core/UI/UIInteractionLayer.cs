@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: UIInteractionLayer.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.UI.JSParser;
 using System;
@@ -46,31 +44,22 @@ namespace SiegeEngine.Core.UI
             float vw = panelW;
             float vh = panelH;
             HtmlElement clickedElem = null;
-            bool isClickOnOpenSelect = false;
             _openSelects = _overlay.FindElementsByTag("select").Where(s => (s as SelectElement)?.IsOpen ?? false).Cast<SelectElement>().ToList();
-            SelectElement openSelect = _openSelects.FirstOrDefault();
-            if (openSelect != null)
-            {
-                if (openSelect.HandleClick(scrolledMousePos, vw, vh))
-                {
-                    isClickOnOpenSelect = true;
-                }
-            }
-            // === HOVER PASS FIRST (new clean lifecycle) ===
+            // === HOVER PASS ===
             var clickablesSnapshot = _overlay._uiClickables.ToList();
             foreach (var clickable in clickablesSnapshot)
             {
-                clickable.UpdateHover(scrolledMousePos, vw, vh);
+                bool isDropdownElement = IsDropdownElement(clickable);
+                Vector2 effectiveMouse = isDropdownElement ? relMousePos : scrolledMousePos;
+                clickable.UpdateHover(effectiveMouse, vw, vh);
             }
-            // === CLICK PASS (only real clicks) ===
+            // === CLICK PASS ===
             foreach (var clickable in clickablesSnapshot)
             {
-                if (openSelect != null && !clickable.IsDescendantOf(openSelect) && !(clickable == openSelect))
-                {
-                    continue;
-                }
+                bool isDropdownElement = IsDropdownElement(clickable);
+                Vector2 effectiveMouse = isDropdownElement ? relMousePos : scrolledMousePos;
                 bool wasActive = clickable.IsActive;
-                bool over = clickable.IsHover;
+                bool over = clickable.IsHover;  // IsHover was set with effectiveMouse in hover pass
                 if (over && mousePress)
                 {
                     if (!string.IsNullOrEmpty(clickable.OnMouseDownJS))
@@ -146,7 +135,7 @@ namespace SiegeEngine.Core.UI
                 }
                 _overlay.HandleUIClick(clickedElem);
             }
-            else if (mouseRelease && openSelect != null && !isClickOnOpenSelect && !_justOpenedSelect)
+            else if (mouseRelease && _openSelects.Any() && !_justOpenedSelect)
             {
                 _overlay.CloseAllOpenSelects();
                 _overlay.RefreshUI();
@@ -248,6 +237,16 @@ namespace SiegeEngine.Core.UI
             {
                 _overlay.RefreshUI();
             }
+        }
+
+        private bool IsDropdownElement(HtmlElement elem)
+        {
+            if (elem.Tag.ToLower() == "option" && elem.Parent is SelectElement s && s.IsOpen)
+            {
+                return true;
+            }
+            // Optionally include the select itself if needed, but typically select is in content
+            return false;
         }
     }
 }

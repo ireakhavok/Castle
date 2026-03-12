@@ -727,7 +727,7 @@ Found 8 dependencies
 Found: UIQuadRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
-Read 6147 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
+Read 9092 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\UIQuadRenderer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 6 dependencies
 Found: Vertex.cs
@@ -797,7 +797,7 @@ Found 5 dependencies
 Found: ClosablePanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\ClosablePanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\ClosablePanel.cs
-Read 2694 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\ClosablePanel.cs
+Read 3519 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\ClosablePanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 7 dependencies
 Found: CompanionPanel.cs
