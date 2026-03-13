@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Core/Events
+// File: EntityPlacedEvent.cs
+using System;
 using System.Numerics;
 using System.Text.Json;
 
@@ -10,6 +12,7 @@ namespace SiegeEngine.Core.Events
         public int EntityId { get; set; }
         public string EntityType { get; set; }
         public Vector3 Position { get; set; }
+        public Quaternion Rotation { get; set; } = Quaternion.Identity; // Future-proof for full TransformComponent support
         public bool IsPreview { get; set; }
         public ulong? PlayerId { get; set; }
 
@@ -24,7 +27,7 @@ namespace SiegeEngine.Core.Events
 
         public byte[] Serialize()
         {
-            var json = JsonSerializer.Serialize(new { Type, EntityId, EntityType, Position, IsPreview, PlayerId });
+            var json = JsonSerializer.Serialize(new { Type, EntityId, EntityType, Position, Rotation, IsPreview, PlayerId });
             return System.Text.Encoding.UTF8.GetBytes(json);
         }
 
@@ -35,6 +38,7 @@ namespace SiegeEngine.Core.Events
             EntityId = obj.EntityId;
             EntityType = obj.EntityType;
             Position = obj.Position;
+            Rotation = obj.Rotation;
             IsPreview = obj.IsPreview;
             PlayerId = obj.PlayerId;
         }

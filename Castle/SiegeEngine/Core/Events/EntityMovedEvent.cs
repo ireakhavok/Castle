@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Core/Events
+// File: EntityMovedEvent.cs
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json;
@@ -10,7 +12,7 @@ namespace SiegeEngine.Core.Events
         public string Type => "EntityMoved";
         public int EntityId { get; set; }
         public Vector2 Position { get; set; }
-        public Quaternion Rotation { get; set; } // Added
+        public Quaternion Rotation { get; set; }
         public ulong? PlayerId { get; set; }
 
         public EntityMovedEvent(int entityId, Vector2 position, Quaternion rotation, ulong? playerId = 0)

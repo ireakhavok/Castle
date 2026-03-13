@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: Citadel/Server
+// File: EntityDeltaTracker.cs
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.Definitions;

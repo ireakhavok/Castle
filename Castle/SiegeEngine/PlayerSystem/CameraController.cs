@@ -1,4 +1,5 @@
-﻿// SiegeEngine.PlayerSystem/CameraController.cs
+﻿// Folder: SiegeEngine/PlayerSystem
+// File: CameraController.cs
 using System;
 using System.Numerics;
 using SiegeEngine.Core.Managers;
@@ -19,7 +20,6 @@ namespace SiegeEngine.PlayerSystem
         private readonly IControlContext _controlContext;
         private readonly IntPtr _window;
         private readonly Player _player;
-        //private readonly MenuManager _menuManager; // Added to check EditorMode
         private Perspective _perspective = Perspective.ThirdPerson;
         private float _yaw = 0f;
         private float _pitch = 0f;
@@ -41,29 +41,25 @@ namespace SiegeEngine.PlayerSystem
         private bool _wasShiftPressedLastFrame = false;
         private bool _wasTabPressedLastFrame = false;
         private Vector3 _position;
+
         public Vector3 Position => _position;
         public Matrix4x4 ViewMatrix { get; private set; }
         public float Yaw => _yaw;
         public Perspective CurrentPerspective => _perspective;
         public float Pitch => _pitch;
         public Vector2 MousePosition { get; private set; }
-        public CameraController(IControlContext controlContext, IntPtr window, Player player = null) //, MenuManager menuManager = null)
+
+        public CameraController(IControlContext controlContext, IntPtr window, Player player = null)
         {
             _controlContext = controlContext ?? throw new ArgumentNullException(nameof(controlContext));
             _window = window;
             _player = player;
-            //_menuManager = menuManager; // Inject MenuManager
-            _position = _player?.Position + new Vector3(0, 0, _playerHeight) ?? new Vector3(64, 36, 5);
+            _position = _player?.Physics.Position + new Vector3(0, 0, _playerHeight) ?? new Vector3(64, 36, 5);
             UpdateCamera();
         }
+
         public void Update(float deltaTime, float scrollDelta, bool isGameActive)
         {
-            // Skip update in EditorMode to prevent Menu mouse position logs
-            //if (_menuManager?.EditorMode == true)
-            //{
-            // Console.WriteLine("CameraController: Skipping Update in EditorMode");
-            // return;
-            //}
             bool focused = _controlContext.GetWindowAttrib(_window, WindowAttribute.Focused);
             if (!focused)
             {
@@ -143,6 +139,7 @@ namespace SiegeEngine.PlayerSystem
                 UpdateCamera();
             }
         }
+
         private void ChangePerspective()
         {
             _perspective = _perspective switch
@@ -154,13 +151,14 @@ namespace SiegeEngine.PlayerSystem
             };
             Console.WriteLine($"Camera perspective changed to: {_perspective}");
         }
+
         private void UpdateCamera()
         {
             if (_player != null) // Player mode only
             {
-                Vector3 fptarget = _player.Position + new Vector3(0, 0, _playerHeight);
-                Vector3 tptarget = _player.Position + new Vector3(0, 0, _playerHeight / 2);
-                Vector3 otstarget = _player.Position + new Vector3(0, 0, _playerHeight);
+                Vector3 fptarget = _player.Physics.Position + new Vector3(0, 0, _playerHeight);
+                Vector3 tptarget = _player.Physics.Position + new Vector3(0, 0, _playerHeight / 2);
+                Vector3 otstarget = _player.Physics.Position + new Vector3(0, 0, _playerHeight);
                 float yawRad = _yaw * (float)(Math.PI / 180);
                 float pitchRad = _pitch * (float)(Math.PI / 180);
                 if (_perspective == Perspective.FirstPerson)
