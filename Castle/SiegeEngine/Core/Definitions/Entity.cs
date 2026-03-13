@@ -1,18 +1,26 @@
-﻿using SiegeEngine.Core.AssetParsing;
+﻿// Folder: SiegeEngine/Core/Definitions
+// File: Entity.cs
+using SiegeEngine.Core.AssetParsing;
 using System;
 using System.Collections.Generic;
 
 namespace SiegeEngine.Core.Definitions
 {
     public interface IComponent { }
-
     public class Entity
     {
         private readonly Dictionary<Type, IComponent> _components = new();
-
         public int Id { get; set; }
         public string Type { get; set; } = "Default";
+
+        public TransformComponent Transform { get; } = new TransformComponent();
+
         public IReadOnlyDictionary<Type, IComponent> Components => _components;
+
+        public Entity()
+        {
+            AddComponent(Transform);
+        }
 
         public void AddComponent<T>(T component) where T : IComponent
         {
@@ -31,6 +39,16 @@ namespace SiegeEngine.Core.Definitions
         public bool RemoveComponent<T>() where T : IComponent
         {
             return _components.Remove(typeof(T));
+        }
+
+        public void SetParent(Entity parent)
+        {
+            Transform.SetParent(parent?.Transform);
+        }
+
+        public void AddChild(Entity child)
+        {
+            Transform.AddChild(child?.Transform);
         }
     }
 }
