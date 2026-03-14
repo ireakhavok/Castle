@@ -3,9 +3,9 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.UI.JSParser;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
-using System.Globalization;
 
 namespace SiegeEngine.Core.UI
 {
@@ -53,44 +53,117 @@ namespace SiegeEngine.Core.UI
                 Vector2 effectiveMouse = isDropdownElement ? relMousePos : scrolledMousePos;
                 clickable.UpdateHover(effectiveMouse, vw, vh);
             }
-            // === CLICK PASS ===
-            foreach (var clickable in clickablesSnapshot)
+            // === CLICK PASS - Handle open dropdowns first ===
+            bool dropdownHandled = false;
+            foreach (var select in _openSelects)
             {
-                bool isDropdownElement = IsDropdownElement(clickable);
-                Vector2 effectiveMouse = isDropdownElement ? relMousePos : scrolledMousePos;
-                bool wasActive = clickable.IsActive;
-                bool over = clickable.IsHover;  // IsHover was set with effectiveMouse in hover pass
-                if (over && mousePress)
+                // Check select itself (for closing if click on it while open)
+                bool selectOver = select.IsHover; // Hover already set with scrolledMousePos, but for consistency use relMousePos if needed
+                if (selectOver && mousePress)
                 {
-                    if (!string.IsNullOrEmpty(clickable.OnMouseDownJS))
+                    if (!string.IsNullOrEmpty(select.OnMouseDownJS))
                     {
-                        _overlay._jsContext.RunWithThis(clickable.OnMouseDownJS, new JSElement(clickable, _overlay));
+                        _overlay._jsContext.RunWithThis(select.OnMouseDownJS, new JSElement(select, _overlay));
                     }
-                    _overlay.InvokeListeners(clickable, "mousedown");
-                    clickable.IsActive = true;
-                    if (clickable.Tag.ToLower() == "input" && (clickable as InputElement)?.Type == "range")
-                    {
-                        _draggingSlider = clickable as RangeElement;
-                        _sliderOldValue = _draggingSlider.Value;
-                    }
+                    _overlay.InvokeListeners(select, "mousedown");
+                    select.IsActive = true;
                 }
-                if (over && mouseRelease)
+                if (selectOver && mouseRelease)
                 {
-                    if (!string.IsNullOrEmpty(clickable.OnMouseUpJS))
+                    if (!string.IsNullOrEmpty(select.OnMouseUpJS))
                     {
-                        _overlay._jsContext.RunWithThis(clickable.OnMouseUpJS, new JSElement(clickable, _overlay));
+                        _overlay._jsContext.RunWithThis(select.OnMouseUpJS, new JSElement(select, _overlay));
                     }
-                    _overlay.InvokeListeners(clickable, "mouseup");
+                    _overlay.InvokeListeners(select, "mouseup");
                 }
-                if (over && mouseRelease && wasActive)
+                bool selectWasActive = select.IsActive;
+                if (selectOver && mouseRelease && selectWasActive)
                 {
-                    clickedElem = clickable;
+                    clickedElem = select;
+                    dropdownHandled = true;
                 }
                 if (mouseRelease)
                 {
-                    clickable.IsActive = false;
+                    select.IsActive = false;
+                }
+
+                // Check options (use relMousePos as they are absolute positioned)
+                var options = select.Children.Where(c => c.Tag.ToLower() == "option").Cast<OptionElement>().ToList();
+                foreach (var opt in options)
+                {
+                    bool over = opt.UpdateHover(relMousePos, vw, vh);
+                    if (over && mousePress)
+                    {
+                        if (!string.IsNullOrEmpty(opt.OnMouseDownJS))
+                        {
+                            _overlay._jsContext.RunWithThis(opt.OnMouseDownJS, new JSElement(opt, _overlay));
+                        }
+                        _overlay.InvokeListeners(opt, "mousedown");
+                        opt.IsActive = true;
+                    }
+                    if (over && mouseRelease)
+                    {
+                        if (!string.IsNullOrEmpty(opt.OnMouseUpJS))
+                        {
+                            _overlay._jsContext.RunWithThis(opt.OnMouseUpJS, new JSElement(opt, _overlay));
+                        }
+                        _overlay.InvokeListeners(opt, "mouseup");
+                    }
+                    bool wasActive = opt.IsActive;
+                    if (over && mouseRelease && wasActive)
+                    {
+                        clickedElem = opt;
+                        dropdownHandled = true;
+                    }
+                    if (mouseRelease)
+                    {
+                        opt.IsActive = false;
+                    }
+                }
+
+                if (dropdownHandled) break; // If handled by this dropdown, stop
+            }
+
+            // If not handled by dropdown, handle main UI
+            if (!dropdownHandled)
+            {
+                foreach (var clickable in clickablesSnapshot.Where(c => !IsDropdownElement(c)))
+                {
+                    bool over = clickable.IsHover;
+                    if (over && mousePress)
+                    {
+                        if (!string.IsNullOrEmpty(clickable.OnMouseDownJS))
+                        {
+                            _overlay._jsContext.RunWithThis(clickable.OnMouseDownJS, new JSElement(clickable, _overlay));
+                        }
+                        _overlay.InvokeListeners(clickable, "mousedown");
+                        clickable.IsActive = true;
+                        if (clickable.Tag.ToLower() == "input" && (clickable as InputElement)?.Type == "range")
+                        {
+                            _draggingSlider = clickable as RangeElement;
+                            _sliderOldValue = _draggingSlider.Value;
+                        }
+                    }
+                    if (over && mouseRelease)
+                    {
+                        if (!string.IsNullOrEmpty(clickable.OnMouseUpJS))
+                        {
+                            _overlay._jsContext.RunWithThis(clickable.OnMouseUpJS, new JSElement(clickable, _overlay));
+                        }
+                        _overlay.InvokeListeners(clickable, "mouseup");
+                    }
+                    bool wasActive = clickable.IsActive;
+                    if (over && mouseRelease && wasActive)
+                    {
+                        clickedElem = clickable;
+                    }
+                    if (mouseRelease)
+                    {
+                        clickable.IsActive = false;
+                    }
                 }
             }
+
             if (currentMouseDown && _draggingSlider != null)
             {
                 float relX = Math.Clamp(relMousePos.X - _draggingSlider.ComputedContentX, 0f, _draggingSlider.ComputedContentWidth);
