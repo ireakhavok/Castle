@@ -204,6 +204,32 @@ Folder: Core
       - nint Window
       - IRenderContext RenderContext
       - IControlContext ControlContext
+- File: Core.cs
+  - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
+    - Fields:
+      - BackgroundRenderer _bgRenderer
+      - string _baseDir
+      - Matrix4x4 ComputedTransform
+      - Matrix4x4 ComputedFullTransform
+      - float _contentFullHeight
+      - bool _needsVerticalScrollbar
+      - float SCROLLBAR_WIDTH
+      - Vector2 _cachedIntrinsicSize
+      - float _cachedViewportWidth
+      - float _cachedViewportHeight
+      - float _cachedFs
+      - bool _intrinsicDirty
+    - Methods:
+      - void MarkIntrinsicDirty()
+      - bool IsDescendantOf(HtmlElement ancestor)
+      - string GetEffectiveDisplay()
+      - HtmlElement FindContainingBlock()
+      - void UpdateFullTransforms(Matrix4x4 parentMatrix)
+      - void PrepareResources( IControlContext controlContext,  IRenderContext renderContext,  ShaderProgram shader,  nint window, string baseDir)
+        - Calls: BackgroundRenderer, _bgRenderer.Initialize
+      - HtmlElement FindElementById(string id)
+      - float GetAncestorScrollOffset()
 - File: CssParser.cs
   - Class: CssParser (Namespace: SiegeEngine.Core.UI)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
@@ -353,6 +379,10 @@ Folder: Core
 - File: Entity.cs
   - Class: Entity (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic
+    - Methods:
+      - constructor Entity()
+      - void SetParent(Entity parent)
+      - void AddChild(Entity child)
 - File: EntityAddedEvent.cs
   - Class: EntityAddedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -409,6 +439,14 @@ Folder: Core
       - byte[] Serialize()
       - void Deserialize(byte[] data)
         - Calls: ToString
+- File: Events.cs
+  - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: System, System.Numerics
+    - Methods:
+      - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: HtmlLayoutUtils.GetNdcQuad
+      - bool UpdateHover( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: HtmlLayoutUtils.GetNdcQuad
 - File: ExitEditorEvent.cs
   - Class: ExitEditorEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -654,50 +692,6 @@ Folder: Core
       - MouseButton MapEngineMouseButton(MouseButton engineButton)
       - KeyModifiers MapGlfwMods(KeyModifiers glfwMods)
       - InputAction MapGlfwInputAction(InputAction glfwAction)
-- File: HtmlElement.cs
-  - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
-    - Fields:
-      - BackgroundRenderer _bgRenderer
-      - string _baseDir
-      - Matrix4x4 ComputedTransform
-      - Matrix4x4 ComputedFullTransform
-      - float _contentFullHeight
-      - bool _needsVerticalScrollbar
-      - float SCROLLBAR_WIDTH
-      - Vector2 _cachedIntrinsicSize
-      - float _cachedViewportWidth
-      - float _cachedViewportHeight
-      - float _cachedFs
-      - bool _intrinsicDirty
-    - Methods:
-      - void MarkIntrinsicDirty()
-      - bool IsDescendantOf(HtmlElement ancestor)
-      - string GetEffectiveDisplay()
-      - HtmlElement FindContainingBlock()
-      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, FindContainingBlock, HtmlLayoutUtils.ComputeTransform, HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, child.GetEffectiveDisplay
-      - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
-      - void UpdateFullTransforms(Matrix4x4 parentMatrix)
-      - void PrepareResources( IControlContext controlContext,  IRenderContext renderContext,  ShaderProgram shader,  nint window, string baseDir)
-        - Calls: BackgroundRenderer, _bgRenderer.Initialize
-      - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
-      - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, float.Parse, int.Parse
-      - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParseSize, ShiftX, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, child.GetEffectiveDisplay, currentLine.Clear
-      - void ShiftX( float off, HtmlElement e)
-      - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.GetEffectiveDisplay, float.Parse, int.Parse, textRenderer.GetTextSize
-      - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, quadRenderer.DrawNdcQuad, renderContext.Disable, renderContext.Enable, renderContext.Scissor
-      - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: HtmlLayoutUtils.GetNdcQuad
-      - bool UpdateHover( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: HtmlLayoutUtils.GetNdcQuad
-      - HtmlElement FindElementById(string id)
 - File: HtmlLayoutUtils.cs
   - Class: HtmlLayoutUtils (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.Rendering, System, System.Linq, System.Numerics, System.Text.RegularExpressions
@@ -891,6 +885,23 @@ Folder: Core
 - File: Keyframe.cs
   - Class: Keyframe (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
+- File: Layout.cs
+  - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
+    - Methods:
+      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, FindContainingBlock, HtmlLayoutUtils.ComputeTransform, HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, child.GetEffectiveDisplay
+      - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
+      - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
+      - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, float.Parse, int.Parse
+      - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParseSize, ShiftX, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, child.GetEffectiveDisplay, currentLine.Clear
+      - void ShiftX( float off, HtmlElement e)
+      - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.GetEffectiveDisplay, float.Parse, int.Parse, textRenderer.GetTextSize
 - File: LevelData.cs
   - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
@@ -1222,6 +1233,11 @@ Folder: Core
     - Fields:
       - float _mass
       - float _health
+      - TransformComponent _transform
+      - Vector3 WorldPosition
+      - Quaternion WorldRotation
+      - Vector3 WorldScale
+      - Matrix4x4 LocalToWorld
     - Methods:
       - constructor PhysicsComponent()
       - void Break()
@@ -1275,6 +1291,12 @@ Folder: Core
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, quadRenderer.DrawNdcQuad
+- File: Render.cs
+  - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Methods:
+      - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, quadRenderer.DrawNdcQuad, renderContext.Disable, renderContext.Enable, renderContext.Scissor
 - File: Renderer.cs
   - Class: Renderer (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IRenderer
@@ -1585,6 +1607,41 @@ Folder: Core
     - Methods:
       - constructor TrElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+- File: TransformComponent.cs
+  - Class: TransformComponent (Namespace: SiegeEngine.Core.Definitions)
+    - Inherits: IComponent
+    
+    - Dependencies: System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - Vector3 _position
+      - Quaternion _rotation
+      - Vector3 _scale
+      - Matrix4x4 _localToWorld
+      - bool _isDirty
+      - Vector3 WorldPosition
+      - Quaternion WorldRotation
+      - Vector3 WorldScale
+    - Methods:
+      - > GetWorldPosition()
+        - Calls: Recalculate
+      - > GetWorldRotation()
+        - Calls: Recalculate
+      - > GetWorldScale()
+        - Calls: Recalculate
+      - void SetParent(TransformComponent newParent)
+        - Calls: MarkDirty
+      - void AddChild(TransformComponent child)
+        - Calls: child.SetParent
+      - void RemoveChild(TransformComponent child)
+        - Calls: child.MarkDirty
+      - Vector3 GetWorldPosition()
+        - Calls: Recalculate
+      - Quaternion GetWorldRotation()
+        - Calls: Recalculate
+      - Vector3 GetWorldScale()
+        - Calls: Recalculate
+      - void MarkDirty()
+      - void Recalculate()
 - File: UIInteractionLayer.cs
   - Class: UIInteractionLayer (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
@@ -1603,7 +1660,7 @@ Folder: Core
     - Methods:
       - constructor UIInteractionLayer( IControlContext controlContext,  nint window, UIOverlay overlay)
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
+        - Calls: IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString, opt.UpdateHover
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIManager.cs
   - Class: UIManager (Namespace: SiegeEngine.Core.Managers)
@@ -1892,7 +1949,6 @@ Folder: PlayerSystem
       - IControlContext _controlContext
       - IntPtr _window
       - Player _player
-      - MenuManager _menuManager
       - Perspective _perspective
       - float _yaw
       - float _pitch
@@ -1919,6 +1975,8 @@ Folder: PlayerSystem
       - Perspective CurrentPerspective
       - float Pitch
     - Methods:
+      - constructor CameraController( IntPtr window,  Player player = null, IControlContext controlContext)
+        - Calls: UpdateCamera
       - void Update( bool isGameActive,  float scrollDelta, float deltaTime)
         - Calls: ChangePerspective, UpdateCamera, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.SetInputMode
       - void ChangePerspective()
@@ -1982,12 +2040,14 @@ Folder: PlayerSystem
     - Fields:
       - CameraController _camera
       - PhysicsComponent _physics
+      - Vector3 Position
       - CameraController Camera
       - PhysicsComponent Physics
     - Methods:
       - constructor Player( ModelManager modelLoader = null,  Vector3 position,  ulong steamId = 0, int entityId)
         - Calls: FBXParserBase.CreateDefaultCubeModel, PhysicsComponent, modelLoader.TryGetModel
       - void InitializeCamera( IntPtr window, IControlContext controlContext)
+        - Calls: CameraController
       - void Update( IntPtr window,  PlayerMovement movement,  bool isGameActive,  float scrollDelta, float deltaTime)
 - File: PlayerMovement.cs
   - Class: PlayerMovement (Namespace: SiegeEngine.PlayerSystem)
@@ -2314,6 +2374,9 @@ Folder: Systems
       - IntPtr _window
       - PlayerMovement _playerMovement
       - bool _godMode
+    - Methods:
+      - void Update(float deltaTime)
+        - Calls: EntityMovedEvent, _controlContext.GetKey, _server.GetEntities
 
 Class Hierarchy:
 FileSelectedEvent
@@ -2366,6 +2429,7 @@ SiegeEngine.Core.Definitions.PreviewComponent
 SiegeEngine.Core.Definitions.Rarity
 SiegeEngine.Core.Definitions.SoundSource
 SiegeEngine.Core.Definitions.Spawner
+SiegeEngine.Core.Definitions.TransformComponent
 SiegeEngine.Core.Definitions.UnityAssetData
 SiegeEngine.Core.Definitions.WallComponent
 SiegeEngine.Core.Definitions.WeatherState
