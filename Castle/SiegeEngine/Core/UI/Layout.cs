@@ -1,127 +1,14 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: HtmlElement.cs
-using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.Rendering;
+﻿using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.Core.UI
 {
-    public class HtmlElement
+    public partial class HtmlElement
     {
-        public string Tag { get; set; }
-        public Dictionary<string, string> Attributes { get; set; } = new Dictionary<string, string>();
-        public List<HtmlElement> Children { get; set; } = new List<HtmlElement>();
-        public CssStyle Style { get; set; } = new CssStyle();
-        public Dictionary<string, CssStyle> PseudoStyles { get; set; } = new Dictionary<string, CssStyle>();
-        public HtmlElement Parent { get; set; }
-        public Vector2 ComputedPosition { get; set; }
-        public float ComputedWidth { get; set; }
-        public float ComputedHeight { get; set; }
-        public float ComputedContentX { get; set; }
-        public float ComputedContentY { get; set; }
-        public float ComputedContentWidth { get; set; }
-        public float ComputedContentHeight { get; set; }
-        public float ComputedBackgroundX { get; set; }
-        public float ComputedBackgroundY { get; set; }
-        public float ComputedBackgroundWidth { get; set; }
-        public float ComputedBackgroundHeight { get; set; }
-        public Vector4 BorderWidth { get; set; }
-        public bool IsHover { get; set; }
-        public bool IsActive { get; set; }
-        public bool Checked { get; set; }
-        public bool IsTarget { get; set; }
-        public bool IsFocused { get; set; }
-        public string OnClickJS { get; set; }
-        public string OnChangeJS { get; set; }
-        public string OnMouseEnterJS { get; set; }
-        public string OnMouseLeaveJS { get; set; }
-        public string OnMouseOverJS { get; set; }
-        public string OnMouseOutJS { get; set; }
-        public string OnMouseDownJS { get; set; }
-        public string OnMouseUpJS { get; set; }
-        public string OnFocusJS { get; set; }
-        public string OnBlurJS { get; set; }
-        public Dictionary<string, List<object>> EventListeners { get; } = new Dictionary<string, List<object>>();
-        private BackgroundRenderer _bgRenderer;
-        private string _baseDir;
-        protected Matrix4x4 ComputedTransform;
-        protected Matrix4x4 ComputedFullTransform;
-        public float ScrollOffsetY { get; set; } = 0f;
-        private float _contentFullHeight = 0f;
-        private bool _needsVerticalScrollbar = false;
-        private const float SCROLLBAR_WIDTH = 12f;
-        private Vector2 _cachedIntrinsicSize;
-        private float _cachedViewportWidth;
-        private float _cachedViewportHeight;
-        private float _cachedFs;
-        private bool _intrinsicDirty = true;
-        public void MarkIntrinsicDirty()
-        {
-            _intrinsicDirty = true;
-            foreach (var child in Children)
-            {
-                child.MarkIntrinsicDirty();
-            }
-        }
-        public bool IsDescendantOf(HtmlElement ancestor)
-        {
-            var current = this;
-            while (current != null)
-            {
-                if (current == ancestor) return true;
-                current = current.Parent;
-            }
-            return false;
-        }
-        public string GetEffectiveDisplay()
-        {
-            CssStyle effective = Style;
-            if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle ts))
-                effective = ts;
-            if (Checked && PseudoStyles.TryGetValue("checked", out CssStyle cs))
-                effective = cs;
-            if (IsHover && PseudoStyles.TryGetValue("hover", out CssStyle hs))
-                effective = hs;
-            if (IsActive && PseudoStyles.TryGetValue("active", out CssStyle a))
-                effective = a;
-            string display = effective.Display;
-            if (Tag.ToLower() == "ul")
-            {
-                var parentLi = Parent as LiElement;
-                if (parentLi != null)
-                {
-                    HtmlElement current = parentLi;
-                    bool isUnderNav = false;
-                    while (current != null)
-                    {
-                        if (current.Tag.ToLower() == "nav")
-                        {
-                            isUnderNav = true;
-                            break;
-                        }
-                        current = current.Parent;
-                    }
-                    if (isUnderNav && parentLi.IsHover)
-                    {
-                        display = "block";
-                    }
-                }
-            }
-            return display;
-        }
-        private HtmlElement FindContainingBlock()
-        {
-            HtmlElement current = Parent;
-            while (current != null && current.Style.Position == "static")
-            {
-                current = current.Parent;
-            }
-            return current;
-        }
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             CssStyle effectiveStyle = Style;
@@ -308,6 +195,7 @@ namespace SiegeEngine.Core.UI
             }
             ComputedTransform = HtmlLayoutUtils.ComputeTransform(this, viewportWidth, viewportHeight);
         }
+
         private float CalculateIntrinsicContentHeight(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             float total = 0f;
@@ -331,37 +219,7 @@ namespace SiegeEngine.Core.UI
             }
             return total;
         }
-        public virtual void UpdateFullTransforms(Matrix4x4 parentMatrix)
-        {
-            ComputedFullTransform = parentMatrix * ComputedTransform;
-            foreach (var child in Children)
-            {
-                child.UpdateFullTransforms(ComputedFullTransform);
-            }
-        }
-        public void PrepareResources(string baseDir, IControlContext controlContext, nint window, IRenderContext renderContext, ShaderProgram shader)
-        {
-            _baseDir = baseDir;
-            if (!string.IsNullOrEmpty(Style.BackgroundImage))
-            {
-                string relativePath = Style.BackgroundImage;
-                string fullPath = Path.GetFullPath(Path.Combine(baseDir, relativePath));
-                Console.WriteLine($"HtmlElement: Attempting to load background texture from: {fullPath}");
-                if (File.Exists(fullPath))
-                {
-                    _bgRenderer = new BackgroundRenderer(controlContext, window, renderContext);
-                    _bgRenderer.Initialize(fullPath, shader);
-                }
-                else
-                {
-                    Console.WriteLine($"HtmlElement: Background file not found: {fullPath}");
-                }
-            }
-            foreach (var child in Children)
-            {
-                child.PrepareResources(baseDir, controlContext, window, renderContext, shader);
-            }
-        }
+
         private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
@@ -668,6 +526,7 @@ namespace SiegeEngine.Core.UI
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
         }
+
         private void LayoutGridChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
@@ -980,6 +839,7 @@ namespace SiegeEngine.Core.UI
             ComputedHeight = ComputedContentHeight + pad.X + pad.Z;
             ComputedBackgroundHeight = ComputedHeight;
         }
+
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             float currentX = 0;
@@ -1105,6 +965,7 @@ namespace SiegeEngine.Core.UI
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
         }
+
         private void ShiftX(HtmlElement e, float off)
         {
             e.ComputedPosition = new Vector2(e.ComputedPosition.X + off, e.ComputedPosition.Y);
@@ -1112,6 +973,7 @@ namespace SiegeEngine.Core.UI
             e.ComputedContentX += off;
             foreach (var ch in e.Children) ShiftX(ch, off);
         }
+
         public virtual Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             if (!_intrinsicDirty && _cachedViewportWidth == viewportWidth && _cachedViewportHeight == viewportHeight && _cachedFs == fs)
@@ -1441,195 +1303,6 @@ namespace SiegeEngine.Core.UI
             _cachedFs = fs;
             _intrinsicDirty = false;
             return _cachedIntrinsicSize;
-        }
-        public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
-        {
-            CssStyle effectiveStyle = Style;
-            if (Checked && PseudoStyles.TryGetValue("checked", out CssStyle checkedStyle))
-            {
-                effectiveStyle = checkedStyle;
-            }
-            if (IsFocused && PseudoStyles.TryGetValue("focus", out CssStyle focusStyle))
-            {
-                effectiveStyle = focusStyle;
-            }
-            if (IsHover && PseudoStyles.TryGetValue("hover", out CssStyle hover))
-            {
-                effectiveStyle = hover;
-            }
-            if (IsActive && PseudoStyles.TryGetValue("active", out CssStyle active))
-                effectiveStyle = active;
-            if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle targetStyle))
-            {
-                effectiveStyle = targetStyle;
-            }
-            if (effectiveStyle.Display == "none") return;
-            Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
-            Matrix4x4 contentMatrix = localMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
-            Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
-            Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
-            Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
-            Vector4 borderLeftC = effectiveStyle.BorderLeftColor != Vector4.Zero ? effectiveStyle.BorderLeftColor : effectiveStyle.BorderColor;
-            string borderTopS = string.IsNullOrEmpty(effectiveStyle.BorderTopStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderTopStyle;
-            string borderRightS = string.IsNullOrEmpty(effectiveStyle.BorderRightStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderRightStyle;
-            string borderBottomS = string.IsNullOrEmpty(effectiveStyle.BorderBottomStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderBottomStyle;
-            string borderLeftS = string.IsNullOrEmpty(effectiveStyle.BorderLeftStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderLeftStyle;
-            Vector4 borderW = BorderWidth;
-            bool uniformBorder = borderW.X == borderW.Y && borderW.Y == borderW.Z && borderW.Z == borderW.W;
-            bool uniformColor = borderTopC == borderRightC && borderRightC == borderBottomC && borderBottomC == borderLeftC;
-            bool uniformStyle = borderTopS == borderRightS && borderRightS == borderBottomS && borderBottomS == borderLeftS && borderTopS != "none";
-            bool hasUniformBorder = uniformBorder && uniformColor && uniformStyle && borderW.X > 0;
-            Vector4 br = HtmlLayoutUtils.ParseSides(effectiveStyle.BorderRadiusStr, ComputedBackgroundWidth, viewportWidth, viewportHeight);
-            float minRad = Math.Min(ComputedBackgroundWidth / 2, ComputedBackgroundHeight / 2);
-            br.X = Math.Min(br.X, minRad);
-            br.Y = Math.Min(br.Y, minRad);
-            br.Z = Math.Min(br.Z, minRad);
-            br.W = Math.Min(br.W, minRad);
-            bool hasBg = effectiveStyle.BackgroundColor != Vector4.Zero || _bgRenderer != null;
-            bool useShaderForBorder = br != Vector4.Zero && hasUniformBorder;
-            float drawX = useShaderForBorder ? ComputedPosition.X : ComputedBackgroundX;
-            float drawY = useShaderForBorder ? ComputedPosition.Y : ComputedBackgroundY;
-            float drawW = useShaderForBorder ? ComputedWidth : ComputedBackgroundWidth;
-            float drawH = useShaderForBorder ? ComputedHeight : ComputedBackgroundHeight;
-            float bw = useShaderForBorder ? borderW.X : 0f;
-            Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
-            if (hasBg || useShaderForBorder)
-            {
-                float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(drawW, drawH), bw, borderC);
-            }
-            if (_bgRenderer != null)
-            {
-                renderContext.Enable(renderContext.Enums.ScissorTest);
-                int scissorY = (int)(viewportHeight - (ComputedBackgroundY + ComputedBackgroundHeight));
-                renderContext.Scissor((int)ComputedBackgroundX, scissorY, (uint)ComputedBackgroundWidth, (uint)ComputedBackgroundHeight);
-                _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, viewportWidth, viewportHeight);
-                renderContext.Disable(renderContext.Enums.ScissorTest);
-            }
-            if (Style.Overflow == "hidden" || (Style.OverflowY ?? "") == "hidden")
-            {
-                renderContext.Enable(renderContext.Enums.ScissorTest);
-                int scissorY = (int)(viewportHeight - (ComputedContentY + ComputedContentHeight));
-                renderContext.Scissor((int)ComputedContentX, scissorY, (uint)ComputedContentWidth, (uint)ComputedContentHeight);
-            }
-            foreach (var child in Children)
-            {
-                if (child.Tag.ToLower() == "option" && this is SelectElement sel && sel.IsOpen)
-                {
-                    continue;
-                }
-                child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, contentMatrix);
-            }
-            if (Style.Overflow == "hidden" || (Style.OverflowY ?? "") == "hidden")
-            {
-                renderContext.Disable(renderContext.Enums.ScissorTest);
-            }
-            if (_needsVerticalScrollbar)
-            {
-                float trackX = ComputedBackgroundX + ComputedBackgroundWidth - SCROLLBAR_WIDTH;
-                float trackY = ComputedBackgroundY;
-                float trackH = ComputedBackgroundHeight;
-                float[] trackNdc = HtmlLayoutUtils.GetNdcQuad(trackX, trackY, SCROLLBAR_WIDTH, trackH, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.2f, 0.2f, 0.2f, 0.9f));
-                float thumbRatio = ComputedContentHeight / _contentFullHeight;
-                float thumbH = Math.Max(20f, trackH * thumbRatio);
-                float thumbY = trackY + (ScrollOffsetY / _contentFullHeight) * (trackH - thumbH);
-                float[] thumbNdc = HtmlLayoutUtils.GetNdcQuad(trackX + 2, thumbY, SCROLLBAR_WIDTH - 4, thumbH, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.6f, 0.6f, 0.6f, 1f));
-            }
-            bool drawSideBorders = !useShaderForBorder;
-            if (drawSideBorders)
-            {
-                if (borderTopS != "none" && borderTopC != Vector4.Zero && borderW.X > 0)
-                {
-                    float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, borderW.X, localMatrix, viewportWidth, viewportHeight);
-                    quadRenderer.DrawNdcQuad(ndc, borderTopC);
-                }
-                if (borderBottomS != "none" && borderBottomC != Vector4.Zero && borderW.Z > 0)
-                {
-                    float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y + ComputedHeight - borderW.Z, ComputedWidth, borderW.Z, localMatrix, viewportWidth, viewportHeight);
-                    quadRenderer.DrawNdcQuad(ndc, borderBottomC);
-                }
-                if (borderLeftS != "none" && borderLeftC != Vector4.Zero && borderW.W > 0)
-                {
-                    float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, borderW.W, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
-                    quadRenderer.DrawNdcQuad(ndc, borderLeftC);
-                }
-                if (borderRightS != "none" && borderRightC != Vector4.Zero && borderW.Y > 0)
-                {
-                    float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, localMatrix, viewportWidth, viewportHeight);
-                    quadRenderer.DrawNdcQuad(ndc, borderRightC);
-                }
-            }
-        }
-        public virtual bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
-        {
-            if (Style.Display == "none") return false;
-            float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
-            float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
-            for (int k = 0; k < 4; k++)
-            {
-                float nx = ndc[k * 2];
-                float ny = ndc[k * 2 + 1];
-                minX = Math.Min(minX, nx);
-                maxX = Math.Max(maxX, nx);
-                minY = Math.Min(minY, ny);
-                maxY = Math.Max(maxY, ny);
-            }
-            float mx = 2 * mousePos.X / viewportWidth - 1;
-            float my = 1 - 2 * mousePos.Y / viewportHeight;
-            if (mx < minX || mx > maxX || my < minY || my > maxY) return false;
-            for (int i = Children.Count - 1; i >= 0; i--)
-            {
-                if (Children[i].HandleClick(mousePos, viewportWidth, viewportHeight)) return true;
-            }
-            string classes = Attributes.GetValueOrDefault("class", "");
-            bool isClickable = classes.Contains("button") || classes.Contains("toggle") || Tag == "select" || Tag == "label" || Tag == "a" || Attributes.ContainsKey("data-hook") || Attributes.ContainsKey("onclick") || classes.Contains("select-option") || Tag == "option" || Attributes.ContainsKey("onchange") || Attributes.ContainsKey("onmouseenter") || Attributes.ContainsKey("onmouseleave") || Attributes.ContainsKey("onmouseover") || Attributes.ContainsKey("onmouseout") || Attributes.ContainsKey("onmousedown") || Attributes.ContainsKey("onmouseup") || Attributes.ContainsKey("onfocus") || Attributes.ContainsKey("onblur") || Tag.ToLower() == "input";
-            return isClickable;
-        }
-        public virtual bool UpdateHover(Vector2 mousePos, float viewportWidth, float viewportHeight)
-        {
-            if (Style.Display == "none") return false;
-            float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
-            float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
-            for (int k = 0; k < 4; k++)
-            {
-                float nx = ndc[k * 2];
-                float ny = ndc[k * 2 + 1];
-                minX = Math.Min(minX, nx);
-                maxX = Math.Max(maxX, nx);
-                minY = Math.Min(minY, ny);
-                maxY = Math.Max(maxY, ny);
-            }
-            float mx = 2 * mousePos.X / viewportWidth - 1;
-            float my = 1 - 2 * mousePos.Y / viewportHeight;
-            bool over = !(mx < minX || mx > maxX || my < minY || my > maxY);
-            bool changed = false;
-            if (over && !IsHover)
-            {
-                IsHover = true;
-                changed = true;
-            }
-            else if (!over && IsHover)
-            {
-                IsHover = false;
-                changed = true;
-            }
-            for (int i = Children.Count - 1; i >= 0; i--)
-            {
-                if (Children[i].UpdateHover(mousePos, viewportWidth, viewportHeight)) return true;
-            }
-            return over;
-        }
-        public HtmlElement FindElementById(string id)
-        {
-            if (Attributes.GetValueOrDefault("id", "") == id) return this;
-            foreach (var child in Children)
-            {
-                var found = child.FindElementById(id);
-                if (found != null) return found;
-            }
-            return null;
         }
     }
 }
