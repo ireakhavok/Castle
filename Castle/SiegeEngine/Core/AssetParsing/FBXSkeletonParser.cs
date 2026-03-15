@@ -156,7 +156,7 @@ namespace SiegeEngine.Core.AssetParsing
                         }
                         else
                         {
-                            Console.WriteLine($"{propName}: not parsed.");
+                            //Console.WriteLine($"{propName}: not parsed.");
                         }
                     }
                     bone.LocalRest = bone.ComputeLocal();
@@ -172,7 +172,7 @@ namespace SiegeEngine.Core.AssetParsing
                 }
                 model.Skeleton.Bones.Add(bone);
                 boneIndexById[id] = index;
-                FBXParserBase.Log($"Parsed bone: ID={id}, Index={index}, Name={name}, Type={limbNode.properties[2].Value}, Translation={bone.LclTranslation}, Rotation={bone.LclRotation}, Scaling={bone.LclScaling}");
+                //FBXParserBase.Log($"Parsed bone: ID={id}, Index={index}, Name={name}, Type={limbNode.properties[2].Value}, Translation={bone.LclTranslation}, Rotation={bone.LclRotation}, Scaling={bone.LclScaling}");
                 index++;
             }
             var boneIds = new HashSet<long>(boneIndexById.Keys);

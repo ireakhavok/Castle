@@ -90,15 +90,15 @@ namespace SiegeEngine.Core.AssetParsing.Model
             {
                 ComputeGlobalRecursive(Bones.IndexOf(bone), Matrix4x4.Identity, globals);
             }
-            if (Bones.Count > 0)
-            {
-                FBXParserBase.Log("Global Transforms:");
-                for (int i = 0; i < Math.Min(3, Bones.Count); i++)
-                {
-                    FBXParserBase.Log($"Bone {i} ({Bones[i].Name}) Global:");
-                    FBXParserUtils.PrintMatrix(globals[i]);
-                }
-            }
+            //if (Bones.Count > 0)
+            //{
+            //    //FBXParserBase.Log("Global Transforms:");
+            //    for (int i = 0; i < Math.Min(3, Bones.Count); i++)
+            //    {
+            //        //FBXParserBase.Log($"Bone {i} ({Bones[i].Name}) Global:");
+            //        //FBXParserUtils.PrintMatrix(globals[i]);
+            //    }
+            //}
             return globals;
         }
         private void ComputeGlobalRecursive(int idx, Matrix4x4 parentGlobal, Matrix4x4[] globals)

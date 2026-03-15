@@ -1,13 +1,10 @@
 ﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI.Elements;
-using SiegeEngine.Core.UI.JSParser;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Numerics;
-using System.Text.RegularExpressions;
 
 namespace SiegeEngine.Core.UI
 {

@@ -16,7 +16,7 @@ namespace SiegeEngine.Core.AssetParsing
             var forest = new FBXFileForest();
             if (!File.Exists(path))
             {
-                FBXParserBase.Log($"FBXParser: File not found at {path}");
+                //FBXParserBase.Log($"FBXParser: File not found at {path}");
                 return forest;
             }
             try
