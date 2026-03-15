@@ -12,6 +12,7 @@
       <TargetPath>%(Filename)%(Extension)</TargetPath>
     </Content>
     <Content Include="$(SolutionDir)Assets\**\*" CopyToOutputDirectory="PreserveNewest" Link="Assets\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Content Remove="C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\**" />
     <PackageReference Include="Silk.NET.GLFW" Version="2.22.0" />
     <PackageReference Include="Silk.NET.OpenGL" Version="2.22.0" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.1" />
