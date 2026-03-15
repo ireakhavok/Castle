@@ -5,7 +5,7 @@ using SiegeEngine.Core.Rendering;
 using System;
 using System.Numerics;
 using System.Reflection;
-namespace SiegeEngine.Core.UI
+namespace SiegeEngine.Core.UI.Elements
 {
     public class ButtonElement : HtmlElement
     {

@@ -1,10 +1,10 @@
 ﻿// Folder: SiegeEngine.Core.UI.JSParser
 // File: JSElement.cs
-using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Globalization;
+using SiegeEngine.Core.UI.Elements;
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSElement

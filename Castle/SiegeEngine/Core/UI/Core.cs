@@ -1,5 +1,6 @@
 ﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.UI.JSParser;
 using System;
 using System.Collections.Generic;

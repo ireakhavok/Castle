@@ -1,6 +1,6 @@
 ﻿// Folder: SiegeEngine.Core.UI
 // File: HtmlParser.cs
-using SiegeEngine.Core.UI;
+using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.IO;

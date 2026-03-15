@@ -5,7 +5,7 @@ using System.Numerics;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 
-namespace SiegeEngine.Core.UI
+namespace SiegeEngine.Core.UI.Elements
 {
     public class OptionElement : HtmlElement
     {

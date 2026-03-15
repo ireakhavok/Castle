@@ -10,6 +10,7 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.Shaders;
+using SiegeEngine.Core.UI.Elements;
 
 namespace SiegeEngine.Core.UI
 {

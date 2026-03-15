@@ -5,7 +5,7 @@ using System;
 using System.Numerics;
 using System.Globalization;
 
-namespace SiegeEngine.Core.UI
+namespace SiegeEngine.Core.UI.Elements
 {
     public class InputElement : HtmlElement
     {

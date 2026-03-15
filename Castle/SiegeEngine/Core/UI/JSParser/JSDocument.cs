@@ -1,9 +1,10 @@
 ﻿// Folder: SiegeEngine.UI/JSParser
 // File: JSDocument.cs
-using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using SiegeEngine.Core.UI.Elements;
+
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSDocument

@@ -11,6 +11,7 @@ using System;
 using System.IO;
 using System.Numerics;
 using ReadingChamber;
+using SiegeEngine.Core.UI.Elements;
 
 namespace MapRoom
 {

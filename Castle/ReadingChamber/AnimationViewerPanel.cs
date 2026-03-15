@@ -9,6 +9,7 @@ using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.UI;
+using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Scenes;
 using System;
 using System.Collections.Generic;

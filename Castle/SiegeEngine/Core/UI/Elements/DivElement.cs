@@ -1,4 +1,4 @@
-﻿namespace SiegeEngine.Core.UI
+﻿namespace SiegeEngine.Core.UI.Elements
 {
     public class DivElement : HtmlElement
     {

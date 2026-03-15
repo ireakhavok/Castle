@@ -5,7 +5,7 @@ using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-namespace SiegeEngine.Core.UI
+namespace SiegeEngine.Core.UI.Elements
 {
     public class TextElement : HtmlElement
     {

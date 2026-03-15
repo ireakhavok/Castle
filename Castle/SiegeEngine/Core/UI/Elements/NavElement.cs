@@ -6,7 +6,7 @@ using System;
 using System.Numerics;
 using System.Linq;
 
-namespace SiegeEngine.Core.UI
+namespace SiegeEngine.Core.UI.Elements
 {
     public class NavElement : HtmlElement
     {
