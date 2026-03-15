@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.UI
+// File: UIInteractionLayer.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.UI.JSParser;
 using System;
@@ -53,12 +55,11 @@ namespace SiegeEngine.Core.UI
                 Vector2 effectiveMouse = isDropdownElement ? relMousePos : scrolledMousePos;
                 clickable.UpdateHover(effectiveMouse, vw, vh);
             }
-            // === CLICK PASS - Handle open dropdowns first ===
-            bool dropdownHandled = false;
+            // === PRESS PASS for dropdown ===
+            bool dropdownPressHandled = false;
             foreach (var select in _openSelects)
             {
-                // Check select itself (for closing if click on it while open)
-                bool selectOver = select.IsHover; // Hover already set with scrolledMousePos, but for consistency use relMousePos if needed
+                bool selectOver = select.IsHover;
                 if (selectOver && mousePress)
                 {
                     if (!string.IsNullOrEmpty(select.OnMouseDownJS))
@@ -67,31 +68,12 @@ namespace SiegeEngine.Core.UI
                     }
                     _overlay.InvokeListeners(select, "mousedown");
                     select.IsActive = true;
+                    dropdownPressHandled = true;
                 }
-                if (selectOver && mouseRelease)
-                {
-                    if (!string.IsNullOrEmpty(select.OnMouseUpJS))
-                    {
-                        _overlay._jsContext.RunWithThis(select.OnMouseUpJS, new JSElement(select, _overlay));
-                    }
-                    _overlay.InvokeListeners(select, "mouseup");
-                }
-                bool selectWasActive = select.IsActive;
-                if (selectOver && mouseRelease && selectWasActive)
-                {
-                    clickedElem = select;
-                    dropdownHandled = true;
-                }
-                if (mouseRelease)
-                {
-                    select.IsActive = false;
-                }
-
-                // Check options (use relMousePos as they are absolute positioned)
                 var options = select.Children.Where(c => c.Tag.ToLower() == "option").Cast<OptionElement>().ToList();
                 foreach (var opt in options)
                 {
-                    bool over = opt.UpdateHover(relMousePos, vw, vh);
+                    bool over = opt.IsHover;
                     if (over && mousePress)
                     {
                         if (!string.IsNullOrEmpty(opt.OnMouseDownJS))
@@ -100,32 +82,13 @@ namespace SiegeEngine.Core.UI
                         }
                         _overlay.InvokeListeners(opt, "mousedown");
                         opt.IsActive = true;
-                    }
-                    if (over && mouseRelease)
-                    {
-                        if (!string.IsNullOrEmpty(opt.OnMouseUpJS))
-                        {
-                            _overlay._jsContext.RunWithThis(opt.OnMouseUpJS, new JSElement(opt, _overlay));
-                        }
-                        _overlay.InvokeListeners(opt, "mouseup");
-                    }
-                    bool wasActive = opt.IsActive;
-                    if (over && mouseRelease && wasActive)
-                    {
-                        clickedElem = opt;
-                        dropdownHandled = true;
-                    }
-                    if (mouseRelease)
-                    {
-                        opt.IsActive = false;
+                        dropdownPressHandled = true;
                     }
                 }
-
-                if (dropdownHandled) break; // If handled by this dropdown, stop
+                if (dropdownPressHandled) break;
             }
-
-            // If not handled by dropdown, handle main UI
-            if (!dropdownHandled)
+            // === PRESS PASS for main UI ===
+            if (!dropdownPressHandled)
             {
                 foreach (var clickable in clickablesSnapshot.Where(c => !IsDropdownElement(c)))
                 {
@@ -144,6 +107,62 @@ namespace SiegeEngine.Core.UI
                             _sliderOldValue = _draggingSlider.Value;
                         }
                     }
+                }
+            }
+            // === RELEASE PASS for dropdown ===
+            bool dropdownReleaseHandled = false;
+            foreach (var select in _openSelects)
+            {
+                bool selectOver = select.IsHover;
+                if (selectOver && mouseRelease)
+                {
+                    if (!string.IsNullOrEmpty(select.OnMouseUpJS))
+                    {
+                        _overlay._jsContext.RunWithThis(select.OnMouseUpJS, new JSElement(select, _overlay));
+                    }
+                    _overlay.InvokeListeners(select, "mouseup");
+                }
+                bool selectWasActive = select.IsActive;
+                if (selectOver && mouseRelease && selectWasActive)
+                {
+                    clickedElem = select;
+                    dropdownReleaseHandled = true;
+                }
+                if (mouseRelease)
+                {
+                    select.IsActive = false;
+                }
+                var options = select.Children.Where(c => c.Tag.ToLower() == "option").Cast<OptionElement>().ToList();
+                foreach (var opt in options)
+                {
+                    bool over = opt.IsHover;
+                    if (over && mouseRelease)
+                    {
+                        if (!string.IsNullOrEmpty(opt.OnMouseUpJS))
+                        {
+                            _overlay._jsContext.RunWithThis(opt.OnMouseUpJS, new JSElement(opt, _overlay));
+                        }
+                        _overlay.InvokeListeners(opt, "mouseup");
+                    }
+                    bool wasActive = opt.IsActive;
+                    if (over && mouseRelease && wasActive)
+                    {
+                        clickedElem = opt;
+                        dropdownReleaseHandled = true;
+                    }
+                    if (mouseRelease)
+                    {
+                        opt.IsActive = false;
+                    }
+                }
+                if (dropdownReleaseHandled) break;
+            }
+            // === RELEASE PASS for main UI ===
+            if (!dropdownReleaseHandled)
+            {
+                foreach (var clickable in clickablesSnapshot.Where(c => !IsDropdownElement(c)))
+                {
+                    bool over = clickable.IsHover;
                     if (over && mouseRelease)
                     {
                         if (!string.IsNullOrEmpty(clickable.OnMouseUpJS))
@@ -163,7 +182,6 @@ namespace SiegeEngine.Core.UI
                     }
                 }
             }
-
             if (currentMouseDown && _draggingSlider != null)
             {
                 float relX = Math.Clamp(relMousePos.X - _draggingSlider.ComputedContentX, 0f, _draggingSlider.ComputedContentWidth);
