@@ -7,6 +7,7 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
@@ -37,6 +38,23 @@ namespace SiegeEngine.Core.UI
         protected float BaseHeight = 600f;
         public bool AllowDragging { get; set; } = true;
         protected UIQuadRenderer _quadRenderer;
+        private ResizeHandle _currentResizeHandle = ResizeHandle.None;
+        private Vector2 _resizeStartMousePos;
+        private Vector2 _resizeStartPosition;
+        private Vector2 _resizeStartSize;
+        public float HeaderHeight { get; set; } = 0f;
+        protected bool IsResizing => _currentResizeHandle != ResizeHandle.None;
+        public virtual bool WantsContinuousUpdate => false;
+
+        // === DOCKING CONTROL ===
+        // true = can dock to edges and other panels (default for editor panels)
+        // false = can still float, be dragged, and resized freely, but will NEVER snap to edges or other panels
+        private bool _dockable = true;
+        public virtual bool Dockable
+        {
+            get => _dockable;
+            set => _dockable = value;
+        }
 
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -63,7 +81,6 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
-            // Dragging continues as long as mouse button is held — no bounds check, no early return
             if (_isDragging)
             {
                 if (mouseDown)
@@ -80,8 +97,65 @@ namespace SiegeEngine.Core.UI
                     }
                     _isDragging = false;
                 }
+                return;
             }
-            // Start dragging only when clicking title bar
+            if (_currentResizeHandle != ResizeHandle.None)
+            {
+                if (mouseDown)
+                {
+                    Vector2 delta = absMousePos - _resizeStartMousePos;
+                    Vector2 newPos = _resizeStartPosition;
+                    Vector2 newSize = _resizeStartSize;
+                    switch (_currentResizeHandle)
+                    {
+                        case ResizeHandle.Left:
+                            newSize.X = _resizeStartSize.X - delta.X;
+                            newPos.X = _resizeStartPosition.X + _resizeStartSize.X - newSize.X;
+                            break;
+                        case ResizeHandle.Right:
+                            newSize.X = _resizeStartSize.X + delta.X;
+                            break;
+                        case ResizeHandle.Top:
+                            newSize.Y = _resizeStartSize.Y - delta.Y;
+                            newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
+                            break;
+                        case ResizeHandle.Bottom:
+                            newSize.Y = _resizeStartSize.Y + delta.Y;
+                            break;
+                        case ResizeHandle.TopLeft:
+                            newSize.X = _resizeStartSize.X - delta.X;
+                            newPos.X = _resizeStartPosition.X + _resizeStartSize.X - newSize.X;
+                            newSize.Y = _resizeStartSize.Y - delta.Y;
+                            newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
+                            break;
+                        case ResizeHandle.TopRight:
+                            newSize.X = _resizeStartSize.X + delta.X;
+                            newSize.Y = _resizeStartSize.Y - delta.Y;
+                            newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
+                            break;
+                        case ResizeHandle.BottomLeft:
+                            newSize.X = _resizeStartSize.X - delta.X;
+                            newPos.X = _resizeStartPosition.X + _resizeStartSize.X - newSize.X;
+                            newSize.Y = _resizeStartSize.Y + delta.Y;
+                            break;
+                        case ResizeHandle.BottomRight:
+                            newSize.X = _resizeStartSize.X + delta.X;
+                            newSize.Y = _resizeStartSize.Y + delta.Y;
+                            break;
+                    }
+                    newSize.X = Math.Max(newSize.X, 200f);
+                    newSize.Y = Math.Max(newSize.Y, 150f);
+                    Position = newPos;
+                    Size = newSize;
+                    OnPanelResize(Size.X, Size.Y);
+                    OnLiveResize(Size.X, Size.Y);
+                }
+                if (mouseReleased)
+                {
+                    _currentResizeHandle = ResizeHandle.None;
+                }
+                return;
+            }
             bool overTitle = absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + TitleHeight;
             if (AllowDragging && DockState == DockState.Floating && mousePressed && overTitle)
             {
@@ -104,10 +178,9 @@ namespace SiegeEngine.Core.UI
                     _lastClickTime = currentTime;
                 }
             }
-            // UI clicks only when mouse is over the panel
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
-            if (overPanel && !_isDragging)
+            if (overPanel || WantsContinuousUpdate)
             {
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
@@ -115,6 +188,30 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Scroll(scrollDelta);
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
+        }
+        public ResizeHandle GetResizeHandle(Vector2 absMousePos)
+        {
+            float left = absMousePos.X - Position.X;
+            float right = Position.X + Size.X - absMousePos.X;
+            float top = absMousePos.Y - Position.Y;
+            float bottom = Position.Y + Size.Y - absMousePos.Y;
+            const float grip = 8f;
+            if (left < grip && top < grip) return ResizeHandle.TopLeft;
+            if (right < grip && top < grip) return ResizeHandle.TopRight;
+            if (left < grip && bottom < grip) return ResizeHandle.BottomLeft;
+            if (right < grip && bottom < grip) return ResizeHandle.BottomRight;
+            if (left < grip) return ResizeHandle.Left;
+            if (right < grip) return ResizeHandle.Right;
+            if (top < grip && top > TitleHeight) return ResizeHandle.Top;
+            if (bottom < grip) return ResizeHandle.Bottom;
+            return ResizeHandle.None;
+        }
+        public void StartResize(Vector2 mousePos, ResizeHandle handle)
+        {
+            _currentResizeHandle = handle;
+            _resizeStartMousePos = mousePos;
+            _resizeStartPosition = Position;
+            _resizeStartSize = Size;
         }
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
@@ -188,22 +285,26 @@ namespace SiegeEngine.Core.UI
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
-            if (!_isDragging)
+            if (_isDragging || IsResizing)
             {
-                // === PANEL-LEVEL SCISSOR CLIPPING FOR CONTENT AREA (below title) ===
-                _controlContext.GetWindowSize(_window, out int winW, out int winH);
-                _renderContext.Enable(_renderContext.Enums.ScissorTest);
-                int scissorX = (int)Position.X;
-                int scissorY = winH - (int)(Position.Y + Size.Y);
-                uint scissorW = (uint)Size.X;
-                uint scissorH = (uint)(Size.Y - TitleHeight);
-                _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
-                _uiOverlay.Render();
-                _renderContext.Disable(_renderContext.Enums.ScissorTest);
+                _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
+                if (IsResizing)
+                {
+                    _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
+                }
             }
             else
             {
-                _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
+                var contentRect = GetContentRect();
+                _controlContext.GetWindowSize(_window, out int winW, out int winH);
+                _renderContext.Enable(_renderContext.Enums.ScissorTest);
+                int scissorX = (int)contentRect.X;
+                int scissorY = winH - (int)(contentRect.Y + contentRect.Height);
+                uint scissorW = (uint)contentRect.Width;
+                uint scissorH = (uint)contentRect.Height;
+                _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
+                _uiOverlay.Render();
+                _renderContext.Disable(_renderContext.Enums.ScissorTest);
             }
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
@@ -211,6 +312,10 @@ namespace SiegeEngine.Core.UI
             _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+        }
+        protected (float X, float Y, float Width, float Height) GetContentRect()
+        {
+            return (Position.X, Position.Y + TitleHeight, Size.X, Size.Y - TitleHeight);
         }
         public virtual void Dispose()
         {
@@ -220,9 +325,17 @@ namespace SiegeEngine.Core.UI
         public virtual void OnPanelResize(float w, float h)
         {
             Size = new Vector2(w, h);
+            if (DockState == DockState.Floating && Position.Y < HeaderHeight)
+            {
+                Position = new Vector2(Position.X, HeaderHeight);
+            }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+        }
+        public virtual void OnLiveResize(float w, float h)
+        {
+            // Derived panels override this to update their 3D scene live during drag-resize
         }
     }
 }

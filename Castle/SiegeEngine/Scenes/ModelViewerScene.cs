@@ -163,7 +163,7 @@ namespace SiegeEngine.Scenes
             float t1 = animation.Keyframes[upper].Time;
             float frac = (t1 - t0 > 0) ? (time - t0) / (t1 - t0) : 0f;
             _currentFrameIndex = lower;
-            Console.WriteLine($"Time {time}: lower={lower} (t0={t0}), upper={upper} (t1={t1}), frac={frac}");
+            //Console.WriteLine($"Time {time}: lower={lower} (t0={t0}), upper={upper} (t1={t1}), frac={frac}");
             var l0 = animation.Keyframes[lower].BoneTransforms;
             var l1 = animation.Keyframes[upper].BoneTransforms;
             var lerpedLocals = new Matrix4x4[l0.Count];
@@ -183,15 +183,15 @@ namespace SiegeEngine.Scenes
                     lerpedLocals[i] = lm0;
                 }
             }
-            if (_currentTime == 0)
-            {
-                Console.WriteLine("Lerped Locals at First Keyframe:");
-                for (int i = 0; i < lerpedLocals.Length; i++)
-                {
-                    Console.WriteLine($"Bone {i} Lerped Local:");
-                    FBXParserUtils.PrintMatrix(lerpedLocals[i]);
-                }
-            }
+            //if (_currentTime == 0)
+            //{
+            //    //Console.WriteLine("Lerped Locals at First Keyframe:");
+            //    for (int i = 0; i < lerpedLocals.Length; i++)
+            //    {
+            //        //Console.WriteLine($"Bone {i} Lerped Local:");
+            //        FBXParserUtils.PrintMatrix(lerpedLocals[i]);
+            //    }
+            //}
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms(lerpedLocals);
             _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
@@ -271,12 +271,12 @@ namespace SiegeEngine.Scenes
             {
                 restLocals[i] = _model.Skeleton.Bones[i].LocalRest;
             }
-            Console.WriteLine("Rest Pose Locals:");
-            for (int i = 0; i < restLocals.Length; i++)
-            {
-                Console.WriteLine($"Bone {i} Rest Local:");
-                FBXParserUtils.PrintMatrix(restLocals[i]);
-            }
+            //Console.WriteLine("Rest Pose Locals:");
+            //for (int i = 0; i < restLocals.Length; i++)
+            //{
+            //    Console.WriteLine($"Bone {i} Rest Local:");
+            //    FBXParserUtils.PrintMatrix(restLocals[i]);
+            //}
             if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0) return;
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             _currentBindGlobals = new Matrix4x4[_model.Skeleton.Bones.Count];

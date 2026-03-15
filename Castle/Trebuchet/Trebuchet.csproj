@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CastleBuilder\CastleBuilder.csproj" />
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
   </ItemGroup>
 

@@ -1,6 +1,6 @@
-﻿// Folder: SiegeEngine.UI
+﻿// Folder: SiegeEngine.Core.UI
 // File: HtmlParser.cs
-using SiegeEngine.Core.UI;
+using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,20 +28,19 @@ namespace SiegeEngine.Core.UI
             {
                 SkipWhitespace();
                 if (_index >= _html.Length) break;
+
                 if (_html[_index] == '<')
                 {
                     _index++;
                     if (_index < _html.Length && _html[_index] == '/')
                     {
-                        // Closing tag, end of children
-                        _index++; // skip '/'
-                        string closingTag = ReadUntil(c => c == '>');
-                        _index++; // skip '>'
+                        _index++;
+                        ReadUntil(c => c == '>');
+                        _index++;
                         return;
                     }
                     else if (_html[_index] == '!' && _index + 2 < _html.Length && _html.Substring(_index, 3) == "!--")
                     {
-                        // Comment
                         _index += 3;
                         while (_index + 2 < _html.Length && _html.Substring(_index, 3) != "-->")
                         {
@@ -51,9 +50,21 @@ namespace SiegeEngine.Core.UI
                     }
                     else
                     {
-                        // Opening tag
                         string tag = ReadUntil(c => char.IsWhiteSpace(c) || c == '>');
                         string lowerTag = tag.ToLower();
+
+                        bool isInsideNav = false;
+                        HtmlElement p = parent;
+                        while (p != null)
+                        {
+                            if (p.Tag.ToLower() == "nav")
+                            {
+                                isInsideNav = true;
+                                break;
+                            }
+                            p = p.Parent;
+                        }
+
                         HtmlElement elem;
                         switch (lowerTag)
                         {
@@ -67,7 +78,25 @@ namespace SiegeEngine.Core.UI
                                 elem = new SelectElement();
                                 break;
                             case "input":
-                                elem = new InputElement();
+                                string inputType = "text";
+                                int typePos = _html.IndexOf("type=\"", _index);
+                                if (typePos != -1 && typePos < _html.IndexOf('>', _index))
+                                {
+                                    int start = typePos + 6;
+                                    int end = _html.IndexOf('"', start);
+                                    if (end > start)
+                                    {
+                                        inputType = _html.Substring(start, end - start).ToLower();
+                                    }
+                                }
+                                if (inputType == "range")
+                                {
+                                    elem = new RangeElement();
+                                }
+                                else
+                                {
+                                    elem = new InputElement();
+                                }
                                 break;
                             case "option":
                                 elem = new OptionElement();
@@ -85,13 +114,13 @@ namespace SiegeEngine.Core.UI
                                 elem = new TdElement();
                                 break;
                             case "ul":
-                                elem = new UlElement();
+                                elem = isInsideNav ? new NavUlElement() : new UlElement();
                                 break;
                             case "ol":
                                 elem = new OlElement();
                                 break;
                             case "li":
-                                elem = new LiElement();
+                                elem = isInsideNav ? new NavLiElement() : new LiElement();
                                 break;
                             case "nav":
                                 elem = new NavElement();
@@ -100,8 +129,9 @@ namespace SiegeEngine.Core.UI
                                 elem = new HtmlElement { Tag = tag };
                                 break;
                         }
+
                         elem.Parent = parent;
-                        // Parse attributes
+
                         while (_index < _html.Length && _html[_index] != '>')
                         {
                             SkipWhitespace();
@@ -109,6 +139,7 @@ namespace SiegeEngine.Core.UI
                             string key = ReadUntil(c => c == '=' || char.IsWhiteSpace(c) || c == '>');
                             key = key.Trim();
                             if (string.IsNullOrEmpty(key)) continue;
+
                             string value = "";
                             if (_index < _html.Length && _html[_index] == '=')
                             {
@@ -121,79 +152,42 @@ namespace SiegeEngine.Core.UI
                                     _index++;
                                 }
                                 value = ReadUntil(c => quote != '\0' ? c == quote : char.IsWhiteSpace(c) || c == '>');
-                                if (quote != '\0' && _index < _html.Length) _index++; // close quote
+                                if (quote != '\0' && _index < _html.Length) _index++;
                             }
                             elem.Attributes[key] = value;
+
                             if (key == "data-hook" && elem is ButtonElement btn)
                             {
                                 btn.AttachHook(value);
                             }
+
                             string lowerKey = key.ToLower();
-                            if (lowerKey == "onclick")
-                            {
-                                elem.OnClickJS = value;
-                            }
-                            else if (lowerKey == "onchange")
-                            {
-                                elem.OnChangeJS = value;
-                            }
-                            else if (lowerKey == "onmouseenter" || lowerKey == "onmouseover")
-                            {
-                                elem.OnMouseEnterJS = value;
-                            }
-                            else if (lowerKey == "onmouseleave" || lowerKey == "onmouseout")
-                            {
-                                elem.OnMouseLeaveJS = value;
-                            }
-                            else if (lowerKey == "onmousedown")
-                            {
-                                elem.OnMouseDownJS = value;
-                            }
-                            else if (lowerKey == "onmouseup")
-                            {
-                                elem.OnMouseUpJS = value;
-                            }
-                            else if (lowerKey == "onfocus")
-                            {
-                                elem.OnFocusJS = value;
-                            }
-                            else if (lowerKey == "onblur")
-                            {
-                                elem.OnBlurJS = value;
-                            }
+                            if (lowerKey == "onclick") elem.OnClickJS = value;
+                            else if (lowerKey == "onchange") elem.OnChangeJS = value;
+                            else if (lowerKey == "onmouseenter" || lowerKey == "onmouseover") elem.OnMouseEnterJS = value;
+                            else if (lowerKey == "onmouseleave" || lowerKey == "onmouseout") elem.OnMouseLeaveJS = value;
+                            else if (lowerKey == "onmousedown") elem.OnMouseDownJS = value;
+                            else if (lowerKey == "onmouseup") elem.OnMouseUpJS = value;
+                            else if (lowerKey == "onfocus") elem.OnFocusJS = value;
+                            else if (lowerKey == "onblur") elem.OnBlurJS = value;
                         }
-                        _index++; // skip '>'
-                        bool isSelfClosing = tag.EndsWith("/") || Array.Exists(new string[] { "br", "hr", "img", "input", "meta", "link" }, t => t == lowerTag);
+
+                        _index++;
+
+                        bool isSelfClosing = tag.EndsWith("/") || new[] { "br", "hr", "img", "input", "meta", "link" }.Contains(lowerTag);
+
                         parent.Children.Add(elem);
+
                         if (!isSelfClosing)
                         {
-                            // Parse children recursively
                             ParseChildren(elem);
-                        }
-                        if (lowerTag == "include" && elem.Attributes.TryGetValue("src", out string src))
-                        {
-                            // Handle include
-                            string incHtml = File.ReadAllText(src);
-                            HtmlParser incParser = new HtmlParser();
-                            HtmlElement incRoot = incParser.Parse(incHtml);
-                            parent.Children.Remove(elem);
-                            foreach (var child in incRoot.Children)
-                            {
-                                parent.Children.Add(child);
-                                child.Parent = parent;
-                            }
-                        }
-                        else if (lowerTag == "script")
-                        {
-                            // Script handled in LoadUI
                         }
                     }
                 }
                 else
                 {
-                    // Text node
                     string text = ReadUntil(c => c == '<');
-                    if (!string.IsNullOrEmpty(text))
+                    if (!string.IsNullOrEmpty(text.Trim()))
                     {
                         TextElement textElem = new TextElement { Content = text };
                         textElem.Parent = parent;

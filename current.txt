@@ -1,2 +1,26 @@
-Recently we have enabled the ability to create and save terrain height elevation maps aka "mesh" files, and can load actual USGS geotiff DEM data and apply satellite imagery to the DEM data. Now we need to add a bunch of tools to the TerrainCreatorScene to allow for the user to raise and lower terrain. we may want to create some kind of "brush panel" that will be utilized in many different contexts, like for grass, paint, foliage, you name it, we want to be able to utilize brushes in many different contexts, like for terrain (raise, lower, smooth, flatten, noise, sharpen) or for painting (textures, materials), and lasty in future for things like 3d objects, like trees. For now let's start with terrain. The simplest kind of brushes, like a gaussian circle brush, gaussian square, a circle, and a square brush. The panel will also need a slider for the size of the brush and a slider for the intensity of the brush.  The panel we are going to be working inside is the terraincreatorscene, but we should put the brushpanel and brush objects and definitions in a new "ToolChest" Project.  They will need to render so we may need to implement some kind of shader or renderer that utilizes the siegeengine.core irender context and all of theat correctly, such that it remains modular and the brush panel doesn't add bloat to the core project, when it should be in it's own dll. 
+1. Permanent IDE Menubar Enforcement (Phase 1 — we do this first, exactly as you requested)
 
+The IDE basepanel (your DockedHeader panel) stays fixed at top, full width, non-draggable.
+All other panels (docked or floating) are clamped so their title bar can never go above headerHeight.
+Dock root always computes layout starting at Y = headerHeight.
+When dragging a panel to the top edge it now snaps to “DockedTop below menubar”, never overlapping.
+
+2. Resizing (Phase 2)
+
+Floating panels get 5-pixel resize grips on all 4 edges + corners.
+Docked panels keep the existing splitter dragging (DockSplitNode) + gain visible grip highlights.
+Live size preview during resize (ghost outline).
+
+3. Panel-to-Panel Edge Snapping + Live Preview (Phase 3)
+
+While dragging a floating panel, we show a semi-transparent ghost rectangle + highlight the target edge.
+Snap tolerance = 15 px to any docked panel’s edge (left/right/top/bottom) or screen edge (respecting header).
+Drop near edge → automatically inserts a new DockSplitNode at that exact spot.
+Drop in center of a tab group → converts to tab.
+This solves your concern about floating panels behaving badly over other panels.
+
+4. Extra Polish (Phase 4)
+
+Double-click title = maximize within usable area.
+Right-click title = dock/float/close menu.
+All changes use your existing UIQuadRenderer for previews (no new dependencies).

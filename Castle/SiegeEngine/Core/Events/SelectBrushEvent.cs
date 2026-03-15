@@ -1,32 +1,42 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core.Events
+// File: SelectBrushEvent.cs
+using System;
 using System.Text.Json;
-
 namespace SiegeEngine.Core.Events
 {
     public class SelectBrushEvent : IEvent
     {
         public string Type => "SelectBrush";
         public ulong PlayerId { get; set; }
-        public string BrushType { get; set; }
-
-        public SelectBrushEvent(ulong playerId, string brushType)
+        public string BrushMode { get; set; }
+        public float Size { get; set; }
+        public float Intensity { get; set; }
+        public string BrushShape { get; set; }
+        public string BrushFalloff { get; set; }
+        public SelectBrushEvent(ulong playerId, string brushMode, float size, float intensity, string brushShape, string brushFalloff)
         {
             PlayerId = playerId;
-            BrushType = brushType;
+            BrushMode = brushMode;
+            Size = size;
+            Intensity = intensity;
+            BrushShape = brushShape;
+            BrushFalloff = brushFalloff;
         }
-
         public byte[] Serialize()
         {
-            var json = JsonSerializer.Serialize(new { Type, PlayerId, BrushType });
+            var json = JsonSerializer.Serialize(new { Type, PlayerId, BrushMode, Size, Intensity, BrushShape, BrushFalloff });
             return System.Text.Encoding.UTF8.GetBytes(json);
         }
-
         public void Deserialize(byte[] data)
         {
             var json = System.Text.Encoding.UTF8.GetString(data);
             var obj = JsonSerializer.Deserialize<SelectBrushEvent>(json);
             PlayerId = obj.PlayerId;
-            BrushType = obj.BrushType;
+            BrushMode = obj.BrushMode;
+            Size = obj.Size;
+            Intensity = obj.Intensity;
+            BrushShape = obj.BrushShape;
+            BrushFalloff = obj.BrushFalloff;
         }
     }
 }

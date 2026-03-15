@@ -1,15 +1,23 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Core/ContextManagement
+// File: GlfwControlContext.cs
 using SiegeEngine.Core.Definitions;
 using Silk.NET.GLFW;
+using System;
+using System.Collections.Generic;
+
 namespace SiegeEngine.Core.ContextManagement
 {
     public unsafe class GlfwControlContext : IControlContext
     {
         private readonly Glfw _glfw;
+        private readonly Stack<Viewport> _viewportStack = new Stack<Viewport>();
+        private nint _mainWindow;
+
         public GlfwControlContext(Glfw glfw)
         {
             _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
         }
+
         public void SetCursorPosCallback(nint window, IControlContext.CursorPosCallback callback)
         {
             _glfw.SetCursorPosCallback((WindowHandle*)window, (w, x, y) => callback((nint)w, x, y));
@@ -100,6 +108,29 @@ namespace SiegeEngine.Core.ContextManagement
         {
             return _glfw.GetTime();
         }
+
+        // === NEW: Viewport Stack for panel-aware mouse capture ===
+        public void PushViewport(Viewport viewport)
+        {
+            _viewportStack.Push(viewport);
+        }
+
+        public void PopViewport()
+        {
+            if (_viewportStack.Count > 0)
+                _viewportStack.Pop();
+        }
+
+        public Viewport GetCurrentViewport()
+        {
+            if (_viewportStack.Count > 0)
+                return _viewportStack.Peek();
+
+            // Fallback to full window
+            GetWindowSize(_mainWindow, out int w, out int h);
+            return Viewport.FullWindow(w, h);
+        }
+
         private static Key MapGlfwKey(Keys glfwKey)
         {
             return glfwKey switch

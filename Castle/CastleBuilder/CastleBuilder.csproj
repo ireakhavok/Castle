@@ -8,13 +8,30 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MapRoom\MapRoom.csproj" />
+    <ProjectReference Include="..\ReadingChamber\ReadingChamber.csproj" />
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
+    <ProjectReference Include="..\ToolChest\ToolChest.csproj" />
   </ItemGroup>
 
 <ItemGroup>
   <None Include="Assets\Configs\**\*.*">
     <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
   </None>
+</ItemGroup>
+
+<ItemGroup>
+  <None Remove="IDE_UI.html" />
+  <None Remove="SaveProjectForm.html" />
+</ItemGroup>
+
+<ItemGroup>
+  <Content Include="IDE_UI.html">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </Content>
+  <Content Include="SaveProjectForm.html">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </Content>
 </ItemGroup>
 
 </Project>

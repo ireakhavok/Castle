@@ -7,6 +7,10 @@ using System.Text.Json;
 using System.Collections.Generic;
 using System.Globalization;
 using SiegeEngine.Core.Events;
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.UI;
+using SiegeEngine.Core.UI.Elements;
 namespace CastleBuilder
 {
     public class ProjectData
@@ -15,13 +19,14 @@ namespace CastleBuilder
         public string Type { get; set; }
         public string Mode { get; set; }
         public bool AllowMods { get; set; }
-        public List<string> Scenes { get; set; } = new List<string>();
-        public List<string> Mods { get; set; } = new List<string>();
+        public List<string> Scenes { get; set; } = new List<string> { "Main" };
+        public string Version { get; set; } = "1.0";
+        public string LastOpenedScene { get; set; } = "Main";
     }
     public class BlueprintManager
     {
         private readonly EventBus _eventBus;
-        private string _activeProject;
+        private string _activeProject = null;
         private readonly string _configPath;
         public BlueprintManager(EventBus eventBus)
         {
@@ -31,14 +36,65 @@ namespace CastleBuilder
             _eventBus.Subscribe<SaveProjectEvent>(OnSaveProject);
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _configPath = GetDefaultIDEPath();
-            LoadIDEState();
+        }
+        public static void Load(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            var idePanel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new OpenPanelEvent(idePanel) { Mode = OpenMode.Replace });
+        }
+        // Called directly from NewProject.html "Create" button via MenuPanel reflection
+        // Now reads REAL form fields from the UIOverlay passed by the updated MenuUIOverlay
+        public static void CreateNewProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, UIOverlay overlay)
+        {
+            var nameElem = overlay.FindElementById("project-name") as InputElement;
+            var typeElem = overlay.FindElementById("game-type") as SelectElement;
+            var modeElem = overlay.FindElementById("project-mode") as SelectElement;
+            var allowModsElem = overlay.FindElementById("allow-mods") as InputElement;
+
+            string name = nameElem?.Value?.Trim() ?? "MyNewProject";
+            string projectType = typeElem?.Value ?? "3D FPS";
+            string mode = modeElem?.Value ?? "Single Player";
+            bool allowMods = allowModsElem?.Checked ?? true;
+
+            if (string.IsNullOrEmpty(name)) name = "MyNewProject";
+
+            string path = @"C:\Users\ireak\source\CastleBuilder\Projects";
+            string dir = Path.Combine(path, name.Replace(" ", ""));
+
+            Directory.CreateDirectory(dir);
+            var data = new ProjectData
+            {
+                Name = name,
+                Type = projectType,
+                Mode = mode,
+                AllowMods = allowMods
+            };
+            string jsonPath = Path.Combine(dir, "project.json");
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+            Directory.CreateDirectory(Path.Combine(dir, "Scenes"));
+            Directory.CreateDirectory(Path.Combine(dir, "Assets"));
+            Directory.CreateDirectory(Path.Combine(dir, "Mods"));
+            eventBus.Publish(new LoadProjectEvent { Path = dir });
+            Console.WriteLine($"[BlueprintManager] New project created with REAL form data and IDE opened: {dir}");
+            Load(renderContext, controlContext, window, eventBus);
+        }
+        public static void SaveCurrentProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            eventBus.Publish(new SaveProjectEvent());
+        }
+        public static void SaveProjectAs(string folder, string name, EventBus eventBus)
+        {
+            string dir = Path.Combine(folder, name);
+            Directory.CreateDirectory(dir);
+            var data = new ProjectData { Name = name };
+            string jsonPath = Path.Combine(dir, "project.json");
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+            eventBus.Publish(new LoadProjectEvent { Path = dir });
         }
         private void OnGenericEvent(GenericEvent evt)
         {
             if (evt.Hook == "CastleBuilder.NewProject")
             {
-                // Show form (stub)
-                // Publish with dummy or collect
                 _eventBus.Publish(new NewProjectEvent { Name = "MyProject", ProjectType = "3D_FPS" });
             }
             else if (evt.Hook == "CreateProject")
@@ -64,48 +120,22 @@ namespace CastleBuilder
             }
             string projectJson = template.Replace("{name}", evt.Name).Replace("{mode}", evt.Mode ?? "Single Player").Replace("{allowMods}", evt.AllowMods.ToString(CultureInfo.InvariantCulture).ToLowerInvariant());
             File.WriteAllText(Path.Combine(dir, "project.json"), projectJson);
-            // Initialize stubs
             Directory.CreateDirectory(Path.Combine(dir, "Scenes"));
             Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             _eventBus.Publish(new LoadProjectEvent { Path = dir });
         }
         private void OnLoadProject(LoadProjectEvent evt)
         {
-            string projectJsonPath = Path.Combine(evt.Path, "project.json");
-            if (!File.Exists(projectJsonPath))
-            {
-                Console.WriteLine($"BlueprintManager: project.json not found at {projectJsonPath}");
-                return;
-            }
-            string json = File.ReadAllText(projectJsonPath);
-            var proj = JsonSerializer.Deserialize<ProjectData>(json);
+            if (string.IsNullOrEmpty(evt.Path) || !Directory.Exists(evt.Path)) return;
             _activeProject = evt.Path;
-            // Load scenes/assets into memory (stub for now)
-            Console.WriteLine($"BlueprintManager: Loaded project {proj.Name} from {evt.Path}");
-            // Open panels, e.g., WarTable
-            // _eventBus.Publish(new OpenPanelEvent { Type = "WarTable" });
             SaveIDEState();
         }
         private void OnSaveProject(SaveProjectEvent evt)
         {
-            string path = evt.Path ?? _activeProject;
-            if (string.IsNullOrEmpty(path))
-            {
-                Console.WriteLine("BlueprintManager: No active project to save");
-                return;
-            }
-            string projectJsonPath = Path.Combine(path, "project.json");
-            if (!File.Exists(projectJsonPath))
-            {
-                Console.WriteLine($"BlueprintManager: project.json not found at {projectJsonPath}");
-                return;
-            }
-            string json = File.ReadAllText(projectJsonPath);
-            var proj = JsonSerializer.Deserialize<ProjectData>(json);
-            json = JsonSerializer.Serialize(proj);
-            File.WriteAllText(projectJsonPath, json);
-            // Serialize scenes/assets (stub)
-            Console.WriteLine($"BlueprintManager: Saved project at {path}");
+            if (string.IsNullOrEmpty(_activeProject)) return;
+            string jsonPath = Path.Combine(_activeProject, "project.json");
+            var data = new ProjectData { Name = Path.GetFileName(_activeProject) };
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
         }
         private string GetTemplate(string type)
         {
@@ -121,25 +151,10 @@ namespace CastleBuilder
         {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CastleBuilder", "config.json");
         }
-        private void LoadIDEState()
-        {
-            if (File.Exists(_configPath))
-            {
-                string json = File.ReadAllText(_configPath);
-                var config = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-                if (config.TryGetValue("active_project", out string activePath) && Directory.Exists(activePath))
-                {
-                    _eventBus.Publish(new LoadProjectEvent { Path = activePath });
-                }
-            }
-        }
         private void SaveIDEState()
         {
             if (string.IsNullOrEmpty(_activeProject)) return;
-            var config = new Dictionary<string, string>
-            {
-                { "active_project", _activeProject }
-            };
+            var config = new Dictionary<string, string> { { "active_project", _activeProject } };
             string json = JsonSerializer.Serialize(config);
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
             File.WriteAllText(_configPath, json);

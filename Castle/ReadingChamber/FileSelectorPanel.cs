@@ -13,7 +13,7 @@ using SiegeEngine.Core.UI;
 
 namespace ReadingChamber
 {
-    public class FileSelectorPanel : BasePanel
+    public class FileSelectorPanel : ClosablePanel
     {
         private class FileSelectorUIOverlay : UIOverlay
         {
@@ -22,7 +22,7 @@ namespace ReadingChamber
             {
                 _parent = parent;
             }
-            protected override void HandleUIClick(HtmlElement elem)
+            public override void HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
             }

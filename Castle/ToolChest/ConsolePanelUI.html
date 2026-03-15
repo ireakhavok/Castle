@@ -1,0 +1,104 @@
+<!-- Folder: ToolChest -->
+<!-- File: ConsolePanelUI.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Console</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #1e1e1e;
+            color: #cccccc;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            overflow: hidden;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .header {
+            background: #252526;
+            padding: 6px 10px;
+            border-bottom: 1px solid #333;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .toolbar {
+            background: #252526;
+            padding: 4px 8px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            gap: 6px;
+        }
+
+        .log-container {
+            flex: 1;
+            overflow: auto;
+            padding: 8px;
+            background: #0d0d0d;
+        }
+
+        .log-line {
+            padding: 1px 4px;
+            white-space: pre-wrap;
+        }
+
+        .input-area {
+            background: #252526;
+            padding: 6px;
+            border-top: 1px solid #333;
+            display: flex;
+        }
+
+        input {
+            flex: 1;
+            background: #1e1e1e;
+            border: 1px solid #555;
+            color: #ccc;
+            padding: 6px;
+            font-family: 'Consolas', monospace;
+        }
+
+        button {
+            background: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 6px 12px;
+            margin-left: 4px;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #444;
+            }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="header">
+            <span>Console</span>
+        </div>
+        <div class="toolbar">
+            <button data-hook="Clear">Clear</button>
+            <input id="filterInput" placeholder="Filter..." style="width:200px;" oninput="/* handled in C# via rebuild */">
+        </div>
+        <div class="log-container" id="logContainer">
+            <!--LOGS-->
+        </div>
+        <div class="input-area">
+            <input id="commandInput" placeholder="Enter command..." data-hook="SubmitCommand">
+            <button data-hook="SubmitCommand">Send</button>
+        </div>
+    </div>
+</body>
+</html>

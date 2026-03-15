@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI/JSParser
+﻿// Folder: SiegeEngine/Core/UI/JSParser
 // File: JSStandardLibrary.cs
 using System;
 using System.Collections.Generic;
@@ -6,7 +6,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-
+using YamlDotNet.Core.Tokens;
 namespace SiegeEngine.Core.UI.JSParser
 {
     public static class JSStandardLibrary
@@ -17,7 +17,6 @@ namespace SiegeEngine.Core.UI.JSParser
             evaluator.RegisterGlobal("Infinity", double.PositiveInfinity);
             evaluator.RegisterGlobal("NaN", double.NaN);
             evaluator.RegisterGlobal("undefined", null); // But already throws on undefined
-
             // Global functions
             evaluator.RegisterGlobal("eval", new Func<string, object>(code =>
             {
@@ -35,7 +34,14 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (o is double d) return double.IsNaN(d);
                 return false;
             }));
-            evaluator.RegisterGlobal("parseFloat", new Func<string, double>(s => double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out double d) ? d : double.NaN));
+            evaluator.RegisterGlobal("parseFloat", new Func<object, double>(o =>
+            {
+                if (o is double d) return d;
+                if (o is float f) return f;
+                if (o is int i) return i;
+                string s = o?.ToString() ?? "";
+                return double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out double parsed) ? parsed : double.NaN;
+            }));
             evaluator.RegisterGlobal("parseInt", new Func<string, int, double>((s, radix) =>
             {
                 if (radix < 2 || radix > 36) return double.NaN;
@@ -52,16 +58,13 @@ namespace SiegeEngine.Core.UI.JSParser
             evaluator.RegisterGlobal("decodeURIComponent", new Func<string, string>(Uri.UnescapeDataString));
             evaluator.RegisterGlobal("encodeURI", new Func<string, string>(Uri.EscapeUriString));
             evaluator.RegisterGlobal("encodeURIComponent", new Func<string, string>(Uri.EscapeDataString));
-
             // console
             var console = new Dictionary<object, object>();
             console["log"] = new Action<object[]>(args => Console.WriteLine(string.Join(" ", args.Select(a => a?.ToString() ?? ""))));
             // add warn, error, etc. similar
             evaluator.RegisterGlobal("console", console);
-
             // alert
             evaluator.RegisterGlobal("alert", new Action<object>(o => Console.WriteLine(o?.ToString())));
-
             // Math
             var math = new Dictionary<object, object>();
             math["E"] = Math.E;
@@ -94,14 +97,14 @@ namespace SiegeEngine.Core.UI.JSParser
             math["exp"] = new Func<double, double>(Math.Exp);
             math["floor"] = new Func<double, double>(Math.Floor);
             math["fround"] = new Func<double, double>(d => (float)d);
-            math["hypot"] = new Func<object[], double>(args => Math.Sqrt(args.Sum(a => Math.Pow((double)a, 2))));
+            math["hypot"] = new Func<object[], object>(args => (object)Math.Sqrt(args.Sum(a => Math.Pow((double)a, 2))));
             math["imul"] = new Func<double, double, double>((x, y) => (int)x * (int)y);
             math["log"] = new Func<double, double>(Math.Log);
             math["log1p"] = new Func<double, double>(x => Math.Log(1 + x));
             math["log10"] = new Func<double, double>(Math.Log10);
             math["log2"] = new Func<double, double>(Math.Log2);
-            math["max"] = new Func<object[], double>(args => args.Any() ? args.Max(a => (double)a) : double.NegativeInfinity);
-            math["min"] = new Func<object[], double>(args => args.Any() ? args.Min(a => (double)a) : double.PositiveInfinity);
+            math["max"] = new Func<object[], object>(args => args.Any() ? (object)args.Max(a => (double)a) : double.NegativeInfinity);
+            math["min"] = new Func<object[], object>(args => args.Any() ? (object)args.Min(a => (double)a) : double.PositiveInfinity);
             math["pow"] = new Func<double, double, double>(Math.Pow);
             math["random"] = new Func<double>(() => new Random().NextDouble());
             math["round"] = new Func<double, double>(Math.Round);
@@ -114,13 +117,22 @@ namespace SiegeEngine.Core.UI.JSParser
             math["trunc"] = new Func<double, double>(Math.Truncate);
             // add more if needed
             evaluator.RegisterGlobal("Math", math);
-
             // JSON
             var json = new Dictionary<object, object>();
             json["parse"] = new Func<string, object>(s => JsonSerializer.Deserialize<object>(s));
             json["stringify"] = new Func<object, string>(o => JsonSerializer.Serialize(o));
             evaluator.RegisterGlobal("JSON", json);
-
+            // Minimal window global for BrushPanelUI.html (supports the exact usage: window.addEventListener('load', () => {...}))
+            var windowObj = new Dictionary<object, object>();
+            windowObj["addEventListener"] = new Action<string, object>((eventName, callback) =>
+            {
+                if (string.Equals(eventName, "load", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Script executes after DOM is fully built in UIOverlay.LoadUI(), so fire immediately
+                    evaluator.CallFunction(callback, new List<object>());
+                }
+            });
+            evaluator.RegisterGlobal("window", windowObj);
             // Date
             evaluator.RegisterGlobal("Date", new Func<object[], object>(args =>
             {
@@ -159,9 +171,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 ["now"] = new Func<double>(() => (double)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds),
                 // parse etc.
             });
-
             // Add more globals like Object, Array, String constructors
-
             evaluator.RegisterGlobal("Object", new Func<object[], Dictionary<object, object>>(args => new Dictionary<object, object>()));
             evaluator.RegisterGlobal("Array", new Func<object[], List<object>>(args =>
             {
@@ -171,17 +181,12 @@ namespace SiegeEngine.Core.UI.JSParser
             evaluator.RegisterGlobal("String", new Func<object, string>(o => o?.ToString() ?? ""));
             evaluator.RegisterGlobal("Number", new Func<object, double>(o => o is string s ? double.Parse(s) : (double)o));
             evaluator.RegisterGlobal("Boolean", new Func<object, bool>(o => JSEvaluator.IsTruthy(o)));
-
             // RegExp
             evaluator.RegisterGlobal("RegExp", new Func<string, string, JSRegex>((pat, flags) => new JSRegex(pat, flags)));
-
             // Error skip
-
             // Promise skip no async
-
             // etc.
         }
-
         public class JSDate
         {
             public DateTime Date { get; set; }
@@ -190,7 +195,6 @@ namespace SiegeEngine.Core.UI.JSParser
             public JSDate(DateTime dt) { Date = dt.ToUniversalTime(); }
             public override string ToString() { return Date.ToString("ddd MMM dd yyyy HH:mm:ss 'GMT'zzz '(Coordinated Universal Time)'"); }
         }
-
         public static object GetDateMember(JSEvaluator eval, JSDate date, string prop)
         {
             switch (prop)
@@ -214,7 +218,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: return null;
             }
         }
-
         public static object GetRegexMember(JSEvaluator eval, JSRegex regex, string prop)
         {
             var options = GetRegexOptions(regex.Flags);
@@ -244,7 +247,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: return null;
             }
         }
-
         public static object GetStringMember(JSEvaluator eval, string str, string prop)
         {
             switch (prop)
@@ -344,7 +346,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: return null;
             }
         }
-
         public static object GetNumberMember(JSEvaluator eval, double num, string prop)
         {
             switch (prop)
@@ -358,7 +359,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: return null;
             }
         }
-
         public static object GetObjectMember(JSEvaluator eval, Dictionary<object, object> obj, string prop)
         {
             switch (prop)
@@ -375,7 +375,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: return null;
             }
         }
-
         public static object GetArrayMember(JSEvaluator eval, List<object> arr, string prop)
         {
             switch (prop)
@@ -386,7 +385,15 @@ namespace SiegeEngine.Core.UI.JSParser
                 case "filter": return new Func<object, List<object>>(callback => arr.Where(item => JSEvaluator.IsTruthy(eval.CallFunction(callback, new List<object> { item }))).ToList());
                 case "find": return new Func<object, object>(callback => arr.FirstOrDefault(item => JSEvaluator.IsTruthy(eval.CallFunction(callback, new List<object> { item }))));
                 case "findIndex": return new Func<object, double>(callback => arr.FindIndex(item => JSEvaluator.IsTruthy(eval.CallFunction(callback, new List<object> { item }))));
-                case "forEach": return new Action<object>(callback => arr.ForEach(item => eval.CallFunction(callback, new List<object> { item })));
+                case "forEach":
+                    return new Action<object>(callback =>
+                    {
+                        Console.WriteLine($"[JSArray.forEach] callback type: {callback?.GetType().FullName ?? "null"}");
+                        foreach (var item in arr)
+                        {
+                            eval.CallFunction(callback, new List<object> { item });
+                        }
+                    });
                 case "includes": return new Func<object, bool>(value => arr.Contains(value));
                 case "indexOf": return new Func<object, double>(value => arr.IndexOf(value));
                 case "join": return new Func<string, string>(separator => string.Join(separator, arr.Select(a => a?.ToString() ?? "")));
@@ -407,7 +414,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: return null;
             }
         }
-
         private static RegexOptions GetRegexOptions(string flags)
         {
             RegexOptions options = RegexOptions.None;

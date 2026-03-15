@@ -1,39 +1,34 @@
-﻿// Folder: SiegeEngine.UI/JSParser
+﻿// Folder: SiegeEngine.Core.UI.JSParser
 // File: JSElement.cs
-using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
+using System.Globalization;
+using SiegeEngine.Core.UI.Elements;
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSElement
     {
         public HtmlElement elem;
         public UIOverlay overlay;
-
         public JSElement(HtmlElement elem, UIOverlay overlay)
         {
             this.elem = elem;
             this.overlay = overlay;
         }
-
         public string id
         {
             get { return elem.Attributes.GetValueOrDefault("id", ""); }
         }
-
         public string tagName
         {
             get { return elem.Tag; }
         }
-
         public string innerHTML
         {
             get { return string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)); }
             set
             {
-                Console.WriteLine("Debug: Cleared children for ID: " + id);
                 elem.Children.Clear();
                 if (!string.IsNullOrEmpty(value))
                 {
@@ -41,9 +36,9 @@ namespace SiegeEngine.Core.UI.JSParser
                     textElem.Parent = elem;
                     elem.Children.Add(textElem);
                 }
+                overlay.RefreshUI();
             }
         }
-
         public string textContent
         {
             get { return string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)); }
@@ -56,9 +51,9 @@ namespace SiegeEngine.Core.UI.JSParser
                     textElem.Parent = elem;
                     elem.Children.Add(textElem);
                 }
+                overlay.RefreshUI();
             }
         }
-
         public string value
         {
             get
@@ -75,9 +70,13 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 else if (tag == "input")
                 {
+                    if (elem is RangeElement range)
+                    {
+                        return range.Value.ToString(CultureInfo.InvariantCulture);
+                    }
                     if (elem is InputElement inp)
                     {
-                        return inp.Value;
+                        return inp.Value ?? "";
                     }
                     return elem.Attributes.GetValueOrDefault("value", "");
                 }
@@ -86,13 +85,48 @@ namespace SiegeEngine.Core.UI.JSParser
             set
             {
                 string tag = elem.Tag.ToLower();
-                if (tag == "select")
+                string newVal = value?.ToString() ?? "";
+                bool valueChanged = false;
+                if (tag == "input")
+                {
+                    string oldValue = "";
+                    if (elem is RangeElement range)
+                    {
+                        if (double.TryParse(newVal, NumberStyles.Any, CultureInfo.InvariantCulture, out double f))
+                        {
+                            oldValue = range.Value.ToString(CultureInfo.InvariantCulture);
+                            range.Value = (float)f;
+                            valueChanged = oldValue != newVal;
+                        }
+                        else
+                        {
+                            range.Value = 0f;
+                            valueChanged = true;
+                        }
+                    }
+                    else if (elem is InputElement inp)
+                    {
+                        oldValue = inp.Value ?? "";
+                        if (oldValue != newVal)
+                        {
+                            inp.Value = newVal;
+                            valueChanged = true;
+                        }
+                    }
+                    string oldAttr = elem.Attributes.GetValueOrDefault("value", "");
+                    if (oldAttr != newVal)
+                    {
+                        elem.Attributes["value"] = newVal;
+                        valueChanged = true;
+                    }
+                }
+                else if (tag == "select")
                 {
                     bool found = false;
                     foreach (var opt in elem.Children.Where(c => c.Tag.ToLower() == "option"))
                     {
                         string optVal = opt.Attributes.GetValueOrDefault("value", ((TextElement)opt.Children.FirstOrDefault())?.Content ?? "");
-                        if (optVal == value)
+                        if (optVal == newVal)
                         {
                             opt.Attributes["selected"] = "";
                             found = true;
@@ -102,35 +136,27 @@ namespace SiegeEngine.Core.UI.JSParser
                             opt.Attributes.Remove("selected");
                         }
                     }
-                    if (found)
-                    {
-                        overlay.RefreshUI();
-                        overlay.TriggerChange(elem);
-                    }
+                    if (found) valueChanged = true;
                 }
                 else if (tag == "option")
                 {
-                    elem.Attributes["value"] = value;
-                }
-                else if (tag == "input")
-                {
-                    string oldValue = "";
-                    if (elem is InputElement inp)
+                    if (elem.Attributes.GetValueOrDefault("value", "") != newVal)
                     {
-                        oldValue = inp.Value;
-                        inp.Value = value;
+                        elem.Attributes["value"] = newVal;
+                        valueChanged = true;
                     }
-                    elem.Attributes["value"] = value;
-                    if (oldValue != value)
+                }
+                if (valueChanged)
+                {
+                    overlay.RefreshUI();
+                    if (tag == "input")
                     {
-                        overlay.RefreshUI();
                         overlay.InvokeListeners(elem, "input");
                         overlay.TriggerChange(elem);
                     }
                 }
             }
         }
-
         public object[] options
         {
             get
@@ -150,7 +176,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 return new object[0];
             }
         }
-
         public bool @checked
         {
             get { return elem.Checked; }
@@ -165,21 +190,26 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
             }
         }
-
+        public float min
+        {
+            get { return elem is RangeElement r ? r.Min : 0f; }
+        }
+        public float max
+        {
+            get { return elem is RangeElement r ? r.Max : 100f; }
+        }
         public void appendChild(JSElement child)
         {
             elem.Children.Add(child.elem);
             child.elem.Parent = elem;
             overlay.RefreshUI();
         }
-
         public void removeChild(JSElement child)
         {
             elem.Children.Remove(child.elem);
             child.elem.Parent = null;
             overlay.RefreshUI();
         }
-
         public void insertBefore(JSElement newChild, JSElement referenceChild)
         {
             int index = elem.Children.IndexOf(referenceChild.elem);
@@ -190,7 +220,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
-
         public void replaceChild(JSElement newChild, JSElement oldChild)
         {
             int index = elem.Children.IndexOf(oldChild.elem);
@@ -202,36 +231,30 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
-
         public string getAttribute(string name)
         {
             return elem.Attributes.GetValueOrDefault(name, null);
         }
-
         public void setAttribute(string name, string value)
         {
             elem.Attributes[name] = value;
             overlay.RefreshUI();
         }
-
         public void removeAttribute(string name)
         {
             elem.Attributes.Remove(name);
             overlay.RefreshUI();
         }
-
         public JSElement querySelector(string selector)
         {
             var elemFound = QuerySelectorAll(selector).FirstOrDefault();
             return elemFound == null ? null : new JSElement(elemFound, overlay);
         }
-
         public List<JSElement> querySelectorAll(string selector)
         {
             var elems = QuerySelectorAll(selector);
             return elems.Select(e => new JSElement(e, overlay)).ToList();
         }
-
         private List<HtmlElement> QuerySelectorAll(string selector)
         {
             List<HtmlElement> matches = new List<HtmlElement>();
@@ -252,14 +275,12 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             return matches;
         }
-
         public void addEventListener(string eventName, object callback)
         {
             eventName = eventName.ToLower();
             if (!elem.EventListeners.ContainsKey(eventName)) elem.EventListeners[eventName] = new List<object>();
             elem.EventListeners[eventName].Add(callback);
         }
-
         public void removeEventListener(string eventName, object callback)
         {
             eventName = eventName.ToLower();

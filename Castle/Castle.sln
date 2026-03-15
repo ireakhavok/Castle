@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuestHall", "QuestHall\Ques
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuildTower", "GuildTower\GuildTower.csproj", "{DA44D92E-C2F1-46BC-8E9B-2667C8D4BE9B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ToolChest", "ToolChest\ToolChest.csproj", "{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -167,6 +169,18 @@ Global
 		{DA44D92E-C2F1-46BC-8E9B-2667C8D4BE9B}.Release|x64.Build.0 = Release|Any CPU
 		{DA44D92E-C2F1-46BC-8E9B-2667C8D4BE9B}.Release|x86.ActiveCfg = Release|Any CPU
 		{DA44D92E-C2F1-46BC-8E9B-2667C8D4BE9B}.Release|x86.Build.0 = Release|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Debug|x64.Build.0 = Debug|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Debug|x86.Build.0 = Debug|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Release|x64.ActiveCfg = Release|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Release|x64.Build.0 = Release|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Release|x86.ActiveCfg = Release|Any CPU
+		{E6A3E94F-9ADA-4B7B-AB93-10EABE3A7DDF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: Citadel/Server
+// File: GameServer.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -27,11 +29,14 @@ namespace Citadel.Server
         private readonly Dictionary<(int, int), List<Entity>> _spatialGrid = new();
         private const float GridCellSize = 10f;
         private readonly Queue<IEvent> _networkEventQueue = new Queue<IEvent>();
-        public GameServer(EventBus eventBus, NetworkManager networkManager = null)
+        private readonly bool _isEditor;
+
+        public GameServer(EventBus eventBus, NetworkManager networkManager = null, bool isEditor = false)
         {
             _eventBus = eventBus;
             _networkManager = networkManager;
             _validationSystem = new ServerValidationSystem(this);
+            _isEditor = isEditor;
             AddSystem(new PhysicsSystem(this));
             AddSystem(_validationSystem);
             AddSystem(new AudioSystem(this, _eventBus, true, _validationSystem));
@@ -42,13 +47,28 @@ namespace Citadel.Server
             _eventBus.Subscribe<PlayerExitedEditorEvent>(OnPlayerExitedEditor);
             _eventBus.Subscribe<MouseInputEvent>(OnMouseInput);
             _eventBus.Subscribe<KeyInputEvent>(OnKeyInput);
+            if (_isEditor)
+            {
+                var typeName = "MapRoom.TerrainModifiedEvent";
+                var type = Type.GetType(typeName);
+                if (type != null)
+                {
+                    var objHandler = new Action<object>(OnTerrainModifiedGeneric);
+                    var handlerType = typeof(Action<>).MakeGenericType(type);
+                    var typedHandler = Delegate.CreateDelegate(handlerType, objHandler.Target, objHandler.Method);
+                    var subscribeMethod = typeof(EventBus).GetMethod("Subscribe").MakeGenericMethod(type);
+                    subscribeMethod.Invoke(_eventBus, new[] { typedHandler });
+                }
+            }
         }
+
         public void AddEntity(Entity entity)
         {
             _entities.Add(entity);
             UpdateSpatialGrid(entity);
             Console.WriteLine($"GameServer: Added entity {entity.Id} of type {entity.Type}");
         }
+
         public void RemoveEntity(int id)
         {
             var entity = _entities.Find(e => e.Id == id);
@@ -59,13 +79,16 @@ namespace Citadel.Server
                 Console.WriteLine($"GameServer: Removed entity {id}");
             }
         }
+
         public IReadOnlyList<Entity> GetEntities() => _entities.AsReadOnly();
         public Entity GetEntityById(int id) => _entities.Find(e => e.Id == id);
+
         public void AddSystem(GameSystem system)
         {
             _systems.Add(system);
             Console.WriteLine($"GameServer: Added system {system.GetType().Name}");
         }
+
         public void Update(float deltaTime)
         {
             while (_networkEventQueue.Count > 0)
@@ -124,16 +147,19 @@ namespace Citadel.Server
             }
             _deltaTracker.Update(GetEntities());
         }
+
         public bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
         {
             bool validated = _validationSystem.ValidateMovement(entityId, requestedPosition, requestedRotation, steamId);
             Console.WriteLine($"GameServer: Movement validation for entity {entityId} (SteamID: {steamId}) to {requestedPosition}, Rotation={requestedRotation} - {(validated ? "Success" : "Failed")}");
             return validated;
         }
+
         public bool ValidateInventory(int entityId, string action, object data)
         {
             return _validationSystem.ValidateInventory(entityId, action, data);
         }
+
         public void Publish<T>(T eventData, bool networkSync = false) where T : class
         {
             _eventBus.Publish(eventData, networkSync);
@@ -142,6 +168,7 @@ namespace Citadel.Server
                 _networkManager.SendToAll(ievent.Serialize(), eventData is EntityMovedEvent ? 1 : 0);
             }
         }
+
         public byte[] Serialize()
         {
             var deltas = _deltaTracker.GetDeltas(GetEntities());
@@ -156,6 +183,7 @@ namespace Citadel.Server
             }
             return JsonSerializer.SerializeToUtf8Bytes(new { Deltas = visibleDeltas });
         }
+
         public void Deserialize(byte[] data)
         {
             var state = JsonSerializer.Deserialize<Dictionary<string, Dictionary<int, Vector3>>>(data);
@@ -172,6 +200,7 @@ namespace Citadel.Server
                 }
             }
         }
+
         public RayTraceResult RequestRayTrace(Vector3 start, Vector3 direction, float maxDistance)
         {
             RayTraceResult result = new RayTraceResult { DidHit = false };
@@ -207,6 +236,7 @@ namespace Citadel.Server
             }
             return result;
         }
+
         private bool RayAABBIntersect(Vector3 rayOrigin, Vector3 rayDirection, Vector3 boxMin, Vector3 boxMax, out float distance)
         {
             distance = 0f;
@@ -233,6 +263,7 @@ namespace Citadel.Server
             distance = tmin >= 0 ? tmin : 0;
             return true;
         }
+
         private Vector3 ApproximateNormal(Vector3 hitPoint, PhysicsComponent physics)
         {
             Vector3 center = physics.Position;
@@ -247,22 +278,30 @@ namespace Citadel.Server
             else
                 return new Vector3(0, 0, localHit.Z > 0 ? 1 : -1);
         }
+
         private void OnExitEditor(ExitEditorEvent e)
         {
             Console.WriteLine($"GameServer: Player {e.PlayerId} exited editor mode");
             Publish(new PlayerExitedEditorEvent(e.PlayerId), true);
         }
+
         private void OnEntityPlaced(EntityPlacedEvent e)
         {
             var entity = new Entity { Id = e.EntityId, Type = e.EntityType };
-            entity.AddComponent(new PhysicsComponent { Position = e.Position });
+
+            var physics = new PhysicsComponent();
+            physics.Position = e.Position; // Routes directly through TransformComponent (single source of truth)
+            entity.AddComponent(physics);
+
             if (e.EntityType == "Player")
             {
                 entity.AddComponent(new Player(e.EntityId, e.Position, e.PlayerId ?? 0));
             }
+
             AddEntity(entity);
             Publish(e, true);
         }
+
         private void OnItemPickedUp(ItemPickedUpEvent e)
         {
             var entity = GetEntityById(e.EntityId);
@@ -276,6 +315,7 @@ namespace Citadel.Server
                 Console.WriteLine($"GameServer: Item pickup failed for entity {e.EntityId}");
             }
         }
+
         private void OnPhysicsCollision(PhysicsCollisionEvent e)
         {
             var source = GetEntityById(e.SourceId);
@@ -290,10 +330,12 @@ namespace Citadel.Server
                 Console.WriteLine($"GameServer: Collision failed for {e.SourceId} to {e.TargetId}");
             }
         }
+
         private void OnPlayerExitedEditor(PlayerExitedEditorEvent e)
         {
             Console.WriteLine($"GameServer: Player {e.PlayerId} confirmed editor exit");
         }
+
         private void OnMouseInput(MouseInputEvent e)
         {
             Console.WriteLine($"GameServer: Received MouseInputEvent from SteamID: {e.SteamId}, Pos: {e.Position}, Button: {e.Button}, Action: {e.Action}");
@@ -313,6 +355,7 @@ namespace Citadel.Server
                 Console.WriteLine($"GameServer: Invalid mouse input from SteamID: {e.SteamId}");
             }
         }
+
         private void OnKeyInput(KeyInputEvent e)
         {
             Console.WriteLine($"GameServer: Received KeyInputEvent from SteamID: {e.SteamId}, Key: {e.Key}, Action: {e.Action}");
@@ -329,6 +372,7 @@ namespace Citadel.Server
                 Console.WriteLine($"GameServer: Invalid key input from SteamID: {e.SteamId}");
             }
         }
+
         private bool CheckOcclusion(Vector3 start, Vector3 end)
         {
             var nearbyEntities = GetNearbyEntities(start);
@@ -354,6 +398,7 @@ namespace Citadel.Server
             }
             return false;
         }
+
         private void UpdateSpatialGrid(Entity entity)
         {
             var physics = entity.GetComponent<PhysicsComponent>();
@@ -367,6 +412,7 @@ namespace Citadel.Server
                 _spatialGrid[cell].Add(entity);
             }
         }
+
         private void RemoveFromSpatialGrid(Entity entity)
         {
             var physics = entity.GetComponent<PhysicsComponent>();
@@ -383,10 +429,12 @@ namespace Citadel.Server
                 }
             }
         }
+
         private (int, int) GetGridCell(Vector3 position)
         {
             return ((int)(position.X / GridCellSize), (int)(position.Y / GridCellSize));
         }
+
         private IEnumerable<Entity> GetNearbyEntities(Vector3 position)
         {
             var (cx, cy) = GetGridCell(position);
@@ -403,9 +451,21 @@ namespace Citadel.Server
             }
             return nearby;
         }
+
         public void QueueNetworkEvent(IEvent e)
         {
             _networkEventQueue.Enqueue(e);
+        }
+
+        private void OnTerrainModifiedGeneric(object evtObj)
+        {
+            bool valid = true;
+            if (valid)
+            {
+                var type = evtObj.GetType();
+                var publishMethod = typeof(GameServer).GetMethod("Publish").MakeGenericMethod(type);
+                publishMethod.Invoke(this, new[] { evtObj, true });
+            }
         }
     }
 }

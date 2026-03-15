@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI
+﻿// Folder: SiegeEngine.Core.UI
 // File: MenuPanel.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
@@ -26,6 +26,7 @@ namespace SiegeEngine.Core.UI
             }
             protected override void HandleDataHook(string hook)
             {
+                Console.WriteLine($"[MenuUIOverlay] Processing data-hook: {hook}");
                 var parts = hook.Split('.');
                 if (parts.Length > 2)
                 {
@@ -48,10 +49,30 @@ namespace SiegeEngine.Core.UI
                     Type type = ass?.GetType(typeName) ?? Type.GetType(typeName);
                     if (type != null)
                     {
-                        MethodInfo mi = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public, null, new Type[] { typeof(IRenderContext), typeof(IControlContext), typeof(nint), typeof(EventBus) }, null);
+                        // FIRST try 5-param version (BlueprintManager.CreateNewProject needs UIOverlay to read form fields)
+                        MethodInfo mi5 = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public, null,
+                            new Type[] { typeof(IRenderContext), typeof(IControlContext), typeof(nint), typeof(EventBus), typeof(UIOverlay) }, null);
+                        if (mi5 != null)
+                        {
+                            try
+                            {
+                                mi5.Invoke(null, new object[] { _renderContext, _controlContext, _window, _eventBus, this });
+                                Console.WriteLine($"[MenuUIOverlay] SUCCESS (form data passed): {hook}");
+                                _eventBus.Publish(new ClosePanelEvent(_parent));
+                                return;
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"MenuUIOverlay: Error calling 5-param {methodName}: {ex.Message}");
+                            }
+                        }
+                        // Fallback to original 4-param version (keeps SaveProject, SaveProjectAs, etc. working)
+                        MethodInfo mi = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public, null,
+                            new Type[] { typeof(IRenderContext), typeof(IControlContext), typeof(nint), typeof(EventBus) }, null);
                         if (mi != null)
                         {
                             mi.Invoke(null, new object[] { _renderContext, _controlContext, _window, _eventBus });
+                            Console.WriteLine($"[MenuUIOverlay] SUCCESS (4-param): {hook}");
                         }
                         else
                         {
@@ -66,7 +87,6 @@ namespace SiegeEngine.Core.UI
                 }
                 else if (hook.Contains("Scene"))
                 {
-                    //_eventBus.Publish(new SwitchSceneEvent { Hook = hook });
                     Console.WriteLine($"MenuUIOverlay: Published SwitchSceneEvent with hook {hook}");
                 }
                 else if (hook == "CastleBuilder.CreateProject")

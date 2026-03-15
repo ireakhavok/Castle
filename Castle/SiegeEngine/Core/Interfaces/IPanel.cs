@@ -10,8 +10,23 @@ namespace SiegeEngine.Core.Interfaces
         DockedRight,
         DockedTop,
         DockedBottom,
-        Tabbed
+        Tabbed,
+        DockedHeader
     }
+
+    public enum ResizeHandle
+    {
+        None,
+        Left,
+        Right,
+        Top,
+        Bottom,
+        TopLeft,
+        TopRight,
+        BottomLeft,
+        BottomRight
+    }
+
     public interface IPanel
     {
         void Init();
@@ -26,5 +41,9 @@ namespace SiegeEngine.Core.Interfaces
         void OnPanelResize(float w, float h);
         bool AllowDragging { get; set; }
         bool IsModal { get; set; }
+        float HeaderHeight { get; set; }
+
+        ResizeHandle GetResizeHandle(Vector2 absMousePos);
+        void StartResize(Vector2 mousePos, ResizeHandle handle);
     }
 }

@@ -52,7 +52,7 @@ namespace SiegeEngine.Core.AssetParsing
             FBXFileForest forest = FBXParser.Load(filePath);
             _forests[key] = forest;
             FBXModel model = FBXParser.BuildModelFromForest(forest);
-            model.Skeleton.LogBoneHierarchy();
+            //model.Skeleton.LogBoneHierarchy();
             SmoothNormals(model);
             ModelData modelData = SetupModelData(model, fbxDir, forest);
             _models[key] = model;

@@ -11,6 +11,7 @@ using System;
 using System.IO;
 using System.Numerics;
 using ReadingChamber;
+using SiegeEngine.Core.UI.Elements;
 
 namespace MapRoom
 {
@@ -24,7 +25,7 @@ namespace MapRoom
             {
                 _parent = parent;
             }
-            protected override void HandleUIClick(HtmlElement elem)
+            public override void HandleUIClick(HtmlElement elem)
             {
                 base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);

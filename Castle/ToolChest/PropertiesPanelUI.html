@@ -1,0 +1,108 @@
+<!-- Folder: ToolChest -->
+<!-- File: PropertiesPanelUI.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Properties - Inspector</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #1e1e1e;
+            color: #cccccc;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            overflow: hidden;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .header {
+            background: #252526;
+            padding: 8px 12px;
+            border-bottom: 1px solid #333333;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .content {
+            flex: 1;
+            overflow: auto;
+            padding: 8px;
+        }
+
+        details {
+            margin-bottom: 6px;
+            border: 1px solid #333;
+            border-radius: 3px;
+        }
+
+        summary {
+            background: #252526;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-weight: bold;
+            user-select: none;
+        }
+
+        .property-row {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+            padding: 4px 8px;
+        }
+
+        .property-name {
+            width: 140px;
+            color: #aaaaaa;
+            flex-shrink: 0;
+        }
+
+        input {
+            flex: 1;
+            background: #333333;
+            border: 1px solid #555555;
+            color: #cccccc;
+            padding: 4px 6px;
+        }
+
+            input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+            }
+
+        .footer {
+            background: #252526;
+            padding: 6px;
+            border-top: 1px solid #333333;
+            font-size: 11px;
+            color: #888888;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="header">
+            <span id="headerTitle">Properties</span>
+        </div>
+
+        <div class="content" id="propertiesContent">
+            <!--PROPERTIES-->
+        </div>
+
+        <div class="footer">
+            Select an object in the Hierarchy to inspect
+        </div>
+    </div>
+</body>
+</html>

@@ -1,13 +1,15 @@
 ﻿// Folder: SiegeEngine.Core.Managers
 // File: DockManager.cs
 using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json.Serialization;
+
 namespace SiegeEngine.Core.Managers
 {
     [JsonDerivedType(typeof(DockSplitNode), "split")]
@@ -24,6 +26,7 @@ namespace SiegeEngine.Core.Managers
         public abstract bool RemovePanel(IPanel panel);
         public abstract DockNode FindNode(IPanel panel);
     }
+
     public class DockSplitNode : DockNode
     {
         public DockNode Left { get; set; }
@@ -32,6 +35,7 @@ namespace SiegeEngine.Core.Managers
         public bool IsVertical { get; set; }
         private bool _draggingSplitter;
         private float _splitterSize = 5f;
+
         public override void ComputeLayout(float x, float y, float w, float h)
         {
             Rect = new Vector4(x, y, w, h);
@@ -49,6 +53,7 @@ namespace SiegeEngine.Core.Managers
                 Right.ComputeLayout(x + splitX, y, w - splitX, h);
             }
         }
+
         public override bool HitTest(Vector2 mousePos, out IPanel hitPanel, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex)
         {
             hitPanel = null;
@@ -82,6 +87,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus)
         {
             if (Left.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus))
@@ -111,11 +117,13 @@ namespace SiegeEngine.Core.Managers
                 _draggingSplitter = false;
             return false;
         }
+
         public override void Render(IRenderContext renderContext, int winW, int winH)
         {
             Left.Render(renderContext, winW, winH);
             Right.Render(renderContext, winW, winH);
         }
+
         public override void AddPanel(IPanel panel)
         {
             if (Right == null)
@@ -124,6 +132,7 @@ namespace SiegeEngine.Core.Managers
             }
             Right.AddPanel(panel);
         }
+
         public override bool RemovePanel(IPanel panel)
         {
             if (Left.RemovePanel(panel))
@@ -144,6 +153,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override DockNode FindNode(IPanel panel)
         {
             var leftNode = Left.FindNode(panel);
@@ -153,11 +163,13 @@ namespace SiegeEngine.Core.Managers
             return null;
         }
     }
+
     public class DockTabbedNode : DockNode
     {
         public List<IPanel> Panels { get; set; } = new List<IPanel>();
         public int ActiveIndex { get; set; } = -1;
         private float _titleHeight = 20f;
+
         public override void ComputeLayout(float x, float y, float w, float h)
         {
             Rect = new Vector4(x, y, w, h);
@@ -168,6 +180,7 @@ namespace SiegeEngine.Core.Managers
                 panel.OnPanelResize(w, h);
             }
         }
+
         public override bool HitTest(Vector2 mousePos, out IPanel hitPanel, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex)
         {
             hitPanel = null;
@@ -196,6 +209,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus)
         {
             if (HitTest(mousePos, out IPanel hit, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex))
@@ -213,6 +227,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override void Render(IRenderContext renderContext, int winW, int winH)
         {
             if (ActiveIndex < 0 || ActiveIndex >= Panels.Count) return;
@@ -224,11 +239,13 @@ namespace SiegeEngine.Core.Managers
             renderContext.Viewport(px, py, pw, ph);
             Panels[ActiveIndex].Render();
         }
+
         public override void AddPanel(IPanel panel)
         {
             Panels.Add(panel);
             ActiveIndex = Panels.Count - 1;
         }
+
         public override bool RemovePanel(IPanel panel)
         {
             int idx = Panels.IndexOf(panel);
@@ -243,12 +260,14 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public override DockNode FindNode(IPanel panel)
         {
             if (Panels.Contains(panel)) return this;
             return null;
         }
     }
+
     public class DockManager
     {
         private DockNode _root;
@@ -263,37 +282,63 @@ namespace SiegeEngine.Core.Managers
         private int _lastWinW;
         private int _lastWinH;
         private IPanel _draggingFloatingPanel;
+        private bool _needsLayout = true;
+        private IPanel _resizingPanel;
+        private ResizeHandle _activeResizeHandle = ResizeHandle.None;
+        private Vector2 _resizeStartMousePos;
+        private Vector2 _resizeStartPosition;
+        private Vector2 _resizeStartSize;
+        private readonly UIQuadRenderer _ghostRenderer;
+        private Vector2 _snapPreviewPosition = Vector2.Zero;
+        private Vector2 _snapPreviewSize = Vector2.Zero;
+        private bool _showSnapPreview;
+
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _eventBus = eventBus;
             _root = new DockTabbedNode();
+            _ghostRenderer = new UIQuadRenderer(renderContext);
         }
+
         public void AddPanel(IPanel panel)
         {
             if (panel.DockState == DockState.Floating)
             {
                 _floatingPanels.Add(panel);
                 panel.AllowDragging = true;
+                panel.HeaderHeight = GetHeaderHeight();
             }
             else
             {
                 _root.AddPanel(panel);
                 panel.AllowDragging = false;
+                panel.HeaderHeight = GetHeaderHeight();
             }
+            _needsLayout = true;
         }
+
         public void RemovePanel(IPanel panel)
         {
             if (_floatingPanels.Remove(panel))
             {
                 if (_draggingFloatingPanel == panel) _draggingFloatingPanel = null;
+                if (_resizingPanel == panel) _resizingPanel = null;
+                _needsLayout = true;
                 return;
             }
             if (_root.RemovePanel(panel))
             {
+                _needsLayout = true;
             }
         }
+
+        private float GetHeaderHeight()
+        {
+            return 0f;
+        }
+
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (winW != _lastWinW || winH != _lastWinH)
@@ -308,20 +353,28 @@ namespace SiegeEngine.Core.Managers
                 }
                 _lastWinW = winW;
                 _lastWinH = winH;
+                _needsLayout = true;
             }
-            _root.ComputeLayout(0, 0, winW, winH);
-            // ABSOLUTE HIGHEST PRIORITY - drag continuation for ALL panels (including modal FileSelectorPanel)
+            if (_needsLayout)
+            {
+                _root.ComputeLayout(0, 0, winW, winH);
+                _needsLayout = false;
+            }
+
             if (_draggingFloatingPanel != null)
             {
                 _draggingFloatingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-                if (mouseReleased)
-                {
-                    _draggingFloatingPanel = null;
-                }
-                return; // Skip everything else while dragging - this is why it's smooth
             }
+            if (_resizingPanel != null)
+            {
+                _resizingPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                if (_resizingPanel.Position.Y < 0)
+                {
+                    _resizingPanel.Position = new Vector2(_resizingPanel.Position.X, 0);
+                }
+            }
+
             bool handled = false;
-            // Modal handling (FileSelectorPanel stays modal but drag works)
             IPanel topModal = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -352,12 +405,18 @@ namespace SiegeEngine.Core.Managers
                 }
                 handled = true;
             }
+
             if (!handled)
             {
                 for (int i = _floatingPanels.Count - 1; i >= 0; i--)
                 {
                     var panel = _floatingPanels[i];
                     if (!panel.Visible || panel.IsModal) continue;
+
+                    // === FIXED: Skip the panel if it is currently being dragged by title bar ===
+                    // This eliminates the double Update() call that was making animations run twice as fast
+                    if (panel == _draggingFloatingPanel) continue;
+
                     Vector2 rel = mousePos - panel.Position;
                     bool over = rel.X >= 0 && rel.X <= panel.Size.X && rel.Y >= 0 && rel.Y <= panel.Size.Y;
                     if (over)
@@ -370,20 +429,54 @@ namespace SiegeEngine.Core.Managers
                             {
                                 _draggingFloatingPanel = panel;
                             }
+                            else
+                            {
+                                ResizeHandle handle = panel.GetResizeHandle(mousePos);
+                                if (handle != ResizeHandle.None)
+                                {
+                                    _resizingPanel = panel;
+                                    _activeResizeHandle = handle;
+                                    _resizeStartMousePos = mousePos;
+                                    _resizeStartPosition = panel.Position;
+                                    _resizeStartSize = panel.Size;
+                                    panel.StartResize(mousePos, handle);
+                                }
+                            }
                         }
                         handled = true;
                         break;
                     }
                 }
             }
+
             if (!handled)
             {
                 _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
             }
+
             if (_draggingPanel != null)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
-                if (mouseReleased)
+                if (_draggingPanel.Position.Y < 0)
+                {
+                    _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, 0);
+                }
+            }
+
+            _showSnapPreview = false;
+            bool isAnyDragActive = _draggingFloatingPanel != null || _draggingPanel != null;
+            if (isAnyDragActive)
+            {
+                _showSnapPreview = ComputeSnapPreview(mousePos, winW, winH, out _snapPreviewPosition, out _snapPreviewSize);
+            }
+
+            if (mouseReleased)
+            {
+                if (_draggingFloatingPanel != null)
+                {
+                    _draggingFloatingPanel = null;
+                }
+                if (_draggingPanel != null)
                 {
                     DockState newState = GetDockStateFromPosition(mousePos, winW, winH);
                     if (newState != DockState.Floating)
@@ -397,32 +490,88 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel = null;
                     _dragOriginNode = null;
                 }
-            }
-            else
-            {
-                if (_root.HitTest(mousePos, out IPanel hitPanel, out bool isTitle, out _, out _, out _))
+                _showSnapPreview = false;
+                if (_resizingPanel != null)
                 {
-                    if (isTitle && mousePressed)
-                    {
-                        _draggingPanel = hitPanel;
-                        _dragOffset = mousePos - hitPanel.Position;
-                        _dragOriginNode = _root.FindNode(hitPanel);
-                        _floatingPanels.Add(hitPanel);
-                        _dragOriginNode.RemovePanel(hitPanel);
-                        hitPanel.DockState = DockState.Floating;
-                        hitPanel.AllowDragging = true;
-                    }
+                    _resizingPanel = null;
+                    _activeResizeHandle = ResizeHandle.None;
                 }
             }
         }
+
+        private bool ComputeSnapPreview(Vector2 mousePos, int winW, int winH, out Vector2 previewPos, out Vector2 previewSize)
+        {
+            previewPos = Vector2.Zero;
+            previewSize = Vector2.Zero;
+            float headerH = 0f;
+            float cornerZone = winH * 0.25f;
+            bool nearLeft = mousePos.X < SnapDistance;
+            bool nearRight = mousePos.X > winW - SnapDistance;
+            bool nearTop = mousePos.Y < headerH + SnapDistance;
+            bool nearBottom = mousePos.Y > winH - SnapDistance;
+            bool inTopZone = mousePos.Y < headerH + cornerZone;
+            bool inBottomZone = mousePos.Y > winH - cornerZone;
+            if (nearTop && nearLeft && inTopZone)
+            {
+                previewPos = new Vector2(0, headerH);
+                previewSize = new Vector2(winW / 2f, (winH - headerH) / 2f);
+                return true;
+            }
+            if (nearTop && nearRight && inTopZone)
+            {
+                previewPos = new Vector2(winW / 2f, headerH);
+                previewSize = new Vector2(winW / 2f, (winH - headerH) / 2f);
+                return true;
+            }
+            if (nearBottom && nearLeft && inBottomZone)
+            {
+                previewPos = new Vector2(0, headerH + (winH - headerH) / 2f);
+                previewSize = new Vector2(winW / 2f, (winH - headerH) / 2f);
+                return true;
+            }
+            if (nearBottom && nearRight && inBottomZone)
+            {
+                previewPos = new Vector2(winW / 2f, headerH + (winH - headerH) / 2f);
+                previewSize = new Vector2(winW / 2f, (winH - headerH) / 2f);
+                return true;
+            }
+            if (nearLeft)
+            {
+                previewPos = new Vector2(0, headerH);
+                previewSize = new Vector2(winW / 2f, winH - headerH);
+                return true;
+            }
+            if (nearRight)
+            {
+                previewPos = new Vector2(winW - winW / 2f, headerH);
+                previewSize = new Vector2(winW / 2f, winH - headerH);
+                return true;
+            }
+            if (nearTop)
+            {
+                previewPos = new Vector2(0, headerH);
+                previewSize = new Vector2(winW, winH - headerH);
+                return true;
+            }
+            if (nearBottom)
+            {
+                previewPos = new Vector2(0, headerH + (winH - headerH) / 2f);
+                previewSize = new Vector2(winW, (winH - headerH) / 2f);
+                return true;
+            }
+            return false;
+        }
+
         private DockState GetDockStateFromPosition(Vector2 mousePos, int winW, int winH)
         {
+            float headerH = 0f;
             if (mousePos.X < SnapDistance) return DockState.DockedLeft;
             if (mousePos.X > winW - SnapDistance) return DockState.DockedRight;
-            if (mousePos.Y < SnapDistance) return DockState.DockedTop;
+            if (mousePos.Y < headerH + SnapDistance) return DockState.DockedTop;
             if (mousePos.Y > winH - SnapDistance) return DockState.DockedBottom;
             return DockState.Floating;
         }
+
         private void DockPanel(IPanel panel, DockState state)
         {
             DockSplitNode split = new DockSplitNode();
@@ -440,7 +589,9 @@ namespace SiegeEngine.Core.Managers
                 split.Right = newTabbed;
             }
             _root = split;
+            _needsLayout = true;
         }
+
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             _root.Render(renderContext, winW, winH);
@@ -453,7 +604,17 @@ namespace SiegeEngine.Core.Managers
                 uint ph = (uint)panel.Size.Y;
                 renderContext.Scissor(px, py, pw, ph);
                 renderContext.Viewport(px, py, pw, ph);
+                if (panel == _resizingPanel)
+                {
+                    _ghostRenderer.DrawQuad(panel.Position.X, panel.Position.Y, panel.Size.X, panel.Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), winW, winH);
+                }
                 panel.Render();
+            }
+            renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
+            renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
+            if (_showSnapPreview)
+            {
+                _ghostRenderer.DrawQuad(_snapPreviewPosition.X, _snapPreviewPosition.Y, _snapPreviewSize.X, _snapPreviewSize.Y, new Vector4(0.2f, 0.75f, 1.0f, 0.35f), winW, winH);
             }
         }
     }

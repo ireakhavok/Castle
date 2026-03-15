@@ -7,6 +7,7 @@ using SiegeEngine.Core.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Managers
 {
     public class PanelManager
@@ -18,10 +19,10 @@ namespace SiegeEngine.Core.Managers
         private readonly EventBus _eventBus;
         private bool _prevMouseDown;
         private readonly List<IPanel> _panels = new List<IPanel>();
-
-        // === PANEL-LEVEL SCROLL CAPTURE (minimal addition using existing context) ===
         private float _scrollDelta = 0f;
-        // =======================================================
+
+        // === NEW: Centralized Capture Ownership ===
+        private readonly CaptureManager _captureManager;
 
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -30,30 +31,34 @@ namespace SiegeEngine.Core.Managers
             _window = window;
             _eventBus = eventBus;
             _dockManager = new DockManager(renderContext, controlContext, eventBus);
+            _captureManager = new CaptureManager(controlContext);
+
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
             _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
 
-            // === WIRE SCROLL WHEEL THROUGH EXISTING CONTEXT (no Launcher change) ===
             _controlContext.SetScrollCallback(_window, (nint w, double xoffset, double yoffset) =>
             {
                 _scrollDelta += (float)yoffset;
             });
-            // =======================================================
         }
+
         private void OnOpenPanel(OpenPanelEvent e)
         {
             AddPanel(e.Panel);
         }
+
         private void OnClosePanel(ClosePanelEvent e)
         {
             RemovePanel(e.Panel);
         }
+
         public void AddPanel(IPanel panel)
         {
             _panels.Add(panel);
             panel.Init();
             _dockManager.AddPanel(panel);
         }
+
         public void Update(float deltaTime)
         {
             _controlContext.GetCursorPos(_window, out double mx, out double my);
@@ -62,12 +67,21 @@ namespace SiegeEngine.Core.Managers
             bool mousePressed = !_prevMouseDown && currentMouseDown;
             bool mouseReleased = _prevMouseDown && !currentMouseDown;
             _prevMouseDown = currentMouseDown;
-            _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            _dockManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
 
-            // Reset for next frame
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+
+            // === CENTRALIZED CAPTURE UPDATE (runs every frame) ===
+            _captureManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
+
+            // === NORMAL UPDATE PATH (only if no capture active) ===
+            if (!_captureManager.IsCapturing)
+            {
+                _dockManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+            }
+
             _scrollDelta = 0f;
         }
+
         public void Render()
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
@@ -75,8 +89,13 @@ namespace SiegeEngine.Core.Managers
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
             _dockManager.Render(_renderContext, winW, winH);
         }
+
         public void RemovePanel(IPanel panel)
         {
+            if (_captureManager.CurrentOwner == panel)
+                _captureManager.ReleaseCapture();
+
+            panel.Detach();
             _dockManager.RemovePanel(panel);
             _panels.Remove(panel);
             panel.Dispose();

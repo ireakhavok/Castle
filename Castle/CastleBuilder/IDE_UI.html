@@ -1,0 +1,148 @@
+<!-- Folder: CastleBuilder (or your HTML folder) -->
+<!-- File: IDE_UI.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            height: 100%;
+            font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+            font-size: 14px;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        #ide-root {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+        }
+
+        #ide-menu-bar {
+            height: 28px;
+            background: #1f1f1f;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+            #ide-menu-bar > ul {
+                display: flex;
+                list-style: none;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+        .nav-item {
+            padding: 0 22px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            color: #7CFFCB;
+            font-weight: 500;
+        }
+
+            .nav-item:hover {
+                background: rgba(124, 255, 203, 0.15);
+                color: #a0ffdb;
+            }
+
+        .nav-dropdown {
+            position: relative;
+        }
+
+        .nav-dropdown-content {
+            display: none;
+            position: absolute;
+            top: 28px;
+            left: 0;
+            background: #252526;
+            border: 1px solid #383838;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            min-width: 200px;
+            z-index: 1000;
+            list-style: none;
+            padding: 4px 0;
+        }
+
+        .nav-dropdown:hover .nav-dropdown-content {
+            display: block;
+        }
+
+        .nav-dropdown-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            color: #7CFFCB;
+            white-space: nowrap;
+        }
+
+            .nav-dropdown-item:hover {
+                background: #383838;
+                color: #a0ffdb;
+            }
+
+        .ide-title {
+            margin-left: auto;
+            padding: 0 20px 0 12px;
+            color: #7CFFCB;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        #ide-content {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            background: #252526;
+        }
+    </style>
+</head>
+<body>
+    <div id="ide-root">
+        <nav id="ide-menu-bar">
+            <ul>
+                <li class="nav-item nav-dropdown">
+                    File
+                    <ul class="nav-dropdown-content">
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.LoadProject">Open Project...</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.SaveProject">Save</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.SaveProjectAs">Save As...</li>
+                    </ul>
+                </li>
+                <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenEdit">Edit</li>
+                <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenView">View</li>
+                <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenCastle">Castle</li>
+                <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenTools">Tools</li>
+                <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenWindow">Window</li>
+                <li class="nav-item" data-hook="CastleBuilder.MenuCommands.OpenHelp">Help</li>
+
+                <li class="nav-item nav-dropdown">
+                    Panels
+                    <ul class="nav-dropdown-content">
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.OpenTerrain">Terrain Creator</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.OpenAnimation">Animation Viewer</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.OpenAssetBrowser">Asset Browser</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.OpenProperties">Properties</li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.OpenHierarchy">Hierarchy</li>
+                    </ul>
+                </li>
+            </ul>
+            <div class="ide-title">SiegeEngine IDE</div>
+        </nav>
+        <div id="ide-content"></div>
+    </div>
+</body>
+</html>

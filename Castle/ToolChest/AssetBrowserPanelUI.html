@@ -1,0 +1,101 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Asset Browser</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            height: 100%;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 13px;
+            background: #1e1e1e;
+            color: #ddd;
+            overflow: hidden;
+        }
+
+        #browser {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        #toolbar {
+            background: #252526;
+            padding: 6px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid #444;
+            flex-shrink: 0;
+        }
+
+        button {
+            background: #3c3c3c;
+            color: #ddd;
+            border: 1px solid #555;
+            padding: 3px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+            button:hover {
+                background: #4d4d4d;
+            }
+
+        #path {
+            flex: 1;
+            background: #333;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-family: Consolas, monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #items {
+            flex: 1;
+            overflow: auto;
+            padding: 6px;
+        }
+
+        .item {
+            padding: 4px 8px;
+            margin: 1px 0;
+            border-radius: 3px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+            .item:hover {
+                background: #2a2a2a;
+            }
+
+        .folder {
+            color: #7ca;
+        }
+
+        .file {
+            color: #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div id="browser">
+        <div id="toolbar">
+            <button data-hook="Up">↑ Up</button>
+            <div id="path">Current: <!--PATH--></div>
+        </div>
+        <div id="items">
+            <!--ITEMS-->
+        </div>
+    </div>
+</body>
+</html>

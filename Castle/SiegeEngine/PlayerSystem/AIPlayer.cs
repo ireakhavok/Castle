@@ -1,4 +1,5 @@
-﻿// SiegeEngine.PlayerSystem/AIPlayer.cs
+﻿// Folder: SiegeEngine/PlayerSystem
+// File: AIPlayer.cs
 using System;
 using System.Numerics;
 using SiegeEngine.Core.Definitions;
@@ -10,6 +11,7 @@ namespace SiegeEngine.PlayerSystem
         private readonly Random _random = new();
         private float _moveTimer;
         private const float MoveInterval = 0.5f; // Move every 0.5s
+
         public AIPlayer(int entityId, Vector3 position) : base(entityId, position)
         {
             // Initialize with random yaw for testing
@@ -18,6 +20,7 @@ namespace SiegeEngine.PlayerSystem
                 Camera.SetYaw(_random.Next(0, 360)); // Random facing direction
             }
         }
+
         public void UpdateAI(float deltaTime, Action<int, Vector2> sendMovementRequest)
         {
             _moveTimer += deltaTime;
@@ -28,21 +31,26 @@ namespace SiegeEngine.PlayerSystem
                     (float)_random.NextDouble() * 2 - 1, // -1 to 1
                     (float)_random.NextDouble() * 2 - 1
                 );
-                Vector2 newPos = new Vector2(Position.X, Position.Y) + moveDir * 20f * MoveInterval;
+                Vector2 newPos = new Vector2(Physics.Position.X, Physics.Position.Y) + moveDir * 20f * MoveInterval;
                 newPos.X = Math.Clamp(newPos.X, 0, 128);
                 newPos.Y = Math.Clamp(newPos.Y, 0, 72);
+
                 sendMovementRequest(EntityId, newPos);
-                Position = new Vector3(newPos.X, newPos.Y, Position.Z);
-                Physics.Position = Position;
+
+                // Use Physics.Position (single source of truth via TransformComponent)
+                Physics.Position = new Vector3(newPos.X, newPos.Y, Physics.Position.Z);
+
                 // Random yaw update
                 if (Camera != null)
                 {
                     Camera.SetYaw(Camera.Yaw + _random.Next(-10, 11)); // Small yaw change
                 }
+
                 _moveTimer = 0;
                 Console.WriteLine($"AIPlayer {EntityId} moved to {newPos}");
             }
         }
+
         // Helper to set yaw directly for testing
         public void SetYaw(float yaw)
         {
@@ -52,6 +60,7 @@ namespace SiegeEngine.PlayerSystem
             }
         }
     }
+
     // Extension to allow yaw setting (minimal impact)
     public static class CameraControllerExtensions
     {
@@ -59,6 +68,7 @@ namespace SiegeEngine.PlayerSystem
         {
             camera.SetYawInternal(yaw);
         }
+
         internal static void SetYawInternal(this CameraController camera, float yaw)
         {
             typeof(CameraController).GetField("_yaw", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(camera, yaw);

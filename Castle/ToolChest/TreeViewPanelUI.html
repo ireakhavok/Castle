@@ -1,0 +1,125 @@
+﻿<!-- Folder: ToolChest -->
+<!-- File: TreeViewPanelUI.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hierarchy - TreeViewPanel</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: #1e1e1e;
+            color: #cccccc;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            overflow: hidden;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .header {
+            background: #252526;
+            padding: 6px 10px;
+            border-bottom: 1px solid #333333;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tree-container {
+            flex: 1;
+            overflow: auto;
+            padding: 8px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .node {
+            padding: 2px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+            .node:hover {
+                background: #2d2d2d;
+            }
+
+            .node.selected {
+                background: #094771;
+                color: white;
+            }
+
+        .toggle {
+            display: inline-block;
+            width: 18px;
+            color: #888888;
+            cursor: pointer;
+        }
+
+        .label {
+            padding-left: 4px;
+        }
+
+        .children {
+            padding-left: 20px;
+            margin: 2px 0;
+        }
+
+        .footer {
+            background: #252526;
+            padding: 4px;
+            border-top: 1px solid #333333;
+            font-size: 11px;
+            color: #888888;
+            text-align: center;
+        }
+
+        button {
+            background: #333333;
+            color: #cccccc;
+            border: 1px solid #555555;
+            padding: 3px 8px;
+            margin-left: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+            button:hover {
+                background: #444444;
+            }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <div class="header">
+            <span>Hierarchy</span>
+            <div>
+                <button data-hook="RefreshTree">⟳ Refresh</button>
+                <button data-hook="CollapseAll">Collapse All</button>
+            </div>
+        </div>
+
+        <div class="tree-container">
+            <ul id="treeRoot">
+                <!--TREE_NODES-->
+            </ul>
+        </div>
+
+        <div class="footer">
+            Right-click a node for Properties
+        </div>
+    </div>
+</body>
+</html>

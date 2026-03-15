@@ -3,17 +3,42 @@
 <head>
     <!--<title>Regression Test for SiegeEngine UI Parser</title>-->
     <style>
+        /* Global styles for better readability */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #2c2c2c; /* Darker gray for easier on eyes */
+            color: #e0e0e0; /* Light text for contrast */
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        h2 {
+            color: #ffffff;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444444;
+            padding-bottom: 10px;
+        }
+
         /* Test basic selectors: tag, #id, .class */
         div {
-            background-color: #ffffff;
-            padding: 10px;
-            margin: 5px;
-            border: 1px solid #000000;
+            background-color: #3a3a3a; /* Softer dark gray for divs */
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #555555;
+            border-radius: 8px;
         }
 
         #test-id {
-            color: rgba(255, 0, 0, 1);
-            font-size: 20px;
+            color: rgba(255, 100, 100, 1);
+            font-size: 22px;
             font-family: Arial;
         }
 
@@ -22,24 +47,24 @@
             flex-direction: row;
             justify-content: center;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
         }
 
         /* Test pseudo-classes */
         button:hover {
-            background-color: #dddddd;
+            background-color: #555555;
         }
 
         button:active {
-            background-color: #bbbbbb;
+            background-color: #444444;
         }
 
         input[type="checkbox"]:checked {
-            background-color: #00ff00;
+            background-color: #00cc00;
         }
 
         #target-test:target {
-            background-color: #ffff00;
+            background-color: #cccc00;
         }
 
         /* Test layouts */
@@ -81,45 +106,50 @@
 
         .inline-test span {
             display: inline;
-            background-color: #eeeeee;
+            background-color: #4a4a4a;
+            padding: 5px;
+            border-radius: 4px;
         }
 
         /* Test positioning */
         .relative-pos {
             position: relative;
+            background-color: #3a3a3a;
         }
 
         .absolute-pos {
             position: absolute;
             top: 20px;
             left: 20px;
-            width: 100px;
-            height: 50px;
-            background-color: #ff0000;
+            width: 120px;
+            height: 60px;
+            background-color: #cc0000;
+            color: #ffffff;
         }
 
         .fixed-pos {
             position: fixed;
-            bottom: 10px;
-            right: 10px;
-            width: 80px;
-            height: 40px;
-            background-color: #0000ff;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 50px;
+            background-color: #0000cc;
+            color: #ffffff;
         }
 
         /* Test borders and radius */
         .border-test {
             border-width: 2px;
             border-style: solid;
-            border-color: #00ff00;
-            border-radius: 10px;
+            border-color: #00cc00;
+            border-radius: 8px;
         }
 
         .border-sides {
-            border-top: 3px dashed #ff00ff;
-            border-right: 4px dotted rgba(0, 0, 0, 0.5);
-            border-bottom: 5px double #000000;
-            border-left: 6px solid #ffffff;
+            border-top: 3px dashed #cc00cc;
+            border-right: 4px dotted rgba(255, 255, 255, 0.5);
+            border-bottom: 5px double #ffffff;
+            border-left: 6px solid #666666;
         }
 
         /* Test text styles */
@@ -127,37 +157,64 @@
             text-align: center;
             white-space: normal;
             text-transform: uppercase;
+            max-width: 600px;
+            margin: 0 auto;
         }
 
         /* Test transforms */
         .transform-test {
-            transform: translate(10px, 20px) rotate(45deg) scale(1.5) skew(10deg, 20deg) matrix(1, 0.5, -0.5, 1, 0, 0);
+            transform: translate(10px, 20px) rotate(45deg) scale(1.2) skew(10deg, 20deg) matrix(1, 0.5, -0.5, 1, 0, 0);
+            width: 150px;
+            height: 80px;
         }
 
         /* Test background image (assume local file exists for engine) */
         .bg-image {
             background-image: url(test.png);
+            background-size: cover;
         }
 
         /* Test units */
         .units-test {
             width: 50%;
             height: 30vh;
-            min-width: 100px;
-            max-height: 200px;
+            min-width: 150px;
+            max-height: 250px;
         }
 
         /* Test box-sizing */
         .box-sizing {
             box-sizing: border-box;
         }
+
+        /* Grid test styles */
+        .grid-test {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: auto auto;
+            gap: 20px; /* Increased gap for better spacing */
+            margin-top: 40px;
+            width: 100%; /* Ensure full width */
+            min-width: 600px; /* Prevent stacking on narrow views */
+        }
+
+        .grid-item {
+            background-color: #4a4a4a; /* Darker item bg */
+            padding: 25px;
+            text-align: center;
+            border: 1px solid #666666;
+            border-radius: 8px;
+            color: #e0e0e0;
+            min-height: 100px; /* Ensure minimum height to prevent overlapping */
+        }
     </style>
 </head>
 <body>
-    <!-- Test basic elements and selectors -->
+    <h2>Basic Selectors</h2>
     <div id="test-id">Test ID Selector</div>
     <div class="test-class">Test Class Selector</div>
-    <!-- Test forms -->
+
+    <h2>Forms</h2>
     <select>
         <option value="opt1">Option 1</option>
         <option value="opt2" selected>Option 2</option>
@@ -172,56 +229,60 @@
     <label><input type="radio" name="radio-group" checked> Radio 2</label>
 
     <button data-hook="Test.Namespace.Method">Button with Hook</button>
-    <!-- Test flex layouts -->
+
+    <h2>Flex Layouts</h2>
     <div class="test-class flex-column">Flex Column</div>
     <div class="test-class justify-start">Justify Start <div>Child1</div><div>Child2</div></div>
     <div class="test-class justify-end">Justify End <div>Child1</div><div>Child2</div></div>
-    <div class="test-class justify-space-between">Space Between <div>Child1</div><div>Child2</div></div>
-    <div class="test-class justify-space-around">Space Around <div>Child1</div><div>Child2</div></div>
-    <div class="test-class justify-space-evenly">Space Evenly <div>Child1</div><div>Child2</div></div>
-    <div class="test-class align-stretch">Align Stretch <div style="flex:1">Child</div></div>
-    <div class="test-class align-flex-end">Align Flex End <div>Child</div></div>
 
-    <!-- Test block and inline -->
+    <h2>Block and Inline</h2>
     <div class="block-layout">Block Child1</div>
     <div class="block-layout">Block Child2</div>
     <div class="inline-test"><span>Inline Span1</span><span>Inline Span2</span></div>
 
-    <!-- Test positioning -->
+    <h2>Positioning</h2>
     <div class="relative-pos">
         Relative Container
         <div class="absolute-pos">Absolute Inside</div>
     </div>
     <div class="fixed-pos">Fixed Element</div>
 
-    <!-- Test borders -->
+    <h2>Borders</h2>
     <div class="border-test">Uniform Border</div>
     <div class="border-sides">Different Sides Borders</div>
 
-    <!-- Test text -->
+    <h2>Text Styles</h2>
     <div class="text-test">This is centered uppercase text that should wrap if long enough to test white-space normal.</div>
 
-    <!-- Test transforms -->
+    <h2>Transforms</h2>
     <div class="transform-test">Transformed Element</div>
 
-    <!-- Test background image -->
+    <h2>Background Image</h2>
     <div class="bg-image" style="width:200px;height:100px;">Background Image Test</div>
 
-    <!-- Test units and min/max -->
+    <h2>Units and Min/Max</h2>
     <div class="units-test">Units Test</div>
 
-    <!-- Test box-sizing -->
-    <div class="box-sizing" style="width:200px;padding:20px;border:10px solid black;">Box Sizing Border Box</div>
+    <h2>Box Sizing</h2>
+    <div class="box-sizing" style="width:200px;padding:20px;border:10px solid #666666;">Box Sizing Border Box</div>
 
-
-
-    <!-- Test links -->
+    <h2>Links</h2>
     <a href="#target-test">Link to Target</a>
     <div id="target-test">Target Element</div>
     <a href="another.html">Link to File</a>
 
-    <!-- Test include (custom tag) -->
+    <h2>Include</h2>
     <include src="included.html"></include>
+
+    <h2>Grid Test</h2>
+    <div class="grid-test">
+        <div class="grid-item">Grid Item 1</div>
+        <div class="grid-item">Grid Item 2</div>
+        <div class="grid-item">Grid Item 3</div>
+        <div class="grid-item">Grid Item 4</div>
+        <div class="grid-item">Grid Item 5</div>
+        <div class="grid-item">Grid Item 6</div>
+    </div>
 
 </body>
 </html>

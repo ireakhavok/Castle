@@ -1,4 +1,5 @@
-﻿// SiegeEngine.PlayerSystem/PlayerMovement.cs
+﻿// Folder: SiegeEngine/PlayerSystem
+// File: PlayerMovement.cs
 using System;
 using System.Numerics;
 using System.Collections.Generic;
@@ -21,6 +22,7 @@ namespace SiegeEngine.PlayerSystem
         private readonly HashSet<Key> _activeKeys = new HashSet<Key>();
         private Key? _lastPressedKey;
         private readonly string _callbackId = $"PlayerMovement_{Guid.NewGuid()}";
+
         public PlayerMovement(InputHandler inputHandler, ClientPredictionSystem predictionSystem, EventBus eventBus = null)
         {
             _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
@@ -33,6 +35,7 @@ namespace SiegeEngine.PlayerSystem
                 _eventBus.Subscribe<KeyInputEvent>(OnNetworkKeyInput);
             }
         }
+
         private void OnKeyInput(Key key, InputAction action)
         {
             if (action == InputAction.Press || action == InputAction.Repeat)
@@ -69,6 +72,7 @@ namespace SiegeEngine.PlayerSystem
             _movementInput = new Vector2(x, y);
             Console.WriteLine($"PlayerMovement: Local Key {key}, Action {action}, ActiveKeys=[{string.Join(",", _activeKeys)}], MovementInput={_movementInput}, LastKey={_lastPressedKey}");
         }
+
         private void OnNetworkKeyInput(KeyInputEvent e)
         {
             Console.WriteLine($"PlayerMovement: Networked Key {e.Key}, Action {e.Action}, SteamID={e.SteamId}");
@@ -106,6 +110,7 @@ namespace SiegeEngine.PlayerSystem
             _movementInput = new Vector2(x, y);
             Console.WriteLine($"PlayerMovement: Networked Key {e.Key}, Action {e.Action}, ActiveKeys=[{string.Join(",", _activeKeys)}], MovementInput={_movementInput}, LastKey={_lastPressedKey}");
         }
+
         public void Update(Player player, float deltaTime, Action<int, Vector2, Quaternion> sendMovementRequest, CameraController camera)
         {
             if (player == null || camera == null) return;
@@ -117,14 +122,16 @@ namespace SiegeEngine.PlayerSystem
             {
                 Vector2 normalizedMovement = Vector2.Normalize(_movementInput);
                 Vector3 moveDirection = (forward * normalizedMovement.Y + right * normalizedMovement.X) * _speed * deltaTime;
-                Vector3 newPosition = player.Position + moveDirection;
+                Vector3 newPosition = player.Physics.Position + moveDirection;
                 newPosition = new Vector3(
                     Math.Clamp(newPosition.X, 0, _gridWidth),
                     Math.Clamp(newPosition.Y, 0, _gridHeight),
-                    player.Position.Z
+                    player.Physics.Position.Z
                 );
-                player.Position = newPosition;
+
+                // Single source of truth via TransformComponent
                 player.Physics.Position = newPosition;
+
                 Quaternion newRotation = player.Physics.Rotation;
                 float effectiveYawRad = yawRad;
                 float effectiveYawDeg = camera.Yaw;
@@ -159,6 +166,7 @@ namespace SiegeEngine.PlayerSystem
                     effectiveYawDeg = camera.Yaw;
                     Console.WriteLine($"PlayerMovement: {camera.CurrentPerspective} rotation set: Yaw={camera.Yaw}°, Quaternion={newRotation}");
                 }
+
                 player.Physics.Rotation = newRotation;
                 Vector2 requestedPos = new Vector2(newPosition.X, newPosition.Y);
                 _predictionSystem.EnqueueMovementRequest(player.EntityId, requestedPos, newRotation, player.SteamId);
@@ -172,6 +180,7 @@ namespace SiegeEngine.PlayerSystem
                 Console.WriteLine($"PlayerMovement: {camera.CurrentPerspective} rotation updated without movement: Yaw={camera.Yaw}°, Quaternion={newRotation}");
             }
         }
+
         public static void ResetFrame() { }
     }
 }

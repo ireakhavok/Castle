@@ -1,0 +1,157 @@
+diff --git a/Castle/CastleBuilder/IDEBasePanel.cs b/Castle/CastleBuilder/IDEBasePanel.cs
+index 5c7e1b9..fd2418e 100644
+--- a/Castle/CastleBuilder/IDEBasePanel.cs
++++ b/Castle/CastleBuilder/IDEBasePanel.cs
+@@ -9,7 +9,6 @@ using System;
+ using System.IO;
+ using System.Numerics;
+ using System.Reflection;
+-
+ namespace CastleBuilder
+ {
+     public class IDEBasePanel : BasePanel
+@@ -60,20 +59,17 @@ namespace CastleBuilder
+                 }
+             }
+         }
+-
+         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+             : base(renderContext, controlContext, window, eventBus)
+         {
+             AllowDragging = false;
+-            DockState = DockState.Tabbed;
++            DockState = DockState.DockedHeader;   // ← permanent top parent
+             IsModal = false;
+         }
+-
+         protected override UIOverlay CreateUIOverlay()
+         {
+             return new IDEUIOverlay(_renderContext, _controlContext, _window, _eventBus);
+         }
+-
+         public override void Init()
+         {
+             base.Init();
+@@ -92,26 +88,16 @@ namespace CastleBuilder
+             _uiOverlay.PanelHeight = Size.Y;
+             _uiOverlay.RefreshUI();
+         }
+-
+         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
+         {
+             if (!Visible) return;
+-
+             _controlContext.GetWindowSize(_window, out int winW, out int winH);
+-
+             Vector2 relMousePos = absMousePos - Position;
+-
+-            // FORCE full window height for hover detection (dropdowns below 28px bar now receive mouse immediately)
+             _uiOverlay.PanelWidth = Size.X;
+             _uiOverlay.PanelHeight = winH;
+-
+-            // FORCE hover pass every frame (no click required to "wake up" hover)
+             _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, winH);
+-
+-            // FORCE refresh so _uiClickables and layout are always up-to-date on first mouse move
+             _uiOverlay.RefreshUI();
+         }
+-
+         public override void Render()
+         {
+             if (!Visible) return;
+@@ -127,7 +113,6 @@ namespace CastleBuilder
+             _uiOverlay.Render();
+             _renderContext.Enable(_renderContext.Enums.DepthTest);
+         }
+-
+         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+         {
+             var panel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
+diff --git a/Castle/SiegeEngine/Core/Interfaces/IPanel.cs b/Castle/SiegeEngine/Core/Interfaces/IPanel.cs
+index a364a97..dd4616f 100644
+--- a/Castle/SiegeEngine/Core/Interfaces/IPanel.cs
++++ b/Castle/SiegeEngine/Core/Interfaces/IPanel.cs
+@@ -10,7 +10,8 @@ namespace SiegeEngine.Core.Interfaces
+         DockedRight,
+         DockedTop,
+         DockedBottom,
+-        Tabbed
++        Tabbed,
++        DockedHeader
+     }
+     public interface IPanel
+     {
+diff --git a/Castle/SiegeEngine/Core/Managers/DockManager.cs b/Castle/SiegeEngine/Core/Managers/DockManager.cs
+index fe5b0bd..4c76670 100644
+--- a/Castle/SiegeEngine/Core/Managers/DockManager.cs
++++ b/Castle/SiegeEngine/Core/Managers/DockManager.cs
+@@ -264,6 +264,10 @@ namespace SiegeEngine.Core.Managers
+         private int _lastWinH;
+         private IPanel _draggingFloatingPanel;
+         private bool _needsLayout = true;
++
++        // Permanent top header (IDE menubar) - always updated/rendered first
++        private IPanel _headerPanel;
++
+         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
+         {
+             _renderContext = renderContext;
+@@ -273,6 +277,13 @@ namespace SiegeEngine.Core.Managers
+         }
+         public void AddPanel(IPanel panel)
+         {
++            if (panel.DockState == DockState.DockedHeader)
++            {
++                _headerPanel = panel;
++                panel.AllowDragging = false;
++                _needsLayout = true;
++                return;
++            }
+             if (panel.DockState == DockState.Floating)
+             {
+                 _floatingPanels.Add(panel);
+@@ -287,6 +298,12 @@ namespace SiegeEngine.Core.Managers
+         }
+         public void RemovePanel(IPanel panel)
+         {
++            if (_headerPanel == panel)
++            {
++                _headerPanel = null;
++                _needsLayout = true;
++                return;
++            }
+             if (_floatingPanels.Remove(panel))
+             {
+                 if (_draggingFloatingPanel == panel) _draggingFloatingPanel = null;
+@@ -316,9 +333,18 @@ namespace SiegeEngine.Core.Managers
+             }
+             if (_needsLayout)
+             {
+-                _root.ComputeLayout(0, 0, winW, winH);
++                float headerH = _headerPanel != null ? _headerPanel.Size.Y : 0f;
++                _root.ComputeLayout(0, headerH, winW, winH - headerH);
+                 _needsLayout = false;
+             }
++
++            // ALWAYS update the permanent header (IDE menubar) every frame
++            // This fixes "nothing shows until hover"
++            if (_headerPanel != null && _headerPanel.Visible)
++            {
++                _headerPanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
++            }
++
+             // ABSOLUTE HIGHEST PRIORITY - drag continuation for ALL panels (including modal FileSelectorPanel)
+             if (_draggingFloatingPanel != null)
+             {
+@@ -453,6 +479,11 @@ namespace SiegeEngine.Core.Managers
+         }
+         public void Render(IRenderContext renderContext, int winW, int winH)
+         {
++            // Render permanent header (IDE menubar) first
++            if (_headerPanel != null && _headerPanel.Visible)
++            {
++                _headerPanel.Render();
++            }
+             _root.Render(renderContext, winW, winH);
+             foreach (var panel in _floatingPanels)
+             {

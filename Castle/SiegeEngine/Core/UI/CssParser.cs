@@ -114,7 +114,6 @@ ul, ol {
     display: block;
     list-style-type: disc;
     margin: 1em 0;
-    padding-left: 40px;
 }
 ol {
     list-style-type: decimal;
@@ -123,7 +122,52 @@ li {
     display: list-item;
 }
 nav {
+    display: flex;
+    background-color: #1f1f1f;
+    height: 28px;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0 8px;
+    font-size: 14px;
+    color: #e0e0e0;
+}
+nav ul {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    height: 28px;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+nav li {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 22px;
+    margin: 0;
+    white-space: nowrap;
+    box-sizing: border-box;
+    position: relative;
+    list-style-type: none;
+}
+nav li:hover ul {
     display: block;
+}
+nav ul ul {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #2d2d2d;
+    padding: 4px 0;
+    min-width: 200px;
+    border: 1px solid #383838;
+    list-style-type: none;
+    margin: 0;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }
 .form-grid {
     display: grid;
@@ -490,6 +534,14 @@ nav {
             {
                 style.MarginStr = margin;
             }
+            if (props.TryGetValue("margin-top", out string mtop))
+                style.MarginTopStr = mtop;
+            if (props.TryGetValue("margin-right", out string mright))
+                style.MarginRightStr = mright;
+            if (props.TryGetValue("margin-bottom", out string mbottom))
+                style.MarginBottomStr = mbottom;
+            if (props.TryGetValue("margin-left", out string mleft))
+                style.MarginLeftStr = mleft;
             if (props.TryGetValue("gap", out string gap))
                 style.GapStr = gap;
             if (props.TryGetValue("text-align", out string ta))
@@ -577,6 +629,10 @@ nav {
                 style.OverflowY = ovy;
             if (props.TryGetValue("grid-template-columns", out string gtc))
                 style.GridTemplateColumnsStr = gtc;
+            if (props.TryGetValue("grid-template-rows", out string gtr))
+                style.GridTemplateRowsStr = gtr;
+            if (props.TryGetValue("grid-auto-flow", out string gaf))
+                style.GridAutoFlow = gaf;
         }
         public Vector4 ParseColor(string color)
         {
