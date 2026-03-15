@@ -1,0 +1,28 @@
+Phase 1: Ortho Camera & 3D Scene for 2D
+New OrthoCamera.cs (PlayerSystem): Inherit CameraController, override View/Proj to ortho (CreateOrthographicOffCenter).
+Extend Scene.cs: Add CameraType enum (Perspective/Ortho), set in Render (use ortho matrix in shaders).
+ProjectData: "CameraType": "Ortho" for 2D projects.
+Test: Load SandboxScene with ortho—renders flat, Z ignored visually.
+
+Phase 2: Terrain to 2D-Style Mesh
+Extend TerrainCreatorScene: New "Export2D" method—flatten heightmap to 3D mesh at Z=0 (quads with texture UVs based on height thresholds for "tiles", e.g., grass/rock).
+Save: Mesh FBX/JSON to project/Assets/terrain2d.fbx + texture atlas.png.
+Load in scene: As Entity with ModelComponent (flat mesh).
+Test: Export terrain, load in ortho scene—flat tile-like background.
+
+Phase 3: Sprite Placement & Movement/Collisions
+New SpriteEntity: Entity with ModelComponent (quad mesh, texture), Transform at Z=0.
+IDE: AssetBrowser add "Add Sprite" (select PNG, create entity).
+Movement: Extend PlayerMovement for 2D (Vector2 input, ignore Z).
+Collisions: Use existing PhysicsSystem (AABB on flat Z=0), mark terrain tiles solid via Component.
+Test: Place sprite in IDE, save/load, move/collide with terrain mesh.
+
+Phase 4: Game Main Menu
+GameMainMenu.html: "Play" (SwitchSceneEvent to ortho scene), "Quit".
+On 2D project: Copy to Assets/Configs.
+Launcher: --game= loads menu, sets ortho.
+
+Phase 5: Build with Steam
+BuildProject: Copy EXE/DLLs/steam_api64.dll/project to output, modify copied Launcher to --game= embedded.
+Steam init in built EXE for ID/saves.
+Test: Build, run—menu to ortho scene with terrain/sprite/move/collisions.
