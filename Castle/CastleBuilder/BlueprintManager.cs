@@ -11,6 +11,7 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
+using SiegeEngine.Core.Managers;
 namespace CastleBuilder
 {
     public class ProjectData
@@ -22,11 +23,11 @@ namespace CastleBuilder
         public List<string> Scenes { get; set; } = new List<string> { "Main" };
         public string Version { get; set; } = "1.0";
         public string LastOpenedScene { get; set; } = "Main";
+        public string CameraType { get; set; } = "Perspective";
     }
     public class BlueprintManager
     {
         private readonly EventBus _eventBus;
-        private string _activeProject = null;
         private readonly string _configPath;
         public BlueprintManager(EventBus eventBus)
         {
@@ -50,24 +51,21 @@ namespace CastleBuilder
             var typeElem = overlay.FindElementById("game-type") as SelectElement;
             var modeElem = overlay.FindElementById("project-mode") as SelectElement;
             var allowModsElem = overlay.FindElementById("allow-mods") as InputElement;
-
             string name = nameElem?.Value?.Trim() ?? "MyNewProject";
             string projectType = typeElem?.Value ?? "3D FPS";
             string mode = modeElem?.Value ?? "Single Player";
             bool allowMods = allowModsElem?.Checked ?? true;
-
             if (string.IsNullOrEmpty(name)) name = "MyNewProject";
-
             string path = @"C:\Users\ireak\source\CastleBuilder\Projects";
             string dir = Path.Combine(path, name.Replace(" ", ""));
-
             Directory.CreateDirectory(dir);
             var data = new ProjectData
             {
                 Name = name,
                 Type = projectType,
                 Mode = mode,
-                AllowMods = allowMods
+                AllowMods = allowMods,
+                CameraType = projectType == "2D" ? "AngledOrtho" : "Perspective"
             };
             string jsonPath = Path.Combine(dir, "project.json");
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
@@ -127,14 +125,22 @@ namespace CastleBuilder
         private void OnLoadProject(LoadProjectEvent evt)
         {
             if (string.IsNullOrEmpty(evt.Path) || !Directory.Exists(evt.Path)) return;
-            _activeProject = evt.Path;
+            ProjectSettings.Current.ActiveProject = evt.Path;
+            string jsonPath = Path.Combine(ProjectSettings.Current.ActiveProject, "project.json");
+            if (File.Exists(jsonPath))
+            {
+                string json = File.ReadAllText(jsonPath);
+                var data = JsonSerializer.Deserialize<ProjectData>(json);
+                ProjectSettings.Current.CameraType = data.CameraType;
+                Console.WriteLine($"[BlueprintManager] Loaded project with CameraType: {data.CameraType}");
+            }
             SaveIDEState();
         }
         private void OnSaveProject(SaveProjectEvent evt)
         {
-            if (string.IsNullOrEmpty(_activeProject)) return;
-            string jsonPath = Path.Combine(_activeProject, "project.json");
-            var data = new ProjectData { Name = Path.GetFileName(_activeProject) };
+            if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject)) return;
+            string jsonPath = Path.Combine(ProjectSettings.Current.ActiveProject, "project.json");
+            var data = new ProjectData { Name = Path.GetFileName(ProjectSettings.Current.ActiveProject) };
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
         }
         private string GetTemplate(string type)
@@ -145,7 +151,8 @@ namespace CastleBuilder
             {
                 return File.ReadAllText(templateFile);
             }
-            return null;
+            // Default template if file not found
+            return "{\"Name\": \"{name}\", \"Type\": \"" + type + "\", \"Mode\": \"{mode}\", \"AllowMods\": {allowMods}, \"CameraType\": \"" + (type == "2D" ? "AngledOrtho" : "Perspective") + "\"}";
         }
         private string GetDefaultIDEPath()
         {
@@ -153,8 +160,8 @@ namespace CastleBuilder
         }
         private void SaveIDEState()
         {
-            if (string.IsNullOrEmpty(_activeProject)) return;
-            var config = new Dictionary<string, string> { { "active_project", _activeProject } };
+            if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject)) return;
+            var config = new Dictionary<string, string> { { "active_project", ProjectSettings.Current.ActiveProject } };
             string json = JsonSerializer.Serialize(config);
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
             File.WriteAllText(_configPath, json);

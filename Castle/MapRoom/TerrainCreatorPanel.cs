@@ -13,6 +13,7 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using ToolChest;
+using SiegeEngine.Core.Managers;
 
 namespace MapRoom
 {
@@ -153,6 +154,14 @@ namespace MapRoom
             {
                 BrushPanel.Open(_renderContext, _controlContext, _window, _eventBus);
             }
+            else if (hook == "Export2D")
+            {
+                if (!string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
+                {
+                    string assetsDir = Path.Combine(ProjectSettings.Current.ActiveProject, "Assets");
+                    _terrainScene.Export2D(assetsDir);
+                }
+            }
         }
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -209,10 +218,8 @@ namespace MapRoom
                 _lastTab = false;
             }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
-
             if (_cameraMode)
             {
                 var contentViewport = new Viewport(Position.X, Position.Y + TitleHeight, Size.X, Size.Y - TitleHeight);
@@ -222,7 +229,6 @@ namespace MapRoom
             {
                 _controlContext.PopViewport();
             }
-
             _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
         }
         public override void Render()
