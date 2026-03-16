@@ -1,7 +1,6 @@
-﻿// Folder: SiegeEngine.ContextManagement
+﻿// Folder: SiegeEngine/ContextManagement
 // File: AbstractRenderEnums.cs
 using System;
-
 namespace SiegeEngine.Core.ContextManagement
 {
     public abstract class AbstractRenderEnums
@@ -60,5 +59,6 @@ namespace SiegeEngine.Core.ContextManagement
         public abstract int Back { get; }
         public abstract int Clockwise { get; }
         public abstract int CounterClockwise { get; }
+        public abstract int LineSmooth { get; }
     }
 }
