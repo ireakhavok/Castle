@@ -8,11 +8,15 @@
 
   <ItemGroup>
     <None Remove="BrushPanelUI.html" />
+    <None Remove="SpritePlacementPanelUI.html" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="BrushPanelUI.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="SpritePlacementPanelUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
