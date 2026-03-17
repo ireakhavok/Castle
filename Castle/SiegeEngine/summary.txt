@@ -1420,6 +1420,17 @@ Folder: Core
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, textRenderer.GetTextSize
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+- File: SelectSpriteEvent.cs
+  - Class: SelectSpriteEvent (Namespace: SiegeEngine.Core.Events)
+    - Inherits: IEvent
+    
+    - Dependencies: System, System.Text.Json
+    - Fields:
+      - string Type
+    - Methods:
+      - constructor SelectSpriteEvent( float height,  float width,  string texturePath, ulong playerId)
+      - byte[] Serialize()
+      - void Deserialize(byte[] data)
 - File: ShaderProgram.cs
   - Class: ShaderProgram (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IDisposable
@@ -1489,6 +1500,11 @@ Folder: Core
       - constructor Spawner(IGameServer server)
       - Entity SpawnEntity( Vector3 position, string type)
         - Calls: Player, _server.AddEntity, _server.GetEntities
+- File: SpriteComponent.cs
+  - Class: SpriteComponent (Namespace: SiegeEngine.Core.Definitions)
+    - Inherits: IComponent
+    
+    - Dependencies: System.Numerics
 - File: SteamEngine.cs
   - Class: SteamUGCRequestUGCDetailsResult_t (Namespace: SiegeEngine.Core.Networking)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Runtime.InteropServices, System.Text
@@ -2473,6 +2489,7 @@ SiegeEngine.Core.Definitions.PreviewComponent
 SiegeEngine.Core.Definitions.Rarity
 SiegeEngine.Core.Definitions.SoundSource
 SiegeEngine.Core.Definitions.Spawner
+SiegeEngine.Core.Definitions.SpriteComponent
 SiegeEngine.Core.Definitions.TransformComponent
 SiegeEngine.Core.Definitions.WallComponent
 SiegeEngine.Core.Definitions.WeatherState
@@ -2492,6 +2509,7 @@ SiegeEngine.Core.Events.PhysicsCollisionEvent
 SiegeEngine.Core.Events.PlayerExitedEditorEvent
 SiegeEngine.Core.Events.ProtectedEventAttribute
 SiegeEngine.Core.Events.SelectBrushEvent
+SiegeEngine.Core.Events.SelectSpriteEvent
 SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent

@@ -338,6 +338,12 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\D
 Read 1895 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Spawner.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 5 dependencies
+Found: SpriteComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SpriteComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SpriteComponent.cs
+Read 307 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SpriteComponent.cs
+Namespace: SiegeEngine.Core.Definitions
+Found 1 dependencies
 Found: TransformComponent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\TransformComponent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\TransformComponent.cs
@@ -455,6 +461,12 @@ Found: SelectBrushEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
 Read 1551 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
+Namespace: SiegeEngine.Core.Events
+Found 2 dependencies
+Found: SelectSpriteEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectSpriteEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectSpriteEvent.cs
+Read 1230 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectSpriteEvent.cs
 Namespace: SiegeEngine.Core.Events
 Found 2 dependencies
 Found: SoundEmissionEvent.cs

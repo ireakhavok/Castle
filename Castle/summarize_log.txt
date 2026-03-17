@@ -372,7 +372,7 @@ Found: IDE_UI.html
 Found: MenuCommands.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
-Read 2856 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Read 3141 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
 Namespace: CastleBuilder
 Found 7 dependencies
 Found: obj
@@ -541,6 +541,19 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainMod
 Read 2276 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TerrainModifiedEvent.cs
 Namespace: MapRoom
 Found 4 dependencies
+Found: TwoDCreatorPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
+Read 5693 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
+Namespace: MapRoom
+Found 14 dependencies
+Found: TwoDCreatorPanelUI.html
+Found: TwoDCreatorScene.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
+Read 5769 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
+Namespace: MapRoom
+Found 11 dependencies
 Found: QuestHall
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\QuestHall
 Found: .
@@ -936,6 +949,12 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\D
 Read 1895 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Spawner.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 5 dependencies
+Found: SpriteComponent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SpriteComponent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SpriteComponent.cs
+Read 307 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SpriteComponent.cs
+Namespace: SiegeEngine.Core.Definitions
+Found 1 dependencies
 Found: TransformComponent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\TransformComponent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\TransformComponent.cs
@@ -1053,6 +1072,12 @@ Found: SelectBrushEvent.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
 Read 1551 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
+Namespace: SiegeEngine.Core.Events
+Found 2 dependencies
+Found: SelectSpriteEvent.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectSpriteEvent.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectSpriteEvent.cs
+Read 1230 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectSpriteEvent.cs
 Namespace: SiegeEngine.Core.Events
 Found 2 dependencies
 Found: SoundEmissionEvent.cs
@@ -1883,6 +1908,13 @@ Read 7334 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\
 Namespace: ToolChest
 Found 13 dependencies
 Found: PropertiesPanelUI.html
+Found: SpritePlacementPanel.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
+Read 4679 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
+Namespace: ToolChest
+Found 9 dependencies
+Found: SpritePlacementPanelUI.html
 Found: ToolChest.csproj
 Found: TreeViewPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs

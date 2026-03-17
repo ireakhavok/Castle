@@ -433,6 +433,11 @@ Folder: Definitions
       - constructor Spawner(IGameServer server)
       - Entity SpawnEntity( Vector3 position, string type)
         - Calls: _server.AddEntity, _server.GetEntities
+- File: SpriteComponent.cs
+  - Class: SpriteComponent (Namespace: SiegeEngine.Core.Definitions)
+    - Inherits: IComponent
+    
+    - Dependencies: System.Numerics
 - File: TransformComponent.cs
   - Class: TransformComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -647,6 +652,17 @@ Folder: Events
       - string Type
     - Methods:
       - constructor SelectBrushEvent( float intensity,  float size,  string brushFalloff,  string brushMode,  string brushShape, ulong playerId)
+      - byte[] Serialize()
+      - void Deserialize(byte[] data)
+- File: SelectSpriteEvent.cs
+  - Class: SelectSpriteEvent (Namespace: SiegeEngine.Core.Events)
+    - Inherits: IEvent
+    
+    - Dependencies: System, System.Text.Json
+    - Fields:
+      - string Type
+    - Methods:
+      - constructor SelectSpriteEvent( float height,  float width,  string texturePath, ulong playerId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: SoundEmissionEvent.cs
@@ -2022,6 +2038,7 @@ SiegeEngine.Core.Definitions.PreviewComponent
 SiegeEngine.Core.Definitions.Rarity
 SiegeEngine.Core.Definitions.SoundSource
 SiegeEngine.Core.Definitions.Spawner
+SiegeEngine.Core.Definitions.SpriteComponent
 SiegeEngine.Core.Definitions.TransformComponent
 SiegeEngine.Core.Definitions.WallComponent
 SiegeEngine.Core.Definitions.WeatherState
@@ -2041,6 +2058,7 @@ SiegeEngine.Core.Events.PhysicsCollisionEvent
 SiegeEngine.Core.Events.PlayerExitedEditorEvent
 SiegeEngine.Core.Events.ProtectedEventAttribute
 SiegeEngine.Core.Events.SelectBrushEvent
+SiegeEngine.Core.Events.SelectSpriteEvent
 SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
