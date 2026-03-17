@@ -33,17 +33,26 @@ namespace MapRoom
 
         protected override UIOverlay CreateUIOverlay()
         {
-            return new UIOverlay(_renderContext, _controlContext, _window); // minimal overlay - scene owns rendering
+            return new UIOverlay(_renderContext, _controlContext, _window);
         }
 
         public override void Init()
         {
             base.Init();
             _twoDScene.Initialize((int)Size.Y, (int)Size.X);
+            LoadUI();
+        }
+
+        private void LoadUI()
+        {
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TwoDCreatorPanelUI.html");
+            if (File.Exists(htmlPath))
+            {
+                _uiOverlay.LoadUI(File.ReadAllText(htmlPath));
+            }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
-            Console.WriteLine("[TwoDCreatorPanel] 2D Sprite Creator opened - select sprite in Sprite Tool panel to activate ghost");
         }
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)

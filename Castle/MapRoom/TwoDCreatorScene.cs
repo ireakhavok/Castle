@@ -5,6 +5,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Scenes;
 using System;
@@ -13,9 +14,10 @@ using System.Numerics;
 
 namespace MapRoom
 {
-    public class TwoDCreatorScene : Scene
+    public unsafe class TwoDCreatorScene : Scene
     {
         private AngledOrthoCamera _orthoCamera;
+        private ShaderProgram _gridShader;
         private VertexBuffer _gridBuffer;
         private string _activeSpriteTexturePath = null;
         private Vector2 _activeSpriteSize = new Vector2(2f, 2f);
@@ -33,8 +35,10 @@ namespace MapRoom
         {
             base.Initialize(width, height);
             _orthoCamera = new AngledOrthoCamera(_controlContext, _window);
+            _gridShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
             SetupGrid();
             _ghostBuffer = new VertexBuffer(_renderContext);
+            UpdateGhostMesh();
         }
 
         private void SetupGrid()
@@ -54,25 +58,48 @@ namespace MapRoom
             _gridBuffer.UpdateCustom(vertices, new List<uint>());
         }
 
+        private void UpdateGhostMesh()
+        {
+            if (_ghostBuffer == null) return;
+
+            var vertices = new List<float>();
+            var indices = new List<uint>();
+            int segments = 32;
+            float r = 30f;
+
+            for (int i = 0; i <= segments; i++)
+            {
+                float angle = i * MathF.PI * 2f / segments;
+                float x = MathF.Cos(angle) * r;
+                float y = MathF.Sin(angle) * r;
+                vertices.Add(x); vertices.Add(y); vertices.Add(0f);
+                vertices.Add(1f); vertices.Add(1f); vertices.Add(1f); vertices.Add(0.6f);
+                vertices.Add(0f); vertices.Add(0f);
+            }
+            for (int i = 0; i < segments; i++)
+            {
+                indices.Add((uint)i);
+                indices.Add((uint)((i + 1) % segments));
+            }
+            _ghostBuffer.UpdateCustomWithUV(vertices, indices);
+        }
+
         private void OnSpriteSelected(SelectSpriteEvent e)
         {
             _activeSpriteTexturePath = e.TexturePath;
             _activeSpriteSize = new Vector2(e.Width, e.Height);
+            UpdateGhostMesh();
             Console.WriteLine($"[TwoDCreatorScene] Sprite selected for ghost preview: {e.TexturePath}");
         }
 
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
-
-            // Correct call to match CameraController.Update(float deltaTime, float scrollDelta, bool isGameActive)
             _orthoCamera.Update(deltaTime, 0f, true);
 
-            // Correct GetCursorPos signature (matches IControlContext exactly)
             double mouseX = 0, mouseY = 0;
             _controlContext.GetCursorPos(_window, out mouseX, out mouseY);
 
-            // Simple ortho mouse-to-world mapping (centered origin)
             float worldX = (float)(mouseX - _width / 2f);
             float worldY = (float)(_height / 2f - mouseY);
             _spriteGhostPosition = new Vector3(worldX, worldY, 0.1f);
@@ -84,12 +111,24 @@ namespace MapRoom
             projection = Matrix4x4.CreateOrthographic(_width * 1.5f, _height * 1.5f, 0.1f, 1000f);
             view = _orthoCamera.ViewMatrix;
 
-            // Grid and entities rendering here (expand later with your existing shader pattern)
+            _gridShader.Use();
+            _gridShader.SetMatrix4("uView", view);
+            _gridShader.SetMatrix4("uProjection", projection);
+            _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
+            _gridBuffer.Bind();
+            _renderContext.Enable(_renderContext.Enums.LineSmooth);
+            _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
+            _renderContext.Disable(_renderContext.Enums.LineSmooth);
 
             if (_spriteGhostVisible && _ghostBuffer != null)
             {
                 Matrix4x4 model = Matrix4x4.CreateTranslation(_spriteGhostPosition);
-                // TODO: draw ghost quad (reuse brush ghost style - circle/square outline)
+                _gridShader.SetMatrix4("uModel", model);
+                _ghostBuffer.Bind();
+                _renderContext.Enable(_renderContext.Enums.Blend);
+                _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+                _renderContext.DrawElements(_renderContext.Enums.Lines, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
 
@@ -97,6 +136,7 @@ namespace MapRoom
         {
             _gridBuffer?.Dispose();
             _ghostBuffer?.Dispose();
+            _gridShader?.Dispose();
             base.Dispose();
         }
     }
