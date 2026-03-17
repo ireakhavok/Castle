@@ -18,6 +18,20 @@ namespace MapRoom
 {
     public class TwoDCreatorPanel : ClosablePanel
     {
+        private class TwoDCreatorUIOverlay : UIOverlay
+        {
+            private readonly TwoDCreatorPanel _parent;
+            public TwoDCreatorUIOverlay(TwoDCreatorPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window)
+                : base(renderContext, controlContext, window)
+            {
+                _parent = parent;
+            }
+            public override void HandleUIClick(HtmlElement elem)
+            {
+                _parent.HandleUIClick(elem);
+            }
+        }
+
         private TwoDCreatorScene _twoDScene;
         private bool _cameraMode = true;
         private bool _lastTab = false;
@@ -33,7 +47,7 @@ namespace MapRoom
 
         protected override UIOverlay CreateUIOverlay()
         {
-            return new UIOverlay(_renderContext, _controlContext, _window);
+            return new TwoDCreatorUIOverlay(this, _renderContext, _controlContext, _window);
         }
 
         public override void Init()
@@ -53,6 +67,23 @@ namespace MapRoom
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+        }
+
+        public void HandleDataHook(string hook)
+        {
+            if (hook == "OpenSpriteTool")
+            {
+                SpritePlacementPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+            }
+        }
+
+        public void HandleUIClick(HtmlElement elem)
+        {
+            string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
+            if (!string.IsNullOrEmpty(hook))
+            {
+                HandleDataHook(hook);
+            }
         }
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)

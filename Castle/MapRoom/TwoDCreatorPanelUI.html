@@ -1,41 +1,49 @@
 ﻿<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>2D Sprite Creator</title>
+    <meta charset="UTF-8">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #1e1e1e;
-            color: #ddd;
-            padding: 16px;
-            margin: 0;
-            width: 100%;
-            box-sizing: border-box;
+        .ui-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(30, 30, 30, 0.8);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(100, 100, 100, 0.5);
+            flex-wrap: wrap;
         }
 
-        h2 {
-            margin: 0 0 22px 0;
-            color: #4fc3f7;
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: 0.4px;
-        }
-
-        .status {
-            font-size: 13.5px;
-            color: #aaa;
-            padding: 12px;
-            background: #252526;
-            border: 1px solid #383838;
+        .ui-button {
+            padding: 8px 16px;
+            background-color: #555;
+            color: white;
+            border: none;
             border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s, transform 0.1s;
         }
+
+            .ui-button:hover {
+                background-color: #777;
+            }
+
+            .ui-button:active {
+                transform: scale(0.98);
+                background-color: #444;
+            }
     </style>
 </head>
 <body>
-    <h2>🖼️ 2D Sprite Creator</h2>
-    <div class="status" id="statusText">
-        Select a sprite in the Sprite Tool panel → move mouse over scene → click to place<br>
-        <small>Grid = world reference • Ghost follows mouse on flat plane</small>
+    <div class="ui-container" id="controls-bar">
+        <button class="ui-button" data-hook="OpenSpriteTool">Open Sprite Tool</button>
     </div>
 </body>
 </html>
