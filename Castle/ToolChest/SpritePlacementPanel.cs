@@ -32,6 +32,8 @@ namespace ToolChest
             }
         }
 
+        public override bool WantsContinuousUpdate => false; // Pure UI - never captures mouse
+
         public SpritePlacementPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {

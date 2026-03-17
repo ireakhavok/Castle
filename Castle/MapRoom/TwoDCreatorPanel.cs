@@ -5,7 +5,6 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
@@ -14,6 +13,7 @@ using System;
 using System.IO;
 using System.Numerics;
 using ToolChest;
+
 namespace MapRoom
 {
     public class TwoDCreatorPanel : ClosablePanel
@@ -33,8 +33,10 @@ namespace MapRoom
         }
 
         private TwoDCreatorScene _twoDScene;
-        private bool _cameraMode = true;
+        private bool _cameraMode = false; // Start in UI mode (mouse free, no capture)
         private bool _lastTab = false;
+
+        public override bool WantsContinuousUpdate => true;
 
         public TwoDCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -98,19 +100,12 @@ namespace MapRoom
             {
                 _lastTab = false;
             }
+
+            // UI gets mouse when not in camera mode
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-            Vector2 relMouse = absMousePos - Position;
-            Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
-            if (_cameraMode)
-            {
-                var contentViewport = new Viewport(Position.X, Position.Y + TitleHeight, Size.X, Size.Y - TitleHeight);
-                _controlContext.PushViewport(contentViewport);
-            }
-            else
-            {
-                _controlContext.PopViewport();
-            }
-            _twoDScene.Update(deltaTime);
+
+            // Scene always runs; camera control is conditional
+            _twoDScene.Update(deltaTime, _cameraMode);
         }
 
         public override void Render()
@@ -127,6 +122,7 @@ namespace MapRoom
                 _lastH = (int)Size.Y;
                 _twoDScene.Resize(_lastW, _lastH);
             }
+
             var contentRect = GetContentRect();
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             _renderContext.Enable(_renderContext.Enums.ScissorTest);
@@ -135,7 +131,9 @@ namespace MapRoom
             uint scissorW = (uint)contentRect.Width;
             uint scissorH = (uint)contentRect.Height;
             _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
+
             _twoDScene.Render(null);
+
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             base.Render();
         }

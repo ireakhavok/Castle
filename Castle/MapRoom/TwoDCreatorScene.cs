@@ -61,12 +61,10 @@ namespace MapRoom
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
-
             var vertices = new List<float>();
             var indices = new List<uint>();
             int segments = 32;
             float r = 30f;
-
             for (int i = 0; i <= segments; i++)
             {
                 float angle = i * MathF.PI * 2f / segments;
@@ -92,25 +90,30 @@ namespace MapRoom
             Console.WriteLine($"[TwoDCreatorScene] Sprite selected for ghost preview: {e.TexturePath}");
         }
 
-        public override void Update(float deltaTime)
+        public void Update(float deltaTime, bool cameraActive)
         {
             base.Update(deltaTime);
-            _orthoCamera.Update(deltaTime, 0f, true);
+            _orthoCamera.Update(deltaTime, 0f, cameraActive);
 
-            double mouseX = 0, mouseY = 0;
-            _controlContext.GetCursorPos(_window, out mouseX, out mouseY);
-
-            float worldX = (float)(mouseX - _width / 2f);
-            float worldY = (float)(_height / 2f - mouseY);
-            _spriteGhostPosition = new Vector3(worldX, worldY, 0.1f);
-            _spriteGhostVisible = !string.IsNullOrEmpty(_activeSpriteTexturePath);
+            if (cameraActive)
+            {
+                double mouseX = 0, mouseY = 0;
+                _controlContext.GetCursorPos(_window, out mouseX, out mouseY);
+                float worldX = (float)(mouseX - _width / 2f);
+                float worldY = (float)(_height / 2f - mouseY);
+                _spriteGhostPosition = new Vector3(worldX, worldY, 0.1f);
+                _spriteGhostVisible = !string.IsNullOrEmpty(_activeSpriteTexturePath);
+            }
+            else
+            {
+                _spriteGhostVisible = false;
+            }
         }
 
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             projection = Matrix4x4.CreateOrthographic(_width * 1.5f, _height * 1.5f, 0.1f, 1000f);
             view = _orthoCamera.ViewMatrix;
-
             _gridShader.Use();
             _gridShader.SetMatrix4("uView", view);
             _gridShader.SetMatrix4("uProjection", projection);
