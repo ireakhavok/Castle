@@ -33,7 +33,7 @@ namespace MapRoom
         }
 
         private TwoDCreatorScene _twoDScene;
-        private bool _cameraMode = false; // Start in UI/placement mode (mouse free)
+        private bool _cameraMode = false;
         private bool _lastTab = false;
 
         public override bool WantsContinuousUpdate => true;
@@ -95,17 +95,22 @@ namespace MapRoom
             {
                 _cameraMode = !_cameraMode;
                 _lastTab = true;
+                _controlContext.SetInputMode(_window, CursorAttribute.Cursor, _cameraMode ? CursorMode.Disabled : CursorMode.Normal);
             }
             else if (tab != InputAction.Press)
             {
                 _lastTab = false;
             }
 
-            // UI gets mouse when not in camera mode
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
 
-            // Scene always runs
-            _twoDScene.Update(deltaTime, _cameraMode);
+            Vector2 contentMouse = absMousePos - new Vector2(Position.X, Position.Y + TitleHeight);
+            float ndcX = (contentMouse.X / Size.X) * 2f - 1f;
+            float ndcY = 1f - (contentMouse.Y / Size.Y) * 2f;
+            float worldX = ndcX * (Size.X * 0.75f);
+            float worldY = ndcY * (Size.Y * 0.75f);
+
+            _twoDScene.Update(deltaTime, _cameraMode, new Vector3(worldX, worldY, 0.1f), mousePressed && !_cameraMode);
         }
 
         public override void Render()

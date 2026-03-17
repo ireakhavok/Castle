@@ -24,6 +24,7 @@ namespace MapRoom
         private bool _spriteGhostVisible = false;
         private Vector3 _spriteGhostPosition;
         private VertexBuffer _ghostBuffer;
+        private uint _ghostTextureId = 0;
 
         public TwoDCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -40,7 +41,6 @@ namespace MapRoom
             _ghostBuffer = new VertexBuffer(_renderContext);
             UpdateGhostMesh();
 
-            // Force initial camera matrices so grid is visible the VERY FIRST FRAME
             _orthoCamera.Update(0f, 0f, false);
         }
 
@@ -64,53 +64,53 @@ namespace MapRoom
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
-            var vertices = new List<float>();
-            var indices = new List<uint>();
-            int segments = 32;
-            float r = 30f;
-            for (int i = 0; i <= segments; i++)
+
+            float w = _activeSpriteSize.X * 25f;
+            float h = _activeSpriteSize.Y * 25f;
+
+            var vertices = new List<Vertex>
             {
-                float angle = i * MathF.PI * 2f / segments;
-                float x = MathF.Cos(angle) * r;
-                float y = MathF.Sin(angle) * r;
-                vertices.Add(x); vertices.Add(y); vertices.Add(0f);
-                vertices.Add(1f); vertices.Add(1f); vertices.Add(1f); vertices.Add(0.6f);
-                vertices.Add(0f); vertices.Add(0f);
-            }
-            for (int i = 0; i < segments; i++)
-            {
-                indices.Add((uint)i);
-                indices.Add((uint)((i + 1) % segments));
-            }
-            _ghostBuffer.UpdateCustomWithUV(vertices, indices);
+                new Vertex(-w, -h, 0, 1f, 1f, 1f, 0.95f),
+                new Vertex( w, -h, 0, 1f, 1f, 1f, 0.95f),
+                new Vertex( w,  h, 0, 1f, 1f, 1f, 0.95f),
+                new Vertex(-w,  h, 0, 1f, 1f, 1f, 0.95f)
+            };
+
+            var indices = new List<uint> { 0, 1, 2, 0, 2, 3 };
+
+            _ghostBuffer.UpdateCustom(vertices, indices);
         }
 
         private void OnSpriteSelected(SelectSpriteEvent e)
         {
+            if (_ghostTextureId != 0) _renderContext.DeleteTexture(_ghostTextureId);
+
             _activeSpriteTexturePath = e.TexturePath;
             _activeSpriteSize = new Vector2(e.Width, e.Height);
             UpdateGhostMesh();
-            Console.WriteLine($"[TwoDCreatorScene] Sprite selected: {e.TexturePath} — ghost active");
+
+            // Load YOUR actual PNG (tower.png) as the ghost texture
+            var (texId, _) = TextureLoader.LoadTexture(_renderContext, e.TexturePath);
+            _ghostTextureId = texId;
+
+            Console.WriteLine($"[TwoDCreatorScene] Real PNG ghost loaded: {Path.GetFileName(e.TexturePath)} (ID {_ghostTextureId})");
         }
 
-        public void Update(float deltaTime, bool cameraActive)
+        public void Update(float deltaTime, bool cameraActive, Vector3 worldMousePos, bool mousePressed)
         {
             base.Update(deltaTime);
-
-            // Always update camera (grid now appears immediately)
             _orthoCamera.Update(deltaTime, 0f, cameraActive);
 
-            // ALWAYS calculate ghost position when a sprite is selected (even in UI mode)
-            if (!string.IsNullOrEmpty(_activeSpriteTexturePath))
+            if (!cameraActive && !string.IsNullOrEmpty(_activeSpriteTexturePath))
             {
-                double mouseX = 0, mouseY = 0;
-                _controlContext.GetCursorPos(_window, out mouseX, out mouseY);
-
-                // Simple panel-relative to world conversion for angled ortho (works without Tab)
-                float worldX = (float)(mouseX - _width / 2f);
-                float worldY = (float)(_height / 2f - mouseY);
-                _spriteGhostPosition = new Vector3(worldX, worldY, 0.1f);
+                _spriteGhostPosition = worldMousePos;
                 _spriteGhostVisible = true;
+
+                if (mousePressed)
+                {
+                    Console.WriteLine($"[TwoDCreatorScene] Placing '{Path.GetFileName(_activeSpriteTexturePath)}' at {worldMousePos}");
+                    _eventBus.Publish(new EntityPlacedEvent(0, "Sprite", worldMousePos, false));
+                }
             }
             else
             {
@@ -125,26 +125,34 @@ namespace MapRoom
             _gridShader.Use();
             _gridShader.SetMatrix4("uView", view);
             _gridShader.SetMatrix4("uProjection", projection);
+
+            // Grid
             _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
             _gridBuffer.Bind();
             _renderContext.Enable(_renderContext.Enums.LineSmooth);
             _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
             _renderContext.Disable(_renderContext.Enums.LineSmooth);
 
-            if (_spriteGhostVisible && _ghostBuffer != null)
+            // REAL PNG GHOST
+            if (_spriteGhostVisible && _ghostBuffer != null && _ghostTextureId != 0)
             {
                 Matrix4x4 model = Matrix4x4.CreateTranslation(_spriteGhostPosition);
                 _gridShader.SetMatrix4("uModel", model);
+
+                _renderContext.ActiveTexture(0);
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _ghostTextureId);
+
                 _ghostBuffer.Bind();
                 _renderContext.Enable(_renderContext.Enums.Blend);
                 _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, null);
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
 
         public override void Dispose()
         {
+            if (_ghostTextureId != 0) _renderContext.DeleteTexture(_ghostTextureId);
             _gridBuffer?.Dispose();
             _ghostBuffer?.Dispose();
             _gridShader?.Dispose();
