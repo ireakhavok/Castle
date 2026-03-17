@@ -33,7 +33,7 @@ namespace MapRoom
         }
 
         private TwoDCreatorScene _twoDScene;
-        private bool _cameraMode = false; // Start in UI mode (mouse free, no capture)
+        private bool _cameraMode = false; // Start in UI/placement mode (mouse free)
         private bool _lastTab = false;
 
         public override bool WantsContinuousUpdate => true;
@@ -104,7 +104,7 @@ namespace MapRoom
             // UI gets mouse when not in camera mode
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
 
-            // Scene always runs; camera control is conditional
+            // Scene always runs
             _twoDScene.Update(deltaTime, _cameraMode);
         }
 

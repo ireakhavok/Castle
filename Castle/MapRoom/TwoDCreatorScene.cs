@@ -39,6 +39,9 @@ namespace MapRoom
             SetupGrid();
             _ghostBuffer = new VertexBuffer(_renderContext);
             UpdateGhostMesh();
+
+            // Force initial camera matrices so grid is visible the VERY FIRST FRAME
+            _orthoCamera.Update(0f, 0f, false);
         }
 
         private void SetupGrid()
@@ -87,22 +90,27 @@ namespace MapRoom
             _activeSpriteTexturePath = e.TexturePath;
             _activeSpriteSize = new Vector2(e.Width, e.Height);
             UpdateGhostMesh();
-            Console.WriteLine($"[TwoDCreatorScene] Sprite selected for ghost preview: {e.TexturePath}");
+            Console.WriteLine($"[TwoDCreatorScene] Sprite selected: {e.TexturePath} — ghost active");
         }
 
         public void Update(float deltaTime, bool cameraActive)
         {
             base.Update(deltaTime);
+
+            // Always update camera (grid now appears immediately)
             _orthoCamera.Update(deltaTime, 0f, cameraActive);
 
-            if (cameraActive)
+            // ALWAYS calculate ghost position when a sprite is selected (even in UI mode)
+            if (!string.IsNullOrEmpty(_activeSpriteTexturePath))
             {
                 double mouseX = 0, mouseY = 0;
                 _controlContext.GetCursorPos(_window, out mouseX, out mouseY);
+
+                // Simple panel-relative to world conversion for angled ortho (works without Tab)
                 float worldX = (float)(mouseX - _width / 2f);
                 float worldY = (float)(_height / 2f - mouseY);
                 _spriteGhostPosition = new Vector3(worldX, worldY, 0.1f);
-                _spriteGhostVisible = !string.IsNullOrEmpty(_activeSpriteTexturePath);
+                _spriteGhostVisible = true;
             }
             else
             {
