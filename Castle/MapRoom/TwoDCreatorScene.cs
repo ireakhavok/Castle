@@ -193,7 +193,7 @@ namespace MapRoom
             if (_spriteGhostVisible && _ghostBuffer != null && _ghostTextureId != 0)
             {
                 _spriteShader.Use();
-                _spriteShader.SetMatrix4("uModel", Matrix4x4.CreateScale(new Vector3(_activeSpriteSize.X * 25f, _activeSpriteSize.Y * 25f, 1f)) * Matrix4x4.CreateTranslation(_spriteGhostPosition));
+                _spriteShader.SetMatrix4("uModel", Matrix4x4.CreateScale(new Vector3(_activeSpriteSize.X, _activeSpriteSize.Y, 1f)) * Matrix4x4.CreateTranslation(_spriteGhostPosition));
                 _spriteShader.SetMatrix4("uView", view);
                 _spriteShader.SetMatrix4("uProjection", projection);
                 _renderContext.Disable(_renderContext.Enums.DepthTest);
