@@ -19,7 +19,7 @@ namespace MapRoom
     {
         private AngledOrthoCamera _orthoCamera;
         private ShaderProgram _gridShader;
-        private ShaderProgram _spriteShader; // NEW: dedicated textured sprite/ghost shader
+        private ShaderProgram _spriteShader;
         private VertexBuffer _gridBuffer;
         private string _activeSpriteTexturePath = null;
         private Vector2 _activeSpriteSize = new Vector2(2f, 2f);
@@ -32,6 +32,7 @@ namespace MapRoom
             : base(renderContext, controlContext, window, server, eventBus)
         {
             _eventBus.Subscribe<SelectSpriteEvent>(OnSpriteSelected);
+            _eventBus.Subscribe<EntityPlacedEvent>(OnEntityPlaced);
         }
 
         public override void Initialize(int width, int height)
@@ -40,7 +41,7 @@ namespace MapRoom
             _orthoCamera = new AngledOrthoCamera(_controlContext, _window);
 
             _gridShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
-            _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource); // NEW
+            _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
 
             SetupGrid();
 
@@ -76,11 +77,11 @@ namespace MapRoom
 
             var vertices = new List<float>
             {
-                // x, y, z,    r, g, b, a,    u, v
-                -w, -h, 0,    1f,1f,1f,0.95f,  0f, 0f,
-                 w, -h, 0,    1f,1f,1f,0.95f,  1f, 0f,
-                 w,  h, 0,    1f,1f,1f,0.95f,  1f, 1f,
-                -w,  h, 0,    1f,1f,1f,0.95f,  0f, 1f
+                // x, y, z,    r, g, b, a,    u, v   ← V flipped (bottom-left = 0,1 → top-left = 0,0)
+                -w, -h, 0,    1f,1f,1f,0.95f,  0f, 1f,   // bottom-left
+                 w, -h, 0,    1f,1f,1f,0.95f,  1f, 1f,   // bottom-right
+                 w,  h, 0,    1f,1f,1f,0.95f,  1f, 0f,   // top-right
+                -w,  h, 0,    1f,1f,1f,0.95f,  0f, 0f    // top-left
             };
 
             var indices = new List<uint> { 0, 1, 2, 0, 2, 3 };
@@ -114,6 +115,34 @@ namespace MapRoom
             }
         }
 
+        private void OnEntityPlaced(EntityPlacedEvent e)
+        {
+            if (e.EntityType != "Sprite") return;
+
+            Console.WriteLine($"[TwoDCreatorScene] Creating persistent sprite entity at {e.Position}");
+
+            var entity = new Entity();
+            entity.Type = "Sprite";
+
+            // Transform already exists from Entity ctor - just update values
+            var transform = entity.GetComponent<TransformComponent>();
+            transform.Position = e.Position with { Z = 0f };
+            transform.Rotation = Quaternion.Identity;
+            transform.Scale = new Vector3(_activeSpriteSize.X, _activeSpriteSize.Y, 1f);
+
+            // Add sprite component
+            var sprite = new SpriteComponent
+            {
+                TexturePath = _activeSpriteTexturePath,
+                Size = _activeSpriteSize
+            };
+            entity.AddComponent(sprite);
+
+            _server.AddEntity(entity);
+
+            Console.WriteLine($"[TwoDCreatorScene] Sprite entity added (ID: {entity.Id})");
+        }
+
         public void Update(float deltaTime, bool cameraActive, Vector3 worldMousePos, bool mousePressed)
         {
             base.Update(deltaTime);
@@ -141,7 +170,7 @@ namespace MapRoom
             projection = Matrix4x4.CreateOrthographic(_width * 1.5f, _height * 1.5f, 0.1f, 1000f);
             view = _orthoCamera.ViewMatrix;
 
-            // ─── Grid (still uses point shader) ────────────────────────────────────────
+            // Grid
             _gridShader.Use();
             _gridShader.SetMatrix4("uView", view);
             _gridShader.SetMatrix4("uProjection", projection);
@@ -152,7 +181,7 @@ namespace MapRoom
             _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
             _renderContext.Disable(_renderContext.Enums.LineSmooth);
 
-            // ─── Ghost sprite (uses new textured sprite shader) ────────────────────────
+            // Ghost (preview)
             if (_spriteGhostVisible && _ghostBuffer != null && _ghostTextureId != 0)
             {
                 _spriteShader.Use();
@@ -169,7 +198,7 @@ namespace MapRoom
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, null);
                 _renderContext.Disable(_renderContext.Enums.Blend);
 
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0); // clean up
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
             }
         }
 
@@ -179,7 +208,7 @@ namespace MapRoom
             _gridBuffer?.Dispose();
             _ghostBuffer?.Dispose();
             _gridShader?.Dispose();
-            _spriteShader?.Dispose(); // NEW
+            _spriteShader?.Dispose();
             base.Dispose();
         }
     }
