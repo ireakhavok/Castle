@@ -354,7 +354,7 @@ Folder: MapRoom
   - Class: TwoDCreatorUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, ToolChest
+    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, ToolChest
     - Fields:
       - TwoDCreatorPanel _parent
     - Methods:
@@ -373,20 +373,22 @@ Folder: MapRoom
       - bool _spriteGhostVisible
       - Vector3 _spriteGhostPosition
       - VertexBuffer _ghostBuffer
+      - uint _ghostTextureId
     - Methods:
       - void Initialize( int height, int width)
-        - Calls: SetupGrid, ShaderProgram, UpdateGhostMesh, VertexBuffer
+        - Calls: SetupGrid, ShaderProgram, UpdateGhostMesh, VertexBuffer, _orthoCamera.Update
       - void SetupGrid()
         - Calls: Vertex, VertexBuffer, _gridBuffer.UpdateCustom
       - void UpdateGhostMesh()
-        - Calls: _ghostBuffer.UpdateCustomWithUV
+        - Calls: Vertex, _ghostBuffer.UpdateCustom
       - void OnSpriteSelected(SelectSpriteEvent e)
-        - Calls: UpdateGhostMesh
-      - void Update(float deltaTime)
-        - Calls: _controlContext.GetCursorPos
+        - Calls: UpdateGhostMesh, _renderContext.DeleteTexture
+      - void Update( Vector3 worldMousePos,  bool cameraActive,  bool mousePressed, float deltaTime)
+        - Calls: EntityPlacedEvent
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
-        - Calls: _ghostBuffer.Bind, _gridBuffer.Bind, _gridShader.SetMatrix4, _gridShader.Use, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawArrays, _renderContext.DrawElements, _renderContext.Enable
+        - Calls: _ghostBuffer.Bind, _gridBuffer.Bind, _gridShader.SetMatrix4, _gridShader.Use, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawArrays, _renderContext.DrawElements, _renderContext.Enable
       - void Dispose()
+        - Calls: _renderContext.DeleteTexture
 
 Folder: QuestHall
 - File: Class1.cs

@@ -298,6 +298,7 @@ Found: .
 Found: ..
 Found: DirtPath2.jpg
 Found: DirtPathTexture.jpg
+Found: eD5eK.png
 Found: Main_Background.jpg
 Found: main_background_grok_lol.jpg
 Found: test
@@ -544,14 +545,14 @@ Found 4 dependencies
 Found: TwoDCreatorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
-Read 5693 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
+Read 5798 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
 Namespace: MapRoom
-Found 14 dependencies
+Found 13 dependencies
 Found: TwoDCreatorPanelUI.html
 Found: TwoDCreatorScene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
-Read 5769 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
+Read 6424 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
 Namespace: MapRoom
 Found 11 dependencies
 Found: QuestHall
@@ -1911,7 +1912,7 @@ Found: PropertiesPanelUI.html
 Found: SpritePlacementPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
-Read 4679 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
+Read 4898 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
 Namespace: ToolChest
 Found 9 dependencies
 Found: SpritePlacementPanelUI.html

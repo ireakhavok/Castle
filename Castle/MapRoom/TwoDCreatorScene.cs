@@ -11,6 +11,7 @@ using SiegeEngine.Scenes;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.IO;
 
 namespace MapRoom
 {
@@ -18,6 +19,7 @@ namespace MapRoom
     {
         private AngledOrthoCamera _orthoCamera;
         private ShaderProgram _gridShader;
+        private ShaderProgram _spriteShader; // NEW: dedicated textured sprite/ghost shader
         private VertexBuffer _gridBuffer;
         private string _activeSpriteTexturePath = null;
         private Vector2 _activeSpriteSize = new Vector2(2f, 2f);
@@ -36,8 +38,12 @@ namespace MapRoom
         {
             base.Initialize(width, height);
             _orthoCamera = new AngledOrthoCamera(_controlContext, _window);
+
             _gridShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
+            _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource); // NEW
+
             SetupGrid();
+
             _ghostBuffer = new VertexBuffer(_renderContext);
             UpdateGhostMesh();
 
@@ -68,32 +74,44 @@ namespace MapRoom
             float w = _activeSpriteSize.X * 25f;
             float h = _activeSpriteSize.Y * 25f;
 
-            var vertices = new List<Vertex>
+            var vertices = new List<float>
             {
-                new Vertex(-w, -h, 0, 1f, 1f, 1f, 0.95f),
-                new Vertex( w, -h, 0, 1f, 1f, 1f, 0.95f),
-                new Vertex( w,  h, 0, 1f, 1f, 1f, 0.95f),
-                new Vertex(-w,  h, 0, 1f, 1f, 1f, 0.95f)
+                // x, y, z,    r, g, b, a,    u, v
+                -w, -h, 0,    1f,1f,1f,0.95f,  0f, 0f,
+                 w, -h, 0,    1f,1f,1f,0.95f,  1f, 0f,
+                 w,  h, 0,    1f,1f,1f,0.95f,  1f, 1f,
+                -w,  h, 0,    1f,1f,1f,0.95f,  0f, 1f
             };
 
             var indices = new List<uint> { 0, 1, 2, 0, 2, 3 };
 
-            _ghostBuffer.UpdateCustom(vertices, indices);
+            _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
 
         private void OnSpriteSelected(SelectSpriteEvent e)
         {
-            if (_ghostTextureId != 0) _renderContext.DeleteTexture(_ghostTextureId);
+            if (_ghostTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_ghostTextureId);
+                _ghostTextureId = 0;
+            }
 
             _activeSpriteTexturePath = e.TexturePath;
             _activeSpriteSize = new Vector2(e.Width, e.Height);
+
             UpdateGhostMesh();
 
-            // Load YOUR actual PNG (tower.png) as the ghost texture
             var (texId, _) = TextureLoader.LoadTexture(_renderContext, e.TexturePath);
             _ghostTextureId = texId;
 
-            Console.WriteLine($"[TwoDCreatorScene] Real PNG ghost loaded: {Path.GetFileName(e.TexturePath)} (ID {_ghostTextureId})");
+            if (_ghostTextureId == 0)
+            {
+                Console.WriteLine($"[ERROR TwoDCreatorScene] Failed to load ghost texture: {Path.GetFileName(e.TexturePath)}");
+            }
+            else
+            {
+                Console.WriteLine($"[TwoDCreatorScene] Real PNG ghost loaded: {Path.GetFileName(e.TexturePath)} (ID {_ghostTextureId})");
+            }
         }
 
         public void Update(float deltaTime, bool cameraActive, Vector3 worldMousePos, bool mousePressed)
@@ -122,22 +140,25 @@ namespace MapRoom
         {
             projection = Matrix4x4.CreateOrthographic(_width * 1.5f, _height * 1.5f, 0.1f, 1000f);
             view = _orthoCamera.ViewMatrix;
+
+            // ─── Grid (still uses point shader) ────────────────────────────────────────
             _gridShader.Use();
             _gridShader.SetMatrix4("uView", view);
             _gridShader.SetMatrix4("uProjection", projection);
-
-            // Grid
             _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
+
             _gridBuffer.Bind();
             _renderContext.Enable(_renderContext.Enums.LineSmooth);
             _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
             _renderContext.Disable(_renderContext.Enums.LineSmooth);
 
-            // REAL PNG GHOST
+            // ─── Ghost sprite (uses new textured sprite shader) ────────────────────────
             if (_spriteGhostVisible && _ghostBuffer != null && _ghostTextureId != 0)
             {
-                Matrix4x4 model = Matrix4x4.CreateTranslation(_spriteGhostPosition);
-                _gridShader.SetMatrix4("uModel", model);
+                _spriteShader.Use();
+                _spriteShader.SetMatrix4("uModel", Matrix4x4.CreateTranslation(_spriteGhostPosition));
+                _spriteShader.SetMatrix4("uView", view);
+                _spriteShader.SetMatrix4("uProjection", projection);
 
                 _renderContext.ActiveTexture(0);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, _ghostTextureId);
@@ -147,6 +168,8 @@ namespace MapRoom
                 _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, null);
                 _renderContext.Disable(_renderContext.Enums.Blend);
+
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0); // clean up
             }
         }
 
@@ -156,6 +179,7 @@ namespace MapRoom
             _gridBuffer?.Dispose();
             _ghostBuffer?.Dispose();
             _gridShader?.Dispose();
+            _spriteShader?.Dispose(); // NEW
             base.Dispose();
         }
     }
