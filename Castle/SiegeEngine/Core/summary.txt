@@ -1236,6 +1236,14 @@ Folder: Rendering
 - File: ShaderSetup.cs
   - Class: ShaderSetup (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering.Shaders, Silk.NET.OpenGL
+- File: SpriteShader.cs
+  - Class: SpriteShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+    - Fields:
+      - string VertexShaderSource
+      - string FragmentShaderSource
+    - Methods:
+      - void main()
+      - void main()
 - File: SystemFontRenderer.cs
   - Class: CharacterData (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.ContextManagement, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
@@ -1281,6 +1289,9 @@ Folder: Rendering
     - Fields:
       - byte[] PngSignature
       - HashSet<byte> ValidTgaTypes
+    - Methods:
+      - return LoadTextureFromBitmap()
+        - Calls: renderContext.BindTexture, renderContext.DeleteTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
 - File: UIQuadRenderer.cs
   - Class: UIQuadRenderer (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
@@ -2101,6 +2112,7 @@ SiegeEngine.Core.Rendering.Shaders.EditorSceneShader
 SiegeEngine.Core.Rendering.Shaders.ModelShader
 SiegeEngine.Core.Rendering.Shaders.PointShader
 SiegeEngine.Core.Rendering.Shaders.SceneShader
+SiegeEngine.Core.Rendering.Shaders.SpriteShader
 SiegeEngine.Core.Rendering.Shaders.TextShader
 SiegeEngine.Core.Rendering.Shaders.UiShader
 SiegeEngine.Core.Rendering.Shaders.WaterShader

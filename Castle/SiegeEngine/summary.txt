@@ -1505,6 +1505,14 @@ Folder: Core
     - Inherits: IComponent
     
     - Dependencies: System.Numerics
+- File: SpriteShader.cs
+  - Class: SpriteShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+    - Fields:
+      - string VertexShaderSource
+      - string FragmentShaderSource
+    - Methods:
+      - void main()
+      - void main()
 - File: SteamEngine.cs
   - Class: SteamUGCRequestUGCDetailsResult_t (Namespace: SiegeEngine.Core.Networking)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Runtime.InteropServices, System.Text
@@ -1614,6 +1622,9 @@ Folder: Core
     - Fields:
       - byte[] PngSignature
       - HashSet<byte> ValidTgaTypes
+    - Methods:
+      - return LoadTextureFromBitmap()
+        - Calls: renderContext.BindTexture, renderContext.DeleteTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
 - File: ThElement.cs
   - Class: ThElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -2552,6 +2563,7 @@ SiegeEngine.Core.Rendering.Shaders.EditorSceneShader
 SiegeEngine.Core.Rendering.Shaders.ModelShader
 SiegeEngine.Core.Rendering.Shaders.PointShader
 SiegeEngine.Core.Rendering.Shaders.SceneShader
+SiegeEngine.Core.Rendering.Shaders.SpriteShader
 SiegeEngine.Core.Rendering.Shaders.TextShader
 SiegeEngine.Core.Rendering.Shaders.UiShader
 SiegeEngine.Core.Rendering.Shaders.WaterShader
