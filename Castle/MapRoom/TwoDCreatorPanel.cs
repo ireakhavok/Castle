@@ -31,11 +31,9 @@ namespace MapRoom
                 _parent.HandleUIClick(elem);
             }
         }
-
         private TwoDCreatorScene _twoDScene;
         private bool _cameraMode = false;
         private bool _lastTab = false;
-
         public override bool WantsContinuousUpdate => true;
 
         public TwoDCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -101,16 +99,20 @@ namespace MapRoom
             {
                 _lastTab = false;
             }
-
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
 
             Vector2 contentMouse = absMousePos - new Vector2(Position.X, Position.Y + TitleHeight);
+
+            float orthoWidth = Size.X * 1.5f;
+            float orthoHeight = Size.Y * 1.5f;
+
             float ndcX = (contentMouse.X / Size.X) * 2f - 1f;
             float ndcY = 1f - (contentMouse.Y / Size.Y) * 2f;
-            float worldX = ndcX * (Size.X * 0.75f);
-            float worldY = ndcY * (Size.Y * 0.75f);
 
-            _twoDScene.Update(deltaTime, _cameraMode, new Vector3(worldX, worldY, 0.1f), mousePressed && !_cameraMode);
+            float worldX = ndcX * (orthoWidth / 2f);
+            float worldY = ndcY * (orthoHeight / 2f);
+
+            _twoDScene.Update(deltaTime, _cameraMode, new Vector3(worldX, worldY, 0.1f), mouseReleased && !_cameraMode);
         }
 
         public override void Render()
@@ -137,7 +139,7 @@ namespace MapRoom
             uint scissorH = (uint)contentRect.Height;
             _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
 
-            _twoDScene.Render(null);
+            _twoDScene.Render(_twoDScene.GetEntities());
 
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             base.Render();

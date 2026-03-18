@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine/Core/Rendering
+// File: TextureLoader.cs
+using SiegeEngine.Core.ContextManagement;
 using Silk.NET.OpenGL;
 using System;
 using System.Collections.Generic;
@@ -13,6 +15,7 @@ namespace SiegeEngine.Core.Rendering
     {
         private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
         private static readonly HashSet<byte> ValidTgaTypes = new HashSet<byte> { 1, 2, 3, 9, 10, 11, 32, 33 };
+
         public static (uint, byte) LoadTexture(IRenderContext renderContext, string path, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -44,6 +47,7 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
+
         public static (uint, byte) LoadEmbeddedTexture(IRenderContext renderContext, byte[] textureData, string textureName, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -76,7 +80,6 @@ namespace SiegeEngine.Core.Rendering
                 {
                     Console.WriteLine($"TextureLoader: Invalid TGA type {imageType} or dimensions for {textureName}, attempting PNG");
                 }
-                // Fallback to PNG
                 using (var stream = new MemoryStream(textureData))
                 using (var bitmap = new Bitmap(stream))
                 {
@@ -91,6 +94,7 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
+
         public static (uint, byte) LoadTgaTexture(IRenderContext renderContext, string path, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -101,14 +105,13 @@ namespace SiegeEngine.Core.Rendering
                     byte idLength = reader.ReadByte();
                     byte colorMapType = reader.ReadByte();
                     byte imageType = reader.ReadByte();
-                    reader.ReadBytes(5); // Skip color map specification
-                    reader.ReadInt16(); // Skip x-origin
-                    reader.ReadInt16(); // Skip y-origin
+                    reader.ReadBytes(5);
+                    reader.ReadInt16();
+                    reader.ReadInt16();
                     ushort width = reader.ReadUInt16();
                     ushort height = reader.ReadUInt16();
                     byte pixelDepth = reader.ReadByte();
                     byte imageDescriptor = reader.ReadByte();
-                    //Console.WriteLine($"TGA Header: Type={imageType}, Width={width}, Height={height}, PixelDepth={pixelDepth}, ImageDescriptor={imageDescriptor}");
                     if (width == 0 || height == 0 || width > 16384 || height > 16384)
                     {
                         Console.WriteLine("TextureLoader: Invalid TGA dimensions or exceeds max size (16384)");
@@ -177,9 +180,8 @@ namespace SiegeEngine.Core.Rendering
                         Console.WriteLine($"TextureLoader: Limited support for TGA type {imageType}, treating as uncompressed");
                         pixelData = reader.ReadBytes(width * height * bytesPerPixel);
                     }
-                    // Handle flipping based on image descriptor (bit 5: 0x20 for top-left origin)
                     int rowSize = width * bytesPerPixel;
-                    if ((imageDescriptor & 0x20) == 0) // Bottom-left origin (bottom-up data), flip to top-down for consistency
+                    if ((imageDescriptor & 0x20) == 0)
                     {
                         byte[] flippedData = new byte[pixelData.Length];
                         for (int y = 0; y < height; y++)
@@ -187,11 +189,6 @@ namespace SiegeEngine.Core.Rendering
                             Array.Copy(pixelData, y * rowSize, flippedData, (height - 1 - y) * rowSize, rowSize);
                         }
                         pixelData = flippedData;
-                        //Console.WriteLine("TextureLoader: Flipped TGA pixel data rows (bottom-up to top-down)");
-                    }
-                    else
-                    {
-                        Console.WriteLine("TextureLoader: TGA is already top-down, no flip needed");
                     }
                     uint texture;
                     renderContext.GenTextures(1, out texture);
@@ -216,7 +213,6 @@ namespace SiegeEngine.Core.Rendering
                         renderContext.TexParameterf(renderContext.Enums.Texture2D, renderContext.Enums.TextureMaxAnisotropyExt, Math.Min(16.0f, maxAniso));
                     }
                     renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
-                    //Console.WriteLine($"TGA texture loaded: {texture}");
                     return (texture, pixelDepth);
                 }
             }
@@ -226,41 +222,28 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
+
         private static (uint, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
             {
-                byte pixelDepth;
-                //Console.WriteLine($"TextureLoader: Processing bitmap {bitmap.Width}x{bitmap.Height}, PixelFormat: {bitmap.PixelFormat}");
-                int internalFormat;
-                int pixelFormat;
-                switch (bitmap.PixelFormat)
+                if (bitmap.PixelFormat != System.Drawing.Imaging.PixelFormat.Format32bppArgb)
                 {
-                    case System.Drawing.Imaging.PixelFormat.Format32bppArgb:
-                    case System.Drawing.Imaging.PixelFormat.Format32bppPArgb:
-                        internalFormat = renderContext.Enums.InternalRgba;
-                        pixelFormat = renderContext.Enums.PixelBgra;
-                        pixelDepth = 32;
-                        break;
-                    case System.Drawing.Imaging.PixelFormat.Format24bppRgb:
-                        internalFormat = renderContext.Enums.InternalRgb;
-                        pixelFormat = renderContext.Enums.PixelBgr;
-                        pixelDepth = 32;
-                        break;
-                    default:
-                        pixelDepth = 32;
-                        Console.WriteLine($"TextureLoader: Unsupported bitmap pixel format: {bitmap.PixelFormat}, converting to 32bppArgb");
-                        using (var convertedBitmap = new Bitmap(bitmap.Width, bitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                    Console.WriteLine($"TextureLoader: Converting {bitmap.PixelFormat} to 32bppArgb for OpenGL compatibility");
+                    using (var convertedBitmap = new Bitmap(bitmap.Width, bitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                    {
+                        using (var g = Graphics.FromImage(convertedBitmap))
                         {
-                            using (var g = Graphics.FromImage(convertedBitmap))
-                            {
-                                g.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
-                            }
-                            (uint textureId, pixelDepth) = LoadTextureFromBitmap(renderContext, convertedBitmap, wrapS, wrapT);
-                            //Console.WriteLine($"TextureLoader: Converted bitmap load result: Texture ID {textureId}");
-                            return (textureId, pixelDepth);
+                            g.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
                         }
+                        return LoadTextureFromBitmap(renderContext, convertedBitmap, wrapS, wrapT);
+                    }
                 }
+
+                int internalFormat = renderContext.Enums.InternalRgba;
+                int pixelFormat = renderContext.Enums.PixelBgra;
+                byte pixelDepth = 32;
+
                 var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
                 try
                 {
@@ -286,7 +269,7 @@ namespace SiegeEngine.Core.Rendering
                             renderContext.DeleteTexture(texture);
                             return (0, 0);
                         }
-                        int bytesPerPixel = bitmap.PixelFormat == System.Drawing.Imaging.PixelFormat.Format32bppArgb ? 4 : 3;
+                        int bytesPerPixel = 4;
                         int dataSize = bitmap.Width * bitmap.Height * bytesPerPixel;
                         byte[] pixelData = new byte[dataSize];
                         System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
@@ -318,7 +301,6 @@ namespace SiegeEngine.Core.Rendering
                             renderContext.TexParameterf(renderContext.Enums.Texture2D, renderContext.Enums.TextureMaxAnisotropyExt, Math.Min(16.0f, maxAniso));
                         }
                         renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
-                        //Console.WriteLine($"Texture loaded: {texture}");
                         return (texture, pixelDepth);
                     }
                     catch (Exception ex)

@@ -12,9 +12,14 @@ namespace SiegeEngine.Core.Events
         public int EntityId { get; set; }
         public string EntityType { get; set; }
         public Vector3 Position { get; set; }
-        public Quaternion Rotation { get; set; } = Quaternion.Identity; // Future-proof for full TransformComponent support
+        public Quaternion Rotation { get; set; } = Quaternion.Identity;
         public bool IsPreview { get; set; }
         public ulong? PlayerId { get; set; }
+
+        // Sprite-specific data for full networking and client/server sync
+        public string TexturePath { get; set; } = string.Empty;
+        public float Width { get; set; }
+        public float Height { get; set; }
 
         public EntityPlacedEvent(int entityId, string type, Vector3 position, bool isPreview = false, ulong? playerId = null)
         {
@@ -27,7 +32,19 @@ namespace SiegeEngine.Core.Events
 
         public byte[] Serialize()
         {
-            var json = JsonSerializer.Serialize(new { Type, EntityId, EntityType, Position, Rotation, IsPreview, PlayerId });
+            var json = JsonSerializer.Serialize(new
+            {
+                Type,
+                EntityId,
+                EntityType,
+                Position,
+                Rotation,
+                IsPreview,
+                PlayerId,
+                TexturePath,
+                Width,
+                Height
+            });
             return System.Text.Encoding.UTF8.GetBytes(json);
         }
 
@@ -41,6 +58,9 @@ namespace SiegeEngine.Core.Events
             Rotation = obj.Rotation;
             IsPreview = obj.IsPreview;
             PlayerId = obj.PlayerId;
+            TexturePath = obj.TexturePath;
+            Width = obj.Width;
+            Height = obj.Height;
         }
     }
 }
