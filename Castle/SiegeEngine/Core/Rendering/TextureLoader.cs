@@ -7,15 +7,13 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
-using System.Linq;
-
+using System.Numerics;
 namespace SiegeEngine.Core.Rendering
 {
     public static class TextureLoader
     {
         private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
         private static readonly HashSet<byte> ValidTgaTypes = new HashSet<byte> { 1, 2, 3, 9, 10, 11, 32, 33 };
-
         public static (uint, byte) LoadTexture(IRenderContext renderContext, string path, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -47,7 +45,21 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
-
+        public static (uint texId, Vector2 nativeSize) LoadTextureWithSize(IRenderContext renderContext, string path)
+        {
+            try
+            {
+                using (var bitmap = new Bitmap(path))
+                {
+                    (uint texId, byte _) = LoadTextureFromBitmap(renderContext, bitmap);
+                    return (texId, new Vector2(bitmap.Width, bitmap.Height));
+                }
+            }
+            catch
+            {
+                return (0, Vector2.One);
+            }
+        }
         public static (uint, byte) LoadEmbeddedTexture(IRenderContext renderContext, byte[] textureData, string textureName, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -94,7 +106,6 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
-
         public static (uint, byte) LoadTgaTexture(IRenderContext renderContext, string path, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -222,7 +233,6 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
-
         private static (uint, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             try
@@ -239,11 +249,9 @@ namespace SiegeEngine.Core.Rendering
                         return LoadTextureFromBitmap(renderContext, convertedBitmap, wrapS, wrapT);
                     }
                 }
-
                 int internalFormat = renderContext.Enums.InternalRgba;
                 int pixelFormat = renderContext.Enums.PixelBgra;
                 byte pixelDepth = 32;
-
                 var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
                 try
                 {

@@ -9,7 +9,6 @@ using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
-
 namespace ToolChest
 {
     public class SpritePlacementPanel : CompanionPanel
@@ -31,7 +30,7 @@ namespace ToolChest
                 _parent.HandleUIClick(elem);
             }
         }
-        public override bool WantsContinuousUpdate => false; // Pure UI - never captures mouse
+        public override bool WantsContinuousUpdate => false;
         public SpritePlacementPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -99,15 +98,19 @@ namespace ToolChest
                 if (widthElem != null) float.TryParse(widthElem.Value ?? "2", out w);
                 if (heightElem != null) float.TryParse(heightElem.Value ?? "2", out h);
                 _eventBus.Publish(new SelectSpriteEvent(0, path, w, h), true);
+                var preview = _uiOverlay.FindElementById("spritePreview");
+                if (preview != null)
+                {
+                    preview.Attributes["src"] = path;
+                    _uiOverlay.RefreshUI();
+                }
                 Console.WriteLine($"[SpritePlacementPanel] Sprite selected: {path} — ghost now active in scene");
             }
         }
         public override void Detach()
         {
-            // FIXED: Do NOT publish empty SelectSpriteEvent on close.
-            // The ghost preview is already disabled automatically in TwoDCreatorScene.Update()
-            // Publishing the empty event was destroying placed sprite state.
-            // Placed sprites are now persistent entities in the server/proxy and survive panel close.
+            var clearEvent = new SelectSpriteEvent(0, "", 0f, 0f);
+            _eventBus.Publish(clearEvent, true);
             base.Detach();
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

@@ -13,7 +13,6 @@ using System;
 using System.IO;
 using System.Numerics;
 using ToolChest;
-
 namespace MapRoom
 {
     public class TwoDCreatorPanel : ClosablePanel
@@ -35,7 +34,6 @@ namespace MapRoom
         private bool _cameraMode = false;
         private bool _lastTab = false;
         public override bool WantsContinuousUpdate => true;
-
         public TwoDCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -44,19 +42,16 @@ namespace MapRoom
             BaseHeight = 720f;
             _twoDScene = new TwoDCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new TwoDCreatorUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             _twoDScene.Initialize((int)Size.Y, (int)Size.X);
             LoadUI();
         }
-
         private void LoadUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TwoDCreatorPanelUI.html");
@@ -68,7 +63,6 @@ namespace MapRoom
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         public void HandleDataHook(string hook)
         {
             if (hook == "OpenSpriteTool")
@@ -76,7 +70,6 @@ namespace MapRoom
                 SpritePlacementPanel.Open(_renderContext, _controlContext, _window, _eventBus);
             }
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -85,7 +78,6 @@ namespace MapRoom
                 HandleDataHook(hook);
             }
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             var tab = _controlContext.GetKey(_window, Key.Tab);
@@ -100,21 +92,23 @@ namespace MapRoom
                 _lastTab = false;
             }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-
+            var contentRect = GetContentRect();
+            bool insideContent = absMousePos.X >= contentRect.X && absMousePos.X <= contentRect.X + contentRect.Width &&
+                                 absMousePos.Y >= contentRect.Y && absMousePos.Y <= contentRect.Y + contentRect.Height;
+            if (!insideContent)
+            {
+                _twoDScene.Update(deltaTime, _cameraMode, Vector3.Zero, false);
+                return;
+            }
             Vector2 contentMouse = absMousePos - new Vector2(Position.X, Position.Y + TitleHeight);
-
             float orthoWidth = Size.X * 1.5f;
             float orthoHeight = Size.Y * 1.5f;
-
             float ndcX = (contentMouse.X / Size.X) * 2f - 1f;
-            float ndcY = 1f - (contentMouse.Y / Size.Y) * 2f;
-
+            float ndcY = -(contentMouse.Y / Size.Y) * 2f + 1f;
             float worldX = ndcX * (orthoWidth / 2f);
             float worldY = ndcY * (orthoHeight / 2f);
-
             _twoDScene.Update(deltaTime, _cameraMode, new Vector3(worldX, worldY, 0.1f), mouseReleased && !_cameraMode);
         }
-
         public override void Render()
         {
             if (!Visible) return;
@@ -129,7 +123,6 @@ namespace MapRoom
                 _lastH = (int)Size.Y;
                 _twoDScene.Resize(_lastW, _lastH);
             }
-
             var contentRect = GetContentRect();
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             _renderContext.Enable(_renderContext.Enums.ScissorTest);
@@ -138,24 +131,19 @@ namespace MapRoom
             uint scissorW = (uint)contentRect.Width;
             uint scissorH = (uint)contentRect.Height;
             _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
-
             _twoDScene.Render(_twoDScene.GetEntities());
-
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             base.Render();
         }
-
         public override void OnLiveResize(float w, float h)
         {
             _twoDScene.Resize((int)w, (int)h);
         }
-
         public override void Dispose()
         {
             _twoDScene?.Dispose();
             base.Dispose();
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new TwoDCreatorPanel(renderContext, controlContext, window, eventBus);
