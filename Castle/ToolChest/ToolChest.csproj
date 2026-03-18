@@ -7,15 +7,31 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="AssetBrowserPanelUI.html" />
     <None Remove="BrushPanelUI.html" />
+    <None Remove="ConsolePanelUI.html" />
+    <None Remove="PropertiesPanelUI.html" />
     <None Remove="SpritePlacementPanelUI.html" />
+    <None Remove="TreeViewPanelUI.html" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="AssetBrowserPanelUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="BrushPanelUI.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="ConsolePanelUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="PropertiesPanelUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="SpritePlacementPanelUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TreeViewPanelUI.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
