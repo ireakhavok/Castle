@@ -24,7 +24,7 @@ namespace MapRoom
         private Vector2 _activeSpriteSize = new Vector2(2f, 2f);
         private Vector2 _activeSpriteNativeAspect = new Vector2(1f, 1f);
         private bool _spriteGhostVisible = false;
-        private Vector3 _spriteGhostPosition;
+        private Vector3 _spriteGhostPosition = Vector3.Zero;
         private VertexBuffer _ghostBuffer;
         private uint _ghostTextureId = 0;
         private readonly Dictionary<string, uint> _placedTextureCache = new Dictionary<string, uint>();
@@ -45,34 +45,91 @@ namespace MapRoom
             hitPlane = normalizedMouse.X >= 0f && normalizedMouse.X <= 1f &&
                        normalizedMouse.Y >= 0f && normalizedMouse.Y <= 1f;
 
-            if (!hitPlane) return Vector3.Zero;
-
-            float orthoWidth = _width * 1.5f;
-            float orthoHeight = _height * 1.5f;
+            if (!hitPlane || _orthoCamera == null)
+            {
+                return _spriteGhostPosition; // hold last valid position
+            }
 
             float ndcX = normalizedMouse.X * 2f - 1f;
             float ndcY = 1f - normalizedMouse.Y * 2f;
 
-            float worldX = CameraPosition.X + ndcX * (orthoWidth / 2f);
-            float worldY = CameraPosition.Y + ndcY * (orthoHeight / 2f);
+            Matrix4x4 proj = ProjectionMatrix;
+            Matrix4x4 view = _orthoCamera.ViewMatrix;
 
-            return new Vector3(worldX, worldY, 0f);
+            // Step 1: Invert projection (ortho is simple)
+            if (!Matrix4x4.Invert(proj, out Matrix4x4 invProj))
+            {
+                goto fallback;
+            }
+
+            // Unproject near and far points to eye space
+            Vector4 ndcNear = new Vector4(ndcX, ndcY, -1f, 1f);
+            Vector4 ndcFar = new Vector4(ndcX, ndcY, 1f, 1f);
+
+            Vector4 eyeNearH = Vector4.Transform(ndcNear, invProj);
+            Vector4 eyeFarH = Vector4.Transform(ndcFar, invProj);
+
+            // Dehomogenize (divide by W) - this was the source of the CS0029 error
+            Vector3 eyeNear = new Vector3(eyeNearH.X / eyeNearH.W, eyeNearH.Y / eyeNearH.W, eyeNearH.Z / eyeNearH.W);
+            Vector3 eyeFar = new Vector3(eyeFarH.X / eyeFarH.W, eyeFarH.Y / eyeFarH.W, eyeFarH.Z / eyeFarH.W);
+
+            // Step 2: Invert view to world space
+            if (!Matrix4x4.Invert(view, out Matrix4x4 invView))
+            {
+                goto fallback;
+            }
+
+            Vector3 worldNear = Vector3.Transform(eyeNear, invView);
+            Vector3 worldFar = Vector3.Transform(eyeFar, invView);
+
+            Vector3 rayOrigin = worldNear;
+            Vector3 rayDir = Vector3.Normalize(worldFar - worldNear);
+
+            // Step 3: Intersect ray with world Z=0 plane
+            float denom = rayDir.Z;
+            if (MathF.Abs(denom) < 0.00001f)
+            {
+                goto fallback; // ray parallel to plane
+            }
+
+            float t = -rayOrigin.Z / denom;
+            if (t < -0.001f)
+            {
+                goto fallback; // intersection behind camera
+            }
+
+            Vector3 hit = rayOrigin + t * rayDir;
+            Vector3 result = new Vector3(hit.X, hit.Y, 0f);
+            _spriteGhostPosition = result;
+            return result;
+
+        fallback:
+            // Fallback: approximate by transforming eye-space mouse point at Z=0
+            float halfWidth = (_width * 1.5f) / 2f;
+            float halfHeight = (_height * 1.5f) / 2f;
+            Vector3 eyePos = new Vector3(ndcX * halfWidth, ndcY * halfHeight, 0f);
+            if (Matrix4x4.Invert(view, out invView))
+            {
+                Vector3 worldApprox = Vector3.Transform(eyePos, invView);
+                _spriteGhostPosition = new Vector3(worldApprox.X, worldApprox.Y, 0f);
+                return _spriteGhostPosition;
+            }
+
+            // Ultimate fallback: just camera position (should never reach)
+            _spriteGhostPosition = CameraPosition;
+            return _spriteGhostPosition;
         }
 
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _orthoCamera = new AngledOrthoCamera(_controlContext, _window);
-
             _gridShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
-
             ProjectionMatrix = Matrix4x4.CreateOrthographic(width * 1.5f, height * 1.5f, 0.1f, 1000f);
-
             SetupGrid();
             _ghostBuffer = new VertexBuffer(_renderContext);
             UpdateGhostMesh();
-
             _orthoCamera.Update(0f, 0f, false);
         }
 
@@ -167,10 +224,12 @@ namespace MapRoom
         {
             base.Update(deltaTime);
             _orthoCamera.Update(deltaTime, 0f, cameraActive);
+
             if (!cameraActive && !string.IsNullOrEmpty(_activeSpriteTexturePath))
             {
                 _spriteGhostPosition = worldMousePos;
                 _spriteGhostVisible = true;
+
                 if (mouseReleased)
                 {
                     var evt = new EntityPlacedEvent(0, "Sprite", worldMousePos)
@@ -235,6 +294,7 @@ namespace MapRoom
                     _ghostBuffer?.Bind();
                     _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, null);
                 }
+
                 _renderContext.Disable(_renderContext.Enums.Blend);
                 _renderContext.Enable(_renderContext.Enums.DepthTest);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
