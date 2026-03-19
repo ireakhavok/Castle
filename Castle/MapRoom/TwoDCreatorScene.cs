@@ -28,23 +28,59 @@ namespace MapRoom
         private VertexBuffer _ghostBuffer;
         private uint _ghostTextureId = 0;
         private readonly Dictionary<string, uint> _placedTextureCache = new Dictionary<string, uint>();
+
+        public Vector3 CameraPosition => _orthoCamera?.Position ?? Vector3.Zero;
+        public Matrix4x4 ViewMatrix => _orthoCamera?.ViewMatrix ?? Matrix4x4.Identity;
+        public Matrix4x4 ProjectionMatrix { get; private set; }
+
         public TwoDCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
             _eventBus.Subscribe<SelectSpriteEvent>(OnSpriteSelected);
             _eventBus.Subscribe<EntityPlacedEvent>(OnEntityPlaced);
         }
+
+        // PURE PROJECTION: mouse → world position on Z=0 plane
+        // Derived ONLY from camera center + exact ortho plane size (matches RenderContent)
+        // No raycast, no fallbacks, no static numbers beyond the existing 1.5f ortho scale
+        public Vector3 ScreenToWorldPlane(Vector2 normalizedMouse, float planeZ = 0f)
+        {
+            if (_orthoCamera == null) return Vector3.Zero;
+
+            float orthoWidth = _width * 1.5f;
+            float orthoHeight = _height * 1.5f;
+
+            float ndcX = normalizedMouse.X * 2f - 1f;
+            float ndcY = 1f - normalizedMouse.Y * 2f;
+
+            float worldX = CameraPosition.X + ndcX * (orthoWidth / 2f);
+            float worldY = CameraPosition.Y + ndcY * (orthoHeight / 2f);
+
+            return new Vector3(worldX, worldY, planeZ);
+        }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _orthoCamera = new AngledOrthoCamera(_controlContext, _window);
+
             _gridShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
+
+            ProjectionMatrix = Matrix4x4.CreateOrthographic(width * 1.5f, height * 1.5f, 0.1f, 1000f);
+
             SetupGrid();
             _ghostBuffer = new VertexBuffer(_renderContext);
             UpdateGhostMesh();
             _orthoCamera.Update(0f, 0f, false);
         }
+
+        public override void Resize(int width, int height)
+        {
+            base.Resize(width, height);
+            ProjectionMatrix = Matrix4x4.CreateOrthographic(width * 1.5f, height * 1.5f, 0.1f, 1000f);
+        }
+
         private void SetupGrid()
         {
             var vertices = new List<Vertex>();
@@ -61,6 +97,7 @@ namespace MapRoom
             _gridBuffer = new VertexBuffer(_renderContext);
             _gridBuffer.UpdateCustom(vertices, new List<uint>());
         }
+
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
@@ -78,6 +115,7 @@ namespace MapRoom
             var indices = new List<uint> { 0, 1, 2, 0, 2, 3 };
             _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
+
         private void OnSpriteSelected(SelectSpriteEvent e)
         {
             if (_ghostTextureId != 0)
@@ -98,6 +136,7 @@ namespace MapRoom
             UpdateGhostMesh();
             _spriteGhostVisible = true;
         }
+
         private void OnEntityPlaced(EntityPlacedEvent e)
         {
             if (e.EntityType != "Sprite" || string.IsNullOrEmpty(e.TexturePath)) return;
@@ -122,6 +161,7 @@ namespace MapRoom
             entity.AddComponent(sprite);
             _server.AddEntity(entity);
         }
+
         public void Update(float deltaTime, bool cameraActive, Vector3 worldMousePos, bool mouseReleased)
         {
             base.Update(deltaTime);
@@ -146,32 +186,39 @@ namespace MapRoom
                 _spriteGhostVisible = false;
             }
         }
+
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            projection = Matrix4x4.CreateOrthographic(_width * 1.5f, _height * 1.5f, 0.1f, 1000f);
+            if (_orthoCamera == null) return;
+
+            ProjectionMatrix = Matrix4x4.CreateOrthographic(_width * 1.5f, _height * 1.5f, 0.1f, 1000f);
             view = _orthoCamera.ViewMatrix;
-            _gridShader.Use();
-            _gridShader.SetMatrix4("uView", view);
-            _gridShader.SetMatrix4("uProjection", projection);
-            _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
-            _gridBuffer.Bind();
+
+            _gridShader?.Use();
+            _gridShader?.SetMatrix4("uView", view);
+            _gridShader?.SetMatrix4("uProjection", ProjectionMatrix);
+            _gridShader?.SetMatrix4("uModel", Matrix4x4.Identity);
+            _gridBuffer?.Bind();
             _renderContext.Enable(_renderContext.Enums.LineSmooth);
-            _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
+            _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer?.GetVertexCount() ?? 0);
             _renderContext.Disable(_renderContext.Enums.LineSmooth);
+
             if (entities != null)
             {
-                _spriteShader.Use();
-                _spriteShader.SetMatrix4("uView", view);
-                _spriteShader.SetMatrix4("uProjection", projection);
+                _spriteShader?.Use();
+                _spriteShader?.SetMatrix4("uView", view);
+                _spriteShader?.SetMatrix4("uProjection", ProjectionMatrix);
                 _renderContext.Disable(_renderContext.Enums.DepthTest);
                 _renderContext.Enable(_renderContext.Enums.Blend);
                 _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+
                 foreach (var entity in entities)
                 {
                     if (entity.Type != "Sprite") continue;
                     var sprite = entity.GetComponent<SpriteComponent>();
                     var transform = entity.GetComponent<TransformComponent>();
                     if (sprite == null || transform == null || string.IsNullOrEmpty(sprite.TexturePath)) continue;
+
                     if (!_placedTextureCache.TryGetValue(sprite.TexturePath, out uint texId))
                     {
                         var (newId, _) = TextureLoader.LoadTextureWithSize(_renderContext, sprite.TexturePath);
@@ -179,23 +226,25 @@ namespace MapRoom
                         texId = newId;
                     }
                     if (texId == 0) continue;
+
                     var model = Matrix4x4.CreateScale(transform.Scale) * Matrix4x4.CreateTranslation(transform.Position);
-                    _spriteShader.SetMatrix4("uModel", model);
+                    _spriteShader?.SetMatrix4("uModel", model);
                     _renderContext.ActiveTexture(0);
                     _renderContext.BindTexture(_renderContext.Enums.Texture2D, texId);
-                    _ghostBuffer.Bind();
+                    _ghostBuffer?.Bind();
                     _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, null);
                 }
                 _renderContext.Disable(_renderContext.Enums.Blend);
                 _renderContext.Enable(_renderContext.Enums.DepthTest);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
             }
-            if (_spriteGhostVisible && _ghostBuffer != null && _ghostTextureId != 0)
+
+            if (_spriteGhostVisible && _ghostBuffer != null && _ghostTextureId != 0 && _spriteShader != null)
             {
                 _spriteShader.Use();
                 _spriteShader.SetMatrix4("uModel", Matrix4x4.CreateScale(new Vector3(_activeSpriteSize.X, _activeSpriteSize.Y, 1f)) * Matrix4x4.CreateTranslation(_spriteGhostPosition));
                 _spriteShader.SetMatrix4("uView", view);
-                _spriteShader.SetMatrix4("uProjection", projection);
+                _spriteShader.SetMatrix4("uProjection", ProjectionMatrix);
                 _renderContext.Disable(_renderContext.Enums.DepthTest);
                 _renderContext.Enable(_renderContext.Enums.Blend);
                 _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
@@ -207,6 +256,7 @@ namespace MapRoom
                 _renderContext.Enable(_renderContext.Enums.DepthTest);
             }
         }
+
         public override void Dispose()
         {
             foreach (var tex in _placedTextureCache.Values) if (tex != 0) _renderContext.DeleteTexture(tex);
