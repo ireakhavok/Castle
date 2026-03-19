@@ -40,12 +40,15 @@ namespace MapRoom
             _eventBus.Subscribe<EntityPlacedEvent>(OnEntityPlaced);
         }
 
-        // PURE PROJECTION: mouse → world position on Z=0 plane
-        // Derived ONLY from camera center + exact ortho plane size (matches RenderContent)
-        // No raycast, no fallbacks, no static numbers beyond the existing 1.5f ortho scale
-        public Vector3 ScreenToWorldPlane(Vector2 normalizedMouse, float planeZ = 0f)
+        // EXACT SIMPLE NDC PROJECTION FROM YOUR "BEST WORKING" EXAMPLE
+        // Ghost follows mouse 1:1 on Z=0 plane relative to ortho center
+        // No camera position offset, no ray, no tilt math, no band-aids
+        public Vector3 ScreenToWorldPlane(Vector2 normalizedMouse, out bool hitPlane)
         {
-            if (_orthoCamera == null) return Vector3.Zero;
+            hitPlane = normalizedMouse.X >= 0f && normalizedMouse.X <= 1f &&
+                       normalizedMouse.Y >= 0f && normalizedMouse.Y <= 1f;
+
+            if (!hitPlane) return Vector3.Zero;
 
             float orthoWidth = _width * 1.5f;
             float orthoHeight = _height * 1.5f;
@@ -53,10 +56,10 @@ namespace MapRoom
             float ndcX = normalizedMouse.X * 2f - 1f;
             float ndcY = 1f - normalizedMouse.Y * 2f;
 
-            float worldX = CameraPosition.X + ndcX * (orthoWidth / 2f);
-            float worldY = CameraPosition.Y + ndcY * (orthoHeight / 2f);
+            float worldX = ndcX * (orthoWidth / 2f);
+            float worldY = ndcY * (orthoHeight / 2f);
 
-            return new Vector3(worldX, worldY, planeZ);
+            return new Vector3(worldX, worldY, 0f);
         }
 
         public override void Initialize(int width, int height)
@@ -72,6 +75,7 @@ namespace MapRoom
             SetupGrid();
             _ghostBuffer = new VertexBuffer(_renderContext);
             UpdateGhostMesh();
+
             _orthoCamera.Update(0f, 0f, false);
         }
 

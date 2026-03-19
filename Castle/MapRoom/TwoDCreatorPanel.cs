@@ -119,9 +119,9 @@ namespace MapRoom
                 contentMouse.Y / contentRect.Height
             );
 
-            Vector3 worldPos = _twoDScene.ScreenToWorldPlane(normalizedMouse);
+            Vector3 worldPos = _twoDScene.ScreenToWorldPlane(normalizedMouse, out bool hitPlane);
 
-            _twoDScene.Update(deltaTime, _cameraMode, worldPos, mouseReleased && !_cameraMode);
+            _twoDScene.Update(deltaTime, _cameraMode, worldPos, mouseReleased && !_cameraMode && hitPlane);
         }
 
         public override void Render()
