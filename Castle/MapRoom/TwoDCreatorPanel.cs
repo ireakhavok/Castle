@@ -30,12 +30,10 @@ namespace MapRoom
                 _parent.HandleUIClick(elem);
             }
         }
-
         private TwoDCreatorScene _twoDScene;
         private bool _cameraMode = false;
         private bool _lastTab = false;
         public override bool WantsContinuousUpdate => true;
-
         public TwoDCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -43,20 +41,22 @@ namespace MapRoom
             BaseWidth = 1280f;
             BaseHeight = 720f;
             _twoDScene = new TwoDCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
-        }
 
+            // === NEW: Listen for FileSelectedEvent from AssetBrowserPanel ===
+            // This is the missing bridge that makes selecting a PNG in the Asset Browser
+            // automatically trigger the sprite ghost (and later placement).
+            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
+        }
         protected override UIOverlay CreateUIOverlay()
         {
             return new TwoDCreatorUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             _twoDScene.Initialize((int)Size.X, (int)Size.Y);
             LoadUI();
         }
-
         private void LoadUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TwoDCreatorPanelUI.html");
@@ -68,7 +68,6 @@ namespace MapRoom
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         public void HandleDataHook(string hook)
         {
             if (hook == "OpenSpriteTool")
@@ -76,7 +75,6 @@ namespace MapRoom
                 SpritePlacementPanel.Open(_renderContext, _controlContext, _window, _eventBus);
             }
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -84,6 +82,13 @@ namespace MapRoom
             {
                 HandleDataHook(hook);
             }
+        }
+        private void OnFileSelected(FileSelectedEvent e)
+        {
+            if (string.IsNullOrEmpty(e.Path) || !e.Path.ToLower().EndsWith(".png")) return;
+
+            var selectEvt = new SelectSpriteEvent(0UL, e.Path, 2f, 2f); // correct order: playerId, texturePath, width, height
+            _eventBus.Publish(selectEvt);
         }
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
@@ -99,31 +104,23 @@ namespace MapRoom
             {
                 _lastTab = false;
             }
-
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-
             var contentRect = GetContentRect();
             bool insideContent = absMousePos.X >= contentRect.X && absMousePos.X <= contentRect.X + contentRect.Width &&
                                  absMousePos.Y >= contentRect.Y && absMousePos.Y <= contentRect.Y + contentRect.Height;
-
             if (!insideContent)
             {
                 _twoDScene.Update(deltaTime, _cameraMode, Vector3.Zero, false);
                 return;
             }
-
             Vector2 contentMouse = absMousePos - new Vector2(contentRect.X, contentRect.Y);
-
             Vector2 normalizedMouse = new Vector2(
                 contentMouse.X / contentRect.Width,
                 contentMouse.Y / contentRect.Height
             );
-
             Vector3 worldPos = _twoDScene.ScreenToWorldPlane(normalizedMouse, out bool hitPlane);
-
             _twoDScene.Update(deltaTime, _cameraMode, worldPos, mouseReleased && !_cameraMode && hitPlane);
         }
-
         public override void Render()
         {
             if (!Visible) return;
@@ -150,18 +147,15 @@ namespace MapRoom
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             base.Render();
         }
-
         public override void OnLiveResize(float w, float h)
         {
             _twoDScene.Resize((int)w, (int)h);
         }
-
         public override void Dispose()
         {
             _twoDScene?.Dispose();
             base.Dispose();
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new TwoDCreatorPanel(renderContext, controlContext, window, eventBus);
