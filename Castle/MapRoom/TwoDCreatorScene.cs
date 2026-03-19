@@ -40,9 +40,6 @@ namespace MapRoom
             _eventBus.Subscribe<EntityPlacedEvent>(OnEntityPlaced);
         }
 
-        // EXACT SIMPLE NDC PROJECTION FROM YOUR "BEST WORKING" EXAMPLE
-        // Ghost follows mouse 1:1 on Z=0 plane relative to ortho center
-        // No camera position offset, no ray, no tilt math, no band-aids
         public Vector3 ScreenToWorldPlane(Vector2 normalizedMouse, out bool hitPlane)
         {
             hitPlane = normalizedMouse.X >= 0f && normalizedMouse.X <= 1f &&
@@ -56,8 +53,8 @@ namespace MapRoom
             float ndcX = normalizedMouse.X * 2f - 1f;
             float ndcY = 1f - normalizedMouse.Y * 2f;
 
-            float worldX = ndcX * (orthoWidth / 2f);
-            float worldY = ndcY * (orthoHeight / 2f);
+            float worldX = CameraPosition.X + ndcX * (orthoWidth / 2f);
+            float worldY = CameraPosition.Y + ndcY * (orthoHeight / 2f);
 
             return new Vector3(worldX, worldY, 0f);
         }
