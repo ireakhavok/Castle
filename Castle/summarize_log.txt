@@ -547,14 +547,14 @@ Found 4 dependencies
 Found: TwoDCreatorPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
-Read 5915 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
+Read 6927 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
 Namespace: MapRoom
 Found 13 dependencies
 Found: TwoDCreatorPanelUI.html
 Found: TwoDCreatorScene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
-Read 9959 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
+Read 14867 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
 Namespace: MapRoom
 Found 12 dependencies
 Found: QuestHall
@@ -1389,7 +1389,7 @@ Found 5 dependencies
 Found: TextureLoader.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
-Read 17917 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
+Read 18440 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 8 dependencies
 Found: UIQuadRenderer.cs
@@ -1920,7 +1920,7 @@ Found: PropertiesPanelUI.html
 Found: SpritePlacementPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
-Read 5161 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
+Read 5140 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
 Namespace: ToolChest
 Found 9 dependencies
 Found: SpritePlacementPanelUI.html
