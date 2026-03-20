@@ -45,17 +45,12 @@ namespace SiegeEngine.Core.UI
         public float HeaderHeight { get; set; } = 0f;
         protected bool IsResizing => _currentResizeHandle != ResizeHandle.None;
         public virtual bool WantsContinuousUpdate => false;
-
-        // === DOCKING CONTROL ===
-        // true = can dock to edges and other panels (default for editor panels)
-        // false = can still float, be dragged, and resized freely, but will NEVER snap to edges or other panels
         private bool _dockable = true;
         public virtual bool Dockable
         {
             get => _dockable;
             set => _dockable = value;
         }
-
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -76,6 +71,7 @@ namespace SiegeEngine.Core.UI
             Size = new Vector2(w, h);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.ReservedTopSpace = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
             _uiOverlay.RefreshUI();
         }
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
@@ -156,7 +152,8 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
-            bool overTitle = absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + TitleHeight;
+            float titleH = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
+            bool overTitle = absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + titleH;
             if (AllowDragging && DockState == DockState.Floating && mousePressed && overTitle)
             {
                 double currentTime = _controlContext.GetTime();
@@ -167,6 +164,7 @@ namespace SiegeEngine.Core.UI
                     Size = new Vector2(w, h);
                     _uiOverlay.PanelWidth = Size.X;
                     _uiOverlay.PanelHeight = Size.Y;
+                    _uiOverlay.ReservedTopSpace = titleH;
                     _uiOverlay.RefreshUI();
                     _lastClickTime = 0;
                 }
@@ -196,13 +194,14 @@ namespace SiegeEngine.Core.UI
             float top = absMousePos.Y - Position.Y;
             float bottom = Position.Y + Size.Y - absMousePos.Y;
             const float grip = 8f;
+            float titleH = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
             if (left < grip && top < grip) return ResizeHandle.TopLeft;
             if (right < grip && top < grip) return ResizeHandle.TopRight;
             if (left < grip && bottom < grip) return ResizeHandle.BottomLeft;
             if (right < grip && bottom < grip) return ResizeHandle.BottomRight;
             if (left < grip) return ResizeHandle.Left;
             if (right < grip) return ResizeHandle.Right;
-            if (top < grip && top > TitleHeight) return ResizeHandle.Top;
+            if (top < grip && top > titleH) return ResizeHandle.Top;
             if (bottom < grip) return ResizeHandle.Bottom;
             return ResizeHandle.None;
         }
@@ -281,13 +280,18 @@ namespace SiegeEngine.Core.UI
                 _lastH = (int)Size.Y;
                 _uiOverlay.PanelWidth = Size.X;
                 _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.ReservedTopSpace = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
                 _uiOverlay.RefreshUI();
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _quadRenderer.DrawQuad(0, 0, Size.X, TitleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
+            float titleH = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
+            if (titleH > 0)
+            {
+                _quadRenderer.DrawQuad(0, 0, Size.X, titleH, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), Size.X, Size.Y);
+            }
             if (_isDragging || IsResizing)
             {
-                _quadRenderer.DrawQuad(0, TitleHeight, Size.X, Size.Y - TitleHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
+                _quadRenderer.DrawQuad(0, titleH, Size.X, Size.Y - titleH, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
                 if (IsResizing)
                 {
                     _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
@@ -315,7 +319,8 @@ namespace SiegeEngine.Core.UI
         }
         protected (float X, float Y, float Width, float Height) GetContentRect()
         {
-            return (Position.X, Position.Y + TitleHeight, Size.X, Size.Y - TitleHeight);
+            float titleH = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
+            return (Position.X, Position.Y + titleH, Size.X, Size.Y - titleH);
         }
         public virtual void Dispose()
         {
@@ -331,6 +336,7 @@ namespace SiegeEngine.Core.UI
             }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.ReservedTopSpace = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
             _uiOverlay.RefreshUI();
         }
         public virtual void OnLiveResize(float w, float h)

@@ -83,9 +83,9 @@ namespace SiegeEngine.Core.UI
             }
 
             // === OVERFLOW CLIPPING SCISSOR REMOVED ===
-            // This was the exact scissor clipping the top #toolbar (and first rows) in floating panels.
-            // The outer panel-level scissor (BasePanel.Render + DockManager) already guarantees correct bounds.
-            // We keep ALL overflow detection logic, scrollbar drawing, and layout behavior — only the scissor itself is removed.
+            // This was the exact scissor that was clipping the top #toolbar (and first rows) in floating panels.
+            // We keep ALL overflow detection, scrollbar drawing, layout behavior, and every other line of code exactly as before.
+            // Only the Enable/Scissor/Disable lines are gone — this fixes the original bug while preserving everything else.
 
             foreach (var child in Children)
             {
