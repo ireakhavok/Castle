@@ -30,6 +30,7 @@ namespace SiegeEngine.Core.UI
         public JSDocument _document;
         public float PanelWidth { get; set; }
         public float PanelHeight { get; set; }
+        public float ReservedHeaderHeight { get; set; } = 0f;
         public float ScrollOffsetY { get; set; } = 0f;
         public float ContentFullHeight { get; private set; } = 0f;
         private bool _needsVerticalScrollbar = false;
@@ -443,15 +444,12 @@ namespace SiegeEngine.Core.UI
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-
             Matrix4x4 rootMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, rootMatrix);
-
             foreach (var sel in _interactionLayer._openSelects)
             {
                 sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
             }
-
             if (_needsVerticalScrollbar)
             {
                 float trackX = w - 12f;
@@ -480,10 +478,8 @@ namespace SiegeEngine.Core.UI
         public void RecomputeLayout(float w, float h)
         {
             if (_uiRoot == null) return;
-            // === FIXED: Always start layout at 0 ===
-            // BasePanel scissor reserves title bar space. HTML content starts at top of panel.
-            // This removes the second offset that was pushing content down too far.
-            _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f);
+            float contentStartY = ReservedHeaderHeight;
+            _uiRoot.ComputeLayout(0, contentStartY, w, h - contentStartY, w, h, _textRenderer, 16f);
             _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             UpdateContentHeight();
         }
@@ -507,10 +503,10 @@ namespace SiegeEngine.Core.UI
                     }
                 }
             }
-            _needsVerticalScrollbar = ContentFullHeight > PanelHeight + 0.1f;
+            _needsVerticalScrollbar = ContentFullHeight > PanelHeight - ReservedHeaderHeight + 0.1f;
             if (_needsVerticalScrollbar)
             {
-                ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, ContentFullHeight - PanelHeight);
+                ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, ContentFullHeight - (PanelHeight - ReservedHeaderHeight));
             }
             else
             {
@@ -522,7 +518,7 @@ namespace SiegeEngine.Core.UI
         {
             if (!_needsVerticalScrollbar) return;
             ScrollOffsetY -= deltaY * 30f;
-            ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, ContentFullHeight - PanelHeight);
+            ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, ContentFullHeight - (PanelHeight - ReservedHeaderHeight));
         }
 
         public virtual void Dispose()

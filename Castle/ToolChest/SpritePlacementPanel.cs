@@ -9,9 +9,10 @@ using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
+
 namespace ToolChest
 {
-    public class SpritePlacementPanel : CompanionPanel
+    public class SpritePlacementPanel : BasePanel
     {
         private class SpritePlacementUIOverlay : UIOverlay
         {
@@ -30,21 +31,30 @@ namespace ToolChest
                 _parent.HandleUIClick(elem);
             }
         }
+
         public override bool WantsContinuousUpdate => false;
+
         public SpritePlacementPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
+            AllowDragging = true;
+            DockState = DockState.Floating;
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new SpritePlacementUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
             LoadPlacementUI();
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
         }
+
         private void LoadPlacementUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SpritePlacementPanelUI.html");
@@ -60,6 +70,7 @@ namespace ToolChest
             _uiOverlay.RefreshUI();
             Console.WriteLine("[SpritePlacementPanel] UI loaded successfully from SpritePlacementPanelUI.html");
         }
+
         public void HandleDataHook(string hook)
         {
             if (hook == "BrowseTexture")
@@ -79,6 +90,7 @@ namespace ToolChest
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -87,6 +99,7 @@ namespace ToolChest
                 HandleDataHook(hook);
             }
         }
+
         private void OnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData as string == "SelectSpriteTexture")
@@ -107,12 +120,14 @@ namespace ToolChest
                 Console.WriteLine($"[SpritePlacementPanel] Sprite selected: {path} — ghost now active in scene");
             }
         }
+
         public override void Detach()
         {
             var clearEvent = new SelectSpriteEvent(0, "", 0f, 0f);
             _eventBus.Publish(clearEvent, true);
             base.Detach();
         }
+
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new SpritePlacementPanel(renderContext, controlContext, window, eventBus);

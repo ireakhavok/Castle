@@ -17,13 +17,14 @@ using SiegeEngine.Core.Managers;
 
 namespace MapRoom
 {
-    public class TerrainCreatorPanel : ClosablePanel
+    public class TerrainCreatorPanel : BasePanel
     {
         private static IRenderContext _staticRenderContext;
         private static IControlContext _staticControlContext;
         private static nint _staticWindow;
         private static EventBus _staticEventBus;
         private static bool _subscriptionInitialized = false;
+
         private class TerrainUIOverlay : UIOverlay
         {
             private readonly TerrainCreatorPanel _parent;
@@ -37,32 +38,45 @@ namespace MapRoom
                 _parent.HandleUIClick(elem);
             }
         }
+
         private TerrainCreatorScene _terrainScene;
         private string _initialTerrainPath;
         private TerrainCreationParams _creationParams;
         private bool _cameraMode = true;
         private bool _lastTab = false;
+        private int _lastW;
+        private int _lastH;
+
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialTerrainPath = null)
             : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
             Scaling = ScalingMode.BestFit;
             BaseWidth = 1280f;
             BaseHeight = 720f;
             _initialTerrainPath = initialTerrainPath;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
+
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, TerrainCreationParams creationParams)
             : this(renderContext, controlContext, window, eventBus, creationParams?.ImportPath)
         {
             _creationParams = creationParams;
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new TerrainUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
+
+            // === CRITICAL: Register main window so GetCurrentViewport never crashes ===
+            _controlContext.SetMainWindow(_window);
+
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
             if (_creationParams != null)
             {
@@ -84,31 +98,28 @@ namespace MapRoom
             _uiOverlay.RefreshUI();
             LoadTerrainControlsUI();
         }
+
         private void LoadTerrainControlsUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TerrainCreatorUI.html");
             if (File.Exists(htmlPath))
             {
                 _uiOverlay.LoadUI(File.ReadAllText(htmlPath));
-                Console.WriteLine($"[TerrainCreatorPanel] Loaded external TerrainCreatorUI.html");
-            }
-            else
-            {
-                return;
             }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void OnFileSelected(FileSelectedEvent e)
         {
             string hook = e.UserData as string;
             if (hook == "LoadTerrainTexture")
             {
                 _terrainScene.SetColorTexture(e.Path);
-                Console.WriteLine($"[TerrainCreatorPanel] Color texture loaded: {e.Path}");
             }
         }
+
         private void OnBrushSelected(SelectBrushEvent e)
         {
             if (string.IsNullOrEmpty(e.BrushMode) || e.Size == 0f)
@@ -126,9 +137,11 @@ namespace MapRoom
             };
             _terrainScene.SetActiveBrush(brush);
         }
+
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -138,12 +151,11 @@ namespace MapRoom
                 if (!Directory.Exists(terrainDir))
                 {
                     Directory.CreateDirectory(terrainDir);
-                    Console.WriteLine($"[TerrainCreatorPanel] Created texture directory: {terrainDir}");
                 }
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, terrainDir, ".jp2", ".tif", ".tiff", ".png", ".jpg");
                 fileSelector.UserData = "LoadTerrainTexture";
                 fileSelector.IsModal = true;
-                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = SiegeEngine.Core.Events.OpenMode.Overlay });
+                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
             else if (hook == "SaveTerrain")
             {
@@ -163,11 +175,13 @@ namespace MapRoom
                 }
             }
         }
+
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new TerrainCreatorPanel(renderContext, controlContext, window, eventBus, (string)null);
-            eventBus.Publish(new OpenPanelEvent(panel) { Mode = SiegeEngine.Core.Events.OpenMode.Replace });
+            eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
+
         public static void OpenImport(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _staticRenderContext = renderContext;
@@ -191,6 +205,7 @@ namespace MapRoom
             fileSelector.IsModal = true;
             eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
         }
+
         private static void StaticOnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData as string == "TerrainImport" && !string.IsNullOrEmpty(e.Path) && _staticRenderContext != null)
@@ -199,12 +214,14 @@ namespace MapRoom
                 _staticEventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
             }
         }
+
         private static void StaticOnCreateTerrain(CreateTerrainEvent e)
         {
             if (_staticRenderContext == null) return;
             var panel = new TerrainCreatorPanel(_staticRenderContext, _staticControlContext, _staticWindow, _staticEventBus, e.Params);
             _staticEventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             var tab = _controlContext.GetKey(_window, Key.Tab);
@@ -218,27 +235,32 @@ namespace MapRoom
                 _lastTab = false;
             }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-            Vector2 relMouse = absMousePos - Position;
-            Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
+
+            // === RESTORED: Push content viewport so FlyCameraController.GetCurrentViewport and mouse recentering work ===
+            float header = HasTitleBar ? HeaderHeight : 0f;
+            float contentX = Position.X;
+            float contentY = Position.Y + header;
+            float contentW = Size.X;
+            float contentH = Size.Y - header;
+
             if (_cameraMode)
             {
-                var contentViewport = new Viewport(Position.X, Position.Y + TitleHeight, Size.X, Size.Y - TitleHeight);
-                _controlContext.PushViewport(contentViewport);
+                _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
             }
-            else
+
+            Vector2 relMouse = absMousePos - Position;
+            Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
+            _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
+
+            if (_cameraMode)
             {
                 _controlContext.PopViewport();
             }
-            _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
         }
+
         public override void Render()
         {
             if (!Visible) return;
-            if (IsResizing)
-            {
-                base.Render();
-                return;
-            }
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
@@ -248,27 +270,37 @@ namespace MapRoom
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
-            var contentRect = GetContentRect();
+
+            // === SAFE CONTENT RECT (no GetContentRect dependency) ===
+            float header = HasTitleBar ? HeaderHeight : 0f;
+            float contentX = Position.X;
+            float contentY = Position.Y + header;
+            float contentW = Size.X;
+            float contentH = Size.Y - header;
+
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             _renderContext.Enable(_renderContext.Enums.ScissorTest);
-            int scissorX = (int)contentRect.X;
-            int scissorY = winH - (int)(contentRect.Y + contentRect.Height);
-            uint scissorW = (uint)contentRect.Width;
-            uint scissorH = (uint)contentRect.Height;
+            int scissorX = (int)contentX;
+            int scissorY = winH - (int)(contentY + contentH);
+            uint scissorW = (uint)contentW;
+            uint scissorH = (uint)contentH;
             _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
             _terrainScene.Render(null);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             base.Render();
         }
+
         public override void OnLiveResize(float w, float h)
         {
             _terrainScene.Resize((int)w, (int)h);
         }
+
         public override void Dispose()
         {
             _terrainScene?.Dispose();
             base.Dispose();
         }
+
         public static void OpenBrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             BrushPanel.Open(renderContext, controlContext, window, eventBus);

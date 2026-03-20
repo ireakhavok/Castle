@@ -13,9 +13,10 @@ using System;
 using System.IO;
 using System.Numerics;
 using ToolChest;
+
 namespace MapRoom
 {
-    public class TwoDCreatorPanel : ClosablePanel
+    public class TwoDCreatorPanel : BasePanel
     {
         private class TwoDCreatorUIOverlay : UIOverlay
         {
@@ -30,33 +31,37 @@ namespace MapRoom
                 _parent.HandleUIClick(elem);
             }
         }
+
         private TwoDCreatorScene _twoDScene;
         private bool _cameraMode = false;
         private bool _lastTab = false;
+
         public override bool WantsContinuousUpdate => true;
+
         public TwoDCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
             Scaling = ScalingMode.BestFit;
             BaseWidth = 1280f;
             BaseHeight = 720f;
             _twoDScene = new TwoDCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
-
-            // === NEW: Listen for FileSelectedEvent from AssetBrowserPanel ===
-            // This is the missing bridge that makes selecting a PNG in the Asset Browser
-            // automatically trigger the sprite ghost (and later placement).
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new TwoDCreatorUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
             _twoDScene.Initialize((int)Size.X, (int)Size.Y);
             LoadUI();
         }
+
         private void LoadUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TwoDCreatorPanelUI.html");
@@ -68,6 +73,7 @@ namespace MapRoom
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         public void HandleDataHook(string hook)
         {
             if (hook == "OpenSpriteTool")
@@ -75,6 +81,7 @@ namespace MapRoom
                 SpritePlacementPanel.Open(_renderContext, _controlContext, _window, _eventBus);
             }
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -83,11 +90,11 @@ namespace MapRoom
                 HandleDataHook(hook);
             }
         }
+
         private void OnFileSelected(FileSelectedEvent e)
         {
             if (string.IsNullOrEmpty(e.Path) || !e.Path.ToLower().EndsWith(".png")) return;
-
-            var selectEvt = new SelectSpriteEvent(0UL, e.Path, 2f, 2f); // correct order: playerId, texturePath, width, height
+            var selectEvt = new SelectSpriteEvent(0UL, e.Path, 2f, 2f);
             _eventBus.Publish(selectEvt);
         }
 
@@ -105,57 +112,43 @@ namespace MapRoom
                 _lastTab = false;
             }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-            var contentRect = GetContentRect();
-            bool insideContent = absMousePos.X >= contentRect.X && absMousePos.X <= contentRect.X + contentRect.Width &&
-                                 absMousePos.Y >= contentRect.Y && absMousePos.Y <= contentRect.Y + contentRect.Height;
-            if (!insideContent)
-            {
-                _twoDScene.Update(deltaTime, _cameraMode, Vector3.Zero, false);
-                return;
-            }
-            Vector2 contentMouse = absMousePos - new Vector2(contentRect.X, contentRect.Y);
-            Vector2 normalizedMouse = new Vector2(
-                contentMouse.X / contentRect.Width,
-                contentMouse.Y / contentRect.Height
-            );
-            Vector3 worldPos = _twoDScene.ScreenToWorldPlane(normalizedMouse, out bool hitPlane);
-            _twoDScene.Update(deltaTime, _cameraMode, worldPos, mouseReleased && !_cameraMode && hitPlane);
+            Vector2 relMouse = absMousePos - Position;
+            Vector3 sceneMouse = new Vector3(relMouse.X, relMouse.Y - HeaderHeight, 0);
+            _twoDScene.Update(deltaTime, _cameraMode, sceneMouse, mouseReleased && !_cameraMode);
         }
+
         public override void Render()
         {
             if (!Visible) return;
-            if (IsResizing)
-            {
-                base.Render();
-                return;
-            }
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
                 _lastH = (int)Size.Y;
                 _twoDScene.Resize(_lastW, _lastH);
             }
-            var contentRect = GetContentRect();
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             _renderContext.Enable(_renderContext.Enums.ScissorTest);
-            int scissorX = (int)contentRect.X;
-            int scissorY = winH - (int)(contentRect.Y + contentRect.Height);
-            uint scissorW = (uint)contentRect.Width;
-            uint scissorH = (uint)contentRect.Height;
+            int scissorX = (int)Position.X;
+            int scissorY = winH - (int)(Position.Y + Size.Y);
+            uint scissorW = (uint)Size.X;
+            uint scissorH = (uint)Size.Y;
             _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
             _twoDScene.Render(_twoDScene.GetEntities());
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             base.Render();
         }
+
         public override void OnLiveResize(float w, float h)
         {
             _twoDScene.Resize((int)w, (int)h);
         }
+
         public override void Dispose()
         {
             _twoDScene?.Dispose();
             base.Dispose();
         }
+
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new TwoDCreatorPanel(renderContext, controlContext, window, eventBus);

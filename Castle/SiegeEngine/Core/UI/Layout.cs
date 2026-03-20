@@ -1,13 +1,20 @@
-﻿using SiegeEngine.Core.Rendering;
+﻿// Folder: SiegeEngine.Core.UI
+// File: HtmlElement.cs
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Numerics;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace SiegeEngine.Core.UI
 {
+
+
+
     public partial class HtmlElement
     {
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
@@ -742,7 +749,7 @@ namespace SiegeEngine.Core.UI
                 {
                     trackWidths[col] = 0f;
                 }
-                else // fixed
+                else
                 {
                     trackWidths[col] = Math.Max(trackWidths[col], minTrackW[col]);
                     totalNonGrowableCols += trackWidths[col];
@@ -787,7 +794,7 @@ namespace SiegeEngine.Core.UI
                 {
                     trackHeights[row] = 0f;
                 }
-                else // fixed
+                else
                 {
                     trackHeights[row] = Math.Max(trackHeights[row], minTrackH[row]);
                     totalNonGrowableRows += trackHeights[row];

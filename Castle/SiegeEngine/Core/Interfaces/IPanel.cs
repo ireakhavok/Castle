@@ -1,6 +1,7 @@
 ﻿// Folder: SiegeEngine.Core.Interfaces
 // File: IPanel.cs
 using System.Numerics;
+
 namespace SiegeEngine.Core.Interfaces
 {
     public enum DockState
@@ -13,7 +14,6 @@ namespace SiegeEngine.Core.Interfaces
         Tabbed,
         DockedHeader
     }
-
     public enum ResizeHandle
     {
         None,
@@ -26,7 +26,6 @@ namespace SiegeEngine.Core.Interfaces
         BottomLeft,
         BottomRight
     }
-
     public interface IPanel
     {
         void Init();
@@ -42,8 +41,9 @@ namespace SiegeEngine.Core.Interfaces
         bool AllowDragging { get; set; }
         bool IsModal { get; set; }
         float HeaderHeight { get; set; }
-
         ResizeHandle GetResizeHandle(Vector2 absMousePos);
         void StartResize(Vector2 mousePos, ResizeHandle handle);
+        bool HasTitleBar { get; set; }
+        bool IsClosable { get; set; }
     }
 }

@@ -12,23 +12,20 @@ using System.Text;
 
 namespace ToolChest
 {
-    public class TreeViewPanel : CompanionPanel
+    public class TreeViewPanel : BasePanel
     {
         private class TreeViewUIOverlay : UIOverlay
         {
             private readonly TreeViewPanel _parent;
-
             public TreeViewUIOverlay(TreeViewPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window)
                 : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
-
             protected override void HandleDataHook(string hook)
             {
                 _parent.HandleDataHook(hook);
             }
-
             public override void HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
@@ -41,6 +38,10 @@ namespace ToolChest
         public TreeViewPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
+            AllowDragging = true;
+            DockState = DockState.Floating;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -63,10 +64,8 @@ namespace ToolChest
                 Console.WriteLine("Create the static HTML file in the executable directory for fast iteration and preview.");
                 return;
             }
-
             string html = File.ReadAllText(htmlPath);
             _uiOverlay.LoadUI(html);
-
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
@@ -86,11 +85,9 @@ namespace ToolChest
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TreeViewPanelUI.html");
             if (!File.Exists(htmlPath)) return;
-
             string template = File.ReadAllText(htmlPath);
             string nodesHtml = BuildTreeHtmlString("root", 0);
             string finalHtml = template.Replace("<!--TREE_NODES-->", nodesHtml);
-
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
@@ -100,24 +97,21 @@ namespace ToolChest
         private string BuildTreeHtmlString(string nodeId, int indent)
         {
             if (!_nodes.TryGetValue(nodeId, out var node)) return "";
-
             string indentStr = new string(' ', indent * 4);
             string toggle = node.Children.Count > 0 ? (node.IsExpanded ? "▼" : "▶") : " ";
             string selected = node.Id == _selectedNodeId ? "selected" : "";
-
             var sb = new StringBuilder();
             sb.AppendLine($"{indentStr}<li class=\"node {selected}\" data-node-id=\"{node.Id}\">");
-            sb.AppendLine($"{indentStr}  <span data-hook=\"Toggle:{node.Id}\" class=\"toggle\">{toggle}</span>");
-            sb.AppendLine($"{indentStr}  <span data-hook=\"Select:{node.Id}\" class=\"label\">{node.Icon} {node.Label}</span>");
-
+            sb.AppendLine($"{indentStr} <span data-hook=\"Toggle:{node.Id}\" class=\"toggle\">{toggle}</span>");
+            sb.AppendLine($"{indentStr} <span data-hook=\"Select:{node.Id}\" class=\"label\">{node.Icon} {node.Label}</span>");
             if (node.IsExpanded && node.Children.Count > 0)
             {
-                sb.AppendLine($"{indentStr}  <ul class=\"children\">");
+                sb.AppendLine($"{indentStr} <ul class=\"children\">");
                 foreach (var childId in node.Children)
                 {
                     sb.Append(BuildTreeHtmlString(childId, indent + 1));
                 }
-                sb.AppendLine($"{indentStr}  </ul>");
+                sb.AppendLine($"{indentStr} </ul>");
             }
             sb.AppendLine($"{indentStr}</li>");
             return sb.ToString();

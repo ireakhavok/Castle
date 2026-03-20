@@ -18,10 +18,16 @@ namespace SiegeEngine.Core.ContextManagement
             _glfw = glfw ?? throw new ArgumentNullException(nameof(glfw));
         }
 
+        public void SetMainWindow(nint window)
+        {
+            _mainWindow = window;
+        }
+
         public void SetCursorPosCallback(nint window, IControlContext.CursorPosCallback callback)
         {
             _glfw.SetCursorPosCallback((WindowHandle*)window, (w, x, y) => callback((nint)w, x, y));
         }
+
         public void SetMouseButtonCallback(nint window, IControlContext.MouseButtonCallback callback)
         {
             _glfw.SetMouseButtonCallback((WindowHandle*)window, (w, rawButton, rawAction, rawMods) =>
@@ -32,6 +38,7 @@ namespace SiegeEngine.Core.ContextManagement
                 callback((nint)w, engineButton, engineAction, engineMods);
             });
         }
+
         public void SetKeyCallback(nint window, IControlContext.KeyCallback callback)
         {
             _glfw.SetKeyCallback((WindowHandle*)window, (w, rawKey, scancode, rawAction, rawMods) =>
@@ -42,22 +49,27 @@ namespace SiegeEngine.Core.ContextManagement
                 callback((nint)w, engineKey, scancode, engineAction, engineMods);
             });
         }
+
         public void SetScrollCallback(nint window, IControlContext.ScrollCallback callback)
         {
             _glfw.SetScrollCallback((WindowHandle*)window, (w, x, y) => callback((nint)w, x, y));
         }
+
         public void SetWindowSizeCallback(nint window, IControlContext.WindowSizeCallback callback)
         {
             _glfw.SetWindowSizeCallback((WindowHandle*)window, (w, width, height) => callback((nint)w, width, height));
         }
+
         public void GetCursorPos(nint window, out double xpos, out double ypos)
         {
             _glfw.GetCursorPos((WindowHandle*)window, out xpos, out ypos);
         }
+
         public void SetCursorPos(nint window, double xpos, double ypos)
         {
             _glfw.SetCursorPos((WindowHandle*)window, xpos, ypos);
         }
+
         public void SetInputMode(nint window, CursorAttribute attrib, CursorMode value)
         {
             CursorStateAttribute glfwAttrib = CursorStateAttribute.Cursor;
@@ -69,20 +81,24 @@ namespace SiegeEngine.Core.ContextManagement
             };
             _glfw.SetInputMode((WindowHandle*)window, glfwAttrib, glfwValue);
         }
+
         public Definitions.InputAction GetKey(nint window, Key key)
         {
             Keys glfwKey = MapEngineKey(key);
             return MapGlfwInputAction((Silk.NET.GLFW.InputAction)_glfw.GetKey((WindowHandle*)window, glfwKey));
         }
+
         public Definitions.InputAction GetMouseButton(nint window, Definitions.MouseButton button)
         {
             Silk.NET.GLFW.MouseButton glfwButton = MapEngineMouseButton(button);
             return MapGlfwInputAction((Silk.NET.GLFW.InputAction)_glfw.GetMouseButton((WindowHandle*)window, (int)glfwButton));
         }
+
         public bool WindowShouldClose(nint window)
         {
             return _glfw.WindowShouldClose((WindowHandle*)window);
         }
+
         public bool GetWindowAttrib(nint window, WindowAttribute attrib)
         {
             WindowAttributeGetter glfwAttrib = attrib switch
@@ -92,24 +108,27 @@ namespace SiegeEngine.Core.ContextManagement
             };
             return _glfw.GetWindowAttrib((WindowHandle*)window, glfwAttrib);
         }
+
         public void PollEvents()
         {
             _glfw.PollEvents();
         }
+
         public void SwapBuffers(nint window)
         {
             _glfw.SwapBuffers((WindowHandle*)window);
         }
+
         public void GetWindowSize(nint window, out int width, out int height)
         {
             _glfw.GetWindowSize((WindowHandle*)window, out width, out height);
         }
+
         public double GetTime()
         {
             return _glfw.GetTime();
         }
 
-        // === NEW: Viewport Stack for panel-aware mouse capture ===
         public void PushViewport(Viewport viewport)
         {
             _viewportStack.Push(viewport);
@@ -126,7 +145,12 @@ namespace SiegeEngine.Core.ContextManagement
             if (_viewportStack.Count > 0)
                 return _viewportStack.Peek();
 
-            // Fallback to full window
+            // SAFE FALLBACK - prevents 0xC0000005 when main window not yet registered (during panel init)
+            if (_mainWindow == 0)
+            {
+                return new Viewport(0, 0, 1920, 1080);
+            }
+
             GetWindowSize(_mainWindow, out int w, out int h);
             return Viewport.FullWindow(w, h);
         }
@@ -243,6 +267,7 @@ namespace SiegeEngine.Core.ContextManagement
                 _ => Key.Unknown
             };
         }
+
         private static Keys MapEngineKey(Key engineKey)
         {
             return engineKey switch
@@ -355,6 +380,7 @@ namespace SiegeEngine.Core.ContextManagement
                 _ => Keys.Unknown
             };
         }
+
         private static Definitions.MouseButton MapGlfwMouseButton(Silk.NET.GLFW.MouseButton glfwButton)
         {
             return glfwButton switch
@@ -365,6 +391,7 @@ namespace SiegeEngine.Core.ContextManagement
                 _ => Definitions.MouseButton.Left
             };
         }
+
         private static Silk.NET.GLFW.MouseButton MapEngineMouseButton(Definitions.MouseButton engineButton)
         {
             return engineButton switch
@@ -375,6 +402,7 @@ namespace SiegeEngine.Core.ContextManagement
                 _ => Silk.NET.GLFW.MouseButton.Left
             };
         }
+
         private static Definitions.KeyModifiers MapGlfwMods(Silk.NET.GLFW.KeyModifiers glfwMods)
         {
             Definitions.KeyModifiers engineMods = Definitions.KeyModifiers.None;
@@ -384,6 +412,7 @@ namespace SiegeEngine.Core.ContextManagement
             if ((glfwMods & Silk.NET.GLFW.KeyModifiers.Super) != 0) engineMods |= Definitions.KeyModifiers.Super;
             return engineMods;
         }
+
         private static Definitions.InputAction MapGlfwInputAction(Silk.NET.GLFW.InputAction glfwAction)
         {
             return (Definitions.InputAction)(int)glfwAction;
