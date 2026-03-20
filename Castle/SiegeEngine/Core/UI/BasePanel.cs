@@ -71,7 +71,6 @@ namespace SiegeEngine.Core.UI
             Size = new Vector2(w, h);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.ReservedTopSpace = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
             _uiOverlay.RefreshUI();
         }
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
@@ -164,7 +163,6 @@ namespace SiegeEngine.Core.UI
                     Size = new Vector2(w, h);
                     _uiOverlay.PanelWidth = Size.X;
                     _uiOverlay.PanelHeight = Size.Y;
-                    _uiOverlay.ReservedTopSpace = titleH;
                     _uiOverlay.RefreshUI();
                     _lastClickTime = 0;
                 }
@@ -280,7 +278,6 @@ namespace SiegeEngine.Core.UI
                 _lastH = (int)Size.Y;
                 _uiOverlay.PanelWidth = Size.X;
                 _uiOverlay.PanelHeight = Size.Y;
-                _uiOverlay.ReservedTopSpace = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
                 _uiOverlay.RefreshUI();
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -336,7 +333,7 @@ namespace SiegeEngine.Core.UI
             }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.ReservedTopSpace = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
+            //_uiOverlay.ReservedTopSpace = (DockState == DockState.Floating && AllowDragging) ? TitleHeight : 0f;
             _uiOverlay.RefreshUI();
         }
         public virtual void OnLiveResize(float w, float h)

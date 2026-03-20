@@ -30,7 +30,6 @@ namespace SiegeEngine.Core.UI
         public JSDocument _document;
         public float PanelWidth { get; set; }
         public float PanelHeight { get; set; }
-        public float ReservedTopSpace { get; set; } = 0f;
         public float ScrollOffsetY { get; set; } = 0f;
         public float ContentFullHeight { get; private set; } = 0f;
         private bool _needsVerticalScrollbar = false;
@@ -445,7 +444,7 @@ namespace SiegeEngine.Core.UI
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
 
-            Matrix4x4 rootMatrix = Matrix4x4.CreateTranslation(0, ReservedTopSpace - ScrollOffsetY, 0);
+            Matrix4x4 rootMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, rootMatrix);
 
             foreach (var sel in _interactionLayer._openSelects)
@@ -456,14 +455,14 @@ namespace SiegeEngine.Core.UI
             if (_needsVerticalScrollbar)
             {
                 float trackX = w - 12f;
-                float trackY = ReservedTopSpace;
+                float trackY = 0f;
                 float trackW = 12f;
-                float trackH = h - ReservedTopSpace;
+                float trackH = h;
                 float[] trackNdc = HtmlLayoutUtils.GetNdcQuad(trackX, trackY, trackW, trackH, Matrix4x4.Identity, w, h);
                 _quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.15f, 0.15f, 0.15f, 0.95f));
-                float thumbRatio = trackH / ContentFullHeight;
+                float thumbRatio = h / ContentFullHeight;
                 float thumbH = Math.Max(30f, trackH * thumbRatio);
-                float thumbY = trackY + (ScrollOffsetY / ContentFullHeight) * (trackH - thumbH);
+                float thumbY = (ScrollOffsetY / (ContentFullHeight - h)) * (trackH - thumbH);
                 float[] thumbNdc = HtmlLayoutUtils.GetNdcQuad(trackX + 1f, thumbY, trackW - 2f, thumbH, Matrix4x4.Identity, w, h);
                 _quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.55f, 0.55f, 0.55f, 1f));
             }
@@ -481,8 +480,10 @@ namespace SiegeEngine.Core.UI
         public void RecomputeLayout(float w, float h)
         {
             if (_uiRoot == null) return;
-            float layoutH = h - ReservedTopSpace;
-            _uiRoot.ComputeLayout(0, ReservedTopSpace, w, layoutH, w, h, _textRenderer, 16f);
+            // === FIXED: Always start layout at 0 ===
+            // BasePanel scissor reserves title bar space. HTML content starts at top of panel.
+            // This removes the second offset that was pushing content down too far.
+            _uiRoot.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 16f);
             _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             UpdateContentHeight();
         }
