@@ -233,6 +233,7 @@ Folder: ContextManagement
       - nint _mainWindow
     - Methods:
       - constructor GlfwControlContext(Glfw glfw)
+      - void SetMainWindow(nint window)
       - void SetCursorPosCallback(CursorPosCallback callback, nint window)
       - void SetMouseButtonCallback(MouseButtonCallback callback, nint window)
         - Calls: MapGlfwInputAction, MapGlfwMods, MapGlfwMouseButton
@@ -256,8 +257,7 @@ Folder: ContextManagement
       - void PushViewport(Viewport viewport)
       - void PopViewport()
       - Viewport GetCurrentViewport()
-        - Calls: GetWindowSize
-      - window GetWindowSize( out int)
+        - Calls: GetWindowSize, Viewport
       - Key MapGlfwKey(Keys glfwKey)
       - Keys MapEngineKey(Key engineKey)
       - MouseButton MapGlfwMouseButton(MouseButton glfwButton)
@@ -720,6 +720,8 @@ Folder: Interfaces
       - void Dispose()
       - void Detach()
       - void OnPanelResize( float h, float w)
+      - ResizeHandle GetResizeHandle(Vector2 absMousePos)
+      - void StartResize( ResizeHandle handle, Vector2 mousePos)
 - File: IProjectionProvider.cs
   - Class: IProjectionProvider (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: System.Numerics
@@ -1450,15 +1452,16 @@ Folder: UI
       - Vector2 _resizeStartSize
       - bool IsResizing
       - bool _dockable
+      - PanelChrome _chrome
     - Methods:
       - constructor BasePanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: CreateUIOverlay
       - UIOverlay CreateUIOverlay()
         - Calls: UIOverlay
       - void Init()
-        - Calls: UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
+        - Calls: PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: ApplySnap, OnLiveResize, OnPanelResize, _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI, _uiOverlay.Scroll
+        - Calls: ApplySnap, OnLiveResize, OnPanelResize, _chrome.HandleUpdate, _controlContext.GetWindowSize, _uiOverlay.Scroll
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
@@ -1470,6 +1473,10 @@ Folder: UI
       - void OnPanelResize( float h, float w)
         - Calls: _uiOverlay.RefreshUI
       - void OnLiveResize( float h, float w)
+      - void StartTitleBarDrag(Vector2 mousePos)
+        - Calls: _controlContext.GetTime
+      - void Close()
+        - Calls: ClosePanelEvent
 - File: ButtonElement.cs
   - Class: ButtonElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -1484,27 +1491,6 @@ Folder: UI
         - Calls: Invoke
       - void AttachHook(string hookStr)
         - Calls: mi.Invoke
-- File: ClosablePanel.cs
-  - Class: ClosablePanel (Namespace: SiegeEngine.Core.UI)
-    - Inherits: BasePanel
-    
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Numerics
-    - Methods:
-      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: ClosePanelEvent
-      - void Render()
-        - Calls: _quadRenderer.DrawLine, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable
-- File: CompanionPanel.cs
-  - Class: CompanionPanel (Namespace: SiegeEngine.Core.UI)
-    - Inherits: ClosablePanel
-    
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Numerics
-    - Methods:
-      - UIOverlay CreateUIOverlay()
-        - Calls: UIOverlay
-      - void Init()
-        - Calls: OnPanelResize
-      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
 - File: Core.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics
@@ -1730,7 +1716,7 @@ Folder: UI
       - string ToString()
 - File: Layout.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
     - Methods:
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
         - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, FindContainingBlock, HtmlLayoutUtils.ComputeTransform, HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, child.GetEffectiveDisplay
@@ -1823,6 +1809,19 @@ Folder: UI
       - constructor OptionElement()
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
+- File: PanelChrome.cs
+  - Class: PanelChrome (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System.Numerics
+    - Fields:
+      - BasePanel _owner
+      - float _titleHeight
+    - Methods:
+      - constructor PanelChrome(BasePanel owner)
+      - bool HandleUpdate( bool mousePressed,  bool mouseReleased, Vector2 absMousePos)
+        - Calls: _owner.Close, _owner.StartTitleBarDrag
+      - void Render( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+        - Calls: quadRenderer.DrawLine, quadRenderer.DrawQuad
+      - void Dispose()
 - File: RangeElement.cs
   - Class: RangeElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: InputElement
@@ -2127,8 +2126,6 @@ SiegeEngine.Core.Terrain.TerrainTextureParser
 SiegeEngine.Core.Terrain.TerrainType
 SiegeEngine.Core.Terrain.TilemapExporter
 SiegeEngine.Core.UI.BasePanel
-SiegeEngine.Core.UI.ClosablePanel
-SiegeEngine.Core.UI.CompanionPanel
 SiegeEngine.Core.UI.CssParser
 SiegeEngine.Core.UI.CssStyle
 SiegeEngine.Core.UI.Elements.ButtonElement
@@ -2159,6 +2156,7 @@ SiegeEngine.Core.UI.JSParser.JSElement
 SiegeEngine.Core.UI.JSParser.ReturnException
 SiegeEngine.Core.UI.JSParser.Token
 SiegeEngine.Core.UI.MenuUIOverlay
+SiegeEngine.Core.UI.PanelChrome
 SiegeEngine.Core.UI.UIInteractionLayer
 SiegeEngine.Core.UI.UIOverlay
 SwitchSceneEvent

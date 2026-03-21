@@ -197,10 +197,10 @@ namespace SiegeEngine.Core.UI
             {
                 ScrollOffsetY = 0f;
             }
-            if (hasVerticalOverflow)
-            {
-                Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id", "")}' class='{Attributes.GetValueOrDefault("class", "")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
-            }
+            //if (hasVerticalOverflow)
+            //{
+            //    Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id", "")}' class='{Attributes.GetValueOrDefault("class", "")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
+            //}
             ComputedTransform = HtmlLayoutUtils.ComputeTransform(this, viewportWidth, viewportHeight);
         }
 
