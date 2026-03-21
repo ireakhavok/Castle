@@ -1,5 +1,5 @@
 ﻿// Folder: SiegeEngine.Core.UI
-// File: HtmlElement.cs
+// File: layout.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI.Elements;

@@ -1,4 +1,5 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// file: core.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI.Elements;
 using System;
