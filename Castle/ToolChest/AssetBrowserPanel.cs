@@ -43,6 +43,10 @@ namespace ToolChest
             IsClosable = true;
             AllowDragging = true;
             DockState = DockState.Floating;
+
+            // === ONLY CHANGE: Proper starting size (~1/8 of typical screen) ===
+            BaseWidth = 420f;
+            BaseHeight = 340f;
         }
 
         protected override UIOverlay CreateUIOverlay()
