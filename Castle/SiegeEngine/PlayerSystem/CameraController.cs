@@ -69,7 +69,7 @@ namespace SiegeEngine.PlayerSystem
             if (!isGameActive)
             {
                 MousePosition = mousePos;
-                Console.WriteLine($"Menu mouse position: {MousePosition}");
+                //Console.WriteLine($"Menu mouse position: {MousePosition}");
                 _firstMouseMove = true;
             }
             else

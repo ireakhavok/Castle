@@ -190,12 +190,14 @@ namespace SiegeEngine.Core.UI
 
                     Position = newPos;
                     Size = newSize;
-                    OnPanelResize(Size.X, Size.Y);
+
+                    // === STABLE: lightweight live update only (no full refresh/flicker) ===
                     OnLiveResize(Size.X, Size.Y);
                 }
                 if (mouseReleased)
                 {
                     _currentResizeHandle = ResizeHandle.None;
+                    OnPanelResize(Size.X, Size.Y);
                 }
                 return;
             }
@@ -312,17 +314,17 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.RefreshUI();
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
+
+            // === EXACTLY THE STABLE RENDER PATH YOU LIKED BEFORE ===
             if (HasTitleBar && _chrome != null)
             {
                 _chrome.Render(_quadRenderer, Size.X, Size.Y);
             }
+
             if (_isDragging || IsResizing)
             {
+                // Blank background (no UI, no green tint)
                 _quadRenderer.DrawQuad(0, HeaderHeight, Size.X, Size.Y - HeaderHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
-                if (IsResizing)
-                {
-                    _quadRenderer.DrawQuad(0, 0, Size.X, Size.Y, new Vector4(0.3f, 0.8f, 1.0f, 0.25f), Size.X, Size.Y);
-                }
             }
             else
             {
@@ -336,11 +338,14 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Render();
                 _renderContext.Disable(_renderContext.Enums.ScissorTest);
             }
+
+            // Border
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
             _quadRenderer.DrawQuad(0, Size.Y - bw, Size.X, bw, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
+
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
 
