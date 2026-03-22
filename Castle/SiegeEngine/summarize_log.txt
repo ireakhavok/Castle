@@ -851,13 +851,13 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
-Read 15113 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
+Read 14709 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 7 dependencies
 Found: Core.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
-Read 7061 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
+Read 7078 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Core.cs
 Namespace: SiegeEngine.Core.UI
 Found 7 dependencies
 Found: CssParser.cs
@@ -981,7 +981,7 @@ Found 3 dependencies
 Found: Events.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Events.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Events.cs
-Read 3559 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Events.cs
+Read 3578 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Events.cs
 Namespace: SiegeEngine.Core.UI
 Found 2 dependencies
 Found: HtmlLayoutUtils.cs
@@ -1051,7 +1051,7 @@ Found 7 dependencies
 Found: Layout.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
-Read 66253 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
+Read 65312 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: MenuPanel.cs
@@ -1069,7 +1069,7 @@ Found 3 dependencies
 Found: Render.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
-Read 7921 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
+Read 7916 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Namespace: SiegeEngine.Core.UI
 Found 7 dependencies
 Found: UIInteractionLayer.cs
@@ -1081,7 +1081,7 @@ Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 24257 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 24497 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 11 dependencies
 Found: HeirarchySummary.exe
