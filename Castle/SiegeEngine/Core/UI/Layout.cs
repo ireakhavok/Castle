@@ -9,12 +9,8 @@ using System.IO;
 using System.Numerics;
 using System.Linq;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.Core.UI
 {
-
-
-
     public partial class HtmlElement
     {
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
@@ -197,37 +193,8 @@ namespace SiegeEngine.Core.UI
             {
                 ScrollOffsetY = 0f;
             }
-            //if (hasVerticalOverflow)
-            //{
-            //    Console.WriteLine($"[Scrollbar Debug] ELEMENT WITH OVERFLOW '{Tag}' id='{Attributes.GetValueOrDefault("id", "")}' class='{Attributes.GetValueOrDefault("class", "")}' overflow='{overflow}' overflowY='{overflowY}' contentFull={_contentFullHeight:F1} visible={ComputedContentHeight:F1} NEEDS SCROLLBAR={_needsVerticalScrollbar}");
-            //}
             ComputedTransform = HtmlLayoutUtils.ComputeTransform(this, viewportWidth, viewportHeight);
         }
-
-        private float CalculateIntrinsicContentHeight(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
-        {
-            float total = 0f;
-            Queue<HtmlElement> queue = new Queue<HtmlElement>();
-            foreach (var child in Children)
-            {
-                queue.Enqueue(child);
-            }
-            while (queue.Count > 0)
-            {
-                var elem = queue.Dequeue();
-                if (elem.GetEffectiveDisplay() != "none")
-                {
-                    Vector2 intrinsic = elem.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                    total += intrinsic.Y;
-                }
-                foreach (var child in elem.Children)
-                {
-                    queue.Enqueue(child);
-                }
-            }
-            return total;
-        }
-
         private void LayoutFlexChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
@@ -366,42 +333,28 @@ namespace SiegeEngine.Core.UI
             float total_used = sum_outer + total_gap;
             float start_main = 0;
             float justify_spacing = 0;
-            if (has_auto_main)
+            float extra_free = availableMain - sum_outer - total_gap;
+            string justify = Style.JustifyContent ?? "flex-start";
+            if (justify == "center")
             {
-                start_main = 0;
+                start_main = extra_free / 2;
+            }
+            else if (justify == "flex-end")
+            {
+                start_main = extra_free;
+            }
+            else if (justify == "space-between" && normalChildren.Count > 1)
+            {
+                justify_spacing = extra_free / (normalChildren.Count - 1);
+            }
+            else if (justify == "space-around")
+            {
+                justify_spacing = extra_free / normalChildren.Count;
+                start_main = justify_spacing / 2;
             }
             else
             {
-                float extra_free = availableMain - sum_outer - total_gap;
-                if (Style.JustifyContent == "space-between")
-                {
-                    if (normalChildren.Count > 1)
-                    {
-                        justify_spacing = extra_free / (normalChildren.Count - 1);
-                    }
-                }
-                else if (Style.JustifyContent == "space-around")
-                {
-                    justify_spacing = extra_free / normalChildren.Count;
-                    start_main = justify_spacing / 2;
-                }
-                else if (Style.JustifyContent == "space-evenly")
-                {
-                    justify_spacing = extra_free / (normalChildren.Count + 1);
-                    start_main = justify_spacing;
-                }
-                else if (Style.JustifyContent == "center")
-                {
-                    start_main = extra_free / 2;
-                }
-                else if (Style.JustifyContent == "flex-end")
-                {
-                    start_main = extra_free;
-                }
-                else
-                {
-                    start_main = 0;
-                }
+                start_main = 0;
             }
             if (float.IsNaN(start_main)) start_main = 0;
             if (float.IsNaN(justify_spacing)) justify_spacing = 0;
@@ -534,7 +487,29 @@ namespace SiegeEngine.Core.UI
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
         }
-
+        private float CalculateIntrinsicContentHeight(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+        {
+            float total = 0f;
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            foreach (var child in Children)
+            {
+                queue.Enqueue(child);
+            }
+            while (queue.Count > 0)
+            {
+                var elem = queue.Dequeue();
+                if (elem.GetEffectiveDisplay() != "none")
+                {
+                    Vector2 intrinsic = elem.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                    total += intrinsic.Y;
+                }
+                foreach (var child in elem.Children)
+                {
+                    queue.Enqueue(child);
+                }
+            }
+            return total;
+        }
         private void LayoutGridChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             List<HtmlElement> visibleChildren = Children.Where(c => c.GetEffectiveDisplay() != "none").ToList();
@@ -847,7 +822,6 @@ namespace SiegeEngine.Core.UI
             ComputedHeight = ComputedContentHeight + pad.X + pad.Z;
             ComputedBackgroundHeight = ComputedHeight;
         }
-
         private void LayoutBlockChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             float currentX = 0;
@@ -973,7 +947,6 @@ namespace SiegeEngine.Core.UI
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
         }
-
         private void ShiftX(HtmlElement e, float off)
         {
             e.ComputedPosition = new Vector2(e.ComputedPosition.X + off, e.ComputedPosition.Y);
@@ -981,7 +954,6 @@ namespace SiegeEngine.Core.UI
             e.ComputedContentX += off;
             foreach (var ch in e.Children) ShiftX(ch, off);
         }
-
         public virtual Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             if (!_intrinsicDirty && _cachedViewportWidth == viewportWidth && _cachedViewportHeight == viewportHeight && _cachedFs == fs)
