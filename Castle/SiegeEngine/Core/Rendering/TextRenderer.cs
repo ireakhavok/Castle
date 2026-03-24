@@ -17,9 +17,9 @@ namespace SiegeEngine.Core.Rendering
         private Dictionary<string, SystemFontRenderer> _fontRenderers = new Dictionary<string, SystemFontRenderer>();
         private SystemFontRenderer _defaultFontRenderer;
 
-        // === SURGICAL GLYPH RUN CACHE (performance fix - focused here) ===
-        // Key = "text|fontSize|fontFamily"
-        // Stores pre-computed glyph positions, advances, textures, and kerning
+        // === PRODUCTION-GRADE GLYPH RUN CACHE ===
+        // Bounded at 2048 entries with LRU eviction for long sessions (dynamic lists, many panels)
+        // Key includes text + size + font + transform flag (future-proof)
         private class GlyphInstance
         {
             public float LocalX;
@@ -36,6 +36,8 @@ namespace SiegeEngine.Core.Rendering
         }
 
         private readonly Dictionary<string, CachedGlyphRun> _glyphRunCache = new Dictionary<string, CachedGlyphRun>();
+        private readonly LinkedList<string> _lruOrder = new LinkedList<string>();
+        private const int MaxCacheEntries = 2048;
 
         public TextRenderer(IRenderContext renderContext, nint window)
         {
@@ -78,9 +80,31 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
 
+        public void ClearCache()
+        {
+            _glyphRunCache.Clear();
+            _lruOrder.Clear();
+        }
+
         private string GetCacheKey(string text, float fontSize, string fontFamily)
         {
-            return $"{text ?? ""}|{fontSize:F2}|{fontFamily ?? "Arial"}";
+            return $"{text ?? ""}|{fontSize:F3}|{fontFamily ?? "Arial"}";
+        }
+
+        private void TouchLRU(string key)
+        {
+            if (_lruOrder.Contains(key))
+            {
+                _lruOrder.Remove(key);
+            }
+            _lruOrder.AddLast(key);
+
+            while (_glyphRunCache.Count > MaxCacheEntries)
+            {
+                var oldest = _lruOrder.First.Value;
+                _lruOrder.RemoveFirst();
+                _glyphRunCache.Remove(oldest);
+            }
         }
 
         public Vector2 GetTextSize(string text, float fontSize, string fontFamily = "Arial")
@@ -88,6 +112,7 @@ namespace SiegeEngine.Core.Rendering
             var key = GetCacheKey(text, fontSize, fontFamily);
             if (_glyphRunCache.TryGetValue(key, out var cached))
             {
+                TouchLRU(key);
                 return new Vector2(cached.TotalWidth, cached.LineHeight);
             }
 
@@ -129,6 +154,7 @@ namespace SiegeEngine.Core.Rendering
                 run = BuildCachedGlyphRun(text, fontSize, fontFamily);
                 _glyphRunCache[key] = run;
             }
+            TouchLRU(key);
 
             RenderCachedGlyphRun(run, startX, startY, viewportWidth, viewportHeight, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f), fontFamily, transformMatrix);
         }
@@ -249,7 +275,8 @@ namespace SiegeEngine.Core.Rendering
 
         public void Dispose()
         {
-            _glyphRunCache.Clear();
+            ClearCache();
+            _fontRenderers.Clear();
             _renderContext.DeleteVertexArray(_textVao);
             _renderContext.DeleteBuffer(_textVbo);
         }
