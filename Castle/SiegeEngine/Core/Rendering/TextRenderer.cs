@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Rendering
+// File: TextRenderer.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
@@ -14,6 +16,27 @@ namespace SiegeEngine.Core.Rendering
         private ShaderProgram _shaderProgram;
         private Dictionary<string, SystemFontRenderer> _fontRenderers = new Dictionary<string, SystemFontRenderer>();
         private SystemFontRenderer _defaultFontRenderer;
+
+        // === SURGICAL GLYPH RUN CACHE (performance fix - focused here) ===
+        // Key = "text|fontSize|fontFamily"
+        // Stores pre-computed glyph positions, advances, textures, and kerning
+        private class GlyphInstance
+        {
+            public float LocalX;
+            public uint TextureId;
+            public float Width;
+            public float Height;
+        }
+
+        private class CachedGlyphRun
+        {
+            public List<GlyphInstance> Glyphs = new List<GlyphInstance>();
+            public float TotalWidth;
+            public float LineHeight;
+        }
+
+        private readonly Dictionary<string, CachedGlyphRun> _glyphRunCache = new Dictionary<string, CachedGlyphRun>();
+
         public TextRenderer(IRenderContext renderContext, nint window)
         {
             _renderContext = renderContext;
@@ -21,14 +44,15 @@ namespace SiegeEngine.Core.Rendering
             _defaultFontRenderer = new SystemFontRenderer(_renderContext, "Arial");
             _fontRenderers["Arial"] = _defaultFontRenderer;
         }
+
         public void Initialize(ShaderProgram shaderProgram)
         {
-            //Console.WriteLine("TextRenderer: Initializing with font 'Arial', size 12.0f");
             _shaderProgram = shaderProgram;
             _renderContext.GenVertexArrays(1, out _textVao);
             _renderContext.GenBuffers(1, out _textVbo);
             _renderContext.BindVertexArray(_textVao);
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
+
             float[] textVertices = new float[]
             {
                 0.0f, 0.0f, 0.0f, 0.0f,
@@ -36,25 +60,41 @@ namespace SiegeEngine.Core.Rendering
                 1.0f, 1.0f, 1.0f, 1.0f,
                 0.0f, 1.0f, 0.0f, 1.0f
             };
+
             fixed (float* ptr = textVertices)
             {
                 _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(textVertices.Length * sizeof(float)), ptr, _renderContext.Enums.StaticDraw);
             }
+
             _renderContext.EnableVertexAttribArray(0);
             _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
             _renderContext.EnableVertexAttribArray(1);
             _renderContext.VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, 0);
             _renderContext.BindVertexArray(0);
-            //Console.WriteLine("TextRenderer: Text VAO and VBO initialized.");
+
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
+
+        private string GetCacheKey(string text, float fontSize, string fontFamily)
+        {
+            return $"{text ?? ""}|{fontSize:F2}|{fontFamily ?? "Arial"}";
+        }
+
         public Vector2 GetTextSize(string text, float fontSize, string fontFamily = "Arial")
         {
+            var key = GetCacheKey(text, fontSize, fontFamily);
+            if (_glyphRunCache.TryGetValue(key, out var cached))
+            {
+                return new Vector2(cached.TotalWidth, cached.LineHeight);
+            }
+
             var renderer = GetFontRenderer(fontFamily);
             float scale = fontSize / renderer.BaseSize;
             if (string.IsNullOrEmpty(text)) return Vector2.Zero;
+
             float width = renderer.GetStringWidth(text) * scale;
             float height = 0;
             foreach (char c in text)
@@ -65,89 +105,130 @@ namespace SiegeEngine.Core.Rendering
             }
             return new Vector2(width, height);
         }
+
         public float GetLineHeight(float fontSize, string fontFamily = "Arial")
         {
             var renderer = GetFontRenderer(fontFamily);
             float scale = fontSize / renderer.BaseSize;
             return renderer.LineHeight * scale;
         }
+
         public void RenderText(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize = 12.0f, Vector4? textColor = null, string fontFamily = "Arial")
         {
             RenderText(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor, fontFamily, Matrix4x4.Identity);
         }
+
         public void RenderText(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4? textColor, string fontFamily, Matrix4x4 transformMatrix)
         {
-            if (string.IsNullOrEmpty(text))
-                return;
-            text = text.Replace("\n", " ").Replace("\r", " "); // Avoid non-printable
-            // Render text color
-            RenderTextPass(text, startX, startY, viewportWidth, viewportHeight, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f), fontFamily, transformMatrix);
+            if (string.IsNullOrEmpty(text)) return;
+            text = text.Replace("\n", " ").Replace("\r", " ");
+
+            var key = GetCacheKey(text, fontSize, fontFamily);
+            if (!_glyphRunCache.TryGetValue(key, out var run))
+            {
+                run = BuildCachedGlyphRun(text, fontSize, fontFamily);
+                _glyphRunCache[key] = run;
+            }
+
+            RenderCachedGlyphRun(run, startX, startY, viewportWidth, viewportHeight, fontSize, textColor ?? new Vector4(1.0f, 1.0f, 1.0f, 1.0f), fontFamily, transformMatrix);
         }
-        private void RenderTextPass(string text, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily, Matrix4x4 transformMatrix)
+
+        private CachedGlyphRun BuildCachedGlyphRun(string text, float fontSize, string fontFamily)
         {
-            _shaderProgram.Use();
+            var run = new CachedGlyphRun();
             var renderer = GetFontRenderer(fontFamily);
             float scale = fontSize / renderer.BaseSize;
-            float currentX = startX;
-            Matrix4x4 trans = transformMatrix;
+            run.LineHeight = renderer.LineHeight * scale;
+
+            float currentX = 0f;
             for (int i = 0; i < text.Length; i++)
             {
                 char c = text[i];
-                if (c == '\n' || c == '\r') continue; // Skip non-printable
+                if (c == '\n' || c == '\r') continue;
+
                 var data = renderer.GetCharacterData(c);
-                if (data == null)
-                {
-                    Console.WriteLine($"TextRenderer: Character data for '{c}' is null.");
-                    continue;
-                }
+                if (data == null) continue;
+
                 float charWidth = data.Width * scale;
                 float charHeight = data.Height * scale;
-                if (!char.IsWhiteSpace(c))
+
+                run.Glyphs.Add(new GlyphInstance
                 {
-                    float x = currentX;
-                    float y = startY;
-                    float[] ndc = HtmlLayoutUtils.GetNdcQuad(x, y, charWidth, charHeight, trans, viewportWidth, viewportHeight);
-                    float[] textVertices = new float[]
-                    {
-                        ndc[0], ndc[1], 0.0f, 1.0f,
-                        ndc[2], ndc[3], 1.0f, 1.0f,
-                        ndc[4], ndc[5], 1.0f, 0.0f,
-                        ndc[6], ndc[7], 0.0f, 0.0f
-                    };
-                    _renderContext.BindVertexArray(_textVao);
-                    _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
-                    fixed (float* ptr = textVertices)
-                    {
-                        _renderContext.BufferSubData(_renderContext.Enums.ArrayBuffer, 0, (uint)(textVertices.Length * sizeof(float)), ptr);
-                    }
-                    _renderContext.EnableVertexAttribArray(0);
-                    _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
-                    _renderContext.EnableVertexAttribArray(1);
-                    _renderContext.VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, renderer.GetCharacterTexture(c));
-                    _shaderProgram.SetUniform("uTexture", 0);
-                    _shaderProgram.SetUniform("uUseTexture", 1.0f);
-                    _shaderProgram.SetMatrix4("uTransform", Matrix4x4.Identity);
-                    _shaderProgram.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
-                    _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
-                    _renderContext.BindVertexArray(0);
-                }
-                float m_a = renderer.GetStringWidth(c.ToString());
-                float advance = m_a * scale;
+                    LocalX = currentX,
+                    TextureId = renderer.GetCharacterTexture(c),
+                    Width = charWidth,
+                    Height = charHeight
+                });
+
+                float advance = renderer.GetStringWidth(c.ToString()) * scale;
                 if (i < text.Length - 1)
                 {
                     char next = text[i + 1];
+                    float m_a = renderer.GetStringWidth(c.ToString());
                     float m_b = renderer.GetStringWidth(next.ToString());
                     float m_ab = renderer.GetStringWidth(c.ToString() + next.ToString());
                     float kerning = (m_ab - m_a - m_b) * scale;
                     advance += kerning;
                 }
                 currentX += advance;
-                //Console.WriteLine($"TextRenderer: Rendered char '{c}' at ({charLeft:F3}, {charTop:F3}) to ({charRight:F3}, {charBottom:F3}), Texture: {_charTextures[c]}, Unit: Texture0");
             }
+
+            run.TotalWidth = currentX;
+            return run;
         }
+
+        private void RenderCachedGlyphRun(CachedGlyphRun run, float startX, float startY, float viewportWidth, float viewportHeight, float fontSize, Vector4 color, string fontFamily, Matrix4x4 transformMatrix)
+        {
+            _shaderProgram.Use();
+
+            var renderer = GetFontRenderer(fontFamily);
+            float scale = fontSize / renderer.BaseSize;
+
+            for (int i = 0; i < run.Glyphs.Count; i++)
+            {
+                var g = run.Glyphs[i];
+
+                float x = startX + g.LocalX;
+                float y = startY;
+
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(x, y, g.Width, g.Height, transformMatrix, viewportWidth, viewportHeight);
+
+                float[] textVertices = new float[]
+                {
+                    ndc[0], ndc[1], 0.0f, 1.0f,
+                    ndc[2], ndc[3], 1.0f, 1.0f,
+                    ndc[4], ndc[5], 1.0f, 0.0f,
+                    ndc[6], ndc[7], 0.0f, 0.0f
+                };
+
+                _renderContext.BindVertexArray(_textVao);
+                _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _textVbo);
+
+                fixed (float* ptr = textVertices)
+                {
+                    _renderContext.BufferSubData(_renderContext.Enums.ArrayBuffer, 0, (uint)(textVertices.Length * sizeof(float)), ptr);
+                }
+
+                _renderContext.EnableVertexAttribArray(0);
+                _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)0);
+                _renderContext.EnableVertexAttribArray(1);
+                _renderContext.VertexAttribPointer(1, 2, _renderContext.Enums.Float, false, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+
+                _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, g.TextureId);
+
+                _shaderProgram.SetUniform("uTexture", 0);
+                _shaderProgram.SetUniform("uUseTexture", 1.0f);
+                _shaderProgram.SetMatrix4("uTransform", Matrix4x4.Identity);
+                _shaderProgram.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
+
+                _renderContext.DrawArrays(_renderContext.Enums.TriangleFan, 0, 4);
+            }
+
+            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            _renderContext.BindVertexArray(0);
+        }
+
         private SystemFontRenderer GetFontRenderer(string fontFamily)
         {
             if (_fontRenderers.TryGetValue(fontFamily, out var renderer))
@@ -165,8 +246,10 @@ namespace SiegeEngine.Core.Rendering
             _fontRenderers[fontFamily] = renderer;
             return renderer;
         }
+
         public void Dispose()
         {
+            _glyphRunCache.Clear();
             _renderContext.DeleteVertexArray(_textVao);
             _renderContext.DeleteBuffer(_textVbo);
         }
