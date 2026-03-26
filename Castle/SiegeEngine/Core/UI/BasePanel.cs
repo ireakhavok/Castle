@@ -11,7 +11,6 @@ using System.Numerics;
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
-
     public abstract class BasePanel : IPanel
     {
         protected readonly IRenderContext _renderContext;
@@ -21,10 +20,8 @@ namespace SiegeEngine.Core.UI
         protected UIOverlay _uiOverlay;
         protected int _lastW;
         protected int _lastH;
-
         public DockState DockState { get; set; } = DockState.Floating;
         public DockingMode DockingMode { get; set; } = DockingMode.Desktop;
-
         public Vector2 Position { get; set; } = Vector2.Zero;
         public Vector2 Size { get; set; } = new Vector2(800, 600);
         public bool Visible { get; set; } = true;
@@ -100,11 +97,30 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
+
             if (HasTitleBar && _chrome != null)
             {
                 if (_chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
                     return;
             }
+
+            // === Dynamic mode - only skip unwanted ApplySnap, keep original hide/drag logic ===
+            if (DockingMode == DockingMode.Dynamic)
+            {
+                bool overPanelDynamic = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
+                                        absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
+                if (overPanelDynamic || WantsContinuousUpdate)
+                {
+                    Vector2 relMousePos = absMousePos - Position;
+                    _uiOverlay.PanelWidth = Size.X;
+                    _uiOverlay.PanelHeight = Size.Y;
+                    _uiOverlay.Scroll(scrollDelta);
+                    _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
+                }
+                return;
+            }
+
+            // === Original Desktop/IDE behavior (unchanged) ===
             if (_isDragging)
             {
                 if (mouseDown)
@@ -221,6 +237,9 @@ namespace SiegeEngine.Core.UI
 
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
+            // Dynamic mode uses its own strategy snapping - skip this completely
+            if (DockingMode == DockingMode.Dynamic) return;
+
             float cornerZone = winH * 0.25f;
             bool nearLeft = absMousePos.X < SnapDistance;
             bool nearRight = absMousePos.X > winW - SnapDistance;
@@ -292,28 +311,29 @@ namespace SiegeEngine.Core.UI
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
 
-            // Chrome always renders first (title bar + close button never disappear during resize)
             if (HasTitleBar && _chrome != null)
             {
                 _chrome.Render(_quadRenderer, Size.X, Size.Y);
             }
 
-            if (_isDragging || IsResizing)
-            {
-                _quadRenderer.DrawQuad(0, HeaderHeight, Size.X, Size.Y - HeaderHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
-            }
-            else
-            {
-                _controlContext.GetWindowSize(_window, out int winW, out int winH);
-                _renderContext.Enable(_renderContext.Enums.ScissorTest);
-                int scissorX = (int)Position.X;
-                int scissorY = winH - (int)(Position.Y + Size.Y);
-                uint scissorW = (uint)Size.X;
-                uint scissorH = (uint)Size.Y;
-                _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
-                _uiOverlay.Render();
-                _renderContext.Disable(_renderContext.Enums.ScissorTest);
-            }
+            //if (_isDragging || IsResizing)
+            //{
+            //    // Restore original hide logic during drag (ghost overlay)
+            //    _quadRenderer.DrawQuad(0, HeaderHeight, Size.X, Size.Y - HeaderHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
+            //}
+            //else
+            //{
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            _renderContext.Enable(_renderContext.Enums.ScissorTest);
+            int scissorX = (int)Position.X;
+            int scissorY = winH - (int)(Position.Y + Size.Y);
+            uint scissorW = (uint)Size.X;
+            uint scissorH = (uint)Size.Y;
+            _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
+            _uiOverlay.Render();
+            _renderContext.Disable(_renderContext.Enums.ScissorTest);
+            //}
+
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
             _quadRenderer.DrawQuad(0, Size.Y - bw, Size.X, bw, bc, Size.X, Size.Y);

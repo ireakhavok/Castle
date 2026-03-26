@@ -66,7 +66,6 @@ namespace SiegeEngine.Core.Managers
 
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
-            // Modal priority
             IPanel topModal = null;
             for (int i = _panels.Count - 1; i >= 0; i--)
             {
@@ -85,7 +84,6 @@ namespace SiegeEngine.Core.Managers
                 return;
             }
 
-            // Unconditional Update for EVERY panel (this is the only way the close button works everywhere)
             for (int i = _panels.Count - 1; i >= 0; i--)
             {
                 var panel = _panels[i];
@@ -93,12 +91,11 @@ namespace SiegeEngine.Core.Managers
 
                 panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
 
-                if (!panel.Visible) continue; // panel was closed by chrome
+                if (!panel.Visible) continue;
 
                 HandleSinglePanel(panel, mousePos, mousePressed, winW, winH);
             }
 
-            // Continue drag - ONLY the active dragging panel moves
             if (_draggingPanel != null && mouseDown)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -106,18 +103,20 @@ namespace SiegeEngine.Core.Managers
                 _showSnapPreview = ComputeSnapPreview(mousePos, winW, winH, out _snapPreviewPosition, out _snapPreviewSize);
             }
 
-            // Continue resize - ONLY the active resizing panel
             if (_resizingPanel != null && mouseDown)
             {
                 PerformLiveResize(mousePos, winW, winH);
             }
 
-            // Release - snap to ghost preview (screen edges + neighbors) exactly as spec requires
             if (mouseReleased)
             {
                 if (_draggingPanel != null)
                 {
-                    _draggingPanel.Position = _snapPreviewPosition;
+                    bool mouseInside = mousePos.X >= 0 && mousePos.X <= winW && mousePos.Y >= 0 && mousePos.Y <= winH;
+                    if (mouseInside)
+                    {
+                        _draggingPanel.Position = _snapPreviewPosition;
+                    }
                     ClampToViewport(_draggingPanel, winW, winH);
                     _draggingPanel.OnPanelResize(_draggingPanel.Size.X, _draggingPanel.Size.Y);
                     _draggingPanel = null;
@@ -141,7 +140,6 @@ namespace SiegeEngine.Core.Managers
 
             if (!overPanel) return;
 
-            // Title bar drag initiation - EXCLUSIVE (prevents two panels moving at once)
             if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
             {
                 bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + BasePanel.TitleHeight;
@@ -149,11 +147,14 @@ namespace SiegeEngine.Core.Managers
                 {
                     _draggingPanel = panel;
                     _dragOffset = mousePos - panel.Position;
+                    if (panel is BasePanel bp)
+                    {
+                        bp.StartTitleBarDrag(mousePos);
+                    }
                     return;
                 }
             }
 
-            // Resize initiation
             if (mousePressed && _resizingPanel == null)
             {
                 ResizeHandle handle = panel.GetResizeHandle(mousePos);
@@ -175,13 +176,11 @@ namespace SiegeEngine.Core.Managers
             previewPos = _draggingPanel.Position;
             previewSize = _draggingPanel.Size;
 
-            // Screen edge snapping (spec requirement)
             if (previewPos.X < SnapDistance) previewPos.X = 0;
             if (previewPos.X + previewSize.X > winW - SnapDistance) previewPos.X = winW - previewSize.X;
             if (previewPos.Y < SnapDistance) previewPos.Y = 0;
             if (previewPos.Y + previewSize.Y > winH - SnapDistance) previewPos.Y = winH - previewSize.Y;
 
-            // Neighbor snapping (alignment)
             foreach (var other in _panels)
             {
                 if (other == _draggingPanel || !other.Visible) continue;
@@ -294,7 +293,6 @@ namespace SiegeEngine.Core.Managers
 
         public void ComputeLayout(int winW, int winH)
         {
-            // Dynamic mode has no forced layout tree
         }
     }
 }
