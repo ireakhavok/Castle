@@ -1,5 +1,6 @@
 ﻿// Folder: SiegeEngine.Core.Interfaces
 // File: IPanel.cs
+using SiegeEngine.Core.Definitions;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Interfaces
@@ -14,6 +15,7 @@ namespace SiegeEngine.Core.Interfaces
         Tabbed,
         DockedHeader
     }
+
     public enum ResizeHandle
     {
         None,
@@ -26,6 +28,7 @@ namespace SiegeEngine.Core.Interfaces
         BottomLeft,
         BottomRight
     }
+
     public interface IPanel
     {
         void Init();
@@ -33,6 +36,7 @@ namespace SiegeEngine.Core.Interfaces
         void Render();
         void Dispose();
         DockState DockState { get; set; }
+        DockingMode DockingMode { get; set; }   // Per-panel control - no scene conflict
         void Detach();
         Vector2 Position { get; set; }
         Vector2 Size { get; set; }

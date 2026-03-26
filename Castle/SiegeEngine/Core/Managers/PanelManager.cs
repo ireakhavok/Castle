@@ -4,6 +4,7 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -12,7 +13,6 @@ namespace SiegeEngine.Core.Managers
 {
     public class PanelManager
     {
-        private readonly DockManager _dockManager;
         private readonly IRenderContext _renderContext;
         private readonly IControlContext _controlContext;
         private readonly nint _window;
@@ -20,9 +20,10 @@ namespace SiegeEngine.Core.Managers
         private bool _prevMouseDown;
         private readonly List<IPanel> _panels = new List<IPanel>();
         private float _scrollDelta = 0f;
-
-        // === NEW: Centralized Capture Ownership ===
         private readonly CaptureManager _captureManager;
+
+        private IDockingStrategy _currentStrategy;
+        private DockingMode _sceneDefaultMode = DockingMode.Desktop;
 
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -30,16 +31,22 @@ namespace SiegeEngine.Core.Managers
             _controlContext = controlContext;
             _window = window;
             _eventBus = eventBus;
-            _dockManager = new DockManager(renderContext, controlContext, eventBus);
             _captureManager = new CaptureManager(controlContext);
+
+            _currentStrategy = new DesktopDockingStrategy(renderContext, controlContext, eventBus);
 
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
             _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
-
             _controlContext.SetScrollCallback(_window, (nint w, double xoffset, double yoffset) =>
             {
                 _scrollDelta += (float)yoffset;
             });
+        }
+
+        public void SetSceneDefaultDockingMode(DockingMode mode)
+        {
+            _sceneDefaultMode = mode;
+            _currentStrategy = new DesktopDockingStrategy(_renderContext, _controlContext, _eventBus);
         }
 
         private void OnOpenPanel(OpenPanelEvent e)
@@ -56,7 +63,13 @@ namespace SiegeEngine.Core.Managers
         {
             _panels.Add(panel);
             panel.Init();
-            _dockManager.AddPanel(panel);
+
+            if (panel.DockingMode == DockingMode.Desktop)
+            {
+                panel.DockingMode = _sceneDefaultMode;
+            }
+
+            _currentStrategy.AddPanel(panel);
         }
 
         public void Update(float deltaTime)
@@ -70,15 +83,12 @@ namespace SiegeEngine.Core.Managers
 
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
 
-            // === CENTRALIZED CAPTURE UPDATE (runs every frame) ===
             _captureManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
 
-            // === NORMAL UPDATE PATH (only if no capture active) ===
             if (!_captureManager.IsCapturing)
             {
-                _dockManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                _currentStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
             }
-
             _scrollDelta = 0f;
         }
 
@@ -87,16 +97,15 @@ namespace SiegeEngine.Core.Managers
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
-            _dockManager.Render(_renderContext, winW, winH);
+            _currentStrategy.Render(_renderContext, winW, winH);
         }
 
         public void RemovePanel(IPanel panel)
         {
             if (_captureManager.CurrentOwner == panel)
                 _captureManager.ReleaseCapture();
-
             panel.Detach();
-            _dockManager.RemovePanel(panel);
+            _currentStrategy.RemovePanel(panel);
             _panels.Remove(panel);
             panel.Dispose();
         }

@@ -28,6 +28,8 @@ namespace SiegeEngine.Scenes
         protected Player _player;
         protected ModelRenderer _modelRenderer;
 
+        public DockingMode DefaultDockingMode { get; protected set; } = DockingMode.Desktop;
+
         public Scene(IRenderContext renderContext, IControlContext controlContext, IntPtr window, IGameServer server, EventBus eventBus)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
@@ -38,9 +40,7 @@ namespace SiegeEngine.Scenes
             _modelRenderer = new ModelRenderer(_renderContext);
         }
 
-        // PUBLIC ACCESSOR - allows panels (e.g. in MapRoom) to get entities through the SiegeEngine.Core layer only
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
-
         public void SetPlayer(Player player) => _player = player;
 
         public virtual void Initialize(int width, int height)

@@ -7,9 +7,11 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
+
     public abstract class BasePanel : IPanel
     {
         protected readonly IRenderContext _renderContext;
@@ -19,7 +21,10 @@ namespace SiegeEngine.Core.UI
         protected UIOverlay _uiOverlay;
         protected int _lastW;
         protected int _lastH;
+
         public DockState DockState { get; set; } = DockState.Floating;
+        public DockingMode DockingMode { get; set; } = DockingMode.Desktop;
+
         public Vector2 Position { get; set; } = Vector2.Zero;
         public Vector2 Size { get; set; } = new Vector2(800, 600);
         public bool Visible { get; set; } = true;
@@ -53,6 +58,7 @@ namespace SiegeEngine.Core.UI
         private PanelChrome _chrome;
         public bool HasTitleBar { get; set; } = false;
         public bool IsClosable { get; set; } = false;
+
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -61,10 +67,12 @@ namespace SiegeEngine.Core.UI
             _eventBus = eventBus;
             _uiOverlay = CreateUIOverlay();
         }
+
         protected virtual UIOverlay CreateUIOverlay()
         {
             return new UIOverlay(_renderContext, _controlContext, _window);
         }
+
         public virtual void Init()
         {
             _uiOverlay.Init();
@@ -88,6 +96,7 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
+
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
@@ -182,6 +191,7 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }
+
         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {
             float left = absMousePos.X - Position.X;
@@ -200,6 +210,7 @@ namespace SiegeEngine.Core.UI
             if (bottom < grip) return ResizeHandle.Bottom;
             return ResizeHandle.None;
         }
+
         public void StartResize(Vector2 mousePos, ResizeHandle handle)
         {
             _currentResizeHandle = handle;
@@ -207,6 +218,7 @@ namespace SiegeEngine.Core.UI
             _resizeStartPosition = Position;
             _resizeStartSize = Size;
         }
+
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
             float cornerZone = winH * 0.25f;
@@ -266,6 +278,7 @@ namespace SiegeEngine.Core.UI
             Size = newSize;
             OnPanelResize(newSize.X, newSize.Y);
         }
+
         public virtual void Render()
         {
             if (!Visible) return;
@@ -278,10 +291,13 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.RefreshUI();
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
+
+            // Chrome always renders first (title bar + close button never disappear during resize)
             if (HasTitleBar && _chrome != null)
             {
                 _chrome.Render(_quadRenderer, Size.X, Size.Y);
             }
+
             if (_isDragging || IsResizing)
             {
                 _quadRenderer.DrawQuad(0, HeaderHeight, Size.X, Size.Y - HeaderHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
@@ -305,12 +321,15 @@ namespace SiegeEngine.Core.UI
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
+
         public virtual void Dispose()
         {
             _uiOverlay.Dispose();
             if (_chrome != null) _chrome.Dispose();
         }
+
         public virtual void Detach() { }
+
         public virtual void OnPanelResize(float w, float h)
         {
             Size = new Vector2(w, h);
@@ -323,9 +342,11 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
+
         public virtual void OnLiveResize(float w, float h)
         {
         }
+
         public void StartTitleBarDrag(Vector2 mousePos)
         {
             _isDragging = true;
@@ -333,6 +354,7 @@ namespace SiegeEngine.Core.UI
             _dragStartMousePos = mousePos;
             _lastClickTime = _controlContext.GetTime();
         }
+
         public void Close()
         {
             _eventBus.Publish(new ClosePanelEvent(this));
