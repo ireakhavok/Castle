@@ -93,7 +93,10 @@ namespace SiegeEngine.Core.Managers
 
                 if (!panel.Visible) continue;
 
-                HandleSinglePanel(panel, mousePos, mousePressed, winW, winH);
+                if (HandleSinglePanel(panel, mousePos, mousePressed, winW, winH))
+                {
+                    break; // EXCLUSIVE: once any panel claims the drag, stop the loop
+                }
             }
 
             if (_draggingPanel != null && mouseDown)
@@ -119,6 +122,12 @@ namespace SiegeEngine.Core.Managers
                     }
                     ClampToViewport(_draggingPanel, winW, winH);
                     _draggingPanel.OnPanelResize(_draggingPanel.Size.X, _draggingPanel.Size.Y);
+
+                    if (_draggingPanel is BasePanel bp)
+                    {
+                        bp.ResetDragState();
+                    }
+
                     _draggingPanel = null;
                     _showSnapPreview = false;
                 }
@@ -133,12 +142,12 @@ namespace SiegeEngine.Core.Managers
             }
         }
 
-        private void HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
+        private bool HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
         {
             bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
                              mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
 
-            if (!overPanel) return;
+            if (!overPanel) return false;
 
             if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
             {
@@ -151,7 +160,7 @@ namespace SiegeEngine.Core.Managers
                     {
                         bp.StartTitleBarDrag(mousePos);
                     }
-                    return;
+                    return true; // stop the entire loop - no other panel can start dragging this frame
                 }
             }
 
@@ -166,9 +175,10 @@ namespace SiegeEngine.Core.Managers
                     _resizeStartPosition = panel.Position;
                     _resizeStartSize = panel.Size;
                     panel.StartResize(mousePos, handle);
-                    return;
+                    return true;
                 }
             }
+            return false;
         }
 
         private bool ComputeSnapPreview(Vector2 mousePos, int winW, int winH, out Vector2 previewPos, out Vector2 previewSize)

@@ -104,23 +104,6 @@ namespace SiegeEngine.Core.UI
                     return;
             }
 
-            // === Dynamic mode - only skip unwanted ApplySnap, keep original hide/drag logic ===
-            if (DockingMode == DockingMode.Dynamic)
-            {
-                bool overPanelDynamic = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
-                                        absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
-                if (overPanelDynamic || WantsContinuousUpdate)
-                {
-                    Vector2 relMousePos = absMousePos - Position;
-                    _uiOverlay.PanelWidth = Size.X;
-                    _uiOverlay.PanelHeight = Size.Y;
-                    _uiOverlay.Scroll(scrollDelta);
-                    _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
-                }
-                return;
-            }
-
-            // === Original Desktop/IDE behavior (unchanged) ===
             if (_isDragging)
             {
                 if (mouseDown)
@@ -237,7 +220,6 @@ namespace SiegeEngine.Core.UI
 
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
-            // Dynamic mode uses its own strategy snapping - skip this completely
             if (DockingMode == DockingMode.Dynamic) return;
 
             float cornerZone = winH * 0.25f;
@@ -316,23 +298,22 @@ namespace SiegeEngine.Core.UI
                 _chrome.Render(_quadRenderer, Size.X, Size.Y);
             }
 
-            //if (_isDragging || IsResizing)
-            //{
-            //    // Restore original hide logic during drag (ghost overlay)
-            //    _quadRenderer.DrawQuad(0, HeaderHeight, Size.X, Size.Y - HeaderHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
-            //}
-            //else
-            //{
-            _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            _renderContext.Enable(_renderContext.Enums.ScissorTest);
-            int scissorX = (int)Position.X;
-            int scissorY = winH - (int)(Position.Y + Size.Y);
-            uint scissorW = (uint)Size.X;
-            uint scissorH = (uint)Size.Y;
-            _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
-            _uiOverlay.Render();
-            _renderContext.Disable(_renderContext.Enums.ScissorTest);
-            //}
+            if (_isDragging || IsResizing)
+            {
+                _quadRenderer.DrawQuad(0, HeaderHeight, Size.X, Size.Y - HeaderHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
+            }
+            else
+            {
+                _controlContext.GetWindowSize(_window, out int winW, out int winH);
+                _renderContext.Enable(_renderContext.Enums.ScissorTest);
+                int scissorX = (int)Position.X;
+                int scissorY = winH - (int)(Position.Y + Size.Y);
+                uint scissorW = (uint)Size.X;
+                uint scissorH = (uint)Size.Y;
+                _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
+                _uiOverlay.Render();
+                _renderContext.Disable(_renderContext.Enums.ScissorTest);
+            }
 
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
@@ -373,6 +354,11 @@ namespace SiegeEngine.Core.UI
             _dragOffset = mousePos - Position;
             _dragStartMousePos = mousePos;
             _lastClickTime = _controlContext.GetTime();
+        }
+
+        public void ResetDragState()
+        {
+            _isDragging = false;
         }
 
         public void Close()
