@@ -259,37 +259,37 @@ Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Corrected
 Found: .
 Found: ..
 Found: left_running.fbx
-Found: Mods
-Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods
+Found: mods
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods
 Found: .
 Found: ..
 Found: diagnostics_lists_nav.html
 Found: UnityAssetLoader
-Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader
 Found: .
 Found: ..
 Found: MetaFileParser.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\MetaFileParser.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\MetaFileParser.cs
-Read 1238 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\MetaFileParser.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\MetaFileParser.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\MetaFileParser.cs
+Read 1238 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\MetaFileParser.cs
 Namespace: SiegeEngine.Core.UnityAssetLoader
 Found 4 dependencies
 Found: PrefabFileReader.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\PrefabFileReader.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\PrefabFileReader.cs
-Read 2097 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\PrefabFileReader.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\PrefabFileReader.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\PrefabFileReader.cs
+Read 2097 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\PrefabFileReader.cs
 Namespace: SiegeEngine.Core.UnityAssetLoader
 Found 3 dependencies
 Found: UnityAssetFileType.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\UnityAssetFileType.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\UnityAssetFileType.cs
-Read 190 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\UnityAssetFileType.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\UnityAssetFileType.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\UnityAssetFileType.cs
+Read 190 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\UnityAssetFileType.cs
 Namespace: SiegeEngine.Core.UnityAssetLoader
 Found 0 dependencies
 Found: UnityAssetScanner.cs
-Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\UnityAssetScanner.cs
-Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\UnityAssetScanner.cs
-Read 3142 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\Mods\UnityAssetLoader\UnityAssetScanner.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\UnityAssetScanner.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\UnityAssetScanner.cs
+Read 3142 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\Assets\mods\UnityAssetLoader\UnityAssetScanner.cs
 Namespace: SiegeEngine.Core.UnityAssetLoader
 Found 4 dependencies
 Found: Static_Images
@@ -320,6 +320,27 @@ Found: Man_Cloth_Up_Albedo_01.tga
 Found: Man_Cloth_Up_Metallic.tga
 Found: Man_Cloth_Up_Normals.tga
 Found: Man_Mesh.fbx
+Found: BenchmarkSuite1
+Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\BenchmarkSuite1
+Found: .
+Found: ..
+Found: BenchmarkSuite1.csproj
+Found: bin
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\BenchmarkSuite1\bin
+Found: obj
+Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\BenchmarkSuite1\obj
+Found: Program.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\BenchmarkSuite1\Program.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\BenchmarkSuite1\Program.cs
+Read 228 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\BenchmarkSuite1\Program.cs
+Namespace: BenchmarkSuite1
+Found 1 dependencies
+Found: ShaderProgramBenchmark.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\BenchmarkSuite1\ShaderProgramBenchmark.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\BenchmarkSuite1\ShaderProgramBenchmark.cs
+Read 7602 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\BenchmarkSuite1\ShaderProgramBenchmark.cs
+Namespace: SiegeEngine.Benchmarks
+Found 5 dependencies
 Found: Castle.sln
 Found: CastleBuilder
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\CastleBuilder
@@ -862,6 +883,12 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\D
 Read 188 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\CameraType.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 0 dependencies
+Found: DockingMode.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\DockingMode.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\DockingMode.cs
+Read 371 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\DockingMode.cs
+Namespace: SiegeEngine.Core.Definitions
+Found 0 dependencies
 Found: Entity.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
@@ -1112,6 +1139,12 @@ Found: Interfaces
 Listing folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces
 Found: .
 Found: ..
+Found: IDockingStrategy.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IDockingStrategy.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IDockingStrategy.cs
+Read 689 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IDockingStrategy.cs
+Namespace: SiegeEngine.Core.Managers
+Found 5 dependencies
 Found: IGameServer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IGameServer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IGameServer.cs
@@ -1121,9 +1154,9 @@ Found 5 dependencies
 Found: IPanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IPanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IPanel.cs
-Read 1273 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IPanel.cs
+Read 1400 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IPanel.cs
 Namespace: SiegeEngine.Core.Interfaces
-Found 1 dependencies
+Found 2 dependencies
 Found: IProjectionProvider.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IProjectionProvider.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IProjectionProvider.cs
@@ -1158,10 +1191,16 @@ Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\M
 Read 1654 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\CaptureManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 4 dependencies
+Found: DesktopDockingStrategy.cs
+Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
+Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
+Read 14775 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
+Namespace: SiegeEngine.Core.Managers
+Found 7 dependencies
 Found: DockManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
-Read 24301 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
+Read 10911 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 9 dependencies
 Found: GameModeManager.cs
@@ -1191,9 +1230,9 @@ Found 7 dependencies
 Found: PanelManager.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
-Read 3733 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
+Read 4042 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Namespace: SiegeEngine.Core.Managers
-Found 7 dependencies
+Found 8 dependencies
 Found: ProjectSettings.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ProjectSettings.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ProjectSettings.cs
@@ -1383,7 +1422,7 @@ Found 7 dependencies
 Found: TextRenderer.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
-Read 8946 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
+Read 11250 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 5 dependencies
 Found: TextureLoader.cs
@@ -1459,7 +1498,7 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
-Read 14709 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
+Read 14905 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 7 dependencies
 Found: Core.cs
@@ -1565,7 +1604,7 @@ Found 3 dependencies
 Found: TextElement.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TextElement.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TextElement.cs
-Read 4309 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TextElement.cs
+Read 4462 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\TextElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 5 dependencies
 Found: ThElement.cs
@@ -1772,7 +1811,7 @@ Found 17 dependencies
 Found: Scene.cs
 Parsing file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
 Reading file: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
-Read 3718 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
+Read 3694 chars from: C:\Users\ireak\source\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: StartingPoints
@@ -1941,5 +1980,5 @@ Found 19 dependencies
 Found: obj
 Ignoring non-source folder: C:\Users\ireak\source\repos\RealmFoundry\Castle\Trebuchet\obj
 Found: Trebuchet.csproj
-Writing output for 13 folders
+Writing output for 14 folders
 Scan complete

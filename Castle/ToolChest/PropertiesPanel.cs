@@ -46,6 +46,7 @@ namespace ToolChest
             IsClosable = true;
             AllowDragging = true;
             DockState = DockState.Floating;
+            DockingMode = SiegeEngine.Core.Definitions.DockingMode.Dynamic;
 
             // === ONLY CHANGE: Proper starting size ===
             BaseWidth = 460f;
