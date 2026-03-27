@@ -668,6 +668,7 @@ Folder: SiegeEngine
       - void OnLiveResize( float h, float w)
       - void StartTitleBarDrag(Vector2 mousePos)
         - Calls: _controlContext.GetTime
+      - void ResetDragState()
       - void Close()
         - Calls: ClosePanelEvent
 - File: Bone.cs
@@ -969,6 +970,45 @@ Folder: SiegeEngine
       - void ComputeLayout( int winH, int winW)
 - File: DockingMode.cs
   - Class: DockingMode (Namespace: SiegeEngine.Core.Definitions)
+- File: DynamicDockingStrategy.cs
+  - Class: DynamicDockingStrategy (Namespace: SiegeEngine.Core.Managers)
+    - Inherits: IDockingStrategy
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - List<IPanel> _panels
+      - IPanel _draggingPanel
+      - Vector2 _dragOffset
+      - IPanel _resizingPanel
+      - ResizeHandle _activeResizeHandle
+      - Vector2 _resizeStartMousePos
+      - Vector2 _resizeStartPosition
+      - Vector2 _resizeStartSize
+      - IRenderContext _renderContext
+      - IControlContext _controlContext
+      - EventBus _eventBus
+      - UIQuadRenderer _ghostRenderer
+      - Vector2 _snapPreviewPosition
+      - Vector2 _snapPreviewSize
+      - bool _showSnapPreview
+      - float SnapDistance
+      - float NeighborSnapMargin
+    - Methods:
+      - constructor DynamicDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
+        - Calls: UIQuadRenderer
+      - void AddPanel(IPanel panel)
+      - void RemovePanel(IPanel panel)
+      - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
+        - Calls: ClampToViewport, ComputeSnapPreview, HandleSinglePanel, PerformLiveResize, _draggingPanel.OnPanelResize, _resizingPanel.OnPanelResize, bp.ResetDragState
+      - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
+        - Calls: bp.StartTitleBarDrag, panel.GetResizeHandle, panel.StartResize
+      - bool ComputeSnapPreview( int winH,  int winW,  out Vector2, Vector2 mousePos)
+      - void ClampToViewport( int winH,  int winW, IPanel panel)
+      - void PerformLiveResize( int winH,  int winW, Vector2 mousePos)
+        - Calls: ClampToViewport, bp.OnLiveResize
+      - void Render( int winH,  int winW, IRenderContext renderContext)
+        - Calls: _ghostRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
+      - void ComputeLayout( int winH, int winW)
 - File: EditorScene.cs
   - Class: EditorScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
@@ -2018,13 +2058,13 @@ Folder: SiegeEngine
       - List<IPanel> _panels
       - float _scrollDelta
       - CaptureManager _captureManager
-      - IDockingStrategy _currentStrategy
+      - IDockingStrategy _desktopStrategy
+      - DynamicDockingStrategy _dynamicStrategy
       - DockingMode _sceneDefaultMode
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: CaptureManager, DesktopDockingStrategy, _controlContext.SetScrollCallback
+        - Calls: CaptureManager, DesktopDockingStrategy, DynamicDockingStrategy, _controlContext.SetScrollCallback
       - void SetSceneDefaultDockingMode(DockingMode mode)
-        - Calls: DesktopDockingStrategy
       - void OnOpenPanel(OpenPanelEvent e)
         - Calls: AddPanel
       - void OnClosePanel(ClosePanelEvent e)
@@ -3162,6 +3202,7 @@ SiegeEngine.Core.Interfaces.ISteamEngine
 SiegeEngine.Core.Managers.CaptureManager
 SiegeEngine.Core.Managers.DesktopDockingStrategy
 SiegeEngine.Core.Managers.DockManager
+SiegeEngine.Core.Managers.DynamicDockingStrategy
 SiegeEngine.Core.Managers.GameModeManager
 SiegeEngine.Core.Managers.IDockingStrategy
 SiegeEngine.Core.Managers.LevelManager

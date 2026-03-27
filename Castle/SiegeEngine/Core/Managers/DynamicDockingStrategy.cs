@@ -9,7 +9,6 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Managers
 {
     public class DynamicDockingStrategy : IDockingStrategy
@@ -22,17 +21,13 @@ namespace SiegeEngine.Core.Managers
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
-
         private readonly IRenderContext _renderContext;
         private readonly IControlContext _controlContext;
         private readonly EventBus _eventBus;
-
         private readonly UIQuadRenderer _ghostRenderer;
-
         private Vector2 _snapPreviewPosition = Vector2.Zero;
         private Vector2 _snapPreviewSize = Vector2.Zero;
         private bool _showSnapPreview;
-
         private const float SnapDistance = 25f;
         private const float NeighborSnapMargin = 25f;
 
@@ -75,27 +70,30 @@ namespace SiegeEngine.Core.Managers
                     break;
                 }
             }
-
             if (topModal != null)
             {
                 topModal.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-                if (!topModal.Visible) return;
                 HandleSinglePanel(topModal, mousePos, mousePressed, winW, winH);
                 return;
             }
 
+            IPanel hoveredPanel = null;
             for (int i = _panels.Count - 1; i >= 0; i--)
             {
                 var panel = _panels[i];
                 if (!panel.Visible) continue;
 
-                panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
+                                 mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
 
-                if (!panel.Visible) continue;
-
-                if (HandleSinglePanel(panel, mousePos, mousePressed, winW, winH))
+                if (overPanel)
                 {
-                    break; // EXCLUSIVE: once any panel claims the drag, stop the loop
+                    hoveredPanel = panel;
+                    panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                    if (HandleSinglePanel(panel, mousePos, mousePressed, winW, winH))
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -122,16 +120,13 @@ namespace SiegeEngine.Core.Managers
                     }
                     ClampToViewport(_draggingPanel, winW, winH);
                     _draggingPanel.OnPanelResize(_draggingPanel.Size.X, _draggingPanel.Size.Y);
-
                     if (_draggingPanel is BasePanel bp)
                     {
                         bp.ResetDragState();
                     }
-
                     _draggingPanel = null;
                     _showSnapPreview = false;
                 }
-
                 if (_resizingPanel != null)
                 {
                     ClampToViewport(_resizingPanel, winW, winH);
@@ -146,7 +141,6 @@ namespace SiegeEngine.Core.Managers
         {
             bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
                              mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
-
             if (!overPanel) return false;
 
             if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
@@ -160,7 +154,14 @@ namespace SiegeEngine.Core.Managers
                     {
                         bp.StartTitleBarDrag(mousePos);
                     }
-                    return true; // stop the entire loop - no other panel can start dragging this frame
+                    // BringToFront
+                    int idx = _panels.IndexOf(panel);
+                    if (idx >= 0 && idx < _panels.Count - 1)
+                    {
+                        _panels.RemoveAt(idx);
+                        _panels.Add(panel);
+                    }
+                    return true;
                 }
             }
 
@@ -194,7 +195,6 @@ namespace SiegeEngine.Core.Managers
             foreach (var other in _panels)
             {
                 if (other == _draggingPanel || !other.Visible) continue;
-
                 if (Math.Abs(previewPos.X - (other.Position.X + other.Size.X)) < NeighborSnapMargin)
                     previewPos.X = other.Position.X + other.Size.X;
                 else if (Math.Abs((previewPos.X + previewSize.X) - other.Position.X) < NeighborSnapMargin)
@@ -205,7 +205,6 @@ namespace SiegeEngine.Core.Managers
                 else if (Math.Abs((previewPos.Y + previewSize.Y) - other.Position.Y) < NeighborSnapMargin)
                     previewPos.Y = other.Position.Y - previewSize.Y;
             }
-
             return true;
         }
 
@@ -220,7 +219,6 @@ namespace SiegeEngine.Core.Managers
         private void PerformLiveResize(Vector2 mousePos, int winW, int winH)
         {
             if (_resizingPanel == null) return;
-
             Vector2 delta = mousePos - _resizeStartMousePos;
             Vector2 newPos = _resizeStartPosition;
             Vector2 newSize = _resizeStartSize;
@@ -265,12 +263,10 @@ namespace SiegeEngine.Core.Managers
 
             _resizingPanel.Position = newPos;
             _resizingPanel.Size = newSize;
-
             if (_resizingPanel is BasePanel bp)
             {
                 bp.OnLiveResize(newSize.X, newSize.Y);
             }
-
             ClampToViewport(_resizingPanel, winW, winH);
         }
 
@@ -279,18 +275,14 @@ namespace SiegeEngine.Core.Managers
             foreach (var panel in _panels)
             {
                 if (!panel.Visible) continue;
-
                 int px = (int)panel.Position.X;
                 int py = winH - (int)(panel.Position.Y + panel.Size.Y);
                 uint pw = (uint)panel.Size.X;
                 uint ph = (uint)panel.Size.Y;
-
                 renderContext.Scissor(px, py, pw, ph);
                 renderContext.Viewport(px, py, pw, ph);
-
                 panel.Render();
             }
-
             renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
 

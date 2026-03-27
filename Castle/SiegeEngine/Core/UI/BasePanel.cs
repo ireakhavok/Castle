@@ -7,7 +7,6 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
@@ -122,6 +121,7 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
+
             if (_currentResizeHandle != ResizeHandle.None)
             {
                 if (mouseDown)
@@ -179,6 +179,7 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
+
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
             if (overPanel || WantsContinuousUpdate)
@@ -220,8 +221,8 @@ namespace SiegeEngine.Core.UI
 
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
-            if (DockingMode == DockingMode.Dynamic) return;
-
+            if (DockingMode == DockingMode.Dynamic) return; // Dynamic uses strategy snapping only
+            // (original Desktop snap logic unchanged)
             float cornerZone = winH * 0.25f;
             bool nearLeft = absMousePos.X < SnapDistance;
             bool nearRight = absMousePos.X > winW - SnapDistance;
@@ -292,12 +293,10 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.RefreshUI();
             }
             _renderContext.Disable(_renderContext.Enums.DepthTest);
-
             if (HasTitleBar && _chrome != null)
             {
                 _chrome.Render(_quadRenderer, Size.X, Size.Y);
             }
-
             if (_isDragging || IsResizing)
             {
                 _quadRenderer.DrawQuad(0, HeaderHeight, Size.X, Size.Y - HeaderHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
@@ -314,7 +313,6 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Render();
                 _renderContext.Disable(_renderContext.Enums.ScissorTest);
             }
-
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
             _quadRenderer.DrawQuad(0, Size.Y - bw, Size.X, bw, bc, Size.X, Size.Y);
