@@ -888,8 +888,13 @@ Folder: Managers
       - void AddPanel(IPanel panel)
         - Calls: panel.OnPanelResize
       - void RemovePanel(IPanel panel)
+        - Calls: CollapseNode, _root.ComputeLayout
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: DetectHoverTarget, HandleSinglePanel, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, bp.StartTitleBarDrag, tabbed.AddPanel
+        - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, ReplaceInTree, RestoreOriginalFloatingSize, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, bp.StartTitleBarDrag, dockedHit.GetResizeHandle, dockedHit.StartResize, tabbed.AddPanel
+      - DockNode ReplaceInTree( DockNode newNode,  DockNode oldNode, DockNode current)
+      - DockNode CollapseNode(DockNode node)
+      - void RestoreOriginalFloatingSize(IPanel panel)
+        - Calls: panel.OnPanelResize
       - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
         - Calls: bp.StartTitleBarDrag
       - void DetectHoverTarget( int winH,  int winW, Vector2 mousePos)

@@ -1,35 +1,4 @@
-1. Permanent IDE Menubar Enforcement (Phase 1 — we do this first, exactly as you requested)
-
-The IDE basepanel (your DockedHeader panel) stays fixed at top, full width, non-draggable.
-All other panels (docked or floating) are clamped so their title bar can never go above headerHeight.
-Dock root always computes layout starting at Y = headerHeight.
-When dragging a panel to the top edge it now snaps to “DockedTop below menubar”, never overlapping.
-
-2. Resizing (Phase 2)
-
-Floating panels get 5-pixel resize grips on all 4 edges + corners.
-Docked panels keep the existing splitter dragging (DockSplitNode) + gain visible grip highlights.
-Live size preview during resize (ghost outline).
-
-3. Panel-to-Panel Edge Snapping + Live Preview (Phase 3)
-
-While dragging a floating panel, we show a semi-transparent ghost rectangle + highlight the target edge.
-Snap tolerance = 15 px to any docked panel’s edge (left/right/top/bottom) or screen edge (respecting header).
-Drop near edge → automatically inserts a new DockSplitNode at that exact spot.
-Drop in center of a tab group → converts to tab.
-This solves your concern about floating panels behaving badly over other panels.
-
-4. Extra Polish (Phase 4)
-
-Double-click title = maximize within usable area.
-Right-click title = dock/float/close menu.
-All changes use your existing UIQuadRenderer for previews (no new dependencies).
-
-
-
-
-In the SiegeEngine.Core.UI.BasePanel class, the Render method currently contains a temporary gray-out hack that draws a semi-transparent gray quad over the panel content whenever _isDragging or IsResizing is true. This bypasses the normal UIOverlay.Render call entirely, which includes the scissor setup, chrome rendering, borders, and the full HTML content from the loaded UI files.
-
-This hack was introduced as a quick workaround because calling full layout or refresh operations inside the Update method during active dragging caused severe performance stuttering and made panel movement feel unresponsive. The only thing that should happen while _isDragging is true (set exclusively in StartTitleBarDrag and cleared on mouse release) is a lightweight update to the panel's Position property using the mouse offset.
-
-The precise goal is to eliminate this gray-out path completely so that every frame during dragging executes the exact same rendering sequence as when the panel is stationary: the title bar and close button from PanelChrome.Render are drawn first (outside any scissor), followed by the scissor-enabled UIOverlay.Render that shows the live HTML content, scrollbars, and borders. This must happen with zero additional layout recomputes, RefreshUI calls, or any other heavy operations inside the drag branch, ensuring the panel moves smoothly and remains fully interactive and visually complete the entire time the mouse button is held.
+We are now at the final stage of perfecting the IDEDockingStrategy. The system already correctly creates splits when you drop on the four directional arrows (North/South creates horizontal splits, West/East creates vertical splits), the center square adds tabs properly, title-bar tear-out restores the original floating size and position, and hover icons appear exactly where they should.
+However, the collapse behavior is still broken in one critical way: when you close a panel (or tear it out to floating) that is one half of a split, the surviving sibling does not expand to fill the entire space that the closed panel occupied. Instead, the split node remains in the tree, leaving either blank space or forcing the remaining panel into an incorrect orientation. This violates the core Visual Studio rule: closing or undocking one side of a split must instantly delete the split node itself so the remaining panel (or subtree) takes 100% of the parent area, with no orphan gaps and no extra splits left behind.
+Your task is to make the collapse logic aggressive and correct: whenever a panel is removed from any split (via close or tear-out), the entire split node must disappear from the tree, the surviving sibling must immediately inherit the full rectangle of the parent split, and the layout must recompute cleanly so the remaining panel(s) fill the space exactly as they would in Visual Studio. Do this without ever touching or breaking the existing floating-panel drag, hover-icon display, center-square tabbing, or directional arrow splitting logic.
+Once collapse works perfectly (sibling always fills, no blanks, no lingering splits), the next step will be to enable live splitter dragging so users can resize the ratio between split panels. Start by fixing collapse only.
