@@ -108,20 +108,42 @@ namespace SiegeEngine.Core.Managers
             }
             if (_draggingPanel != null && mouseReleased)
             {
-                if (_showHoverIcons && _hoveredPanelDuringDrag != null)
+                bool shouldDock = false;
+                if (_showHoverIcons)
                 {
-                    _floatingPanels.Remove(_draggingPanel);
-                    DockNode targetNode = _root.FindNode(_hoveredPanelDuringDrag);
-                    if (targetNode is DockTabbedNode tabbed)
+                    if (_hoveredPanelDuringDrag != null)
                     {
-                        tabbed.AddPanel(_draggingPanel);
+                        DockNode targetNode = _root.FindNode(_hoveredPanelDuringDrag);
+                        if (targetNode is DockTabbedNode tabbed)
+                        {
+                            tabbed.AddPanel(_draggingPanel);
+                        }
+                        else
+                        {
+                            _root.AddPanel(_draggingPanel);
+                        }
+                        shouldDock = true;
                     }
-                    else
+                    else if (_hoveringWorkspace)
                     {
-                        _root.AddPanel(_draggingPanel);
+                        // Only dock if released directly on the actual center icon square
+                        float cs = IconSize * 0.3f;
+                        if (mousePos.X >= _hoverIconCenter.X - cs * 0.5f && mousePos.X <= _hoverIconCenter.X + cs * 0.5f &&
+                            mousePos.Y >= _hoverIconCenter.Y - cs * 0.5f && mousePos.Y <= _hoverIconCenter.Y + cs * 0.5f)
+                        {
+                            _root.AddPanel(_draggingPanel);
+                            shouldDock = true;
+                        }
                     }
                 }
-                // Released in open space or only over workspace → stay floating (no remove)
+                if (shouldDock)
+                {
+                    _floatingPanels.Remove(_draggingPanel);
+                    _draggingPanel.DockState = DockState.Tabbed;
+                    _draggingPanel.AllowDragging = false;
+                    _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
+                }
+                // Released anywhere else (including workspace but off the center square) → stay floating
                 if (_draggingPanel is BasePanel bp) bp.ResetDragState();
                 _draggingPanel = null;
                 _hoveredPanelDuringDrag = null;
