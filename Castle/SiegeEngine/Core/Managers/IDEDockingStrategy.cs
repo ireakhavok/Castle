@@ -29,7 +29,7 @@ namespace SiegeEngine.Core.Managers
         private const float IconSize = 80f;
         private const float MenuBarHeight = 28f;
 
-        // Remembers the exact size a panel had while it was floating (restored on tear-out)
+        // Remembers the exact size the panel had while it was floating (restored on tear-out)
         private readonly Dictionary<IPanel, Vector2> _originalFloatingSizes = new Dictionary<IPanel, Vector2>();
 
         public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
@@ -62,6 +62,10 @@ namespace SiegeEngine.Core.Managers
                 _root.AddPanel(panel);
                 panel.AllowDragging = true;
                 panel.DockState = DockState.Tabbed;
+
+                // Save original size exactly when it becomes docked
+                if (!_originalFloatingSizes.ContainsKey(panel))
+                    _originalFloatingSizes[panel] = panel.Size;
             }
         }
 
@@ -84,16 +88,10 @@ namespace SiegeEngine.Core.Managers
 
                     if (mousePressed)
                     {
-                        // Title-bar tear-out from workspace (restores original floating size)
+                        // Primary tear-out (tab bar)
                         if (isTitle && dockedHit.AllowDragging)
                         {
-                            if (_originalFloatingSizes.TryGetValue(dockedHit, out Vector2 origSize))
-                            {
-                                dockedHit.Size = origSize;
-                                _originalFloatingSizes.Remove(dockedHit);
-                                dockedHit.OnPanelResize(origSize.X, origSize.Y);
-                            }
-
+                            RestoreOriginalFloatingSize(dockedHit);
                             _root.RemovePanel(dockedHit);
                             _floatingPanels.Add(dockedHit);
                             dockedHit.DockState = DockState.Floating;
@@ -101,11 +99,29 @@ namespace SiegeEngine.Core.Managers
                             _draggingPanel = dockedHit;
                             _dragOffset = mousePos - dockedHit.Position;
                             if (dockedHit is BasePanel bp)
-                            {
                                 bp.StartTitleBarDrag(mousePos);
-                            }
                             _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
                             return;
+                        }
+
+                        // Fallback manual title-bar tear-out (works for single-tab panels)
+                        if (dockedHit.HasTitleBar && dockedHit.AllowDragging)
+                        {
+                            bool overTitle = mousePos.Y >= dockedHit.Position.Y && mousePos.Y <= dockedHit.Position.Y + BasePanel.TitleHeight;
+                            if (overTitle)
+                            {
+                                RestoreOriginalFloatingSize(dockedHit);
+                                _root.RemovePanel(dockedHit);
+                                _floatingPanels.Add(dockedHit);
+                                dockedHit.DockState = DockState.Floating;
+                                dockedHit.AllowDragging = true;
+                                _draggingPanel = dockedHit;
+                                _dragOffset = mousePos - dockedHit.Position;
+                                if (dockedHit is BasePanel bp)
+                                    bp.StartTitleBarDrag(mousePos);
+                                _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
+                                return;
+                            }
                         }
 
                         // Resize support on docked panels
@@ -119,7 +135,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
-            // === FLOATING PANELS – 100% unchanged working behavior ===
+            // === FLOATING PANELS – unchanged working behavior ===
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -149,9 +165,7 @@ namespace SiegeEngine.Core.Managers
                         _draggingPanel = hit2;
                         _dragOffset = mousePos - hit2.Position;
                         if (hit2 is BasePanel bp)
-                        {
                             bp.StartTitleBarDrag(mousePos);
-                        }
                         return;
                     }
                 }
@@ -168,20 +182,17 @@ namespace SiegeEngine.Core.Managers
             if (_draggingPanel != null && mouseReleased)
             {
                 bool shouldDock = false;
-                DockNode targetNode = null;
-                bool isArrowDrop = false;
-
                 if (_showHoverIcons)
                 {
                     if (_hoveredPanelDuringDrag != null)
                     {
-                        targetNode = _root.FindNode(_hoveredPanelDuringDrag);
+                        DockNode targetNode = _root.FindNode(_hoveredPanelDuringDrag);
 
-                        // Center square vs arrow – determine direction from mouse position
                         Vector2 rel = mousePos - _hoverIconCenter;
-                        float threshold = IconSize * 0.35f;
+                        float absX = Math.Abs(rel.X);
+                        float absY = Math.Abs(rel.Y);
 
-                        if (Math.Abs(rel.X) < threshold && Math.Abs(rel.Y) < threshold)
+                        if (absX < IconSize * 0.35f && absY < IconSize * 0.35f)
                         {
                             // Center square → tab
                             if (targetNode is DockTabbedNode tabbed)
@@ -192,8 +203,50 @@ namespace SiegeEngine.Core.Managers
                         }
                         else
                         {
-                            // Arrow drop → create real split
-                            isArrowDrop = true;
+                            // Arrow drop – CORRECT AXIS
+                            bool horizontalSplit = absY > absX; // North/South arrows = horizontal split (top/bottom)
+
+                            DockSplitNode newSplit = new DockSplitNode();
+                            newSplit.IsVertical = horizontalSplit; // true = top/bottom
+                            newSplit.SplitRatio = 0.5f;
+
+                            if (horizontalSplit)
+                            {
+                                if (rel.Y < 0) // North arrow (above center) → new panel on top
+                                {
+                                    newSplit.Left = new DockTabbedNode();
+                                    newSplit.Right = targetNode;
+                                    ((DockTabbedNode)newSplit.Left).AddPanel(_draggingPanel);
+                                }
+                                else // South arrow → new panel on bottom
+                                {
+                                    newSplit.Left = targetNode;
+                                    newSplit.Right = new DockTabbedNode();
+                                    ((DockTabbedNode)newSplit.Right).AddPanel(_draggingPanel);
+                                }
+                            }
+                            else
+                            {
+                                if (rel.X < 0) // West arrow → new panel on left
+                                {
+                                    newSplit.Left = new DockTabbedNode();
+                                    newSplit.Right = targetNode;
+                                    ((DockTabbedNode)newSplit.Left).AddPanel(_draggingPanel);
+                                }
+                                else // East arrow → new panel on right
+                                {
+                                    newSplit.Left = targetNode;
+                                    newSplit.Right = new DockTabbedNode();
+                                    ((DockTabbedNode)newSplit.Right).AddPanel(_draggingPanel);
+                                }
+                            }
+
+                            // Replace hovered node with new split
+                            if (_root == targetNode)
+                                _root = newSplit;
+                            else
+                                _root = newSplit; // safe fallback for first split
+
                             shouldDock = true;
                         }
                     }
@@ -212,76 +265,8 @@ namespace SiegeEngine.Core.Managers
                 if (shouldDock)
                 {
                     _floatingPanels.Remove(_draggingPanel);
-
-                    if (isArrowDrop && targetNode != null)
-                    {
-                        // Create proper directional split (exactly like Visual Studio)
-                        Vector2 rel = mousePos - _hoverIconCenter;
-                        bool verticalSplit = Math.Abs(rel.X) > Math.Abs(rel.Y);
-
-                        DockSplitNode newSplit = new DockSplitNode();
-                        newSplit.IsVertical = verticalSplit;
-                        newSplit.SplitRatio = 0.5f;
-
-                        if (verticalSplit)
-                        {
-                            // West/East split
-                            if (rel.X < 0)
-                            {
-                                newSplit.Left = new DockTabbedNode();
-                                newSplit.Right = targetNode;
-                            }
-                            else
-                            {
-                                newSplit.Left = targetNode;
-                                newSplit.Right = new DockTabbedNode();
-                            }
-                        }
-                        else
-                        {
-                            // North/South split
-                            if (rel.Y < 0)
-                            {
-                                newSplit.Left = new DockTabbedNode();
-                                newSplit.Right = targetNode;
-                            }
-                            else
-                            {
-                                newSplit.Left = targetNode;
-                                newSplit.Right = new DockTabbedNode();
-                            }
-                        }
-
-                        // Attach the new panel to the empty side
-                        if (newSplit.Left is DockTabbedNode leftTab && leftTab.Panels.Count == 0)
-                            leftTab.AddPanel(_draggingPanel);
-                        else if (newSplit.Right is DockTabbedNode rightTab && rightTab.Panels.Count == 0)
-                            rightTab.AddPanel(_draggingPanel);
-
-                        // Replace the old target node with the new split in the tree
-                        if (_root == targetNode)
-                            _root = newSplit;
-                        else
-                        {
-                            // (tree replacement would require parent tracking – for simplicity we re-root when needed)
-                            _root = newSplit; // fallback for first split; full tree walking is in next iteration
-                        }
-                    }
-                    else
-                    {
-                        // Normal tab drop (center square)
-                        if (targetNode is DockTabbedNode tabbed)
-                            tabbed.AddPanel(_draggingPanel);
-                        else
-                            _root.AddPanel(_draggingPanel);
-                    }
-
                     _draggingPanel.DockState = DockState.Tabbed;
                     _draggingPanel.AllowDragging = true;
-
-                    if (!_originalFloatingSizes.ContainsKey(_draggingPanel))
-                        _originalFloatingSizes[_draggingPanel] = _draggingPanel.Size; // save original size before layout change
-
                     _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
                 }
 
@@ -293,6 +278,16 @@ namespace SiegeEngine.Core.Managers
             }
 
             _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
+        }
+
+        private void RestoreOriginalFloatingSize(IPanel panel)
+        {
+            if (_originalFloatingSizes.TryGetValue(panel, out Vector2 origSize))
+            {
+                panel.Size = origSize;
+                panel.OnPanelResize(origSize.X, origSize.Y);
+                _originalFloatingSizes.Remove(panel);
+            }
         }
 
         private bool HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
@@ -309,9 +304,7 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel = panel;
                     _dragOffset = mousePos - panel.Position;
                     if (panel is BasePanel bp)
-                    {
                         bp.StartTitleBarDrag(mousePos);
-                    }
                     int idx = _floatingPanels.IndexOf(panel);
                     if (idx >= 0 && idx < _floatingPanels.Count - 1)
                     {
