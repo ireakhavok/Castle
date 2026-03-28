@@ -69,9 +69,9 @@ namespace SiegeEngine.Core.Managers
             if (_root != null)
             {
                 _root.RemovePanel(panel);
-                _root = CollapseNode(_root); // collapse split completely so sibling fills space
+                _root = CollapseNode(_root);
                 if (_root != null)
-                    _root.ComputeLayout(0, MenuBarHeight, 1920, 1080); // full recompute to force sibling expansion
+                    _root.ComputeLayout(0, MenuBarHeight, 1920, 1080);
             }
         }
         public bool HasActiveContent()
@@ -80,7 +80,8 @@ namespace SiegeEngine.Core.Managers
         }
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
-            if (_root == null) return;
+            if (_root == null && _floatingPanels.Count == 0) return;
+
             // === DOCKED / WORKSPACE PANELS – title-bar tear-out + resize + close ===
             if (_root.HitTest(mousePos, out IPanel dockedHit, out bool isTitle, out _, out _, out _))
             {
@@ -255,6 +256,21 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel.AllowDragging = true;
                     _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
                 }
+                else
+                {
+                    // Only detach from tree if it was actually docked before this drag
+                    if (_root != null && _root.FindNode(_draggingPanel) != null)
+                    {
+                        _root.RemovePanel(_draggingPanel);
+                        _root = CollapseNode(_root);
+                    }
+                    // Add to floating list only if not already present (protects startup floating panels)
+                    if (!_floatingPanels.Contains(_draggingPanel))
+                        _floatingPanels.Add(_draggingPanel);
+                    _draggingPanel.DockState = DockState.Floating;
+                    _draggingPanel.AllowDragging = true;
+                    RestoreOriginalFloatingSize(_draggingPanel);
+                }
                 if (_draggingPanel is BasePanel bp) bp.ResetDragState();
                 _draggingPanel = null;
                 _hoveredPanelDuringDrag = null;
@@ -282,26 +298,20 @@ namespace SiegeEngine.Core.Managers
         private DockNode CollapseNode(DockNode node)
         {
             if (node == null) return null;
-            // Aggressive collapse: keep collapsing until stable
-            bool changed = true;
-            while (changed)
+
+            // Prune empty tabbed nodes (this eliminates the blank panel space)
+            if (node is DockTabbedNode tabbed && tabbed.Panels.Count == 0)
+                return null;
+
+            if (node is DockSplitNode split)
             {
-                changed = false;
-                if (node is DockSplitNode split)
-                {
-                    split.Left = CollapseNode(split.Left);
-                    split.Right = CollapseNode(split.Right);
-                    if (split.Left == null)
-                    {
-                        node = split.Right;
-                        changed = true;
-                    }
-                    else if (split.Right == null)
-                    {
-                        node = split.Left;
-                        changed = true;
-                    }
-                }
+                split.Left = CollapseNode(split.Left);
+                split.Right = CollapseNode(split.Right);
+
+                if (split.Left == null) return split.Right;
+                if (split.Right == null) return split.Left;
+
+                return split;
             }
             return node;
         }
