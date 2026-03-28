@@ -71,8 +71,7 @@ namespace SiegeEngine.Core.Managers
 
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
-            // === WORKSPACE (docked) PANELS – this is the fix for the three broken features ===
-            // Title-bar tear-out, close button, and resizing now work exactly as they do on floating panels
+            // === DOCKED / WORKSPACE PANELS – title-bar tear-out + resize + close (now rock-solid) ===
             if (_root.HitTest(mousePos, out IPanel dockedHit, out bool isTitle, out _, out _, out _))
             {
                 if (dockedHit != null)
@@ -81,9 +80,9 @@ namespace SiegeEngine.Core.Managers
 
                     if (mousePressed)
                     {
-                        if (isTitle)
+                        // Primary title-bar tear-out (from tab bar or from single-panel chrome)
+                        if (isTitle && dockedHit.AllowDragging)
                         {
-                            // Title-bar tear-out from workspace (now works)
                             _root.RemovePanel(dockedHit);
                             _floatingPanels.Add(dockedHit);
                             dockedHit.DockState = DockState.Floating;
@@ -98,6 +97,27 @@ namespace SiegeEngine.Core.Managers
                             return;
                         }
 
+                        // Fallback manual title-bar detection (ensures tear-out always works even when only one tab is present)
+                        if (dockedHit.HasTitleBar && dockedHit.AllowDragging)
+                        {
+                            bool overTitle = mousePos.Y >= dockedHit.Position.Y && mousePos.Y <= dockedHit.Position.Y + BasePanel.TitleHeight;
+                            if (overTitle)
+                            {
+                                _root.RemovePanel(dockedHit);
+                                _floatingPanels.Add(dockedHit);
+                                dockedHit.DockState = DockState.Floating;
+                                dockedHit.AllowDragging = true;
+                                _draggingPanel = dockedHit;
+                                _dragOffset = mousePos - dockedHit.Position;
+                                if (dockedHit is BasePanel bp)
+                                {
+                                    bp.StartTitleBarDrag(mousePos);
+                                }
+                                _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
+                                return;
+                            }
+                        }
+
                         // Resize support on docked panels
                         ResizeHandle handle = dockedHit.GetResizeHandle(mousePos);
                         if (handle != ResizeHandle.None)
@@ -109,7 +129,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
-            // === FLOATING PANELS – 100% unchanged from the version that already worked ===
+            // === FLOATING PANELS – 100% unchanged working behavior ===
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -122,9 +142,7 @@ namespace SiegeEngine.Core.Managers
                     hoveredPanel = panel;
                     panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
                     if (HandleSinglePanel(panel, mousePos, mousePressed, winW, winH))
-                    {
                         break;
-                    }
                 }
             }
 
@@ -202,7 +220,6 @@ namespace SiegeEngine.Core.Managers
                 _hoveringWorkspace = false;
             }
 
-            // Workspace panels stay interactive (close button handled inside panel.Update → PanelChrome)
             _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
         }
 
