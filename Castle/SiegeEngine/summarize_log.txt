@@ -525,7 +525,7 @@ Found 5 dependencies
 Found: IPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IPanel.cs
-Read 1400 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IPanel.cs
+Read 1392 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Interfaces\IPanel.cs
 Namespace: SiegeEngine.Core.Interfaces
 Found 2 dependencies
 Found: IProjectionProvider.cs
@@ -571,13 +571,13 @@ Found 7 dependencies
 Found: DockManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
-Read 10911 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
+Read 10841 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 9 dependencies
 Found: DynamicDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DynamicDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DynamicDockingStrategy.cs
-Read 12478 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DynamicDockingStrategy.cs
+Read 12919 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DynamicDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 9 dependencies
 Found: GameModeManager.cs
@@ -586,6 +586,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\GameModeMan
 Read 454 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\GameModeManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 2 dependencies
+Found: IDEDockingStrategy.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Read 12891 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Namespace: SiegeEngine.Core.Managers
+Found 9 dependencies
 Found: LevelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\LevelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\LevelManager.cs
@@ -607,7 +613,7 @@ Found 7 dependencies
 Found: PanelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
-Read 5071 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
+Read 5083 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 8 dependencies
 Found: ProjectSettings.cs
@@ -875,7 +881,7 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
-Read 14957 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
+Read 15048 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 7 dependencies
 Found: Core.cs

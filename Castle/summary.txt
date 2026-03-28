@@ -1464,6 +1464,41 @@ Folder: SiegeEngine
 - File: IControlContext.cs
   - Class: IControlContext (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: SiegeEngine.Core.Definitions, System
+- File: IDEDockingStrategy.cs
+  - Class: IDEDockingStrategy (Namespace: SiegeEngine.Core.Managers)
+    - Inherits: IDockingStrategy
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - DockNode _root
+      - List<IPanel> _floatingPanels
+      - IPanel _draggingPanel
+      - Vector2 _dragOffset
+      - IRenderContext _renderContext
+      - IControlContext _controlContext
+      - EventBus _eventBus
+      - UIQuadRenderer _quadRenderer
+      - IPanel _hoveredPanelDuringDrag
+      - bool _showHoverIcons
+      - Vector2 _hoverIconCenter
+      - bool _hoveringWorkspace
+      - float IconSize
+      - float MenuBarHeight
+    - Methods:
+      - constructor IDEDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
+        - Calls: UIQuadRenderer
+      - void AddPanel(IPanel panel)
+        - Calls: panel.OnPanelResize
+      - void RemovePanel(IPanel panel)
+      - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
+        - Calls: DetectHoverTarget, HandleSinglePanel, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, bp.StartTitleBarDrag, tabbed.AddPanel
+      - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
+        - Calls: bp.StartTitleBarDrag
+      - void DetectHoverTarget( int winH,  int winW, Vector2 mousePos)
+        - Calls: _root.HitTest
+      - void Render( int winH,  int winW, IRenderContext renderContext)
+        - Calls: _quadRenderer.DrawLine, _quadRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
+      - void ComputeLayout( int winH, int winW)
 - File: IDockingStrategy.cs
   - Class: IDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System.Numerics
@@ -2060,10 +2095,11 @@ Folder: SiegeEngine
       - CaptureManager _captureManager
       - IDockingStrategy _desktopStrategy
       - DynamicDockingStrategy _dynamicStrategy
+      - IDEDockingStrategy _ideStrategy
       - DockingMode _sceneDefaultMode
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: CaptureManager, DesktopDockingStrategy, DynamicDockingStrategy, _controlContext.SetScrollCallback
+        - Calls: CaptureManager, DesktopDockingStrategy, DynamicDockingStrategy, IDEDockingStrategy, _controlContext.SetScrollCallback
       - void SetSceneDefaultDockingMode(DockingMode mode)
       - void OnOpenPanel(OpenPanelEvent e)
         - Calls: AddPanel
