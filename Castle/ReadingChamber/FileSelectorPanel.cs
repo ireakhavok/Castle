@@ -13,7 +13,7 @@ using SiegeEngine.Core.UI;
 
 namespace ReadingChamber
 {
-    public class FileSelectorPanel : ClosablePanel
+    public class FileSelectorPanel : BasePanel
     {
         private class FileSelectorUIOverlay : UIOverlay
         {
@@ -37,12 +37,15 @@ namespace ReadingChamber
         private readonly string[] _allowedExtensions;
         public object UserData { get; set; }
 
-        public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialDir, params string[] allowedExtensions) : base(renderContext, controlContext, window, eventBus)
+        public FileSelectorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialDir, params string[] allowedExtensions)
+            : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
+            IsModal = true;
             _currentDir = initialDir;
             _allowedExtensions = allowedExtensions?.Select(ext => ext.ToLowerInvariant()).ToArray();
             Scaling = ScalingMode.Fill;
-            IsModal = true;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -82,23 +85,16 @@ namespace ReadingChamber
                 Console.WriteLine($"FileSelectorPanel: Template HTML file not found at {templatePath}");
                 return;
             }
-
             string templateHtml = File.ReadAllText(templatePath);
-
-            // === CRITICAL FIX: remove the display:none that was hiding the entire table ===
             templateHtml = templateHtml.Replace("style=\"display: none;\"", "");
-
             templateHtml = templateHtml.Replace("</style>", " .file-table td:not(:last-child), .file-table th:not(:last-child) { border-right: 1px solid #333333; } .file-table a { color: inherit; text-decoration: none; display: block; } .grid-item a { color: inherit; text-decoration: none; display: block; height: 100%; width: 100%; } \n</style>");
-
             StringBuilder dynamicItems = new StringBuilder();
-
             var dirs = Directory.GetDirectories(_currentDir);
             var files = Directory.GetFiles(_currentDir);
             if (_allowedExtensions != null && _allowedExtensions.Length > 0)
             {
                 files = files.Where(f => _allowedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant())).ToArray();
             }
-
             var items = new List<(string Name, string Path, bool IsDir, long Size, DateTime Modified)>();
             foreach (var dir in dirs)
             {
@@ -109,7 +105,6 @@ namespace ReadingChamber
                 var fi = new FileInfo(file);
                 items.Add((fi.Name, file, false, fi.Length, fi.LastWriteTime));
             }
-
             if (_sortBy == "name")
             {
                 items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
@@ -122,7 +117,6 @@ namespace ReadingChamber
             {
                 items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Modified).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Modified).ToList();
             }
-
             if (items.Count == 0)
             {
                 dynamicItems.Append("<tr><td colspan=\"4\" style=\"text-align: center; color: #888888;\">No files or directories found.</td></tr>");
@@ -139,14 +133,11 @@ namespace ReadingChamber
                     dynamicItems.Append($"<tr class='{cls}'><td><a data-hook=\"{hook}\">{icon}</a></td><td><a data-hook=\"{hook}\">{item.Name}</a></td><td><a data-hook=\"{hook}\">{sizeStr}</a></td><td><a data-hook=\"{hook}\">{dateStr}</a></td></tr>");
                 }
             }
-
             string currentDirEscaped = _currentDir.Replace("\\", "\\\\");
             string modifiedHtml = templateHtml.Replace("<!--CURRENT_DIR-->", currentDirEscaped).Replace("<!--DYNAMIC_ITEMS-->", dynamicItems.ToString());
             modifiedHtml = modifiedHtml.Replace("<h2>Files in <!--CURRENT_DIR--></h2>", "");
             modifiedHtml = modifiedHtml.Replace("class=\"file-table\"", $"class=\"file-table {_viewType}\"");
-
             _uiOverlay.LoadUI(modifiedHtml);
-
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();

@@ -9,9 +9,10 @@ using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
 using System.Numerics;
+
 namespace ToolChest
 {
-    public class BrushPanel : CompanionPanel
+    public class BrushPanel : BasePanel
     {
         private class BrushUIOverlay : UIOverlay
         {
@@ -26,21 +27,30 @@ namespace ToolChest
                 _parent.HandleBrushDataHook(hook);
             }
         }
+
         private Brush _currentBrush = new Brush();
+
         public BrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
+            AllowDragging = true;
+            DockState = DockState.Floating;
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new BrushUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
             LoadBrushUI();
             _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString(), _currentBrush.Falloff.ToString()), true);
         }
+
         private void LoadBrushUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BrushPanelUI.html");
@@ -50,6 +60,7 @@ namespace ToolChest
             }
             _uiOverlay.RefreshUI();
         }
+
         private void HandleBrushDataHook(string hook)
         {
             bool changed = false;
@@ -112,11 +123,13 @@ namespace ToolChest
                 _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString(), _currentBrush.Falloff.ToString()), true);
             }
         }
+
         public override void Detach()
         {
             _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, "", ""), true);
             base.Detach();
         }
+
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new BrushPanel(renderContext, controlContext, window, eventBus);

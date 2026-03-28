@@ -1,11 +1,16 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.UI
+// File: render.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI.Elements;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
 
 namespace SiegeEngine.Core.UI
 {
+
     public partial class HtmlElement
     {
         public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
@@ -66,17 +71,7 @@ namespace SiegeEngine.Core.UI
             }
             if (_bgRenderer != null)
             {
-                renderContext.Enable(renderContext.Enums.ScissorTest);
-                int scissorY = (int)(viewportHeight - (ComputedBackgroundY + ComputedBackgroundHeight));
-                renderContext.Scissor((int)ComputedBackgroundX, scissorY, (uint)ComputedBackgroundWidth, (uint)ComputedBackgroundHeight);
                 _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, viewportWidth, viewportHeight);
-                renderContext.Disable(renderContext.Enums.ScissorTest);
-            }
-            if (Style.Overflow == "hidden" || (Style.OverflowY ?? "") == "hidden")
-            {
-                renderContext.Enable(renderContext.Enums.ScissorTest);
-                int scissorY = (int)(viewportHeight - (ComputedContentY + ComputedContentHeight));
-                renderContext.Scissor((int)ComputedContentX, scissorY, (uint)ComputedContentWidth, (uint)ComputedContentHeight);
             }
             foreach (var child in Children)
             {
@@ -85,10 +80,6 @@ namespace SiegeEngine.Core.UI
                     continue;
                 }
                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, contentMatrix);
-            }
-            if (Style.Overflow == "hidden" || (Style.OverflowY ?? "") == "hidden")
-            {
-                renderContext.Disable(renderContext.Enums.ScissorTest);
             }
             if (_needsVerticalScrollbar)
             {

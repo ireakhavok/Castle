@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Core/AssetParsing
+// File: FBXParser.cs
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,7 +8,6 @@ using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public static class FBXParser
@@ -215,6 +216,14 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                 }
             }
+        }
+        public static void Export(FBXModel fbxModel, string outputPath)
+        {
+            // Placeholder for FBX export logic
+            // Implement binary FBX writer here
+            // For now, log and return
+            FBXParserBase.Log($"FBXParser: Exporting model to {outputPath} (implementation pending)");
+            // To implement: reverse the parsing logic to write binary FBX
         }
     }
 }

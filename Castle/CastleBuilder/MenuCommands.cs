@@ -7,13 +7,11 @@ using MapRoom;
 using ReadingChamber;
 using ToolChest;
 using System.IO;
-
 namespace CastleBuilder
 {
     public static class MenuCommands
     {
         private static readonly string DefaultProjectsPath = @"C:\Users\ireak\source\CastleBuilder\Projects";
-
         public static void LoadProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             if (!Directory.Exists(DefaultProjectsPath)) Directory.CreateDirectory(DefaultProjectsPath);
@@ -22,18 +20,15 @@ namespace CastleBuilder
             selector.IsModal = true;
             eventBus.Publish(new OpenPanelEvent(selector) { Mode = OpenMode.Overlay });
         }
-
         public static void SaveProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
         }
-
         public static void SaveProjectAs(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var savePanel = new SaveProjectPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(savePanel) { Mode = OpenMode.Overlay });
         }
-
         // All editor panels now open as Overlay (so IDE menu bar never disappears)
         public static void OpenTerrain(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -54,6 +49,11 @@ namespace CastleBuilder
         public static void OpenHierarchy(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             TreeViewPanel.Open(renderContext, controlContext, window, eventBus);
+        }
+        // === NEW 2D CREATOR ENTRY (additive) ===
+        public static void Open2DCreator(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            TwoDCreatorPanel.Open(renderContext, controlContext, window, eventBus);
         }
     }
 }

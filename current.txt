@@ -24,3 +24,12 @@ This solves your concern about floating panels behaving badly over other panels.
 Double-click title = maximize within usable area.
 Right-click title = dock/float/close menu.
 All changes use your existing UIQuadRenderer for previews (no new dependencies).
+
+
+
+
+In the SiegeEngine.Core.UI.BasePanel class, the Render method currently contains a temporary gray-out hack that draws a semi-transparent gray quad over the panel content whenever _isDragging or IsResizing is true. This bypasses the normal UIOverlay.Render call entirely, which includes the scissor setup, chrome rendering, borders, and the full HTML content from the loaded UI files.
+
+This hack was introduced as a quick workaround because calling full layout or refresh operations inside the Update method during active dragging caused severe performance stuttering and made panel movement feel unresponsive. The only thing that should happen while _isDragging is true (set exclusively in StartTitleBarDrag and cleared on mouse release) is a lightweight update to the panel's Position property using the mouse offset.
+
+The precise goal is to eliminate this gray-out path completely so that every frame during dragging executes the exact same rendering sequence as when the panel is stationary: the title bar and close button from PanelChrome.Render are drawn first (outside any scissor), followed by the scissor-enabled UIOverlay.Render that shows the live HTML content, scrollbars, and borders. This must happen with zero additional layout recomputes, RefreshUI calls, or any other heavy operations inside the drag branch, ensuring the panel moves smoothly and remains fully interactive and visually complete the entire time the mouse button is held.

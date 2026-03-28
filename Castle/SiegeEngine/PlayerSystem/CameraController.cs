@@ -5,7 +5,6 @@ using System.Numerics;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
-
 namespace SiegeEngine.PlayerSystem
 {
     public enum Perspective
@@ -14,41 +13,38 @@ namespace SiegeEngine.PlayerSystem
         ThirdPerson,
         OverTheShoulder
     }
-
     public class CameraController
     {
-        private readonly IControlContext _controlContext;
-        private readonly IntPtr _window;
-        private readonly Player _player;
-        private Perspective _perspective = Perspective.ThirdPerson;
-        private float _yaw = 0f;
-        private float _pitch = 0f;
-        private float _distance = 200.0f;
-        private readonly float _minDistance = 50.0f;
-        private readonly float _maxDistance = 8000.0f;
-        private readonly float _zoomSpeed = 1000.0f;
-        private readonly float _xSpeed = 2.0f;
-        private readonly float _ySpeed = 2.0f;
-        private readonly float _pitchMinLimit = -89f;
-        private readonly float _pitchMaxLimit = 89f;
-        private Vector2 _lastMousePos = Vector2.Zero;
-        private bool _firstMouseMove = true;
-        private bool _isRightShoulder = true;
-        private readonly float _shoulderShiftAmount = 300f;
-        private readonly float _playerHeight = 190f;
-        private bool _isPPressed = false;
-        private bool _wasPPressedLastFrame = false;
-        private bool _wasShiftPressedLastFrame = false;
-        private bool _wasTabPressedLastFrame = false;
-        private Vector3 _position;
-
+        protected readonly IControlContext _controlContext;
+        protected readonly IntPtr _window;
+        protected readonly Player _player;
+        protected Perspective _perspective = Perspective.ThirdPerson;
+        protected float _yaw = 0f;
+        protected float _pitch = 0f;
+        protected float _distance = 200.0f;
+        protected readonly float _minDistance = 50.0f;
+        protected readonly float _maxDistance = 8000.0f;
+        protected readonly float _zoomSpeed = 1000.0f;
+        protected readonly float _xSpeed = 2.0f;
+        protected readonly float _ySpeed = 2.0f;
+        protected readonly float _pitchMinLimit = -89f;
+        protected readonly float _pitchMaxLimit = 89f;
+        protected Vector2 _lastMousePos = Vector2.Zero;
+        protected bool _firstMouseMove = true;
+        protected bool _isRightShoulder = true;
+        protected readonly float _shoulderShiftAmount = 300f;
+        protected readonly float _playerHeight = 190f;
+        protected bool _isPPressed = false;
+        protected bool _wasPPressedLastFrame = false;
+        protected bool _wasShiftPressedLastFrame = false;
+        protected bool _wasTabPressedLastFrame = false;
+        protected Vector3 _position;
         public Vector3 Position => _position;
-        public Matrix4x4 ViewMatrix { get; private set; }
+        public Matrix4x4 ViewMatrix { get; set; }
         public float Yaw => _yaw;
         public Perspective CurrentPerspective => _perspective;
         public float Pitch => _pitch;
         public Vector2 MousePosition { get; private set; }
-
         public CameraController(IControlContext controlContext, IntPtr window, Player player = null)
         {
             _controlContext = controlContext ?? throw new ArgumentNullException(nameof(controlContext));
@@ -57,7 +53,6 @@ namespace SiegeEngine.PlayerSystem
             _position = _player?.Physics.Position + new Vector3(0, 0, _playerHeight) ?? new Vector3(64, 36, 5);
             UpdateCamera();
         }
-
         public void Update(float deltaTime, float scrollDelta, bool isGameActive)
         {
             bool focused = _controlContext.GetWindowAttrib(_window, WindowAttribute.Focused);
@@ -74,7 +69,7 @@ namespace SiegeEngine.PlayerSystem
             if (!isGameActive)
             {
                 MousePosition = mousePos;
-                Console.WriteLine($"Menu mouse position: {MousePosition}");
+                //Console.WriteLine($"Menu mouse position: {MousePosition}");
                 _firstMouseMove = true;
             }
             else
@@ -139,7 +134,6 @@ namespace SiegeEngine.PlayerSystem
                 UpdateCamera();
             }
         }
-
         private void ChangePerspective()
         {
             _perspective = _perspective switch
@@ -151,8 +145,7 @@ namespace SiegeEngine.PlayerSystem
             };
             Console.WriteLine($"Camera perspective changed to: {_perspective}");
         }
-
-        private void UpdateCamera()
+        protected void UpdateCamera()
         {
             if (_player != null) // Player mode only
             {

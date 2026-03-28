@@ -82,15 +82,16 @@ Folder: Core
       - Vector2 _resizeStartSize
       - bool IsResizing
       - bool _dockable
+      - PanelChrome _chrome
     - Methods:
       - constructor BasePanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: CreateUIOverlay
       - UIOverlay CreateUIOverlay()
         - Calls: UIOverlay
       - void Init()
-        - Calls: UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
+        - Calls: PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: ApplySnap, OnLiveResize, OnPanelResize, _controlContext.GetTime, _controlContext.GetWindowSize, _uiOverlay.RefreshUI, _uiOverlay.Scroll
+        - Calls: ApplySnap, OnLiveResize, OnPanelResize, _chrome.HandleUpdate, _controlContext.GetWindowSize, _uiOverlay.Scroll
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
@@ -102,6 +103,11 @@ Folder: Core
       - void OnPanelResize( float h, float w)
         - Calls: _uiOverlay.RefreshUI
       - void OnLiveResize( float h, float w)
+      - void StartTitleBarDrag(Vector2 mousePos)
+        - Calls: _controlContext.GetTime
+      - void ResetDragState()
+      - void Close()
+        - Calls: ClosePanelEvent
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
@@ -111,7 +117,7 @@ Folder: Core
       - Quaternion ToQuaternion(Vector3 degrees)
       - Matrix4x4 CreateFromEuler( int order, Vector3 degrees)
 - File: ButtonElement.cs
-  - Class: ButtonElement (Namespace: SiegeEngine.Core.UI)
+  - Class: ButtonElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics, System.Reflection
@@ -124,6 +130,8 @@ Folder: Core
         - Calls: Invoke
       - void AttachHook(string hookStr)
         - Calls: mi.Invoke
+- File: CameraType.cs
+  - Class: CameraType (Namespace: SiegeEngine.Core.Definitions)
 - File: CaptureManager.cs
   - Class: CaptureManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System.Numerics
@@ -162,16 +170,6 @@ Folder: Core
       - bool ValidateInventory( object data,  string action, int entityId)
       - RayTraceResult RequestRayTrace( Vector3 direction,  float maxDistance, Vector3 start)
       - void QueueNetworkEvent(IEvent e)
-- File: ClosablePanel.cs
-  - Class: ClosablePanel (Namespace: SiegeEngine.Core.UI)
-    - Inherits: BasePanel
-    
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Numerics
-    - Methods:
-      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: ClosePanelEvent
-      - void Render()
-        - Calls: _quadRenderer.DrawLine, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable
 - File: ClosePanelEvent.cs
   - Class: ClosePanelEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -183,17 +181,6 @@ Folder: Core
       - constructor ClosePanelEvent(IPanel panel)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
-- File: CompanionPanel.cs
-  - Class: CompanionPanel (Namespace: SiegeEngine.Core.UI)
-    - Inherits: ClosablePanel
-    
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Numerics
-    - Methods:
-      - UIOverlay CreateUIOverlay()
-        - Calls: UIOverlay
-      - void Init()
-        - Calls: OnPanelResize
-      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
 - File: ContextManager.cs
   - Class: ContextManager (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: System
@@ -206,7 +193,7 @@ Folder: Core
       - IControlContext ControlContext
 - File: Core.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics
     - Fields:
       - BackgroundRenderer _bgRenderer
       - string _baseDir
@@ -300,15 +287,11 @@ Folder: Core
       - uint NumArgumentDescs
       - nint pArgumentDescs
       - uint NodeMask
-- File: DivElement.cs
-  - Class: DivElement (Namespace: SiegeEngine.Core.UI)
-    - Inherits: HtmlElement
+- File: DesktopDockingStrategy.cs
+  - Class: DesktopDockingStrategy (Namespace: SiegeEngine.Core.Managers)
+    - Inherits: IDockingStrategy
     
-    - Methods:
-      - constructor DivElement()
-- File: DockManager.cs
-  - Class: DockManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
     - Fields:
       - DockNode _root
       - List<IPanel> _floatingPanels
@@ -333,12 +316,12 @@ Folder: Core
       - Vector2 _snapPreviewSize
       - bool _showSnapPreview
     - Methods:
-      - constructor DockManager( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
+      - constructor DesktopDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
         - Calls: UIQuadRenderer
+      - float GetHeaderHeight()
       - void AddPanel(IPanel panel)
         - Calls: GetHeaderHeight
       - void RemovePanel(IPanel panel)
-      - float GetHeaderHeight()
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
         - Calls: ClosePanelEvent, ComputeSnapPreview, DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, panel.GetResizeHandle, panel.OnPanelResize, panel.StartResize
       - bool ComputeSnapPreview( int winH,  int winW,  out Vector2, Vector2 mousePos)
@@ -347,6 +330,65 @@ Folder: Core
         - Calls: newTabbed.AddPanel
       - void Render( int winH,  int winW, IRenderContext renderContext)
         - Calls: _ghostRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
+      - void ComputeLayout( int winH, int winW)
+- File: DivElement.cs
+  - Class: DivElement (Namespace: SiegeEngine.Core.UI.Elements)
+    - Inherits: HtmlElement
+    
+    - Methods:
+      - constructor DivElement()
+- File: DockManager.cs
+  - Class: DockManager (Namespace: SiegeEngine.Core.Managers)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Fields:
+      - IDockingStrategy _strategy
+    - Methods:
+      - constructor DockManager( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
+        - Calls: DesktopDockingStrategy
+      - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
+      - void Render( int winH,  int winW, IRenderContext renderContext)
+      - void ComputeLayout( int winH, int winW)
+- File: DockingMode.cs
+  - Class: DockingMode (Namespace: SiegeEngine.Core.Definitions)
+- File: DynamicDockingStrategy.cs
+  - Class: DynamicDockingStrategy (Namespace: SiegeEngine.Core.Managers)
+    - Inherits: IDockingStrategy
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - List<IPanel> _panels
+      - IPanel _draggingPanel
+      - Vector2 _dragOffset
+      - IPanel _resizingPanel
+      - ResizeHandle _activeResizeHandle
+      - Vector2 _resizeStartMousePos
+      - Vector2 _resizeStartPosition
+      - Vector2 _resizeStartSize
+      - IRenderContext _renderContext
+      - IControlContext _controlContext
+      - EventBus _eventBus
+      - UIQuadRenderer _ghostRenderer
+      - Vector2 _snapPreviewPosition
+      - Vector2 _snapPreviewSize
+      - bool _showSnapPreview
+      - float SnapDistance
+      - float NeighborSnapMargin
+    - Methods:
+      - constructor DynamicDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
+        - Calls: UIQuadRenderer
+      - void AddPanel(IPanel panel)
+      - void RemovePanel(IPanel panel)
+      - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
+        - Calls: ClampToViewport, ComputeSnapPreview, HandleSinglePanel, PerformLiveResize, _draggingPanel.OnPanelResize, _resizingPanel.OnPanelResize, bp.ResetDragState
+      - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
+        - Calls: bp.StartTitleBarDrag, panel.GetResizeHandle, panel.StartResize
+      - bool ComputeSnapPreview( int winH,  int winW,  out Vector2, Vector2 mousePos)
+      - void ClampToViewport( int winH,  int winW, IPanel panel)
+      - void PerformLiveResize( int winH,  int winW, Vector2 mousePos)
+        - Calls: ClampToViewport, bp.OnLiveResize
+      - void Render( int winH,  int winW, IRenderContext renderContext)
+        - Calls: _ghostRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
+      - void ComputeLayout( int winH, int winW)
 - File: EditorSceneShader.cs
   - Class: EditorSceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -496,6 +538,9 @@ Folder: Core
 - File: FBXFileForest.cs
   - Class: FBXFileForest (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
+- File: FBXMesh.cs
+  - Class: FBXMesh (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System.Numerics
 - File: FBXMeshParser.cs
   - Class: FBXMeshParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -523,6 +568,8 @@ Folder: Core
       - > GatherConnections(FBXFileForest forest)
       - void ParseBindPoses( BaseNode objectsNode,  int> boneIndexById,  int[] signs,  int[] sourceToTarget, FBXModel model)
         - Calls: FBXCoordinateUtils.RemapMatrix, FBXParserBase.Log, FBXParserUtils.CreateMatrixFromArray
+      - void Export( string outputPath, FBXModel fbxModel)
+        - Calls: FBXParserBase.Log
 - File: FBXParserBase.cs
   - Class: FBXParserBase (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -661,6 +708,7 @@ Folder: Core
       - nint _mainWindow
     - Methods:
       - constructor GlfwControlContext(Glfw glfw)
+      - void SetMainWindow(nint window)
       - void SetCursorPosCallback(CursorPosCallback callback, nint window)
       - void SetMouseButtonCallback(MouseButtonCallback callback, nint window)
         - Calls: MapGlfwInputAction, MapGlfwMods, MapGlfwMouseButton
@@ -684,8 +732,7 @@ Folder: Core
       - void PushViewport(Viewport viewport)
       - void PopViewport()
       - Viewport GetCurrentViewport()
-        - Calls: GetWindowSize
-      - window GetWindowSize( out int)
+        - Calls: GetWindowSize, Viewport
       - Key MapGlfwKey(Keys glfwKey)
       - Keys MapEngineKey(Key engineKey)
       - MouseButton MapGlfwMouseButton(MouseButton glfwButton)
@@ -717,7 +764,7 @@ Folder: Core
       - float[] GetNdcQuad( Matrix4x4 trans,  float h,  float vh,  float vw,  float w,  float y, float x)
 - File: HtmlParser.cs
   - Class: HtmlParser (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq
+    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq
     - Fields:
       - string _html
       - int _index
@@ -731,12 +778,15 @@ Folder: Core
 - File: IControlContext.cs
   - Class: IControlContext (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: SiegeEngine.Core.Definitions, System
+- File: IDockingStrategy.cs
+  - Class: IDockingStrategy (Namespace: SiegeEngine.Core.Managers)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System.Numerics
 - File: IGameServer.cs
   - Class: IGameServer (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
 - File: IPanel.cs
   - Class: IPanel (Namespace: SiegeEngine.Core.Interfaces)
-    - Dependencies: System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, System.Numerics
     - Methods:
       - void Init()
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
@@ -744,6 +794,11 @@ Folder: Core
       - void Dispose()
       - void Detach()
       - void OnPanelResize( float h, float w)
+      - ResizeHandle GetResizeHandle(Vector2 absMousePos)
+      - void StartResize( ResizeHandle handle, Vector2 mousePos)
+- File: IProjectionProvider.cs
+  - Class: IProjectionProvider (Namespace: SiegeEngine.Core.Interfaces)
+    - Dependencies: System.Numerics
 - File: IRenderContext.cs
   - Class: IRenderContext (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: System
@@ -761,7 +816,7 @@ Folder: Core
     
     - Dependencies: System
 - File: InputElement.cs
-  - Class: InputElement (Namespace: SiegeEngine.Core.UI)
+  - Class: InputElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Globalization, System.Numerics
@@ -814,7 +869,7 @@ Folder: Core
         - Calls: Evaluator.CurrentScope, Evaluator.PopScope, Evaluator.PushScope, Run
 - File: JSDocument.cs
   - Class: JSDocument (Namespace: SiegeEngine.Core.UI.JSParser)
-    - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq
+    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Linq
     - Fields:
       - UIOverlay _overlay
     - Methods:
@@ -835,7 +890,7 @@ Folder: Core
         - Calls: css.Matches
 - File: JSElement.cs
   - Class: JSElement (Namespace: SiegeEngine.Core.UI.JSParser)
-    - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.Globalization, System.Linq
+    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.Linq
     - Fields:
       - HtmlElement elem
       - UIOverlay overlay
@@ -868,7 +923,7 @@ Folder: Core
   - Class: ReturnException (Namespace: SiegeEngine.Core.UI.JSParser)
     - Inherits: Exception
     
-    - Dependencies: SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Reflection, System.Text.RegularExpressions
+    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Linq, System.Reflection, System.Text.RegularExpressions
 - File: JSParser.cs
   - Class: Token (Namespace: SiegeEngine.Core.UI.JSParser)
     - Dependencies: System, System.Collections.Generic, System.Text
@@ -887,14 +942,14 @@ Folder: Core
     - Dependencies: System, System.Collections.Generic, System.Numerics
 - File: Layout.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.RegularExpressions
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
     - Methods:
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
         - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, FindContainingBlock, HtmlLayoutUtils.ComputeTransform, HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, child.GetEffectiveDisplay
-      - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
       - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
+      - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
       - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, float.Parse, int.Parse
       - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
@@ -911,7 +966,7 @@ Folder: Core
     - Methods:
       - void LoadLevel(string levelName)
 - File: LiElement.cs
-  - Class: LiElement (Namespace: SiegeEngine.Core.UI)
+  - Class: LiElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -988,18 +1043,12 @@ Folder: Core
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
-- File: MetaFileParser.cs
-  - Class: MetaFileParser (Namespace: SiegeEngine.Core.UnityAssetLoader)
-    - Dependencies: System, System.Collections.Generic, System.IO, YamlDotNet.Serialization
-    - Methods:
-      - string ExtractGuid(string metaFilePath)
-        - Calls: guidObj.ToString
 - File: ModInfo.cs
-  - Class: UnityAssetData (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
+  - Class: ModInfo (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
 - File: ModManager.cs
   - Class: ModManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, SiegeEngine.Core.UnityAssetLoader, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
     - Fields:
       - string _modsDirectory
       - string _solutionDirectory
@@ -1010,12 +1059,10 @@ Folder: Core
       - constructor ModManager( ISteamEngine steamEngine, string modsDirectory)
         - Calls: LoadLocalMods, LoadWorkshopMods
       - void LoadLocalMods()
-        - Calls: LoadMod, ProcessUnityAssets
+        - Calls: LoadMod
       - void LoadWorkshopMods()
-        - Calls: LoadMod, ProcessUnityAssets, _steamEngine.GetSubscribedWorkshopItems, _steamEngine.GetWorkshopItemInstallInfo
+        - Calls: LoadMod, _steamEngine.GetSubscribedWorkshopItems, _steamEngine.GetWorkshopItemInstallInfo
       - void LoadMod(string modJsonPath)
-      - void ProcessUnityAssets(string modPath)
-        - Calls: prefabReader.CountGameObjects, scanner.ScanDirectory
       - string ResolvePath(string relativePath)
       - string GetMenuConfigPath()
 - File: ModelComponent.cs
@@ -1073,14 +1120,14 @@ Folder: Core
       - void Deserialize(byte[] data)
         - Calls: ToString, float.Parse, int.Parse, ulong.Parse
 - File: NavElement.cs
-  - Class: NavElement (Namespace: SiegeEngine.Core.UI)
+  - Class: NavElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Linq, System.Numerics
     - Methods:
       - constructor NavElement()
 - File: NavLiElement.cs
-  - Class: NavLiElement (Namespace: SiegeEngine.Core.UI)
+  - Class: NavLiElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -1101,7 +1148,7 @@ Folder: Core
       - bool IsTopLevelNavItem()
       - bool IsNavDropdownParent()
 - File: NavUlElement.cs
-  - Class: NavUlElement (Namespace: SiegeEngine.Core.UI)
+  - Class: NavUlElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
@@ -1122,7 +1169,7 @@ Folder: Core
         - Calls: FBXParserBase.Log
       - object ConvertRawToArray( char typeCode,  uint arrayLen, byte[] rawData)
 - File: OlElement.cs
-  - Class: OlElement (Namespace: SiegeEngine.Core.UI)
+  - Class: OlElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
@@ -1178,7 +1225,7 @@ Folder: Core
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: OptionElement.cs
-  - Class: OptionElement (Namespace: SiegeEngine.Core.UI)
+  - Class: OptionElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
@@ -1186,11 +1233,33 @@ Folder: Core
       - constructor OptionElement()
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
+- File: OrthoProjection.cs
+  - Class: OrthoProjection (Namespace: SiegeEngine.Core.Rendering)
+    - Inherits: IProjectionProvider
+    
+    - Dependencies: SiegeEngine.Core.Interfaces, System, System.Numerics
+    - Fields:
+      - float _tiltAngleDegrees
+    - Methods:
+      - constructor OrthoProjection(float tiltAngleDegrees = 30f)
+      - Matrix4x4 GetProjectionMatrix( float far,  float near,  int height, int width)
+- File: PanelChrome.cs
+  - Class: PanelChrome (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System.Numerics
+    - Fields:
+      - BasePanel _owner
+      - float _titleHeight
+    - Methods:
+      - constructor PanelChrome(BasePanel owner)
+      - bool HandleUpdate( bool mousePressed,  bool mouseReleased, Vector2 absMousePos)
+        - Calls: _owner.Close, _owner.StartTitleBarDrag
+      - void Render( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+        - Calls: quadRenderer.DrawLine, quadRenderer.DrawQuad
+      - void Dispose()
 - File: PanelManager.cs
   - Class: PanelManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
     - Fields:
-      - DockManager _dockManager
       - IRenderContext _renderContext
       - IControlContext _controlContext
       - nint _window
@@ -1199,9 +1268,13 @@ Folder: Core
       - List<IPanel> _panels
       - float _scrollDelta
       - CaptureManager _captureManager
+      - IDockingStrategy _desktopStrategy
+      - DynamicDockingStrategy _dynamicStrategy
+      - DockingMode _sceneDefaultMode
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: CaptureManager, DockManager, _controlContext.SetScrollCallback
+        - Calls: CaptureManager, DesktopDockingStrategy, DynamicDockingStrategy, _controlContext.SetScrollCallback
+      - void SetSceneDefaultDockingMode(DockingMode mode)
       - void OnOpenPanel(OpenPanelEvent e)
         - Calls: AddPanel
       - void OnClosePanel(ClosePanelEvent e)
@@ -1214,6 +1287,13 @@ Folder: Core
         - Calls: _controlContext.GetWindowSize, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
         - Calls: _captureManager.ReleaseCapture, panel.Detach, panel.Dispose
+- File: PerspectiveProjection.cs
+  - Class: PerspectiveProjection (Namespace: SiegeEngine.Core.Rendering)
+    - Inherits: IProjectionProvider
+    
+    - Dependencies: SiegeEngine.Core.Interfaces, System, System.Numerics
+    - Methods:
+      - Matrix4x4 GetProjectionMatrix( float far,  float near,  int height, int width)
 - File: PhysicsCollisionEvent.cs
   - Class: PhysicsCollisionEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -1260,12 +1340,6 @@ Folder: Core
     - Methods:
       - void main()
       - void main()
-- File: PrefabFileReader.cs
-  - Class: PrefabFileReader (Namespace: SiegeEngine.Core.UnityAssetLoader)
-    - Dependencies: System, System.IO, YamlDotNet.RepresentationModel
-    - Methods:
-      - int CountGameObjects(string prefabPath)
-        - Calls: yaml.Load
 - File: PreviewComponent.cs
   - Class: PreviewComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -1273,6 +1347,10 @@ Folder: Core
     - Dependencies: System
     - Methods:
       - constructor PreviewComponent( string brushType, ulong playerId)
+- File: ProjectSettings.cs
+  - Class: ProjectSettings (Namespace: SiegeEngine.Core.Managers)
+    - Methods:
+      - constructor ProjectSettings()
 - File: PropertyNode.cs
   - Class: PropertyNode (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -1282,7 +1360,7 @@ Folder: Core
     
     - Dependencies: System
 - File: RangeElement.cs
-  - Class: RangeElement (Namespace: SiegeEngine.Core.UI)
+  - Class: RangeElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: InputElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Globalization, System.Numerics
@@ -1293,10 +1371,10 @@ Folder: Core
         - Calls: HtmlLayoutUtils.GetNdcQuad, quadRenderer.DrawNdcQuad
 - File: Render.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics
     - Methods:
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, quadRenderer.DrawNdcQuad, renderContext.Disable, renderContext.Enable, renderContext.Scissor
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, quadRenderer.DrawNdcQuad
 - File: Renderer.cs
   - Class: Renderer (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IRenderer
@@ -1388,7 +1466,7 @@ Folder: Core
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: SelectElement.cs
-  - Class: SelectElement (Namespace: SiegeEngine.Core.UI)
+  - Class: SelectElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -1403,6 +1481,17 @@ Folder: Core
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, textRenderer.GetTextSize
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+- File: SelectSpriteEvent.cs
+  - Class: SelectSpriteEvent (Namespace: SiegeEngine.Core.Events)
+    - Inherits: IEvent
+    
+    - Dependencies: System, System.Text.Json
+    - Fields:
+      - string Type
+    - Methods:
+      - constructor SelectSpriteEvent( float height,  float width,  string texturePath, ulong playerId)
+      - byte[] Serialize()
+      - void Deserialize(byte[] data)
 - File: ShaderProgram.cs
   - Class: ShaderProgram (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IDisposable
@@ -1472,6 +1561,19 @@ Folder: Core
       - constructor Spawner(IGameServer server)
       - Entity SpawnEntity( Vector3 position, string type)
         - Calls: Player, _server.AddEntity, _server.GetEntities
+- File: SpriteComponent.cs
+  - Class: SpriteComponent (Namespace: SiegeEngine.Core.Definitions)
+    - Inherits: IComponent
+    
+    - Dependencies: System.Numerics
+- File: SpriteShader.cs
+  - Class: SpriteShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+    - Fields:
+      - string VertexShaderSource
+      - string FragmentShaderSource
+    - Methods:
+      - void main()
+      - void main()
 - File: SteamEngine.cs
   - Class: SteamUGCRequestUGCDetailsResult_t (Namespace: SiegeEngine.Core.Networking)
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Runtime.InteropServices, System.Text
@@ -1494,7 +1596,7 @@ Folder: Core
   - Class: CharacterData (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.ContextManagement, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.Drawing.Text, System.Linq
 - File: TableElement.cs
-  - Class: TableElement (Namespace: SiegeEngine.Core.UI)
+  - Class: TableElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -1505,7 +1607,7 @@ Folder: Core
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
 - File: TdElement.cs
-  - Class: TdElement (Namespace: SiegeEngine.Core.UI)
+  - Class: TdElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
@@ -1520,15 +1622,18 @@ Folder: Core
     - Methods:
       - uint LoadColorTexture( string path, IRenderContext renderContext)
 - File: TextElement.cs
-  - Class: TextElement (Namespace: SiegeEngine.Core.UI)
+  - Class: TextElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
     - Fields:
+      - string _content
       - List<string> _lines
       - float _lineHeight
     - Methods:
       - constructor TextElement()
+      - void MarkTextDirty()
+        - Calls: MarkIntrinsicDirty
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
         - Calls: GetWrappedLines
       - List<string> GetWrappedLines( TextRenderer textRenderer,  float fs,  string fontFamily, float maxWidth)
@@ -1537,33 +1642,12 @@ Folder: Core
         - Calls: textRenderer.GetTextSize, textRenderer.RenderText
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
 - File: TextRenderer.cs
-  - Class: TextRenderer (Namespace: SiegeEngine.Core.Rendering)
-    - Inherits: IDisposable
-    
+  - Class: CachedGlyphRun (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
     - Fields:
-      - IRenderContext _renderContext
-      - nint _window
-      - ShaderProgram _shaderProgram
-      - SystemFontRenderer _defaultFontRenderer
-    - Methods:
-      - constructor TextRenderer( nint window, IRenderContext renderContext)
-        - Calls: SystemFontRenderer
-      - void Initialize(ShaderProgram shaderProgram)
-        - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.BufferData, _renderContext.Enable, _renderContext.EnableVertexAttribArray, _renderContext.GenBuffers, _renderContext.GenVertexArrays, _renderContext.VertexAttribPointer
-      - Vector2 GetTextSize( float fontSize,  string fontFamily = "Arial", string text)
-        - Calls: GetFontRenderer, renderer.GetCharacterData, renderer.GetStringWidth
-      - float GetLineHeight( string fontFamily = "Arial", float fontSize)
-        - Calls: GetFontRenderer
-      - void RenderText( float fontSize = 12.0f,  float startX,  float startY,  float viewportHeight,  float viewportWidth,  string fontFamily = "Arial", string text)
-      - void RenderText( Matrix4x4 transformMatrix,  float fontSize,  float startX,  float startY,  float viewportHeight,  float viewportWidth,  string fontFamily, string text)
-        - Calls: RenderTextPass
-      - void RenderTextPass( Matrix4x4 transformMatrix,  Vector4 color,  float fontSize,  float startX,  float startY,  float viewportHeight,  float viewportWidth,  string fontFamily, string text)
-        - Calls: GetFontRenderer, HtmlLayoutUtils.GetNdcQuad, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferSubData, _renderContext.DrawArrays, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shaderProgram.SetMatrix4, _shaderProgram.SetUniform, _shaderProgram.Use, c.ToString, next.ToString, renderer.GetCharacterData, renderer.GetCharacterTexture, renderer.GetStringWidth
-      - SystemFontRenderer GetFontRenderer(string fontFamily)
-        - Calls: SystemFontRenderer
-      - void Dispose()
-        - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteVertexArray
+      - List<GlyphInstance> Glyphs
+      - float TotalWidth
+      - float LineHeight
 - File: TextShader.cs
   - Class: TextShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1577,17 +1661,26 @@ Folder: Core
     - Dependencies: System
 - File: TextureLoader.cs
   - Class: TextureLoader (Namespace: SiegeEngine.Core.Rendering)
-    - Dependencies: SiegeEngine.Core.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Linq
+    - Dependencies: SiegeEngine.Core.ContextManagement, Silk.NET.OpenGL, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
     - Fields:
       - byte[] PngSignature
       - HashSet<byte> ValidTgaTypes
+    - Methods:
+      - return LoadTextureFromBitmap()
+        - Calls: renderContext.BindTexture, renderContext.DeleteTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
 - File: ThElement.cs
-  - Class: ThElement (Namespace: SiegeEngine.Core.UI)
+  - Class: ThElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
     - Methods:
       - constructor ThElement()
+- File: TilemapExporter.cs
+  - Class: TilemapExporter (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, System, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
+    - Methods:
+      - void ExportToMesh( float thresholdGrass,  float thresholdRock,  string atlasPngPath,  string outputFbxPath, ] heightmap)
+        - Calls: FBXParser.Export
 - File: TimeOfDayChangedEvent.cs
   - Class: TimeOfDayChangedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -1600,7 +1693,7 @@ Folder: Core
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: TrElement.cs
-  - Class: TrElement (Namespace: SiegeEngine.Core.UI)
+  - Class: TrElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
@@ -1644,7 +1737,7 @@ Folder: Core
       - void Recalculate()
 - File: UIInteractionLayer.cs
   - Class: UIInteractionLayer (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
     - Fields:
       - UIOverlay _overlay
       - IControlContext _controlContext
@@ -1660,7 +1753,7 @@ Folder: Core
     - Methods:
       - constructor UIInteractionLayer( IControlContext controlContext,  nint window, UIOverlay overlay)
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString, opt.UpdateHover
+        - Calls: IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIManager.cs
   - Class: UIManager (Namespace: SiegeEngine.Core.Managers)
@@ -1706,7 +1799,7 @@ Folder: Core
       - void Dispose()
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -1821,20 +1914,12 @@ Folder: Core
       - void main()
         - Calls: roundedRect
 - File: UlElement.cs
-  - Class: UlElement (Namespace: SiegeEngine.Core.UI)
+  - Class: UlElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System.Numerics
     - Methods:
       - constructor UlElement()
-- File: UnityAssetFileType.cs
-  - Class: UnityAssetFileType (Namespace: SiegeEngine.Core.UnityAssetLoader)
-- File: UnityAssetScanner.cs
-  - Class: UnityAssetScanner (Namespace: SiegeEngine.Core.UnityAssetLoader)
-    - Dependencies: System, System.Collections.Generic, System.IO, System.Linq
-    - Methods:
-      - UnityAssetFileType> ScanDirectory(string path)
-      - string> BuildGuidMap(string path)
 - File: Vertex.cs
   - Class: Vertex (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: System.Numerics
@@ -1942,6 +2027,13 @@ Folder: PlayerSystem
         - Calls: camera.SetYawInternal
       - void SetYawInternal( float yaw, this CameraController)
         - Calls: SetValue
+- File: AngledOrthoCamera.cs
+  - Class: AngledOrthoCamera (Namespace: SiegeEngine.PlayerSystem)
+    - Inherits: CameraController
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, System, System.Diagnostics, System.Numerics
+    - Methods:
+      - void UpdateCamera()
 - File: CameraController.cs
   - Class: CameraController (Namespace: SiegeEngine.PlayerSystem)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, System, System.Numerics
@@ -2257,6 +2349,25 @@ Folder: Scenes
         - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Clear, _renderContext.ClearColor, _renderContext.DrawElements, _renderContext.Enable, _terrainBuffer.Bind, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use
       - void Dispose()
         - Calls: _renderContext.DeleteTexture
+- File: TwoDSandboxScene.cs
+  - Class: TwoDSandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
+    - Inherits: Scene
+    
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - IProjectionProvider _projectionProvider
+      - ShaderProgram _gridShader
+      - VertexBuffer _gridBuffer
+      - ModelManager _modelManager
+    - Methods:
+      - void Initialize( int height, int width)
+        - Calls: ModelManager, SetupGrid, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _renderContext.ClearColor, _renderContext.Viewport
+      - void SetupGrid()
+        - Calls: Vertex, _gridBuffer.UpdateCustom
+      - void Update(float deltaTime)
+      - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: _gridBuffer.Bind, _gridShader.SetMatrix4, _gridShader.Use, _modelRenderer.RenderModel, _projectionProvider.GetProjectionMatrix, _renderContext.Disable, _renderContext.DrawArrays, _renderContext.Enable, _server.GetEntityById
+      - void Dispose()
 
 Folder: Systems
 - File: AnimationSystem.cs
@@ -2377,185 +2488,3 @@ Folder: Systems
     - Methods:
       - void Update(float deltaTime)
         - Calls: EntityMovedEvent, _controlContext.GetKey, _server.GetEntities
-
-Class Hierarchy:
-FileSelectedEvent
-JSRegex
-SiegeEngine.Core.AssetObjects.BaseNode
-SiegeEngine.Core.AssetObjects.FBXFileForest
-SiegeEngine.Core.AssetObjects.FBXNode
-SiegeEngine.Core.AssetObjects.PropertyNode
-SiegeEngine.Core.AssetParsing.FBXAnimationParser
-SiegeEngine.Core.AssetParsing.FBXCoordinateUtils
-SiegeEngine.Core.AssetParsing.FBXMeshParser
-SiegeEngine.Core.AssetParsing.FBXParser
-SiegeEngine.Core.AssetParsing.FBXParserBase
-SiegeEngine.Core.AssetParsing.FBXParserUtils
-SiegeEngine.Core.AssetParsing.FBXSettings
-SiegeEngine.Core.AssetParsing.FBXSkeletonParser
-SiegeEngine.Core.AssetParsing.Model.Animation
-SiegeEngine.Core.AssetParsing.Model.Bone
-SiegeEngine.Core.AssetParsing.Model.FBXModel
-SiegeEngine.Core.AssetParsing.Model.FBXVertex
-SiegeEngine.Core.AssetParsing.Model.Keyframe
-SiegeEngine.Core.AssetParsing.Model.Material
-SiegeEngine.Core.AssetParsing.Model.MeshData
-SiegeEngine.Core.AssetParsing.Model.Skeleton
-SiegeEngine.Core.AssetParsing.Model.TextureInfo
-SiegeEngine.Core.AssetParsing.ModelMeshRender
-SiegeEngine.Core.AssetParsing.NodeParser
-SiegeEngine.Core.ContextManagement.AbstractRenderEnums
-SiegeEngine.Core.ContextManagement.ContextManager
-SiegeEngine.Core.ContextManagement.D3D12_COMMAND_SIGNATURE_DESC
-SiegeEngine.Core.ContextManagement.GlfwControlContext
-SiegeEngine.Core.ContextManagement.IControlContext
-SiegeEngine.Core.ContextManagement.IRenderContext
-SiegeEngine.Core.ContextManagement.OpenGLContextManager
-SiegeEngine.Core.ContextManagement.OpenGLEnums
-SiegeEngine.Core.ContextManagement.OpenGLRenderContext
-SiegeEngine.Core.ContextManagement.Viewport
-SiegeEngine.Core.ContextManagement.VkDeviceCreateInfo
-SiegeEngine.Core.Definitions.AnimationComponent
-SiegeEngine.Core.Definitions.Entity
-SiegeEngine.Core.Definitions.EntityData
-SiegeEngine.Core.Definitions.GameMode
-SiegeEngine.Core.Definitions.LightComponent
-SiegeEngine.Core.Definitions.LightType
-SiegeEngine.Core.Definitions.MaterialProperties
-SiegeEngine.Core.Definitions.Matrix3x3
-SiegeEngine.Core.Definitions.ModelComponent
-SiegeEngine.Core.Definitions.PhysicsComponent
-SiegeEngine.Core.Definitions.PreviewComponent
-SiegeEngine.Core.Definitions.Rarity
-SiegeEngine.Core.Definitions.SoundSource
-SiegeEngine.Core.Definitions.Spawner
-SiegeEngine.Core.Definitions.TransformComponent
-SiegeEngine.Core.Definitions.UnityAssetData
-SiegeEngine.Core.Definitions.WallComponent
-SiegeEngine.Core.Definitions.WeatherState
-SiegeEngine.Core.Definitions.WindowAttribute
-SiegeEngine.Core.Events.ClosePanelEvent
-SiegeEngine.Core.Events.CustomEvent
-SiegeEngine.Core.Events.EntityAddedEvent
-SiegeEngine.Core.Events.EntityMovedEvent
-SiegeEngine.Core.Events.EntityPlacedEvent
-SiegeEngine.Core.Events.EntityRemovedEvent
-SiegeEngine.Core.Events.ExitEditorEvent
-SiegeEngine.Core.Events.GenericEvent
-SiegeEngine.Core.Events.ItemPickedUpEvent
-SiegeEngine.Core.Events.MovementRequestEvent
-SiegeEngine.Core.Events.OpenPanelEvent
-SiegeEngine.Core.Events.PhysicsCollisionEvent
-SiegeEngine.Core.Events.PlayerExitedEditorEvent
-SiegeEngine.Core.Events.ProtectedEventAttribute
-SiegeEngine.Core.Events.SelectBrushEvent
-SiegeEngine.Core.Events.SoundRayTraceResult
-SiegeEngine.Core.Events.TimeOfDayChangedEvent
-SiegeEngine.Core.Events.WeatherChangedEvent
-SiegeEngine.Core.Interfaces.IGameServer
-SiegeEngine.Core.Interfaces.IPanel
-SiegeEngine.Core.Interfaces.IRenderer
-SiegeEngine.Core.Interfaces.ISoundValidator
-SiegeEngine.Core.Interfaces.ISteamEngine
-SiegeEngine.Core.Managers.CaptureManager
-SiegeEngine.Core.Managers.DockManager
-SiegeEngine.Core.Managers.GameModeManager
-SiegeEngine.Core.Managers.LevelManager
-SiegeEngine.Core.Managers.LobbyManager
-SiegeEngine.Core.Managers.ModManager
-SiegeEngine.Core.Managers.PanelManager
-SiegeEngine.Core.Managers.SceneManager
-SiegeEngine.Core.Managers.UIManager
-SiegeEngine.Core.Managers.UISettingsManager
-SiegeEngine.Core.Managers.acquired
-SiegeEngine.Core.Networking.ClientGameServerProxy
-SiegeEngine.Core.Networking.MovementRequest
-SiegeEngine.Core.Networking.SteamUGCRequestUGCDetailsResult_t
-SiegeEngine.Core.Rendering.BackgroundRenderer
-SiegeEngine.Core.Rendering.CharacterData
-SiegeEngine.Core.Rendering.EditorTextRenderer
-SiegeEngine.Core.Rendering.GameRenderer
-SiegeEngine.Core.Rendering.ModelRenderer
-SiegeEngine.Core.Rendering.POINT
-SiegeEngine.Core.Rendering.Renderer
-SiegeEngine.Core.Rendering.RendererDetector
-SiegeEngine.Core.Rendering.ShaderProgram
-SiegeEngine.Core.Rendering.ShaderSetup
-SiegeEngine.Core.Rendering.Shaders.AnimationShader
-SiegeEngine.Core.Rendering.Shaders.AssetShader
-SiegeEngine.Core.Rendering.Shaders.EditorSceneShader
-SiegeEngine.Core.Rendering.Shaders.ModelShader
-SiegeEngine.Core.Rendering.Shaders.PointShader
-SiegeEngine.Core.Rendering.Shaders.SceneShader
-SiegeEngine.Core.Rendering.Shaders.TextShader
-SiegeEngine.Core.Rendering.Shaders.UiShader
-SiegeEngine.Core.Rendering.Shaders.WaterShader
-SiegeEngine.Core.Rendering.TextRenderer
-SiegeEngine.Core.Rendering.TextureLoader
-SiegeEngine.Core.Rendering.UIQuadRenderer
-SiegeEngine.Core.Rendering.Vertex
-SiegeEngine.Core.Rendering.VertexBuffer
-SiegeEngine.Core.Terrain.CustomTerrainParser
-SiegeEngine.Core.Terrain.GeoReference
-SiegeEngine.Core.Terrain.TerrainTextureParser
-SiegeEngine.Core.Terrain.TerrainType
-SiegeEngine.Core.UI.BasePanel
-SiegeEngine.Core.UI.ButtonElement
-SiegeEngine.Core.UI.ClosablePanel
-SiegeEngine.Core.UI.CompanionPanel
-SiegeEngine.Core.UI.CssParser
-SiegeEngine.Core.UI.CssStyle
-SiegeEngine.Core.UI.DivElement
-SiegeEngine.Core.UI.HtmlElement
-SiegeEngine.Core.UI.HtmlLayoutUtils
-SiegeEngine.Core.UI.HtmlParser
-SiegeEngine.Core.UI.InputElement
-SiegeEngine.Core.UI.JSParser.JSBinding
-SiegeEngine.Core.UI.JSParser.JSContext
-SiegeEngine.Core.UI.JSParser.JSDate
-SiegeEngine.Core.UI.JSParser.JSDocument
-SiegeEngine.Core.UI.JSParser.JSElement
-SiegeEngine.Core.UI.JSParser.ReturnException
-SiegeEngine.Core.UI.JSParser.Token
-SiegeEngine.Core.UI.LiElement
-SiegeEngine.Core.UI.MenuUIOverlay
-SiegeEngine.Core.UI.NavElement
-SiegeEngine.Core.UI.NavLiElement
-SiegeEngine.Core.UI.NavUlElement
-SiegeEngine.Core.UI.OlElement
-SiegeEngine.Core.UI.OptionElement
-SiegeEngine.Core.UI.RangeElement
-SiegeEngine.Core.UI.SelectElement
-SiegeEngine.Core.UI.TableElement
-SiegeEngine.Core.UI.TdElement
-SiegeEngine.Core.UI.TextElement
-SiegeEngine.Core.UI.ThElement
-SiegeEngine.Core.UI.TrElement
-SiegeEngine.Core.UI.UIInteractionLayer
-SiegeEngine.Core.UI.UIOverlay
-SiegeEngine.Core.UI.UlElement
-SiegeEngine.Core.UnityAssetLoader.MetaFileParser
-SiegeEngine.Core.UnityAssetLoader.PrefabFileReader
-SiegeEngine.Core.UnityAssetLoader.UnityAssetFileType
-SiegeEngine.Core.UnityAssetLoader.UnityAssetScanner
-SiegeEngine.PlayerSystem.CameraController
-SiegeEngine.PlayerSystem.CameraControllerExtensions
-SiegeEngine.PlayerSystem.InputHandler
-SiegeEngine.PlayerSystem.Player
-SiegeEngine.PlayerSystem.PlayerMovement
-SiegeEngine.PlayerSystem.PositionCalculator
-SiegeEngine.PlayerSystem.SwitchMenuEvent
-SiegeEngine.Scenes.EditorScene
-SiegeEngine.Scenes.FlyCameraController
-SiegeEngine.Scenes.ModelViewerScene
-SiegeEngine.Scenes.Scene
-SiegeEngine.Scenes.StartingPoints.SandboxScene
-SiegeEngine.Scenes.TerrainScene
-SiegeEngine.Systems.AnimationSystem
-SiegeEngine.Systems.AudioSystem
-SiegeEngine.Systems.ClientPredictionSystem
-SiegeEngine.Systems.EnvironmentSystem
-SiegeEngine.Systems.GameSystem
-SiegeEngine.Systems.LightingSystem
-SiegeEngine.Systems.PlayerControllerSystem
-SwitchSceneEvent

@@ -1,0 +1,33 @@
+Phase 1: Ortho Camera & 3D Scene for 2D DONE-ISH
+New OrthoCamera.cs (PlayerSystem): Inherit CameraController, override View/Proj to ortho (CreateOrthographicOffCenter).
+Extend Scene.cs: Add CameraType enum (Perspective/Ortho), set in Render (use ortho matrix in shaders).
+ProjectData: "CameraType": "Ortho" for 2D projects.
+Test: Load SandboxScene with ortho—renders flat, Z ignored visually.
+
+Phase 2: Terrain to 2D-Style Mesh - DONE-ISH
+Extend TerrainCreatorScene: New "Export2D" method—flatten heightmap to 3D mesh at Z=0 (quads with texture UVs based on height thresholds for "tiles", e.g., grass/rock).
+Save: Mesh FBX/JSON to project/Assets/terrain2d.fbx + texture atlas.png.
+Load in scene: As Entity with ModelComponent (flat mesh).
+Test: Export terrain, load in ortho scene—flat tile-like background.
+
+Phase 3: Sprite Placement & Movement/Collisions
+New SpriteEntity: Entity with ModelComponent (quad mesh, texture), Transform at Z=0.
+IDE: AssetBrowser add "Add Sprite" (select PNG, create entity).
+Movement: Extend PlayerMovement for 2D (Vector2 input, ignore Z).
+Collisions: Use existing PhysicsSystem (AABB on flat Z=0), mark terrain tiles solid via Component.
+Test: Place sprite in IDE, save/load, move/collide with terrain mesh.
+
+Phase 4: Game Main Menu
+GameMainMenu.html: "Play" (SwitchSceneEvent to ortho scene), "Quit".
+On 2D project: Copy to Assets/Configs.
+Launcher: --game= loads menu, sets ortho.
+
+Phase 5: Build with Steam
+BuildProject: Copy EXE/DLLs/steam_api64.dll/project to output, modify copied Launcher to --game= embedded.
+Steam init in built EXE for ID/saves.
+Test: Build, run—menu to ortho scene with terrain/sprite/move/collisions.
+
+The next steps in the implementation of 2D-style game support in SiegeEngine focus on building upon the angled orthographic camera and terrain export features already in place. Phase 3 involves adding sprite placement, 2D movement, and collisions, ensuring all additions are additive and do not modify existing 3D code. Begin by creating new files for sprite and tilemap components in the Definitions folder, where SpriteComponent holds texture paths and quad sizes, and TilemapComponent marks entities as tilemaps with solid flags based on height thresholds. Extend AssetBrowserPanel.cs to include an "Add Sprite" button that selects a PNG and creates an Entity with SpriteComponent at Z=0, publishing an EntityPlacedEvent to add it to the scene.
+Continue Phase 3 by implementing TwoDPlayerMovement.cs in PlayerSystem, inheriting from PlayerMovement and overriding Update to handle Vector2 input while ignoring Z, clamping movement to the flat plane. For collisions, create TwoDPhysicsSystem.cs in Systems, inheriting from PhysicsSystem and overriding to use AABB on Z=0, checking TilemapComponent for solid tiles. In PlayerMovement.cs and PhysicsSystem.cs, add checks for ProjectSettings.Current.CameraType == "AngledOrtho" to delegate to the 2D subclasses. Test this by placing a sprite in the IDE, saving/loading the scene, moving the player with WASD on the plane, and verifying collisions with solid tiles from the exported tilemap.
+Moving to Phase 4, develop the game main menu by creating GameMainMenu.html in a Configs folder, featuring "Play" (publishing SwitchSceneEvent to "Main") and "Quit" buttons. In BlueprintManager.cs, during 2D project creation, copy this HTML to the project's Assets/Configs folder. Modify Launcher.cs to load GameMainMenu.html if the --game= argument is provided, setting the camera mode via ProjectSettings. Test by loading a 2D project; the menu should appear, and "Play" should switch to the ortho scene with the terrain and sprites.
+Finally, Phase 5 addresses the build pipeline with Steam integration. Add ProjectBuilder.cs in a new Builders folder with a static BuildProject method that copies the EXE, DLLs, steam_api64.dll, and project assets to an output directory, modifying the copied Launcher to embed --game= for automatic menu loading. In BlueprintManager.cs, add a "Build" method or hook that calls ProjectBuilder, ensuring the built EXE initializes Steam for ID and saves. Test by building a 2D project and running the output; it should launch the menu, transition to the ortho scene, and demonstrate terrain, sprites, movement, and collisions, with Steam functionality intact.

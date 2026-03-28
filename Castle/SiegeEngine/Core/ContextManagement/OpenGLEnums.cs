@@ -1,7 +1,6 @@
-﻿// Folder: SiegeEngine.ContextManagement
+﻿// Folder: SiegeEngine/ContextManagement
 // File: OpenGLEnums.cs
 using Silk.NET.OpenGL;
-
 namespace SiegeEngine.Core.ContextManagement
 {
     public class OpenGLEnums : AbstractRenderEnums
@@ -60,6 +59,6 @@ namespace SiegeEngine.Core.ContextManagement
         public override int Back => (int)GLEnum.Back;
         public override int CounterClockwise => (int)GLEnum.Ccw;
         public override int Clockwise => (int)GLEnum.CW;
-
+        public override int LineSmooth => (int)GLEnum.LineSmooth;
     }
 }

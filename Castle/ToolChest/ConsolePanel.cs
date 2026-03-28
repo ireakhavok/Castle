@@ -12,23 +12,20 @@ using System.Text;
 
 namespace ToolChest
 {
-    public class ConsolePanel : CompanionPanel
+    public class ConsolePanel : BasePanel
     {
         private class ConsoleUIOverlay : UIOverlay
         {
             private readonly ConsolePanel _parent;
-
             public ConsoleUIOverlay(ConsolePanel parent, IRenderContext renderContext, IControlContext controlContext, nint window)
                 : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
-
             protected override void HandleDataHook(string hook)
             {
                 _parent.HandleDataHook(hook);
             }
-
             public override void HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
@@ -41,6 +38,10 @@ namespace ToolChest
         public ConsolePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
+            AllowDragging = true;
+            DockState = DockState.Floating;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -62,14 +63,11 @@ namespace ToolChest
                 Console.WriteLine($"[ConsolePanel] ERROR: ConsolePanelUI.html not found at {htmlPath}");
                 return;
             }
-
             string html = File.ReadAllText(htmlPath);
             _uiOverlay.LoadUI(html);
-
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
-
             AddLog("Console initialized. Ready for logs and commands.");
         }
 
@@ -83,11 +81,9 @@ namespace ToolChest
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ConsolePanelUI.html");
             if (!File.Exists(htmlPath)) return;
-
             string template = File.ReadAllText(htmlPath);
             string filteredLogs = BuildFilteredLogHtml();
             string finalHtml = template.Replace("<!--LOGS-->", filteredLogs);
-
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
@@ -121,7 +117,6 @@ namespace ToolChest
             }
             else if (hook == "SubmitCommand")
             {
-                // In real usage, read the input value via JS or next iteration
                 AddLog("Command executed (placeholder)");
             }
         }

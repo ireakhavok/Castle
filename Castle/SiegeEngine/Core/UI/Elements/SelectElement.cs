@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.UI.Elements
+// File: SelectElement.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
@@ -10,7 +12,6 @@ namespace SiegeEngine.Core.UI.Elements
     public class SelectElement : HtmlElement
     {
         public bool IsOpen { get; set; } = false;
-
         public string Value
         {
             get
@@ -45,12 +46,10 @@ namespace SiegeEngine.Core.UI.Elements
                 }
             }
         }
-
         public SelectElement()
         {
             Tag = "select";
         }
-
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             float fs = HtmlLayoutUtils.ParseSize(Style.FontSizeStr, parentFs, viewportWidth, viewportHeight);
@@ -81,8 +80,6 @@ namespace SiegeEngine.Core.UI.Elements
             ComputedContentHeight = singleContentH;
             ComputedHeight = singleBoxH;
             ComputedBackgroundHeight = singleBoxH - borderW.X - borderW.Z;
-            // Respect the width allocated by flex container (.control-row + select { flex: 1 })
-            // This makes the select span the full remaining space after the label, matching browser behavior
             if (!float.IsNaN(parentWidth) && parentWidth > ComputedWidth)
             {
                 ComputedWidth = parentWidth;
@@ -114,7 +111,6 @@ namespace SiegeEngine.Core.UI.Elements
                 }
             }
         }
-
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
@@ -136,13 +132,11 @@ namespace SiegeEngine.Core.UI.Elements
             }
             if (effectiveStyle.Display == "none") return;
             Matrix4x4 local = parentMatrix * ComputedTransform;
-            // Draw select background
             if (effectiveStyle.BackgroundColor != Vector4.Zero)
             {
                 float[] selectNdc = HtmlLayoutUtils.GetNdcQuad(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(selectNdc, effectiveStyle.BackgroundColor);
             }
-            // Borders for select
             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
@@ -172,13 +166,15 @@ namespace SiegeEngine.Core.UI.Elements
                 float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, ComputedPosition.Y, borderW.Y, ComputedHeight, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderRightC);
             }
-            // Render children (only selected when not open)
-            foreach (var child in Children)
+            // === ONLY render selected option when closed (prevents double drawing when dropdown open) ===
+            if (!IsOpen)
             {
-                child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, local);
+                foreach (var child in Children)
+                {
+                    child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, local);
+                }
             }
         }
-
         public void RenderDropdown(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight)
         {
             Matrix4x4 local = ComputedFullTransform;
@@ -205,13 +201,11 @@ namespace SiegeEngine.Core.UI.Elements
             float dropdownY = first.ComputedPosition.Y;
             var last = options.Last();
             float dropdownH = last.ComputedPosition.Y + last.ComputedHeight - dropdownY;
-            // Draw dropdown background
             if (effectiveStyle.BackgroundColor != Vector4.Zero)
             {
                 float[] dropdownNdc = HtmlLayoutUtils.GetNdcQuad(ComputedBackgroundX, dropdownY, ComputedBackgroundWidth, dropdownH, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(dropdownNdc, effectiveStyle.BackgroundColor);
             }
-            // Dropdown borders
             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
@@ -241,13 +235,11 @@ namespace SiegeEngine.Core.UI.Elements
                 float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X + ComputedWidth - borderW.Y, dropdownY, borderW.Y, dropdownH, local, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(ndc, borderRightC);
             }
-            // Render options
             foreach (var opt in options)
             {
                 opt.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, local);
             }
         }
-
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             string fontFamily = Style.FontFamily ?? "Arial";
@@ -263,14 +255,13 @@ namespace SiegeEngine.Core.UI.Elements
                     textH = Math.Max(textH, size.Y);
                 }
             }
-            if (maxW == 0) maxW = 100; // Default width if no options
+            if (maxW == 0) maxW = 100;
             Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
             Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
             float iw = maxW + pad.W + pad.Y + borderW.W + borderW.Y;
             float ih = textH + pad.X + pad.Z + borderW.X + borderW.Z;
             return new Vector2(iw, ih);
         }
-
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             return base.HandleClick(mousePos, viewportWidth, viewportHeight);

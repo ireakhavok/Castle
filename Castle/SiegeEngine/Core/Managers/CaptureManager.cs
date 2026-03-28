@@ -11,7 +11,6 @@ namespace SiegeEngine.Core.Managers
     {
         private readonly IControlContext _controlContext;
         private IPanel _currentOwner;
-
         public IPanel CurrentOwner => _currentOwner;
         public bool IsCapturing => _currentOwner != null;
 
@@ -23,14 +22,10 @@ namespace SiegeEngine.Core.Managers
         public void RequestCapture(IPanel panel)
         {
             if (_currentOwner == panel) return;
-
             ReleaseCapture();
-
             _currentOwner = panel;
-
-            // Push panel content viewport (TitleHeight = 20f is standard)
-            float contentY = panel.Position.Y + 20f;
-            float contentH = panel.Size.Y - 20f;
+            float contentY = panel.Position.Y + panel.HeaderHeight;
+            float contentH = panel.Size.Y - panel.HeaderHeight;
             var viewport = new Viewport(panel.Position.X, contentY, panel.Size.X, contentH);
             _controlContext.PushViewport(viewport);
         }
@@ -44,7 +39,6 @@ namespace SiegeEngine.Core.Managers
             }
         }
 
-        // Called every frame from PanelManager to force continuous update on captured panel
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta)
         {
             if (_currentOwner != null && _currentOwner.Visible)

@@ -9,10 +9,14 @@
 
   <ItemGroup>
     <None Remove="NewTerrainForm.html" />
+    <None Remove="TwoDCreatorPanelUI.html" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="NewTerrainForm.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="TwoDCreatorPanelUI.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -18,28 +18,24 @@ namespace SiegeEngine.Core.ContextManagement
         void SetKeyCallback(nint window, KeyCallback callback);
         void SetScrollCallback(nint window, ScrollCallback callback);
         void SetWindowSizeCallback(nint window, WindowSizeCallback callback);
-
         void GetCursorPos(nint window, out double xpos, out double ypos);
         void SetCursorPos(nint window, double xpos, double ypos);
-
         void SetInputMode(nint window, CursorAttribute attrib, CursorMode value);
-
         InputAction GetKey(nint window, Key key);
         InputAction GetMouseButton(nint window, MouseButton button);
-
         bool WindowShouldClose(nint window);
         bool GetWindowAttrib(nint window, WindowAttribute attrib);
-
         void PollEvents();
         void SwapBuffers(nint window);
-
         void GetWindowSize(nint window, out int width, out int height);
-
         double GetTime();
 
         // === NEW: Viewport Stack for panel-aware mouse capture ===
         void PushViewport(Viewport viewport);
         void PopViewport();
         Viewport GetCurrentViewport();
+
+        // NEW: Required for safe GetCurrentViewport fallback during panel initialization (prevents 0xC0000005)
+        void SetMainWindow(nint window);
     }
 }

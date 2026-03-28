@@ -81,6 +81,7 @@ namespace Citadel.Server
         }
 
         public IReadOnlyList<Entity> GetEntities() => _entities.AsReadOnly();
+
         public Entity GetEntityById(int id) => _entities.Find(e => e.Id == id);
 
         public void AddSystem(GameSystem system)
@@ -289,11 +290,26 @@ namespace Citadel.Server
         {
             var entity = new Entity { Id = e.EntityId, Type = e.EntityType };
 
+            var transform = entity.GetComponent<TransformComponent>();
+            transform.Position = e.Position with { Z = 0f };
+            transform.Rotation = e.Rotation;
+            transform.Scale = new Vector3(e.Width > 0 ? e.Width : 2f, e.Height > 0 ? e.Height : 2f, 1f);
+
             var physics = new PhysicsComponent();
-            physics.Position = e.Position; // Routes directly through TransformComponent (single source of truth)
+            physics.Position = e.Position;
             entity.AddComponent(physics);
 
-            if (e.EntityType == "Player")
+            if (e.EntityType == "Sprite" && !string.IsNullOrEmpty(e.TexturePath))
+            {
+                var sprite = new SpriteComponent
+                {
+                    TexturePath = e.TexturePath,
+                    Size = new Vector2(e.Width, e.Height)
+                };
+                entity.AddComponent(sprite);
+                Console.WriteLine($"[GameServer] Networked Sprite created: {System.IO.Path.GetFileName(e.TexturePath)}");
+            }
+            else if (e.EntityType == "Player")
             {
                 entity.AddComponent(new Player(e.EntityId, e.Position, e.PlayerId ?? 0));
             }

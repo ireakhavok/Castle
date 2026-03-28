@@ -13,23 +13,20 @@ using System.Text;
 
 namespace ToolChest
 {
-    public class AssetBrowserPanel : CompanionPanel
+    public class AssetBrowserPanel : BasePanel
     {
         private class AssetBrowserUIOverlay : UIOverlay
         {
             private readonly AssetBrowserPanel _parent;
-
             public AssetBrowserUIOverlay(AssetBrowserPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window)
                 : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
-
             protected override void HandleDataHook(string hook)
             {
                 _parent.HandleDataHook(hook);
             }
-
             public override void HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
@@ -42,6 +39,16 @@ namespace ToolChest
         public AssetBrowserPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
+            AllowDragging = true;
+            DockState = DockState.Floating;
+            DockingMode = SiegeEngine.Core.Definitions.DockingMode.Dynamic;
+
+
+            // === ONLY CHANGE: Proper starting size (~1/8 of typical screen) ===
+            BaseWidth = 420f;
+            BaseHeight = 340f;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -63,14 +70,11 @@ namespace ToolChest
                 Console.WriteLine($"[AssetBrowserPanel] ERROR: AssetBrowserPanelUI.html not found at {htmlPath}");
                 return;
             }
-
             string html = File.ReadAllText(htmlPath);
             _uiOverlay.LoadUI(html);
-
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
-
             RefreshBrowser();
         }
 
@@ -78,11 +82,9 @@ namespace ToolChest
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetBrowserPanelUI.html");
             if (!File.Exists(htmlPath)) return;
-
             string template = File.ReadAllText(htmlPath);
             string itemsHtml = BuildItemsHtml();
             string finalHtml = template.Replace("<!--ITEMS-->", itemsHtml);
-
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
@@ -96,13 +98,11 @@ namespace ToolChest
             {
                 var dirs = Directory.GetDirectories(_currentPath);
                 var files = Directory.GetFiles(_currentPath);
-
                 foreach (var dir in dirs)
                 {
                     string name = Path.GetFileName(dir);
                     sb.AppendLine($"<div class='item folder' data-hook='Enter:{dir}'>📁 {name}</div>");
                 }
-
                 foreach (var file in files)
                 {
                     string name = Path.GetFileName(file);
@@ -118,7 +118,6 @@ namespace ToolChest
                 }
             }
             catch { }
-
             return sb.ToString();
         }
 

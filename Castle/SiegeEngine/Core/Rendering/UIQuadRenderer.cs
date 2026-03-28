@@ -114,22 +114,16 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.BindVertexArray(0);
         }
 
-        /// <summary>
-        /// Draws a perfectly anti-aliased line of any orientation and thickness.
-        /// Replaces all manual negative-width hacks (used by the X button).
-        /// </summary>
         public void DrawLine(float x1, float y1, float x2, float y2, float thickness, Vector4 color, float viewportWidth, float viewportHeight)
         {
             float dx = x2 - x1;
             float dy = y2 - y1;
             float len = MathF.Sqrt(dx * dx + dy * dy);
             if (len < 0.001f) return;
-
             float ux = dx / len;
             float uy = dy / len;
             float px = -uy * (thickness * 0.5f);
             float py = ux * (thickness * 0.5f);
-
             float lx1 = x1 + px;
             float ly1 = y1 + py;
             float lx2 = x2 + px;
@@ -138,12 +132,10 @@ namespace SiegeEngine.Core.Rendering
             float ry1 = y1 - py;
             float rx2 = x2 - px;
             float ry2 = y2 - py;
-
             float left = 2.0f * lx1 / viewportWidth - 1.0f;
             float right = 2.0f * lx2 / viewportWidth - 1.0f;
             float top = 1.0f - 2.0f * ly1 / viewportHeight;
             float bottom = 1.0f - 2.0f * ly2 / viewportHeight;
-
             float[] vertices = new float[]
             {
                 2.0f * lx1 / viewportWidth - 1.0f, 1.0f - 2.0f * ly1 / viewportHeight,
@@ -151,7 +143,6 @@ namespace SiegeEngine.Core.Rendering
                 2.0f * rx2 / viewportWidth - 1.0f, 1.0f - 2.0f * ry2 / viewportHeight,
                 2.0f * rx1 / viewportWidth - 1.0f, 1.0f - 2.0f * ry1 / viewportHeight
             };
-
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             _shader.Use();
@@ -159,7 +150,6 @@ namespace SiegeEngine.Core.Rendering
             _shader.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
             _shader.SetUniform("uUseTexture", 0.0f);
             _shader.SetUniform("uUseRounded", 0.0f);
-
             _renderContext.BindVertexArray(_vao);
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             fixed (float* ptr = vertices)

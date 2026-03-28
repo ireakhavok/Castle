@@ -1,6 +1,8 @@
 ﻿// Folder: SiegeEngine.Core.Interfaces
 // File: IPanel.cs
+using SiegeEngine.Core.Definitions;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Interfaces
 {
     public enum DockState
@@ -34,6 +36,7 @@ namespace SiegeEngine.Core.Interfaces
         void Render();
         void Dispose();
         DockState DockState { get; set; }
+        DockingMode DockingMode { get; set; }   // Per-panel control - no scene conflict
         void Detach();
         Vector2 Position { get; set; }
         Vector2 Size { get; set; }
@@ -42,8 +45,9 @@ namespace SiegeEngine.Core.Interfaces
         bool AllowDragging { get; set; }
         bool IsModal { get; set; }
         float HeaderHeight { get; set; }
-
         ResizeHandle GetResizeHandle(Vector2 absMousePos);
         void StartResize(Vector2 mousePos, ResizeHandle handle);
+        bool HasTitleBar { get; set; }
+        bool IsClosable { get; set; }
     }
 }
