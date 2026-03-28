@@ -126,7 +126,6 @@ namespace SiegeEngine.Core.Managers
                     }
                     else if (_hoveringWorkspace)
                     {
-                        // Only dock if released directly on the actual center icon square
                         float cs = IconSize * 0.3f;
                         if (mousePos.X >= _hoverIconCenter.X - cs * 0.5f && mousePos.X <= _hoverIconCenter.X + cs * 0.5f &&
                             mousePos.Y >= _hoverIconCenter.Y - cs * 0.5f && mousePos.Y <= _hoverIconCenter.Y + cs * 0.5f)
@@ -150,6 +149,9 @@ namespace SiegeEngine.Core.Managers
                 _showHoverIcons = false;
                 _hoveringWorkspace = false;
             }
+
+            // This is the ONLY line needed so docked panels become fully interactive
+            _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
         }
         private bool HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
         {
