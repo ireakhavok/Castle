@@ -73,33 +73,50 @@ namespace SiegeEngine.Core.Managers
 
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
+            // FLOATING PANELS - EXACT SAME LIFECYCLE PATTERN AS DYNAMICDOCKINGSTRATEGY (the one that works)
+            // Only the hovered panel receives Update(). No other panel ever gets lifecycle.
+            // This eliminates any possibility of panels moving together.
+            // _root.Update is intentionally removed (as you identified - this was the source of scroll blending).
+
+            IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
-                var p = _floatingPanels[i];
-                if (!p.Visible) continue;
-                p.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-            }
-            if (mousePressed && _draggingPanel == null)
-            {
-                for (int i = _floatingPanels.Count - 1; i >= 0; i--)
+                var panel = _floatingPanels[i];
+                if (!panel.Visible) continue;
+
+                bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
+                                 mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
+
+                if (overPanel)
                 {
-                    var p = _floatingPanels[i];
-                    if (!p.Visible) continue;
-                    bool overTitle = mousePos.Y >= p.Position.Y && mousePos.Y < p.Position.Y + p.HeaderHeight;
-                    if (overTitle && p.AllowDragging)
+                    hoveredPanel = panel;
+                    panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+
+                    if (HandleSinglePanel(panel, mousePos, mousePressed, winW, winH))
                     {
-                        _draggingPanel = p;
-                        _dragOffset = mousePos - p.Position;
-                        return;
+                        break;
                     }
                 }
+            }
 
+            // DOCKED PANEL TEAR-OUT (IDE specific)
+            if (mousePressed && _draggingPanel == null && hoveredPanel == null)
+            {
                 if (_root.HitTest(mousePos, out IPanel hit, out bool isTitle, out _, out _, out _))
                 {
                     if (isTitle && hit.AllowDragging)
                     {
+                        _root.RemovePanel(hit);
+                        _floatingPanels.Add(hit);
+                        hit.DockState = DockState.Floating;
+                        hit.AllowDragging = true;
+
                         _draggingPanel = hit;
                         _dragOffset = mousePos - hit.Position;
+                        if (hit is BasePanel bp)
+                        {
+                            bp.StartTitleBarDrag(mousePos);
+                        }
                         return;
                     }
                 }
@@ -122,6 +139,36 @@ namespace SiegeEngine.Core.Managers
                 _showHoverIcons = false;
                 _hoveringWorkspace = false;
             }
+        }
+
+        private bool HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
+        {
+            bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
+                             mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
+            if (!overPanel) return false;
+
+            if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
+            {
+                bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + BasePanel.TitleHeight;
+                if (overTitle)
+                {
+                    _draggingPanel = panel;
+                    _dragOffset = mousePos - panel.Position;
+                    if (panel is BasePanel bp)
+                    {
+                        bp.StartTitleBarDrag(mousePos);
+                    }
+                    // BringToFront - exact same as DynamicDockingStrategy
+                    int idx = _floatingPanels.IndexOf(panel);
+                    if (idx >= 0 && idx < _floatingPanels.Count - 1)
+                    {
+                        _floatingPanels.RemoveAt(idx);
+                        _floatingPanels.Add(panel);
+                    }
+                    return true;
+                }
+            }
+            return false;
         }
 
         private void DetectHoverTarget(Vector2 mousePos, int winW, int winH)
