@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: IDockingStrategy.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
@@ -15,5 +15,6 @@ namespace SiegeEngine.Core.Managers
         void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH);
         void Render(IRenderContext renderContext, int winW, int winH);
         void ComputeLayout(int winW, int winH);
+        bool HasActiveContent(); // new architectural gate – prevents unnecessary Update/Render/CollapseNode calls when a strategy has zero panels
     }
 }

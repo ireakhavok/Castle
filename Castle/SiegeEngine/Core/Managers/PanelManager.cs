@@ -100,9 +100,12 @@ namespace SiegeEngine.Core.Managers
 
             if (!_captureManager.IsCapturing)
             {
-                _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_desktopStrategy.HasActiveContent())
+                    _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_dynamicStrategy.HasActiveContent())
+                    _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_ideStrategy.HasActiveContent())
+                    _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
             }
 
             _scrollDelta = 0f;
@@ -114,9 +117,12 @@ namespace SiegeEngine.Core.Managers
             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
 
-            _desktopStrategy.Render(_renderContext, winW, winH);
-            _dynamicStrategy.Render(_renderContext, winW, winH);
-            _ideStrategy.Render(_renderContext, winW, winH);
+            if (_desktopStrategy.HasActiveContent())
+                _desktopStrategy.Render(_renderContext, winW, winH);
+            if (_dynamicStrategy.HasActiveContent())
+                _dynamicStrategy.Render(_renderContext, winW, winH);
+            if (_ideStrategy.HasActiveContent())
+                _ideStrategy.Render(_renderContext, winW, winH);
         }
 
         public void RemovePanel(IPanel panel)
