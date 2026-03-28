@@ -79,9 +79,6 @@ namespace SiegeEngine.Core.Managers
                 if (!p.Visible) continue;
                 p.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             }
-
-            _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
-
             if (mousePressed && _draggingPanel == null)
             {
                 for (int i = _floatingPanels.Count - 1; i >= 0; i--)
@@ -119,8 +116,6 @@ namespace SiegeEngine.Core.Managers
 
             if (_draggingPanel != null && mouseReleased)
             {
-                // COMPLETELY FRESH MINIMAL DROP - NO REMOVAL, NO TREE, NO NOTHING
-                // Panel stays exactly where it was dragged to (normal floating behavior)
                 if (_draggingPanel is BasePanel bp) bp.ResetDragState();
                 _draggingPanel = null;
                 _hoveredPanelDuringDrag = null;
