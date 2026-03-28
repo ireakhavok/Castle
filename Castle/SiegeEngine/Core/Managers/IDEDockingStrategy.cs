@@ -88,7 +88,7 @@ namespace SiegeEngine.Core.Managers
 
                     if (mousePressed)
                     {
-                        // Primary tear-out (tab bar)
+                        // Title-bar tear-out from workspace (restores original floating size)
                         if (isTitle && dockedHit.AllowDragging)
                         {
                             RestoreOriginalFloatingSize(dockedHit);
@@ -104,7 +104,7 @@ namespace SiegeEngine.Core.Managers
                             return;
                         }
 
-                        // Fallback manual title-bar tear-out (works for single-tab panels)
+                        // Fallback manual title-bar tear-out (single-tab panels)
                         if (dockedHit.HasTitleBar && dockedHit.AllowDragging)
                         {
                             bool overTitle = mousePos.Y >= dockedHit.Position.Y && mousePos.Y <= dockedHit.Position.Y + BasePanel.TitleHeight;
@@ -203,22 +203,22 @@ namespace SiegeEngine.Core.Managers
                         }
                         else
                         {
-                            // Arrow drop – CORRECT AXIS
-                            bool horizontalSplit = absY > absX; // North/South arrows = horizontal split (top/bottom)
+                            // Arrow drop – local subtree replacement only
+                            bool horizontalSplit = absY > absX; // North/South = horizontal
 
                             DockSplitNode newSplit = new DockSplitNode();
-                            newSplit.IsVertical = horizontalSplit; // true = top/bottom
+                            newSplit.IsVertical = horizontalSplit;
                             newSplit.SplitRatio = 0.5f;
 
                             if (horizontalSplit)
                             {
-                                if (rel.Y < 0) // North arrow (above center) → new panel on top
+                                if (rel.Y < 0)
                                 {
                                     newSplit.Left = new DockTabbedNode();
                                     newSplit.Right = targetNode;
                                     ((DockTabbedNode)newSplit.Left).AddPanel(_draggingPanel);
                                 }
-                                else // South arrow → new panel on bottom
+                                else
                                 {
                                     newSplit.Left = targetNode;
                                     newSplit.Right = new DockTabbedNode();
@@ -227,13 +227,13 @@ namespace SiegeEngine.Core.Managers
                             }
                             else
                             {
-                                if (rel.X < 0) // West arrow → new panel on left
+                                if (rel.X < 0)
                                 {
                                     newSplit.Left = new DockTabbedNode();
                                     newSplit.Right = targetNode;
                                     ((DockTabbedNode)newSplit.Left).AddPanel(_draggingPanel);
                                 }
-                                else // East arrow → new panel on right
+                                else
                                 {
                                     newSplit.Left = targetNode;
                                     newSplit.Right = new DockTabbedNode();
@@ -241,11 +241,8 @@ namespace SiegeEngine.Core.Managers
                                 }
                             }
 
-                            // Replace hovered node with new split
-                            if (_root == targetNode)
-                                _root = newSplit;
-                            else
-                                _root = newSplit; // safe fallback for first split
+                            // Replace the exact hovered node in the tree (this fixes nested splits)
+                            _root = ReplaceInTree(_root, targetNode, newSplit);
 
                             shouldDock = true;
                         }
@@ -278,6 +275,18 @@ namespace SiegeEngine.Core.Managers
             }
 
             _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
+        }
+
+        private DockNode ReplaceInTree(DockNode current, DockNode oldNode, DockNode newNode)
+        {
+            if (current == oldNode) return newNode;
+
+            if (current is DockSplitNode split)
+            {
+                split.Left = ReplaceInTree(split.Left, oldNode, newNode);
+                split.Right = ReplaceInTree(split.Right, oldNode, newNode);
+            }
+            return current;
         }
 
         private void RestoreOriginalFloatingSize(IPanel panel)
