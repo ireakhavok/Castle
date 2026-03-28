@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Interfaces
-// File: IPanel.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Interfaces
@@ -49,5 +47,6 @@ namespace SiegeEngine.Core.Interfaces
         void StartResize(Vector2 mousePos, ResizeHandle handle);
         bool HasTitleBar { get; set; }
         bool IsClosable { get; set; }
+        void StartTitleBarDrag(Vector2 mousePos);
     }
 }

@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
-// File: DockManager.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -9,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json.Serialization;
-
 namespace SiegeEngine.Core.Managers
 {
     [JsonDerivedType(typeof(DockSplitNode), "split")]
@@ -26,7 +23,6 @@ namespace SiegeEngine.Core.Managers
         public abstract bool RemovePanel(IPanel panel);
         public abstract DockNode FindNode(IPanel panel);
     }
-
     public class DockSplitNode : DockNode
     {
         public DockNode Left { get; set; }
@@ -156,7 +152,6 @@ namespace SiegeEngine.Core.Managers
             return null;
         }
     }
-
     public class DockTabbedNode : DockNode
     {
         public List<IPanel> Panels { get; set; } = new List<IPanel>();
@@ -253,29 +248,23 @@ namespace SiegeEngine.Core.Managers
             return null;
         }
     }
-
     public class DockManager
     {
         private readonly IDockingStrategy _strategy;
-
         public DockManager(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _strategy = new DesktopDockingStrategy(renderContext, controlContext, eventBus);
         }
-
         public void AddPanel(IPanel panel) => _strategy.AddPanel(panel);
         public void RemovePanel(IPanel panel) => _strategy.RemovePanel(panel);
-
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             _strategy.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus, winW, winH);
         }
-
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             _strategy.Render(renderContext, winW, winH);
         }
-
         public void ComputeLayout(int winW, int winH)
         {
             _strategy.ComputeLayout(winW, winH);
