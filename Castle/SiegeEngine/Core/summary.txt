@@ -795,6 +795,7 @@ Folder: Managers
       - void AddPanel(IPanel panel)
         - Calls: GetHeaderHeight
       - void RemovePanel(IPanel panel)
+      - bool HasActiveContent()
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
         - Calls: ClosePanelEvent, ComputeSnapPreview, DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, panel.GetResizeHandle, panel.OnPanelResize, panel.StartResize
       - bool ComputeSnapPreview( int winH,  int winW,  out Vector2, Vector2 mousePos)
@@ -843,6 +844,7 @@ Folder: Managers
         - Calls: UIQuadRenderer
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
+      - bool HasActiveContent()
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
         - Calls: ClampToViewport, ComputeSnapPreview, HandleSinglePanel, PerformLiveResize, _draggingPanel.OnPanelResize, _resizingPanel.OnPanelResize, bp.ResetDragState
       - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
@@ -889,6 +891,7 @@ Folder: Managers
         - Calls: panel.OnPanelResize
       - void RemovePanel(IPanel panel)
         - Calls: CollapseNode, _root.ComputeLayout
+      - bool HasActiveContent()
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
         - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, ReplaceInTree, RestoreOriginalFloatingSize, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, bp.StartTitleBarDrag, dockedHit.GetResizeHandle, dockedHit.StartResize, tabbed.AddPanel
       - DockNode ReplaceInTree( DockNode newNode,  DockNode oldNode, DockNode current)
@@ -965,9 +968,9 @@ Folder: Managers
       - void AddPanel(IPanel panel)
         - Calls: panel.Init
       - void Update(float deltaTime)
-        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize
+        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - void Render()
-        - Calls: _controlContext.GetWindowSize, _renderContext.Scissor, _renderContext.Viewport
+        - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
         - Calls: _captureManager.ReleaseCapture, panel.Detach, panel.Dispose
 - File: ProjectSettings.cs
