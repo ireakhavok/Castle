@@ -48,6 +48,7 @@ namespace MapRoom
             Scaling = ScalingMode.BestFit;
             BaseWidth = 1280f;
             BaseHeight = 720f;
+            DockingMode = DockingMode.IDE;
             _twoDScene = new TwoDCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
         }
