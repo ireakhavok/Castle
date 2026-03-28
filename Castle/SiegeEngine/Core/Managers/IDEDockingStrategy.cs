@@ -81,7 +81,6 @@ namespace SiegeEngine.Core.Managers
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (_root == null && _floatingPanels.Count == 0) return;
-
             // === DOCKED / WORKSPACE PANELS – title-bar tear-out + resize + close ===
             if (_root.HitTest(mousePos, out IPanel dockedHit, out bool isTitle, out _, out _, out _))
             {
@@ -298,20 +297,26 @@ namespace SiegeEngine.Core.Managers
         private DockNode CollapseNode(DockNode node)
         {
             if (node == null) return null;
-
-            // Prune empty tabbed nodes (this eliminates the blank panel space)
-            if (node is DockTabbedNode tabbed && tabbed.Panels.Count == 0)
-                return null;
-
-            if (node is DockSplitNode split)
+            // Aggressive collapse: keep collapsing until stable
+            bool changed = true;
+            while (changed)
             {
-                split.Left = CollapseNode(split.Left);
-                split.Right = CollapseNode(split.Right);
-
-                if (split.Left == null) return split.Right;
-                if (split.Right == null) return split.Left;
-
-                return split;
+                changed = false;
+                if (node is DockSplitNode split)
+                {
+                    split.Left = CollapseNode(split.Left);
+                    split.Right = CollapseNode(split.Right);
+                    if (split.Left == null)
+                    {
+                        node = split.Right;
+                        changed = true;
+                    }
+                    else if (split.Right == null)
+                    {
+                        node = split.Left;
+                        changed = true;
+                    }
+                }
             }
             return node;
         }
