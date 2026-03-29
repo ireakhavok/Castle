@@ -280,6 +280,7 @@ namespace SiegeEngine.Core.UI
         public virtual void Render()
         {
             if (!Visible) return;
+
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
@@ -288,33 +289,55 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
+
             _renderContext.Disable(_renderContext.Enums.DepthTest);
+
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+
+            // FULL PANEL SCISSOR – single source of truth for docked + floating + live splitter drag
+            int fullX = (int)Position.X;
+            int fullY = winH - (int)(Position.Y + Size.Y);
+            uint fullW = (uint)Size.X;
+            uint fullH = (uint)Size.Y;
+
+            _renderContext.Enable(_renderContext.Enums.ScissorTest);
+            _renderContext.Scissor(fullX, fullY, fullW, fullH);
+            _renderContext.Viewport(fullX, fullY, fullW, fullH);
+
+            // CONTENT AREA 
+            int contentY = fullY;
+            uint contentH = fullH; 
+
+            _renderContext.Scissor(fullX, contentY, fullW, contentH);
+            _renderContext.Viewport(fullX, contentY, fullW, contentH);
+
+            RenderInnerContent();   // scene panels draw here
+            _uiOverlay.Render();    // HTML content fills usable area perfectly
+
+            // RESTORE FULL PANEL SCISSOR
+            _renderContext.Scissor(fullX, fullY, fullW, fullH);
+            _renderContext.Viewport(fullX, fullY, fullW, fullH);
+
+            // CHROME (title bar + close button) – LAST, always on top of scene + UI + hover icons
             if (HasTitleBar && _chrome != null)
             {
                 _chrome.Render(_quadRenderer, Size.X, Size.Y);
             }
-            if (_isDragging || IsResizing)
-            {
-                _quadRenderer.DrawQuad(0, HeaderHeight, Size.X, Size.Y - HeaderHeight, new Vector4(0.15f, 0.15f, 0.15f, 0.70f), Size.X, Size.Y);
-            }
-            else
-            {
-                _controlContext.GetWindowSize(_window, out int winW, out int winH);
-                _renderContext.Enable(_renderContext.Enums.ScissorTest);
-                int scissorX = (int)Position.X;
-                int scissorY = winH - (int)(Position.Y + Size.Y);
-                uint scissorW = (uint)Size.X;
-                uint scissorH = (uint)Size.Y;
-                _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
-                _uiOverlay.Render();
-                _renderContext.Disable(_renderContext.Enums.ScissorTest);
-            }
+
+            // BORDERS last
             float bw = 2f;
             Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
             _quadRenderer.DrawQuad(0, Size.Y - bw, Size.X, bw, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
+
+            _renderContext.Disable(_renderContext.Enums.ScissorTest);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+        }
+
+        protected virtual void RenderInnerContent()
+        {
+            // Scene panels override this. Non-scene panels do nothing.
         }
 
         public virtual void Dispose()

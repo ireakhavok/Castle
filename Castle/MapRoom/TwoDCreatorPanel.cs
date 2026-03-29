@@ -21,8 +21,7 @@ namespace MapRoom
         private class TwoDCreatorUIOverlay : UIOverlay
         {
             private readonly TwoDCreatorPanel _parent;
-            public TwoDCreatorUIOverlay(TwoDCreatorPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window)
-                : base(renderContext, controlContext, window)
+            public TwoDCreatorUIOverlay(TwoDCreatorPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
@@ -40,8 +39,7 @@ namespace MapRoom
 
         public override bool WantsContinuousUpdate => true;
 
-        public TwoDCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-            : base(renderContext, controlContext, window, eventBus)
+        public TwoDCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
             IsClosable = true;
@@ -118,7 +116,6 @@ namespace MapRoom
 
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
 
-            // === Consistent content-area rect (same as TerrainCreatorPanel) ===
             float header = HasTitleBar ? HeaderHeight : 0f;
             float contentX = Position.X;
             float contentY = Position.Y + header;
@@ -127,7 +124,6 @@ namespace MapRoom
 
             Vector2 contentMouse = absMousePos - new Vector2(contentX, contentY);
 
-            // === REMOVED the 1.0f - flip (this matches what the scene expects after the refactor) ===
             Vector2 normalizedMouse = new Vector2(
                 Math.Clamp(contentMouse.X / contentW, 0f, 1f),
                 Math.Clamp(contentMouse.Y / contentH, 0f, 1f)
@@ -150,38 +146,9 @@ namespace MapRoom
             }
         }
 
-        public override void Render()
+        protected override void RenderInnerContent()
         {
-            if (!Visible) return;
-
-            if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
-            {
-                _lastW = (int)Size.X;
-                _lastH = (int)Size.Y;
-                _twoDScene.Resize(_lastW, _lastH);
-                _uiOverlay.PanelWidth = Size.X;
-                _uiOverlay.PanelHeight = Size.Y;
-                _uiOverlay.RefreshUI();
-            }
-
-            // === Consistent content-area rect for scissor ===
-            float header = HasTitleBar ? HeaderHeight : 0f;
-            float contentX = Position.X;
-            float contentY = Position.Y + header;
-            float contentW = Size.X;
-            float contentH = Size.Y - header;
-
-            _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            _renderContext.Enable(_renderContext.Enums.ScissorTest);
-            int scissorX = (int)contentX;
-            int scissorY = winH - (int)(contentY + contentH);
-            uint scissorW = (uint)contentW;
-            uint scissorH = (uint)contentH;
-            _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
-
             _twoDScene.Render(_twoDScene.GetEntities());
-            _renderContext.Disable(_renderContext.Enums.ScissorTest);
-            base.Render();
         }
 
         public override void OnLiveResize(float w, float h)
