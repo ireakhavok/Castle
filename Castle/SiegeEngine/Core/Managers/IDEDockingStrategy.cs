@@ -76,7 +76,7 @@ namespace SiegeEngine.Core.Managers
                 _root = CollapseNode(_root);
                 if (_root == null)
                     _root = new DockTabbedNode();
-                SafeRecomputeLayout(1920, 1080); // exact line from the version where close filled perfectly
+                SafeRecomputeLayout(1920, 1080);
             }
         }
 
@@ -117,16 +117,11 @@ namespace SiegeEngine.Core.Managers
                     if (dockedHit != null)
                     {
                         dockedHit.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, 0f); // defensive 0 scroll
-
                         if (mousePressed)
                         {
                             // Guard: do NOT treat close-button click as title-bar tear-out
                             if (IsOverCloseButton(dockedHit, mousePos))
-                            {
-                                // close is already handled inside PanelChrome -> ClosePanelEvent -> RemovePanel
-                                // we just return so the click is not stolen by tear-out logic
                                 return;
-                            }
 
                             // Title-bar tear-out from workspace
                             if (isTitle && dockedHit.AllowDragging)
@@ -134,7 +129,6 @@ namespace SiegeEngine.Core.Managers
                                 TearOutPanel(dockedHit, mousePos, winW, winH);
                                 return;
                             }
-
                             // Fallback manual title-bar tear-out (single-tab panels)
                             if (dockedHit.HasTitleBar && dockedHit.AllowDragging)
                             {
@@ -145,7 +139,6 @@ namespace SiegeEngine.Core.Managers
                                     return;
                                 }
                             }
-
                             // Resize support
                             ResizeHandle handle = dockedHit.GetResizeHandle(mousePos);
                             if (handle != ResizeHandle.None)
@@ -400,8 +393,13 @@ namespace SiegeEngine.Core.Managers
             bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
                              mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
             if (!overPanel) return false;
+
             if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
             {
+                // NEW: protect the close button on floating panels so chrome can fire Close()
+                if (IsOverCloseButton(panel, mousePos))
+                    return false;
+
                 bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + BasePanel.TitleHeight;
                 if (overTitle)
                 {
