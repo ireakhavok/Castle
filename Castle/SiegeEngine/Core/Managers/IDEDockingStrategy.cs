@@ -35,7 +35,6 @@ namespace SiegeEngine.Core.Managers
         private const float MenuBarHeight = 28f;
         private readonly Dictionary<IPanel, Vector2> _originalFloatingSizes = new Dictionary<IPanel, Vector2>();
         private bool _splitterDraggingThisFrame;
-
         public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -44,7 +43,6 @@ namespace SiegeEngine.Core.Managers
             _quadRenderer = new UIQuadRenderer(renderContext);
             _root = new DockTabbedNode();
         }
-
         public void AddPanel(IPanel panel)
         {
             panel.HasTitleBar = true;
@@ -69,7 +67,6 @@ namespace SiegeEngine.Core.Managers
                     _originalFloatingSizes[panel] = panel.Size;
             }
         }
-
         public void RemovePanel(IPanel panel)
         {
             _floatingPanels.Remove(panel);
@@ -83,14 +80,12 @@ namespace SiegeEngine.Core.Managers
                     _root = new DockTabbedNode();
             }
         }
-
         public bool HasActiveContent()
         {
             if (_floatingPanels.Count > 0) return true;
             if (_root == null) return false;
             return HasContentRecursive(_root);
         }
-
         private bool HasContentRecursive(DockNode node)
         {
             if (node is DockTabbedNode tab) return tab.Panels.Count > 0;
@@ -98,7 +93,6 @@ namespace SiegeEngine.Core.Managers
                 return HasContentRecursive(split.Left) || HasContentRecursive(split.Right);
             return false;
         }
-
         private bool IsAnySplitterDragging(DockNode node)
         {
             if (node is DockSplitNode split && split.IsDraggingSplitter())
@@ -110,30 +104,26 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (_floatingPanels.Count == 0 && !HasActiveContent())
                 return;
-
             if (_root != null)
             {
                 _root = CollapseNode(_root);
                 if (_root == null) _root = new DockTabbedNode();
             }
-
+            // PRE-INPUT LAYOUT: guarantees HitTest / FindDeepestSplitter / splitter detection use current accurate Rects
+            if (_root != null)
+            {
+                _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
+            }
             _splitterDraggingThisFrame = false;
             if (_root != null)
             {
                 _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
                 _splitterDraggingThisFrame = IsAnySplitterDragging(_root);
             }
-
-            if (_root != null)
-            {
-                SafeRecomputeLayout(winW, winH);
-            }
-
             // SPLITTER PRIORITY FIRST – if any splitter is dragging, skip all title-bar logic
             if (_splitterDraggingThisFrame)
             {
@@ -166,7 +156,6 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
-
             // Floating panels unchanged
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
@@ -183,7 +172,6 @@ namespace SiegeEngine.Core.Managers
                         break;
                 }
             }
-
             if (mousePressed && _draggingPanel == null && hoveredPanel == null && !_splitterDraggingThisFrame)
             {
                 if (_root != null && _root.HitTest(mousePos, out IPanel hit2, out bool isTitle2, out bool isSplitter2, out _, out _))
@@ -198,7 +186,6 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
-
             if (_draggingPanel != null && mouseDown)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -206,7 +193,6 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, MenuBarHeight);
                 DetectHoverTarget(mousePos, winW, winH);
             }
-
             if (_draggingPanel != null && mouseReleased)
             {
                 bool shouldDock = false;
@@ -286,7 +272,6 @@ namespace SiegeEngine.Core.Managers
                     _floatingPanels.Remove(_draggingPanel);
                     _draggingPanel.DockState = DockState.Tabbed;
                     _draggingPanel.AllowDragging = true;
-                    SafeRecomputeLayout(winW, winH);
                 }
                 else
                 {
@@ -308,15 +293,15 @@ namespace SiegeEngine.Core.Managers
                 _showHoverIcons = false;
                 _hoveringWorkspace = false;
             }
-
+            // POST-INPUT LAYOUT: applies new SplitRatio immediately so Render sees correct positions this frame
             if (_root != null)
             {
                 _root = CollapseNode(_root);
                 if (_root == null)
                     _root = new DockTabbedNode();
+                _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
             }
         }
-
         private void TearOutPanel(IPanel panel, Vector2 mousePos, int winW, int winH)
         {
             RestoreOriginalFloatingSize(panel);
@@ -330,17 +315,7 @@ namespace SiegeEngine.Core.Managers
                 bp.StartTitleBarDrag(mousePos);
             _root = CollapseNode(_root);
             if (_root == null) _root = new DockTabbedNode();
-            SafeRecomputeLayout(winW, winH);
         }
-
-        private void SafeRecomputeLayout(int winW, int winH)
-        {
-            if (_root == null) return;
-            float safeW = Math.Max(winW, 200f);
-            float safeH = Math.Max(winH - MenuBarHeight, 150f);
-            _root.ComputeLayout(0, MenuBarHeight, safeW, safeH);
-        }
-
         private DockNode ReplaceInTree(DockNode current, DockNode oldNode, DockNode newNode)
         {
             if (current == oldNode) return newNode;
@@ -351,7 +326,6 @@ namespace SiegeEngine.Core.Managers
             }
             return current;
         }
-
         private DockNode CollapseNode(DockNode node)
         {
             if (node == null) return null;
@@ -382,7 +356,6 @@ namespace SiegeEngine.Core.Managers
             }
             return node;
         }
-
         private void RestoreOriginalFloatingSize(IPanel panel)
         {
             if (_originalFloatingSizes.TryGetValue(panel, out Vector2 origSize))
@@ -392,7 +365,6 @@ namespace SiegeEngine.Core.Managers
                 _originalFloatingSizes.Remove(panel);
             }
         }
-
         private bool HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
         {
             bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
@@ -420,7 +392,6 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-
         private void DetectHoverTarget(Vector2 mousePos, int winW, int winH)
         {
             _hoveredPanelDuringDrag = null;
@@ -441,7 +412,7 @@ namespace SiegeEngine.Core.Managers
             }
             if (_root != null && _root.HitTest(mousePos, out IPanel dockedHit, out _, out _, out _, out _))
             {
-                if (dockedHit != _draggingPanel)
+                if (dockedHit != null && dockedHit != _draggingPanel)
                 {
                     _hoveredPanelDuringDrag = dockedHit;
                     _showHoverIcons = true;
@@ -456,7 +427,6 @@ namespace SiegeEngine.Core.Managers
                 _hoverIconCenter = new Vector2(winW * 0.5f, (winH + MenuBarHeight) * 0.5f);
             }
         }
-
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             if (_root != null)
@@ -507,7 +477,6 @@ namespace SiegeEngine.Core.Managers
                 _quadRenderer.DrawLine(cx + cs * 0.5f + shaftLen - 28, cy + 18, cx + cs * 0.5f + shaftLen, cy, thickness, ac, winW, winH);
             }
         }
-
         private void RenderSplitters(DockNode node, IRenderContext renderContext, int winW, int winH)
         {
             if (node is DockSplitNode split)
@@ -527,10 +496,10 @@ namespace SiegeEngine.Core.Managers
                 RenderSplitters(split.Right, renderContext, winW, winH);
             }
         }
-
         public void ComputeLayout(int winW, int winH)
         {
-            SafeRecomputeLayout(winW, winH);
+            if (_root != null)
+                _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
         }
     }
 }
