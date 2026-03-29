@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine.Core.Interfaces
+// File: IPanel.cs
+using SiegeEngine.Core.Definitions;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Interfaces
@@ -48,5 +50,8 @@ namespace SiegeEngine.Core.Interfaces
         bool HasTitleBar { get; set; }
         bool IsClosable { get; set; }
         void StartTitleBarDrag(Vector2 mousePos);
+
+        // Clean architectural addition: centralised close-button hit test so strategy no longer duplicates math
+        bool IsOverCloseButton(Vector2 mousePos);
     }
 }

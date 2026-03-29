@@ -10,6 +10,13 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
+/*
+ * PROTECTED PATHS:
+ * 1. Title-bar tear-out (drag from workspace)
+ * 2. Close-button guard (prevents close click from triggering tear-out)
+ * 3. Splitter drag (future live resize support – already prepared in DockSplitNode)
+ */
+
 namespace SiegeEngine.Core.Managers
 {
     public class IDEDockingStrategy : IDockingStrategy
@@ -76,7 +83,7 @@ namespace SiegeEngine.Core.Managers
                 _root = CollapseNode(_root);
                 if (_root == null)
                     _root = new DockTabbedNode();
-                SafeRecomputeLayout(1920, 1080);
+                // No hardcoded 1920x1080 – next Update frame will call SafeRecomputeLayout with real window size
             }
         }
 
@@ -116,11 +123,11 @@ namespace SiegeEngine.Core.Managers
                 {
                     if (dockedHit != null)
                     {
-                        dockedHit.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, 0f); // defensive 0 scroll
+                        dockedHit.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta); // real scrollDelta restored
                         if (mousePressed)
                         {
                             // Guard: do NOT treat close-button click as title-bar tear-out
-                            if (IsOverCloseButton(dockedHit, mousePos))
+                            if (dockedHit.IsOverCloseButton(mousePos))
                                 return;
 
                             // Title-bar tear-out from workspace
@@ -174,7 +181,7 @@ namespace SiegeEngine.Core.Managers
                 {
                     if (isTitle2 && hit2.AllowDragging)
                     {
-                        if (!IsOverCloseButton(hit2, mousePos)) // protect close button here too
+                        if (!hit2.IsOverCloseButton(mousePos))
                         {
                             TearOutPanel(hit2, mousePos, winW, winH);
                             return;
@@ -300,16 +307,8 @@ namespace SiegeEngine.Core.Managers
                 if (_root == null)
                     _root = new DockTabbedNode();
                 SafeRecomputeLayout(winW, winH);
-                _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, 0f, eventBus); // defensive 0 scroll
+                _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus); // real scrollDelta restored
             }
-        }
-
-        private bool IsOverCloseButton(IPanel panel, Vector2 mousePos)
-        {
-            if (!panel.IsClosable || !panel.HasTitleBar) return false;
-            float closeX = panel.Position.X + panel.Size.X - 24f;
-            return mousePos.X >= closeX && mousePos.X <= panel.Position.X + panel.Size.X &&
-                   mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + BasePanel.TitleHeight;
         }
 
         private void TearOutPanel(IPanel panel, Vector2 mousePos, int winW, int winH)
@@ -396,8 +395,8 @@ namespace SiegeEngine.Core.Managers
 
             if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
             {
-                // NEW: protect the close button on floating panels so chrome can fire Close()
-                if (IsOverCloseButton(panel, mousePos))
+                // protect the close button on floating panels so chrome can fire Close()
+                if (panel.IsOverCloseButton(mousePos))
                     return false;
 
                 bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + BasePanel.TitleHeight;

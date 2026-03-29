@@ -7,6 +7,7 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
@@ -96,13 +97,11 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
-
             if (HasTitleBar && _chrome != null)
             {
                 if (_chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
                     return;
             }
-
             if (_isDragging)
             {
                 if (mouseDown)
@@ -121,7 +120,6 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
-
             if (_currentResizeHandle != ResizeHandle.None)
             {
                 if (mouseDown)
@@ -179,7 +177,6 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
-
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
             if (overPanel || WantsContinuousUpdate)
@@ -222,7 +219,6 @@ namespace SiegeEngine.Core.UI
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
             if (DockingMode == DockingMode.Dynamic) return; // Dynamic uses strategy snapping only
-            // (original Desktop snap logic unchanged)
             float cornerZone = winH * 0.25f;
             bool nearLeft = absMousePos.X < SnapDistance;
             bool nearRight = absMousePos.X > winW - SnapDistance;
@@ -362,6 +358,15 @@ namespace SiegeEngine.Core.UI
         public void Close()
         {
             _eventBus.Publish(new ClosePanelEvent(this));
+        }
+
+        // === CLEANUP: IsOverCloseButton moved here from strategy (no duplication) ===
+        public bool IsOverCloseButton(Vector2 mousePos)
+        {
+            if (!IsClosable || !HasTitleBar) return false;
+            float closeX = Position.X + Size.X - 24f;
+            return mousePos.X >= closeX && mousePos.X <= Position.X + Size.X &&
+                   mousePos.Y >= Position.Y && mousePos.Y <= Position.Y + TitleHeight;
         }
     }
 }
