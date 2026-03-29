@@ -294,7 +294,7 @@ namespace SiegeEngine.Core.UI
 
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
 
-            // FULL PANEL SCISSOR – single source of truth for docked + floating + live splitter drag
+            // FULL PANEL SCISSOR – single source of truth
             int fullX = (int)Position.X;
             int fullY = winH - (int)(Position.Y + Size.Y);
             uint fullW = (uint)Size.X;
@@ -304,21 +304,22 @@ namespace SiegeEngine.Core.UI
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 
-            // CONTENT AREA 
+            // CONTENT AREA – full panel height (no header subtraction) as you requested
             int contentY = fullY;
-            uint contentH = fullH; 
+            uint contentH = fullH;
 
             _renderContext.Scissor(fullX, contentY, fullW, contentH);
             _renderContext.Viewport(fullX, contentY, fullW, contentH);
 
-            RenderInnerContent();   // scene panels draw here
-            _uiOverlay.Render();    // HTML content fills usable area perfectly
+            RenderInnerContent(); // scene panels draw here
+            _uiOverlay.Render();  // HTML fills the full usable area
 
             // RESTORE FULL PANEL SCISSOR
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 
-            // CHROME (title bar + close button) – LAST, always on top of scene + UI + hover icons
+            // CHROME (title bar + close button) – drawn on top of content
+            // Close button X is guaranteed on top of title bar background because PanelChrome draws it last
             if (HasTitleBar && _chrome != null)
             {
                 _chrome.Render(_quadRenderer, Size.X, Size.Y);
@@ -331,6 +332,10 @@ namespace SiegeEngine.Core.UI
             _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
 
+            // CRITICAL: Reset to full window so hover icons (drawn in IDEDockingStrategy.Render after all panels)
+            // appear ON TOP of the title bar
+            _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
+            _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
@@ -383,7 +388,6 @@ namespace SiegeEngine.Core.UI
             _eventBus.Publish(new ClosePanelEvent(this));
         }
 
-        // === CLEANUP: IsOverCloseButton moved here from strategy (no duplication) ===
         public bool IsOverCloseButton(Vector2 mousePos)
         {
             if (!IsClosable || !HasTitleBar) return false;
