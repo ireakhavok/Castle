@@ -884,6 +884,7 @@ Folder: Managers
       - bool _hoveringWorkspace
       - float IconSize
       - float MenuBarHeight
+      - bool _splitterDraggingThisFrame
     - Methods:
       - constructor IDEDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
         - Calls: UIQuadRenderer
@@ -895,8 +896,9 @@ Folder: Managers
         - Calls: HasContentRecursive
       - return HasContentRecursive()
       - bool HasContentRecursive(DockNode node)
+      - bool IsAnySplitterDragging(DockNode node)
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, HasActiveContent, ReplaceInTree, RestoreOriginalFloatingSize, SafeRecomputeLayout, TearOutPanel, _root.AddPanel, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
+        - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, HasActiveContent, IsAnySplitterDragging, ReplaceInTree, RestoreOriginalFloatingSize, SafeRecomputeLayout, TearOutPanel, _root.AddPanel, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
       - void TearOutPanel( Vector2 mousePos,  int winH,  int winW, IPanel panel)
         - Calls: CollapseNode, RestoreOriginalFloatingSize, SafeRecomputeLayout, _root.RemovePanel, bp.StartTitleBarDrag
       - void SafeRecomputeLayout( int winH, int winW)
@@ -906,11 +908,13 @@ Folder: Managers
       - void RestoreOriginalFloatingSize(IPanel panel)
         - Calls: panel.OnPanelResize
       - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
-        - Calls: Close, bp.StartTitleBarDrag, panel.IsOverCloseButton
+        - Calls: bp.StartTitleBarDrag, panel.IsOverCloseButton
       - void DetectHoverTarget( int winH,  int winW, Vector2 mousePos)
         - Calls: _root.HitTest
       - void Render( int winH,  int winW, IRenderContext renderContext)
-        - Calls: _quadRenderer.DrawLine, _quadRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
+        - Calls: RenderSplitters, _quadRenderer.DrawLine, _quadRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
+      - void RenderSplitters( IRenderContext renderContext,  int winH,  int winW, DockNode node)
+        - Calls: _quadRenderer.DrawLine
       - void ComputeLayout( int winH, int winW)
         - Calls: SafeRecomputeLayout
 - File: LevelManager.cs
