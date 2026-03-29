@@ -9,14 +9,12 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 /*
  * PROTECTED PATHS:
  * 1. Title-bar tear-out (drag from workspace)
  * 2. Close-button guard (prevents close click from triggering tear-out)
- * 3. Splitter drag (future live resize support – already prepared in DockSplitNode)
+ * 3. Live splitter drag (absolute mouse priority at any nesting depth, panels resize live, no snap-back)
  */
-
 namespace SiegeEngine.Core.Managers
 {
     public class IDEDockingStrategy : IDockingStrategy
@@ -35,8 +33,8 @@ namespace SiegeEngine.Core.Managers
         private bool _hoveringWorkspace;
         private const float IconSize = 80f;
         private const float MenuBarHeight = 28f;
-        // Remembers the exact size the panel had while floating (restored on tear-out)
         private readonly Dictionary<IPanel, Vector2> _originalFloatingSizes = new Dictionary<IPanel, Vector2>();
+        private bool _splitterDraggingThisFrame;
 
         public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
@@ -44,7 +42,7 @@ namespace SiegeEngine.Core.Managers
             _controlContext = controlContext;
             _eventBus = eventBus;
             _quadRenderer = new UIQuadRenderer(renderContext);
-            _root = new DockTabbedNode(); // always start with valid root
+            _root = new DockTabbedNode();
         }
 
         public void AddPanel(IPanel panel)
@@ -83,7 +81,6 @@ namespace SiegeEngine.Core.Managers
                 _root = CollapseNode(_root);
                 if (_root == null)
                     _root = new DockTabbedNode();
-                // No hardcoded 1920x1080 – next Update frame will call SafeRecomputeLayout with real window size
             }
         }
 
@@ -91,7 +88,6 @@ namespace SiegeEngine.Core.Managers
         {
             if (_floatingPanels.Count > 0) return true;
             if (_root == null) return false;
-            // Safe check that works whether root is DockTabbedNode or DockSplitNode
             return HasContentRecursive(_root);
         }
 
@@ -103,50 +99,63 @@ namespace SiegeEngine.Core.Managers
             return false;
         }
 
+        private bool IsAnySplitterDragging(DockNode node)
+        {
+            if (node is DockSplitNode split && split.IsDraggingSplitter())
+                return true;
+            if (node is DockSplitNode splitNode)
+            {
+                if (IsAnySplitterDragging(splitNode.Left)) return true;
+                if (IsAnySplitterDragging(splitNode.Right)) return true;
+            }
+            return false;
+        }
+
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (_floatingPanels.Count == 0 && !HasActiveContent())
                 return;
 
-            // Early safety collapse + recompute (prevents stale/negative Rects before any Update)
             if (_root != null)
             {
                 _root = CollapseNode(_root);
                 if (_root == null) _root = new DockTabbedNode();
+            }
+
+            _splitterDraggingThisFrame = false;
+            if (_root != null)
+            {
+                _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
+                _splitterDraggingThisFrame = IsAnySplitterDragging(_root);
+            }
+
+            if (_root != null)
+            {
                 SafeRecomputeLayout(winW, winH);
             }
 
-            // === DOCKED / WORKSPACE PANELS – title-bar tear-out + resize + close ===
-            if (_root != null)
+            // SPLITTER PRIORITY FIRST – if any splitter is dragging, skip all title-bar logic
+            if (_splitterDraggingThisFrame)
             {
-                if (_root.HitTest(mousePos, out IPanel dockedHit, out bool isTitle, out _, out _, out _))
+                // splitter owns the mouse – do nothing else
+            }
+            else if (_root != null)
+            {
+                // normal docked panel input (title bar, close, resize)
+                if (_root.HitTest(mousePos, out IPanel dockedHit, out bool isTitle, out bool isSplitter, out _, out _))
                 {
-                    if (dockedHit != null)
+                    if (dockedHit != null && !isSplitter)
                     {
-                        dockedHit.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta); // real scrollDelta restored
+                        dockedHit.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
                         if (mousePressed)
                         {
-                            // Guard: do NOT treat close-button click as title-bar tear-out
                             if (dockedHit.IsOverCloseButton(mousePos))
                                 return;
-
-                            // Title-bar tear-out from workspace
                             if (isTitle && dockedHit.AllowDragging)
                             {
                                 TearOutPanel(dockedHit, mousePos, winW, winH);
                                 return;
                             }
-                            // Fallback manual title-bar tear-out (single-tab panels)
-                            if (dockedHit.HasTitleBar && dockedHit.AllowDragging)
-                            {
-                                bool overTitle = mousePos.Y >= dockedHit.Position.Y && mousePos.Y <= dockedHit.Position.Y + BasePanel.TitleHeight;
-                                if (overTitle)
-                                {
-                                    TearOutPanel(dockedHit, mousePos, winW, winH);
-                                    return;
-                                }
-                            }
-                            // Resize support
                             ResizeHandle handle = dockedHit.GetResizeHandle(mousePos);
                             if (handle != ResizeHandle.None)
                             {
@@ -158,7 +167,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
-            // === FLOATING PANELS – 100% unchanged working behavior ===
+            // Floating panels unchanged
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -175,11 +184,11 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
-            if (mousePressed && _draggingPanel == null && hoveredPanel == null)
+            if (mousePressed && _draggingPanel == null && hoveredPanel == null && !_splitterDraggingThisFrame)
             {
-                if (_root != null && _root.HitTest(mousePos, out IPanel hit2, out bool isTitle2, out _, out _, out _))
+                if (_root != null && _root.HitTest(mousePos, out IPanel hit2, out bool isTitle2, out bool isSplitter2, out _, out _))
                 {
-                    if (isTitle2 && hit2.AllowDragging)
+                    if (isTitle2 && hit2.AllowDragging && !isSplitter2)
                     {
                         if (!hit2.IsOverCloseButton(mousePos))
                         {
@@ -300,14 +309,11 @@ namespace SiegeEngine.Core.Managers
                 _hoveringWorkspace = false;
             }
 
-            // Final safety collapse + recompute – root is never null
             if (_root != null)
             {
                 _root = CollapseNode(_root);
                 if (_root == null)
                     _root = new DockTabbedNode();
-                SafeRecomputeLayout(winW, winH);
-                _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus); // real scrollDelta restored
             }
         }
 
@@ -392,13 +398,10 @@ namespace SiegeEngine.Core.Managers
             bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
                              mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
             if (!overPanel) return false;
-
             if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
             {
-                // protect the close button on floating panels so chrome can fire Close()
                 if (panel.IsOverCloseButton(mousePos))
                     return false;
-
                 bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + BasePanel.TitleHeight;
                 if (overTitle)
                 {
@@ -457,7 +460,15 @@ namespace SiegeEngine.Core.Managers
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             if (_root != null)
+            {
                 _root.Render(renderContext, winW, winH);
+            }
+            renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
+            renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
+            if (_root != null)
+            {
+                RenderSplitters(_root, renderContext, winW, winH);
+            }
             foreach (var panel in _floatingPanels)
             {
                 if (!panel.Visible) continue;
@@ -482,22 +493,38 @@ namespace SiegeEngine.Core.Managers
                 float shaftLen = s * 0.4f;
                 float thickness = 2f;
                 Vector4 ac = new Vector4(1f, 1f, 1f, 1f);
-                // North
                 _quadRenderer.DrawLine(cx, cy - cs * 0.5f - shaftLen, cx, cy - cs * 0.5f, thickness, ac, winW, winH);
                 _quadRenderer.DrawLine(cx - 18, cy - cs * 0.5f - shaftLen + 28, cx, cy - cs * 0.5f - shaftLen, thickness, ac, winW, winH);
                 _quadRenderer.DrawLine(cx + 18, cy - cs * 0.5f - shaftLen + 28, cx, cy - cs * 0.5f - shaftLen, thickness, ac, winW, winH);
-                // South
                 _quadRenderer.DrawLine(cx, cy + cs * 0.5f + shaftLen, cx, cy + cs * 0.5f, thickness, ac, winW, winH);
                 _quadRenderer.DrawLine(cx - 18, cy + cs * 0.5f + shaftLen - 28, cx, cy + cs * 0.5f + shaftLen, thickness, ac, winW, winH);
                 _quadRenderer.DrawLine(cx + 18, cy + cs * 0.5f + shaftLen - 28, cx, cy + cs * 0.5f + shaftLen, thickness, ac, winW, winH);
-                // West
                 _quadRenderer.DrawLine(cx - cs * 0.5f - shaftLen, cy, cx - cs * 0.5f, cy, thickness, ac, winW, winH);
                 _quadRenderer.DrawLine(cx - cs * 0.5f - shaftLen + 28, cy - 18, cx - cs * 0.5f - shaftLen, cy, thickness, ac, winW, winH);
                 _quadRenderer.DrawLine(cx - cs * 0.5f - shaftLen + 28, cy + 18, cx - cs * 0.5f - shaftLen, cy, thickness, ac, winW, winH);
-                // East
                 _quadRenderer.DrawLine(cx + cs * 0.5f + shaftLen, cy, cx + cs * 0.5f, cy, thickness, ac, winW, winH);
                 _quadRenderer.DrawLine(cx + cs * 0.5f + shaftLen - 28, cy - 18, cx + cs * 0.5f + shaftLen, cy, thickness, ac, winW, winH);
                 _quadRenderer.DrawLine(cx + cs * 0.5f + shaftLen - 28, cy + 18, cx + cs * 0.5f + shaftLen, cy, thickness, ac, winW, winH);
+            }
+        }
+
+        private void RenderSplitters(DockNode node, IRenderContext renderContext, int winW, int winH)
+        {
+            if (node is DockSplitNode split)
+            {
+                Vector4 splitterColor = new Vector4(0.55f, 0.55f, 0.6f, 1.0f);
+                if (split.IsVertical)
+                {
+                    float splitY = split.Rect.Y + split.Rect.W * split.SplitRatio;
+                    _quadRenderer.DrawLine(split.Rect.X, splitY, split.Rect.X + split.Rect.Z, splitY, 5f, splitterColor, winW, winH);
+                }
+                else
+                {
+                    float splitX = split.Rect.X + split.Rect.Z * split.SplitRatio;
+                    _quadRenderer.DrawLine(splitX, split.Rect.Y, splitX, split.Rect.Y + split.Rect.W, 5f, splitterColor, winW, winH);
+                }
+                RenderSplitters(split.Left, renderContext, winW, winH);
+                RenderSplitters(split.Right, renderContext, winW, winH);
             }
         }
 
