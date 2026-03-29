@@ -890,21 +890,29 @@ Folder: Managers
       - void AddPanel(IPanel panel)
         - Calls: panel.OnPanelResize
       - void RemovePanel(IPanel panel)
-        - Calls: CollapseNode, _root.ComputeLayout
+        - Calls: CollapseNode
       - bool HasActiveContent()
+        - Calls: HasContentRecursive
+      - return HasContentRecursive()
+      - bool HasContentRecursive(DockNode node)
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, ReplaceInTree, RestoreOriginalFloatingSize, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, bp.StartTitleBarDrag, dockedHit.GetResizeHandle, dockedHit.StartResize, tabbed.AddPanel
+        - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, HasActiveContent, ReplaceInTree, RestoreOriginalFloatingSize, SafeRecomputeLayout, TearOutPanel, _root.AddPanel, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
+      - void TearOutPanel( Vector2 mousePos,  int winH,  int winW, IPanel panel)
+        - Calls: CollapseNode, RestoreOriginalFloatingSize, SafeRecomputeLayout, _root.RemovePanel, bp.StartTitleBarDrag
+      - void SafeRecomputeLayout( int winH, int winW)
+        - Calls: _root.ComputeLayout
       - DockNode ReplaceInTree( DockNode newNode,  DockNode oldNode, DockNode current)
       - DockNode CollapseNode(DockNode node)
       - void RestoreOriginalFloatingSize(IPanel panel)
         - Calls: panel.OnPanelResize
       - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
-        - Calls: bp.StartTitleBarDrag
+        - Calls: Close, bp.StartTitleBarDrag, panel.IsOverCloseButton
       - void DetectHoverTarget( int winH,  int winW, Vector2 mousePos)
         - Calls: _root.HitTest
       - void Render( int winH,  int winW, IRenderContext renderContext)
         - Calls: _quadRenderer.DrawLine, _quadRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
       - void ComputeLayout( int winH, int winW)
+        - Calls: SafeRecomputeLayout
 - File: LevelManager.cs
   - Class: LevelManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: System
@@ -1562,6 +1570,7 @@ Folder: UI
       - void ResetDragState()
       - void Close()
         - Calls: ClosePanelEvent
+      - bool IsOverCloseButton(Vector2 mousePos)
 - File: ButtonElement.cs
   - Class: ButtonElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
