@@ -49,5 +49,9 @@ namespace SiegeEngine.Core.Interfaces
         void StartResize(Vector2 mousePos, ResizeHandle handle);
         bool HasTitleBar { get; set; }
         bool IsClosable { get; set; }
+        void StartTitleBarDrag(Vector2 mousePos);
+
+        // Clean architectural addition: centralised close-button hit test so strategy no longer duplicates math
+        bool IsOverCloseButton(Vector2 mousePos);
     }
 }

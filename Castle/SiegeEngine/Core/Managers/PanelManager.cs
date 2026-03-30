@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: PanelManager.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -22,11 +22,9 @@ namespace SiegeEngine.Core.Managers
         private float _scrollDelta = 0f;
         private readonly CaptureManager _captureManager;
 
-        // === Desktop strategy (original behavior - untouched) ===
         private IDockingStrategy _desktopStrategy;
-
-        // === NEW: Isolated Dynamic strategy (no interaction with Desktop) ===
         private DynamicDockingStrategy _dynamicStrategy;
+        private IDEDockingStrategy _ideStrategy;
 
         private DockingMode _sceneDefaultMode = DockingMode.Desktop;
 
@@ -40,6 +38,7 @@ namespace SiegeEngine.Core.Managers
 
             _desktopStrategy = new DesktopDockingStrategy(renderContext, controlContext, eventBus);
             _dynamicStrategy = new DynamicDockingStrategy(renderContext, controlContext, eventBus);
+            _ideStrategy = new IDEDockingStrategy(renderContext, controlContext, eventBus);
 
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
             _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
@@ -52,7 +51,6 @@ namespace SiegeEngine.Core.Managers
         public void SetSceneDefaultDockingMode(DockingMode mode)
         {
             _sceneDefaultMode = mode;
-            // No strategy recreation - we now support both modes simultaneously
         }
 
         private void OnOpenPanel(OpenPanelEvent e)
@@ -70,10 +68,13 @@ namespace SiegeEngine.Core.Managers
             _panels.Add(panel);
             panel.Init();
 
-            // === ROUTING: Completely isolated by mode (no cross-talk) ===
             if (panel.DockingMode == DockingMode.Dynamic)
             {
                 _dynamicStrategy.AddPanel(panel);
+            }
+            else if (panel.DockingMode == DockingMode.IDE)
+            {
+                _ideStrategy.AddPanel(panel);
             }
             else
             {
@@ -99,9 +100,12 @@ namespace SiegeEngine.Core.Managers
 
             if (!_captureManager.IsCapturing)
             {
-                // === Call BOTH strategies independently (zero interaction) ===
-                _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_desktopStrategy.HasActiveContent())
+                    _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_dynamicStrategy.HasActiveContent())
+                    _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_ideStrategy.HasActiveContent())
+                    _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
             }
 
             _scrollDelta = 0f;
@@ -113,9 +117,12 @@ namespace SiegeEngine.Core.Managers
             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
 
-            // === Render BOTH strategies independently ===
-            _desktopStrategy.Render(_renderContext, winW, winH);
-            _dynamicStrategy.Render(_renderContext, winW, winH);
+            if (_desktopStrategy.HasActiveContent())
+                _desktopStrategy.Render(_renderContext, winW, winH);
+            if (_dynamicStrategy.HasActiveContent())
+                _dynamicStrategy.Render(_renderContext, winW, winH);
+            if (_ideStrategy.HasActiveContent())
+                _ideStrategy.Render(_renderContext, winW, winH);
         }
 
         public void RemovePanel(IPanel panel)
@@ -125,9 +132,9 @@ namespace SiegeEngine.Core.Managers
 
             panel.Detach();
 
-            // === Safe remove from both (one will ignore) ===
             _desktopStrategy.RemovePanel(panel);
             _dynamicStrategy.RemovePanel(panel);
+            _ideStrategy.RemovePanel(panel);
 
             _panels.Remove(panel);
             panel.Dispose();

@@ -795,6 +795,7 @@ Folder: Managers
       - void AddPanel(IPanel panel)
         - Calls: GetHeaderHeight
       - void RemovePanel(IPanel panel)
+      - bool HasActiveContent()
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
         - Calls: ClosePanelEvent, ComputeSnapPreview, DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, panel.GetResizeHandle, panel.OnPanelResize, panel.StartResize
       - bool ComputeSnapPreview( int winH,  int winW,  out Vector2, Vector2 mousePos)
@@ -843,6 +844,7 @@ Folder: Managers
         - Calls: UIQuadRenderer
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
+      - bool HasActiveContent()
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
         - Calls: ClampToViewport, ComputeSnapPreview, HandleSinglePanel, PerformLiveResize, _draggingPanel.OnPanelResize, _resizingPanel.OnPanelResize, bp.ResetDragState
       - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
@@ -862,6 +864,56 @@ Folder: Managers
     - Methods:
       - void SelectMode(GameMode mode)
       - GameMode GetSelectedMode()
+- File: IDEDockingStrategy.cs
+  - Class: IDEDockingStrategy (Namespace: SiegeEngine.Core.Managers)
+    - Inherits: IDockingStrategy
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - DockNode _root
+      - List<IPanel> _floatingPanels
+      - IPanel _draggingPanel
+      - Vector2 _dragOffset
+      - IRenderContext _renderContext
+      - IControlContext _controlContext
+      - EventBus _eventBus
+      - UIQuadRenderer _quadRenderer
+      - IPanel _hoveredPanelDuringDrag
+      - bool _showHoverIcons
+      - Vector2 _hoverIconCenter
+      - bool _hoveringWorkspace
+      - float IconSize
+      - float MenuBarHeight
+      - bool _splitterDraggingThisFrame
+    - Methods:
+      - constructor IDEDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
+        - Calls: UIQuadRenderer
+      - void AddPanel(IPanel panel)
+        - Calls: panel.OnPanelResize
+      - void RemovePanel(IPanel panel)
+        - Calls: CollapseNode
+      - bool HasActiveContent()
+        - Calls: HasContentRecursive
+      - return HasContentRecursive()
+      - bool HasContentRecursive(DockNode node)
+      - bool IsAnySplitterDragging(DockNode node)
+      - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
+        - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, HasActiveContent, IsAnySplitterDragging, ReplaceInTree, RestoreOriginalFloatingSize, TearOutPanel, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
+      - void TearOutPanel( Vector2 mousePos,  int winH,  int winW, IPanel panel)
+        - Calls: CollapseNode, RestoreOriginalFloatingSize, _root.RemovePanel, bp.StartTitleBarDrag
+      - DockNode ReplaceInTree( DockNode newNode,  DockNode oldNode, DockNode current)
+      - DockNode CollapseNode(DockNode node)
+      - void RestoreOriginalFloatingSize(IPanel panel)
+        - Calls: panel.OnPanelResize
+      - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
+        - Calls: bp.StartTitleBarDrag, panel.IsOverCloseButton
+      - void DetectHoverTarget( int winH,  int winW, Vector2 mousePos)
+        - Calls: _root.HitTest
+      - void Render( int winH,  int winW, IRenderContext renderContext)
+        - Calls: RenderSplitters, _quadRenderer.DrawLine, _quadRenderer.DrawQuad, renderContext.Disable, renderContext.Scissor, renderContext.Viewport
+      - void RenderSplitters( IRenderContext renderContext,  int winH,  int winW, DockNode node)
+        - Calls: _quadRenderer.DrawLine
+      - void ComputeLayout( int winH, int winW)
 - File: LevelManager.cs
   - Class: LevelManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: System
@@ -912,10 +964,11 @@ Folder: Managers
       - CaptureManager _captureManager
       - IDockingStrategy _desktopStrategy
       - DynamicDockingStrategy _dynamicStrategy
+      - IDEDockingStrategy _ideStrategy
       - DockingMode _sceneDefaultMode
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: CaptureManager, DesktopDockingStrategy, DynamicDockingStrategy, _controlContext.SetScrollCallback
+        - Calls: CaptureManager, DesktopDockingStrategy, DynamicDockingStrategy, IDEDockingStrategy, _controlContext.SetScrollCallback
       - void SetSceneDefaultDockingMode(DockingMode mode)
       - void OnOpenPanel(OpenPanelEvent e)
         - Calls: AddPanel
@@ -924,9 +977,9 @@ Folder: Managers
       - void AddPanel(IPanel panel)
         - Calls: panel.Init
       - void Update(float deltaTime)
-        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize
+        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - void Render()
-        - Calls: _controlContext.GetWindowSize, _renderContext.Scissor, _renderContext.Viewport
+        - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
         - Calls: _captureManager.ReleaseCapture, panel.Detach, panel.Dispose
 - File: ProjectSettings.cs
@@ -1507,7 +1560,10 @@ Folder: UI
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
         - Calls: OnPanelResize
       - void Render()
-        - Calls: _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _uiOverlay.RefreshUI
+        - Calls: RenderInnerContent, _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, _uiOverlay.RefreshUI
+      - FIRST RenderInnerContent()
+        - Calls: _chrome.Render
+      - void RenderInnerContent()
       - void Dispose()
       - void Detach()
       - void OnPanelResize( float h, float w)
@@ -1518,6 +1574,7 @@ Folder: UI
       - void ResetDragState()
       - void Close()
         - Calls: ClosePanelEvent
+      - bool IsOverCloseButton(Vector2 mousePos)
 - File: ButtonElement.cs
   - Class: ButtonElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -1856,6 +1913,7 @@ Folder: UI
     - Fields:
       - BasePanel _owner
       - float _titleHeight
+      - Vector4 close_color
     - Methods:
       - constructor PanelChrome(BasePanel owner)
       - bool HandleUpdate( bool mousePressed,  bool mouseReleased, Vector2 absMousePos)
@@ -2128,6 +2186,7 @@ SiegeEngine.Core.Managers.DesktopDockingStrategy
 SiegeEngine.Core.Managers.DockManager
 SiegeEngine.Core.Managers.DynamicDockingStrategy
 SiegeEngine.Core.Managers.GameModeManager
+SiegeEngine.Core.Managers.IDEDockingStrategy
 SiegeEngine.Core.Managers.IDockingStrategy
 SiegeEngine.Core.Managers.LevelManager
 SiegeEngine.Core.Managers.LobbyManager

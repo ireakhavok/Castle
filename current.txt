@@ -1,35 +1,40 @@
-1. Permanent IDE Menubar Enforcement (Phase 1 — we do this first, exactly as you requested)
+You are an expert in game engine architecture, OpenGL UI systems, and modular C# rendering pipelines. We are working on SiegeEngine.Core.UI — a professional, extensible UI system for a real-time multiplayer game engine that supports hundreds of floating/docked panels, modded content, HTML overlays, and an in-game IDE.
+Current state (what is working right now):
+We have a “perfect” BasePanel.cs + PanelChrome.cs combination where:
 
-The IDE basepanel (your DockedHeader panel) stays fixed at top, full width, non-draggable.
-All other panels (docked or floating) are clamped so their title bar can never go above headerHeight.
-Dock root always computes layout starting at Y = headerHeight.
-When dragging a panel to the top edge it now snaps to “DockedTop below menubar”, never overlapping.
+Title bar + close button + X render correctly on top of scene/HTML content.
+Side borders surround the title bar.
+Top white line uses the panel border color.
+X uses the same gray as the panel border.
+Hover icons from IDEDockingStrategy stay above everything.
+This is achieved by carefully ordering draws inside BasePanel.Render(), with a full-panel scissor, multiple DepthTest disables, viewport restores, and a final full-window reset at the end of every panel.
 
-2. Resizing (Phase 2)
+The problem with the current approach:
+Every single panel’s Render() method is manually managing OpenGL state (ScissorTest, Viewport, DepthTest) in a fragile, per-panel way. This creates “band-aid” code: dozens of scissor/viewport/DepthTest toggles per frame, duplicated across every panel type, and easy to break when panels overlap, resize, or when new UI layers (tabs, toolbars, modded chrome) are added. It is not scalable for a professional editor that will eventually have 50–200 panels, modded UI elements, and complex docking. Debugging any new layering bug requires hunting through every panel’s Render method.
+The desired future-proof architecture:
+Replace the per-panel state management with a single, centralized LayeredUIRenderer that does one clean full-window pass per frame using:
 
-Floating panels get 5-pixel resize grips on all 4 edges + corners.
-Docked panels keep the existing splitter dragging (DockSplitNode) + gain visible grip highlights.
-Live size preview during resize (ghost outline).
+A clip-rect stack (push/pop) for safe, nested clipping instead of raw scissor calls in every panel.
+Explicit layers (e.g. Content, Chrome, Borders, Overlays/Hover) so draw order is declarative and impossible to get wrong.
+All OpenGL state (DepthTest off, Blend on, Scissor managed by the stack) set once at the start of the UI pass.
 
-3. Panel-to-Panel Edge Snapping + Live Preview (Phase 3)
+This removes all scissor, viewport, and DepthTest code from BasePanel.Render(), PanelChrome, and every future panel. Panels will simply register what they want drawn in each layer (or call simple DrawQuad/DrawLine methods on the renderer while a clip is pushed). The IDEDockingStrategy hover icons become a final “Overlay” layer that is guaranteed on top.
+Why we want to remove the render/scissor crap from each panel:
 
-While dragging a floating panel, we show a semi-transparent ghost rectangle + highlight the target edge.
-Snap tolerance = 15 px to any docked panel’s edge (left/right/top/bottom) or screen edge (respecting header).
-Drop near edge → automatically inserts a new DockSplitNode at that exact spot.
-Drop in center of a tab group → converts to tab.
-This solves your concern about floating panels behaving badly over other panels.
+Cleaner, maintainable code — panels become pure data/logic classes instead of OpenGL state machines.
+Future-proof for modding — mods can add custom chrome or overlays without touching state management.
+Performance — one pass instead of N scissor switches.
+Reliability — layering bugs (X under title bar, icons under chrome, etc.) become architecturally impossible.
+Professional editor feel — matches how modern engines (Unity, Godot, Dear ImGui, etc.) handle UI layering and clipping.
 
-4. Extra Polish (Phase 4)
+Task for you:
+Using the exact current working BasePanel.cs and PanelChrome.cs (I will paste them below), design and implement the new LayeredUIRenderer system.
+Provide:
 
-Double-click title = maximize within usable area.
-Right-click title = dock/float/close menu.
-All changes use your existing UIQuadRenderer for previews (no new dependencies).
+The full new file UIRenderer.cs (or LayeredUIRenderer.cs) with clip stack, layer system, and the same DrawQuad/DrawLine API.
+Updated BasePanel.cs with the scissor/depth crap completely removed — panels now just call renderer methods inside the correct layer.
+Updated PanelChrome.cs that works with the new system.
+Any tiny changes needed to PanelManager.cs / IDEDockingStrategy.cs / OpenGLRenderContext.cs to hook it in.
+A short migration guide explaining how to add new layers or new panel types in the future.
 
-
-
-
-In the SiegeEngine.Core.UI.BasePanel class, the Render method currently contains a temporary gray-out hack that draws a semi-transparent gray quad over the panel content whenever _isDragging or IsResizing is true. This bypasses the normal UIOverlay.Render call entirely, which includes the scissor setup, chrome rendering, borders, and the full HTML content from the loaded UI files.
-
-This hack was introduced as a quick workaround because calling full layout or refresh operations inside the Update method during active dragging caused severe performance stuttering and made panel movement feel unresponsive. The only thing that should happen while _isDragging is true (set exclusively in StartTitleBarDrag and cleared on mouse release) is a lightweight update to the panel's Position property using the mouse offset.
-
-The precise goal is to eliminate this gray-out path completely so that every frame during dragging executes the exact same rendering sequence as when the panel is stationary: the title bar and close button from PanelChrome.Render are drawn first (outside any scissor), followed by the scissor-enabled UIOverlay.Render that shows the live HTML content, scrollbars, and borders. This must happen with zero additional layout recomputes, RefreshUI calls, or any other heavy operations inside the drag branch, ensuring the panel moves smoothly and remains fully interactive and visually complete the entire time the mouse button is held.
+Keep the exact same visual result as the current “perfect” version (surrounding borders, correct colors, X visible, hover icons on top). Make it extensible and clean — no more band-aids.

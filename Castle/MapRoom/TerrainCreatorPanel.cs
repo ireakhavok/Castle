@@ -73,10 +73,7 @@ namespace MapRoom
         public override void Init()
         {
             base.Init();
-
-            // === CRITICAL: Register main window so GetCurrentViewport never crashes ===
             _controlContext.SetMainWindow(_window);
-
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
             if (_creationParams != null)
             {
@@ -236,58 +233,27 @@ namespace MapRoom
             }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
 
-            // === RESTORED: Push content viewport so FlyCameraController.GetCurrentViewport and mouse recentering work ===
             float header = HasTitleBar ? HeaderHeight : 0f;
             float contentX = Position.X;
             float contentY = Position.Y + header;
             float contentW = Size.X;
             float contentH = Size.Y - header;
-
             if (_cameraMode)
             {
                 _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
             }
-
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
-
             if (_cameraMode)
             {
                 _controlContext.PopViewport();
             }
         }
 
-        public override void Render()
+        protected override void RenderInnerContent()
         {
-            if (!Visible) return;
-            if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
-            {
-                _lastW = (int)Size.X;
-                _lastH = (int)Size.Y;
-                _terrainScene.Resize(_lastW, _lastH);
-                _uiOverlay.PanelWidth = Size.X;
-                _uiOverlay.PanelHeight = Size.Y;
-                _uiOverlay.RefreshUI();
-            }
-
-            // === SAFE CONTENT RECT (no GetContentRect dependency) ===
-            float header = HasTitleBar ? HeaderHeight : 0f;
-            float contentX = Position.X;
-            float contentY = Position.Y + header;
-            float contentW = Size.X;
-            float contentH = Size.Y - header;
-
-            _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            _renderContext.Enable(_renderContext.Enums.ScissorTest);
-            int scissorX = (int)contentX;
-            int scissorY = winH - (int)(contentY + contentH);
-            uint scissorW = (uint)contentW;
-            uint scissorH = (uint)contentH;
-            _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
             _terrainScene.Render(null);
-            _renderContext.Disable(_renderContext.Enums.ScissorTest);
-            base.Render();
         }
 
         public override void OnLiveResize(float w, float h)

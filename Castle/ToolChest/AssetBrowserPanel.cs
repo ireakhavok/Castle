@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 
 namespace ToolChest
@@ -43,7 +44,7 @@ namespace ToolChest
             IsClosable = true;
             AllowDragging = true;
             DockState = DockState.Floating;
-            DockingMode = SiegeEngine.Core.Definitions.DockingMode.Dynamic;
+            DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
 
 
             // === ONLY CHANGE: Proper starting size (~1/8 of typical screen) ===
@@ -59,6 +60,8 @@ namespace ToolChest
         public override void Init()
         {
             base.Init();
+            chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
+
             LoadBrowserUI();
         }
 

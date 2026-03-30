@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: DynamicDockingStrategy.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -57,6 +57,11 @@ namespace SiegeEngine.Core.Managers
             _panels.Remove(panel);
             if (_draggingPanel == panel) _draggingPanel = null;
             if (_resizingPanel == panel) _resizingPanel = null;
+        }
+
+        public bool HasActiveContent()
+        {
+            return _panels.Count > 0;
         }
 
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)

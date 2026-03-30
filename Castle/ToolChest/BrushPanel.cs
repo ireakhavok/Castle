@@ -47,6 +47,7 @@ namespace ToolChest
         public override void Init()
         {
             base.Init();
+            chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadBrushUI();
             _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString(), _currentBrush.Falloff.ToString()), true);
         }

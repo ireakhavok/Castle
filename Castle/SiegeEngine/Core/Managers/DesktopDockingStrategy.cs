@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: DesktopDockingStrategy.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
@@ -79,6 +79,11 @@ namespace SiegeEngine.Core.Managers
             {
                 _needsLayout = true;
             }
+        }
+
+        public bool HasActiveContent()
+        {
+            return _floatingPanels.Count > 0 || _root != null; // Desktop is always "active" once it has ever been used (root exists)
         }
 
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
