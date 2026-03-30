@@ -51,15 +51,15 @@ namespace SiegeEngine.Core.UI
                 float btnH = _titleHeight - 6f;
                 quadRenderer.DrawQuad(btnX, btnY, btnW, btnH, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), panelWidth, panelHeight);
 
-                // X – now bright white and thicker so it is clearly visible on the dark title bar
+                // X matches the panel border color (same gray as bc)
                 float closeX = panelWidth - 24f;
                 float closeY = (_titleHeight - 14f) * 0.5f;
                 float len = 14f;
-                float thick = 2.8f;
-                Vector4 white = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+                float thick = 2.5f;
+                Vector4 borderColor = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
 
-                quadRenderer.DrawLine(closeX, closeY, closeX + len, closeY + len, thick, white, panelWidth, panelHeight);
-                quadRenderer.DrawLine(closeX + len, closeY, closeX, closeY + len, thick, white, panelWidth, panelHeight);
+                quadRenderer.DrawLine(closeX, closeY, closeX + len, closeY + len, thick, borderColor, panelWidth, panelHeight);
+                quadRenderer.DrawLine(closeX + len, closeY, closeX, closeY + len, thick, borderColor, panelWidth, panelHeight);
             }
         }
 
