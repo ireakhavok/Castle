@@ -251,9 +251,33 @@ namespace MapRoom
             }
         }
 
-        protected override void RenderInnerContent()
+        public override void Render()
         {
+            if (!Visible) return;
+            if (IsResizing)
+            {
+                base.Render();
+                return;
+            }
+            if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
+            {
+                _lastW = (int)Size.X;
+                _lastH = (int)Size.Y;
+                _terrainScene.Resize(_lastW, _lastH);
+                _uiOverlay.PanelWidth = Size.X;
+                _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.RefreshUI();
+            }
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            _renderContext.Enable(_renderContext.Enums.ScissorTest);
+            int scissorX = (int)Position.X;
+            int scissorY = winH - (int)(Position.Y + Size.Y);
+            uint scissorW = (uint)Size.X;
+            uint scissorH = (uint)Size.Y;
+            _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
             _terrainScene.Render(null);
+            _renderContext.Disable(_renderContext.Enums.ScissorTest);
+            base.Render();
         }
 
         public override void OnLiveResize(float w, float h)

@@ -1,18 +1,19 @@
 ﻿// Folder: MapRoom
 // File: TwoDCreatorPanel.cs
-using ReadingChamber;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
-using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
+using ReadingChamber;
 using SiegeEngine.Scenes;
 using System;
 using System.IO;
 using System.Numerics;
+using System.Text;
 using ToolChest;
+using SiegeEngine.Core.Managers;
 
 namespace MapRoom
 {
@@ -146,9 +147,33 @@ namespace MapRoom
             }
         }
 
-        protected override void RenderInnerContent()
+        public override void Render()
         {
+            if (!Visible) return;
+            if (IsResizing)
+            {
+                base.Render();
+                return;
+            }
+            if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
+            {
+                _lastW = (int)Size.X;
+                _lastH = (int)Size.Y;
+                _twoDScene.Resize(_lastW, _lastH);
+                _uiOverlay.PanelWidth = Size.X;
+                _uiOverlay.PanelHeight = Size.Y;
+                _uiOverlay.RefreshUI();
+            }
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            _renderContext.Enable(_renderContext.Enums.ScissorTest);
+            int scissorX = (int)Position.X;
+            int scissorY = winH - (int)(Position.Y + Size.Y);
+            uint scissorW = (uint)Size.X;
+            uint scissorH = (uint)Size.Y;
+            _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
             _twoDScene.Render(_twoDScene.GetEntities());
+            _renderContext.Disable(_renderContext.Enums.ScissorTest);
+            base.Render();
         }
 
         public override void OnLiveResize(float w, float h)
