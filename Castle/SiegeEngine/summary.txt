@@ -98,6 +98,8 @@ Folder: Core
         - Calls: OnPanelResize
       - void Render()
         - Calls: RenderInnerContent, _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, _uiOverlay.RefreshUI
+      - FIRST RenderInnerContent()
+        - Calls: _chrome.Render
       - void RenderInnerContent()
       - void Dispose()
       - void Detach()
@@ -828,7 +830,7 @@ Folder: Core
       - void DetectHoverTarget( int winH,  int winW, Vector2 mousePos)
         - Calls: _root.HitTest
       - void Render( int winH,  int winW, IRenderContext renderContext)
-        - Calls: RenderSplitters, _quadRenderer.DrawLine, _quadRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
+        - Calls: RenderSplitters, _quadRenderer.DrawLine, _quadRenderer.DrawQuad, renderContext.Disable, renderContext.Scissor, renderContext.Viewport
       - void RenderSplitters( IRenderContext renderContext,  int winH,  int winW, DockNode node)
         - Calls: _quadRenderer.DrawLine
       - void ComputeLayout( int winH, int winW)
@@ -1303,6 +1305,7 @@ Folder: Core
     - Fields:
       - BasePanel _owner
       - float _titleHeight
+      - Vector4 close_color
     - Methods:
       - constructor PanelChrome(BasePanel owner)
       - bool HandleUpdate( bool mousePressed,  bool mouseReleased, Vector2 absMousePos)

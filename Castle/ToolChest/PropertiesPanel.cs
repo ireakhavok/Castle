@@ -47,7 +47,6 @@ namespace ToolChest
             AllowDragging = true;
             DockState = DockState.Floating;
             DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
-
             // === ONLY CHANGE: Proper starting size ===
             BaseWidth = 460f;
             BaseHeight = 320f;
@@ -61,6 +60,7 @@ namespace ToolChest
         public override void Init()
         {
             base.Init();
+            chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadPropertiesUI();
         }
 

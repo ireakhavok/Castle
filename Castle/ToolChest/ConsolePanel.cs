@@ -8,6 +8,7 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Text;
 
 namespace ToolChest
@@ -42,6 +43,7 @@ namespace ToolChest
             IsClosable = true;
             AllowDragging = true;
             DockState = DockState.Floating;
+            DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -52,6 +54,7 @@ namespace ToolChest
         public override void Init()
         {
             base.Init();
+            chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadConsoleUI();
         }
 

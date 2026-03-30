@@ -10,6 +10,7 @@ namespace SiegeEngine.Core.UI
     {
         private readonly BasePanel _owner;
         private readonly float _titleHeight = BasePanel.TitleHeight;
+        public Vector4 close_color = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);//new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
 
         public PanelChrome(BasePanel owner)
         {
@@ -56,10 +57,9 @@ namespace SiegeEngine.Core.UI
                 float closeY = (_titleHeight - 14f) * 0.5f;
                 float len = 14f;
                 float thick = 2.5f;
-                Vector4 borderColor = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
 
-                quadRenderer.DrawLine(closeX, closeY, closeX + len, closeY + len, thick, borderColor, panelWidth, panelHeight);
-                quadRenderer.DrawLine(closeX + len, closeY, closeX, closeY + len, thick, borderColor, panelWidth, panelHeight);
+                quadRenderer.DrawLine(closeX, closeY, closeX + len, closeY + len, thick, close_color, panelWidth, panelHeight);
+                quadRenderer.DrawLine(closeX + len, closeY, closeX, closeY + len, thick, close_color, panelWidth, panelHeight);
             }
         }
 

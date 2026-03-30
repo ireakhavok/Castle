@@ -52,7 +52,7 @@ namespace SiegeEngine.Core.UI
             get => _dockable;
             set => _dockable = value;
         }
-        private PanelChrome _chrome;
+        public PanelChrome chrome;
         public bool HasTitleBar { get; set; } = false;
         public bool IsClosable { get; set; } = false;
 
@@ -87,7 +87,7 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.PanelHeight = Size.Y;
             if (HasTitleBar)
             {
-                _chrome = new PanelChrome(this);
+                chrome = new PanelChrome(this);
                 HeaderHeight = TitleHeight;
             }
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
@@ -97,9 +97,9 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
-            if (HasTitleBar && _chrome != null)
+            if (HasTitleBar && chrome != null)
             {
-                if (_chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
+                if (chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
                     return;
             }
             if (_isDragging)
@@ -307,9 +307,9 @@ namespace SiegeEngine.Core.UI
             // CRITICAL: Force DepthTest off right before chrome so title bar + close X are NEVER covered
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             // CHROME LAST – title bar + close button + X are now guaranteed on top
-            if (HasTitleBar && _chrome != null)
+            if (HasTitleBar && chrome != null)
             {
-                _chrome.Render(_quadRenderer, Size.X, Size.Y);
+                chrome.Render(_quadRenderer, Size.X, Size.Y);
             }
             // BORDERS AFTER CHROME – left/right now surround the title bar (scissored to panel bounds)
             float bw = 2f;
@@ -333,7 +333,7 @@ namespace SiegeEngine.Core.UI
         public virtual void Dispose()
         {
             _uiOverlay.Dispose();
-            if (_chrome != null) _chrome.Dispose();
+            if (chrome != null) chrome.Dispose();
         }
         public virtual void Detach() { }
         public virtual void OnPanelResize(float w, float h)
