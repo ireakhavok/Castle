@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
+﻿// Folder: SiegeEngine.Core.Managers
 // File: IDEDockingStrategy.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -452,6 +452,9 @@ namespace SiegeEngine.Core.Managers
             }
             renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
+            // CRITICAL: explicit DepthTest disable guarantees hover icons sit above every title bar
+            // (previous panel.Render calls may have re-enabled it)
+            renderContext.Disable(renderContext.Enums.DepthTest);
             if (_showHoverIcons)
             {
                 float cx = _hoverIconCenter.X;
