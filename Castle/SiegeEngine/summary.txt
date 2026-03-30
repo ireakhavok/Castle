@@ -97,7 +97,8 @@ Folder: Core
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
         - Calls: OnPanelResize
       - void Render()
-        - Calls: _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _uiOverlay.RefreshUI
+        - Calls: RenderInnerContent, _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, _uiOverlay.RefreshUI
+      - void RenderInnerContent()
       - void Dispose()
       - void Detach()
       - void OnPanelResize( float h, float w)
