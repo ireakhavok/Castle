@@ -218,7 +218,7 @@ namespace SiegeEngine.Core.UI
 
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
-            if (DockingMode == DockingMode.Dynamic) return; // Dynamic uses strategy snapping only
+            if (DockingMode == DockingMode.Dynamic) return;
             float cornerZone = winH * 0.25f;
             bool nearLeft = absMousePos.X < SnapDistance;
             bool nearRight = absMousePos.X > winW - SnapDistance;
@@ -302,7 +302,7 @@ namespace SiegeEngine.Core.UI
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 
-            // CONTENT FIRST (scene + HTML) – this prevents content from overwriting the title bar
+            // CONTENT FIRST
             RenderInnerContent();
             _uiOverlay.Render();
 
@@ -317,14 +317,16 @@ namespace SiegeEngine.Core.UI
             _quadRenderer.DrawQuad(0, 0, bw, Size.Y, bc, Size.X, Size.Y);
             _quadRenderer.DrawQuad(Size.X - bw, 0, bw, Size.Y, bc, Size.X, Size.Y);
 
-            // CHROME LAST – title bar + close button + X are guaranteed on top
+            // CRITICAL: Force DepthTest off right before chrome so title bar + close X are NEVER covered
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
+
+            // CHROME LAST – title bar + close button + X are now guaranteed on top
             if (HasTitleBar && _chrome != null)
             {
                 _chrome.Render(_quadRenderer, Size.X, Size.Y);
             }
 
-            // CRITICAL: Reset to full window so hover icons (drawn in IDEDockingStrategy.Render after all panels)
-            // appear ON TOP of the title bar
+            // CRITICAL: Reset to full window so hover icons appear ON TOP of the title bar
             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
