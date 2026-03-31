@@ -58,6 +58,9 @@ namespace SiegeEngine.Core.UI
         public bool HasTitleBar { get; set; } = false;
         public bool IsClosable { get; set; } = false;
 
+        // RenderOrder index - higher value = rendered later / on top of everything
+        public int RenderOrder { get; set; } = 0;
+
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -285,13 +288,11 @@ namespace SiegeEngine.Core.UI
         {
             if (!Visible) return;
 
-            // RESTORED: exact original resize detection logic that was in every derived panel's Render()
-            // This now runs centrally before LayeredUIRenderer.RenderPanel, so scenes resize correctly
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
                 _lastH = (int)Size.Y;
-                OnLiveResize(Size.X, Size.Y);  // calls derived panels' scene.Resize
+                OnLiveResize(Size.X, Size.Y);
                 _uiOverlay.PanelWidth = Size.X;
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();

@@ -67,6 +67,7 @@ namespace CastleBuilder
             AllowDragging = false;
             DockState = DockState.Tabbed;
             IsModal = false;
+            RenderOrder = 1000; // high value = always rendered LAST / on top of everything
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -100,11 +101,9 @@ namespace CastleBuilder
 
             Vector2 relMousePos = absMousePos - Position;
 
-            // Force full refresh on every frame for the top menu bar (ensures hover works on first mouse move)
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.RefreshUI();                     // <-- this line fixes the "only after click" problem
-
+            _uiOverlay.RefreshUI();
             _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
         }
 
