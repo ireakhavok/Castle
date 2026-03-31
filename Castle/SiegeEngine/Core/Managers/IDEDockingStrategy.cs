@@ -132,13 +132,15 @@ namespace SiegeEngine.Core.Managers
             else if (_root != null)
             {
                 // normal docked panel input (title bar, close, resize)
+                // NOTE: NO second Update call – DockTabbedNode.Update is the single source of truth
+                // (PanelChrome.HandleUpdate → ClosePanelEvent fires here)
                 if (_root.HitTest(mousePos, out IPanel dockedHit, out bool isTitle, out bool isSplitter, out _, out _))
                 {
                     if (dockedHit != null && !isSplitter)
                     {
-                        dockedHit.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
                         if (mousePressed)
                         {
+                            // Close-button guard – must come BEFORE tear-out logic
                             if (dockedHit.IsOverCloseButton(mousePos))
                                 return;
                             if (isTitle && dockedHit.AllowDragging)

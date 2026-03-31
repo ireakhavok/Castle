@@ -55,7 +55,7 @@ namespace ReadingChamber
             HasTitleBar = true;
             IsClosable = true;
             Scaling = ScalingMode.BestFit;
-            DockingMode = DockingMode.IDE;
+            DockingMode = DockingMode.Dynamic;
             BaseWidth = 1280f;
             BaseHeight = 720f;
             _viewerScene = new ModelViewerScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);

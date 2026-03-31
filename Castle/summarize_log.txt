@@ -513,13 +513,13 @@ Found: summarize_log.txt
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
-Read 11174 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Read 11153 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 14 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
-Read 15062 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Read 15050 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 14 dependencies
 Found: TerrainCreatorUI.html
@@ -532,9 +532,9 @@ Found 4 dependencies
 Found: TwoDCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
-Read 6137 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
+Read 6053 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorPanel.cs
 Namespace: MapRoom
-Found 13 dependencies
+Found 14 dependencies
 Found: TwoDCreatorPanelUI.html
 Found: TwoDCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TwoDCreatorScene.cs
@@ -564,7 +564,7 @@ Found: ..
 Found: AnimationViewerPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
-Read 9532 chars from: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
+Read 8256 chars from: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Namespace: ReadingChamber
 Found 19 dependencies
 Found: AssetViewerUI.html
@@ -1283,6 +1283,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\GameRender
 Read 13035 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\GameRenderer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 13 dependencies
+Found: LayeredUIRenderer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\LayeredUIRenderer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\LayeredUIRenderer.cs
+Read 2969 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\LayeredUIRenderer.cs
+Namespace: SiegeEngine.Core.Rendering
+Found 3 dependencies
 Found: ModelRenderer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ModelRenderer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ModelRenderer.cs
@@ -1474,7 +1480,7 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
-Read 16220 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
+Read 14803 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 7 dependencies
 Found: Core.cs
@@ -1686,7 +1692,7 @@ Found 9 dependencies
 Found: PanelChrome.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
-Read 2728 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
+Read 2727 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
 Namespace: SiegeEngine.Core.UI
 Found 3 dependencies
 Found: Render.cs
@@ -1781,13 +1787,13 @@ Found 14 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 23601 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 23589 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
-Read 3694 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
+Read 3959 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\Scene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: StartingPoints
@@ -1885,9 +1891,9 @@ Found: ..
 Found: AssetBrowserPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\AssetBrowserPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\AssetBrowserPanel.cs
-Read 5826 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AssetBrowserPanel.cs
+Read 5924 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AssetBrowserPanel.cs
 Namespace: ToolChest
-Found 10 dependencies
+Found 11 dependencies
 Found: AssetBrowserPanelUI.html
 Found: bin
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\ToolChest\bin
@@ -1900,16 +1906,16 @@ Found 2 dependencies
 Found: BrushPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
-Read 5470 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
+Read 5544 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Namespace: ToolChest
 Found 9 dependencies
 Found: BrushPanelUI.html
 Found: ConsolePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
-Read 4666 chars from: C:\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
+Read 4835 chars from: C:\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
 Namespace: ToolChest
-Found 9 dependencies
+Found 10 dependencies
 Found: ConsolePanelUI.html
 Found: EditorActionConfig.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\EditorActionConfig.cs
@@ -1922,24 +1928,24 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\ToolChest\obj
 Found: PropertiesPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
-Read 7335 chars from: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
+Read 7408 chars from: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
 Namespace: ToolChest
 Found 13 dependencies
 Found: PropertiesPanelUI.html
 Found: SpritePlacementPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
-Read 5359 chars from: C:\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
+Read 5456 chars from: C:\repos\RealmFoundry\Castle\ToolChest\SpritePlacementPanel.cs
 Namespace: ToolChest
-Found 9 dependencies
+Found 10 dependencies
 Found: SpritePlacementPanelUI.html
 Found: ToolChest.csproj
 Found: TreeViewPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
-Read 6780 chars from: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
+Read 6877 chars from: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
 Namespace: ToolChest
-Found 9 dependencies
+Found 10 dependencies
 Found: TreeViewPanelUI.html
 Found: Trebuchet
 Listing folder: C:\repos\RealmFoundry\Castle\Trebuchet
