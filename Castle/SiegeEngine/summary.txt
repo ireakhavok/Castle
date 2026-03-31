@@ -1827,48 +1827,6 @@ Folder: Core
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
         - Calls: IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
       - bool IsDropdownElement(HtmlElement elem)
-- File: UIManager.cs
-  - Class: UIManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
-    - Fields:
-      - UISettingsManager _settingsManager
-      - ModManager _modManager
-      - EventBus _eventBus
-      - IControlContext _controlContext
-      - nint _window
-      - IRenderContext _renderContext
-      - TextRenderer _textRenderer
-      - UIQuadRenderer _quadRenderer
-      - ShaderProgram _uiShader
-      - CssParser _cssParser
-      - float _vw
-      - float _vh
-      - bool _initialized
-      - List<IPanel> _panels
-      - string _configPath
-      - bool _menuVisible
-      - bool _prevMouseDown
-    - Methods:
-      - constructor UIManager( EventBus eventBus,  IControlContext controlContext,  IRenderContext renderContext,  ModManager modManager,  nint window,  string configPath, UISettingsManager settingsManager)
-        - Calls: _controlContext.SetWindowSizeCallback
-      - void OnResize( int h,  int w, nint win)
-        - Calls: _renderContext.Viewport, bp.OnPanelResize
-      - void Initialize(string initialMenuHtmlPath)
-        - Calls: LoadMenu, OnResize, ShaderProgram, TextRenderer, UIQuadRenderer, _controlContext.GetWindowSize
-      - void LoadMenu(string initialMenuHtmlPath)
-        - Calls: AddPanel, _modManager.ResolvePath
-      - void OnOpenPanel(OpenPanelEvent e)
-        - Calls: AddPanel, RemovePanel, _panels.Clear, _previousVisibility.Clear, e.Panel.Init
-      - void OnClosePanel(ClosePanelEvent e)
-        - Calls: RemovePanel, _previousVisibility.Clear
-      - void AddPanel(IPanel panel)
-      - void RemovePanel(IPanel panel)
-        - Calls: panel.Dispose
-      - void Update(float deltaTime)
-        - Calls: ClosePanelEvent, _controlContext.GetCursorPos, _controlContext.GetMouseButton
-      - void Render()
-        - Calls: _renderContext.Disable, _renderContext.Enable
-      - void Dispose()
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
@@ -2661,7 +2619,6 @@ SiegeEngine.Core.Managers.ModManager
 SiegeEngine.Core.Managers.PanelManager
 SiegeEngine.Core.Managers.ProjectSettings
 SiegeEngine.Core.Managers.SceneManager
-SiegeEngine.Core.Managers.UIManager
 SiegeEngine.Core.Managers.UISettingsManager
 SiegeEngine.Core.Managers.acquired
 SiegeEngine.Core.Networking.ClientGameServerProxy
