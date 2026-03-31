@@ -29,7 +29,6 @@ namespace ReadingChamber
             var panel = new AnimationViewerPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
-
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AnimationViewerPanel _parent;
@@ -47,14 +46,11 @@ namespace ReadingChamber
                 _parent.HandleDataHook(hook);
             }
         }
-
         private ModelViewerScene _viewerScene;
         private EditorTextRenderer _textRenderer;
         private ShaderProgram _textShader;
         private List<string> _animationFiles = new List<string>();
-
-        public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-            : base(renderContext, controlContext, window, eventBus)
+        public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
             IsClosable = true;
@@ -64,12 +60,10 @@ namespace ReadingChamber
             BaseHeight = 720f;
             _viewerScene = new ModelViewerScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
@@ -84,20 +78,13 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void UpdateUIControls()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetViewerUI.html");
-            if (!File.Exists(htmlPath))
-            {
-                return;
-            }
+            if (!File.Exists(htmlPath)) return;
             string baseHtml = File.ReadAllText(htmlPath);
             int insertIndex = baseHtml.IndexOf("<!--insert here-->");
-            if (insertIndex == -1)
-            {
-                return;
-            }
+            if (insertIndex == -1) return;
             StringBuilder dynamicSelect = new StringBuilder();
             dynamicSelect.Append("<select id=\"animSelect\" data-hook=\"AnimSelectChanged\" style=\"\">");
             foreach (var file in _animationFiles)
@@ -112,7 +99,6 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void OnFileSelected(FileSelectedEvent e)
         {
             string hook = e.UserData as string;
@@ -133,7 +119,6 @@ namespace ReadingChamber
                 _viewerScene.LoadAnimation(e.Path);
             }
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -166,7 +151,6 @@ namespace ReadingChamber
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
         }
-
         private void HandleDataHook(string hook)
         {
             if (hook == "AnimSelectChanged")
@@ -179,7 +163,6 @@ namespace ReadingChamber
                 }
             }
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -187,43 +170,14 @@ namespace ReadingChamber
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _viewerScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
         }
-
-        public override void Render()
+        protected override void RenderInnerContent()
         {
-            if (!Visible) return;
-            if (IsResizing)
-            {
-                base.Render();
-                return;
-            }
-            if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
-            {
-                _lastW = (int)Size.X;
-                _lastH = (int)Size.Y;
-                _viewerScene.Resize(_lastW, _lastH);
-                _uiOverlay.PanelWidth = Size.X;
-                _uiOverlay.PanelHeight = Size.Y;
-                _uiOverlay.RefreshUI();
-            }
-            _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            _renderContext.Enable(_renderContext.Enums.ScissorTest);
-            int scissorX = (int)Position.X;
-            int scissorY = winH - (int)(Position.Y + Size.Y);
-            uint scissorW = (uint)Size.X;
-            uint scissorH = (uint)Size.Y;
-            _renderContext.Scissor(scissorX, scissorY, scissorW, scissorH);
             _viewerScene.Render(null);
-            _renderContext.Disable(_renderContext.Enums.ScissorTest);
-            base.Render();
-            string frameInfo = _viewerScene.GetFrameInfo();
-            _textRenderer.RenderText(frameInfo, 10, HeaderHeight + 10, (int)Size.X, (int)Size.Y, 12f);
         }
-
         public override void OnLiveResize(float w, float h)
         {
             _viewerScene.Resize((int)w, (int)h);
         }
-
         public override void Dispose()
         {
             _viewerScene.Dispose();
