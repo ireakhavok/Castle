@@ -5,25 +5,30 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Globalization;
 using SiegeEngine.Core.UI.Elements;
+
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSElement
     {
         public HtmlElement elem;
         public UIOverlay overlay;
+
         public JSElement(HtmlElement elem, UIOverlay overlay)
         {
             this.elem = elem;
             this.overlay = overlay;
         }
+
         public string id
         {
             get { return elem.Attributes.GetValueOrDefault("id", ""); }
         }
+
         public string tagName
         {
             get { return elem.Tag; }
         }
+
         public string innerHTML
         {
             get { return string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)); }
@@ -39,6 +44,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
+
         public string textContent
         {
             get { return string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)); }
@@ -54,6 +60,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
+
         public string value
         {
             get
@@ -157,6 +164,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
             }
         }
+
         public object[] options
         {
             get
@@ -176,6 +184,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 return new object[0];
             }
         }
+
         public bool @checked
         {
             get { return elem.Checked; }
@@ -190,26 +199,87 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
             }
         }
+
         public float min
         {
             get { return elem is RangeElement r ? r.Min : 0f; }
         }
+
         public float max
         {
             get { return elem is RangeElement r ? r.Max : 100f; }
         }
+
+        // === PROPER CLASSLIST SUPPORT (required by IDE_UI.html inline script) ===
+        public class ClassList
+        {
+            private readonly HtmlElement _elem;
+            private readonly UIOverlay _overlay;
+
+            public ClassList(HtmlElement elem, UIOverlay overlay)
+            {
+                _elem = elem;
+                _overlay = overlay;
+            }
+
+            public bool contains(string className)
+            {
+                if (string.IsNullOrEmpty(className)) return false;
+                string classes = _elem.Attributes.GetValueOrDefault("class", "");
+                return classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(className);
+            }
+
+            public void add(string className)
+            {
+                if (string.IsNullOrEmpty(className)) return;
+                string classes = _elem.Attributes.GetValueOrDefault("class", "");
+                var list = classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+                if (!list.Contains(className))
+                {
+                    list.Add(className);
+                    _elem.Attributes["class"] = string.Join(" ", list);
+                    _overlay.RefreshUI();
+                }
+            }
+
+            public void remove(string className)
+            {
+                if (string.IsNullOrEmpty(className)) return;
+                string classes = _elem.Attributes.GetValueOrDefault("class", "");
+                var list = classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+                if (list.Remove(className))
+                {
+                    _elem.Attributes["class"] = string.Join(" ", list);
+                    _overlay.RefreshUI();
+                }
+            }
+
+            public void toggle(string className)
+            {
+                if (contains(className))
+                    remove(className);
+                else
+                    add(className);
+            }
+        }
+
+        public ClassList classList => new ClassList(elem, overlay);
+
+        // === EXISTING METHODS (unchanged) ===
         public void appendChild(JSElement child)
         {
             elem.Children.Add(child.elem);
             child.elem.Parent = elem;
             overlay.RefreshUI();
         }
+
         public void removeChild(JSElement child)
         {
             elem.Children.Remove(child.elem);
             child.elem.Parent = null;
             overlay.RefreshUI();
         }
+
         public void insertBefore(JSElement newChild, JSElement referenceChild)
         {
             int index = elem.Children.IndexOf(referenceChild.elem);
@@ -220,6 +290,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
+
         public void replaceChild(JSElement newChild, JSElement oldChild)
         {
             int index = elem.Children.IndexOf(oldChild.elem);
@@ -231,30 +302,36 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
+
         public string getAttribute(string name)
         {
             return elem.Attributes.GetValueOrDefault(name, null);
         }
+
         public void setAttribute(string name, string value)
         {
             elem.Attributes[name] = value;
             overlay.RefreshUI();
         }
+
         public void removeAttribute(string name)
         {
             elem.Attributes.Remove(name);
             overlay.RefreshUI();
         }
+
         public JSElement querySelector(string selector)
         {
             var elemFound = QuerySelectorAll(selector).FirstOrDefault();
             return elemFound == null ? null : new JSElement(elemFound, overlay);
         }
+
         public List<JSElement> querySelectorAll(string selector)
         {
             var elems = QuerySelectorAll(selector);
             return elems.Select(e => new JSElement(e, overlay)).ToList();
         }
+
         private List<HtmlElement> QuerySelectorAll(string selector)
         {
             List<HtmlElement> matches = new List<HtmlElement>();
@@ -275,12 +352,14 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             return matches;
         }
+
         public void addEventListener(string eventName, object callback)
         {
             eventName = eventName.ToLower();
             if (!elem.EventListeners.ContainsKey(eventName)) elem.EventListeners[eventName] = new List<object>();
             elem.EventListeners[eventName].Add(callback);
         }
+
         public void removeEventListener(string eventName, object callback)
         {
             eventName = eventName.ToLower();

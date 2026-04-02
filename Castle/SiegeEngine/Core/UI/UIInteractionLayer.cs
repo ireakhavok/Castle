@@ -41,14 +41,16 @@ namespace SiegeEngine.Core.UI
             _overlay.DidHandleClick = false;
             _overlay.PanelWidth = panelW;
             _overlay.PanelHeight = panelH;
+
             Vector2 scrolledMousePos = new Vector2(relMousePos.X, relMousePos.Y + _overlay.ScrollOffsetY);
             bool mousePress = !_prevMouseDown && currentMouseDown;
             bool mouseRelease = _prevMouseDown && !currentMouseDown;
+
             float vw = panelW;
             float vh = panelH;
-            HtmlElement clickedElem = null;
+
             _openSelects = _overlay.FindElementsByTag("select").Where(s => (s as SelectElement)?.IsOpen ?? false).Cast<SelectElement>().ToList();
-            // === HOVER PASS ===
+
             var clickablesSnapshot = _overlay._uiClickables.ToList();
             foreach (var clickable in clickablesSnapshot)
             {
@@ -56,7 +58,7 @@ namespace SiegeEngine.Core.UI
                 Vector2 effectiveMouse = isDropdownElement ? relMousePos : scrolledMousePos;
                 clickable.UpdateHover(effectiveMouse, vw, vh);
             }
-            // === PRESS PASS for dropdown ===
+
             bool dropdownPressHandled = false;
             foreach (var select in _openSelects)
             {
@@ -88,7 +90,7 @@ namespace SiegeEngine.Core.UI
                 }
                 if (dropdownPressHandled) break;
             }
-            // === PRESS PASS for main UI ===
+
             if (!dropdownPressHandled)
             {
                 foreach (var clickable in clickablesSnapshot.Where(c => !IsDropdownElement(c)))
@@ -110,7 +112,7 @@ namespace SiegeEngine.Core.UI
                     }
                 }
             }
-            // === RELEASE PASS for dropdown ===
+
             bool dropdownReleaseHandled = false;
             foreach (var select in _openSelects)
             {
@@ -126,7 +128,7 @@ namespace SiegeEngine.Core.UI
                 bool selectWasActive = select.IsActive;
                 if (selectOver && mouseRelease && selectWasActive)
                 {
-                    clickedElem = select;
+                    _overlay.HandleUIClick(select);
                     dropdownReleaseHandled = true;
                 }
                 if (mouseRelease)
@@ -148,7 +150,7 @@ namespace SiegeEngine.Core.UI
                     bool wasActive = opt.IsActive;
                     if (over && mouseRelease && wasActive)
                     {
-                        clickedElem = opt;
+                        _overlay.HandleUIClick(opt);
                         dropdownReleaseHandled = true;
                     }
                     if (mouseRelease)
@@ -158,7 +160,7 @@ namespace SiegeEngine.Core.UI
                 }
                 if (dropdownReleaseHandled) break;
             }
-            // === RELEASE PASS for main UI ===
+
             if (!dropdownReleaseHandled)
             {
                 foreach (var clickable in clickablesSnapshot.Where(c => !IsDropdownElement(c)))
@@ -175,7 +177,7 @@ namespace SiegeEngine.Core.UI
                     bool wasActive = clickable.IsActive;
                     if (over && mouseRelease && wasActive)
                     {
-                        clickedElem = clickable;
+                        _overlay.HandleUIClick(clickable);
                     }
                     if (mouseRelease)
                     {
@@ -183,6 +185,7 @@ namespace SiegeEngine.Core.UI
                     }
                 }
             }
+
             if (currentMouseDown && _draggingSlider != null)
             {
                 float relX = Math.Clamp(relMousePos.X - _draggingSlider.ComputedContentX, 0f, _draggingSlider.ComputedContentWidth);
@@ -199,39 +202,7 @@ namespace SiegeEngine.Core.UI
                     _overlay.InvokeListeners(_draggingSlider, "input");
                 }
             }
-            if (clickedElem != null)
-            {
-                _overlay.DidHandleClick = true;
-                bool focusable = clickedElem.Tag.ToLower() == "input" || clickedElem.Tag.ToLower() == "select" || clickedElem.Tag.ToLower() == "button" || clickedElem.Attributes.ContainsKey("tabindex") || !string.IsNullOrEmpty(clickedElem.OnFocusJS) || !string.IsNullOrEmpty(clickedElem.OnBlurJS);
-                if (focusable)
-                {
-                    if (_currentFocused != null && _currentFocused != clickedElem)
-                    {
-                        if (!string.IsNullOrEmpty(_currentFocused.OnBlurJS))
-                        {
-                            _overlay._jsContext.RunWithThis(_currentFocused.OnBlurJS, new JSElement(_currentFocused, _overlay));
-                        }
-                        _overlay.InvokeListeners(_currentFocused, "blur");
-                        _currentFocused.IsFocused = false;
-                    }
-                    if (!clickedElem.IsFocused)
-                    {
-                        if (!string.IsNullOrEmpty(clickedElem.OnFocusJS))
-                        {
-                            _overlay._jsContext.RunWithThis(clickedElem.OnFocusJS, new JSElement(clickedElem, _overlay));
-                        }
-                        _overlay.InvokeListeners(clickedElem, "focus");
-                        clickedElem.IsFocused = true;
-                        _currentFocused = clickedElem;
-                    }
-                }
-                _overlay.HandleUIClick(clickedElem);
-            }
-            else if (mouseRelease && _openSelects.Any() && !_justOpenedSelect)
-            {
-                _overlay.CloseAllOpenSelects();
-                _overlay.RefreshUI();
-            }
+
             if (mouseRelease && _draggingSlider != null)
             {
                 if (Math.Abs(_sliderOldValue - _draggingSlider.Value) > 0.0001f)
@@ -240,8 +211,16 @@ namespace SiegeEngine.Core.UI
                 }
                 _draggingSlider = null;
             }
+
+            if (mouseRelease && _openSelects.Any() && !_justOpenedSelect && !dropdownReleaseHandled)
+            {
+                _overlay.CloseAllOpenSelects();
+                _overlay.RefreshUI();
+            }
+
             _justOpenedSelect = false;
             _prevMouseDown = currentMouseDown;
+
             bool needsRefresh = false;
             bool changed = false;
             if (_currentFocused is InputElement input && (input.Type == "text" || input.Type == "number"))
@@ -337,7 +316,6 @@ namespace SiegeEngine.Core.UI
             {
                 return true;
             }
-            // Optionally include the select itself if needed, but typically select is in content
             return false;
         }
     }

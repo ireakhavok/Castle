@@ -36,10 +36,14 @@ namespace ReadingChamber
             {
                 _parent = parent;
             }
-            public override void HandleUIClick(HtmlElement elem)
+            public override bool HandleUIClick(HtmlElement elem)
             {
-                base.HandleUIClick(elem);
-                _parent.HandleUIClick(elem);
+                bool handled = base.HandleUIClick(elem);
+                if (!handled)
+                {
+                    _parent.HandleUIClick(elem);
+                }
+                return true;
             }
             protected override void HandleDataHook(string hook)
             {

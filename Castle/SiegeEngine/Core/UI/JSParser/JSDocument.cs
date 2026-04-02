@@ -10,6 +10,7 @@ namespace SiegeEngine.Core.UI.JSParser
     public class JSDocument
     {
         private UIOverlay _overlay;
+        private readonly Dictionary<string, List<object>> _eventListeners = new Dictionary<string, List<object>>();
 
         public JSDocument(UIOverlay overlay)
         {
@@ -61,13 +62,41 @@ namespace SiegeEngine.Core.UI.JSParser
             return elems.Select(e => new JSElement(e, _overlay)).ToList();
         }
 
-        // NEW: Support document.addEventListener (and other common DOM methods used by inline scripts)
-        // This prevents null callee in CallFunction without changing HTML or adding band-aids.
         public void addEventListener(string eventName, object callback)
         {
-            // The Cloudflare script and any future inline JS expect this to exist.
-            // We simply ignore it (no-op) because the parser already handles the inline click handler separately.
-            // This is the clean, future-proof architectural fix.
+            eventName = eventName.ToLower();
+            if (!_eventListeners.ContainsKey(eventName))
+                _eventListeners[eventName] = new List<object>();
+            _eventListeners[eventName].Add(callback);
+        }
+
+        public void removeEventListener(string eventName, object callback)
+        {
+            eventName = eventName.ToLower();
+            if (_eventListeners.ContainsKey(eventName))
+            {
+                _eventListeners[eventName].Remove(callback);
+                if (_eventListeners[eventName].Count == 0)
+                    _eventListeners.Remove(eventName);
+            }
+        }
+
+        internal bool InvokeDocumentListeners(string eventName, HtmlElement targetElement)
+        {
+            eventName = eventName.ToLower();
+            if (!_eventListeners.TryGetValue(eventName, out var listeners))
+                return false;
+
+            var jsEvent = new JSClickEvent(targetElement, _overlay);
+            bool handled = false;
+
+            foreach (var cb in listeners.ToList())
+            {
+                object result = _overlay._jsContext.Evaluator.CallFunction(cb, new List<object> { jsEvent });
+                if (result is bool b && b)
+                    handled = true;
+            }
+            return handled;
         }
 
         private List<HtmlElement> QuerySelectorAll(string selector)
@@ -89,6 +118,16 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
             }
             return matches;
+        }
+    }
+
+    public class JSClickEvent
+    {
+        public JSElement target { get; }
+
+        public JSClickEvent(HtmlElement targetElement, UIOverlay overlay)
+        {
+            target = new JSElement(targetElement, overlay);
         }
     }
 }

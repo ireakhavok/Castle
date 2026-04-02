@@ -32,9 +32,10 @@ namespace MapRoom
             {
                 _parent = parent;
             }
-            public override void HandleUIClick(HtmlElement elem)
+            public override bool HandleUIClick(HtmlElement elem)
             {
                 _parent.HandleUIClick(elem);
+                return true;
             }
         }
         private TerrainCreatorScene _terrainScene;
