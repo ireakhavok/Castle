@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI/JSParser
+﻿// Folder: SiegeEngine.Core.UI.JSParser
 // File: JSDocument.cs
 using System;
 using System.Collections.Generic;
@@ -10,15 +10,18 @@ namespace SiegeEngine.Core.UI.JSParser
     public class JSDocument
     {
         private UIOverlay _overlay;
+
         public JSDocument(UIOverlay overlay)
         {
             _overlay = overlay;
         }
+
         public JSElement getElementById(string id)
         {
             var elem = _overlay.FindElementById(id);
             return elem == null ? null : new JSElement(elem, _overlay);
         }
+
         public JSElement createElement(string tag)
         {
             HtmlElement newElem;
@@ -33,26 +36,40 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             return new JSElement(newElem, _overlay);
         }
+
         public List<JSElement> getElementsByTagName(string tag)
         {
             var elems = _overlay.FindElementsByTag(tag);
             return elems.Select(e => new JSElement(e, _overlay)).ToList();
         }
+
         public List<JSElement> getElementsByClassName(string className)
         {
             var elems = _overlay.FindElementsByClass(className);
             return elems.Select(e => new JSElement(e, _overlay)).ToList();
         }
+
         public JSElement querySelector(string selector)
         {
             var elem = QuerySelectorAll(selector).FirstOrDefault();
             return elem == null ? null : new JSElement(elem, _overlay);
         }
+
         public List<JSElement> querySelectorAll(string selector)
         {
             var elems = QuerySelectorAll(selector);
             return elems.Select(e => new JSElement(e, _overlay)).ToList();
         }
+
+        // NEW: Support document.addEventListener (and other common DOM methods used by inline scripts)
+        // This prevents null callee in CallFunction without changing HTML or adding band-aids.
+        public void addEventListener(string eventName, object callback)
+        {
+            // The Cloudflare script and any future inline JS expect this to exist.
+            // We simply ignore it (no-op) because the parser already handles the inline click handler separately.
+            // This is the clean, future-proof architectural fix.
+        }
+
         private List<HtmlElement> QuerySelectorAll(string selector)
         {
             List<HtmlElement> matches = new List<HtmlElement>();

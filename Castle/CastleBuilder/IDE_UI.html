@@ -92,8 +92,41 @@
                 color: #a0ffdb;
             }
 
-        .ide-title {
+        /* NEW CONTEXT BLADES - unique tab styling as requested */
+        .context-blades {
+            display: flex;
+            height: 100%;
+            align-items: center;
             margin-left: auto;
+            gap: 2px;
+            padding-right: 12px;
+        }
+
+        .context-blade {
+            padding: 0 18px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            color: #7CFFCB;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.1s ease;
+        }
+
+            .context-blade:hover {
+                background: rgba(124, 255, 203, 0.15);
+                color: #a0ffdb;
+            }
+
+            .context-blade.active {
+                background: #2a2a2a;
+                color: #ffffff;
+                border-bottom: 2px solid #7CFFCB;
+                font-weight: 600;
+            }
+
+        .ide-title {
             padding: 0 20px 0 12px;
             color: #7CFFCB;
             font-weight: 600;
@@ -140,9 +173,29 @@
                     </ul>
                 </li>
             </ul>
+
+            <!-- NEW CONTEXT BLADES (separate div for unique tab styling) -->
+            <div class="context-blades">
+                <div class="context-blade" data-hook="CastleBuilder.MenuCommands.SwitchToTerrain">Terrain</div>
+                <div class="context-blade" data-hook="CastleBuilder.MenuCommands.SwitchToAnimator">Animator</div>
+                <div class="context-blade active" data-hook="CastleBuilder.MenuCommands.SwitchToSceneEditor">Scene Editor</div>
+                <div class="context-blade" data-hook="CastleBuilder.MenuCommands.SwitchToConfiguration">Configuration</div>
+            </div>
+
             <div class="ide-title">SiegeEngine IDE</div>
         </nav>
         <div id="ide-content"></div>
     </div>
+
+    <!-- Minimal inline JS for immediate visual active state on blade clicks (Step 1 only; later steps enhance via C# + JSContext) -->
+    <script>
+        document.addEventListener('click', function (e) {
+            if (e.target.classList.contains('context-blade')) {
+                document.querySelectorAll('.context-blade').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+            }
+        });
+    </script>
+    <script>(function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'9e5bd302a959e9ce',t:'MTc3NTA5MDg2Nw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();</script>
 </body>
 </html>

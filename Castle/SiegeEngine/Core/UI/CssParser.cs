@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.Core.UI
 {
     public class CssParser
@@ -420,9 +421,11 @@ nav ul ul {
             }
             else if (simple.StartsWith("."))
             {
-                string cls = simple.Substring(1);
-                string classes = elem.Attributes.GetValueOrDefault("class", "");
-                match = classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(cls);
+                // Support compound class selectors (.context-blade.active)
+                string[] requiredClasses = simple.Substring(1).Split('.');
+                string classesStr = elem.Attributes.GetValueOrDefault("class", "");
+                var elemClasses = classesStr.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                match = requiredClasses.All(c => elemClasses.Contains(c));
             }
             else
             {
