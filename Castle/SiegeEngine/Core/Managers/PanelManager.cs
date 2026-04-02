@@ -5,8 +5,10 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Managers
@@ -28,6 +30,8 @@ namespace SiegeEngine.Core.Managers
 
         private DockingMode _sceneDefaultMode = DockingMode.Desktop;
 
+        public static PanelManager Current { get; private set; }
+
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -46,6 +50,8 @@ namespace SiegeEngine.Core.Managers
             {
                 _scrollDelta += (float)yoffset;
             });
+
+            Current = this;
         }
 
         public void SetSceneDefaultDockingMode(DockingMode mode)
@@ -123,6 +129,18 @@ namespace SiegeEngine.Core.Managers
                 _dynamicStrategy.Render(_renderContext, winW, winH);
             if (_ideStrategy.HasActiveContent())
                 _ideStrategy.Render(_renderContext, winW, winH);
+
+            // Render high RenderOrder panels LAST (menu bar on top of everything)
+            var highPriority = _panels.Where(p => (p as BasePanel)?.RenderOrder > 0).OrderByDescending(p => (p as BasePanel)?.RenderOrder);
+            foreach (var panel in highPriority)
+            {
+                if (panel.Visible)
+                {
+                    _renderContext.Disable(_renderContext.Enums.DepthTest);
+                    panel.Render();
+                    _renderContext.Enable(_renderContext.Enums.DepthTest);
+                }
+            }
         }
 
         public void RemovePanel(IPanel panel)

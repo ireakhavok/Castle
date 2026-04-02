@@ -76,30 +76,33 @@ Folder: Core
       - float BaseWidth
       - float BaseHeight
       - UIQuadRenderer _quadRenderer
+      - LayeredUIRenderer _layeredRenderer
       - ResizeHandle _currentResizeHandle
       - Vector2 _resizeStartMousePos
       - Vector2 _resizeStartPosition
       - Vector2 _resizeStartSize
       - bool IsResizing
       - bool _dockable
-      - PanelChrome _chrome
+      - PanelChrome chrome
+      - nint WindowHandle
+      - UIQuadRenderer QuadRenderer
     - Methods:
       - constructor BasePanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: CreateUIOverlay
       - UIOverlay CreateUIOverlay()
         - Calls: UIOverlay
       - void Init()
-        - Calls: PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
+        - Calls: LayeredUIRenderer, PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: ApplySnap, OnLiveResize, OnPanelResize, _chrome.HandleUpdate, _controlContext.GetWindowSize, _uiOverlay.Scroll
+        - Calls: ApplySnap, OnLiveResize, OnPanelResize, _controlContext.GetWindowSize, _uiOverlay.Scroll, chrome.HandleUpdate
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
         - Calls: OnPanelResize
       - void Render()
-        - Calls: RenderInnerContent, _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, _uiOverlay.RefreshUI
-      - FIRST RenderInnerContent()
-        - Calls: _chrome.Render
+        - Calls: OnLiveResize, _uiOverlay.RefreshUI
+      - void RenderContentLayer()
+        - Calls: RenderInnerContent, _uiOverlay.Render
       - void RenderInnerContent()
       - void Dispose()
       - void Detach()
@@ -996,6 +999,17 @@ Folder: Core
 - File: Keyframe.cs
   - Class: Keyframe (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
+- File: LayeredUIRenderer.cs
+  - Class: LayeredUIRenderer (Namespace: SiegeEngine.Core.Rendering)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.UI, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - IControlContext _controlContext
+      - UIQuadRenderer _quadRenderer
+    - Methods:
+      - constructor LayeredUIRenderer( IControlContext controlContext,  UIQuadRenderer quadRenderer, IRenderContext renderContext)
+      - void RenderPanel(BasePanel panel)
+        - Calls: AnimationViewerPanel.Render, _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, panel.RenderContentLayer, panel.chrome.Render
 - File: Layout.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
@@ -1813,48 +1827,6 @@ Folder: Core
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
         - Calls: IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
       - bool IsDropdownElement(HtmlElement elem)
-- File: UIManager.cs
-  - Class: UIManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection
-    - Fields:
-      - UISettingsManager _settingsManager
-      - ModManager _modManager
-      - EventBus _eventBus
-      - IControlContext _controlContext
-      - nint _window
-      - IRenderContext _renderContext
-      - TextRenderer _textRenderer
-      - UIQuadRenderer _quadRenderer
-      - ShaderProgram _uiShader
-      - CssParser _cssParser
-      - float _vw
-      - float _vh
-      - bool _initialized
-      - List<IPanel> _panels
-      - string _configPath
-      - bool _menuVisible
-      - bool _prevMouseDown
-    - Methods:
-      - constructor UIManager( EventBus eventBus,  IControlContext controlContext,  IRenderContext renderContext,  ModManager modManager,  nint window,  string configPath, UISettingsManager settingsManager)
-        - Calls: _controlContext.SetWindowSizeCallback
-      - void OnResize( int h,  int w, nint win)
-        - Calls: _renderContext.Viewport, bp.OnPanelResize
-      - void Initialize(string initialMenuHtmlPath)
-        - Calls: LoadMenu, OnResize, ShaderProgram, TextRenderer, UIQuadRenderer, _controlContext.GetWindowSize
-      - void LoadMenu(string initialMenuHtmlPath)
-        - Calls: AddPanel, _modManager.ResolvePath
-      - void OnOpenPanel(OpenPanelEvent e)
-        - Calls: AddPanel, RemovePanel, _panels.Clear, _previousVisibility.Clear, e.Panel.Init
-      - void OnClosePanel(ClosePanelEvent e)
-        - Calls: RemovePanel, _previousVisibility.Clear
-      - void AddPanel(IPanel panel)
-      - void RemovePanel(IPanel panel)
-        - Calls: panel.Dispose
-      - void Update(float deltaTime)
-        - Calls: ClosePanelEvent, _controlContext.GetCursorPos, _controlContext.GetMouseButton
-      - void Render()
-        - Calls: _renderContext.Disable, _renderContext.Enable
-      - void Dispose()
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
@@ -2343,10 +2315,12 @@ Folder: Scenes
       - EventBus _eventBus
       - int _width
       - int _height
+      - float _aspectRatio
       - bool _disposed
       - List<GameSystem> _systems
       - Player _player
       - ModelRenderer _modelRenderer
+      - float AspectRatio
     - Methods:
       - constructor Scene( EventBus eventBus,  IControlContext controlContext,  IGameServer server,  IntPtr window, IRenderContext renderContext)
         - Calls: ModelRenderer
@@ -2645,7 +2619,6 @@ SiegeEngine.Core.Managers.ModManager
 SiegeEngine.Core.Managers.PanelManager
 SiegeEngine.Core.Managers.ProjectSettings
 SiegeEngine.Core.Managers.SceneManager
-SiegeEngine.Core.Managers.UIManager
 SiegeEngine.Core.Managers.UISettingsManager
 SiegeEngine.Core.Managers.acquired
 SiegeEngine.Core.Networking.ClientGameServerProxy
@@ -2656,6 +2629,7 @@ SiegeEngine.Core.Rendering.CachedGlyphRun
 SiegeEngine.Core.Rendering.CharacterData
 SiegeEngine.Core.Rendering.EditorTextRenderer
 SiegeEngine.Core.Rendering.GameRenderer
+SiegeEngine.Core.Rendering.LayeredUIRenderer
 SiegeEngine.Core.Rendering.ModelRenderer
 SiegeEngine.Core.Rendering.OrthoProjection
 SiegeEngine.Core.Rendering.POINT

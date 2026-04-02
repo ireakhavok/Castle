@@ -455,7 +455,7 @@ namespace SiegeEngine.Scenes
             float currentDist = Vector3.Distance(_cameraPosition, _cameraTarget);
             float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
             float far = currentDist + _maxExtent * 2f;
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, near, far);
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, near, far);
 
             // Consolidated model rendering via shared ModelRenderer (viewer context: identity transform + custom camera + precomputed bone matrices)
             _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, modelMatrix, _boneMatrices, _currentNormalTransforms);

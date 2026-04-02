@@ -35,6 +35,14 @@ namespace SiegeEngine.Core.Managers
         private const float MenuBarHeight = 28f;
         private readonly Dictionary<IPanel, Vector2> _originalFloatingSizes = new Dictionary<IPanel, Vector2>();
         private bool _splitterDraggingThisFrame;
+
+        // RESIZE SUPPORT FOR FLOATING PANELS (matching DynamicDockingStrategy pattern)
+        private IPanel _resizingPanel;
+        private ResizeHandle _activeResizeHandle = ResizeHandle.None;
+        private Vector2 _resizeStartMousePos;
+        private Vector2 _resizeStartPosition;
+        private Vector2 _resizeStartSize;
+
         public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -43,6 +51,7 @@ namespace SiegeEngine.Core.Managers
             _quadRenderer = new UIQuadRenderer(renderContext);
             _root = new DockTabbedNode();
         }
+
         public void AddPanel(IPanel panel)
         {
             panel.HasTitleBar = true;
@@ -67,10 +76,12 @@ namespace SiegeEngine.Core.Managers
                     _originalFloatingSizes[panel] = panel.Size;
             }
         }
+
         public void RemovePanel(IPanel panel)
         {
             _floatingPanels.Remove(panel);
             if (_draggingPanel == panel) _draggingPanel = null;
+            if (_resizingPanel == panel) _resizingPanel = null;
             _originalFloatingSizes.Remove(panel);
             if (_root != null)
             {
@@ -80,12 +91,14 @@ namespace SiegeEngine.Core.Managers
                     _root = new DockTabbedNode();
             }
         }
+
         public bool HasActiveContent()
         {
             if (_floatingPanels.Count > 0) return true;
             if (_root == null) return false;
             return HasContentRecursive(_root);
         }
+
         private bool HasContentRecursive(DockNode node)
         {
             if (node is DockTabbedNode tab) return tab.Panels.Count > 0;
@@ -93,6 +106,7 @@ namespace SiegeEngine.Core.Managers
                 return HasContentRecursive(split.Left) || HasContentRecursive(split.Right);
             return false;
         }
+
         private bool IsAnySplitterDragging(DockNode node)
         {
             if (node is DockSplitNode split && split.IsDraggingSplitter())
@@ -104,6 +118,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (_floatingPanels.Count == 0 && !HasActiveContent())
@@ -132,13 +147,15 @@ namespace SiegeEngine.Core.Managers
             else if (_root != null)
             {
                 // normal docked panel input (title bar, close, resize)
+                // NOTE: NO second Update call – DockTabbedNode.Update is the single source of truth
+                // (PanelChrome.HandleUpdate → ClosePanelEvent fires here)
                 if (_root.HitTest(mousePos, out IPanel dockedHit, out bool isTitle, out bool isSplitter, out _, out _))
                 {
                     if (dockedHit != null && !isSplitter)
                     {
-                        dockedHit.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
                         if (mousePressed)
                         {
+                            // Close-button guard – must come BEFORE tear-out logic
                             if (dockedHit.IsOverCloseButton(mousePos))
                                 return;
                             if (isTitle && dockedHit.AllowDragging)
@@ -156,7 +173,7 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
-            // Floating panels unchanged
+            // Floating panels (now with full resize support)
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -186,6 +203,7 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
+            // DRAG UPDATE
             if (_draggingPanel != null && mouseDown)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -193,6 +211,12 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, MenuBarHeight);
                 DetectHoverTarget(mousePos, winW, winH);
             }
+            // LIVE RESIZE FOR FLOATING PANELS
+            if (_resizingPanel != null && mouseDown)
+            {
+                PerformLiveResize(mousePos, winW, winH);
+            }
+            // RELEASE
             if (_draggingPanel != null && mouseReleased)
             {
                 bool shouldDock = false;
@@ -293,6 +317,13 @@ namespace SiegeEngine.Core.Managers
                 _showHoverIcons = false;
                 _hoveringWorkspace = false;
             }
+            // RELEASE RESIZE
+            if (_resizingPanel != null && mouseReleased)
+            {
+                _resizingPanel.OnPanelResize(_resizingPanel.Size.X, _resizingPanel.Size.Y);
+                _resizingPanel = null;
+                _activeResizeHandle = ResizeHandle.None;
+            }
             // POST-INPUT LAYOUT: applies new SplitRatio immediately so Render sees correct positions this frame
             if (_root != null)
             {
@@ -302,6 +333,58 @@ namespace SiegeEngine.Core.Managers
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
             }
         }
+
+        private void PerformLiveResize(Vector2 mousePos, int winW, int winH)
+        {
+            if (_resizingPanel == null) return;
+            Vector2 delta = mousePos - _resizeStartMousePos;
+            Vector2 newPos = _resizeStartPosition;
+            Vector2 newSize = _resizeStartSize;
+            switch (_activeResizeHandle)
+            {
+                case ResizeHandle.Left:
+                    newSize.X = Math.Max(200f, _resizeStartSize.X - delta.X);
+                    newPos.X = _resizeStartPosition.X + _resizeStartSize.X - newSize.X;
+                    break;
+                case ResizeHandle.Right:
+                    newSize.X = Math.Max(200f, _resizeStartSize.X + delta.X);
+                    break;
+                case ResizeHandle.Top:
+                    newSize.Y = Math.Max(150f, _resizeStartSize.Y - delta.Y);
+                    newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
+                    break;
+                case ResizeHandle.Bottom:
+                    newSize.Y = Math.Max(150f, _resizeStartSize.Y + delta.Y);
+                    break;
+                case ResizeHandle.TopLeft:
+                    newSize.X = Math.Max(200f, _resizeStartSize.X - delta.X);
+                    newPos.X = _resizeStartPosition.X + _resizeStartSize.X - newSize.X;
+                    newSize.Y = Math.Max(150f, _resizeStartSize.Y - delta.Y);
+                    newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
+                    break;
+                case ResizeHandle.TopRight:
+                    newSize.X = Math.Max(200f, _resizeStartSize.X + delta.X);
+                    newSize.Y = Math.Max(150f, _resizeStartSize.Y - delta.Y);
+                    newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
+                    break;
+                case ResizeHandle.BottomLeft:
+                    newSize.X = Math.Max(200f, _resizeStartSize.X - delta.X);
+                    newPos.X = _resizeStartPosition.X + _resizeStartSize.X - newSize.X;
+                    newSize.Y = Math.Max(150f, _resizeStartSize.Y + delta.Y);
+                    break;
+                case ResizeHandle.BottomRight:
+                    newSize.X = Math.Max(200f, _resizeStartSize.X + delta.X);
+                    newSize.Y = Math.Max(150f, _resizeStartSize.Y + delta.Y);
+                    break;
+            }
+            _resizingPanel.Position = newPos;
+            _resizingPanel.Size = newSize;
+            if (_resizingPanel is BasePanel bp)
+            {
+                bp.OnLiveResize(newSize.X, newSize.Y);
+            }
+        }
+
         private void TearOutPanel(IPanel panel, Vector2 mousePos, int winW, int winH)
         {
             RestoreOriginalFloatingSize(panel);
@@ -316,6 +399,7 @@ namespace SiegeEngine.Core.Managers
             _root = CollapseNode(_root);
             if (_root == null) _root = new DockTabbedNode();
         }
+
         private DockNode ReplaceInTree(DockNode current, DockNode oldNode, DockNode newNode)
         {
             if (current == oldNode) return newNode;
@@ -326,6 +410,7 @@ namespace SiegeEngine.Core.Managers
             }
             return current;
         }
+
         private DockNode CollapseNode(DockNode node)
         {
             if (node == null) return null;
@@ -356,6 +441,7 @@ namespace SiegeEngine.Core.Managers
             }
             return node;
         }
+
         private void RestoreOriginalFloatingSize(IPanel panel)
         {
             if (_originalFloatingSizes.TryGetValue(panel, out Vector2 origSize))
@@ -365,6 +451,7 @@ namespace SiegeEngine.Core.Managers
                 _originalFloatingSizes.Remove(panel);
             }
         }
+
         private bool HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
         {
             bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
@@ -389,9 +476,22 @@ namespace SiegeEngine.Core.Managers
                     }
                     return true;
                 }
+                // RESIZE START FOR FLOATING PANELS
+                ResizeHandle handle = panel.GetResizeHandle(mousePos);
+                if (handle != ResizeHandle.None)
+                {
+                    _resizingPanel = panel;
+                    _activeResizeHandle = handle;
+                    _resizeStartMousePos = mousePos;
+                    _resizeStartPosition = panel.Position;
+                    _resizeStartSize = panel.Size;
+                    panel.StartResize(mousePos, handle);
+                    return true;
+                }
             }
             return false;
         }
+
         private void DetectHoverTarget(Vector2 mousePos, int winW, int winH)
         {
             _hoveredPanelDuringDrag = null;
@@ -427,6 +527,7 @@ namespace SiegeEngine.Core.Managers
                 _hoverIconCenter = new Vector2(winW * 0.5f, (winH + MenuBarHeight) * 0.5f);
             }
         }
+
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             if (_root != null)
@@ -480,6 +581,7 @@ namespace SiegeEngine.Core.Managers
                 _quadRenderer.DrawLine(cx + cs * 0.5f + shaftLen - 28, cy + 18, cx + cs * 0.5f + shaftLen, cy, thickness, ac, winW, winH);
             }
         }
+
         private void RenderSplitters(DockNode node, IRenderContext renderContext, int winW, int winH)
         {
             if (node is DockSplitNode split)
@@ -499,6 +601,7 @@ namespace SiegeEngine.Core.Managers
                 RenderSplitters(split.Right, renderContext, winW, winH);
             }
         }
+
         public void ComputeLayout(int winW, int winH)
         {
             if (_root != null)

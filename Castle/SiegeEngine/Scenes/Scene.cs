@@ -23,6 +23,7 @@ namespace SiegeEngine.Scenes
         protected readonly EventBus _eventBus;
         protected int _width;
         protected int _height;
+        protected float _aspectRatio = 16f / 9f;
         protected bool _disposed;
         protected readonly List<GameSystem> _systems = new List<GameSystem>();
         protected Player _player;
@@ -43,10 +44,13 @@ namespace SiegeEngine.Scenes
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
         public void SetPlayer(Player player) => _player = player;
 
+        protected float AspectRatio => _aspectRatio;
+
         public virtual void Initialize(int width, int height)
         {
             _width = width;
             _height = height;
+            _aspectRatio = width > 0 && height > 0 ? (float)width / height : 16f / 9f;
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -57,6 +61,7 @@ namespace SiegeEngine.Scenes
         {
             _width = width;
             _height = height;
+            _aspectRatio = width > 0 && height > 0 ? (float)width / height : 16f / 9f;
             _renderContext.Viewport(0, 0, (uint)width, (uint)height);
         }
 
@@ -77,7 +82,7 @@ namespace SiegeEngine.Scenes
             if (_disposed) return;
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             Matrix4x4 view = _player?.Camera?.ViewMatrix ?? Matrix4x4.Identity;
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, (float)_width / _height, 0.1f, 1000f);
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
             RenderContent(entities, view, projection);
         }
 

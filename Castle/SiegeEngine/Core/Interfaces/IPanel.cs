@@ -53,5 +53,8 @@ namespace SiegeEngine.Core.Interfaces
 
         // Clean architectural addition: centralised close-button hit test so strategy no longer duplicates math
         bool IsOverCloseButton(Vector2 mousePos);
+
+        // REQUIRED: DockTabbedNode (and therefore the DockManager system) now controls closing
+        void Close();
     }
 }

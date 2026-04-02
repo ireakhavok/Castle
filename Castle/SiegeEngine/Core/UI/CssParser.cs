@@ -201,26 +201,49 @@ nav ul ul {
         }
         public void ApplyAll(HtmlElement root)
         {
-            foreach (var rule in _allRules)
+            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            queue.Enqueue(root);
+            while (queue.Count > 0)
             {
-                string selector = rule.Selector;
-                string pseudo = null;
-                if (!selector.Contains(" ") && !selector.Contains("~") && selector.Contains(":"))
+                HtmlElement elem = queue.Dequeue();
+                ResetDynamicProperties(elem.Style);
+                foreach (var rule in _allRules)
                 {
-                    var parts = selector.Split(new char[] { ':' }, 2);
-                    selector = parts[0].Trim();
-                    pseudo = parts[1].Trim();
+                    string selector = rule.Selector;
+                    string pseudo = null;
+                    if (!selector.Contains(" ") && !selector.Contains("~") && selector.Contains(":"))
+                    {
+                        var parts = selector.Split(new char[] { ':' }, 2);
+                        selector = parts[0].Trim();
+                        pseudo = parts[1].Trim();
+                    }
+                    if (pseudo != null && (pseudo == "hover" || pseudo == "active" || pseudo == "target" || pseudo == "checked" || pseudo == "focus"))
+                    {
+                        ApplyToElements(elem, selector, rule.Props, pseudo);
+                    }
+                    else
+                    {
+                        ApplyToElements(elem, selector, rule.Props, null);
+                    }
                 }
-                if (pseudo != null && (pseudo == "hover" || pseudo == "active" || pseudo == "target" || pseudo == "checked" || pseudo == "focus"))
+                foreach (var child in elem.Children)
                 {
-                    ApplyToElements(root, selector, rule.Props, pseudo);
-                }
-                else
-                {
-                    ApplyToElements(root, selector, rule.Props, null);
+                    queue.Enqueue(child);
                 }
             }
             ApplyInlineStyles(root);
+        }
+        private void ResetDynamicProperties(CssStyle style)
+        {
+            style.Color = null;
+            style.TextColor = Vector4.Zero;
+            style.BackgroundColor = Vector4.Zero;
+            style.FontWeight = null;
+            style.BorderColor = Vector4.Zero;
+            style.BorderTopColor = Vector4.Zero;
+            style.BorderBottomColor = Vector4.Zero;
+            style.BorderLeftColor = Vector4.Zero;
+            style.BorderRightColor = Vector4.Zero;
         }
         public void ApplyInlineStyles(HtmlElement root)
         {
@@ -420,9 +443,10 @@ nav ul ul {
             }
             else if (simple.StartsWith("."))
             {
-                string cls = simple.Substring(1);
-                string classes = elem.Attributes.GetValueOrDefault("class", "");
-                match = classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(cls);
+                string[] requiredClasses = simple.Substring(1).Split('.');
+                string classesStr = elem.Attributes.GetValueOrDefault("class", "");
+                var elemClasses = classesStr.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                match = requiredClasses.All(c => elemClasses.Contains(c));
             }
             else
             {

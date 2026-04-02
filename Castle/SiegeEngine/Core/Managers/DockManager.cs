@@ -36,9 +36,7 @@ namespace SiegeEngine.Core.Managers
         private bool _draggingSplitter;
         private float _splitterSize = 5f;
         private const float SplitterGap = 2f; // explicit gap so splitters never touch title bars
-
         public bool IsDraggingSplitter() => _draggingSplitter;
-
         // dedicated deepest-splitter finder – used for strict priority
         public bool FindDeepestSplitter(Vector2 mousePos, out DockSplitNode deepest)
         {
@@ -47,7 +45,6 @@ namespace SiegeEngine.Core.Managers
                 return true;
             if (Right is DockSplitNode rightSplit && rightSplit.FindDeepestSplitter(mousePos, out deepest))
                 return true;
-
             if (IsVertical)
             {
                 float splitY = Rect.Y + Rect.W * SplitRatio;
@@ -70,7 +67,6 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-
         public override void ComputeLayout(float x, float y, float w, float h)
         {
             Rect = new Vector4(x, y, w, h);
@@ -78,7 +74,7 @@ namespace SiegeEngine.Core.Managers
             if (IsVertical)
             {
                 float splitY = h * SplitRatio;
-                Left.ComputeLayout(x, y, w, splitY - SplitterGap);           // gap above splitter
+                Left.ComputeLayout(x, y, w, splitY - SplitterGap); // gap above splitter
                 Right.ComputeLayout(x, y + splitY + SplitterGap, w, h - splitY - SplitterGap); // gap below splitter
             }
             else
@@ -88,7 +84,6 @@ namespace SiegeEngine.Core.Managers
                 Right.ComputeLayout(x + splitX + SplitterGap, y, w - splitX - SplitterGap, h);
             }
         }
-
         public override bool HitTest(Vector2 mousePos, out IPanel hitPanel, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex)
         {
             hitPanel = null;
@@ -122,7 +117,6 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-
         public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus)
         {
             // children (title bars, tabs, close buttons) get first chance
@@ -131,7 +125,6 @@ namespace SiegeEngine.Core.Managers
                 childHandled = true;
             if (Right != null && Right.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus))
                 childHandled = true;
-
             // only start splitter drag if no child consumed the press
             if (mousePressed && !childHandled)
             {
@@ -141,7 +134,6 @@ namespace SiegeEngine.Core.Managers
                     return true;
                 }
             }
-
             // continue active splitter drag
             if (_draggingSplitter && mouseDown)
             {
@@ -156,19 +148,15 @@ namespace SiegeEngine.Core.Managers
                 SplitRatio = Math.Clamp(SplitRatio, 0.1f, 0.9f);
                 return true;
             }
-
             if (mouseReleased)
                 _draggingSplitter = false;
-
             return _draggingSplitter || childHandled;
         }
-
         public override void Render(IRenderContext renderContext, int winW, int winH)
         {
             Left?.Render(renderContext, winW, winH);
             Right?.Render(renderContext, winW, winH);
         }
-
         public override void AddPanel(IPanel panel)
         {
             if (Right == null)
@@ -177,7 +165,6 @@ namespace SiegeEngine.Core.Managers
             }
             Right.AddPanel(panel);
         }
-
         public override bool RemovePanel(IPanel panel)
         {
             if (Left?.RemovePanel(panel) == true)
@@ -198,7 +185,6 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-
         public override DockNode FindNode(IPanel panel)
         {
             var leftNode = Left?.FindNode(panel);
@@ -214,7 +200,6 @@ namespace SiegeEngine.Core.Managers
         public List<IPanel> Panels { get; set; } = new List<IPanel>();
         public int ActiveIndex { get; set; } = -1;
         private float _titleHeight = 20f;
-
         public override void ComputeLayout(float x, float y, float w, float h)
         {
             Rect = new Vector4(x, y, w, h);
@@ -225,7 +210,6 @@ namespace SiegeEngine.Core.Managers
                 panel.OnPanelResize(w, h);
             }
         }
-
         public override bool HitTest(Vector2 mousePos, out IPanel hitPanel, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex)
         {
             hitPanel = null;
@@ -235,7 +219,6 @@ namespace SiegeEngine.Core.Managers
             tabIndex = -1;
             if (mousePos.X < Rect.X || mousePos.X > Rect.X + Rect.Z || mousePos.Y < Rect.Y || mousePos.Y > Rect.Y + Rect.W) return false;
             if (Panels.Count == 0) return false;
-
             if (mousePos.Y < Rect.Y + _titleHeight)
             {
                 float tabWidth = Rect.Z / Panels.Count;
@@ -256,25 +239,27 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-
         public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus)
         {
+            // CORE LIFECYCLE FIX: panel.Update is ALWAYS the single source of truth for docked panels
+            // (PanelChrome.HandleUpdate fires ClosePanelEvent here – before any tab/tear-out logic)
+            if (ActiveIndex >= 0 && ActiveIndex < Panels.Count)
+            {
+                var activePanel = Panels[ActiveIndex];
+                activePanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+            }
+
+            // Tab switching only happens for clicks on a DIFFERENT tab (never on the active panel's title/close area)
             if (HitTest(mousePos, out IPanel hit, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex))
             {
-                if (isTab && mousePressed)
+                if (isTab && mousePressed && tabIndex != ActiveIndex && tabIndex >= 0 && tabIndex < Panels.Count)
                 {
                     ActiveIndex = tabIndex;
-                    return true;
-                }
-                if (ActiveIndex >= 0 && ActiveIndex < Panels.Count)
-                {
-                    Panels[ActiveIndex].Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
                     return true;
                 }
             }
             return false;
         }
-
         public override void Render(IRenderContext renderContext, int winW, int winH)
         {
             if (ActiveIndex < 0 || ActiveIndex >= Panels.Count) return;
@@ -286,13 +271,11 @@ namespace SiegeEngine.Core.Managers
             renderContext.Viewport(px, py, pw, ph);
             Panels[ActiveIndex].Render();
         }
-
         public override void AddPanel(IPanel panel)
         {
             Panels.Add(panel);
             ActiveIndex = Panels.Count - 1;
         }
-
         public override bool RemovePanel(IPanel panel)
         {
             int idx = Panels.IndexOf(panel);
@@ -307,7 +290,6 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-
         public override DockNode FindNode(IPanel panel)
         {
             if (Panels.Contains(panel)) return this;
