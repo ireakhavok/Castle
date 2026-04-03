@@ -388,7 +388,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 case "forEach":
                     return new Action<object>(callback =>
                     {
-                        Console.WriteLine($"[JSArray.forEach] callback type: {callback?.GetType().FullName ?? "null"}");
+                        //Console.WriteLine($"[JSArray.forEach] callback type: {callback?.GetType().FullName ?? "null"}");
                         foreach (var item in arr)
                         {
                             eval.CallFunction(callback, new List<object> { item });

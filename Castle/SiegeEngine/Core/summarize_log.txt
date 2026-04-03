@@ -583,7 +583,7 @@ Found 2 dependencies
 Found: IDEDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
-Read 24106 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Read 28249 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 9 dependencies
 Found: LevelManager.cs
@@ -607,9 +607,9 @@ Found 7 dependencies
 Found: PanelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
-Read 5429 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
+Read 6128 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Namespace: SiegeEngine.Core.Managers
-Found 8 dependencies
+Found 10 dependencies
 Found: ProjectSettings.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ProjectSettings.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ProjectSettings.cs
@@ -875,7 +875,7 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
-Read 14803 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
+Read 14689 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 7 dependencies
 Found: Core.cs
@@ -887,7 +887,7 @@ Found 7 dependencies
 Found: CssParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
-Read 27149 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
+Read 28215 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
 Namespace: SiegeEngine.Core.UI
 Found 5 dependencies
 Found: CssStyle.cs
@@ -1045,31 +1045,31 @@ Found 2 dependencies
 Found: JSDocument.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSDocument.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSDocument.cs
-Read 2587 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSDocument.cs
+Read 4333 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSDocument.cs
 Namespace: SiegeEngine.Core.UI.JSParser
 Found 4 dependencies
 Found: JSElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSElement.cs
-Read 10816 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSElement.cs
+Read 12957 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSElement.cs
 Namespace: SiegeEngine.Core.UI.JSParser
 Found 5 dependencies
 Found: JSEvaluator.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
-Read 28865 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
+Read 30176 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
 Namespace: SiegeEngine.Core.UI.JSParser
 Found 6 dependencies
 Found: JSParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSParser.cs
-Read 37005 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSParser.cs
+Read 37312 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSParser.cs
 Namespace: SiegeEngine.Core.UI.JSParser
 Found 3 dependencies
 Found: JSStandardLibrary.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSStandardLibrary.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSStandardLibrary.cs
-Read 25094 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSStandardLibrary.cs
+Read 25096 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSStandardLibrary.cs
 Namespace: SiegeEngine.Core.UI.JSParser
 Found 7 dependencies
 Found: Layout.cs
@@ -1099,13 +1099,13 @@ Found 7 dependencies
 Found: UIInteractionLayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
-Read 16211 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
+Read 14339 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 24497 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 24712 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 11 dependencies
 Writing output for 11 folders

@@ -9,6 +9,7 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 /*
  * PROTECTED PATHS:
  * 1. Title-bar tear-out (drag from workspace)
@@ -123,22 +124,26 @@ namespace SiegeEngine.Core.Managers
         {
             if (_floatingPanels.Count == 0 && !HasActiveContent())
                 return;
+
             if (_root != null)
             {
                 _root = CollapseNode(_root);
                 if (_root == null) _root = new DockTabbedNode();
             }
+
             // PRE-INPUT LAYOUT: guarantees HitTest / FindDeepestSplitter / splitter detection use current accurate Rects
             if (_root != null)
             {
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
             }
+
             _splitterDraggingThisFrame = false;
             if (_root != null)
             {
                 _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
                 _splitterDraggingThisFrame = IsAnySplitterDragging(_root);
             }
+
             // SPLITTER PRIORITY FIRST – if any splitter is dragging, skip all title-bar logic
             if (_splitterDraggingThisFrame)
             {
@@ -173,6 +178,7 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
+
             // Floating panels (now with full resize support)
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
@@ -189,6 +195,7 @@ namespace SiegeEngine.Core.Managers
                         break;
                 }
             }
+
             if (mousePressed && _draggingPanel == null && hoveredPanel == null && !_splitterDraggingThisFrame)
             {
                 if (_root != null && _root.HitTest(mousePos, out IPanel hit2, out bool isTitle2, out bool isSplitter2, out _, out _))
@@ -203,6 +210,7 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
+
             // DRAG UPDATE
             if (_draggingPanel != null && mouseDown)
             {
@@ -211,12 +219,14 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, MenuBarHeight);
                 DetectHoverTarget(mousePos, winW, winH);
             }
+
             // LIVE RESIZE FOR FLOATING PANELS
             if (_resizingPanel != null && mouseDown)
             {
                 PerformLiveResize(mousePos, winW, winH);
             }
-            // RELEASE
+
+            // RELEASE - ORIGINAL WORKING DROP MECHANICS RESTORED
             if (_draggingPanel != null && mouseReleased)
             {
                 bool shouldDock = false;
@@ -224,59 +234,63 @@ namespace SiegeEngine.Core.Managers
                 {
                     if (_hoveredPanelDuringDrag != null)
                     {
-                        DockNode targetNode = null;
-                        if (_root != null)
-                            targetNode = _root.FindNode(_hoveredPanelDuringDrag);
-                        Vector2 rel = mousePos - _hoverIconCenter;
-                        float absX = Math.Abs(rel.X);
-                        float absY = Math.Abs(rel.Y);
-                        if (absX < IconSize * 0.35f && absY < IconSize * 0.35f)
+                        // ONLY dock if mouse is near the icon center (covers center + all arrow icons)
+                        if (Vector2.Distance(mousePos, _hoverIconCenter) < IconSize * 0.8f)
                         {
-                            if (targetNode is DockTabbedNode tabbed)
-                                tabbed.AddPanel(_draggingPanel);
-                            else if (_root != null)
-                                _root.AddPanel(_draggingPanel);
-                            shouldDock = true;
-                        }
-                        else
-                        {
-                            bool horizontalSplit = absY > absX;
-                            DockSplitNode newSplit = new DockSplitNode();
-                            newSplit.IsVertical = horizontalSplit;
-                            newSplit.SplitRatio = 0.5f;
-                            if (horizontalSplit)
+                            DockNode targetNode = null;
+                            if (_root != null)
+                                targetNode = _root.FindNode(_hoveredPanelDuringDrag);
+                            Vector2 rel = mousePos - _hoverIconCenter;
+                            float absX = Math.Abs(rel.X);
+                            float absY = Math.Abs(rel.Y);
+                            if (absX < IconSize * 0.35f && absY < IconSize * 0.35f)
                             {
-                                if (rel.Y < 0)
-                                {
-                                    newSplit.Left = new DockTabbedNode();
-                                    newSplit.Right = targetNode;
-                                    ((DockTabbedNode)newSplit.Left).AddPanel(_draggingPanel);
-                                }
-                                else
-                                {
-                                    newSplit.Left = targetNode;
-                                    newSplit.Right = new DockTabbedNode();
-                                    ((DockTabbedNode)newSplit.Right).AddPanel(_draggingPanel);
-                                }
+                                if (targetNode is DockTabbedNode tabbed)
+                                    tabbed.AddPanel(_draggingPanel);
+                                else if (_root != null)
+                                    _root.AddPanel(_draggingPanel);
+                                shouldDock = true;
                             }
                             else
                             {
-                                if (rel.X < 0)
+                                bool horizontalSplit = absY > absX;
+                                DockSplitNode newSplit = new DockSplitNode();
+                                newSplit.IsVertical = horizontalSplit;
+                                newSplit.SplitRatio = 0.5f;
+                                if (horizontalSplit)
                                 {
-                                    newSplit.Left = new DockTabbedNode();
-                                    newSplit.Right = targetNode;
-                                    ((DockTabbedNode)newSplit.Left).AddPanel(_draggingPanel);
+                                    if (rel.Y < 0)
+                                    {
+                                        newSplit.Left = new DockTabbedNode();
+                                        newSplit.Right = targetNode;
+                                        ((DockTabbedNode)newSplit.Left).AddPanel(_draggingPanel);
+                                    }
+                                    else
+                                    {
+                                        newSplit.Left = targetNode;
+                                        newSplit.Right = new DockTabbedNode();
+                                        ((DockTabbedNode)newSplit.Right).AddPanel(_draggingPanel);
+                                    }
                                 }
                                 else
                                 {
-                                    newSplit.Left = targetNode;
-                                    newSplit.Right = new DockTabbedNode();
-                                    ((DockTabbedNode)newSplit.Right).AddPanel(_draggingPanel);
+                                    if (rel.X < 0)
+                                    {
+                                        newSplit.Left = new DockTabbedNode();
+                                        newSplit.Right = targetNode;
+                                        ((DockTabbedNode)newSplit.Left).AddPanel(_draggingPanel);
+                                    }
+                                    else
+                                    {
+                                        newSplit.Left = targetNode;
+                                        newSplit.Right = new DockTabbedNode();
+                                        ((DockTabbedNode)newSplit.Right).AddPanel(_draggingPanel);
+                                    }
                                 }
+                                if (_root != null)
+                                    _root = ReplaceInTree(_root, targetNode, newSplit);
+                                shouldDock = true;
                             }
-                            if (_root != null)
-                                _root = ReplaceInTree(_root, targetNode, newSplit);
-                            shouldDock = true;
                         }
                     }
                     else if (_hoveringWorkspace)
@@ -317,6 +331,7 @@ namespace SiegeEngine.Core.Managers
                 _showHoverIcons = false;
                 _hoveringWorkspace = false;
             }
+
             // RELEASE RESIZE
             if (_resizingPanel != null && mouseReleased)
             {
@@ -324,6 +339,7 @@ namespace SiegeEngine.Core.Managers
                 _resizingPanel = null;
                 _activeResizeHandle = ResizeHandle.None;
             }
+
             // POST-INPUT LAYOUT: applies new SplitRatio immediately so Render sees correct positions this frame
             if (_root != null)
             {

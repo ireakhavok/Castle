@@ -49,6 +49,16 @@ Folder: CastleBuilder
       - string GetDefaultIDEPath()
       - void SaveIDEState()
         - Calls: JsonSerializer.Serialize
+- File: ContextChangedEvent.cs
+  - Class: ContextChangedEvent (Namespace: CastleBuilder.Events)
+    - Inherits: IEvent
+    
+    - Dependencies: SiegeEngine.Core.Events, System.Text, System.Text.Json
+    - Fields:
+      - string Type
+    - Methods:
+      - byte[] Serialize()
+      - void Deserialize(byte[] data)
 - File: IDEBasePanel.cs
   - Class: IDEUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
@@ -281,7 +291,7 @@ Folder: MapRoom
     - Fields:
       - NewTerrainPanel _parent
     - Methods:
-      - void HandleUIClick(HtmlElement elem)
+      - bool HandleUIClick(HtmlElement elem)
 - File: TerrainCreatorPanel.cs
   - Class: TerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
@@ -290,7 +300,7 @@ Folder: MapRoom
     - Fields:
       - TerrainCreatorPanel _parent
     - Methods:
-      - void HandleUIClick(HtmlElement elem)
+      - bool HandleUIClick(HtmlElement elem)
 - File: TerrainCreatorScene.cs
   - Class: TerrainCreatorScene (Namespace: MapRoom)
     - Inherits: TerrainScene
@@ -358,7 +368,7 @@ Folder: MapRoom
     - Fields:
       - TwoDCreatorPanel _parent
     - Methods:
-      - void HandleUIClick(HtmlElement elem)
+      - bool HandleUIClick(HtmlElement elem)
 - File: TwoDCreatorScene.cs
   - Class: TwoDCreatorScene (Namespace: MapRoom)
     - Inherits: Scene
@@ -411,7 +421,7 @@ Folder: ReadingChamber
     - Fields:
       - AnimationViewerPanel _parent
     - Methods:
-      - void HandleUIClick(HtmlElement elem)
+      - bool HandleUIClick(HtmlElement elem)
       - void HandleDataHook(string hook)
 - File: FileSelectorPanel.cs
   - Class: FileSelectorUIOverlay (Namespace: ReadingChamber)
@@ -421,7 +431,7 @@ Folder: ReadingChamber
     - Fields:
       - FileSelectorPanel _parent
     - Methods:
-      - void HandleUIClick(HtmlElement elem)
+      - bool HandleUIClick(HtmlElement elem)
 
 Folder: ScriptChamber
 - File: Class1.cs
@@ -588,7 +598,7 @@ Folder: SiegeEngine
       - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
         - Calls: OnPanelResize
       - void Render()
-        - Calls: OnLiveResize, _uiOverlay.RefreshUI
+        - Calls: OnLiveResize, _layeredRenderer.RenderPanel, _uiOverlay.RefreshUI
       - void RenderContentLayer()
         - Calls: RenderInnerContent, _uiOverlay.Render
       - void RenderInnerContent()
@@ -780,7 +790,8 @@ Folder: SiegeEngine
       - void Apply(string css)
         - Calls: ParseProperties, ReadUntil, SkipWhitespaceAndComments
       - void ApplyAll(HtmlElement root)
-        - Calls: ApplyInlineStyles, ApplyToElements
+        - Calls: ApplyInlineStyles, ApplyToElements, ResetDynamicProperties
+      - void ResetDynamicProperties(CssStyle style)
       - void ApplyInlineStyles(HtmlElement root)
         - Calls: ApplyInline
       - void SkipWhitespaceAndComments( ref int, string css)
@@ -1419,6 +1430,11 @@ Folder: SiegeEngine
       - float IconSize
       - float MenuBarHeight
       - bool _splitterDraggingThisFrame
+      - IPanel _resizingPanel
+      - ResizeHandle _activeResizeHandle
+      - Vector2 _resizeStartMousePos
+      - Vector2 _resizeStartPosition
+      - Vector2 _resizeStartSize
     - Methods:
       - constructor IDEDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
         - Calls: UIQuadRenderer
@@ -1432,7 +1448,9 @@ Folder: SiegeEngine
       - bool HasContentRecursive(DockNode node)
       - bool IsAnySplitterDragging(DockNode node)
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, HasActiveContent, IsAnySplitterDragging, ReplaceInTree, RestoreOriginalFloatingSize, TearOutPanel, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
+        - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, HasActiveContent, IsAnySplitterDragging, PerformLiveResize, ReplaceInTree, RestoreOriginalFloatingSize, TearOutPanel, _resizingPanel.OnPanelResize, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
+      - void PerformLiveResize( int winH,  int winW, Vector2 mousePos)
+        - Calls: bp.OnLiveResize
       - void TearOutPanel( Vector2 mousePos,  int winH,  int winW, IPanel panel)
         - Calls: CollapseNode, RestoreOriginalFloatingSize, _root.RemovePanel, bp.StartTitleBarDrag
       - DockNode ReplaceInTree( DockNode newNode,  DockNode oldNode, DockNode current)
@@ -1440,7 +1458,7 @@ Folder: SiegeEngine
       - void RestoreOriginalFloatingSize(IPanel panel)
         - Calls: panel.OnPanelResize
       - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
-        - Calls: bp.StartTitleBarDrag, panel.IsOverCloseButton
+        - Calls: bp.StartTitleBarDrag, panel.GetResizeHandle, panel.IsOverCloseButton, panel.StartResize
       - void DetectHoverTarget( int winH,  int winW, Vector2 mousePos)
         - Calls: _root.HitTest
       - void Render( int winH,  int winW, IRenderContext renderContext)
@@ -1565,57 +1583,26 @@ Folder: SiegeEngine
       - object RunWithThis( object thisObj, string code)
         - Calls: Evaluator.CurrentScope, Evaluator.PopScope, Evaluator.PushScope, Run
 - File: JSDocument.cs
-  - Class: JSDocument (Namespace: SiegeEngine.Core.UI.JSParser)
+  - Class: JSClickEvent (Namespace: SiegeEngine.Core.UI.JSParser)
     - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Linq
-    - Fields:
-      - UIOverlay _overlay
     - Methods:
-      - constructor JSDocument(UIOverlay overlay)
-      - JSElement getElementById(string id)
-        - Calls: JSElement, _overlay.FindElementById
-      - JSElement createElement(string tag)
-        - Calls: JSElement, OptionElement
-      - List<JSElement> getElementsByTagName(string tag)
-        - Calls: JSElement, _overlay.FindElementsByTag
-      - List<JSElement> getElementsByClassName(string className)
-        - Calls: JSElement, _overlay.FindElementsByClass
-      - JSElement querySelector(string selector)
-        - Calls: JSElement, QuerySelectorAll
-      - List<JSElement> querySelectorAll(string selector)
-        - Calls: JSElement, QuerySelectorAll
-      - List<HtmlElement> QuerySelectorAll(string selector)
-        - Calls: css.Matches
+      - constructor JSClickEvent( UIOverlay overlay, HtmlElement targetElement)
+        - Calls: JSElement
 - File: JSElement.cs
-  - Class: JSElement (Namespace: SiegeEngine.Core.UI.JSParser)
+  - Class: ClassList (Namespace: SiegeEngine.Core.UI.JSParser)
     - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.Linq
     - Fields:
-      - HtmlElement elem
-      - UIOverlay overlay
+      - HtmlElement _elem
+      - UIOverlay _overlay
     - Methods:
-      - constructor JSElement( UIOverlay overlay, HtmlElement elem)
-      - void appendChild(JSElement child)
-        - Calls: overlay.RefreshUI
-      - void removeChild(JSElement child)
-        - Calls: overlay.RefreshUI
-      - void insertBefore( JSElement referenceChild, JSElement newChild)
-        - Calls: overlay.RefreshUI
-      - void replaceChild( JSElement oldChild, JSElement newChild)
-        - Calls: overlay.RefreshUI
-      - string getAttribute(string name)
-      - void setAttribute( string value, string name)
-        - Calls: overlay.RefreshUI
-      - void removeAttribute(string name)
-        - Calls: overlay.RefreshUI
-      - JSElement querySelector(string selector)
-        - Calls: JSElement, QuerySelectorAll
-      - constructor JSElement()
-        - Calls: QuerySelectorAll
-      - List<JSElement> querySelectorAll(string selector)
-        - Calls: JSElement, QuerySelectorAll
-      - List<HtmlElement> QuerySelectorAll(string selector)
-        - Calls: css.Matches
-      - void addEventListener( object callback, string eventName)
-      - void removeEventListener( object callback, string eventName)
+      - constructor ClassList( UIOverlay overlay, HtmlElement elem)
+      - bool contains(string className)
+      - void add(string className)
+        - Calls: _overlay.RefreshUI
+      - void remove(string className)
+        - Calls: _overlay.RefreshUI
+      - void toggle(string className)
+        - Calls: add, contains, remove
 - File: JSEvaluator.cs
   - Class: ReturnException (Namespace: SiegeEngine.Core.UI.JSParser)
     - Inherits: Exception
@@ -2044,7 +2031,7 @@ Folder: SiegeEngine
       - void Dispose()
 - File: PanelManager.cs
   - Class: PanelManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -2071,7 +2058,7 @@ Folder: SiegeEngine
       - void Update(float deltaTime)
         - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - void Render()
-        - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Scissor, _renderContext.Viewport
+        - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
         - Calls: _captureManager.ReleaseCapture, panel.Detach, panel.Dispose
 - File: PerspectiveProjection.cs
@@ -2765,8 +2752,8 @@ Folder: SiegeEngine
       - List<HtmlElement> FindElementsByTag(string tag)
       - return FindElementsByTag()
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
-      - void HandleUIClick(HtmlElement elem)
-        - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _jsContext.RunWithThis
+      - bool HandleUIClick(HtmlElement elem)
+        - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
@@ -2783,7 +2770,7 @@ Folder: SiegeEngine
         - Calls: _uiClickables.Clear
       - void TriggerChange(HtmlElement elem)
         - Calls: InvokeListeners, JSElement, _jsContext.RunWithThis
-      - void InvokeListeners( string eventName, HtmlElement elem)
+      - bool InvokeListeners( string eventName, HtmlElement elem)
         - Calls: JSElement, _jsContext.Evaluator.CallFunction
 - File: UIQuadRenderer.cs
   - Class: UIQuadRenderer (Namespace: SiegeEngine.Core.Rendering)
@@ -2958,7 +2945,7 @@ Folder: ToolChest
       - AssetBrowserPanel _parent
     - Methods:
       - void HandleDataHook(string hook)
-      - void HandleUIClick(HtmlElement elem)
+      - bool HandleUIClick(HtmlElement elem)
 - File: Brush.cs
   - Class: Brush (Namespace: ToolChest)
     - Dependencies: System, System.Numerics
@@ -2987,7 +2974,7 @@ Folder: ToolChest
       - ConsolePanel _parent
     - Methods:
       - void HandleDataHook(string hook)
-      - void HandleUIClick(HtmlElement elem)
+      - bool HandleUIClick(HtmlElement elem)
 - File: EditorActionConfig.cs
   - Class: EditorActionConfig (Namespace: ToolChest)
     - Inherits: GameActionConfig 
@@ -3004,7 +2991,7 @@ Folder: ToolChest
       - PropertiesPanel _parent
     - Methods:
       - void HandleDataHook(string hook)
-      - void HandleUIClick(HtmlElement elem)
+      - bool HandleUIClick(HtmlElement elem)
 - File: SpritePlacementPanel.cs
   - Class: SpritePlacementUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -3014,7 +3001,7 @@ Folder: ToolChest
       - SpritePlacementPanel _parent
     - Methods:
       - void HandleDataHook(string hook)
-      - void HandleUIClick(HtmlElement elem)
+      - bool HandleUIClick(HtmlElement elem)
 - File: TreeViewPanel.cs
   - Class: TreeNode (Namespace: ToolChest)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
