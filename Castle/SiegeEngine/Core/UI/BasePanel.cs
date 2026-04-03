@@ -274,7 +274,8 @@ namespace SiegeEngine.Core.UI
             return mousePos.X >= closeX && mousePos.X <= Position.X + Size.X &&
                    mousePos.Y >= Position.Y && mousePos.Y <= Position.Y + TitleHeight;
         }
-        protected internal nint WindowHandle => _window;
+        // CHANGED: now public to satisfy IPanel interface (minimal iterative fix)
+        public nint WindowHandle => _window;
         protected internal UIQuadRenderer QuadRenderer => _quadRenderer;
     }
 }

@@ -56,5 +56,8 @@ namespace SiegeEngine.Core.Interfaces
 
         // REQUIRED: DockTabbedNode (and therefore the DockManager system) now controls closing
         void Close();
+
+        // NEW (minimal addition for CaptureManager hardware lock)
+        nint WindowHandle { get; }
     }
 }

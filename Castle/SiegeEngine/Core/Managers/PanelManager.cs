@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
+﻿// Folder: SiegeEngine.Core.Managers
 // File: PanelManager.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -223,6 +223,17 @@ namespace SiegeEngine.Core.Managers
 
             _panels.Remove(panel);
             panel.Dispose();
+        }
+
+        // NEW - minimal public API so panels can request capture without internal access
+        public void CapturePanel(IPanel panel)
+        {
+            _captureManager.RequestCapture(panel);
+        }
+
+        public void ReleasePanelCapture()
+        {
+            _captureManager.ReleaseCapture();
         }
     }
 }
