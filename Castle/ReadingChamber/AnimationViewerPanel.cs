@@ -40,10 +40,11 @@ namespace ReadingChamber
 
             public override bool HandleUIClick(HtmlElement elem)
             {
+                // Base handles normal data-hook processing
+                base.HandleUIClick(elem);
                 // PARENT FIRST - this fixes LoadMesh / LoadArmature / LoadAnimation not opening the modal
                 _parent.HandleUIClick(elem);
-                // Base handles normal data-hook processing
-                return base.HandleUIClick(elem);
+                return true;
             }
 
             protected override void HandleDataHook(string hook)

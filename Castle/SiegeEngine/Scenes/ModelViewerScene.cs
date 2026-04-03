@@ -73,6 +73,20 @@ namespace SiegeEngine.Scenes
             LoadMesh(_meshPath);
             DiscoverAnimationFiles();
         }
+
+        // === NEW: Full state reset when switching meshes (prevents lingering animation data / "weird stuff") ===
+        private void ResetAnimationState()
+        {
+            _currentAnimation = null;
+            _isPlaying = false;
+            _currentTime = 0f;
+            _duration = 0f;
+            _currentFrameIndex = 0;
+            _currentGlobalTransforms = null;
+            _boneMatrices = null;
+            _currentNormalTransforms = null;
+        }
+
         public void LoadMesh(string path)
         {
             _meshPath = path;
@@ -80,6 +94,9 @@ namespace SiegeEngine.Scenes
             _currentModelKey = Path.GetFileNameWithoutExtension(path).ToLower();
             _ModelManager.TryGetModel(_currentModelKey, out _model);
             _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
+
+            ResetAnimationState(); // clear any previous animation state
+
             if (_model.HasSkin)
             {
                 SetRestPose();
@@ -92,6 +109,9 @@ namespace SiegeEngine.Scenes
             _ModelManager.AttachSkeleton(_currentModelKey, path);
             _ModelManager.TryGetModel(_currentModelKey, out _model);
             _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
+
+            ResetAnimationState(); // clear any previous animation state
+
             if (_model.HasSkin)
             {
                 SetRestPose();

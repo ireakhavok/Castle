@@ -212,13 +212,18 @@ namespace SiegeEngine.Core.UI
                 _draggingSlider = null;
             }
 
+            // === IMPROVED: Only close open selects when releasing outside AND the flag is not set (prevents multiple-click requirement on dynamic selects) ===
             if (mouseRelease && _openSelects.Any() && !_justOpenedSelect && !dropdownReleaseHandled)
             {
                 _overlay.CloseAllOpenSelects();
                 _overlay.RefreshUI();
             }
 
-            _justOpenedSelect = false;
+            // Reset flag only when mouse is released (keeps it alive during the entire press -> release cycle for quick clicks)
+            if (!currentMouseDown)
+            {
+                _justOpenedSelect = false;
+            }
             _prevMouseDown = currentMouseDown;
 
             bool needsRefresh = false;
