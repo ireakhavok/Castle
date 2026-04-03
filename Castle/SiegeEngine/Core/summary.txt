@@ -967,6 +967,7 @@ Folder: Managers
       - EventBus _eventBus
       - bool _prevMouseDown
       - List<IPanel> _panels
+      - List<IPanel> _modalPanels
       - float _scrollDelta
       - CaptureManager _captureManager
       - IDockingStrategy _desktopStrategy
@@ -982,9 +983,11 @@ Folder: Managers
       - void OnClosePanel(ClosePanelEvent e)
         - Calls: RemovePanel
       - void AddPanel(IPanel panel)
-        - Calls: panel.Init
+        - Calls: AutoCenterModal, panel.Init
+      - void AutoCenterModal(IPanel panel)
+        - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
       - void Update(float deltaTime)
-        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
+        - Calls: ClosePanelEvent, _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)

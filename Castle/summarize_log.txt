@@ -334,7 +334,7 @@ Found: ..
 Found: ContextChangedEvent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\ContextChangedEvent.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\ContextChangedEvent.cs
-Read 729 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\ContextChangedEvent.cs
+Read 718 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\ContextChangedEvent.cs
 Namespace: CastleBuilder.Events
 Found 3 dependencies
 Found: LoadProjectEvent.cs
@@ -558,7 +558,7 @@ Found: ..
 Found: AnimationViewerPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
-Read 8374 chars from: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
+Read 7526 chars from: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Namespace: ReadingChamber
 Found 19 dependencies
 Found: AssetViewerUI.html
@@ -567,7 +567,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\ReadingChamber\bin
 Found: FileSelectorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
-Read 10211 chars from: C:\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
+Read 10243 chars from: C:\repos\RealmFoundry\Castle\ReadingChamber\FileSelectorPanel.cs
 Namespace: ReadingChamber
 Found 10 dependencies
 Found: FileSelectorTemplate.html
@@ -1176,7 +1176,7 @@ Found 2 dependencies
 Found: IDEDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
-Read 28249 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Read 28768 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 9 dependencies
 Found: LevelManager.cs
@@ -1200,7 +1200,7 @@ Found 7 dependencies
 Found: PanelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
-Read 6128 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
+Read 8783 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 10 dependencies
 Found: ProjectSettings.cs
