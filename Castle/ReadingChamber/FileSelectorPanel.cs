@@ -44,6 +44,7 @@ namespace ReadingChamber
             HasTitleBar = true;
             IsClosable = true;
             IsModal = true;
+            RenderOrder = 1000;
             _currentDir = initialDir;
             _allowedExtensions = allowedExtensions?.Select(ext => ext.ToLowerInvariant()).ToArray();
             Scaling = ScalingMode.Fill;
