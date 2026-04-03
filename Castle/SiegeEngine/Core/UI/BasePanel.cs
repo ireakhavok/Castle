@@ -7,11 +7,9 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
-
     public abstract class BasePanel : IPanel
     {
         protected readonly IRenderContext _renderContext;
@@ -57,10 +55,8 @@ namespace SiegeEngine.Core.UI
         public PanelChrome chrome;
         public bool HasTitleBar { get; set; } = false;
         public bool IsClosable { get; set; } = false;
-
         // RenderOrder index - higher value = rendered later / on top of everything
         public int RenderOrder { get; set; } = 0;
-
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -69,18 +65,15 @@ namespace SiegeEngine.Core.UI
             _eventBus = eventBus;
             _uiOverlay = CreateUIOverlay();
         }
-
         protected virtual UIOverlay CreateUIOverlay()
         {
             return new UIOverlay(_renderContext, _controlContext, _window);
         }
-
         public virtual void Init()
         {
             _uiOverlay.Init();
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _layeredRenderer = new LayeredUIRenderer(_renderContext, _controlContext, _quadRenderer);
-
             if (DockState == DockState.Floating && BaseWidth > 100 && BaseHeight > 100)
             {
                 Size = new Vector2(BaseWidth, BaseHeight);
@@ -100,7 +93,6 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
-
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
@@ -195,7 +187,6 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }
-
         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {
             float left = absMousePos.X - Position.X;
@@ -214,7 +205,6 @@ namespace SiegeEngine.Core.UI
             if (bottom < grip) return ResizeHandle.Bottom;
             return ResizeHandle.None;
         }
-
         public void StartResize(Vector2 mousePos, ResizeHandle handle)
         {
             _currentResizeHandle = handle;
@@ -222,10 +212,14 @@ namespace SiegeEngine.Core.UI
             _resizeStartPosition = Position;
             _resizeStartSize = Size;
         }
-
         protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
         {
-            if (DockingMode == DockingMode.Dynamic) return;
+            // IDE panels MUST NEVER auto-snap to screen edges - they only use hover icons (exactly like Visual Studio)
+            // This is the ONLY place the unwanted half-viewport snapping was happening.
+            // DesktopDockingStrategy is the only mode allowed to do edge snapping.
+            if (DockingMode != DockingMode.Desktop)
+                return;
+
             float cornerZone = winH * 0.25f;
             bool nearLeft = absMousePos.X < SnapDistance;
             bool nearRight = absMousePos.X > winW - SnapDistance;
@@ -283,11 +277,9 @@ namespace SiegeEngine.Core.UI
             Size = newSize;
             OnPanelResize(newSize.X, newSize.Y);
         }
-
         public virtual void Render()
         {
             if (!Visible) return;
-
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
@@ -297,10 +289,8 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
-
             _layeredRenderer.RenderPanel(this);
         }
-
         protected internal virtual void RenderContentLayer()
         {
             RenderInnerContent();
@@ -309,19 +299,15 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Render();
             }
         }
-
         protected virtual void RenderInnerContent()
         {
         }
-
         public virtual void Dispose()
         {
             _uiOverlay.Dispose();
             if (chrome != null) chrome.Dispose();
         }
-
         public virtual void Detach() { }
-
         public virtual void OnPanelResize(float w, float h)
         {
             Size = new Vector2(w, h);
@@ -334,11 +320,9 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
-
         public virtual void OnLiveResize(float w, float h)
         {
         }
-
         public void StartTitleBarDrag(Vector2 mousePos)
         {
             _isDragging = true;
@@ -346,17 +330,14 @@ namespace SiegeEngine.Core.UI
             _dragStartMousePos = mousePos;
             _lastClickTime = _controlContext.GetTime();
         }
-
         public void ResetDragState()
         {
             _isDragging = false;
         }
-
         public void Close()
         {
             _eventBus.Publish(new ClosePanelEvent(this));
         }
-
         public bool IsOverCloseButton(Vector2 mousePos)
         {
             if (!IsClosable || !HasTitleBar) return false;
@@ -364,7 +345,6 @@ namespace SiegeEngine.Core.UI
             return mousePos.X >= closeX && mousePos.X <= Position.X + Size.X &&
                    mousePos.Y >= Position.Y && mousePos.Y <= Position.Y + TitleHeight;
         }
-
         protected internal nint WindowHandle => _window;
         protected internal UIQuadRenderer QuadRenderer => _quadRenderer;
     }
