@@ -27,11 +27,8 @@ namespace MapRoom
             }
             public override bool HandleUIClick(HtmlElement elem)
             {
-                bool handled = base.HandleUIClick(elem);
-                if (!handled)
-                {
-                    _parent.HandleUIClick(elem);
-                }
+                _parent.HandleUIClick(elem);
+                base.HandleUIClick(elem);
                 return true;
             }
         }
