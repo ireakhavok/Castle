@@ -40,9 +40,7 @@ namespace ReadingChamber
 
             public override bool HandleUIClick(HtmlElement elem)
             {
-                // Base handles normal data-hook processing
                 base.HandleUIClick(elem);
-                // PARENT FIRST - this fixes LoadMesh / LoadArmature / LoadAnimation not opening the modal
                 _parent.HandleUIClick(elem);
                 return true;
             }
@@ -64,7 +62,7 @@ namespace ReadingChamber
             IsClosable = true;
             Scaling = ScalingMode.BestFit;
             DockingMode = DockingMode.Desktop;
-            BaseWidth = 900f;   // smaller default for modal use
+            BaseWidth = 900f;
             BaseHeight = 620f;
             _viewerScene = new ModelViewerScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
@@ -157,7 +155,12 @@ namespace ReadingChamber
                 if (select != null)
                 {
                     string val = select.Value;
-                    _viewerScene.LoadAnimation(val);
+                    if (!string.IsNullOrEmpty(val))
+                    {
+                        _viewerScene.LoadAnimation(val);
+                        select.Value = val;
+                        _uiOverlay.RefreshUI();
+                    }
                 }
             }
         }
