@@ -1,10 +1,11 @@
 ﻿// Folder: SiegeEngine.Core.UI
 // File: BasePanel.cs
 using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
-using SiegeEngine.Core.Definitions;
 using System;
 using System.Numerics;
 namespace SiegeEngine.Core.UI
@@ -53,7 +54,6 @@ namespace SiegeEngine.Core.UI
         public PanelChrome chrome;
         public bool HasTitleBar { get; set; } = false;
         public bool IsClosable { get; set; } = false;
-        // RenderOrder index - higher value = rendered later / on top of everything
         public int RenderOrder { get; set; } = 0;
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -94,11 +94,13 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
+
             if (HasTitleBar && chrome != null)
             {
                 if (chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
                     return;
             }
+
             if (_isDragging)
             {
                 if (mouseDown)
@@ -107,12 +109,11 @@ namespace SiegeEngine.Core.UI
                 }
                 if (mouseReleased)
                 {
-                    // Dragging ends here. Snap logic has been completely removed from BasePanel.
-                    // Edge snapping now lives ONLY inside DesktopDockingStrategy.
                     _isDragging = false;
                 }
                 return;
             }
+
             if (_currentResizeHandle != ResizeHandle.None)
             {
                 if (mouseDown)
@@ -170,9 +171,13 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
+
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
-            if (overPanel || WantsContinuousUpdate)
+
+            // === ONLY THE TRUE TOPMOST PANEL PROCESSES CONTENT EVENTS ===
+            // This swallows clicks, scroll, sliders, dropdowns, JS, etc. on lower panels
+            if ((overPanel || WantsContinuousUpdate) && PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this)
             {
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
@@ -181,6 +186,8 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }
+
+        // ... rest of your file exactly unchanged (GetResizeHandle, StartResize, Render, OnPanelResize, etc.)
         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {
             float left = absMousePos.X - Position.X;
@@ -274,7 +281,6 @@ namespace SiegeEngine.Core.UI
             return mousePos.X >= closeX && mousePos.X <= Position.X + Size.X &&
                    mousePos.Y >= Position.Y && mousePos.Y <= Position.Y + TitleHeight;
         }
-        // CHANGED: now public to satisfy IPanel interface (minimal iterative fix)
         public nint WindowHandle => _window;
         protected internal UIQuadRenderer QuadRenderer => _quadRenderer;
     }

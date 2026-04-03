@@ -123,7 +123,6 @@ namespace SiegeEngine.Core.Managers
             {
                 bool modalHandled = false;
 
-                // MODALS FIRST - highest priority
                 for (int i = _modalPanels.Count - 1; i >= 0; i--)
                 {
                     var panel = _modalPanels[i];
@@ -135,7 +134,6 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
 
-                // OFF-CLICK CLOSE FOR MODALS
                 if (modalHandled && mouseReleased)
                 {
                     bool clickedOnModal = false;
@@ -170,7 +168,43 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
+            // === SINGLE TOPMOST OWNER – this is the only place content events are processed ===
+            IPanel topOwner = null;
+            if (!_captureManager.IsCapturing)
+            {
+                topOwner = GetTopmostPanelAt(mousePos);
+            }
+
+            if (topOwner != null)
+            {
+                topOwner.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
+            }
+
             _scrollDelta = 0f;
+        }
+
+        // NEW: Centralized topmost hit test – used by BasePanel to swallow clicks on lower panels
+        public IPanel GetTopmostPanelAt(Vector2 mousePos)
+        {
+            // Modals always win
+            for (int i = _modalPanels.Count - 1; i >= 0; i--)
+            {
+                var m = _modalPanels[i];
+                if (m.Visible)
+                {
+                    bool over = mousePos.X >= m.Position.X && mousePos.X <= m.Position.X + m.Size.X &&
+                                mousePos.Y >= m.Position.Y && mousePos.Y <= m.Position.Y + m.Size.Y;
+                    if (over) return m;
+                }
+            }
+
+            IPanel p = _ideStrategy.GetTopmostPanelAt(mousePos);
+            if (p != null) return p;
+
+            p = _dynamicStrategy.GetTopmostPanelAt(mousePos);
+            if (p != null) return p;
+
+            return _desktopStrategy.GetTopmostPanelAt(mousePos);
         }
 
         public void Render()
@@ -186,7 +220,6 @@ namespace SiegeEngine.Core.Managers
             if (_ideStrategy.HasActiveContent())
                 _ideStrategy.Render(_renderContext, winW, winH);
 
-            // MODALS ON TOP
             foreach (var panel in _modalPanels)
             {
                 if (panel.Visible)
@@ -225,7 +258,6 @@ namespace SiegeEngine.Core.Managers
             panel.Dispose();
         }
 
-        // NEW - minimal public API so panels can request capture without internal access
         public void CapturePanel(IPanel panel)
         {
             _captureManager.RequestCapture(panel);

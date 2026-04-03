@@ -7,7 +7,6 @@ using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Managers
 {
     public class DesktopDockingStrategy : IDockingStrategy
@@ -34,7 +33,6 @@ namespace SiegeEngine.Core.Managers
         private Vector2 _snapPreviewPosition = Vector2.Zero;
         private Vector2 _snapPreviewSize = Vector2.Zero;
         private bool _showSnapPreview;
-
         public DesktopDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -43,12 +41,10 @@ namespace SiegeEngine.Core.Managers
             _root = new DockTabbedNode();
             _ghostRenderer = new UIQuadRenderer(renderContext);
         }
-
         private float GetHeaderHeight()
         {
-            return 0f;   // exact original behavior - no forced top space
+            return 0f; // exact original behavior - no forced top space
         }
-
         public void AddPanel(IPanel panel)
         {
             if (panel.DockState == DockState.Floating)
@@ -65,7 +61,6 @@ namespace SiegeEngine.Core.Managers
             }
             _needsLayout = true;
         }
-
         public void RemovePanel(IPanel panel)
         {
             if (_floatingPanels.Remove(panel))
@@ -80,13 +75,10 @@ namespace SiegeEngine.Core.Managers
                 _needsLayout = true;
             }
         }
-
         public bool HasActiveContent()
         {
             return _floatingPanels.Count > 0 || _root != null; // Desktop is always "active" once it has ever been used (root exists)
         }
-
-        // EXACT ApplySnap logic moved here from BasePanel (this is the real code that resizes and positions the panel to the edge)
         private void ApplySnap(IPanel panel, Vector2 absMousePos, int winW, int winH)
         {
             float cornerZone = winH * 0.25f;
@@ -146,7 +138,6 @@ namespace SiegeEngine.Core.Managers
             panel.Size = newSize;
             panel.OnPanelResize(newSize.X, newSize.Y);
         }
-
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (winW != _lastWinW || winH != _lastWinH)
@@ -202,7 +193,11 @@ namespace SiegeEngine.Core.Managers
                 }
                 if (over || _draggingFloatingPanel == topModal)
                 {
-                    topModal.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                    // ONLY the true topmost panel ever receives content/chrome Update
+                    if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == topModal || _draggingFloatingPanel == topModal)
+                    {
+                        topModal.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                    }
                     handled = true;
                 }
                 if (!handled && mouseReleased && _draggingFloatingPanel != topModal)
@@ -222,7 +217,11 @@ namespace SiegeEngine.Core.Managers
                     bool over = rel.X >= 0 && rel.X <= panel.Size.X && rel.Y >= 0 && rel.Y <= panel.Size.Y;
                     if (over)
                     {
-                        panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                        // ONLY the true topmost panel ever receives content/chrome Update
+                        if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == panel)
+                        {
+                            panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                        }
                         if (mousePressed && panel.AllowDragging && panel.DockState == DockState.Floating)
                         {
                             bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + 20f;
@@ -271,8 +270,6 @@ namespace SiegeEngine.Core.Managers
             {
                 if (_draggingFloatingPanel != null)
                 {
-                    // The EXACT ApplySnap logic (real resize + position to half/quarter screen) is now here
-                    // This is the code that actually changes the panel's Position and Size on edge release.
                     ApplySnap(_draggingFloatingPanel, mousePos, winW, winH);
                     _draggingFloatingPanel = null;
                 }
@@ -298,7 +295,6 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
-
         private bool ComputeSnapPreview(Vector2 mousePos, int winW, int winH, out Vector2 previewPos, out Vector2 previewSize)
         {
             previewPos = Vector2.Zero;
@@ -361,7 +357,6 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
-
         private DockState GetDockStateFromPosition(Vector2 mousePos, int winW, int winH)
         {
             float headerH = 0f;
@@ -371,7 +366,6 @@ namespace SiegeEngine.Core.Managers
             if (mousePos.Y > winH - SnapDistance) return DockState.DockedBottom;
             return DockState.Floating;
         }
-
         private void DockPanel(IPanel panel, DockState state)
         {
             DockSplitNode split = new DockSplitNode();
@@ -391,7 +385,22 @@ namespace SiegeEngine.Core.Managers
             _root = split;
             _needsLayout = true;
         }
-
+        public IPanel GetTopmostPanelAt(Vector2 mousePos)
+        {
+            for (int i = _floatingPanels.Count - 1; i >= 0; i--)
+            {
+                var panel = _floatingPanels[i];
+                if (!panel.Visible || panel.IsModal) continue;
+                Vector2 rel = mousePos - panel.Position;
+                bool over = rel.X >= 0 && rel.X <= panel.Size.X && rel.Y >= 0 && rel.Y <= panel.Size.Y;
+                if (over) return panel;
+            }
+            if (_root != null && _root.HitTest(mousePos, out IPanel dockedHit, out _, out _, out _, out _))
+            {
+                if (dockedHit != null) return dockedHit;
+            }
+            return null;
+        }
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             _root.Render(renderContext, winW, winH);
@@ -417,7 +426,6 @@ namespace SiegeEngine.Core.Managers
                 _ghostRenderer.DrawQuad(_snapPreviewPosition.X, _snapPreviewPosition.Y, _snapPreviewSize.X, _snapPreviewSize.Y, new Vector4(0.2f, 0.75f, 1.0f, 0.35f), winW, winH);
             }
         }
-
         public void ComputeLayout(int winW, int winH)
         {
             _root.ComputeLayout(0, 0, winW, winH);
