@@ -168,17 +168,6 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
-            // === SINGLE TOPMOST OWNER – this is the only place content events are processed ===
-            IPanel topOwner = null;
-            if (!_captureManager.IsCapturing)
-            {
-                topOwner = GetTopmostPanelAt(mousePos);
-            }
-
-            if (topOwner != null)
-            {
-                topOwner.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
-            }
 
             _scrollDelta = 0f;
         }
