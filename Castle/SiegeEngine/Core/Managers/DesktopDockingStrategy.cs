@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
+﻿// Folder: SiegeEngine.Core.Managers
 // File: DesktopDockingStrategy.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
@@ -84,6 +84,67 @@ namespace SiegeEngine.Core.Managers
         public bool HasActiveContent()
         {
             return _floatingPanels.Count > 0 || _root != null; // Desktop is always "active" once it has ever been used (root exists)
+        }
+
+        // EXACT ApplySnap logic moved here from BasePanel (this is the real code that resizes and positions the panel to the edge)
+        private void ApplySnap(IPanel panel, Vector2 absMousePos, int winW, int winH)
+        {
+            float cornerZone = winH * 0.25f;
+            bool nearLeft = absMousePos.X < SnapDistance;
+            bool nearRight = absMousePos.X > winW - SnapDistance;
+            bool nearTop = absMousePos.Y < SnapDistance;
+            bool nearBottom = absMousePos.Y > winH - SnapDistance;
+            bool inTopZone = absMousePos.Y < cornerZone;
+            bool inBottomZone = absMousePos.Y > winH - cornerZone;
+            Vector2 newPosition = panel.Position;
+            Vector2 newSize = panel.Size;
+            if (nearTop && nearLeft && inTopZone)
+            {
+                newPosition = new Vector2(0, 0);
+                newSize = new Vector2(winW / 2f, winH / 2f);
+            }
+            else if (nearTop && nearRight && inTopZone)
+            {
+                newPosition = new Vector2(winW / 2f, 0);
+                newSize = new Vector2(winW / 2f, winH / 2f);
+            }
+            else if (nearBottom && nearLeft && inBottomZone)
+            {
+                newPosition = new Vector2(0, winH / 2f);
+                newSize = new Vector2(winW / 2f, winH / 2f);
+            }
+            else if (nearBottom && nearRight && inBottomZone)
+            {
+                newPosition = new Vector2(winW / 2f, winH / 2f);
+                newSize = new Vector2(winW / 2f, winH / 2f);
+            }
+            else if (nearLeft)
+            {
+                newPosition = new Vector2(0, 0);
+                newSize = new Vector2(winW / 2f, winH);
+            }
+            else if (nearRight)
+            {
+                newPosition = new Vector2(winW - winW / 2f, 0);
+                newSize = new Vector2(winW / 2f, winH);
+            }
+            else if (nearTop)
+            {
+                newPosition = new Vector2(0, 0);
+                newSize = new Vector2(winW, winH);
+            }
+            else if (nearBottom)
+            {
+                newPosition = new Vector2(0, winH - winH / 2f);
+                newSize = new Vector2(winW, winH / 2f);
+            }
+            else
+            {
+                return;
+            }
+            panel.Position = newPosition;
+            panel.Size = newSize;
+            panel.OnPanelResize(newSize.X, newSize.Y);
         }
 
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
@@ -210,6 +271,9 @@ namespace SiegeEngine.Core.Managers
             {
                 if (_draggingFloatingPanel != null)
                 {
+                    // The EXACT ApplySnap logic (real resize + position to half/quarter screen) is now here
+                    // This is the code that actually changes the panel's Position and Size on edge release.
+                    ApplySnap(_draggingFloatingPanel, mousePos, winW, winH);
                     _draggingFloatingPanel = null;
                 }
                 if (_draggingPanel != null)

@@ -31,8 +31,6 @@ namespace SiegeEngine.Core.UI
         protected double _lastClickTime;
         public const float TitleHeight = 20f;
         protected const double DoubleClickTime = 0.5;
-        protected const float SnapDistance = 20f;
-        protected const float MinDragDistanceForSnap = 10f;
         protected ScalingMode Scaling = ScalingMode.Fill;
         protected float BaseWidth = 800f;
         protected float BaseHeight = 600f;
@@ -109,12 +107,8 @@ namespace SiegeEngine.Core.UI
                 }
                 if (mouseReleased)
                 {
-                    float dragDist = Vector2.Distance(absMousePos, _dragStartMousePos);
-                    if (dragDist > MinDragDistanceForSnap)
-                    {
-                        _controlContext.GetWindowSize(_window, out int winW, out int winH);
-                        ApplySnap(absMousePos, winW, winH);
-                    }
+                    // Dragging ends here. Snap logic has been completely removed from BasePanel.
+                    // Edge snapping now lives ONLY inside DesktopDockingStrategy.
                     _isDragging = false;
                 }
                 return;
@@ -211,71 +205,6 @@ namespace SiegeEngine.Core.UI
             _resizeStartMousePos = mousePos;
             _resizeStartPosition = Position;
             _resizeStartSize = Size;
-        }
-        protected void ApplySnap(Vector2 absMousePos, int winW, int winH)
-        {
-            // IDE panels MUST NEVER auto-snap to screen edges - they only use hover icons (exactly like Visual Studio)
-            // This is the ONLY place the unwanted half-viewport snapping was happening.
-            // DesktopDockingStrategy is the only mode allowed to do edge snapping.
-            if (DockingMode != DockingMode.Desktop)
-                return;
-
-            float cornerZone = winH * 0.25f;
-            bool nearLeft = absMousePos.X < SnapDistance;
-            bool nearRight = absMousePos.X > winW - SnapDistance;
-            bool nearTop = absMousePos.Y < SnapDistance;
-            bool nearBottom = absMousePos.Y > winH - SnapDistance;
-            bool inTopZone = absMousePos.Y < cornerZone;
-            bool inBottomZone = absMousePos.Y > winH - cornerZone;
-            Vector2 newPosition = Position;
-            Vector2 newSize = Size;
-            if (nearTop && nearLeft && inTopZone)
-            {
-                newPosition = new Vector2(0, 0);
-                newSize = new Vector2(winW / 2f, winH / 2f);
-            }
-            else if (nearTop && nearRight && inTopZone)
-            {
-                newPosition = new Vector2(winW / 2f, 0);
-                newSize = new Vector2(winW / 2f, winH / 2f);
-            }
-            else if (nearBottom && nearLeft && inBottomZone)
-            {
-                newPosition = new Vector2(0, winH / 2f);
-                newSize = new Vector2(winW / 2f, winH / 2f);
-            }
-            else if (nearBottom && nearRight && inBottomZone)
-            {
-                newPosition = new Vector2(winW / 2f, winH / 2f);
-                newSize = new Vector2(winW / 2f, winH / 2f);
-            }
-            else if (nearLeft)
-            {
-                newPosition = new Vector2(0, 0);
-                newSize = new Vector2(winW / 2f, winH);
-            }
-            else if (nearRight)
-            {
-                newPosition = new Vector2(winW - winW / 2f, 0);
-                newSize = new Vector2(winW / 2f, winH);
-            }
-            else if (nearTop)
-            {
-                newPosition = new Vector2(0, 0);
-                newSize = new Vector2(winW, winH);
-            }
-            else if (nearBottom)
-            {
-                newPosition = new Vector2(0, winH - winH / 2f);
-                newSize = new Vector2(winW, winH / 2f);
-            }
-            else
-            {
-                return;
-            }
-            Position = newPosition;
-            Size = newSize;
-            OnPanelResize(newSize.X, newSize.Y);
         }
         public virtual void Render()
         {
