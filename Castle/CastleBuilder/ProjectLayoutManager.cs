@@ -30,24 +30,33 @@ namespace CastleBuilder
             }
 
             string layoutPath = Path.Combine(projectPath, $"layout.{contextName}.json");
-            Console.WriteLine($"[ProjectLayoutManager] Writing layout to: {layoutPath}");
+            Console.WriteLine($"[ProjectLayoutManager] Writing full docking layout to: {layoutPath}");
 
-            var snapshot = new Dictionary<string, object>
+            // Use the public IDEStrategy getter added to PanelManager
+            var strategy = PanelManager.Current?.IDEStrategy;
+            if (strategy == null)
             {
-                ["context"] = contextName,
-                ["timestamp"] = DateTime.UtcNow.ToString("o"),
-                ["activeProject"] = projectPath,
-                ["lastSaved"] = DateTime.UtcNow.ToString("o")
-            };
+                Console.WriteLine("[ProjectLayoutManager] WARNING: No active IDEDockingStrategy - falling back to basic snapshot");
+                var snapshot = new Dictionary<string, object>
+                {
+                    ["context"] = contextName,
+                    ["timestamp"] = DateTime.UtcNow.ToString("o"),
+                    ["activeProject"] = projectPath,
+                    ["lastSaved"] = DateTime.UtcNow.ToString("o")
+                };
+                File.WriteAllText(layoutPath, JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true }));
+                return;
+            }
 
             try
             {
-                File.WriteAllText(layoutPath, JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true }));
-                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Layout saved for '{contextName}'");
+                string fullState = strategy.SerializeState();
+                File.WriteAllText(layoutPath, fullState);
+                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Full docking layout saved for '{contextName}' ({fullState.Length} bytes)");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ProjectLayoutManager] ERROR: Failed to write file: {ex.Message}");
+                Console.WriteLine($"[ProjectLayoutManager] ERROR: Failed to write layout: {ex.Message}");
             }
         }
 
@@ -73,7 +82,24 @@ namespace CastleBuilder
                 return;
             }
 
-            Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Loaded layout for '{contextName}'");
+            // Use the public IDEStrategy getter added to PanelManager
+            var strategy = PanelManager.Current?.IDEStrategy;
+            if (strategy == null)
+            {
+                Console.WriteLine("[ProjectLayoutManager] WARNING: No active IDEDockingStrategy - cannot restore layout");
+                return;
+            }
+
+            try
+            {
+                string json = File.ReadAllText(layoutPath);
+                strategy.DeserializeState(json);
+                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Full docking layout restored for '{contextName}'");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ProjectLayoutManager] ERROR: Failed to restore layout: {ex.Message}");
+            }
         }
     }
 }

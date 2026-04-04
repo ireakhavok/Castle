@@ -33,6 +33,9 @@ namespace SiegeEngine.Core.Managers
 
         public static PanelManager Current { get; private set; }
 
+        // MINIMAL ADDITION: public getter for IDE strategy so ProjectLayoutManager can access it
+        public IDEDockingStrategy IDEStrategy => _ideStrategy;
+
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;

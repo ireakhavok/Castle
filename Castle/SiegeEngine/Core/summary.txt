@@ -1012,8 +1012,12 @@ Folder: Managers
         - Calls: _captureManager.ReleaseCapture
 - File: ProjectSettings.cs
   - Class: ProjectSettings (Namespace: SiegeEngine.Core.Managers)
+    - Dependencies: System, System.IO
+    - Fields:
+      - string _projectsRoot
     - Methods:
       - constructor ProjectSettings()
+      - string GetLayoutTempPath(string projectPath)
 - File: SceneManager.cs
   - Class: SceneManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Reflection

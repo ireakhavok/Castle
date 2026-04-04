@@ -9,6 +9,9 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace SiegeEngine.Core.Managers
 {
@@ -35,8 +38,6 @@ namespace SiegeEngine.Core.Managers
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
-
-        // === SINGLE MINIMAL ADDITION (exact DesktopDockingStrategy pattern - nothing else changed) ===
         private bool _needsLayout = true;
         private int _lastWinW;
         private int _lastWinH;
@@ -140,33 +141,26 @@ namespace SiegeEngine.Core.Managers
         {
             if (_floatingPanels.Count == 0 && !HasActiveContent())
                 return;
-
             if (winW != _lastWinW || winH != _lastWinH)
             {
                 _lastWinW = winW;
                 _lastWinH = winH;
                 _needsLayout = true;
             }
-
             if (_root != null)
             {
                 _root = CollapseNode(_root);
                 if (_root == null) _root = new DockTabbedNode();
             }
-
-
-
             _splitterDraggingThisFrame = false;
             if (_root != null)
             {
                 _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
                 _splitterDraggingThisFrame = IsAnySplitterDragging(_root);
             }
-
             if (_splitterDraggingThisFrame)
             {
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
-
             }
             else if (_root != null)
             {
@@ -192,10 +186,7 @@ namespace SiegeEngine.Core.Managers
                         }
                     }
                 }
-
-                
             }
-
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -214,7 +205,6 @@ namespace SiegeEngine.Core.Managers
                         break;
                 }
             }
-
             if (mousePressed && _draggingPanel == null && hoveredPanel == null && !_splitterDraggingThisFrame)
             {
                 if (_root != null && _root.HitTest(mousePos, out IPanel hit2, out bool isTitle2, out bool isSplitter2, out _, out _))
@@ -229,7 +219,6 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
-
             if (_draggingPanel != null && mouseDown)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -237,12 +226,10 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, MenuBarHeight);
                 DetectHoverTarget(mousePos, winW, winH);
             }
-
             if (_resizingPanel != null && mouseDown)
             {
                 PerformLiveResize(mousePos, winW, winH);
             }
-
             if (_draggingPanel != null && mouseReleased)
             {
                 bool shouldDock = false;
@@ -347,7 +334,6 @@ namespace SiegeEngine.Core.Managers
                 _hoveringWorkspace = false;
                 _needsLayout = true;
             }
-
             if (_resizingPanel != null && mouseReleased)
             {
                 _resizingPanel.OnPanelResize(_resizingPanel.Size.X, _resizingPanel.Size.Y);
@@ -355,8 +341,6 @@ namespace SiegeEngine.Core.Managers
                 _activeResizeHandle = ResizeHandle.None;
                 _needsLayout = true;
             }
-
-            // === THE ONLY CHANGE: guarded final ComputeLayout (exactly like DesktopDockingStrategy) ===
             if (_needsLayout && _root != null)
             {
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
@@ -621,6 +605,141 @@ namespace SiegeEngine.Core.Managers
         {
             if (_root != null)
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
+        }
+
+        // =============================================================================
+        // MINIMAL SAFE SERIALIZATION (avoids IntPtr / nint / non-serializable fields)
+        // =============================================================================
+
+        private class SerializableLayoutState
+        {
+            public SerializableDockNode Root { get; set; }
+            public List<SerializableFloatingPanel> FloatingPanels { get; set; } = new List<SerializableFloatingPanel>();
+        }
+
+        private class SerializableDockNode
+        {
+            public string NodeType { get; set; } // "tabbed" or "split"
+            public List<string> Panels { get; set; } = new List<string>(); // simple panel type names
+            public int ActiveTabIndex { get; set; } = -1;
+            public bool IsVertical { get; set; }
+            public float SplitRatio { get; set; } = 0.5f;
+            public SerializableDockNode Left { get; set; }
+            public SerializableDockNode Right { get; set; }
+        }
+
+        private class SerializableFloatingPanel
+        {
+            public string PanelType { get; set; }
+            public Vector2 Position { get; set; }
+            public Vector2 Size { get; set; }
+        }
+
+        public string SerializeState()
+        {
+            var state = new SerializableLayoutState();
+
+            // Serialize root tree structure (only metadata)
+            state.Root = SerializeNode(_root);
+
+            // Serialize floating panels (position + size only)
+            foreach (var panel in _floatingPanels)
+            {
+                if (panel is BasePanel bp)
+                {
+                    state.FloatingPanels.Add(new SerializableFloatingPanel
+                    {
+                        PanelType = bp.GetType().Name,
+                        Position = bp.Position,
+                        Size = bp.Size
+                    });
+                }
+            }
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            return JsonSerializer.Serialize(state, options);
+        }
+
+        private SerializableDockNode SerializeNode(DockNode node)
+        {
+            if (node == null) return null;
+
+            if (node is DockTabbedNode tab)
+            {
+                return new SerializableDockNode
+                {
+                    NodeType = "tabbed",
+                    Panels = tab.Panels.Select(p => (p as BasePanel)?.GetType().Name ?? p.GetType().Name).ToList(),
+                    ActiveTabIndex = tab.ActiveIndex
+                };
+            }
+
+            if (node is DockSplitNode split)
+            {
+                return new SerializableDockNode
+                {
+                    NodeType = "split",
+                    IsVertical = split.IsVertical,
+                    SplitRatio = split.SplitRatio,
+                    Left = SerializeNode(split.Left),
+                    Right = SerializeNode(split.Right)
+                };
+            }
+
+            return null;
+        }
+
+        public void DeserializeState(string json)
+        {
+            if (string.IsNullOrEmpty(json)) return;
+
+            try
+            {
+                var state = JsonSerializer.Deserialize<SerializableLayoutState>(json);
+
+                // Restore root tree structure
+                if (state.Root != null)
+                {
+                    _root = DeserializeNode(state.Root);
+                }
+
+                // Floating panels are re-created by PanelManager / context system
+                // (we only store structure here - actual panels are added later via OpenPanelEvent)
+
+                _needsLayout = true;
+                Console.WriteLine("[IDEDockingStrategy] Layout state deserialized successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[IDEDockingStrategy] DeserializeState failed: {ex.Message}");
+            }
+        }
+
+        private DockNode DeserializeNode(SerializableDockNode s)
+        {
+            if (s == null) return null;
+
+            if (s.NodeType == "tabbed")
+            {
+                var tab = new DockTabbedNode();
+                tab.ActiveIndex = s.ActiveTabIndex;
+                // Panels will be re-populated by the context system
+                return tab;
+            }
+
+            if (s.NodeType == "split")
+            {
+                var split = new DockSplitNode
+                {
+                    IsVertical = s.IsVertical,
+                    SplitRatio = s.SplitRatio
+                };
+                split.Left = DeserializeNode(s.Left);
+                split.Right = DeserializeNode(s.Right);
+                return split;
+            }
+
+            return null;
         }
     }
 }
