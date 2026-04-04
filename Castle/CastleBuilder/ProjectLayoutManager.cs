@@ -9,25 +9,24 @@ namespace CastleBuilder
 {
     public static class ProjectLayoutManager
     {
-        private static string GetLayoutPath(string contextName)
-        {
-            string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath))
-            {
-                // Step 2: Silent global temp fallback when no project is open
-                string tempDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "CastleBuilder", "TempLayouts");
-                Directory.CreateDirectory(tempDir);
-                return Path.Combine(tempDir, $"layout.{contextName}.json");
-            }
-            return Path.Combine(projectPath, $"layout.{contextName}.json");
-        }
-
         public static void SaveCurrentLayout(string contextName)
         {
             Console.WriteLine($"[ProjectLayoutManager] SaveCurrentLayout START - Context: '{contextName}'");
 
-            string layoutPath = GetLayoutPath(contextName);
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath))
+            {
+                Console.WriteLine("[ProjectLayoutManager] No active project - skipping save");
+                return;
+            }
+
+            if (!Directory.Exists(projectPath))
+            {
+                Console.WriteLine($"[ProjectLayoutManager] ERROR: Project directory does not exist: {projectPath}");
+                return;
+            }
+
+            string layoutPath = Path.Combine(projectPath, $"layout.{contextName}.json");
             Console.WriteLine($"[ProjectLayoutManager] Writing full docking layout to: {layoutPath}");
 
             var strategy = PanelManager.Current?.IDEStrategy;
@@ -62,7 +61,14 @@ namespace CastleBuilder
 
             strategy.ClearAll();
 
-            string layoutPath = GetLayoutPath(contextName);
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath))
+            {
+                Console.WriteLine("[ProjectLayoutManager] No active project - workspace cleared for new blade");
+                return;
+            }
+
+            string layoutPath = Path.Combine(projectPath, $"layout.{contextName}.json");
             Console.WriteLine($"[ProjectLayoutManager] Looking for layout file: {layoutPath}");
 
             if (!File.Exists(layoutPath))

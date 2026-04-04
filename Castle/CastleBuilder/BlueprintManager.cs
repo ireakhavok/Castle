@@ -12,7 +12,6 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Managers;
-
 namespace CastleBuilder
 {
     public class ProjectData
@@ -27,14 +26,12 @@ namespace CastleBuilder
         public string CameraType { get; set; } = "Perspective";
         public string LastContext { get; set; } = "Scene Editor";
     }
-
     public class BlueprintManager
     {
         private readonly EventBus _eventBus;
         private readonly string _configPath;
         private static BlueprintManager _instance;
         private static string _previousContext = "Scene Editor";
-
         private static void EnsureInitialized(EventBus eventBus)
         {
             if (_instance == null && eventBus != null)
@@ -43,7 +40,6 @@ namespace CastleBuilder
                 Console.WriteLine("[BlueprintManager] Lazy-initialized (event subscriptions now active)");
             }
         }
-
         public BlueprintManager(EventBus eventBus)
         {
             _eventBus = eventBus;
@@ -56,14 +52,12 @@ namespace CastleBuilder
             _configPath = GetDefaultIDEPath();
             Console.WriteLine("[BlueprintManager] Constructor finished - all events subscribed");
         }
-
         public static void Load(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
             var idePanel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(idePanel) { Mode = OpenMode.Replace });
         }
-
         public static void CreateNewProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, UIOverlay overlay)
         {
             EnsureInitialized(eventBus);
@@ -98,14 +92,12 @@ namespace CastleBuilder
             Console.WriteLine($"[BlueprintManager] New project created: {dir}");
             Load(renderContext, controlContext, window, eventBus);
         }
-
         public static void SaveCurrentProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
             Console.WriteLine("[BlueprintManager] SaveCurrentProject called - direct save");
             DoProjectSave();
         }
-
         private static void DoProjectSave()
         {
             Console.WriteLine("[BlueprintManager.DoProjectSave] === DIRECT SAVE START ===");
@@ -135,7 +127,6 @@ namespace CastleBuilder
             ProjectLayoutManager.SaveCurrentLayout(data.LastContext ?? "Scene Editor");
             Console.WriteLine($"[BlueprintManager.DoProjectSave] Layout saved for context '{data.LastContext}'");
         }
-
         public static void SaveProjectAs(string folder, string name, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
@@ -149,7 +140,6 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             eventBus.Publish(new LoadProjectEvent { Path = dir });
         }
-
         private void OnGenericEvent(GenericEvent evt)
         {
             if (evt.Hook == "CastleBuilder.NewProject")
@@ -166,7 +156,6 @@ namespace CastleBuilder
                 _eventBus.Publish(new NewProjectEvent { Name = name, ProjectType = projectType, Mode = mode, AllowMods = allowMods, Path = path });
             }
         }
-
         private void OnNewProject(NewProjectEvent evt)
         {
             string root = ProjectSettings.Current.ProjectsRoot;
@@ -186,7 +175,6 @@ namespace CastleBuilder
             Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             _eventBus.Publish(new LoadProjectEvent { Path = dir });
         }
-
         private void OnLoadProject(LoadProjectEvent evt)
         {
             if (string.IsNullOrEmpty(evt.Path) || !Directory.Exists(evt.Path)) return;
@@ -207,49 +195,41 @@ namespace CastleBuilder
             }
             SaveIDEState();
         }
-
         private void OnSaveProject(SaveProjectEvent evt)
         {
             Console.WriteLine("[BlueprintManager.OnSaveProject] SaveProjectEvent received - calling direct save");
             DoProjectSave();
         }
-
         private void OnContextChanged(ContextChangedEvent evt)
         {
             string newContext = evt.Context ?? "Scene Editor";
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Switching from '{_previousContext}' → '{newContext}'");
-
-            // 1. SAVE PREVIOUS BLADE FIRST (always works, even for TempLayouts)
+            // SAVE PREVIOUS FIRST (while panels still exist)
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 ProjectLayoutManager.SaveCurrentLayout(_previousContext);
             }
-
-            // 2. CLEAR CURRENT WORKSPACE
             var strategy = PanelManager.Current?.IDEStrategy;
             strategy?.ClearAll();
-
-            // 3. UPDATE PROJECT.JSON (only if project is open) + RESTORE NEW BLADE
             string projectPath = ProjectSettings.Current.ActiveProject;
-            if (!string.IsNullOrEmpty(projectPath))
+            if (string.IsNullOrEmpty(projectPath))
             {
-                string jsonPath = Path.Combine(projectPath, "project.json");
-                if (File.Exists(jsonPath))
-                {
-                    string json = File.ReadAllText(jsonPath);
-                    var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
-                    data.LastContext = newContext;
-                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
-                }
+                Console.WriteLine("[BlueprintManager.OnContextChanged] No active project - workspace cleared for new blade");
+                _previousContext = newContext;
+                return;
             }
-
-            // 4. LOAD THE NEW BLADE (ProjectLayoutManager now handles TempLayouts automatically)
+            string jsonPath = Path.Combine(projectPath, "project.json");
+            if (File.Exists(jsonPath))
+            {
+                string json = File.ReadAllText(jsonPath);
+                var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+                data.LastContext = newContext;
+                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+            }
             ProjectLayoutManager.LoadLayoutForContext(newContext);
-
             _previousContext = newContext;
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' layout restored");
         }
-
         private void OnFileSelected(FileSelectedEvent e)
         {
             if (string.IsNullOrEmpty(e.Path)) return;
@@ -269,7 +249,6 @@ namespace CastleBuilder
                 Console.WriteLine($"[BlueprintManager.OnFileSelected] Ignored selection (not a valid project folder): {e.Path}");
             }
         }
-
         private string GetTemplate(string type)
         {
             string templatesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Templates");
@@ -278,12 +257,10 @@ namespace CastleBuilder
                 return File.ReadAllText(templateFile);
             return "{\"Name\": \"{name}\", \"Type\": \"" + type + "\", \"Mode\": \"{mode}\", \"AllowMods\": {allowMods}, \"CameraType\": \"" + (type == "2D" ? "AngledOrtho" : "Perspective") + "\", \"LastContext\": \"Scene Editor\"}";
         }
-
         private string GetDefaultIDEPath()
         {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CastleBuilder", "config.json");
         }
-
         private void SaveIDEState()
         {
             if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject)) return;
@@ -293,7 +270,6 @@ namespace CastleBuilder
             File.WriteAllText(_configPath, json);
         }
     }
-
     public static class StringExtensions
     {
         public static string ReplaceInvalidFileChars(this string filename)
