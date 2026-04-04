@@ -6,6 +6,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
+using SiegeEngine.Core.Managers;
 using System;
 using System.IO;
 using System.Numerics;
@@ -32,12 +33,20 @@ namespace CastleBuilder
                 {
                     var nameElem = FindElementById("projectName") as InputElement;
                     var folderElem = FindElementById("projectFolder") as InputElement;
-                    string name = nameElem?.Value ?? "NewProject";
-                    string folder = folderElem?.Value ?? @"C:\Users\ireak\source\CastleBuilder\Projects";
+
+                    string name = nameElem?.Value?.Trim() ?? "UntitledProject";
+                    if (string.IsNullOrEmpty(name)) name = "UntitledProject";
+
+                    string folder = folderElem?.Value?.Trim();
+                    if (string.IsNullOrEmpty(folder) || folder.Contains("ireak"))
+                        folder = ProjectSettings.Current.ProjectsRoot;
+
                     BlueprintManager.SaveProjectAs(folder, name, _eventBus);
                     _eventBus.Publish(new ClosePanelEvent(_parent));
+                    return;
                 }
-                else if (hook == "Cancel")
+
+                if (hook == "Cancel")
                 {
                     _eventBus.Publish(new ClosePanelEvent(_parent));
                 }
@@ -47,7 +56,12 @@ namespace CastleBuilder
         public SaveProjectPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
             IsModal = true;
+            RenderOrder = 1100;
+            Scaling = ScalingMode.Fill;
+            Size = new Vector2(420, 180);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -58,12 +72,23 @@ namespace CastleBuilder
         public override void Init()
         {
             base.Init();
+
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SaveProjectForm.html");
             if (File.Exists(htmlPath))
             {
-                _uiOverlay.LoadUI(File.ReadAllText(htmlPath));
+                string html = File.ReadAllText(htmlPath);
+                _uiOverlay.LoadUI(html);
             }
+
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+        }
+
+        public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            var panel = new SaveProjectPanel(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
     }
 }
