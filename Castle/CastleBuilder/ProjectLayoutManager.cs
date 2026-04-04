@@ -40,7 +40,7 @@ namespace CastleBuilder
             {
                 string fullState = strategy.SerializeState();
                 File.WriteAllText(layoutPath, fullState);
-                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Full docking layout saved for '{contextName}'");
+                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Full docking layout saved for '{contextName}' (JSON length: {fullState.Length} bytes)");
             }
             catch (Exception ex)
             {
