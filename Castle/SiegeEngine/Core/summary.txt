@@ -898,6 +898,9 @@ Folder: Managers
       - Vector2 _resizeStartMousePos
       - Vector2 _resizeStartPosition
       - Vector2 _resizeStartSize
+      - bool _needsLayout
+      - int _lastWinW
+      - int _lastWinH
     - Methods:
       - constructor IDEDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
         - Calls: UIQuadRenderer
@@ -913,7 +916,7 @@ Folder: Managers
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
         - Calls: _root.HitTest
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: AddPanel, CollapseNode, DetectHoverTarget, GetTopmostPanelAt, HandleSinglePanel, HasActiveContent, IsAnySplitterDragging, PerformLiveResize, ReplaceInTree, RestoreOriginalFloatingSize, TearOutPanel, _resizingPanel.OnPanelResize, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
+        - Calls: AddPanel, CollapseNode, ComputeLayout, DetectHoverTarget, GetTopmostPanelAt, HandleSinglePanel, HasActiveContent, IsAnySplitterDragging, PerformLiveResize, ReplaceInTree, RestoreOriginalFloatingSize, TearOutPanel, _resizingPanel.OnPanelResize, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
       - void PerformLiveResize( int winH,  int winW, Vector2 mousePos)
         - Calls: bp.OnLiveResize
       - void TearOutPanel( Vector2 mousePos,  int winH,  int winW, IPanel panel)
@@ -997,7 +1000,7 @@ Folder: Managers
       - void AutoCenterModal(IPanel panel)
         - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
       - void Update(float deltaTime)
-        - Calls: ClosePanelEvent, GetTopmostPanelAt, _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
+        - Calls: ClosePanelEvent, _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
@@ -2033,6 +2036,10 @@ Folder: UI
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - bool HandleUIClick(HtmlElement elem)
         - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis
+      - here CloseAllOpenSelects()
+        - Calls: HandleDataHook, RefreshUI
+      - dropdown CloseAllOpenSelects()
+        - Calls: HandleDataHook
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
