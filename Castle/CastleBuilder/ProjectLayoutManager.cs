@@ -2,7 +2,6 @@
 // File: ProjectLayoutManager.cs
 using SiegeEngine.Core.Managers;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -15,11 +14,9 @@ namespace CastleBuilder
             Console.WriteLine($"[ProjectLayoutManager] SaveCurrentLayout START - Context: '{contextName}'");
 
             string projectPath = ProjectSettings.Current.ActiveProject;
-            Console.WriteLine($"[ProjectLayoutManager] ActiveProject path from settings: '{projectPath}'");
-
             if (string.IsNullOrEmpty(projectPath))
             {
-                Console.WriteLine("[ProjectLayoutManager] ERROR: ActiveProject is null or empty - cannot save layout");
+                Console.WriteLine("[ProjectLayoutManager] No active project - skipping save");
                 return;
             }
 
@@ -32,19 +29,10 @@ namespace CastleBuilder
             string layoutPath = Path.Combine(projectPath, $"layout.{contextName}.json");
             Console.WriteLine($"[ProjectLayoutManager] Writing full docking layout to: {layoutPath}");
 
-            // Use the public IDEStrategy getter added to PanelManager
             var strategy = PanelManager.Current?.IDEStrategy;
             if (strategy == null)
             {
-                Console.WriteLine("[ProjectLayoutManager] WARNING: No active IDEDockingStrategy - falling back to basic snapshot");
-                var snapshot = new Dictionary<string, object>
-                {
-                    ["context"] = contextName,
-                    ["timestamp"] = DateTime.UtcNow.ToString("o"),
-                    ["activeProject"] = projectPath,
-                    ["lastSaved"] = DateTime.UtcNow.ToString("o")
-                };
-                File.WriteAllText(layoutPath, JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true }));
+                Console.WriteLine("[ProjectLayoutManager] WARNING: No active IDEDockingStrategy");
                 return;
             }
 
@@ -52,7 +40,7 @@ namespace CastleBuilder
             {
                 string fullState = strategy.SerializeState();
                 File.WriteAllText(layoutPath, fullState);
-                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Full docking layout saved for '{contextName}' ({fullState.Length} bytes)");
+                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Full docking layout saved for '{contextName}'");
             }
             catch (Exception ex)
             {
@@ -64,12 +52,19 @@ namespace CastleBuilder
         {
             Console.WriteLine($"[ProjectLayoutManager] LoadLayoutForContext START - Context: '{contextName}'");
 
-            string projectPath = ProjectSettings.Current.ActiveProject;
-            Console.WriteLine($"[ProjectLayoutManager] ActiveProject path: '{projectPath}'");
+            var strategy = PanelManager.Current?.IDEStrategy;
+            if (strategy == null)
+            {
+                Console.WriteLine("[ProjectLayoutManager] WARNING: No active IDEDockingStrategy");
+                return;
+            }
 
+            strategy.ClearAll();
+
+            string projectPath = ProjectSettings.Current.ActiveProject;
             if (string.IsNullOrEmpty(projectPath))
             {
-                Console.WriteLine("[ProjectLayoutManager] ERROR: ActiveProject is null");
+                Console.WriteLine("[ProjectLayoutManager] No active project - workspace cleared for new blade");
                 return;
             }
 
@@ -78,15 +73,7 @@ namespace CastleBuilder
 
             if (!File.Exists(layoutPath))
             {
-                Console.WriteLine($"[ProjectLayoutManager] No layout file found for '{contextName}' (using default)");
-                return;
-            }
-
-            // Use the public IDEStrategy getter added to PanelManager
-            var strategy = PanelManager.Current?.IDEStrategy;
-            if (strategy == null)
-            {
-                Console.WriteLine("[ProjectLayoutManager] WARNING: No active IDEDockingStrategy - cannot restore layout");
+                Console.WriteLine($"[ProjectLayoutManager] No layout file found for '{contextName}' (using default blank workspace)");
                 return;
             }
 

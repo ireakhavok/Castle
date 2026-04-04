@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: PanelManager.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -33,7 +33,6 @@ namespace SiegeEngine.Core.Managers
 
         public static PanelManager Current { get; private set; }
 
-        // MINIMAL ADDITION: public getter for IDE strategy so ProjectLayoutManager can access it
         public IDEDockingStrategy IDEStrategy => _ideStrategy;
 
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -46,7 +45,7 @@ namespace SiegeEngine.Core.Managers
 
             _desktopStrategy = new DesktopDockingStrategy(renderContext, controlContext, eventBus);
             _dynamicStrategy = new DynamicDockingStrategy(renderContext, controlContext, eventBus);
-            _ideStrategy = new IDEDockingStrategy(renderContext, controlContext, eventBus);
+            _ideStrategy = new IDEDockingStrategy(renderContext, controlContext, window, eventBus);
 
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
             _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
@@ -171,14 +170,11 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
-
             _scrollDelta = 0f;
         }
 
-        // NEW: Centralized topmost hit test – used by BasePanel to swallow clicks on lower panels
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
-            // Modals always win
             for (int i = _modalPanels.Count - 1; i >= 0; i--)
             {
                 var m = _modalPanels[i];

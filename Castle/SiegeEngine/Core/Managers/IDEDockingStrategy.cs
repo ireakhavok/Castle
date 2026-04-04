@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: IDEDockingStrategy.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -23,6 +23,7 @@ namespace SiegeEngine.Core.Managers
         private Vector2 _dragOffset;
         private readonly IRenderContext _renderContext;
         private readonly IControlContext _controlContext;
+        private readonly nint _window;
         private readonly EventBus _eventBus;
         private readonly UIQuadRenderer _quadRenderer;
         private IPanel _hoveredPanelDuringDrag;
@@ -42,13 +43,31 @@ namespace SiegeEngine.Core.Managers
         private int _lastWinW;
         private int _lastWinH;
 
-        public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
+        public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
+            _window = window;
             _eventBus = eventBus;
             _quadRenderer = new UIQuadRenderer(renderContext);
             _root = new DockTabbedNode();
+        }
+
+        public void ClearAll()
+        {
+            var pm = PanelManager.Current;
+            if (pm != null)
+            {
+                foreach (var p in _floatingPanels.ToList())
+                    pm.RemovePanel(p);
+            }
+            _floatingPanels.Clear();
+            _draggingPanel = null;
+            _resizingPanel = null;
+            _originalFloatingSizes.Clear();
+            _root = new DockTabbedNode();
+            _needsLayout = true;
+            Console.WriteLine("[IDEDockingStrategy.ClearAll] Workspace fully cleared");
         }
 
         public void AddPanel(IPanel panel)
@@ -59,7 +78,8 @@ namespace SiegeEngine.Core.Managers
             panel.DockingMode = DockingMode.IDE;
             if (panel.DockState == DockState.Floating || panel.DockState == DockState.DockedHeader)
             {
-                _floatingPanels.Add(panel);
+                if (!_floatingPanels.Contains(panel))
+                    _floatingPanels.Add(panel);
                 panel.AllowDragging = true;
                 panel.DockState = DockState.Floating;
                 panel.Position = new Vector2(120f, MenuBarHeight + 40f);
@@ -607,10 +627,6 @@ namespace SiegeEngine.Core.Managers
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
         }
 
-        // =============================================================================
-        // MINIMAL SAFE SERIALIZATION (avoids IntPtr / nint / non-serializable fields)
-        // =============================================================================
-
         private class SerializableLayoutState
         {
             public SerializableDockNode Root { get; set; }
@@ -619,8 +635,8 @@ namespace SiegeEngine.Core.Managers
 
         private class SerializableDockNode
         {
-            public string NodeType { get; set; } // "tabbed" or "split"
-            public List<string> Panels { get; set; } = new List<string>(); // simple panel type names
+            public string NodeType { get; set; }
+            public List<string> Panels { get; set; } = new List<string>();
             public int ActiveTabIndex { get; set; } = -1;
             public bool IsVertical { get; set; }
             public float SplitRatio { get; set; } = 0.5f;
@@ -638,18 +654,15 @@ namespace SiegeEngine.Core.Managers
         public string SerializeState()
         {
             var state = new SerializableLayoutState();
-
-            // Serialize root tree structure (only metadata)
             state.Root = SerializeNode(_root);
 
-            // Serialize floating panels (position + size only)
             foreach (var panel in _floatingPanels)
             {
                 if (panel is BasePanel bp)
                 {
                     state.FloatingPanels.Add(new SerializableFloatingPanel
                     {
-                        PanelType = bp.GetType().Name,
+                        PanelType = bp.GetType().AssemblyQualifiedName,  // ← changed to AssemblyQualifiedName
                         Position = bp.Position,
                         Size = bp.Size
                     });
@@ -669,7 +682,7 @@ namespace SiegeEngine.Core.Managers
                 return new SerializableDockNode
                 {
                     NodeType = "tabbed",
-                    Panels = tab.Panels.Select(p => (p as BasePanel)?.GetType().Name ?? p.GetType().Name).ToList(),
+                    Panels = tab.Panels.Select(p => (p as BasePanel)?.GetType().AssemblyQualifiedName ?? p.GetType().AssemblyQualifiedName).ToList(),  // ← changed to AssemblyQualifiedName
                     ActiveTabIndex = tab.ActiveIndex
                 };
             }
@@ -695,24 +708,62 @@ namespace SiegeEngine.Core.Managers
 
             try
             {
+                ClearAll();
+
                 var state = JsonSerializer.Deserialize<SerializableLayoutState>(json);
 
-                // Restore root tree structure
                 if (state.Root != null)
                 {
                     _root = DeserializeNode(state.Root);
                 }
 
-                // Floating panels are re-created by PanelManager / context system
-                // (we only store structure here - actual panels are added later via OpenPanelEvent)
+                foreach (var fp in state.FloatingPanels)
+                {
+                    var panel = CreatePanelByType(fp.PanelType);
+                    if (panel != null)
+                    {
+                        panel.Position = fp.Position;
+                        panel.Size = fp.Size;
+                        panel.DockState = DockState.Floating;
+                        AddPanel(panel);
+                        Console.WriteLine($"[IDEDockingStrategy] Restored floating panel {fp.PanelType} at position {fp.Position} size {fp.Size}");
+                    }
+                }
 
                 _needsLayout = true;
-                Console.WriteLine("[IDEDockingStrategy] Layout state deserialized successfully");
+                Console.WriteLine($"[IDEDockingStrategy] SUCCESS: Restored full nested tree (IsVertical splits preserved) + real panels from saved layout");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[IDEDockingStrategy] DeserializeState failed: {ex.Message}");
             }
+        }
+
+        private IPanel CreatePanelByType(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName)) return null;
+            try
+            {
+                Type t = Type.GetType(typeName);
+                if (t == null)
+                {
+                    // minimal fallback for your existing layout files (short names)
+                    if (typeName.Contains("ToolChest.")) t = Type.GetType(typeName + ", ToolChest");
+                    else if (typeName.Contains("MapRoom.")) t = Type.GetType(typeName + ", MapRoom");
+                    else if (typeName.Contains("CastleBuilder.")) t = Type.GetType(typeName + ", CastleBuilder");
+                }
+                if (t != null && typeof(IPanel).IsAssignableFrom(t))
+                {
+                    var panel = (IPanel)Activator.CreateInstance(t, _renderContext, _controlContext, _window, _eventBus);
+                    panel.Init();
+                    return panel;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[IDEDockingStrategy] Could not create panel {typeName}: {ex.Message}");
+            }
+            return null;
         }
 
         private DockNode DeserializeNode(SerializableDockNode s)
@@ -723,7 +774,14 @@ namespace SiegeEngine.Core.Managers
             {
                 var tab = new DockTabbedNode();
                 tab.ActiveIndex = s.ActiveTabIndex;
-                // Panels will be re-populated by the context system
+                foreach (var panelType in s.Panels)
+                {
+                    var panel = CreatePanelByType(panelType);
+                    if (panel != null)
+                    {
+                        tab.AddPanel(panel);
+                    }
+                }
                 return tab;
             }
 
@@ -738,7 +796,6 @@ namespace SiegeEngine.Core.Managers
                 split.Right = DeserializeNode(s.Right);
                 return split;
             }
-
             return null;
         }
     }

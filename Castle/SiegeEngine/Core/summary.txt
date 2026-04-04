@@ -873,67 +873,8 @@ Folder: Managers
       - void SelectMode(GameMode mode)
       - GameMode GetSelectedMode()
 - File: IDEDockingStrategy.cs
-  - Class: IDEDockingStrategy (Namespace: SiegeEngine.Core.Managers)
-    - Inherits: IDockingStrategy
-    
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
-    - Fields:
-      - DockNode _root
-      - List<IPanel> _floatingPanels
-      - IPanel _draggingPanel
-      - Vector2 _dragOffset
-      - IRenderContext _renderContext
-      - IControlContext _controlContext
-      - EventBus _eventBus
-      - UIQuadRenderer _quadRenderer
-      - IPanel _hoveredPanelDuringDrag
-      - bool _showHoverIcons
-      - Vector2 _hoverIconCenter
-      - bool _hoveringWorkspace
-      - float IconSize
-      - float MenuBarHeight
-      - bool _splitterDraggingThisFrame
-      - IPanel _resizingPanel
-      - ResizeHandle _activeResizeHandle
-      - Vector2 _resizeStartMousePos
-      - Vector2 _resizeStartPosition
-      - Vector2 _resizeStartSize
-      - bool _needsLayout
-      - int _lastWinW
-      - int _lastWinH
-    - Methods:
-      - constructor IDEDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
-        - Calls: UIQuadRenderer
-      - void AddPanel(IPanel panel)
-        - Calls: panel.OnPanelResize
-      - void RemovePanel(IPanel panel)
-        - Calls: CollapseNode
-      - bool HasActiveContent()
-        - Calls: HasContentRecursive
-      - return HasContentRecursive()
-      - bool HasContentRecursive(DockNode node)
-      - bool IsAnySplitterDragging(DockNode node)
-      - IPanel GetTopmostPanelAt(Vector2 mousePos)
-        - Calls: _root.HitTest
-      - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: AddPanel, CollapseNode, ComputeLayout, DetectHoverTarget, GetTopmostPanelAt, HandleSinglePanel, HasActiveContent, IsAnySplitterDragging, PerformLiveResize, ReplaceInTree, RestoreOriginalFloatingSize, TearOutPanel, _resizingPanel.OnPanelResize, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
-      - void PerformLiveResize( int winH,  int winW, Vector2 mousePos)
-        - Calls: bp.OnLiveResize
-      - void TearOutPanel( Vector2 mousePos,  int winH,  int winW, IPanel panel)
-        - Calls: CollapseNode, RestoreOriginalFloatingSize, _root.RemovePanel, bp.StartTitleBarDrag
-      - DockNode ReplaceInTree( DockNode newNode,  DockNode oldNode, DockNode current)
-      - DockNode CollapseNode(DockNode node)
-      - void RestoreOriginalFloatingSize(IPanel panel)
-        - Calls: panel.OnPanelResize
-      - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
-        - Calls: bp.StartTitleBarDrag, panel.GetResizeHandle, panel.IsOverCloseButton, panel.StartResize
-      - void DetectHoverTarget( int winH,  int winW, Vector2 mousePos)
-        - Calls: _root.HitTest
-      - void Render( int winH,  int winW, IRenderContext renderContext)
-        - Calls: RenderSplitters, _quadRenderer.DrawLine, _quadRenderer.DrawQuad, renderContext.Disable, renderContext.Scissor, renderContext.Viewport
-      - void RenderSplitters( IRenderContext renderContext,  int winH,  int winW, DockNode node)
-        - Calls: _quadRenderer.DrawLine
-      - void ComputeLayout( int winH, int winW)
+  - Class: SerializableFloatingPanel (Namespace: SiegeEngine.Core.Managers)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json, System.Text.Json.Serialization
 - File: LevelManager.cs
   - Class: LevelManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: System
@@ -987,6 +928,7 @@ Folder: Managers
       - DynamicDockingStrategy _dynamicStrategy
       - IDEDockingStrategy _ideStrategy
       - DockingMode _sceneDefaultMode
+      - IDEDockingStrategy IDEStrategy
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: CaptureManager, DesktopDockingStrategy, DynamicDockingStrategy, IDEDockingStrategy, _controlContext.SetScrollCallback
@@ -2160,7 +2102,6 @@ SiegeEngine.Core.Managers.DesktopDockingStrategy
 SiegeEngine.Core.Managers.DockManager
 SiegeEngine.Core.Managers.DynamicDockingStrategy
 SiegeEngine.Core.Managers.GameModeManager
-SiegeEngine.Core.Managers.IDEDockingStrategy
 SiegeEngine.Core.Managers.IDockingStrategy
 SiegeEngine.Core.Managers.LevelManager
 SiegeEngine.Core.Managers.LobbyManager
@@ -2168,6 +2109,7 @@ SiegeEngine.Core.Managers.ModManager
 SiegeEngine.Core.Managers.PanelManager
 SiegeEngine.Core.Managers.ProjectSettings
 SiegeEngine.Core.Managers.SceneManager
+SiegeEngine.Core.Managers.SerializableFloatingPanel
 SiegeEngine.Core.Managers.UISettingsManager
 SiegeEngine.Core.Managers.acquired
 SiegeEngine.Core.Networking.ClientGameServerProxy
