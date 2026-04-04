@@ -66,8 +66,10 @@ namespace CastleBuilder
 
             private void OnContextChanged(ContextChangedEvent evt)
             {
-                Console.WriteLine($"[IDE Menu] Context changed to: {evt.Context}");
-                RefreshMenuForContext(evt.Context);
+                string context = evt.Context ?? "Scene Editor";
+                Console.WriteLine($"[IDE Menu] Context changed to: {context}");
+                RefreshMenuForContext(context);
+                // Visual blade highlighting is already handled by the inline JS in IDE_UI.html
             }
 
             private void RefreshMenuForContext(string context)

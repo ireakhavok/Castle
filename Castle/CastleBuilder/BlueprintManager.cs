@@ -36,6 +36,9 @@ namespace CastleBuilder
         // LAZY INITIALIZATION (keeps the "dynamic hook" design intact - no Launcher changes required)
         private static BlueprintManager _instance;
 
+        // Tracks the PREVIOUS context so we can save its layout BEFORE switching
+        private static string _previousContext = "Scene Editor";
+
         private static void EnsureInitialized(EventBus eventBus)
         {
             if (_instance == null && eventBus != null)
@@ -222,8 +225,9 @@ namespace CastleBuilder
                 if (data != null)
                 {
                     ProjectSettings.Current.CameraType = data.CameraType;
-                    Console.WriteLine($"[BlueprintManager.OnLoadProject] Loaded project '{data.Name}' - Last Context: {data.LastContext}");
-                    ProjectLayoutManager.LoadLayoutForContext(data.LastContext);
+                    _previousContext = data.LastContext ?? "Scene Editor";
+                    Console.WriteLine($"[BlueprintManager.OnLoadProject] Loaded project '{data.Name}' - Last Context: {_previousContext}");
+                    ProjectLayoutManager.LoadLayoutForContext(_previousContext);
                 }
             }
             SaveIDEState();
@@ -235,19 +239,40 @@ namespace CastleBuilder
             DoProjectSave();
         }
 
+        // UPDATED: Full blade-switching logic
+        // 1. Save the layout of the PREVIOUS context
+        // 2. Update project.json with the new context
+        // 3. Load the saved layout for the NEW context
+        // This makes every blade click instantly restore the exact workspace the user last used for that workflow.
         private void OnContextChanged(ContextChangedEvent evt)
         {
-            Console.WriteLine($"[BlueprintManager.OnContextChanged] Context changed to '{evt.Context}'");
-            ProjectLayoutManager.SaveCurrentLayout(evt.Context);
+            string newContext = evt.Context ?? "Scene Editor";
+            Console.WriteLine($"[BlueprintManager.OnContextChanged] Switching from '{_previousContext}' → '{newContext}'");
 
-            string jsonPath = Path.Combine(ProjectSettings.Current.ActiveProject, "project.json");
+            // 1. Save the OLD context's layout BEFORE we change anything
+            if (!string.IsNullOrEmpty(_previousContext))
+            {
+                ProjectLayoutManager.SaveCurrentLayout(_previousContext);
+            }
+
+            // 2. Update project.json LastContext
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            string jsonPath = Path.Combine(projectPath, "project.json");
             if (File.Exists(jsonPath))
             {
                 string json = File.ReadAllText(jsonPath);
                 var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
-                data.LastContext = evt.Context;
+                data.LastContext = newContext;
                 File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             }
+
+            // 3. Load the saved layout for the NEW context
+            ProjectLayoutManager.LoadLayoutForContext(newContext);
+
+            // Remember the new context for next switch
+            _previousContext = newContext;
+
+            Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' layout restored");
         }
 
         // FIXED: Now works for both folder selections AND file selections (generic FileSelectorPanel behavior).
