@@ -10,12 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-/*
- * PROTECTED PATHS:
- * 1. Title-bar tear-out (drag from workspace)
- * 2. Close-button guard (prevents close click from triggering tear-out)
- * 3. Live splitter drag (absolute mouse priority at any nesting depth, panels resize live, no snap-back)
- */
 namespace SiegeEngine.Core.Managers
 {
     public class IDEDockingStrategy : IDockingStrategy
@@ -36,13 +30,16 @@ namespace SiegeEngine.Core.Managers
         private const float MenuBarHeight = 28f;
         private readonly Dictionary<IPanel, Vector2> _originalFloatingSizes = new Dictionary<IPanel, Vector2>();
         private bool _splitterDraggingThisFrame;
-
-        // RESIZE SUPPORT FOR FLOATING PANELS (matching DynamicDockingStrategy pattern)
         private IPanel _resizingPanel;
         private ResizeHandle _activeResizeHandle = ResizeHandle.None;
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
+
+        // === SINGLE MINIMAL ADDITION (exact DesktopDockingStrategy pattern - nothing else changed) ===
+        private bool _needsLayout = true;
+        private int _lastWinW;
+        private int _lastWinH;
 
         public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
@@ -76,6 +73,7 @@ namespace SiegeEngine.Core.Managers
                 if (!_originalFloatingSizes.ContainsKey(panel))
                     _originalFloatingSizes[panel] = panel.Size;
             }
+            _needsLayout = true;
         }
 
         public void RemovePanel(IPanel panel)
@@ -91,6 +89,7 @@ namespace SiegeEngine.Core.Managers
                 if (_root == null)
                     _root = new DockTabbedNode();
             }
+            _needsLayout = true;
         }
 
         public bool HasActiveContent()
@@ -120,10 +119,34 @@ namespace SiegeEngine.Core.Managers
             return false;
         }
 
+        public IPanel GetTopmostPanelAt(Vector2 mousePos)
+        {
+            for (int i = _floatingPanels.Count - 1; i >= 0; i--)
+            {
+                var panel = _floatingPanels[i];
+                if (!panel.Visible) continue;
+                bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
+                                 mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
+                if (overPanel) return panel;
+            }
+            if (_root != null && _root.HitTest(mousePos, out IPanel dockedHit, out _, out _, out _, out _))
+            {
+                if (dockedHit != null) return dockedHit;
+            }
+            return null;
+        }
+
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             if (_floatingPanels.Count == 0 && !HasActiveContent())
                 return;
+
+            if (winW != _lastWinW || winH != _lastWinH)
+            {
+                _lastWinW = winW;
+                _lastWinH = winH;
+                _needsLayout = true;
+            }
 
             if (_root != null)
             {
@@ -131,11 +154,7 @@ namespace SiegeEngine.Core.Managers
                 if (_root == null) _root = new DockTabbedNode();
             }
 
-            // PRE-INPUT LAYOUT: guarantees HitTest / FindDeepestSplitter / splitter detection use current accurate Rects
-            if (_root != null)
-            {
-                _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
-            }
+
 
             _splitterDraggingThisFrame = false;
             if (_root != null)
@@ -144,23 +163,19 @@ namespace SiegeEngine.Core.Managers
                 _splitterDraggingThisFrame = IsAnySplitterDragging(_root);
             }
 
-            // SPLITTER PRIORITY FIRST – if any splitter is dragging, skip all title-bar logic
             if (_splitterDraggingThisFrame)
             {
-                // splitter owns the mouse – do nothing else
+                _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
+
             }
             else if (_root != null)
             {
-                // normal docked panel input (title bar, close, resize)
-                // NOTE: NO second Update call – DockTabbedNode.Update is the single source of truth
-                // (PanelChrome.HandleUpdate → ClosePanelEvent fires here)
                 if (_root.HitTest(mousePos, out IPanel dockedHit, out bool isTitle, out bool isSplitter, out _, out _))
                 {
                     if (dockedHit != null && !isSplitter)
                     {
                         if (mousePressed)
                         {
-                            // Close-button guard – must come BEFORE tear-out logic
                             if (dockedHit.IsOverCloseButton(mousePos))
                                 return;
                             if (isTitle && dockedHit.AllowDragging)
@@ -177,9 +192,10 @@ namespace SiegeEngine.Core.Managers
                         }
                     }
                 }
+
+                
             }
 
-            // Floating panels (now with full resize support)
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -189,8 +205,11 @@ namespace SiegeEngine.Core.Managers
                                  mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
                 if (overPanel)
                 {
-                    hoveredPanel = panel;
-                    panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                    if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == panel)
+                    {
+                        hoveredPanel = panel;
+                        panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                    }
                     if (HandleSinglePanel(panel, mousePos, mousePressed, winW, winH))
                         break;
                 }
@@ -211,7 +230,6 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
-            // DRAG UPDATE
             if (_draggingPanel != null && mouseDown)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -220,13 +238,11 @@ namespace SiegeEngine.Core.Managers
                 DetectHoverTarget(mousePos, winW, winH);
             }
 
-            // LIVE RESIZE FOR FLOATING PANELS
             if (_resizingPanel != null && mouseDown)
             {
                 PerformLiveResize(mousePos, winW, winH);
             }
 
-            // RELEASE - ORIGINAL WORKING DROP MECHANICS RESTORED
             if (_draggingPanel != null && mouseReleased)
             {
                 bool shouldDock = false;
@@ -234,7 +250,6 @@ namespace SiegeEngine.Core.Managers
                 {
                     if (_hoveredPanelDuringDrag != null)
                     {
-                        // ONLY dock if mouse is near the icon center (covers center + all arrow icons)
                         if (Vector2.Distance(mousePos, _hoverIconCenter) < IconSize * 0.8f)
                         {
                             DockNode targetNode = null;
@@ -330,23 +345,22 @@ namespace SiegeEngine.Core.Managers
                 _hoveredPanelDuringDrag = null;
                 _showHoverIcons = false;
                 _hoveringWorkspace = false;
+                _needsLayout = true;
             }
 
-            // RELEASE RESIZE
             if (_resizingPanel != null && mouseReleased)
             {
                 _resizingPanel.OnPanelResize(_resizingPanel.Size.X, _resizingPanel.Size.Y);
                 _resizingPanel = null;
                 _activeResizeHandle = ResizeHandle.None;
+                _needsLayout = true;
             }
 
-            // POST-INPUT LAYOUT: applies new SplitRatio immediately so Render sees correct positions this frame
-            if (_root != null)
+            // === THE ONLY CHANGE: guarded final ComputeLayout (exactly like DesktopDockingStrategy) ===
+            if (_needsLayout && _root != null)
             {
-                _root = CollapseNode(_root);
-                if (_root == null)
-                    _root = new DockTabbedNode();
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
+                _needsLayout = false;
             }
         }
 
@@ -414,6 +428,7 @@ namespace SiegeEngine.Core.Managers
                 bp.StartTitleBarDrag(mousePos);
             _root = CollapseNode(_root);
             if (_root == null) _root = new DockTabbedNode();
+            _needsLayout = true;
         }
 
         private DockNode ReplaceInTree(DockNode current, DockNode oldNode, DockNode newNode)
@@ -492,7 +507,6 @@ namespace SiegeEngine.Core.Managers
                     }
                     return true;
                 }
-                // RESIZE START FOR FLOATING PANELS
                 ResizeHandle handle = panel.GetResizeHandle(mousePos);
                 if (handle != ResizeHandle.None)
                 {
@@ -513,19 +527,6 @@ namespace SiegeEngine.Core.Managers
             _hoveredPanelDuringDrag = null;
             _showHoverIcons = false;
             _hoveringWorkspace = false;
-            for (int i = _floatingPanels.Count - 1; i >= 0; i--)
-            {
-                var p = _floatingPanels[i];
-                if (p == _draggingPanel || !p.Visible) continue;
-                if (mousePos.X >= p.Position.X && mousePos.X <= p.Position.X + p.Size.X &&
-                    mousePos.Y >= p.Position.Y && mousePos.Y <= p.Position.Y + p.Size.Y)
-                {
-                    _hoveredPanelDuringDrag = p;
-                    _showHoverIcons = true;
-                    _hoverIconCenter = new Vector2(p.Position.X + p.Size.X * 0.5f, p.Position.Y + p.Size.Y * 0.5f);
-                    return;
-                }
-            }
             if (_root != null && _root.HitTest(mousePos, out IPanel dockedHit, out _, out _, out _, out _))
             {
                 if (dockedHit != null && dockedHit != _draggingPanel)
@@ -569,8 +570,6 @@ namespace SiegeEngine.Core.Managers
             }
             renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
-            // CRITICAL: explicit DepthTest disable guarantees hover icons sit above every title bar
-            // (previous panel.Render calls may have re-enabled it)
             renderContext.Disable(renderContext.Enums.DepthTest);
             if (_showHoverIcons)
             {

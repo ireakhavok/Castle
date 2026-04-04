@@ -30,6 +30,8 @@ namespace ToolChest
             }
             public override bool HandleUIClick(HtmlElement elem)
             {
+                // Base must run first for proper IsActive / listener / state setup (fixes double-click registration)
+                base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);
                 return true;
             }

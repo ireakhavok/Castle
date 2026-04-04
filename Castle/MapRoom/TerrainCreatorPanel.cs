@@ -211,6 +211,16 @@ namespace MapRoom
             {
                 _cameraMode = !_cameraMode;
                 _lastTab = true;
+
+                // NEW - activate robust capture exactly when camera mode changes
+                if (_cameraMode)
+                {
+                    PanelManager.Current.CapturePanel(this);
+                }
+                else
+                {
+                    PanelManager.Current.ReleasePanelCapture();
+                }
             }
             else if (tab != InputAction.Press)
             {
@@ -244,6 +254,7 @@ namespace MapRoom
         }
         public override void Dispose()
         {
+            PanelManager.Current.ReleasePanelCapture(); // safety cleanup
             _terrainScene?.Dispose();
             base.Dispose();
         }

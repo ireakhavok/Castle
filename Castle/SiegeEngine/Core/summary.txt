@@ -753,13 +753,16 @@ Folder: Managers
       - IPanel _currentOwner
       - IPanel CurrentOwner
       - bool IsCapturing
+      - Vector2 _captureCenter
+      - bool _wasCapturingLastFrame
     - Methods:
       - constructor CaptureManager(IControlContext controlContext)
       - void RequestCapture(IPanel panel)
-        - Calls: ReleaseCapture, Viewport, _controlContext.PushViewport
+        - Calls: ReleaseCapture, Viewport, _controlContext.PushViewport, _controlContext.SetCursorPos, _controlContext.SetInputMode
       - void ReleaseCapture()
-        - Calls: _controlContext.PopViewport
+        - Calls: _controlContext.PopViewport, _controlContext.SetInputMode
       - void Update( Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta, float deltaTime)
+        - Calls: _controlContext.SetCursorPos
 - File: DesktopDockingStrategy.cs
   - Class: DesktopDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Inherits: IDockingStrategy
@@ -796,12 +799,16 @@ Folder: Managers
         - Calls: GetHeaderHeight
       - void RemovePanel(IPanel panel)
       - bool HasActiveContent()
+      - void ApplySnap( Vector2 absMousePos,  int winH,  int winW, IPanel panel)
+        - Calls: panel.OnPanelResize
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: ClosePanelEvent, ComputeSnapPreview, DockPanel, GetDockStateFromPosition, _dragOriginNode.RemovePanel, _root.ComputeLayout, panel.GetResizeHandle, panel.OnPanelResize, panel.StartResize
+        - Calls: ApplySnap, ClosePanelEvent, ComputeSnapPreview, DockPanel, GetDockStateFromPosition, GetTopmostPanelAt, _dragOriginNode.RemovePanel, _root.ComputeLayout, panel.GetResizeHandle, panel.OnPanelResize, panel.StartResize
       - bool ComputeSnapPreview( int winH,  int winW,  out Vector2, Vector2 mousePos)
       - DockState GetDockStateFromPosition( int winH,  int winW, Vector2 mousePos)
       - void DockPanel( DockState state, IPanel panel)
         - Calls: newTabbed.AddPanel
+      - IPanel GetTopmostPanelAt(Vector2 mousePos)
+        - Calls: _root.HitTest
       - void Render( int winH,  int winW, IRenderContext renderContext)
         - Calls: _ghostRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
       - void ComputeLayout( int winH, int winW)
@@ -845,8 +852,9 @@ Folder: Managers
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
       - bool HasActiveContent()
+      - IPanel GetTopmostPanelAt(Vector2 mousePos)
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: ClampToViewport, ComputeSnapPreview, HandleSinglePanel, PerformLiveResize, _draggingPanel.OnPanelResize, _resizingPanel.OnPanelResize, bp.ResetDragState
+        - Calls: ClampToViewport, ComputeSnapPreview, GetTopmostPanelAt, HandleSinglePanel, PerformLiveResize, _draggingPanel.OnPanelResize, _resizingPanel.OnPanelResize, bp.ResetDragState
       - bool HandleSinglePanel( Vector2 mousePos,  bool mousePressed,  int winH,  int winW, IPanel panel)
         - Calls: bp.StartTitleBarDrag, panel.GetResizeHandle, panel.StartResize
       - bool ComputeSnapPreview( int winH,  int winW,  out Vector2, Vector2 mousePos)
@@ -890,6 +898,9 @@ Folder: Managers
       - Vector2 _resizeStartMousePos
       - Vector2 _resizeStartPosition
       - Vector2 _resizeStartSize
+      - bool _needsLayout
+      - int _lastWinW
+      - int _lastWinH
     - Methods:
       - constructor IDEDockingStrategy( EventBus eventBus,  IControlContext controlContext, IRenderContext renderContext)
         - Calls: UIQuadRenderer
@@ -902,8 +913,10 @@ Folder: Managers
       - return HasContentRecursive()
       - bool HasContentRecursive(DockNode node)
       - bool IsAnySplitterDragging(DockNode node)
+      - IPanel GetTopmostPanelAt(Vector2 mousePos)
+        - Calls: _root.HitTest
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
-        - Calls: AddPanel, CollapseNode, DetectHoverTarget, HandleSinglePanel, HasActiveContent, IsAnySplitterDragging, PerformLiveResize, ReplaceInTree, RestoreOriginalFloatingSize, TearOutPanel, _resizingPanel.OnPanelResize, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
+        - Calls: AddPanel, CollapseNode, ComputeLayout, DetectHoverTarget, GetTopmostPanelAt, HandleSinglePanel, HasActiveContent, IsAnySplitterDragging, PerformLiveResize, ReplaceInTree, RestoreOriginalFloatingSize, TearOutPanel, _resizingPanel.OnPanelResize, _root.AddPanel, _root.ComputeLayout, _root.FindNode, _root.HitTest, _root.RemovePanel, bp.ResetDragState, dockedHit.GetResizeHandle, dockedHit.IsOverCloseButton, dockedHit.StartResize, hit2.IsOverCloseButton, tabbed.AddPanel
       - void PerformLiveResize( int winH,  int winW, Vector2 mousePos)
         - Calls: bp.OnLiveResize
       - void TearOutPanel( Vector2 mousePos,  int winH,  int winW, IPanel panel)
@@ -967,6 +980,7 @@ Folder: Managers
       - EventBus _eventBus
       - bool _prevMouseDown
       - List<IPanel> _panels
+      - List<IPanel> _modalPanels
       - float _scrollDelta
       - CaptureManager _captureManager
       - IDockingStrategy _desktopStrategy
@@ -982,13 +996,20 @@ Folder: Managers
       - void OnClosePanel(ClosePanelEvent e)
         - Calls: RemovePanel
       - void AddPanel(IPanel panel)
-        - Calls: panel.Init
+        - Calls: AutoCenterModal, panel.Init
+      - void AutoCenterModal(IPanel panel)
+        - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
       - void Update(float deltaTime)
-        - Calls: _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
+        - Calls: ClosePanelEvent, _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
+      - IPanel GetTopmostPanelAt(Vector2 mousePos)
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
         - Calls: _captureManager.ReleaseCapture, panel.Detach, panel.Dispose
+      - void CapturePanel(IPanel panel)
+        - Calls: _captureManager.RequestCapture
+      - void ReleasePanelCapture()
+        - Calls: _captureManager.ReleaseCapture
 - File: ProjectSettings.cs
   - Class: ProjectSettings (Namespace: SiegeEngine.Core.Managers)
     - Methods:
@@ -1494,7 +1515,7 @@ Folder: UI
   - Class: BasePanel (Namespace: SiegeEngine.Core.UI)
     - Inherits: IPanel
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -1509,8 +1530,6 @@ Folder: UI
       - double _lastClickTime
       - float TitleHeight
       - double DoubleClickTime
-      - float SnapDistance
-      - float MinDragDistanceForSnap
       - ScalingMode Scaling
       - float BaseWidth
       - float BaseHeight
@@ -1533,11 +1552,9 @@ Folder: UI
       - void Init()
         - Calls: LayeredUIRenderer, PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: ApplySnap, OnLiveResize, OnPanelResize, _controlContext.GetWindowSize, _uiOverlay.Scroll, chrome.HandleUpdate
+        - Calls: GetTopmostPanelAt, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
-      - void ApplySnap( int winH,  int winW, Vector2 absMousePos)
-        - Calls: OnPanelResize
       - void Render()
         - Calls: OnLiveResize, _layeredRenderer.RenderPanel, _uiOverlay.RefreshUI
       - void RenderContentLayer()
@@ -1858,7 +1875,7 @@ Folder: UI
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
 - File: PanelChrome.cs
   - Class: PanelChrome (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System.Numerics
+    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System.Numerics
     - Fields:
       - BasePanel _owner
       - float _titleHeight
@@ -1866,7 +1883,7 @@ Folder: UI
     - Methods:
       - constructor PanelChrome(BasePanel owner)
       - bool HandleUpdate( bool mousePressed,  bool mouseReleased, Vector2 absMousePos)
-        - Calls: _owner.Close, _owner.StartTitleBarDrag
+        - Calls: GetTopmostPanelAt, _owner.Close, _owner.StartTitleBarDrag
       - void Render( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
         - Calls: quadRenderer.DrawLine, quadRenderer.DrawQuad
       - void Dispose()
@@ -2019,6 +2036,10 @@ Folder: UI
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - bool HandleUIClick(HtmlElement elem)
         - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis
+      - here CloseAllOpenSelects()
+        - Calls: HandleDataHook, RefreshUI
+      - dropdown CloseAllOpenSelects()
+        - Calls: HandleDataHook
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)

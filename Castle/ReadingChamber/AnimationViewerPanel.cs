@@ -29,6 +29,7 @@ namespace ReadingChamber
             var panel = new AnimationViewerPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
+
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AnimationViewerPanel _parent;
@@ -36,38 +37,41 @@ namespace ReadingChamber
             {
                 _parent = parent;
             }
+
             public override bool HandleUIClick(HtmlElement elem)
             {
-                bool handled = base.HandleUIClick(elem);
-                if (!handled)
-                {
-                    _parent.HandleUIClick(elem);
-                }
+                base.HandleUIClick(elem);
+                _parent.HandleUIClick(elem);
                 return true;
             }
+
             protected override void HandleDataHook(string hook)
             {
                 _parent.HandleDataHook(hook);
             }
         }
+
         private ModelViewerScene _viewerScene;
         private EditorTextRenderer _textRenderer;
         private ShaderProgram _textShader;
         private List<string> _animationFiles = new List<string>();
+
         public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
             IsClosable = true;
             Scaling = ScalingMode.BestFit;
-            DockingMode = DockingMode.Dynamic;
-            BaseWidth = 1280f;
-            BaseHeight = 720f;
+            DockingMode = DockingMode.IDE;
+            BaseWidth = 900f;
+            BaseHeight = 620f;
             _viewerScene = new ModelViewerScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
@@ -82,6 +86,7 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void UpdateUIControls()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AssetViewerUI.html");
@@ -103,6 +108,7 @@ namespace ReadingChamber
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void OnFileSelected(FileSelectedEvent e)
         {
             string hook = e.UserData as string;
@@ -123,6 +129,7 @@ namespace ReadingChamber
                 _viewerScene.LoadAnimation(e.Path);
             }
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -130,31 +137,16 @@ namespace ReadingChamber
             {
                 _viewerScene.TogglePlay();
             }
-            else if (hook == "LoadMesh")
+            else if (hook == "LoadMesh" || hook == "LoadArmature" || hook == "LoadAnimation")
             {
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
-                fileSelector.UserData = "LoadMesh";
-                fileSelector.IsModal = true;
-                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
-            }
-            else if (hook == "LoadArmature")
-            {
-                string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
-                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
-                fileSelector.UserData = "LoadArmature";
-                fileSelector.IsModal = true;
-                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
-            }
-            else if (hook == "LoadAnimation")
-            {
-                string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
-                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
-                fileSelector.UserData = "LoadAnimation";
+                fileSelector.UserData = hook;
                 fileSelector.IsModal = true;
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
         }
+
         private void HandleDataHook(string hook)
         {
             if (hook == "AnimSelectChanged")
@@ -163,10 +155,16 @@ namespace ReadingChamber
                 if (select != null)
                 {
                     string val = select.Value;
-                    _viewerScene.LoadAnimation(val);
+                    if (!string.IsNullOrEmpty(val))
+                    {
+                        _viewerScene.LoadAnimation(val);
+                        select.Value = val;
+                        _uiOverlay.RefreshUI();
+                    }
                 }
             }
         }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -174,14 +172,18 @@ namespace ReadingChamber
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _viewerScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
         }
+
         protected override void RenderInnerContent()
         {
             _viewerScene.Render(null);
         }
+
         public override void OnLiveResize(float w, float h)
         {
             _viewerScene.Resize((int)w, (int)h);
+            base.OnLiveResize(w, h);   // let BasePanel's new live RefreshUI run
         }
+
         public override void Dispose()
         {
             _viewerScene.Dispose();

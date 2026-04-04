@@ -99,7 +99,16 @@ namespace MapRoom
             {
                 _cameraMode = !_cameraMode;
                 _lastTab = true;
-                _controlContext.SetInputMode(_window, CursorAttribute.Cursor, _cameraMode ? CursorMode.Disabled : CursorMode.Normal);
+
+                // NEW - use CaptureManager (exact same pattern that fixed TerrainCreatorPanel)
+                if (_cameraMode)
+                {
+                    PanelManager.Current.CapturePanel(this);
+                }
+                else
+                {
+                    PanelManager.Current.ReleasePanelCapture();
+                }
             }
             else if (tab != InputAction.Press)
             {
@@ -135,6 +144,7 @@ namespace MapRoom
         }
         public override void Dispose()
         {
+            PanelManager.Current.ReleasePanelCapture(); // safety cleanup
             _twoDScene?.Dispose();
             base.Dispose();
         }

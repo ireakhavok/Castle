@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
+﻿// Folder: SiegeEngine.Core.Managers
 // File: PanelManager.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -21,6 +21,7 @@ namespace SiegeEngine.Core.Managers
         private readonly EventBus _eventBus;
         private bool _prevMouseDown;
         private readonly List<IPanel> _panels = new List<IPanel>();
+        private readonly List<IPanel> _modalPanels = new List<IPanel>();
         private float _scrollDelta = 0f;
         private readonly CaptureManager _captureManager;
 
@@ -74,7 +75,12 @@ namespace SiegeEngine.Core.Managers
             _panels.Add(panel);
             panel.Init();
 
-            if (panel.DockingMode == DockingMode.Dynamic)
+            if (panel is BasePanel bp && bp.IsModal)
+            {
+                _modalPanels.Add(panel);
+                AutoCenterModal(panel);
+            }
+            else if (panel.DockingMode == DockingMode.Dynamic)
             {
                 _dynamicStrategy.AddPanel(panel);
             }
@@ -92,6 +98,15 @@ namespace SiegeEngine.Core.Managers
             }
         }
 
+        private void AutoCenterModal(IPanel panel)
+        {
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            float x = (winW - panel.Size.X) * 0.5f;
+            float y = (winH - panel.Size.Y) * 0.5f;
+            panel.Position = new Vector2(Math.Max(40f, x), Math.Max(40f, y));
+            panel.OnPanelResize(panel.Size.X, panel.Size.Y);
+        }
+
         public void Update(float deltaTime)
         {
             _controlContext.GetCursorPos(_window, out double mx, out double my);
@@ -106,15 +121,79 @@ namespace SiegeEngine.Core.Managers
 
             if (!_captureManager.IsCapturing)
             {
-                if (_desktopStrategy.HasActiveContent())
-                    _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                if (_dynamicStrategy.HasActiveContent())
-                    _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                if (_ideStrategy.HasActiveContent())
-                    _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                bool modalHandled = false;
+
+                for (int i = _modalPanels.Count - 1; i >= 0; i--)
+                {
+                    var panel = _modalPanels[i];
+                    if (panel.Visible)
+                    {
+                        panel.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
+                        modalHandled = true;
+                        break;
+                    }
+                }
+
+                if (modalHandled && mouseReleased)
+                {
+                    bool clickedOnModal = false;
+                    for (int i = _modalPanels.Count - 1; i >= 0; i--)
+                    {
+                        var m = _modalPanels[i];
+                        if (m.Visible)
+                        {
+                            bool over = mousePos.X >= m.Position.X && mousePos.X <= m.Position.X + m.Size.X &&
+                                        mousePos.Y >= m.Position.Y && mousePos.Y <= m.Position.Y + m.Size.Y;
+                            if (over)
+                            {
+                                clickedOnModal = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!clickedOnModal && _modalPanels.Count > 0)
+                    {
+                        _eventBus.Publish(new ClosePanelEvent(_modalPanels.Last()));
+                    }
+                }
+
+                if (!modalHandled)
+                {
+                    if (_desktopStrategy.HasActiveContent())
+                        _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                    if (_dynamicStrategy.HasActiveContent())
+                        _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                    if (_ideStrategy.HasActiveContent())
+                        _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                }
             }
 
+
             _scrollDelta = 0f;
+        }
+
+        // NEW: Centralized topmost hit test – used by BasePanel to swallow clicks on lower panels
+        public IPanel GetTopmostPanelAt(Vector2 mousePos)
+        {
+            // Modals always win
+            for (int i = _modalPanels.Count - 1; i >= 0; i--)
+            {
+                var m = _modalPanels[i];
+                if (m.Visible)
+                {
+                    bool over = mousePos.X >= m.Position.X && mousePos.X <= m.Position.X + m.Size.X &&
+                                mousePos.Y >= m.Position.Y && mousePos.Y <= m.Position.Y + m.Size.Y;
+                    if (over) return m;
+                }
+            }
+
+            IPanel p = _ideStrategy.GetTopmostPanelAt(mousePos);
+            if (p != null) return p;
+
+            p = _dynamicStrategy.GetTopmostPanelAt(mousePos);
+            if (p != null) return p;
+
+            return _desktopStrategy.GetTopmostPanelAt(mousePos);
         }
 
         public void Render()
@@ -130,11 +209,20 @@ namespace SiegeEngine.Core.Managers
             if (_ideStrategy.HasActiveContent())
                 _ideStrategy.Render(_renderContext, winW, winH);
 
-            // Render high RenderOrder panels LAST (menu bar on top of everything)
+            foreach (var panel in _modalPanels)
+            {
+                if (panel.Visible)
+                {
+                    _renderContext.Disable(_renderContext.Enums.DepthTest);
+                    panel.Render();
+                    _renderContext.Enable(_renderContext.Enums.DepthTest);
+                }
+            }
+
             var highPriority = _panels.Where(p => (p as BasePanel)?.RenderOrder > 0).OrderByDescending(p => (p as BasePanel)?.RenderOrder);
             foreach (var panel in highPriority)
             {
-                if (panel.Visible)
+                if (panel.Visible && !_modalPanels.Contains(panel))
                 {
                     _renderContext.Disable(_renderContext.Enums.DepthTest);
                     panel.Render();
@@ -150,12 +238,23 @@ namespace SiegeEngine.Core.Managers
 
             panel.Detach();
 
+            _modalPanels.Remove(panel);
             _desktopStrategy.RemovePanel(panel);
             _dynamicStrategy.RemovePanel(panel);
             _ideStrategy.RemovePanel(panel);
 
             _panels.Remove(panel);
             panel.Dispose();
+        }
+
+        public void CapturePanel(IPanel panel)
+        {
+            _captureManager.RequestCapture(panel);
+        }
+
+        public void ReleasePanelCapture()
+        {
+            _captureManager.ReleaseCapture();
         }
     }
 }

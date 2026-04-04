@@ -23,7 +23,7 @@ namespace SiegeEngine.Scenes
     {
         private FBXModel _model;
         private ModelManager.ModelData _modelData;
-        private string _currentAnimation;
+        private string _currentAnimationPath;   // CHANGED: now stores full file path instead of internal name
         private VertexBuffer _skeletonBuffer;
         private VertexBuffer _bindSkeletonBuffer;
         private ShaderProgram _pointShader;
@@ -42,7 +42,6 @@ namespace SiegeEngine.Scenes
         private bool _isPanning = false;
         private string _meshPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "man_mesh.fbx");
         private string _armaturePath = "";
-        private string _animationPath = "";
         private List<string> _animationFiles = new List<string>();
         private float _cameraDistance;
         private float _maxExtent;
@@ -53,9 +52,8 @@ namespace SiegeEngine.Scenes
         private float _duration = 0f;
         private int _currentFrameIndex = 0;
 
-        // Toggle for animated/current skeleton visualization (off for now, code left intact)
         private bool _showSkeleton = false;
-        private bool _showBindPoseSkeleton = false; // separate toggle for bind-pose skeleton (turned on by default)
+        private bool _showBindPoseSkeleton = false;
 
         public ModelViewerScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -63,6 +61,7 @@ namespace SiegeEngine.Scenes
             _ModelManager = new ModelManager(_renderContext);
             _modelData = new ModelManager.ModelData();
         }
+
         public override void Initialize(int height, int width)
         {
             base.Initialize(height, width);
@@ -73,6 +72,19 @@ namespace SiegeEngine.Scenes
             LoadMesh(_meshPath);
             DiscoverAnimationFiles();
         }
+
+        private void ResetAnimationState()
+        {
+            _currentAnimationPath = null;
+            _isPlaying = false;
+            _currentTime = 0f;
+            _duration = 0f;
+            _currentFrameIndex = 0;
+            _currentGlobalTransforms = null;
+            _boneMatrices = null;
+            _currentNormalTransforms = null;
+        }
+
         public void LoadMesh(string path)
         {
             _meshPath = path;
@@ -80,40 +92,65 @@ namespace SiegeEngine.Scenes
             _currentModelKey = Path.GetFileNameWithoutExtension(path).ToLower();
             _ModelManager.TryGetModel(_currentModelKey, out _model);
             _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
+
+            ResetAnimationState();
+
             if (_model.HasSkin)
             {
                 SetRestPose();
             }
             CenterCamera();
         }
+
         public void LoadArmature(string path)
         {
             _armaturePath = path;
             _ModelManager.AttachSkeleton(_currentModelKey, path);
             _ModelManager.TryGetModel(_currentModelKey, out _model);
             _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
+
+            ResetAnimationState();
+
             if (_model.HasSkin)
             {
                 SetRestPose();
             }
         }
+
         public void LoadAnimation(string animPath)
         {
+            if (string.IsNullOrEmpty(animPath)) return;
+
+            ResetAnimationState();
+
             FBXFileForest animForest = FBXParser.Load(animPath);
             FBXModel animModel = FBXParser.BuildModelFromForest(animForest);
             _ModelManager.AttachAnimation(_currentModelKey, animPath);
             _ModelManager.TryGetModel(_currentModelKey, out _model);
+
             ApplyRestPoseFromModel(animModel);
             SetRestPose();
+
+            // FIXED: Store full file path instead of internal FBX name (Blender always uses the same name)
+            _currentAnimationPath = animPath;
+
             if (_model.Animations.Count > 0)
             {
-                _currentAnimation = _model.Animations.Last().Name;
-                _duration = _model.Animations.Last().Duration;
-                _currentTime = 0f;
-                _isPlaying = false;
-                _currentFrameIndex = 0;
+                var newAnim = _model.Animations.Last();
+                _duration = newAnim.Duration;
+                Console.WriteLine($"[ModelViewerScene] Loaded animation from {Path.GetFileName(animPath)} → duration {_duration:F2}s");
+            }
+
+            _currentTime = 0f;
+            _isPlaying = false;
+            _currentFrameIndex = 0;
+
+            if (!string.IsNullOrEmpty(_currentAnimationPath))
+            {
+                UpdateTransformsFromTime(0f);
             }
         }
+
         private void ApplyRestPoseFromModel(FBXModel sourceModel)
         {
             var targetSkeleton = _model.Skeleton;
@@ -143,11 +180,14 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
+
         private void UpdateTransformsFromTime(float time)
         {
-            if (_model == null || _model.Skeleton == null || string.IsNullOrEmpty(_currentAnimation)) return;
-            var animation = _model.Animations.FirstOrDefault(a => a.Name == _currentAnimation);
-            if (animation == null || animation.Keyframes.Count == 0) return;
+            if (_model == null || _model.Skeleton == null || string.IsNullOrEmpty(_currentAnimationPath) || _model.Animations.Count == 0) return;
+
+            // FIXED: Always use the last attached animation (AttachAnimation replaces the list)
+            var animation = _model.Animations.Last();
+
             int lower = 0;
             int upper = animation.Keyframes.Count - 1;
             for (int i = 1; i < animation.Keyframes.Count; i++)
@@ -163,7 +203,7 @@ namespace SiegeEngine.Scenes
             float t1 = animation.Keyframes[upper].Time;
             float frac = (t1 - t0 > 0) ? (time - t0) / (t1 - t0) : 0f;
             _currentFrameIndex = lower;
-            //Console.WriteLine($"Time {time}: lower={lower} (t0={t0}), upper={upper} (t1={t1}), frac={frac}");
+
             var l0 = animation.Keyframes[lower].BoneTransforms;
             var l1 = animation.Keyframes[upper].BoneTransforms;
             var lerpedLocals = new Matrix4x4[l0.Count];
@@ -171,7 +211,8 @@ namespace SiegeEngine.Scenes
             {
                 var lm0 = l0[i];
                 var lm1 = l1[i];
-                if (Matrix4x4.Decompose(lm0, out Vector3 s0, out Quaternion r0, out Vector3 p0) && Matrix4x4.Decompose(lm1, out Vector3 s1, out Quaternion r1, out Vector3 p1))
+                if (Matrix4x4.Decompose(lm0, out Vector3 s0, out Quaternion r0, out Vector3 p0) &&
+                    Matrix4x4.Decompose(lm1, out Vector3 s1, out Quaternion r1, out Vector3 p1))
                 {
                     Vector3 p = Vector3.Lerp(p0, p1, frac);
                     Quaternion r = Quaternion.Normalize(Quaternion.Slerp(r0, r1, frac));
@@ -183,15 +224,7 @@ namespace SiegeEngine.Scenes
                     lerpedLocals[i] = lm0;
                 }
             }
-            //if (_currentTime == 0)
-            //{
-            //    //Console.WriteLine("Lerped Locals at First Keyframe:");
-            //    for (int i = 0; i < lerpedLocals.Length; i++)
-            //    {
-            //        //Console.WriteLine($"Bone {i} Lerped Local:");
-            //        FBXParserUtils.PrintMatrix(lerpedLocals[i]);
-            //    }
-            //}
+
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms(lerpedLocals);
             _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
@@ -213,6 +246,7 @@ namespace SiegeEngine.Scenes
             }
             UpdateSkeletonVisualization();
         }
+
         private void CenterCamera()
         {
             if (_model == null || _model.Meshes.Count == 0) return;
@@ -234,6 +268,7 @@ namespace SiegeEngine.Scenes
             _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
             _cameraUp = Vector3.UnitZ;
         }
+
         public void DiscoverAnimationFiles()
         {
             string fbmDir = Path.Combine(Path.GetDirectoryName(_meshPath), Path.GetFileNameWithoutExtension(_meshPath) + ".fbm");
@@ -242,6 +277,7 @@ namespace SiegeEngine.Scenes
                 _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
             }
         }
+
         private void UpdateSkeletonVisualization()
         {
             if (_model == null || _model.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
@@ -264,6 +300,7 @@ namespace SiegeEngine.Scenes
             }
             _skeletonBuffer.UpdateCustom(vertices, indices);
         }
+
         private void SetRestPose()
         {
             Matrix4x4[] restLocals = new Matrix4x4[_model.Skeleton.Bones.Count];
@@ -271,13 +308,8 @@ namespace SiegeEngine.Scenes
             {
                 restLocals[i] = _model.Skeleton.Bones[i].LocalRest;
             }
-            //Console.WriteLine("Rest Pose Locals:");
-            //for (int i = 0; i < restLocals.Length; i++)
-            //{
-            //    Console.WriteLine($"Bone {i} Rest Local:");
-            //    FBXParserUtils.PrintMatrix(restLocals[i]);
-            //}
             if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0) return;
+
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             _currentBindGlobals = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentBindGlobalsVis = new Matrix4x4[_model.Skeleton.Bones.Count];
@@ -297,7 +329,6 @@ namespace SiegeEngine.Scenes
             }
             UpdateSkeletonVisualization();
 
-            // Minimal setup for bind-pose skeleton visualization (turned on)
             if (_model.Skeleton != null && _currentBindGlobalsVis != null)
             {
                 var vertices = new List<Vertex>();
@@ -339,28 +370,32 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
+
         public List<string> GetAnimationFiles()
         {
             return _animationFiles;
         }
+
         public string GetFrameInfo()
         {
             string frameInfo = "Keyframe: " + _currentFrameIndex;
-            var animation = _model?.Animations.FirstOrDefault(a => a.Name == _currentAnimation);
-            if (animation != null)
+            if (_model?.Animations.Count > 0)
             {
-                frameInfo += " / " + (animation.Keyframes.Count - 1);
+                frameInfo += " / " + (_model.Animations.Last().Keyframes.Count - 1);
             }
             return frameInfo;
         }
+
         public void TogglePlay()
         {
             _isPlaying = !_isPlaying;
         }
+
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
         }
+
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
             base.Update(deltaTime);
@@ -400,10 +435,11 @@ namespace SiegeEngine.Scenes
             {
                 _cameraPosition = _cameraTarget + front * _cameraDistance;
             }
+
             if (_model.Skeleton != null && _model.Animations.Count > 0)
             {
-                var animation = _model.Animations.FirstOrDefault(a => a.Name == _currentAnimation);
-                if (animation != null && animation.Keyframes.Count > 0)
+                var animation = _model.Animations.Last();
+                if (animation.Keyframes.Count > 0)
                 {
                     if (_isPlaying)
                     {
@@ -439,6 +475,7 @@ namespace SiegeEngine.Scenes
             }
             UpdateSkeletonVisualization();
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.118f, 0.118f, 0.118f, 1.0f);
@@ -450,6 +487,7 @@ namespace SiegeEngine.Scenes
             _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
             _renderContext.CullFace(_renderContext.Enums.Back);
             _renderContext.Disable(_renderContext.Enums.Blend);
+
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
             float currentDist = Vector3.Distance(_cameraPosition, _cameraTarget);
@@ -457,11 +495,8 @@ namespace SiegeEngine.Scenes
             float far = currentDist + _maxExtent * 2f;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, near, far);
 
-            // Consolidated model rendering via shared ModelRenderer (viewer context: identity transform + custom camera + precomputed bone matrices)
             _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, modelMatrix, _boneMatrices, _currentNormalTransforms);
 
-            // Skeleton visualization (animated/current pose - toggled off for now; code left intact)
-            // Bind-pose skeleton visualization (turned on)
             _pointShader.Use();
             _pointShader.SetMatrix4("uModel", modelMatrix);
             _pointShader.SetMatrix4("uView", view);
@@ -474,7 +509,6 @@ namespace SiegeEngine.Scenes
                 _renderContext.BindVertexArray(0);
             }
 
-            // Bind pose skeleton (always drawn)
             if (_bindSkeletonBuffer != null && _showBindPoseSkeleton)
             {
                 _renderContext.BindVertexArray(_bindSkeletonBuffer.Vao);

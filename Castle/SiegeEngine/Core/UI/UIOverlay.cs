@@ -167,9 +167,20 @@ namespace SiegeEngine.Core.UI
         private void CollectClickables(HtmlElement elem)
         {
             if (elem.GetEffectiveDisplay() == "none") return;
+
+            bool isOptionInsideClosedSelect = false;
+            if (elem.Tag.ToLower() == "option")
+            {
+                if (elem.Parent is SelectElement parentSelect && !parentSelect.IsOpen)
+                {
+                    isOptionInsideClosedSelect = true;
+                }
+            }
+
             string classes = elem.Attributes.GetValueOrDefault("class", "");
             string tagLower = elem.Tag.ToLower();
-            if (classes.Contains("button") || classes.Contains("toggle") || tagLower == "select" || tagLower == "label" || tagLower == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || tagLower == "option" || elem.Attributes.ContainsKey("onchange") || elem.Attributes.ContainsKey("onmouseenter") || elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") || elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") || elem.Attributes.ContainsKey("onblur") || tagLower == "input" || (tagLower == "li" && (classes.Contains("nav-dropdown") || elem.Children.Any(c => c.Tag.ToLower() == "ul"))))
+            if (!isOptionInsideClosedSelect &&
+                (classes.Contains("button") || classes.Contains("toggle") || tagLower == "select" || tagLower == "label" || tagLower == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || tagLower == "option" || elem.Attributes.ContainsKey("onchange") || elem.Attributes.ContainsKey("onmouseenter") || elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") || elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") || elem.Attributes.ContainsKey("onblur") || tagLower == "input" || (tagLower == "li" && (classes.Contains("nav-dropdown") || elem.Children.Any(c => c.Tag.ToLower() == "ul")))))
             {
                 _uiClickables.Add(elem);
             }
@@ -269,9 +280,8 @@ namespace SiegeEngine.Core.UI
             if (elem == null) return false;
 
             bool handled = false;
-            Console.WriteLine($"UIOverlay: Handling click for element Tag={elem.Tag}, Class={elem.Attributes.GetValueOrDefault("class", "")}, ID={elem.Attributes.GetValueOrDefault("id", "")}");
-
             bool valueChanged = false;
+
             if (!string.IsNullOrEmpty(elem.OnClickJS))
             {
                 _jsContext.RunWithThis(elem.OnClickJS, new JSElement(elem, this));
@@ -394,6 +404,8 @@ namespace SiegeEngine.Core.UI
                 var select = elem as SelectElement;
                 if (select != null)
                 {
+                    // Clicking the visible select box (closed state) = toggle dropdown ONLY
+                    // Do NOT run data-hook here
                     CloseAllOpenSelects();
                     select.IsOpen = !select.IsOpen;
                     _interactionLayer._justOpenedSelect = select.IsOpen;
@@ -408,6 +420,7 @@ namespace SiegeEngine.Core.UI
                 {
                     if (select.IsOpen)
                     {
+                        // User actually chose a new option from the open dropdown
                         foreach (var opt in select.Children.Where(c => c.Tag.ToLower() == "option"))
                         {
                             opt.Attributes.Remove("selected");
@@ -415,14 +428,19 @@ namespace SiegeEngine.Core.UI
                         elem.Attributes["selected"] = "";
                         select.IsOpen = false;
                         valueChanged = true;
+
+                        // === EXPLICITLY trigger the data-hook that lives on the <select> element ===
                         if (select.Attributes.ContainsKey("data-hook"))
                         {
-                            HandleDataHook(select.Attributes["data-hook"]);
+                            string hook = select.Attributes["data-hook"];
+                            Console.WriteLine($"UIOverlay: Processing data-hook from select after option choice: {hook}");
+                            HandleDataHook(hook);
+                            handled = true;
                         }
-                        handled = true;
                     }
                     else
                     {
+                        // Clicking the visible selected option while closed = open the dropdown
                         CloseAllOpenSelects();
                         select.IsOpen = true;
                         _interactionLayer._justOpenedSelect = true;
@@ -431,13 +449,21 @@ namespace SiegeEngine.Core.UI
                     RefreshUI();
                 }
             }
+
+            // === GENERAL DATA-HOOK HANDLING (restored for ALL non-select elements) ===
+            // This keeps every other data-hook on the page working exactly as before.
             if (elem.Attributes.ContainsKey("data-hook"))
             {
-                string hook = elem.Attributes["data-hook"];
-                Console.WriteLine($"UIOverlay: Processing data-hook: {hook}");
-                HandleDataHook(hook);
-                handled = true;
+                // Skip the select element itself (we already handled it above when an option was chosen)
+                if (elem.Tag != "select")
+                {
+                    string hook = elem.Attributes["data-hook"];
+                    Console.WriteLine($"UIOverlay: Processing data-hook: {hook}");
+                    HandleDataHook(hook);
+                    handled = true;
+                }
             }
+
             if (valueChanged)
             {
                 TriggerChange(elem);
