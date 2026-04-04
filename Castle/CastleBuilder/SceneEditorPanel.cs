@@ -40,6 +40,7 @@ namespace CastleBuilder
             IsClosable = true;
             Scaling = ScalingMode.BestFit;
             BaseWidth = 1280f;
+            DockingMode = DockingMode.IDE;
             BaseHeight = 720f;
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
         }

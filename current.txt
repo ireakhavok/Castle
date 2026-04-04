@@ -14,3 +14,10 @@ Only when the user does an explicit SaveProject / SaveProjectAs does the temp fi
 On LoadProject, if a .layout.temp file exists for that project, show a user prompt:
 “A previous unsaved workspace layout was found. Restore it?” (Yes / No / Discard)
 This gives the same safety/recovery feel as modern IDEs (like Unity, Visual Studio, Rider) while supporting multiple “blades”.
+
+
+It worked, but the scene is strait blank we can work on more of the content later.
+ 
+this should just be a panel in the "panels" nav dropdown while in the scene blade, the entire content of the blade should be loaded, with this panel as the main focus of the blade.
+ 
+a blade is not supposed to load a scene it's supposed to load an entire docking strategy layout.

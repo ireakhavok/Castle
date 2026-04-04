@@ -16,31 +16,29 @@ namespace CastleBuilder
     {
         private static readonly string DefaultProjectsPath = ProjectSettings.Current.ProjectsRoot;
 
-        // ==================== CONTEXT BLADE HANDLERS (Step 2 - fully working) ====================
         public static void SwitchToTerrain(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             eventBus.Publish(new ContextChangedEvent { Context = "Terrain" });
-            Console.WriteLine("[MenuCommands] ✅ Blade clicked → ContextChangedEvent published: Terrain");
+            Console.WriteLine("[MenuCommands] Switched to Terrain context");
         }
 
         public static void SwitchToAnimator(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             eventBus.Publish(new ContextChangedEvent { Context = "Animator" });
-            Console.WriteLine("[MenuCommands] ✅ Blade clicked → ContextChangedEvent published: Animator");
+            Console.WriteLine("[MenuCommands] Switched to Animator context");
         }
 
         public static void SwitchToSceneEditor(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            SceneEditorPanel.Open(renderContext, controlContext, window, eventBus);
-            Console.WriteLine("[MenuCommands] Opened SceneEditorPanel");
+            eventBus.Publish(new ContextChangedEvent { Context = "Scene Editor" });
+            Console.WriteLine("[MenuCommands] Switched to Scene Editor context");
         }
 
         public static void SwitchToConfiguration(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             eventBus.Publish(new ContextChangedEvent { Context = "Configuration" });
-            Console.WriteLine("[MenuCommands] ✅ Blade clicked → ContextChangedEvent published: Configuration");
+            Console.WriteLine("[MenuCommands] Switched to Configuration context");
         }
-        // =======================================================================================
 
         public static void LoadProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -53,6 +51,7 @@ namespace CastleBuilder
 
         public static void SaveProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            Console.WriteLine("[MenuCommands.SaveProject] Direct call to BlueprintManager save");
             BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
         }
 

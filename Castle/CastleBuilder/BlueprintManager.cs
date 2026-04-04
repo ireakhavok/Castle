@@ -33,6 +33,18 @@ namespace CastleBuilder
         private readonly EventBus _eventBus;
         private readonly string _configPath;
 
+        // LAZY INITIALIZATION (keeps the "dynamic hook" design intact - no Launcher changes required)
+        private static BlueprintManager _instance;
+
+        private static void EnsureInitialized(EventBus eventBus)
+        {
+            if (_instance == null && eventBus != null)
+            {
+                _instance = new BlueprintManager(eventBus);
+                Console.WriteLine("[BlueprintManager] Lazy-initialized (event subscriptions now active)");
+            }
+        }
+
         public BlueprintManager(EventBus eventBus)
         {
             _eventBus = eventBus;
@@ -40,18 +52,22 @@ namespace CastleBuilder
             _eventBus.Subscribe<LoadProjectEvent>(OnLoadProject);
             _eventBus.Subscribe<SaveProjectEvent>(OnSaveProject);
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
-            _eventBus.Subscribe<ContextChangedEvent>(OnContextChanged);   // NEW - listens to blades
+            _eventBus.Subscribe<ContextChangedEvent>(OnContextChanged);
+            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _configPath = GetDefaultIDEPath();
+            Console.WriteLine("[BlueprintManager] Constructor finished - all events subscribed");
         }
 
         public static void Load(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            EnsureInitialized(eventBus);
             var idePanel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(idePanel) { Mode = OpenMode.Replace });
         }
 
         public static void CreateNewProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, UIOverlay overlay)
         {
+            EnsureInitialized(eventBus);
             var nameElem = overlay.FindElementById("project-name") as InputElement;
             var typeElem = overlay.FindElementById("game-type") as SelectElement;
             var modeElem = overlay.FindElementById("project-mode") as SelectElement;
@@ -93,11 +109,50 @@ namespace CastleBuilder
 
         public static void SaveCurrentProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            eventBus.Publish(new SaveProjectEvent());
+            EnsureInitialized(eventBus);
+            Console.WriteLine("[BlueprintManager] SaveCurrentProject called - direct save");
+            DoProjectSave();
+        }
+
+        private static void DoProjectSave()
+        {
+            Console.WriteLine("[BlueprintManager.DoProjectSave] === DIRECT SAVE START ===");
+
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            Console.WriteLine($"[BlueprintManager.DoProjectSave] ActiveProject from settings: '{projectPath}'");
+
+            if (string.IsNullOrEmpty(projectPath))
+            {
+                Console.WriteLine("[BlueprintManager.DoProjectSave] ERROR: No active project - save aborted");
+                return;
+            }
+
+            string jsonPath = Path.Combine(projectPath, "project.json");
+            Console.WriteLine($"[BlueprintManager.DoProjectSave] Writing to: {jsonPath}");
+
+            ProjectData data;
+            if (File.Exists(jsonPath))
+            {
+                string json = File.ReadAllText(jsonPath);
+                data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+                Console.WriteLine($"[BlueprintManager.DoProjectSave] Loaded existing project.json - Name: {data.Name}");
+            }
+            else
+            {
+                data = new ProjectData { Name = Path.GetFileName(projectPath) };
+                Console.WriteLine("[BlueprintManager.DoProjectSave] Creating new project data");
+            }
+
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written");
+
+            ProjectLayoutManager.SaveCurrentLayout(data.LastContext ?? "Scene Editor");
+            Console.WriteLine($"[BlueprintManager.DoProjectSave] Layout saved for context '{data.LastContext}'");
         }
 
         public static void SaveProjectAs(string folder, string name, EventBus eventBus)
         {
+            EnsureInitialized(eventBus);
             if (string.IsNullOrEmpty(folder))
                 folder = ProjectSettings.Current.ProjectsRoot;
 
@@ -157,6 +212,7 @@ namespace CastleBuilder
         {
             if (string.IsNullOrEmpty(evt.Path) || !Directory.Exists(evt.Path)) return;
             ProjectSettings.Current.ActiveProject = evt.Path;
+            Console.WriteLine($"[BlueprintManager.OnLoadProject] ActiveProject set to: {evt.Path}");
 
             string jsonPath = Path.Combine(evt.Path, "project.json");
             if (File.Exists(jsonPath))
@@ -166,7 +222,8 @@ namespace CastleBuilder
                 if (data != null)
                 {
                     ProjectSettings.Current.CameraType = data.CameraType;
-                    Console.WriteLine($"[BlueprintManager] Loaded project '{data.Name}' - Last Context: {data.LastContext}");
+                    Console.WriteLine($"[BlueprintManager.OnLoadProject] Loaded project '{data.Name}' - Last Context: {data.LastContext}");
+                    ProjectLayoutManager.LoadLayoutForContext(data.LastContext);
                 }
             }
             SaveIDEState();
@@ -174,23 +231,14 @@ namespace CastleBuilder
 
         private void OnSaveProject(SaveProjectEvent evt)
         {
-            if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject)) return;
-
-            string jsonPath = Path.Combine(ProjectSettings.Current.ActiveProject, "project.json");
-            var data = new ProjectData
-            {
-                Name = Path.GetFileName(ProjectSettings.Current.ActiveProject),
-                LastContext = "Scene Editor"
-            };
-
-            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
-            Console.WriteLine($"[BlueprintManager] Project saved: {ProjectSettings.Current.ActiveProject}");
+            Console.WriteLine("[BlueprintManager.OnSaveProject] SaveProjectEvent received - calling direct save");
+            DoProjectSave();
         }
 
-        // NEW - Step 2 handler
         private void OnContextChanged(ContextChangedEvent evt)
         {
-            if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject)) return;
+            Console.WriteLine($"[BlueprintManager.OnContextChanged] Context changed to '{evt.Context}'");
+            ProjectLayoutManager.SaveCurrentLayout(evt.Context);
 
             string jsonPath = Path.Combine(ProjectSettings.Current.ActiveProject, "project.json");
             if (File.Exists(jsonPath))
@@ -200,8 +248,32 @@ namespace CastleBuilder
                 data.LastContext = evt.Context;
                 File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             }
+        }
 
-            Console.WriteLine($"[BlueprintManager] Context saved to project.json → {evt.Context}");
+        // FIXED: Now works for both folder selections AND file selections (generic FileSelectorPanel behavior).
+        // No UserData check needed anymore - any valid project folder path sets the active project.
+        private void OnFileSelected(FileSelectedEvent e)
+        {
+            if (string.IsNullOrEmpty(e.Path)) return;
+
+            string projectPath = e.Path;
+
+            // Generic FileSelectorPanel may return a file path - use its parent directory as the project root
+            if (File.Exists(projectPath) && !Directory.Exists(projectPath))
+            {
+                projectPath = Path.GetDirectoryName(projectPath);
+            }
+
+            if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
+            {
+                Console.WriteLine($"[BlueprintManager.OnFileSelected] LoadProject selected folder: {projectPath}");
+                ProjectSettings.Current.ActiveProject = projectPath;
+                OnLoadProject(new LoadProjectEvent { Path = projectPath });
+            }
+            else
+            {
+                Console.WriteLine($"[BlueprintManager.OnFileSelected] Ignored selection (not a valid project folder): {e.Path}");
+            }
         }
 
         private string GetTemplate(string type)
