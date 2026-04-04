@@ -31,8 +31,8 @@ namespace CastleBuilder
 
         public static void SwitchToSceneEditor(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            eventBus.Publish(new ContextChangedEvent { Context = "Scene Editor" });
-            Console.WriteLine("[MenuCommands] ✅ Blade clicked → ContextChangedEvent published: Scene Editor");
+            SceneEditorPanel.Open(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] Opened SceneEditorPanel");
         }
 
         public static void SwitchToConfiguration(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
