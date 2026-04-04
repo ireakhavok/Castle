@@ -219,32 +219,31 @@ namespace CastleBuilder
             string newContext = evt.Context ?? "Scene Editor";
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Switching from '{_previousContext}' → '{newContext}'");
 
-            // SAVE PREVIOUS FIRST (while panels still exist)
+            // 1. SAVE PREVIOUS BLADE FIRST (always works, even for TempLayouts)
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 ProjectLayoutManager.SaveCurrentLayout(_previousContext);
             }
 
+            // 2. CLEAR CURRENT WORKSPACE
             var strategy = PanelManager.Current?.IDEStrategy;
             strategy?.ClearAll();
 
+            // 3. UPDATE PROJECT.JSON (only if project is open) + RESTORE NEW BLADE
             string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath))
+            if (!string.IsNullOrEmpty(projectPath))
             {
-                Console.WriteLine("[BlueprintManager.OnContextChanged] No active project - workspace cleared for new blade");
-                _previousContext = newContext;
-                return;
+                string jsonPath = Path.Combine(projectPath, "project.json");
+                if (File.Exists(jsonPath))
+                {
+                    string json = File.ReadAllText(jsonPath);
+                    var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+                    data.LastContext = newContext;
+                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+                }
             }
 
-            string jsonPath = Path.Combine(projectPath, "project.json");
-            if (File.Exists(jsonPath))
-            {
-                string json = File.ReadAllText(jsonPath);
-                var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
-                data.LastContext = newContext;
-                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
-            }
-
+            // 4. LOAD THE NEW BLADE (ProjectLayoutManager now handles TempLayouts automatically)
             ProjectLayoutManager.LoadLayoutForContext(newContext);
 
             _previousContext = newContext;
