@@ -61,7 +61,7 @@ namespace ReadingChamber
             HasTitleBar = true;
             IsClosable = true;
             Scaling = ScalingMode.BestFit;
-            DockingMode = DockingMode.Desktop;
+            DockingMode = DockingMode.IDE;
             BaseWidth = 900f;
             BaseHeight = 620f;
             _viewerScene = new ModelViewerScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
@@ -181,6 +181,7 @@ namespace ReadingChamber
         public override void OnLiveResize(float w, float h)
         {
             _viewerScene.Resize((int)w, (int)h);
+            base.OnLiveResize(w, h);   // let BasePanel's new live RefreshUI run
         }
 
         public override void Dispose()

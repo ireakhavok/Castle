@@ -1817,7 +1817,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
     - Fields:
       - FBXModel _model
-      - string _currentAnimation
+      - string _currentAnimationPath
       - VertexBuffer _skeletonBuffer
       - VertexBuffer _bindSkeletonBuffer
       - ShaderProgram _pointShader
@@ -1835,7 +1835,6 @@ Folder: SiegeEngine
       - bool _isPanning
       - string _meshPath
       - string _armaturePath
-      - string _animationPath
       - List<string> _animationFiles
       - float _cameraDistance
       - float _maxExtent
@@ -1850,22 +1849,23 @@ Folder: SiegeEngine
     - Methods:
       - void Initialize( int width, int height)
         - Calls: DiscoverAnimationFiles, LoadMesh, ShaderProgram, VertexBuffer
+      - void ResetAnimationState()
       - void LoadMesh(string path)
-        - Calls: CenterCamera, SetRestPose, _ModelManager.LoadModel, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
+        - Calls: CenterCamera, ResetAnimationState, SetRestPose, _ModelManager.LoadModel, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
       - void LoadArmature(string path)
-        - Calls: SetRestPose, _ModelManager.AttachSkeleton, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
+        - Calls: ResetAnimationState, SetRestPose, _ModelManager.AttachSkeleton, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
       - void LoadAnimation(string animPath)
-        - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, SetRestPose, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
+        - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, ResetAnimationState, SetRestPose, UpdateTransformsFromTime, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
       - void ApplyRestPoseFromModel(FBXModel sourceModel)
         - Calls: tgtBone.ComputeLocal
       - void UpdateTransformsFromTime(float time)
-        - Calls: ComputeLocal, FBXParserUtils.PrintMatrix, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms
+        - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms
       - void CenterCamera()
       - void DiscoverAnimationFiles()
       - void UpdateSkeletonVisualization()
         - Calls: Vertex, _skeletonBuffer.UpdateCustom
       - void SetRestPose()
-        - Calls: FBXParserUtils.PrintMatrix, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, Vertex, _bindSkeletonBuffer.UpdateCustom, _model.Skeleton.ComputeGlobalTransforms
+        - Calls: Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, Vertex, _bindSkeletonBuffer.UpdateCustom, _model.Skeleton.ComputeGlobalTransforms
       - List<string> GetAnimationFiles()
       - string GetFrameInfo()
       - void TogglePlay()
@@ -1873,7 +1873,7 @@ Folder: SiegeEngine
       - void Update( Vector2 relMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
         - Calls: UpdateSkeletonVisualization, UpdateTransformsFromTime, _controlContext.GetKey, _controlContext.GetMouseButton
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: ModelRenderer, _modelRenderer.RenderModel, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.Clear, _renderContext.ClearColor, _renderContext.CullFace, _renderContext.DepthFunc, _renderContext.DepthMask, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.FrontFace
+        - Calls: _modelRenderer.RenderModel, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.Clear, _renderContext.ClearColor, _renderContext.CullFace, _renderContext.DepthFunc, _renderContext.DepthMask, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.FrontFace
       - void Dispose()
 - File: MovementRequest.cs
   - Class: MovementRequest (Namespace: SiegeEngine.Core.Networking)
@@ -2065,7 +2065,7 @@ Folder: SiegeEngine
       - void AutoCenterModal(IPanel panel)
         - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
       - void Update(float deltaTime)
-        - Calls: ClosePanelEvent, GetTopmostPanelAt, _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
+        - Calls: ClosePanelEvent, _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
@@ -2768,6 +2768,10 @@ Folder: SiegeEngine
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - bool HandleUIClick(HtmlElement elem)
         - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis
+      - here CloseAllOpenSelects()
+        - Calls: HandleDataHook, RefreshUI
+      - dropdown CloseAllOpenSelects()
+        - Calls: HandleDataHook
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
