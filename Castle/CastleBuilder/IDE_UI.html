@@ -148,7 +148,7 @@
                 <li class="nav-item nav-dropdown">
                     File
                     <ul class="nav-dropdown-content">
-                        <li class="nav-dropdown-item"><a href="Assets\Configs\NewProject.html">New Project...</a></li>
+                        <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.NewProject">New Project...</li>
                         <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.LoadProject">Open Project...</li>
                         <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.SaveProject">Save</li>
                         <li class="nav-dropdown-item" data-hook="CastleBuilder.MenuCommands.SaveProjectAs">Save As...</li>
@@ -193,7 +193,7 @@
         <div id="ide-content"></div>
     </div>
 
-    <!-- Minimal inline JS for immediate visual active state on blade clicks (Step 1 only; later steps enhance via C# + JSContext) -->
+    <!-- Minimal inline JS for immediate visual active state on blade clicks -->
     <script>
         document.addEventListener('click', function (e) {
             if (e.target.classList.contains('context-blade')) {

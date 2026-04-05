@@ -21,15 +21,11 @@
 </ItemGroup>
 
 <ItemGroup>
-  <None Remove="Assets\Configs\NewProject.html" />
   <None Remove="IDE_UI.html" />
   <None Remove="SaveProjectForm.html" />
 </ItemGroup>
 
 <ItemGroup>
-  <Content Include="Assets\Configs\NewProject.html">
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-  </Content>
   <Content Include="IDE_UI.html">
     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </Content>

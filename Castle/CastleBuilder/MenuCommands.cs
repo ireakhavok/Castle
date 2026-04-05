@@ -105,5 +105,11 @@ namespace CastleBuilder
             OpenEditorScene(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands] New scene created + Editor Scene panel opened");
         }
+
+        public static void NewProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            NewProjectPanel.Open(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] New Project panel opened");
+        }
     }
 }
