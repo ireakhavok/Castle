@@ -323,7 +323,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\CastleBuilder\bin
 Found: BlueprintManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
-Read 15191 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Read 15639 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Namespace: CastleBuilder
 Found 12 dependencies
 Found: CastleBuilder.csproj
@@ -381,9 +381,9 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\CastleBuilder\obj
 Found: ProjectLayoutManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
-Read 3478 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
+Read 5366 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
 Namespace: CastleBuilder
-Found 4 dependencies
+Found 5 dependencies
 Found: SaveProjectForm.html
 Found: SaveProjectPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
@@ -1188,7 +1188,7 @@ Found 2 dependencies
 Found: IDEDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
-Read 34772 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Read 34303 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 12 dependencies
 Found: LevelManager.cs
