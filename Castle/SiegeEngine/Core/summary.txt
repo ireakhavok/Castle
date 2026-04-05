@@ -421,6 +421,9 @@ Folder: Definitions
     - Dependencies: System
     - Methods:
       - constructor PreviewComponent( string brushType, ulong playerId)
+- File: SceneData.cs
+  - Class: EnvironmentSettings (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: SoundSource.cs
   - Class: SoundSource (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Numerics
@@ -2055,6 +2058,7 @@ SiegeEngine.Core.Definitions.CameraType
 SiegeEngine.Core.Definitions.DockingMode
 SiegeEngine.Core.Definitions.Entity
 SiegeEngine.Core.Definitions.EntityData
+SiegeEngine.Core.Definitions.EnvironmentSettings
 SiegeEngine.Core.Definitions.GameMode
 SiegeEngine.Core.Definitions.LightComponent
 SiegeEngine.Core.Definitions.LightType

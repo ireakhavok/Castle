@@ -1430,6 +1430,9 @@ Folder: Core
         - Calls: D3D11CreateDevice, IsOpenGLSupported, Marshal.Release, vkCreateInstance, vkDestroyInstance
       - List<string> DetectAvailable()
         - Calls: D3D11CreateDevice, D3D12CreateDevice, IsOpenGLSupported, Marshal.Release, vkCreateInstance, vkDestroyInstance
+- File: SceneData.cs
+  - Class: EnvironmentSettings (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: SceneManager.cs
   - Class: SceneManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Reflection
@@ -2508,6 +2511,7 @@ SiegeEngine.Core.Definitions.CameraType
 SiegeEngine.Core.Definitions.DockingMode
 SiegeEngine.Core.Definitions.Entity
 SiegeEngine.Core.Definitions.EntityData
+SiegeEngine.Core.Definitions.EnvironmentSettings
 SiegeEngine.Core.Definitions.GameMode
 SiegeEngine.Core.Definitions.LightComponent
 SiegeEngine.Core.Definitions.LightType
