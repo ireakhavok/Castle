@@ -133,7 +133,6 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written");
 
-            // DIRECT SAVE TO PERMANENT FILE
             string bladeToSave = _previousContext ?? "Scene Editor";
             Console.WriteLine($"[BlueprintManager.DoProjectSave] Saving CURRENT blade to permanent file: {bladeToSave}");
             ProjectLayoutManager.SaveCurrentLayout(bladeToSave);
@@ -152,7 +151,7 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             eventBus.Publish(new LoadProjectEvent { Path = dir });
 
-            // Also save current blade state to the new project location
+            // Save current in-memory state of the active blade to the new project
             string bladeToSave = _previousContext ?? "Scene Editor";
             ProjectLayoutManager.SaveCurrentLayout(bladeToSave);
         }
@@ -226,7 +225,7 @@ namespace CastleBuilder
             string newContext = evt.Context ?? "Scene Editor";
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Switching from '{_previousContext}' → '{newContext}'");
 
-            // SAVE PREVIOUS BLADE TO PERMANENT FILE (no temp)
+            // Save previous blade BEFORE clearing (this is the only time we write to disk on switch)
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.OnContextChanged] Saving previous blade '{_previousContext}' to permanent file");
