@@ -90,5 +90,10 @@ namespace CastleBuilder
         {
             TwoDCreatorPanel.Open(renderContext, controlContext, window, eventBus);
         }
+        public static void OpenEditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            var editorPanel = new SceneEditorPanel(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new OpenPanelEvent(editorPanel) { Mode = OpenMode.Overlay });
+        }
     }
 }

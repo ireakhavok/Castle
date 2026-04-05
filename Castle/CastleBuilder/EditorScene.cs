@@ -12,13 +12,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Linq;
 
 namespace CastleBuilder
 {
     public class EditorScene : Scene
     {
-        private ProjectData _projectData;   // uses CastleBuilder.ProjectData (already exists here)
-        private string _currentGameScene = "Main";
+        private ProjectData _projectData;
+        private string _currentGameScene = string.Empty;
 
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus)
@@ -41,14 +42,20 @@ namespace CastleBuilder
             {
                 string json = File.ReadAllText(jsonPath);
                 _projectData = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
-                _currentGameScene = _projectData.LastOpenedScene ?? (_projectData.Scenes?.FirstOrDefault() ?? "Main");
-                Console.WriteLine($"[CastleBuilder.EditorScene] Loaded project '{_projectData.Name}' | Scenes: {string.Join(", ", _projectData.Scenes)} | Current: {_currentGameScene}");
+
+                if (_projectData.Scenes == null)
+                {
+                    _projectData.Scenes = new Dictionary<string, SceneData>();
+                }
+
+                _currentGameScene = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? string.Empty);
+                Console.WriteLine($"[CastleBuilder.EditorScene] Loaded project '{_projectData.Name}' | Scenes: {string.Join(", ", _projectData.Scenes.Keys)} | Current: {_currentGameScene}");
             }
         }
 
         public void SwitchGameScene(string sceneName)
         {
-            if (_projectData?.Scenes?.Contains(sceneName) == true)
+            if (_projectData?.Scenes?.ContainsKey(sceneName) == true)
             {
                 _currentGameScene = sceneName;
                 Console.WriteLine($"[CastleBuilder.EditorScene] Switched GAME scene → {sceneName}");
@@ -57,7 +64,7 @@ namespace CastleBuilder
 
         public override void Update(float deltaTime)
         {
-            // Future: update entities, hierarchy, etc.
+            // Future: load SceneData.Terrain, SceneData.Entities, SceneData.Environment into active scene
         }
 
         public override void Render(IReadOnlyList<Entity> entities)
@@ -67,7 +74,7 @@ namespace CastleBuilder
             Console.WriteLine($"[CastleBuilder.EditorScene] Rendering GAME scene: {_currentGameScene}");
         }
 
-        public List<string> GetAvailableScenes() => _projectData?.Scenes ?? new List<string> { "Main" };
+        public List<string> GetAvailableScenes() => _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
         public string CurrentGameScene => _currentGameScene;
     }
 }

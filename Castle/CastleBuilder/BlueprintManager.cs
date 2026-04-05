@@ -12,6 +12,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Definitions;
 
 namespace CastleBuilder
 {
@@ -21,9 +22,9 @@ namespace CastleBuilder
         public string Type { get; set; }
         public string Mode { get; set; }
         public bool AllowMods { get; set; }
-        public List<string> Scenes { get; set; } = new List<string> { "Main" };
+        public Dictionary<string, SceneData> Scenes { get; set; } = new Dictionary<string, SceneData>();
         public string Version { get; set; } = "1.0";
-        public string LastOpenedScene { get; set; } = "Main";
+        public string LastOpenedScene { get; set; } = string.Empty;
         public string CameraType { get; set; } = "Perspective";
         public string LastContext { get; set; } = "Scene Editor";
     }
@@ -133,7 +134,6 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written");
 
-            // Force current blade into memory before Flush (this makes Save work)
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Forcing CURRENT blade '{_previousContext}' into memory");
@@ -157,7 +157,6 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             eventBus.Publish(new LoadProjectEvent { Path = dir });
 
-            // Force current blade into memory before Flush
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.SaveProjectAs] Forcing CURRENT blade '{_previousContext}' into memory");
@@ -237,7 +236,6 @@ namespace CastleBuilder
             string newContext = evt.Context ?? "Scene Editor";
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Switching from '{_previousContext}' → '{newContext}'");
 
-            // MEMORY ONLY - always save previous blade (even with no project loaded)
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.OnContextChanged] Saving previous blade '{_previousContext}' to MEMORY");
@@ -247,7 +245,6 @@ namespace CastleBuilder
             var strategy = PanelManager.Current?.IDEStrategy;
             strategy?.ClearAll();
 
-            // ALWAYS load the new blade (memory cache works even with no project)
             ProjectLayoutManager.LoadLayoutForContext(newContext);
 
             string projectPath = ProjectSettings.Current.ActiveProject;
