@@ -14,7 +14,7 @@ using System.Numerics;
 
 namespace SiegeEngine.Scenes
 {
-    public unsafe class TerrainScene : Scene
+    public unsafe class TerrainScene : GameScene
     {
         protected FlyCameraController _flyCamera;
         protected float[,] _heightmap;
@@ -34,19 +34,60 @@ namespace SiegeEngine.Scenes
         protected float _worldScaleZ = 1.0f;
         protected bool _useCustomScale = false;
 
-        // Cached vertex and index data for surgical updates
         protected List<float> _terrainVertices = new List<float>();
         protected List<uint> _terrainIndices = new List<uint>();
 
-        // Tracks the exact mesh resolution when the current buffer was built
         protected int _meshVertsX = 0;
         protected int _meshVertsY = 0;
         protected int _currentMeshStep = 1;
 
-        public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
-            : base(renderContext, controlContext, window, server, eventBus)
+        public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
+            : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
             _flyCamera = new FlyCameraController(controlContext, window);
+        }
+
+        public override void LoadSceneData(SceneData data)
+        {
+            base.LoadSceneData(data);
+
+            if (data?.Terrain != null)
+            {
+                _worldScaleX = data.Terrain.WorldScaleX;
+                _worldScaleZ = data.Terrain.WorldScaleZ;
+                _useCustomScale = true;
+
+                if (!string.IsNullOrEmpty(data.Terrain.HeightmapPath))
+                {
+                    Console.WriteLine($"[TerrainScene] Loading terrain from SceneData: {data.Terrain.HeightmapPath}");
+                    LoadTerrain(data.Terrain.HeightmapPath);
+                }
+                else if (!string.IsNullOrEmpty(data.Terrain.ColorTexturePath))
+                {
+                    SetColorTexture(data.Terrain.ColorTexturePath);
+                }
+                else
+                {
+                    InitializeBlankTerrain();
+                }
+            }
+            else
+            {
+                InitializeBlankTerrain();
+            }
+        }
+
+        private void InitializeBlankTerrain()
+        {
+            _heightmap = new float[_terrainWidth, _terrainHeight];
+            _minHeight = 0;
+            _maxHeight = 0;
+            for (int x = 0; x < _terrainWidth; x++)
+                for (int y = 0; y < _terrainHeight; y++)
+                    _heightmap[x, y] = 0f;
+
+            _useCustomScale = true;
+            BuildWireframeMesh(1);
         }
 
         public override void Initialize(int width, int height)
@@ -193,8 +234,6 @@ namespace SiegeEngine.Scenes
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
         }
 
-        // DIAGNOSTIC + FIXED: Write Z to cache AND do full upload (temporary for visibility)
-        // This guarantees visible deformation on any size map while we debug partial upload
         protected void UpdateAffectedVertices(Vector3 worldPos, float radius)
         {
             if (_terrainVertices.Count == 0 || _heightmap == null || _currentMeshStep < 1 || _meshVertsX == 0)
@@ -214,13 +253,12 @@ namespace SiegeEngine.Scenes
             int minMeshY = Math.Max(0, (int)(centerMeshY - radiusInMeshCells));
             int maxMeshY = Math.Min(_meshVertsY - 1, (int)(centerMeshY + radiusInMeshCells));
 
-            // Write new Z heights into the vertex cache
             const int stride = 9;
             for (int mx = minMeshX; mx <= maxMeshX; mx++)
             {
                 for (int my = minMeshY; my <= maxMeshY; my++)
                 {
-                    int vertexIndex = (mx * _meshVertsY + my) * stride + 2; // Z component
+                    int vertexIndex = (mx * _meshVertsY + my) * stride + 2;
                     if (vertexIndex + 1 < _terrainVertices.Count)
                     {
                         float wx = mx * _currentMeshStep * _worldScaleX;
@@ -230,7 +268,6 @@ namespace SiegeEngine.Scenes
                 }
             }
 
-            // TEMPORARY FULL UPLOAD (guaranteed visual update)
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
         }
 

@@ -25,16 +25,17 @@ namespace MapRoom
         private VertexBuffer _ghostBuffer;
         private HashSet<Guid> _processedModifications = new HashSet<Guid>();
         private bool _isBrushing = false;
-        // Throttling to prevent full mesh uploads on every single mouse tick (critical for large maps)
         private float _lastBrushUpdateTime = 0f;
         private Vector3 _lastGhostPosition = Vector3.Zero;
-        private const float BrushUpdateInterval = 0.033f; // ~30 Hz - responsive but dramatically lower GPU load
-        private const float BrushMoveThreshold = 0.3f; // only update if brush moved meaningfully
-        public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
-            : base(renderContext, controlContext, window, server, eventBus)
+        private const float BrushUpdateInterval = 0.033f;
+        private const float BrushMoveThreshold = 0.3f;
+
+        public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
+            : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
         }
+
         public void CreateBlank()
         {
             _heightmap = new float[_terrainWidth, _terrainHeight];
@@ -59,6 +60,7 @@ namespace MapRoom
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
+
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -100,14 +102,17 @@ namespace MapRoom
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
+
         public override void LoadTerrain(string path)
         {
             base.LoadTerrain(path);
         }
+
         public void SetColorTexture(string path)
         {
             base.SetColorTexture(path);
         }
+
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -120,13 +125,15 @@ namespace MapRoom
             CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
             Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}'");
         }
+
         public void Export2D(string projectAssetsDir)
         {
             string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
             string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
-            TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath); // Example thresholds
+            TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
             Console.WriteLine($"[TerrainCreatorScene] Exported 2D tilemap to {fbxPath}");
         }
+
         private void SaveAsPng(string path)
         {
             int w = _terrainWidth;
@@ -145,15 +152,18 @@ namespace MapRoom
             }
             bmp.Save(path, ImageFormat.Png);
         }
+
         public void SetActiveBrush(ToolChest.Brush brush)
         {
             _activeBrush = brush;
         }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
+
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
@@ -177,6 +187,7 @@ namespace MapRoom
             }
             _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
+
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -212,7 +223,6 @@ namespace MapRoom
                     var strength = _activeBrush.Intensity * deltaTime;
                     var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
                     _eventBus.Publish(evt, true);
-                    // REMOVED local UpdateAffectedVertices here - now only called after heightmap is modified in ApplyModification
                     _lastBrushUpdateTime = currentTime;
                     _lastGhostPosition = _ghostPosition;
                 }
@@ -222,6 +232,7 @@ namespace MapRoom
                 _isBrushing = false;
             }
         }
+
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -249,6 +260,7 @@ namespace MapRoom
             }
             return false;
         }
+
         private Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
@@ -259,6 +271,7 @@ namespace MapRoom
                 MathF.Sin(pitchRad)
             ));
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -295,6 +308,7 @@ namespace MapRoom
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
+
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -307,12 +321,14 @@ namespace MapRoom
             _ghostBuffer?.Dispose();
             base.Dispose();
         }
+
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
+
         private void ApplyModification(TerrainModifiedEvent e)
         {
             var brush = new ToolChest.Brush
@@ -324,7 +340,6 @@ namespace MapRoom
                 Intensity = e.Strength
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
-            // Now guaranteed to run AFTER heightmap is modified
             UpdateAffectedVertices(e.WorldPos, e.Radius);
         }
     }

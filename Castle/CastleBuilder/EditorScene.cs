@@ -8,12 +8,13 @@ using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Scenes;
+using MapRoom;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using ToolChest; // required because ProjectSettings moved to ToolChest
+using ToolChest;
 
 namespace CastleBuilder
 {
@@ -21,7 +22,7 @@ namespace CastleBuilder
     {
         private ProjectData _projectData;
         private string _currentGameSceneName = string.Empty;
-        private GameScene _activeGameScene; // NEW: runtime game scene (data-driven)
+        private GameScene _activeGameScene;
 
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus)
@@ -70,8 +71,16 @@ namespace CastleBuilder
             if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sceneData))
             {
                 _activeGameScene?.Dispose();
-                // Step 1 uses minimal stub; Step 2 will instantiate typed GameScenes (TerrainCreatorScene etc.)
-                _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
+
+                if (sceneData.SceneType == "TerrainTest" || sceneData.Terrain.HeightmapPath != null || _currentGameSceneName.Contains("Terrain"))
+                {
+                    _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
+                }
+                else
+                {
+                    _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
+                }
+
                 _activeGameScene.Initialize(_width, _height);
 
                 Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' from SceneData");
@@ -113,7 +122,6 @@ namespace CastleBuilder
             base.Dispose();
         }
 
-        // Temporary minimal stub for Step 1 only
         private class BasicGameScene : GameScene
         {
             public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)
@@ -121,7 +129,6 @@ namespace CastleBuilder
 
             public override void Render(IReadOnlyList<Entity> entities)
             {
-                // Placeholder rendering – will be replaced by real GameScene subclasses in Step 2
             }
         }
     }
