@@ -745,13 +745,6 @@ namespace SiegeEngine.Core.Managers
             try
             {
                 Type t = Type.GetType(typeName);
-                if (t == null)
-                {
-                    // minimal fallback for your existing layout files (short names)
-                    if (typeName.Contains("ToolChest.")) t = Type.GetType(typeName + ", ToolChest");
-                    else if (typeName.Contains("MapRoom.")) t = Type.GetType(typeName + ", MapRoom");
-                    else if (typeName.Contains("CastleBuilder.")) t = Type.GetType(typeName + ", CastleBuilder");
-                }
                 if (t != null && typeof(IPanel).IsAssignableFrom(t))
                 {
                     var panel = (IPanel)Activator.CreateInstance(t, _renderContext, _controlContext, _window, _eventBus);

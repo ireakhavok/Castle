@@ -2,6 +2,7 @@
 // File: ProjectLayoutManager.cs
 using SiegeEngine.Core.Managers;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -9,25 +10,14 @@ namespace CastleBuilder
 {
     public static class ProjectLayoutManager
     {
+        // Pure in-memory cache for all blades (Blender-style)
+        // Survives switching even with no project loaded
+        private static readonly Dictionary<string, string> _memoryCache =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
         public static void SaveCurrentLayout(string contextName)
         {
-            Console.WriteLine($"[ProjectLayoutManager] SaveCurrentLayout START - Context: '{contextName}'");
-
-            string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath))
-            {
-                Console.WriteLine("[ProjectLayoutManager] No active project - skipping save");
-                return;
-            }
-
-            if (!Directory.Exists(projectPath))
-            {
-                Console.WriteLine($"[ProjectLayoutManager] ERROR: Project directory does not exist: {projectPath}");
-                return;
-            }
-
-            string layoutPath = Path.Combine(projectPath, $"layout.{contextName}.json");
-            Console.WriteLine($"[ProjectLayoutManager] Writing full docking layout to: {layoutPath}");
+            Console.WriteLine($"[ProjectLayoutManager] SaveCurrentLayout (MEMORY ONLY) - Context: '{contextName}'");
 
             var strategy = PanelManager.Current?.IDEStrategy;
             if (strategy == null)
@@ -39,12 +29,24 @@ namespace CastleBuilder
             try
             {
                 string fullState = strategy.SerializeState();
-                File.WriteAllText(layoutPath, fullState);
-                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Full docking layout saved for '{contextName}' (JSON length: {fullState.Length} bytes)");
+                _memoryCache[contextName] = fullState;
+
+                // ONLY write to disk if a project is actually loaded
+                string projectPath = ProjectSettings.Current.ActiveProject;
+                if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
+                {
+                    string layoutPath = Path.Combine(projectPath, $"layout.{contextName}.json");
+                    File.WriteAllText(layoutPath, fullState);
+                    Console.WriteLine($"[ProjectLayoutManager] Also committed to disk (project loaded)");
+                }
+                else
+                {
+                    Console.WriteLine($"[ProjectLayoutManager] Saved to memory only (no project loaded)");
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ProjectLayoutManager] ERROR: Failed to write layout: {ex.Message}");
+                Console.WriteLine($"[ProjectLayoutManager] ERROR: Failed to save '{contextName}': {ex.Message}");
             }
         }
 
@@ -61,6 +63,15 @@ namespace CastleBuilder
 
             strategy.ClearAll();
 
+            // Memory first (instant switch, even with no project)
+            if (_memoryCache.TryGetValue(contextName, out string cachedState) && !string.IsNullOrEmpty(cachedState))
+            {
+                strategy.DeserializeState(cachedState);
+                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Restored from MEMORY cache");
+                return;
+            }
+
+            // Disk fallback (last saved state only)
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (string.IsNullOrEmpty(projectPath))
             {
@@ -81,6 +92,7 @@ namespace CastleBuilder
             {
                 string json = File.ReadAllText(layoutPath);
                 strategy.DeserializeState(json);
+                _memoryCache[contextName] = json; // prime memory
                 Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Full docking layout restored for '{contextName}'");
             }
             catch (Exception ex)

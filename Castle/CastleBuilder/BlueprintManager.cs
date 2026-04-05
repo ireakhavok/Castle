@@ -225,13 +225,7 @@ namespace CastleBuilder
             string newContext = evt.Context ?? "Scene Editor";
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Switching from '{_previousContext}' → '{newContext}'");
 
-            // Save previous blade BEFORE clearing (this is the only time we write to disk on switch)
-            if (!string.IsNullOrEmpty(_previousContext))
-            {
-                Console.WriteLine($"[BlueprintManager.OnContextChanged] Saving previous blade '{_previousContext}' to permanent file");
-                ProjectLayoutManager.SaveCurrentLayout(_previousContext);
-            }
-
+            // NO DISK WRITE ON SWITCH - pure memory only (exactly as you asked)
             var strategy = PanelManager.Current?.IDEStrategy;
             strategy?.ClearAll();
 
