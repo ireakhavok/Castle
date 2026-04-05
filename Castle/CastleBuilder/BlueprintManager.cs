@@ -100,6 +100,53 @@ namespace CastleBuilder
             Load(renderContext, controlContext, window, eventBus);
         }
 
+        public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            EnsureInitialized(eventBus);
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+            {
+                Console.WriteLine("[BlueprintManager.CreateNewScene] ERROR: No active project");
+                return;
+            }
+            string jsonPath = Path.Combine(projectPath, "project.json");
+            ProjectData data;
+            if (File.Exists(jsonPath))
+            {
+                string json = File.ReadAllText(jsonPath);
+                data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+            }
+            else
+            {
+                data = new ProjectData { Name = Path.GetFileName(projectPath) };
+            }
+            if (data.Scenes == null) data.Scenes = new Dictionary<string, SceneData>();
+            string sceneName = $"Scene_{data.Scenes.Count + 1}";
+            data.Scenes[sceneName] = new SceneData { Name = sceneName, SceneType = "Gameplay" };
+            data.LastOpenedScene = sceneName;
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"[BlueprintManager] New scene created: {sceneName}");
+            eventBus.Publish(new LoadProjectEvent { Path = projectPath });
+        }
+
+        public static void EnsureDefaultSceneIfNeeded()
+        {
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
+            string jsonPath = Path.Combine(projectPath, "project.json");
+            if (!File.Exists(jsonPath)) return;
+            string json = File.ReadAllText(jsonPath);
+            var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+            if (data.Scenes == null || data.Scenes.Count == 0)
+            {
+                data.Scenes = new Dictionary<string, SceneData>();
+                data.Scenes["Main"] = new SceneData { Name = "Main", SceneType = "Gameplay" };
+                data.LastOpenedScene = "Main";
+                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+                Console.WriteLine("[BlueprintManager] Auto-created default scene 'Main' for Scene Editor blade");
+            }
+        }
+
         public static void SaveCurrentProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);

@@ -30,8 +30,10 @@ namespace CastleBuilder
 
         public static void SwitchToSceneEditor(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
+            BlueprintManager.EnsureDefaultSceneIfNeeded();
             eventBus.Publish(new ContextChangedEvent { Context = "Scene Editor" });
-            Console.WriteLine("[MenuCommands] Switched to Scene Editor context");
+            OpenEditorScene(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] Switched to Scene Editor context (panel opened)");
         }
 
         public static void SwitchToConfiguration(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -90,10 +92,18 @@ namespace CastleBuilder
         {
             TwoDCreatorPanel.Open(renderContext, controlContext, window, eventBus);
         }
+
         public static void OpenEditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var editorPanel = new SceneEditorPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(editorPanel) { Mode = OpenMode.Overlay });
+        }
+
+        public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            BlueprintManager.CreateNewScene(renderContext, controlContext, window, eventBus);
+            OpenEditorScene(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] New scene created + Editor Scene panel opened");
         }
     }
 }
