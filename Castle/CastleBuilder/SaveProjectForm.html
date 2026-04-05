@@ -1,51 +1,92 @@
-<!-- Folder: CastleBuilder (place next to IDE_UI.html) -->
-<!-- File: SaveProjectForm.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <style>
         body {
-            background: #252526;
+            background: #1e1e1e;
             color: #e0e0e0;
-            font-family: Segoe UI;
-            padding: 20px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-size: 13px;
+            margin: 0;
+            padding: 16px 20px;
+            height: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
         }
 
         label {
             display: block;
-            margin: 10px 0 5px;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #cccccc;
+            font-size: 12px;
         }
 
         input {
             width: 100%;
-            padding: 8px;
-            background: #1e1e1e;
-            color: #fff;
+            background: #252526;
             border: 1px solid #383838;
+            color: #ffffff;
+            padding: 6px 8px;
+            font-size: 13px;
+            border-radius: 3px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+            input:focus {
+                border-color: #7CFFCB;
+                outline: none;
+                box-shadow: 0 0 0 2px rgba(124, 255, 203, 0.2);
+            }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 8px;
         }
 
         button {
-            margin-top: 15px;
-            padding: 8px 16px;
-            background: #7CFFCB;
-            color: #000;
+            padding: 6px 16px;
+            font-size: 13px;
+            font-weight: 500;
             border: none;
+            border-radius: 3px;
             cursor: pointer;
+            transition: all 0.1s ease;
         }
 
-            button:hover {
-                background: #a0ffdb;
+            button[data-hook="SaveProjectConfirm"] {
+                background: #7CFFCB;
+                color: #111111;
             }
+
+                button[data-hook="SaveProjectConfirm"]:hover {
+                    background: #a0ffdb;
+                }
+
+            button[data-hook="Cancel"] {
+                background: #383838;
+                color: #cccccc;
+            }
+
+                button[data-hook="Cancel"]:hover {
+                    background: #4a4a4a;
+                    color: #ffffff;
+                }
     </style>
 </head>
 <body>
-    <label>Project Name</label>
+    <label for="projectName">Project Name</label>
     <input id="projectName" type="text" value="MyNewProject">
 
-    <label>Project Folder</label>
-    <input id="projectFolder" type="text" value="C:\Users\ireak\source\CastleBuilder\Projects">
+    <label for="projectFolder">Project Folder (optional)</label>
+    <input id="projectFolder" type="text" value="" placeholder="Leave blank for default location">
 
-    <button data-hook="SaveProjectConfirm">Save Project</button>
-    <button data-hook="Cancel">Cancel</button>
+    <div class="button-row">
+        <button data-hook="Cancel">Cancel</button>
+        <button data-hook="SaveProjectConfirm">Save Project</button>
+    </div>
 </body>
 </html>

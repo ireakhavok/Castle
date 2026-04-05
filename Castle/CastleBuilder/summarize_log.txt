@@ -1,0 +1,99 @@
+Log file opened successfully
+Getting current directory
+Repo path set to: C:\repos\RealmFoundry\Castle\CastleBuilder
+Summary file opened successfully
+Starting scan
+Listing folder: C:\repos\RealmFoundry\Castle\CastleBuilder
+Found: .
+Found: ..
+Found: Assets
+Listing folder: C:\repos\RealmFoundry\Castle\CastleBuilder\Assets
+Found: .
+Found: ..
+Found: Configs
+Listing folder: C:\repos\RealmFoundry\Castle\CastleBuilder\Assets\Configs
+Found: .
+Found: ..
+Found: NewProject.html
+Found: bin
+Ignoring non-source folder: C:\repos\RealmFoundry\Castle\CastleBuilder\bin
+Found: BlueprintManager.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Read 12757 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Namespace: CastleBuilder
+Found 12 dependencies
+Found: CastleBuilder.csproj
+Found: EditorScene.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
+Read 2859 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
+Namespace: CastleBuilder
+Found 12 dependencies
+Found: Events
+Listing folder: C:\repos\RealmFoundry\Castle\CastleBuilder\Events
+Found: .
+Found: ..
+Found: ContextChangedEvent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\ContextChangedEvent.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\ContextChangedEvent.cs
+Read 718 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\ContextChangedEvent.cs
+Namespace: CastleBuilder.Events
+Found 3 dependencies
+Found: LoadProjectEvent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\LoadProjectEvent.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\LoadProjectEvent.cs
+Read 696 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\LoadProjectEvent.cs
+Namespace: CastleBuilder.Events
+Found 3 dependencies
+Found: NewProjectEvent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\NewProjectEvent.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\NewProjectEvent.cs
+Read 1003 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\NewProjectEvent.cs
+Namespace: CastleBuilder.Events
+Found 3 dependencies
+Found: SaveProjectEvent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\SaveProjectEvent.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\SaveProjectEvent.cs
+Read 731 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\Events\SaveProjectEvent.cs
+Namespace: CastleBuilder.Events
+Found 4 dependencies
+Found: HeirarchySummary.exe
+Found: IDEBasePanel.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
+Read 6421 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
+Namespace: CastleBuilder
+Found 10 dependencies
+Found: IDE_UI.html
+Found: MenuCommands.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Read 4455 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Namespace: CastleBuilder
+Found 9 dependencies
+Found: obj
+Ignoring non-source folder: C:\repos\RealmFoundry\Castle\CastleBuilder\obj
+Found: ProjectLayoutManager.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
+Read 3083 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
+Namespace: CastleBuilder
+Found 5 dependencies
+Found: SaveProjectForm.html
+Found: SaveProjectPanel.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
+Read 3368 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
+Namespace: CastleBuilder
+Found 10 dependencies
+Found: SceneEditorPanel.cs
+Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
+Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
+Read 3674 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
+Namespace: CastleBuilder
+Found 10 dependencies
+Found: summarize_log.txt
+Found: summary.txt
+Writing output for 2 folders
+Scan complete

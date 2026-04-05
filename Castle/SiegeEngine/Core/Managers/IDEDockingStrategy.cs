@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: IDEDockingStrategy.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -9,6 +9,9 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Linq;
 
 namespace SiegeEngine.Core.Managers
 {
@@ -20,6 +23,7 @@ namespace SiegeEngine.Core.Managers
         private Vector2 _dragOffset;
         private readonly IRenderContext _renderContext;
         private readonly IControlContext _controlContext;
+        private readonly nint _window;
         private readonly EventBus _eventBus;
         private readonly UIQuadRenderer _quadRenderer;
         private IPanel _hoveredPanelDuringDrag;
@@ -35,19 +39,35 @@ namespace SiegeEngine.Core.Managers
         private Vector2 _resizeStartMousePos;
         private Vector2 _resizeStartPosition;
         private Vector2 _resizeStartSize;
-
-        // === SINGLE MINIMAL ADDITION (exact DesktopDockingStrategy pattern - nothing else changed) ===
         private bool _needsLayout = true;
         private int _lastWinW;
         private int _lastWinH;
 
-        public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
+        public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
+            _window = window;
             _eventBus = eventBus;
             _quadRenderer = new UIQuadRenderer(renderContext);
             _root = new DockTabbedNode();
+        }
+
+        public void ClearAll()
+        {
+            var pm = PanelManager.Current;
+            if (pm != null)
+            {
+                foreach (var p in _floatingPanels.ToList())
+                    pm.RemovePanel(p);
+            }
+            _floatingPanels.Clear();
+            _draggingPanel = null;
+            _resizingPanel = null;
+            _originalFloatingSizes.Clear();
+            _root = new DockTabbedNode();
+            _needsLayout = true;
+            Console.WriteLine("[IDEDockingStrategy.ClearAll] Workspace fully cleared");
         }
 
         public void AddPanel(IPanel panel)
@@ -58,7 +78,8 @@ namespace SiegeEngine.Core.Managers
             panel.DockingMode = DockingMode.IDE;
             if (panel.DockState == DockState.Floating || panel.DockState == DockState.DockedHeader)
             {
-                _floatingPanels.Add(panel);
+                if (!_floatingPanels.Contains(panel))
+                    _floatingPanels.Add(panel);
                 panel.AllowDragging = true;
                 panel.DockState = DockState.Floating;
                 panel.Position = new Vector2(120f, MenuBarHeight + 40f);
@@ -140,33 +161,26 @@ namespace SiegeEngine.Core.Managers
         {
             if (_floatingPanels.Count == 0 && !HasActiveContent())
                 return;
-
             if (winW != _lastWinW || winH != _lastWinH)
             {
                 _lastWinW = winW;
                 _lastWinH = winH;
                 _needsLayout = true;
             }
-
             if (_root != null)
             {
                 _root = CollapseNode(_root);
                 if (_root == null) _root = new DockTabbedNode();
             }
-
-
-
             _splitterDraggingThisFrame = false;
             if (_root != null)
             {
                 _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
                 _splitterDraggingThisFrame = IsAnySplitterDragging(_root);
             }
-
             if (_splitterDraggingThisFrame)
             {
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
-
             }
             else if (_root != null)
             {
@@ -192,10 +206,7 @@ namespace SiegeEngine.Core.Managers
                         }
                     }
                 }
-
-                
             }
-
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -214,7 +225,6 @@ namespace SiegeEngine.Core.Managers
                         break;
                 }
             }
-
             if (mousePressed && _draggingPanel == null && hoveredPanel == null && !_splitterDraggingThisFrame)
             {
                 if (_root != null && _root.HitTest(mousePos, out IPanel hit2, out bool isTitle2, out bool isSplitter2, out _, out _))
@@ -229,7 +239,6 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
-
             if (_draggingPanel != null && mouseDown)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -237,12 +246,10 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, MenuBarHeight);
                 DetectHoverTarget(mousePos, winW, winH);
             }
-
             if (_resizingPanel != null && mouseDown)
             {
                 PerformLiveResize(mousePos, winW, winH);
             }
-
             if (_draggingPanel != null && mouseReleased)
             {
                 bool shouldDock = false;
@@ -347,7 +354,6 @@ namespace SiegeEngine.Core.Managers
                 _hoveringWorkspace = false;
                 _needsLayout = true;
             }
-
             if (_resizingPanel != null && mouseReleased)
             {
                 _resizingPanel.OnPanelResize(_resizingPanel.Size.X, _resizingPanel.Size.Y);
@@ -355,8 +361,6 @@ namespace SiegeEngine.Core.Managers
                 _activeResizeHandle = ResizeHandle.None;
                 _needsLayout = true;
             }
-
-            // === THE ONLY CHANGE: guarded final ComputeLayout (exactly like DesktopDockingStrategy) ===
             if (_needsLayout && _root != null)
             {
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
@@ -621,6 +625,171 @@ namespace SiegeEngine.Core.Managers
         {
             if (_root != null)
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
+        }
+
+        private class SerializableLayoutState
+        {
+            public SerializableDockNode Root { get; set; }
+            public List<SerializableFloatingPanel> FloatingPanels { get; set; } = new List<SerializableFloatingPanel>();
+        }
+
+        private class SerializableDockNode
+        {
+            public string NodeType { get; set; }
+            public List<string> Panels { get; set; } = new List<string>();
+            public int ActiveTabIndex { get; set; } = -1;
+            public bool IsVertical { get; set; }
+            public float SplitRatio { get; set; } = 0.5f;
+            public SerializableDockNode Left { get; set; }
+            public SerializableDockNode Right { get; set; }
+        }
+
+        private class SerializableFloatingPanel
+        {
+            public string PanelType { get; set; }
+            public Vector2 Position { get; set; }
+            public Vector2 Size { get; set; }
+        }
+
+        public string SerializeState()
+        {
+            var state = new SerializableLayoutState();
+            state.Root = SerializeNode(_root);
+
+            foreach (var panel in _floatingPanels)
+            {
+                if (panel is BasePanel bp)
+                {
+                    state.FloatingPanels.Add(new SerializableFloatingPanel
+                    {
+                        PanelType = bp.GetType().AssemblyQualifiedName,  // ← changed to AssemblyQualifiedName
+                        Position = bp.Position,
+                        Size = bp.Size
+                    });
+                }
+            }
+
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            return JsonSerializer.Serialize(state, options);
+        }
+
+        private SerializableDockNode SerializeNode(DockNode node)
+        {
+            if (node == null) return null;
+
+            if (node is DockTabbedNode tab)
+            {
+                return new SerializableDockNode
+                {
+                    NodeType = "tabbed",
+                    Panels = tab.Panels.Select(p => (p as BasePanel)?.GetType().AssemblyQualifiedName ?? p.GetType().AssemblyQualifiedName).ToList(),  // ← changed to AssemblyQualifiedName
+                    ActiveTabIndex = tab.ActiveIndex
+                };
+            }
+
+            if (node is DockSplitNode split)
+            {
+                return new SerializableDockNode
+                {
+                    NodeType = "split",
+                    IsVertical = split.IsVertical,
+                    SplitRatio = split.SplitRatio,
+                    Left = SerializeNode(split.Left),
+                    Right = SerializeNode(split.Right)
+                };
+            }
+
+            return null;
+        }
+
+        public void DeserializeState(string json)
+        {
+            if (string.IsNullOrEmpty(json)) return;
+
+            try
+            {
+                ClearAll();
+
+                var state = JsonSerializer.Deserialize<SerializableLayoutState>(json);
+
+                if (state.Root != null)
+                {
+                    _root = DeserializeNode(state.Root);
+                }
+
+                foreach (var fp in state.FloatingPanels)
+                {
+                    var panel = CreatePanelByType(fp.PanelType);
+                    if (panel != null)
+                    {
+                        panel.Position = fp.Position;
+                        panel.Size = fp.Size;
+                        panel.DockState = DockState.Floating;
+                        AddPanel(panel);
+                        Console.WriteLine($"[IDEDockingStrategy] Restored floating panel {fp.PanelType} at position {fp.Position} size {fp.Size}");
+                    }
+                }
+
+                _needsLayout = true;
+                Console.WriteLine($"[IDEDockingStrategy] SUCCESS: Restored full nested tree (IsVertical splits preserved) + real panels from saved layout");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[IDEDockingStrategy] DeserializeState failed: {ex.Message}");
+            }
+        }
+
+        private IPanel CreatePanelByType(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName)) return null;
+            try
+            {
+                Type t = Type.GetType(typeName);
+                if (t != null && typeof(IPanel).IsAssignableFrom(t))
+                {
+                    var panel = (IPanel)Activator.CreateInstance(t, _renderContext, _controlContext, _window, _eventBus);
+                    panel.Init();
+                    return panel;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[IDEDockingStrategy] Could not create panel {typeName}: {ex.Message}");
+            }
+            return null;
+        }
+
+        private DockNode DeserializeNode(SerializableDockNode s)
+        {
+            if (s == null) return null;
+
+            if (s.NodeType == "tabbed")
+            {
+                var tab = new DockTabbedNode();
+                tab.ActiveIndex = s.ActiveTabIndex;
+                foreach (var panelType in s.Panels)
+                {
+                    var panel = CreatePanelByType(panelType);
+                    if (panel != null)
+                    {
+                        tab.AddPanel(panel);
+                    }
+                }
+                return tab;
+            }
+
+            if (s.NodeType == "split")
+            {
+                var split = new DockSplitNode
+                {
+                    IsVertical = s.IsVertical,
+                    SplitRatio = s.SplitRatio
+                };
+                split.Left = DeserializeNode(s.Left);
+                split.Right = DeserializeNode(s.Right);
+                return split;
+            }
+            return null;
         }
     }
 }

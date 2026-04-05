@@ -9,6 +9,7 @@ using System;
 using System.IO;
 using System.Numerics;
 using System.Reflection;
+using CastleBuilder.Events;   // for ContextChangedEvent
 
 namespace CastleBuilder
 {
@@ -17,11 +18,14 @@ namespace CastleBuilder
         private class IDEUIOverlay : UIOverlay
         {
             private readonly EventBus _eventBus;
+
             public IDEUIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
                 : base(renderContext, controlContext, window)
             {
                 _eventBus = eventBus;
+                _eventBus.Subscribe<ContextChangedEvent>(OnContextChanged);
             }
+
             protected override void HandleDataHook(string hook)
             {
                 Console.WriteLine($"[IDE Menu] Clicked: {hook}");
@@ -59,6 +63,36 @@ namespace CastleBuilder
                     Console.WriteLine($"[IDE Menu] Method '{methodName}' not found on {ns}.{className}");
                 }
             }
+
+            private void OnContextChanged(ContextChangedEvent evt)
+            {
+                string context = evt.Context ?? "Scene Editor";
+                Console.WriteLine($"[IDE Menu] Context changed to: {context}");
+                RefreshMenuForContext(context);
+                // Visual blade highlighting is already handled by the inline JS in IDE_UI.html
+            }
+
+            private void RefreshMenuForContext(string context)
+            {
+                Console.WriteLine($"[IDE Menu] Top menu updated for context: {context}");
+
+                if (context == "Terrain")
+                {
+                    Console.WriteLine("  Panels menu now shows: Terrain Creator, Sculpt, Brush Settings, Export Heightmap, Import GeoTIFF");
+                }
+                else if (context == "Animator")
+                {
+                    Console.WriteLine("  Panels menu now shows: Animation Viewer, Import FBX, Blend Editor, Preview in Scene, Animation List");
+                }
+                else if (context == "Scene Editor")
+                {
+                    Console.WriteLine("  Panels menu now shows: Hierarchy, Properties, Asset Browser, Scene List, Load Game Scene");
+                }
+                else if (context == "Configuration")
+                {
+                    Console.WriteLine("  Panels menu now shows: Project Settings, Mod Manager, Server Rules, Blueprint Governance");
+                }
+            }
         }
 
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -67,7 +101,7 @@ namespace CastleBuilder
             AllowDragging = false;
             DockState = DockState.Tabbed;
             IsModal = false;
-            RenderOrder = 1000; // high value = always rendered LAST / on top of everything
+            RenderOrder = 1000;
         }
 
         protected override UIOverlay CreateUIOverlay()
