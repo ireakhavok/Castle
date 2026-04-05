@@ -1355,14 +1355,6 @@ Folder: Core
     - Dependencies: System
     - Methods:
       - constructor PreviewComponent( string brushType, ulong playerId)
-- File: ProjectSettings.cs
-  - Class: ProjectSettings (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: System, System.IO
-    - Fields:
-      - string _projectsRoot
-    - Methods:
-      - constructor ProjectSettings()
-      - string GetLayoutTempPath(string projectPath)
 - File: PropertyNode.cs
   - Class: PropertyNode (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -2149,16 +2141,13 @@ Folder: PlayerSystem
       - Vector2 CalculateAdjustedPosition( int windowHeight,  int windowWidth,  string positioningMode, Vector2 position)
 
 Folder: Scenes
-- File: EditorScene.cs
-  - Class: EditorScene (Namespace: SiegeEngine.Scenes)
+- File: GameScene.cs
+  - Class: GameScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System
     - Methods:
-      - void Initialize( int height, int width)
-      - void Update(float deltaTime)
-      - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _renderContext.Clear, _renderContext.ClearColor
+      - void LoadSceneData(SceneData data)
       - void Dispose()
 - File: ModelViewerScene.cs
   - Class: ModelViewerScene (Namespace: SiegeEngine.Scenes)
@@ -2284,7 +2273,7 @@ Folder: Scenes
       - void Dispose()
 - File: TerrainScene.cs
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
-    - Inherits: Scene
+    - Inherits: GameScene
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Numerics
     - Fields:
@@ -2308,6 +2297,10 @@ Folder: Scenes
       - int _meshVertsY
       - int _currentMeshStep
     - Methods:
+      - void LoadSceneData(SceneData data)
+        - Calls: InitializeBlankTerrain, LoadTerrain, SetColorTexture
+      - void InitializeBlankTerrain()
+        - Calls: BuildWireframeMesh
       - void Initialize( int height, int width)
         - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
       - void BuildWireframeMesh(float step)
@@ -2564,7 +2557,6 @@ SiegeEngine.Core.Managers.LevelManager
 SiegeEngine.Core.Managers.LobbyManager
 SiegeEngine.Core.Managers.ModManager
 SiegeEngine.Core.Managers.PanelManager
-SiegeEngine.Core.Managers.ProjectSettings
 SiegeEngine.Core.Managers.SceneManager
 SiegeEngine.Core.Managers.SerializableFloatingPanel
 SiegeEngine.Core.Managers.UISettingsManager
@@ -2647,8 +2639,8 @@ SiegeEngine.PlayerSystem.Player
 SiegeEngine.PlayerSystem.PlayerMovement
 SiegeEngine.PlayerSystem.PositionCalculator
 SiegeEngine.PlayerSystem.SwitchMenuEvent
-SiegeEngine.Scenes.EditorScene
 SiegeEngine.Scenes.FlyCameraController
+SiegeEngine.Scenes.GameScene
 SiegeEngine.Scenes.ModelViewerScene
 SiegeEngine.Scenes.Scene
 SiegeEngine.Scenes.StartingPoints.SandboxScene

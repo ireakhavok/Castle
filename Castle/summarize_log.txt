@@ -324,17 +324,17 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\CastleBuilder\bin
 Found: BlueprintManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
-Read 17975 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Read 17992 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Namespace: CastleBuilder
-Found 13 dependencies
+Found 14 dependencies
 Found: CastleBuilder.csproj
 Found: castlebuilder_summary.txt
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
-Read 3067 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
+Read 4751 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
-Found 13 dependencies
+Found 15 dependencies
 Found: Events
 Listing folder: C:\repos\RealmFoundry\Castle\CastleBuilder\Events
 Found: .
@@ -388,16 +388,16 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\CastleBuilder\obj
 Found: ProjectLayoutManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
-Read 5366 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
+Read 5384 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\ProjectLayoutManager.cs
 Namespace: CastleBuilder
-Found 5 dependencies
+Found 6 dependencies
 Found: SaveProjectForm.html
 Found: SaveProjectPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
-Read 3368 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
+Read 3386 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SaveProjectPanel.cs
 Namespace: CastleBuilder
-Found 10 dependencies
+Found 11 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
@@ -532,7 +532,7 @@ Found 14 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
-Read 15050 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Read 14686 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 14 dependencies
 Found: TerrainCreatorUI.html
@@ -1228,12 +1228,6 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManage
 Read 9747 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 10 dependencies
-Found: ProjectSettings.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ProjectSettings.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ProjectSettings.cs
-Read 1344 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ProjectSettings.cs
-Namespace: SiegeEngine.Core.Managers
-Found 2 dependencies
 Found: SceneManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
@@ -1791,12 +1785,12 @@ Found: Scenes
 Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes
 Found: .
 Found: ..
-Found: EditorScene.cs
-Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
-Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
-Read 1444 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\EditorScene.cs
+Found: GameScene.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\GameScene.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\GameScene.cs
+Read 1211 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\GameScene.cs
 Namespace: SiegeEngine.Scenes
-Found 14 dependencies
+Found 6 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
@@ -1828,7 +1822,7 @@ Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 17349 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 18345 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: SiegeEngine.csproj
@@ -1939,6 +1933,12 @@ Namespace: ToolChest
 Found 4 dependencies
 Found: obj
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\ToolChest\obj
+Found: ProjectSettings.cs
+Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\ProjectSettings.cs
+Reading file: C:\repos\RealmFoundry\Castle\ToolChest\ProjectSettings.cs
+Read 1328 chars from: C:\repos\RealmFoundry\Castle\ToolChest\ProjectSettings.cs
+Namespace: ToolChest
+Found 2 dependencies
 Found: PropertiesPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs

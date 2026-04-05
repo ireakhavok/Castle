@@ -23,7 +23,7 @@ Folder: Assets
 Folder: CastleBuilder
 - File: BlueprintManager.cs
   - Class: StringExtensions (Namespace: CastleBuilder)
-    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.IO, System.Text.Json
+    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.IO, System.Text.Json, ToolChest
     - Methods:
       - string ReplaceInvalidFileChars(this string)
         - Calls: c.ToString
@@ -38,22 +38,12 @@ Folder: CastleBuilder
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: EditorScene.cs
-  - Class: EditorScene (Namespace: CastleBuilder)
-    - Inherits: Scene
-    
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json
-    - Fields:
-      - ProjectData _projectData
-      - string _currentGameScene
-      - string CurrentGameScene
+  - Class: BasicGameScene (Namespace: CastleBuilder)
+    - Inherits: GameScene
+        
+    - Dependencies: MapRoom, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json, ToolChest
     - Methods:
-      - void Initialize( int height, int width)
-        - Calls: LoadProjectData
-      - void LoadProjectData()
-      - void SwitchGameScene(string sceneName)
-      - void Update(float deltaTime)
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _renderContext.Clear, _renderContext.ClearColor
 - File: IDEBasePanel.cs
   - Class: IDEUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
@@ -135,7 +125,7 @@ Folder: CastleBuilder
         - Calls: BlueprintManager.CreateNewProject, ClosePanelEvent, FindElementById
 - File: ProjectLayoutManager.cs
   - Class: ProjectLayoutManager (Namespace: CastleBuilder)
-    - Dependencies: SiegeEngine.Core.Managers, System, System.Collections.Generic, System.IO, System.Text.Json
+    - Dependencies: SiegeEngine.Core.Managers, System, System.Collections.Generic, System.IO, System.Text.Json, ToolChest
     - Methods:
       - void SaveCurrentLayout(string contextName)
         - Calls: strategy.SerializeState
@@ -156,7 +146,7 @@ Folder: CastleBuilder
   - Class: SaveUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Numerics, ToolChest
     - Fields:
       - SaveProjectPanel _parent
       - EventBus _eventBus
@@ -996,17 +986,6 @@ Folder: SiegeEngine
       - void Render( int winH,  int winW, IRenderContext renderContext)
         - Calls: _ghostRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
       - void ComputeLayout( int winH, int winW)
-- File: EditorScene.cs
-  - Class: EditorScene (Namespace: SiegeEngine.Scenes)
-    - Inherits: Scene
-    
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
-    - Methods:
-      - void Initialize( int height, int width)
-      - void Update(float deltaTime)
-      - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _renderContext.Clear, _renderContext.ClearColor
-      - void Dispose()
 - File: EditorSceneShader.cs
   - Class: EditorSceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1347,6 +1326,14 @@ Folder: SiegeEngine
         - Calls: SetViewport
       - void Dispose()
         - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteVertexArray
+- File: GameScene.cs
+  - Class: GameScene (Namespace: SiegeEngine.Scenes)
+    - Inherits: Scene
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System
+    - Methods:
+      - void LoadSceneData(SceneData data)
+      - void Dispose()
 - File: GameSystem.cs
   - Class: GameSystem (Namespace: SiegeEngine.Systems)
     - Dependencies: SiegeEngine.Core.Interfaces
@@ -2177,14 +2164,6 @@ Folder: SiegeEngine
     - Dependencies: System
     - Methods:
       - constructor PreviewComponent( string brushType, ulong playerId)
-- File: ProjectSettings.cs
-  - Class: ProjectSettings (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: System, System.IO
-    - Fields:
-      - string _projectsRoot
-    - Methods:
-      - constructor ProjectSettings()
-      - string GetLayoutTempPath(string projectPath)
 - File: PropertyNode.cs
   - Class: PropertyNode (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -2512,7 +2491,7 @@ Folder: SiegeEngine
     - Dependencies: System, System.IO
 - File: TerrainScene.cs
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
-    - Inherits: Scene
+    - Inherits: GameScene
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Numerics
     - Fields:
@@ -2536,6 +2515,10 @@ Folder: SiegeEngine
       - int _meshVertsY
       - int _currentMeshStep
     - Methods:
+      - void LoadSceneData(SceneData data)
+        - Calls: InitializeBlankTerrain, LoadTerrain, SetColorTexture
+      - void InitializeBlankTerrain()
+        - Calls: BuildWireframeMesh
       - void Initialize( int height, int width)
         - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
       - void BuildWireframeMesh(float step)
@@ -2990,6 +2973,14 @@ Folder: ToolChest
     - Methods:
       - void TriggerSelectBrush(string brushType)
         - Calls: SelectBrushEvent, _steamEngine.GetSteamId
+- File: ProjectSettings.cs
+  - Class: ProjectSettings (Namespace: ToolChest)
+    - Dependencies: System, System.IO
+    - Fields:
+      - string _projectsRoot
+    - Methods:
+      - constructor ProjectSettings()
+      - string GetLayoutTempPath(string projectPath)
 - File: PropertiesPanel.cs
   - Class: PropertiesUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -3037,3 +3028,243 @@ Folder: Trebuchet
     - Methods:
       - void Start(string context)
         - Calls: BlueprintManager, Dispose, EventBus, InputHandler, LoadLibrary, ModManager, PanelManager, SaveSettings, SceneManager, SteamEngine, Terminate, UISettingsManager, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _panelManager.Render, _panelManager.Update, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
+
+Class Hierarchy:
+CastleBuilder.BasicGameScene
+CastleBuilder.Events.ContextChangedEvent
+CastleBuilder.Events.LoadProjectEvent
+CastleBuilder.Events.NewProjectEvent
+CastleBuilder.Events.SaveProjectEvent
+CastleBuilder.IDEUIOverlay
+CastleBuilder.MenuCommands
+CastleBuilder.NewProjectUIOverlay
+CastleBuilder.ProjectLayoutManager
+CastleBuilder.SaveUIOverlay
+CastleBuilder.SceneEditorUIOverlay
+CastleBuilder.StringExtensions
+Citadel.Network.NetworkManager
+Citadel.Server.EntityDeltaTracker
+Citadel.Server.GameServer
+Citadel.Server.ServerValidationSystem
+Citadel.ServerProgram
+Citadel.Systems.PhysicsSystem
+FileSelectedEvent
+Foundation.Program
+GuildTower.Class1
+JSRegex
+MapRoom.CreateTerrainEvent
+MapRoom.NewTerrainUIOverlay
+MapRoom.TerrainCreatorScene
+MapRoom.TerrainModifiedEvent
+MapRoom.TerrainUIOverlay
+MapRoom.TwoDCreatorScene
+MapRoom.TwoDCreatorUIOverlay
+QuestHall.Class1
+ReadingChamber.AssetUIOverlay
+ReadingChamber.FileSelectorUIOverlay
+ScriptChamber.Class1
+SiegeEngine.Core.AssetObjects.BaseNode
+SiegeEngine.Core.AssetObjects.FBXFileForest
+SiegeEngine.Core.AssetObjects.FBXNode
+SiegeEngine.Core.AssetObjects.PropertyNode
+SiegeEngine.Core.AssetParsing.FBXAnimationParser
+SiegeEngine.Core.AssetParsing.FBXCoordinateUtils
+SiegeEngine.Core.AssetParsing.FBXMeshParser
+SiegeEngine.Core.AssetParsing.FBXParser
+SiegeEngine.Core.AssetParsing.FBXParserBase
+SiegeEngine.Core.AssetParsing.FBXParserUtils
+SiegeEngine.Core.AssetParsing.FBXSettings
+SiegeEngine.Core.AssetParsing.FBXSkeletonParser
+SiegeEngine.Core.AssetParsing.Model.Animation
+SiegeEngine.Core.AssetParsing.Model.Bone
+SiegeEngine.Core.AssetParsing.Model.FBXMesh
+SiegeEngine.Core.AssetParsing.Model.FBXModel
+SiegeEngine.Core.AssetParsing.Model.FBXVertex
+SiegeEngine.Core.AssetParsing.Model.Keyframe
+SiegeEngine.Core.AssetParsing.Model.Material
+SiegeEngine.Core.AssetParsing.Model.MeshData
+SiegeEngine.Core.AssetParsing.Model.Skeleton
+SiegeEngine.Core.AssetParsing.Model.TextureInfo
+SiegeEngine.Core.AssetParsing.ModelMeshRender
+SiegeEngine.Core.AssetParsing.NodeParser
+SiegeEngine.Core.ContextManagement.AbstractRenderEnums
+SiegeEngine.Core.ContextManagement.ContextManager
+SiegeEngine.Core.ContextManagement.D3D12_COMMAND_SIGNATURE_DESC
+SiegeEngine.Core.ContextManagement.GlfwControlContext
+SiegeEngine.Core.ContextManagement.IControlContext
+SiegeEngine.Core.ContextManagement.IRenderContext
+SiegeEngine.Core.ContextManagement.OpenGLContextManager
+SiegeEngine.Core.ContextManagement.OpenGLEnums
+SiegeEngine.Core.ContextManagement.OpenGLRenderContext
+SiegeEngine.Core.ContextManagement.Viewport
+SiegeEngine.Core.ContextManagement.VkDeviceCreateInfo
+SiegeEngine.Core.Definitions.AnimationComponent
+SiegeEngine.Core.Definitions.CameraType
+SiegeEngine.Core.Definitions.DockingMode
+SiegeEngine.Core.Definitions.Entity
+SiegeEngine.Core.Definitions.EntityData
+SiegeEngine.Core.Definitions.EnvironmentSettings
+SiegeEngine.Core.Definitions.GameMode
+SiegeEngine.Core.Definitions.LightComponent
+SiegeEngine.Core.Definitions.LightType
+SiegeEngine.Core.Definitions.MaterialProperties
+SiegeEngine.Core.Definitions.Matrix3x3
+SiegeEngine.Core.Definitions.ModInfo
+SiegeEngine.Core.Definitions.ModelComponent
+SiegeEngine.Core.Definitions.PhysicsComponent
+SiegeEngine.Core.Definitions.PreviewComponent
+SiegeEngine.Core.Definitions.Rarity
+SiegeEngine.Core.Definitions.SoundSource
+SiegeEngine.Core.Definitions.Spawner
+SiegeEngine.Core.Definitions.SpriteComponent
+SiegeEngine.Core.Definitions.TransformComponent
+SiegeEngine.Core.Definitions.WallComponent
+SiegeEngine.Core.Definitions.WeatherState
+SiegeEngine.Core.Definitions.WindowAttribute
+SiegeEngine.Core.Events.ClosePanelEvent
+SiegeEngine.Core.Events.CustomEvent
+SiegeEngine.Core.Events.EntityAddedEvent
+SiegeEngine.Core.Events.EntityMovedEvent
+SiegeEngine.Core.Events.EntityPlacedEvent
+SiegeEngine.Core.Events.EntityRemovedEvent
+SiegeEngine.Core.Events.ExitEditorEvent
+SiegeEngine.Core.Events.GenericEvent
+SiegeEngine.Core.Events.ItemPickedUpEvent
+SiegeEngine.Core.Events.MovementRequestEvent
+SiegeEngine.Core.Events.OpenPanelEvent
+SiegeEngine.Core.Events.PhysicsCollisionEvent
+SiegeEngine.Core.Events.PlayerExitedEditorEvent
+SiegeEngine.Core.Events.ProtectedEventAttribute
+SiegeEngine.Core.Events.SelectBrushEvent
+SiegeEngine.Core.Events.SelectSpriteEvent
+SiegeEngine.Core.Events.SoundRayTraceResult
+SiegeEngine.Core.Events.TimeOfDayChangedEvent
+SiegeEngine.Core.Events.WeatherChangedEvent
+SiegeEngine.Core.Interfaces.IGameServer
+SiegeEngine.Core.Interfaces.IPanel
+SiegeEngine.Core.Interfaces.IProjectionProvider
+SiegeEngine.Core.Interfaces.IRenderer
+SiegeEngine.Core.Interfaces.ISoundValidator
+SiegeEngine.Core.Interfaces.ISteamEngine
+SiegeEngine.Core.Managers.CaptureManager
+SiegeEngine.Core.Managers.DesktopDockingStrategy
+SiegeEngine.Core.Managers.DockManager
+SiegeEngine.Core.Managers.DynamicDockingStrategy
+SiegeEngine.Core.Managers.GameModeManager
+SiegeEngine.Core.Managers.IDockingStrategy
+SiegeEngine.Core.Managers.LevelManager
+SiegeEngine.Core.Managers.LobbyManager
+SiegeEngine.Core.Managers.ModManager
+SiegeEngine.Core.Managers.PanelManager
+SiegeEngine.Core.Managers.SceneManager
+SiegeEngine.Core.Managers.SerializableFloatingPanel
+SiegeEngine.Core.Managers.UISettingsManager
+SiegeEngine.Core.Managers.acquired
+SiegeEngine.Core.Networking.ClientGameServerProxy
+SiegeEngine.Core.Networking.MovementRequest
+SiegeEngine.Core.Networking.SteamUGCRequestUGCDetailsResult_t
+SiegeEngine.Core.Rendering.BackgroundRenderer
+SiegeEngine.Core.Rendering.CachedGlyphRun
+SiegeEngine.Core.Rendering.CharacterData
+SiegeEngine.Core.Rendering.EditorTextRenderer
+SiegeEngine.Core.Rendering.GameRenderer
+SiegeEngine.Core.Rendering.LayeredUIRenderer
+SiegeEngine.Core.Rendering.ModelRenderer
+SiegeEngine.Core.Rendering.OrthoProjection
+SiegeEngine.Core.Rendering.POINT
+SiegeEngine.Core.Rendering.PerspectiveProjection
+SiegeEngine.Core.Rendering.Renderer
+SiegeEngine.Core.Rendering.RendererDetector
+SiegeEngine.Core.Rendering.ShaderProgram
+SiegeEngine.Core.Rendering.ShaderSetup
+SiegeEngine.Core.Rendering.Shaders.AnimationShader
+SiegeEngine.Core.Rendering.Shaders.AssetShader
+SiegeEngine.Core.Rendering.Shaders.EditorSceneShader
+SiegeEngine.Core.Rendering.Shaders.ModelShader
+SiegeEngine.Core.Rendering.Shaders.PointShader
+SiegeEngine.Core.Rendering.Shaders.SceneShader
+SiegeEngine.Core.Rendering.Shaders.SpriteShader
+SiegeEngine.Core.Rendering.Shaders.TextShader
+SiegeEngine.Core.Rendering.Shaders.UiShader
+SiegeEngine.Core.Rendering.Shaders.WaterShader
+SiegeEngine.Core.Rendering.TextureLoader
+SiegeEngine.Core.Rendering.UIQuadRenderer
+SiegeEngine.Core.Rendering.Vertex
+SiegeEngine.Core.Rendering.VertexBuffer
+SiegeEngine.Core.Terrain.CustomTerrainParser
+SiegeEngine.Core.Terrain.GeoReference
+SiegeEngine.Core.Terrain.TerrainTextureParser
+SiegeEngine.Core.Terrain.TerrainType
+SiegeEngine.Core.Terrain.TilemapExporter
+SiegeEngine.Core.UI.BasePanel
+SiegeEngine.Core.UI.CssParser
+SiegeEngine.Core.UI.CssStyle
+SiegeEngine.Core.UI.Elements.ButtonElement
+SiegeEngine.Core.UI.Elements.DivElement
+SiegeEngine.Core.UI.Elements.InputElement
+SiegeEngine.Core.UI.Elements.LiElement
+SiegeEngine.Core.UI.Elements.NavElement
+SiegeEngine.Core.UI.Elements.NavLiElement
+SiegeEngine.Core.UI.Elements.NavUlElement
+SiegeEngine.Core.UI.Elements.OlElement
+SiegeEngine.Core.UI.Elements.OptionElement
+SiegeEngine.Core.UI.Elements.RangeElement
+SiegeEngine.Core.UI.Elements.SelectElement
+SiegeEngine.Core.UI.Elements.TableElement
+SiegeEngine.Core.UI.Elements.TdElement
+SiegeEngine.Core.UI.Elements.TextElement
+SiegeEngine.Core.UI.Elements.ThElement
+SiegeEngine.Core.UI.Elements.TrElement
+SiegeEngine.Core.UI.Elements.UlElement
+SiegeEngine.Core.UI.HtmlElement
+SiegeEngine.Core.UI.HtmlLayoutUtils
+SiegeEngine.Core.UI.HtmlParser
+SiegeEngine.Core.UI.JSParser.ClassList
+SiegeEngine.Core.UI.JSParser.JSBinding
+SiegeEngine.Core.UI.JSParser.JSClickEvent
+SiegeEngine.Core.UI.JSParser.JSContext
+SiegeEngine.Core.UI.JSParser.JSDate
+SiegeEngine.Core.UI.JSParser.ReturnException
+SiegeEngine.Core.UI.JSParser.Token
+SiegeEngine.Core.UI.MenuUIOverlay
+SiegeEngine.Core.UI.PanelChrome
+SiegeEngine.Core.UI.UIInteractionLayer
+SiegeEngine.Core.UI.UIOverlay
+SiegeEngine.Core.UnityAssetLoader.MetaFileParser
+SiegeEngine.Core.UnityAssetLoader.PrefabFileReader
+SiegeEngine.Core.UnityAssetLoader.UnityAssetFileType
+SiegeEngine.Core.UnityAssetLoader.UnityAssetScanner
+SiegeEngine.PlayerSystem.AngledOrthoCamera
+SiegeEngine.PlayerSystem.CameraController
+SiegeEngine.PlayerSystem.CameraControllerExtensions
+SiegeEngine.PlayerSystem.InputHandler
+SiegeEngine.PlayerSystem.Player
+SiegeEngine.PlayerSystem.PlayerMovement
+SiegeEngine.PlayerSystem.PositionCalculator
+SiegeEngine.PlayerSystem.SwitchMenuEvent
+SiegeEngine.Scenes.FlyCameraController
+SiegeEngine.Scenes.GameScene
+SiegeEngine.Scenes.ModelViewerScene
+SiegeEngine.Scenes.Scene
+SiegeEngine.Scenes.StartingPoints.SandboxScene
+SiegeEngine.Scenes.StartingPoints.TwoDSandboxScene
+SiegeEngine.Scenes.TerrainScene
+SiegeEngine.Systems.AnimationSystem
+SiegeEngine.Systems.AudioSystem
+SiegeEngine.Systems.ClientPredictionSystem
+SiegeEngine.Systems.EnvironmentSystem
+SiegeEngine.Systems.GameSystem
+SiegeEngine.Systems.LightingSystem
+SiegeEngine.Systems.PlayerControllerSystem
+SwitchSceneEvent
+ThroneRoom.Class1
+ToolChest.AssetBrowserUIOverlay
+ToolChest.Brush
+ToolChest.BrushUIOverlay
+ToolChest.ConsoleUIOverlay
+ToolChest.EditorActionConfig
+ToolChest.ProjectSettings
+ToolChest.PropertiesUIOverlay
+ToolChest.SpritePlacementUIOverlay
+ToolChest.TreeNode
+Trebuchet.Launcher
