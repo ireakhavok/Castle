@@ -11,17 +11,17 @@ using SiegeEngine.Scenes;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text.Json;
 using System.Linq;
-using ToolChest;
-
+using System.Text.Json;
+using ToolChest; // required because ProjectSettings moved to ToolChest
 
 namespace CastleBuilder
 {
     public class EditorScene : Scene
     {
         private ProjectData _projectData;
-        private string _currentGameScene = string.Empty;
+        private string _currentGameSceneName = string.Empty;
+        private GameScene _activeGameScene; // NEW: runtime game scene (data-driven)
 
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus)
@@ -37,21 +37,44 @@ namespace CastleBuilder
         private void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+            {
+                Console.WriteLine("[EditorScene] No active project loaded yet - empty mode");
+                _activeGameScene = null;
+                return;
+            }
 
             string jsonPath = Path.Combine(projectPath, "project.json");
-            if (File.Exists(jsonPath))
+            if (!File.Exists(jsonPath)) return;
+
+            string json = File.ReadAllText(jsonPath);
+            _projectData = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+
+            if (_projectData.Scenes == null)
+                _projectData.Scenes = new Dictionary<string, SceneData>();
+
+            _currentGameSceneName = _projectData.LastOpenedScene
+                ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
+
+            ActivateCurrentGameScene();
+        }
+
+        private void ActivateCurrentGameScene()
+        {
+            if (string.IsNullOrEmpty(_currentGameSceneName) || _projectData?.Scenes == null)
             {
-                string json = File.ReadAllText(jsonPath);
-                _projectData = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+                _activeGameScene = null;
+                return;
+            }
 
-                if (_projectData.Scenes == null)
-                {
-                    _projectData.Scenes = new Dictionary<string, SceneData>();
-                }
+            if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sceneData))
+            {
+                _activeGameScene?.Dispose();
+                // Step 1 uses minimal stub; Step 2 will instantiate typed GameScenes (TerrainCreatorScene etc.)
+                _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
+                _activeGameScene.Initialize(_width, _height);
 
-                _currentGameScene = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? string.Empty);
-                Console.WriteLine($"[CastleBuilder.EditorScene] Loaded project '{_projectData.Name}' | Scenes: {string.Join(", ", _projectData.Scenes.Keys)} | Current: {_currentGameScene}");
+                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' from SceneData");
             }
         }
 
@@ -59,24 +82,47 @@ namespace CastleBuilder
         {
             if (_projectData?.Scenes?.ContainsKey(sceneName) == true)
             {
-                _currentGameScene = sceneName;
-                Console.WriteLine($"[CastleBuilder.EditorScene] Switched GAME scene → {sceneName}");
+                _currentGameSceneName = sceneName;
+                if (_projectData != null)
+                    _projectData.LastOpenedScene = sceneName;
+
+                ActivateCurrentGameScene();
+                Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName}");
             }
         }
 
         public override void Update(float deltaTime)
         {
-            // Future: load SceneData.Terrain, SceneData.Entities, SceneData.Environment into active scene
+            _activeGameScene?.Update(deltaTime);
         }
 
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.12f, 0.12f, 0.18f, 1f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            Console.WriteLine($"[CastleBuilder.EditorScene] Rendering GAME scene: {_currentGameScene}");
+
+            _activeGameScene?.Render(entities ?? GetEntities());
         }
 
         public List<string> GetAvailableScenes() => _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
-        public string CurrentGameScene => _currentGameScene;
+        public string CurrentGameScene => _currentGameSceneName;
+
+        public override void Dispose()
+        {
+            _activeGameScene?.Dispose();
+            base.Dispose();
+        }
+
+        // Temporary minimal stub for Step 1 only
+        private class BasicGameScene : GameScene
+        {
+            public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)
+                : base(rc, cc, w, s, eb, data) { }
+
+            public override void Render(IReadOnlyList<Entity> entities)
+            {
+                // Placeholder rendering – will be replaced by real GameScene subclasses in Step 2
+            }
+        }
     }
 }
