@@ -10,14 +10,14 @@ namespace CastleBuilder
 {
     public static class ProjectLayoutManager
     {
-        // Pure in-memory cache for all blades (Blender-style)
-        // Survives switching even with no project loaded
+        // Pure in-memory cache for every blade (Blender-style workspaces)
+        // This is ALWAYS active, even when no project is loaded
         private static readonly Dictionary<string, string> _memoryCache =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         public static void SaveCurrentLayout(string contextName)
         {
-            Console.WriteLine($"[ProjectLayoutManager] SaveCurrentLayout (MEMORY ONLY) - Context: '{contextName}'");
+            Console.WriteLine($"[ProjectLayoutManager] SaveCurrentLayout (MEMORY) - Context: '{contextName}'");
 
             var strategy = PanelManager.Current?.IDEStrategy;
             if (strategy == null)
@@ -31,13 +31,13 @@ namespace CastleBuilder
                 string fullState = strategy.SerializeState();
                 _memoryCache[contextName] = fullState;
 
-                // ONLY write to disk if a project is actually loaded
+                // Only write to disk if a project is loaded (never on switch)
                 string projectPath = ProjectSettings.Current.ActiveProject;
                 if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
                 {
                     string layoutPath = Path.Combine(projectPath, $"layout.{contextName}.json");
                     File.WriteAllText(layoutPath, fullState);
-                    Console.WriteLine($"[ProjectLayoutManager] Also committed to disk (project loaded)");
+                    Console.WriteLine($"[ProjectLayoutManager] Also saved to disk (project active)");
                 }
                 else
                 {
@@ -46,7 +46,7 @@ namespace CastleBuilder
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[ProjectLayoutManager] ERROR: Failed to save '{contextName}': {ex.Message}");
+                Console.WriteLine($"[ProjectLayoutManager] ERROR saving '{contextName}': {ex.Message}");
             }
         }
 
@@ -63,17 +63,17 @@ namespace CastleBuilder
 
             strategy.ClearAll();
 
-            // Memory first (instant switch, even with no project)
+            // Memory cache first (hotswap even with no project loaded)
             if (_memoryCache.TryGetValue(contextName, out string cachedState) && !string.IsNullOrEmpty(cachedState))
             {
                 strategy.DeserializeState(cachedState);
-                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Restored from MEMORY cache");
+                Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Restored '{contextName}' from MEMORY cache");
                 return;
             }
 
-            // Disk fallback (last saved state only)
+            // Disk fallback only when project exists
             string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath))
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
             {
                 Console.WriteLine("[ProjectLayoutManager] No active project - workspace cleared for new blade");
                 return;
@@ -92,12 +92,39 @@ namespace CastleBuilder
             {
                 string json = File.ReadAllText(layoutPath);
                 strategy.DeserializeState(json);
-                _memoryCache[contextName] = json; // prime memory
+                _memoryCache[contextName] = json; // prime cache
                 Console.WriteLine($"[ProjectLayoutManager] SUCCESS: Full docking layout restored for '{contextName}'");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[ProjectLayoutManager] ERROR: Failed to restore layout: {ex.Message}");
+            }
+        }
+
+        // Called ONLY by Save/SaveProjectAs - commits current memory to disk
+        public static void FlushAllToDisk()
+        {
+            Console.WriteLine("[ProjectLayoutManager] FlushAllToDisk - committing memory to disk");
+
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+            {
+                Console.WriteLine("[ProjectLayoutManager] No project - cannot flush");
+                return;
+            }
+
+            foreach (var kv in _memoryCache)
+            {
+                try
+                {
+                    string layoutPath = Path.Combine(projectPath, $"layout.{kv.Key}.json");
+                    File.WriteAllText(layoutPath, kv.Value);
+                    Console.WriteLine($"  Saved blade '{kv.Key}'");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  ERROR saving blade '{kv.Key}': {ex.Message}");
+                }
             }
         }
     }

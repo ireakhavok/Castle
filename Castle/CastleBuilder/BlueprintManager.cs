@@ -133,9 +133,8 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written");
 
-            string bladeToSave = _previousContext ?? "Scene Editor";
-            Console.WriteLine($"[BlueprintManager.DoProjectSave] Saving CURRENT blade to permanent file: {bladeToSave}");
-            ProjectLayoutManager.SaveCurrentLayout(bladeToSave);
+            ProjectLayoutManager.FlushAllToDisk();
+            Console.WriteLine("[BlueprintManager.DoProjectSave] All blades committed to disk");
         }
 
         public static void SaveProjectAs(string folder, string name, EventBus eventBus)
@@ -151,9 +150,9 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             eventBus.Publish(new LoadProjectEvent { Path = dir });
 
-            // Save current in-memory state of the active blade to the new project
-            string bladeToSave = _previousContext ?? "Scene Editor";
-            ProjectLayoutManager.SaveCurrentLayout(bladeToSave);
+            // Flush current in-memory state of ALL blades to the new project
+            ProjectLayoutManager.FlushAllToDisk();
+            Console.WriteLine($"[BlueprintManager.SaveProjectAs] All blades committed to new project {dir}");
         }
 
         private void OnGenericEvent(GenericEvent evt)
@@ -225,30 +224,20 @@ namespace CastleBuilder
             string newContext = evt.Context ?? "Scene Editor";
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Switching from '{_previousContext}' → '{newContext}'");
 
-            // NO DISK WRITE ON SWITCH - pure memory only (exactly as you asked)
+            // Save previous blade to memory BEFORE clearing (pure memory hotswap, even with no project)
+            if (!string.IsNullOrEmpty(_previousContext))
+            {
+                Console.WriteLine($"[BlueprintManager.OnContextChanged] Saving previous blade '{_previousContext}' to MEMORY");
+                ProjectLayoutManager.SaveCurrentLayout(_previousContext);
+            }
+
             var strategy = PanelManager.Current?.IDEStrategy;
             strategy?.ClearAll();
 
-            string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath))
-            {
-                Console.WriteLine("[BlueprintManager.OnContextChanged] No active project - workspace cleared for new blade");
-                _previousContext = newContext;
-                return;
-            }
-
-            string jsonPath = Path.Combine(projectPath, "project.json");
-            if (File.Exists(jsonPath))
-            {
-                string json = File.ReadAllText(jsonPath);
-                var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
-                data.LastContext = newContext;
-                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
-            }
-
             ProjectLayoutManager.LoadLayoutForContext(newContext);
+
             _previousContext = newContext;
-            Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' layout restored");
+            Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory only)");
         }
 
         private void OnFileSelected(FileSelectedEvent e)
