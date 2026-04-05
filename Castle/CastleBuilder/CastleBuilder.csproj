@@ -23,6 +23,7 @@
 <ItemGroup>
   <None Remove="IDE_UI.html" />
   <None Remove="SaveProjectForm.html" />
+  <None Remove="SceneEditorUI.html" />
 </ItemGroup>
 
 <ItemGroup>
@@ -30,6 +31,9 @@
     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </Content>
   <Content Include="SaveProjectForm.html">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </Content>
+  <Content Include="SceneEditorUI.html">
     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </Content>
 </ItemGroup>

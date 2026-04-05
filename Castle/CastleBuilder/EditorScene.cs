@@ -1,5 +1,6 @@
 ﻿// Folder: CastleBuilder
 // File: EditorScene.cs
+using MapRoom;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -8,11 +9,11 @@ using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Scenes;
-using MapRoom;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
 using ToolChest;
 
@@ -35,7 +36,7 @@ namespace CastleBuilder
             LoadProjectData();
         }
 
-        private void LoadProjectData()
+        public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
@@ -81,6 +82,9 @@ namespace CastleBuilder
                     _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
                 }
 
+                // Critical: force terrain loading into the scene
+                _activeGameScene.LoadSceneData(sceneData);
+
                 _activeGameScene.Initialize(_width, _height);
 
                 Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' from SceneData");
@@ -100,8 +104,22 @@ namespace CastleBuilder
             }
         }
 
+        // Full mouse/keyboard forwarding for fly camera + brush tools
+        public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
+        {
+            if (_activeGameScene is TerrainCreatorScene terrainScene)
+            {
+                terrainScene.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
+            }
+            else if (_activeGameScene != null)
+            {
+                _activeGameScene.Update(deltaTime);
+            }
+        }
+
         public override void Update(float deltaTime)
         {
+            // Simple fallback for systems that only call basic Update
             _activeGameScene?.Update(deltaTime);
         }
 
