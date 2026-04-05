@@ -28,40 +28,41 @@ namespace CastleBuilder
 
             protected override void HandleDataHook(string hook)
             {
-                Console.WriteLine($"[IDE Menu] Clicked: {hook}");
-                var parts = hook.Split('.');
-                if (parts.Length < 3) return;
-                string ns = parts[0];
-                string className = parts[1];
-                string methodName = parts[2];
-                Type type = null;
-                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    type = asm.GetType($"{ns}.{className}");
-                    if (type != null) break;
-                }
-                if (type == null)
-                {
-                    Console.WriteLine($"[IDE Menu] Type not found: {ns}.{className}");
-                    return;
-                }
-                var method = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public);
-                if (method != null)
-                {
-                    try
-                    {
-                        method.Invoke(null, new object[] { _renderContext, _controlContext, _window, _eventBus });
-                        Console.WriteLine($"[IDE Menu] SUCCESS: Opened panel via {hook}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[IDE Menu] Error calling {hook}: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"[IDE Menu] Method '{methodName}' not found on {ns}.{className}");
-                }
+                base.HandleDataHook(hook);
+                //Console.WriteLine($"[IDE Menu] Clicked: {hook}");
+                //var parts = hook.Split('.');
+                //if (parts.Length < 3) return;
+                //string ns = parts[0];
+                //string className = parts[1];
+                //string methodName = parts[2];
+                //Type type = null;
+                //foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                //{
+                //    type = asm.GetType($"{ns}.{className}");
+                //    if (type != null) break;
+                //}
+                //if (type == null)
+                //{
+                //    Console.WriteLine($"[IDE Menu] Type not found: {ns}.{className}");
+                //    return;
+                //}
+                //var method = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public);
+                //if (method != null)
+                //{
+                //    try
+                //    {
+                //        method.Invoke(null, new object[] { _renderContext, _controlContext, _window, _eventBus });
+                //        Console.WriteLine($"[IDE Menu] SUCCESS: Opened panel via {hook}");
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        Console.WriteLine($"[IDE Menu] Error calling {hook}: {ex.Message}");
+                //    }
+                //}
+                //else
+                //{
+                //    Console.WriteLine($"[IDE Menu] Method '{methodName}' not found on {ns}.{className}");
+                //}
             }
 
             private void OnContextChanged(ContextChangedEvent evt)
