@@ -133,6 +133,13 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written");
 
+            // Force current blade into memory before Flush (this makes Save work)
+            if (!string.IsNullOrEmpty(_previousContext))
+            {
+                Console.WriteLine($"[BlueprintManager.DoProjectSave] Forcing CURRENT blade '{_previousContext}' into memory");
+                ProjectLayoutManager.SaveCurrentLayout(_previousContext);
+            }
+
             ProjectLayoutManager.FlushAllToDisk();
             Console.WriteLine("[BlueprintManager.DoProjectSave] All blades committed to disk");
         }
@@ -150,7 +157,13 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             eventBus.Publish(new LoadProjectEvent { Path = dir });
 
-            // Flush current in-memory state of ALL blades to the new project
+            // Force current blade into memory before Flush
+            if (!string.IsNullOrEmpty(_previousContext))
+            {
+                Console.WriteLine($"[BlueprintManager.SaveProjectAs] Forcing CURRENT blade '{_previousContext}' into memory");
+                ProjectLayoutManager.SaveCurrentLayout(_previousContext);
+            }
+
             ProjectLayoutManager.FlushAllToDisk();
             Console.WriteLine($"[BlueprintManager.SaveProjectAs] All blades committed to new project {dir}");
         }
@@ -224,7 +237,7 @@ namespace CastleBuilder
             string newContext = evt.Context ?? "Scene Editor";
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Switching from '{_previousContext}' → '{newContext}'");
 
-            // Save previous blade to memory BEFORE clearing (pure memory hotswap, even with no project)
+            // MEMORY ONLY - always save previous blade (even with no project loaded)
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.OnContextChanged] Saving previous blade '{_previousContext}' to MEMORY");
@@ -234,10 +247,24 @@ namespace CastleBuilder
             var strategy = PanelManager.Current?.IDEStrategy;
             strategy?.ClearAll();
 
+            // ALWAYS load the new blade (memory cache works even with no project)
             ProjectLayoutManager.LoadLayoutForContext(newContext);
 
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (!string.IsNullOrEmpty(projectPath))
+            {
+                string jsonPath = Path.Combine(projectPath, "project.json");
+                if (File.Exists(jsonPath))
+                {
+                    string json = File.ReadAllText(jsonPath);
+                    var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+                    data.LastContext = newContext;
+                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+                }
+            }
+
             _previousContext = newContext;
-            Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory only)");
+            Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory hotswap)");
         }
 
         private void OnFileSelected(FileSelectedEvent e)
