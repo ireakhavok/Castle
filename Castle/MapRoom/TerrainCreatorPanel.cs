@@ -51,6 +51,7 @@ namespace MapRoom
             HasTitleBar = true;
             IsClosable = true;
             Scaling = ScalingMode.BestFit;
+            DockingMode = DockingMode.IDE;
             BaseWidth = 1280f;
             BaseHeight = 720f;
             _initialTerrainPath = initialTerrainPath;

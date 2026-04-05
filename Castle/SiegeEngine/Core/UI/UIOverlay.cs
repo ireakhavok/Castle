@@ -1,16 +1,17 @@
 ﻿// Folder: SiegeEngine.Core.UI
 // File: UIOverlay.cs
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.Shaders;
+using SiegeEngine.Core.UI.Elements;
+using SiegeEngine.Core.UI.JSParser;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using SiegeEngine.Core.UI.JSParser;
-using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.Rendering;
-using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.Rendering.Shaders;
-using SiegeEngine.Core.UI.Elements;
 
 namespace SiegeEngine.Core.UI
 {
@@ -19,6 +20,7 @@ namespace SiegeEngine.Core.UI
         protected readonly IRenderContext _renderContext;
         protected readonly IControlContext _controlContext;
         protected readonly nint _window;
+        protected readonly EventBus _eventBus;
         protected ShaderProgram _uiShader;
         protected TextRenderer _textRenderer;
         protected UIQuadRenderer _quadRenderer;
@@ -37,11 +39,19 @@ namespace SiegeEngine.Core.UI
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
 
+        // Legacy 3-arg constructor for full backward compatibility with all existing panels
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
+            : this(renderContext, controlContext, window, null)
+        {
+        }
+
+        // 4-arg constructor used by BasePanel and MenuPanel
+        public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _window = window;
+            _eventBus = eventBus;
         }
 
         public virtual void Init()
@@ -190,6 +200,8 @@ namespace SiegeEngine.Core.UI
 
         protected virtual void HandleDataHook(string hook)
         {
+            // SINGLE CENTRALIZED LOCATION FOR ALL DATA-HOOK PROCESSING
+            DataHookProcessor.Process(hook, _renderContext, _controlContext, _window, _eventBus, this);
         }
 
         protected virtual void HandleLink(string href)
@@ -404,8 +416,6 @@ namespace SiegeEngine.Core.UI
                 var select = elem as SelectElement;
                 if (select != null)
                 {
-                    // Clicking the visible select box (closed state) = toggle dropdown ONLY
-                    // Do NOT run data-hook here
                     CloseAllOpenSelects();
                     select.IsOpen = !select.IsOpen;
                     _interactionLayer._justOpenedSelect = select.IsOpen;
@@ -420,7 +430,6 @@ namespace SiegeEngine.Core.UI
                 {
                     if (select.IsOpen)
                     {
-                        // User actually chose a new option from the open dropdown
                         foreach (var opt in select.Children.Where(c => c.Tag.ToLower() == "option"))
                         {
                             opt.Attributes.Remove("selected");
@@ -429,7 +438,6 @@ namespace SiegeEngine.Core.UI
                         select.IsOpen = false;
                         valueChanged = true;
 
-                        // === EXPLICITLY trigger the data-hook that lives on the <select> element ===
                         if (select.Attributes.ContainsKey("data-hook"))
                         {
                             string hook = select.Attributes["data-hook"];
@@ -440,7 +448,6 @@ namespace SiegeEngine.Core.UI
                     }
                     else
                     {
-                        // Clicking the visible selected option while closed = open the dropdown
                         CloseAllOpenSelects();
                         select.IsOpen = true;
                         _interactionLayer._justOpenedSelect = true;
@@ -450,11 +457,8 @@ namespace SiegeEngine.Core.UI
                 }
             }
 
-            // === GENERAL DATA-HOOK HANDLING (restored for ALL non-select elements) ===
-            // This keeps every other data-hook on the page working exactly as before.
             if (elem.Attributes.ContainsKey("data-hook"))
             {
-                // Skip the select element itself (we already handled it above when an option was chosen)
                 if (elem.Tag != "select")
                 {
                     string hook = elem.Attributes["data-hook"];

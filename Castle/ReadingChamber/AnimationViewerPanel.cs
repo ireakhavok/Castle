@@ -33,22 +33,25 @@ namespace ReadingChamber
         private class AssetUIOverlay : UIOverlay
         {
             private readonly AnimationViewerPanel _parent;
-            public AssetUIOverlay(AnimationViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
+
+            public AssetUIOverlay(AnimationViewerPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+                : base(renderContext, controlContext, window, eventBus)
             {
                 _parent = parent;
             }
 
             public override bool HandleUIClick(HtmlElement elem)
             {
-                base.HandleUIClick(elem);
+                // Core dropdown + button logic runs first (select/option still works perfectly)
+                bool coreHandled = base.HandleUIClick(elem);
+
+                // Only custom non-dropdown buttons (LoadMesh etc.)
                 _parent.HandleUIClick(elem);
-                return true;
+
+                return coreHandled;
             }
 
-            protected override void HandleDataHook(string hook)
-            {
-                _parent.HandleDataHook(hook);
-            }
+            // NO HandleDataHook override anymore - everything goes through GenericEvent subscription
         }
 
         private ModelViewerScene _viewerScene;
@@ -56,7 +59,8 @@ namespace ReadingChamber
         private ShaderProgram _textShader;
         private List<string> _animationFiles = new List<string>();
 
-        public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
+        public AnimationViewerPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+            : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
             IsClosable = true;
@@ -69,22 +73,66 @@ namespace ReadingChamber
 
         protected override UIOverlay CreateUIOverlay()
         {
-            return new AssetUIOverlay(this, _renderContext, _controlContext, _window);
+            return new AssetUIOverlay(this, _renderContext, _controlContext, _window, _eventBus);
         }
 
         public override void Init()
         {
             base.Init();
+
             _textShader = new ShaderProgram(_renderContext, TextShader.VertexShaderSource, TextShader.FragmentShaderSource);
             _textRenderer = new EditorTextRenderer(_renderContext, _window);
             _textRenderer.Initialize(_textShader);
+
             _viewerScene.Initialize((int)Size.Y, (int)Size.X);
             _animationFiles = _viewerScene.GetAnimationFiles();
             UpdateUIControls();
+
+            // Subscribe to events instead of using HandleDataHook overrides
+            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
+
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+        }
+
+        private void OnGenericEvent(GenericEvent e)
+        {
+            if (e.Hook == "AnimSelectChanged")
+            {
+                var select = _uiOverlay.FindElementById("animSelect") as SelectElement;
+                if (select != null && !string.IsNullOrEmpty(select.Value))
+                {
+                    Console.WriteLine($"[AnimationViewerPanel] Loading animation: {select.Value}");
+                    _viewerScene.LoadAnimation(select.Value);
+                }
+            }
+            else if (e.Hook == "TogglePlay")
+            {
+                _viewerScene.TogglePlay();
+            }
+        }
+
+        private void OnFileSelected(FileSelectedEvent e)
+        {
+            string hook = e.UserData as string;
+            if (hook == "LoadMesh")
+            {
+                _viewerScene.LoadMesh(e.Path);
+                _viewerScene.DiscoverAnimationFiles();
+                _animationFiles = _viewerScene.GetAnimationFiles();
+                UpdateUIControls();
+                _uiOverlay.RefreshUI();
+            }
+            else if (hook == "LoadArmature")
+            {
+                _viewerScene.LoadArmature(e.Path);
+            }
+            else if (hook == "LoadAnimation")
+            {
+                _viewerScene.LoadAnimation(e.Path);
+            }
         }
 
         private void UpdateUIControls()
@@ -109,59 +157,16 @@ namespace ReadingChamber
             _uiOverlay.RefreshUI();
         }
 
-        private void OnFileSelected(FileSelectedEvent e)
-        {
-            string hook = e.UserData as string;
-            if (hook == "LoadMesh")
-            {
-                _viewerScene.LoadMesh(e.Path);
-                _viewerScene.DiscoverAnimationFiles();
-                _animationFiles = _viewerScene.GetAnimationFiles();
-                UpdateUIControls();
-                _uiOverlay.RefreshUI();
-            }
-            else if (hook == "LoadArmature")
-            {
-                _viewerScene.LoadArmature(e.Path);
-            }
-            else if (hook == "LoadAnimation")
-            {
-                _viewerScene.LoadAnimation(e.Path);
-            }
-        }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
-            if (hook == "TogglePlay")
-            {
-                _viewerScene.TogglePlay();
-            }
-            else if (hook == "LoadMesh" || hook == "LoadArmature" || hook == "LoadAnimation")
+            if (hook == "LoadMesh" || hook == "LoadArmature" || hook == "LoadAnimation")
             {
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
                 fileSelector.UserData = hook;
                 fileSelector.IsModal = true;
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
-            }
-        }
-
-        private void HandleDataHook(string hook)
-        {
-            if (hook == "AnimSelectChanged")
-            {
-                var select = _uiOverlay.FindElementById("animSelect") as SelectElement;
-                if (select != null)
-                {
-                    string val = select.Value;
-                    if (!string.IsNullOrEmpty(val))
-                    {
-                        _viewerScene.LoadAnimation(val);
-                        select.Value = val;
-                        _uiOverlay.RefreshUI();
-                    }
-                }
             }
         }
 
@@ -181,11 +186,12 @@ namespace ReadingChamber
         public override void OnLiveResize(float w, float h)
         {
             _viewerScene.Resize((int)w, (int)h);
-            base.OnLiveResize(w, h);   // let BasePanel's new live RefreshUI run
+            base.OnLiveResize(w, h);
         }
 
         public override void Dispose()
         {
+
             _viewerScene.Dispose();
             _textRenderer.Dispose();
             _textShader.Dispose();

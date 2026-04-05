@@ -35,6 +35,7 @@ namespace ToolChest
         {
             HasTitleBar = true;
             IsClosable = true;
+            DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
             AllowDragging = true;
             DockState = DockState.Floating;
         }

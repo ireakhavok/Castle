@@ -32,7 +32,6 @@ namespace CastleBuilder
         {
             BlueprintManager.EnsureDefaultSceneIfNeeded();
             eventBus.Publish(new ContextChangedEvent { Context = "Scene Editor" });
-            OpenEditorScene(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands] Switched to Scene Editor context (panel opened)");
         }
 
