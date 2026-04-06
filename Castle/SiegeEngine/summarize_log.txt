@@ -902,6 +902,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssStyle.cs
 Read 10811 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssStyle.cs
 Namespace: SiegeEngine.Core.UI
 Found 2 dependencies
+Found: DataHookProcessor.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\DataHookProcessor.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\DataHookProcessor.cs
+Read 4470 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\DataHookProcessor.cs
+Namespace: SiegeEngine.Core.UI
+Found 8 dependencies
 Found: Elements
 Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements
 Found: .
@@ -1087,7 +1093,7 @@ Found 9 dependencies
 Found: MenuPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
-Read 8858 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
+Read 4354 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: PanelChrome.cs
@@ -1111,9 +1117,9 @@ Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 25855 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 25794 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
-Found 11 dependencies
+Found 12 dependencies
 Found: HeirarchySummary.exe
 Found: obj
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\SiegeEngine\obj

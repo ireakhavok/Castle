@@ -332,9 +332,9 @@ Found: castlebuilder_summary.txt
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
-Read 4751 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
+Read 5544 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
-Found 15 dependencies
+Found 16 dependencies
 Found: Events
 Listing folder: C:\repos\RealmFoundry\Castle\CastleBuilder\Events
 Found: .
@@ -367,14 +367,14 @@ Found: HeirarchySummary.exe
 Found: IDEBasePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
-Read 6573 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
+Read 4830 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\IDEBasePanel.cs
 Namespace: CastleBuilder
-Found 10 dependencies
+Found 9 dependencies
 Found: IDE_UI.html
 Found: MenuCommands.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
-Read 5691 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Read 5613 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
 Namespace: CastleBuilder
 Found 9 dependencies
 Found: NewProjectPanel.cs
@@ -401,9 +401,10 @@ Found 11 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
-Read 3674 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
+Read 5525 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
-Found 10 dependencies
+Found 12 dependencies
+Found: SceneEditorUI.html
 Found: summarize_log.txt
 Found: Citadel
 Listing folder: C:\repos\RealmFoundry\Castle\Citadel
@@ -518,7 +519,7 @@ Found: NewTerrainForm.html
 Found: NewTerrainPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
-Read 6447 chars from: C:\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
+Read 6457 chars from: C:\repos\RealmFoundry\Castle\MapRoom\NewTerrainPanel.cs
 Namespace: MapRoom
 Found 12 dependencies
 Found: obj
@@ -526,7 +527,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\MapRoom\obj
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
-Read 11590 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Read 11633 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 14 dependencies
 Found: TerrainCreatorScene.cs
@@ -577,7 +578,7 @@ Found: ..
 Found: AnimationViewerPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
-Read 7615 chars from: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
+Read 7858 chars from: C:\repos\RealmFoundry\Castle\ReadingChamber\AnimationViewerPanel.cs
 Namespace: ReadingChamber
 Found 19 dependencies
 Found: AssetViewerUI.html
@@ -1508,6 +1509,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssStyle.cs
 Read 10811 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssStyle.cs
 Namespace: SiegeEngine.Core.UI
 Found 2 dependencies
+Found: DataHookProcessor.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\DataHookProcessor.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\DataHookProcessor.cs
+Read 4470 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\DataHookProcessor.cs
+Namespace: SiegeEngine.Core.UI
+Found 8 dependencies
 Found: Elements
 Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements
 Found: .
@@ -1693,7 +1700,7 @@ Found 9 dependencies
 Found: MenuPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
-Read 8858 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
+Read 4354 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: PanelChrome.cs
@@ -1717,9 +1724,9 @@ Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 25855 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 25794 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
-Found 11 dependencies
+Found 12 dependencies
 Found: HeirarchySummary.exe
 Found: obj
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\SiegeEngine\obj
@@ -1914,7 +1921,7 @@ Found 2 dependencies
 Found: BrushPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
-Read 5544 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
+Read 5616 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Namespace: ToolChest
 Found 9 dependencies
 Found: BrushPanelUI.html

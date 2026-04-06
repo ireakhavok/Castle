@@ -294,6 +294,12 @@ Folder: Core
       - uint NumArgumentDescs
       - nint pArgumentDescs
       - uint NodeMask
+- File: DataHookProcessor.cs
+  - Class: DataHookProcessor (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.IO, System.Reflection
+    - Methods:
+      - void Process( BasePanel callerPanel = null,  EventBus eventBus,  IControlContext controlContext,  IRenderContext renderContext,  UIOverlay overlayForFormData = null,  nint window, string hook)
+        - Calls: ClosePanelEvent, mi.Invoke, mi5.Invoke
 - File: DesktopDockingStrategy.cs
   - Class: DesktopDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Inherits: IDockingStrategy
@@ -1031,10 +1037,9 @@ Folder: Core
     - Fields:
       - MenuPanel _parent
       - ModManager _modManager
-      - EventBus _eventBus
     - Methods:
       - void HandleDataHook(string hook)
-        - Calls: ClosePanelEvent, _document.getElementById, checked.ToString, mi.Invoke, mi5.Invoke
+        - Calls: DataHookProcessor.Process
       - void HandleLink(string href)
         - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
 - File: MeshData.cs
@@ -1764,11 +1769,12 @@ Folder: Core
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
       - nint _window
+      - EventBus _eventBus
       - ShaderProgram _uiShader
       - TextRenderer _textRenderer
       - UIQuadRenderer _quadRenderer
@@ -1781,7 +1787,7 @@ Folder: Core
       - bool _needsVerticalScrollbar
       - UIInteractionLayer _interactionLayer
     - Methods:
-      - constructor UIOverlay( IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - constructor UIOverlay( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
       - void Init()
         - Calls: ShaderProgram, TextRenderer, UIInteractionLayer, UIQuadRenderer, _textRenderer.Initialize
       - void LoadUI( string baseDir = "", string html)
@@ -1791,6 +1797,7 @@ Folder: Core
       - void CollectClickables(HtmlElement elem)
         - Calls: elem.GetEffectiveDisplay
       - void HandleDataHook(string hook)
+        - Calls: DataHookProcessor.Process
       - void HandleLink(string href)
         - Calls: LoadUI
       - void RefreshUI()
@@ -1806,10 +1813,6 @@ Folder: Core
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - bool HandleUIClick(HtmlElement elem)
         - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis
-      - here CloseAllOpenSelects()
-        - Calls: HandleDataHook, RefreshUI
-      - dropdown CloseAllOpenSelects()
-        - Calls: HandleDataHook
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
@@ -2600,6 +2603,7 @@ SiegeEngine.Core.Terrain.TilemapExporter
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.CssParser
 SiegeEngine.Core.UI.CssStyle
+SiegeEngine.Core.UI.DataHookProcessor
 SiegeEngine.Core.UI.Elements.ButtonElement
 SiegeEngine.Core.UI.Elements.DivElement
 SiegeEngine.Core.UI.Elements.InputElement

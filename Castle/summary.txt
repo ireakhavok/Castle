@@ -41,19 +41,17 @@ Folder: CastleBuilder
   - Class: BasicGameScene (Namespace: CastleBuilder)
     - Inherits: GameScene
         
-    - Dependencies: MapRoom, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Text.Json, ToolChest
+    - Dependencies: MapRoom, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json, ToolChest
     - Methods:
       - void Render(IReadOnlyList<Entity> entities)
 - File: IDEBasePanel.cs
   - Class: IDEUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.IO, System.Numerics, System.Reflection
+    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.IO, System.Numerics
     - Fields:
       - EventBus _eventBus
     - Methods:
-      - void HandleDataHook(string hook)
-        - Calls: method.Invoke
       - void OnContextChanged(ContextChangedEvent evt)
         - Calls: RefreshMenuForContext
       - void RefreshMenuForContext(string context)
@@ -76,7 +74,7 @@ Folder: CastleBuilder
       - void SwitchToTerrain( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
       - void SwitchToAnimator( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
       - void SwitchToSceneEditor( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: BlueprintManager.EnsureDefaultSceneIfNeeded, OpenEditorScene
+        - Calls: BlueprintManager.EnsureDefaultSceneIfNeeded
       - void SwitchToConfiguration( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
       - void LoadProject( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: OpenPanelEvent
@@ -157,11 +155,12 @@ Folder: CastleBuilder
   - Class: SceneEditorUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
       - bool HandleUIClick(HtmlElement elem)
+      - void HandleDataHook(string hook)
 
 Folder: Citadel
 - File: EntityDeltaTracker.cs
@@ -450,7 +449,6 @@ Folder: ReadingChamber
       - AnimationViewerPanel _parent
     - Methods:
       - bool HandleUIClick(HtmlElement elem)
-      - void HandleDataHook(string hook)
 - File: FileSelectorPanel.cs
   - Class: FileSelectorUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
@@ -877,6 +875,12 @@ Folder: SiegeEngine
       - uint NumArgumentDescs
       - nint pArgumentDescs
       - uint NodeMask
+- File: DataHookProcessor.cs
+  - Class: DataHookProcessor (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.IO, System.Reflection
+    - Methods:
+      - void Process( BasePanel callerPanel = null,  EventBus eventBus,  IControlContext controlContext,  IRenderContext renderContext,  UIOverlay overlayForFormData = null,  nint window, string hook)
+        - Calls: ClosePanelEvent, mi.Invoke, mi5.Invoke
 - File: DesktopDockingStrategy.cs
   - Class: DesktopDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Inherits: IDockingStrategy
@@ -1716,10 +1720,9 @@ Folder: SiegeEngine
     - Fields:
       - MenuPanel _parent
       - ModManager _modManager
-      - EventBus _eventBus
     - Methods:
       - void HandleDataHook(string hook)
-        - Calls: ClosePanelEvent, _document.getElementById, checked.ToString, mi.Invoke, mi5.Invoke
+        - Calls: DataHookProcessor.Process
       - void HandleLink(string href)
         - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
 - File: MeshData.cs
@@ -2699,11 +2702,12 @@ Folder: SiegeEngine
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
       - nint _window
+      - EventBus _eventBus
       - ShaderProgram _uiShader
       - TextRenderer _textRenderer
       - UIQuadRenderer _quadRenderer
@@ -2716,7 +2720,7 @@ Folder: SiegeEngine
       - bool _needsVerticalScrollbar
       - UIInteractionLayer _interactionLayer
     - Methods:
-      - constructor UIOverlay( IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - constructor UIOverlay( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
       - void Init()
         - Calls: ShaderProgram, TextRenderer, UIInteractionLayer, UIQuadRenderer, _textRenderer.Initialize
       - void LoadUI( string baseDir = "", string html)
@@ -2726,6 +2730,7 @@ Folder: SiegeEngine
       - void CollectClickables(HtmlElement elem)
         - Calls: elem.GetEffectiveDisplay
       - void HandleDataHook(string hook)
+        - Calls: DataHookProcessor.Process
       - void HandleLink(string href)
         - Calls: LoadUI
       - void RefreshUI()
@@ -2741,10 +2746,6 @@ Folder: SiegeEngine
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - bool HandleUIClick(HtmlElement elem)
         - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis
-      - here CloseAllOpenSelects()
-        - Calls: HandleDataHook, RefreshUI
-      - dropdown CloseAllOpenSelects()
-        - Calls: HandleDataHook
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
