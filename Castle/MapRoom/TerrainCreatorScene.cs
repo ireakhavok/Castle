@@ -131,9 +131,11 @@ namespace MapRoom
             CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
             if (_sceneData?.Terrain != null)
             {
-                _sceneData.Terrain.HeightmapPath = tifPath;
+                // store RELATIVE path so it survives project moves
+                string relativePath = Path.GetRelativePath(projectPath, tifPath);
+                _sceneData.Terrain.HeightmapPath = relativePath;
             }
-            Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}'");
+            Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → {tifPath}");
         }
         public void Export2D(string projectAssetsDir)
         {
