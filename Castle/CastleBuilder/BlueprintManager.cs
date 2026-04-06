@@ -1,18 +1,19 @@
 ﻿// Folder: CastleBuilder
 // File: BlueprintManager.cs
 using CastleBuilder.Events;
-using System;
-using System.IO;
-using System.Text.Json;
-using System.Collections.Generic;
-using System.Globalization;
-using SiegeEngine.Core.Events;
+using MapRoom;
 using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
-using SiegeEngine.Core.Managers;
-using SiegeEngine.Core.Definitions;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text.Json;
 using ToolChest;
 namespace CastleBuilder
 {
@@ -127,6 +128,8 @@ namespace CastleBuilder
             data.LastOpenedScene = sceneName;
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine($"[BlueprintManager] New scene created: {sceneName} (200×200 default terrain initialized in memory)");
+            var terrainPanel = new TerrainCreatorPanel(renderContext, controlContext, window, eventBus, sceneData);
+            eventBus.Publish(new OpenPanelEvent(terrainPanel) { Mode = OpenMode.Replace });
             eventBus.Publish(new LoadProjectEvent { Path = projectPath });
         }
         public static void EnsureDefaultSceneIfNeeded()

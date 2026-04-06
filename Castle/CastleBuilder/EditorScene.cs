@@ -45,21 +45,15 @@ namespace CastleBuilder
                 _currentGameSceneName = "Default";
                 _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus);
                 _activeGameScene.Initialize(_width, _height);
+                if (_activeGameScene is TerrainCreatorScene tcs) tcs.CreateBlank();
                 return;
             }
-
             string jsonPath = Path.Combine(projectPath, "project.json");
             if (!File.Exists(jsonPath)) return;
-
             string json = File.ReadAllText(jsonPath);
             _projectData = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
-
-            if (_projectData.Scenes == null)
-                _projectData.Scenes = new Dictionary<string, SceneData>();
-
-            _currentGameSceneName = _projectData.LastOpenedScene
-                ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
-
+            if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
+            _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
             ActivateCurrentGameScene();
         }
 
@@ -70,11 +64,9 @@ namespace CastleBuilder
                 _activeGameScene = null;
                 return;
             }
-
             if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sceneData))
             {
                 _activeGameScene?.Dispose();
-
                 if (sceneData.SceneType == "TerrainTest" || sceneData.Terrain.HeightmapPath != null || _currentGameSceneName.Contains("Terrain"))
                 {
                     _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
@@ -83,10 +75,8 @@ namespace CastleBuilder
                 {
                     _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
                 }
-
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
-
                 Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' from SceneData");
             }
         }
@@ -96,15 +86,12 @@ namespace CastleBuilder
             if (_projectData?.Scenes?.ContainsKey(sceneName) == true)
             {
                 _currentGameSceneName = sceneName;
-                if (_projectData != null)
-                    _projectData.LastOpenedScene = sceneName;
-
+                if (_projectData != null) _projectData.LastOpenedScene = sceneName;
                 ActivateCurrentGameScene();
                 Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName}");
             }
         }
 
-        // NEW: Forward resize to the active inner scene (this is what was missing)
         public override void Resize(int width, int height)
         {
             base.Resize(width, height);
@@ -132,11 +119,11 @@ namespace CastleBuilder
         {
             _renderContext.ClearColor(0.12f, 0.12f, 0.18f, 1f);
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-
             _activeGameScene?.Render(entities ?? GetEntities());
         }
 
         public List<string> GetAvailableScenes() => _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
+
         public string CurrentGameScene => _currentGameSceneName;
 
         public override void Dispose()
@@ -149,10 +136,7 @@ namespace CastleBuilder
         {
             public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)
                 : base(rc, cc, w, s, eb, data) { }
-
-            public override void Render(IReadOnlyList<Entity> entities)
-            {
-            }
+            public override void Render(IReadOnlyList<Entity> entities) { }
         }
     }
 }

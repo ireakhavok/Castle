@@ -26,7 +26,7 @@ namespace MapRoom
         private bool _isBrushing = false;
         private float _lastBrushUpdateTime = 0f;
         private Vector3 _lastGhostPosition = Vector3.Zero;
-        private const float BrushUpdateInterval = 0.033f;
+        private const float BrushUpdateInterval = 0.0f;
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData; // NEW: direct reference to project memory
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
@@ -37,7 +37,7 @@ namespace MapRoom
         }
         public void CreateBlank()
         {
-            _terrainWidth = 200;  // NEW: 200×200 default for new scenes
+            _terrainWidth = 200; // NEW: 200×200 default for new scenes
             _terrainHeight = 200;
             _heightmap = new float[_terrainWidth, _terrainHeight];
             _minHeight = float.MaxValue;
@@ -120,12 +120,16 @@ namespace MapRoom
         {
             if (string.IsNullOrEmpty(terrainName))
                 terrainName = "UntitledTerrain";
-            string saveDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", "Saved");
+            string saveDir = Path.Combine(ProjectSettings.Current.ActiveProject ?? AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain");
             Directory.CreateDirectory(saveDir);
             string tifPath = Path.Combine(saveDir, terrainName + ".tif");
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
             SaveAsPng(pngPath);
             CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
+            if (_sceneData?.Terrain != null)
+            {
+                _sceneData.Terrain.HeightmapPath = tifPath;
+            }
             Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}'");
         }
         public void Export2D(string projectAssetsDir)
@@ -217,7 +221,7 @@ namespace MapRoom
                 float distanceMoved = Vector3.Distance(_ghostPosition, _lastGhostPosition);
                 if (currentTime - _lastBrushUpdateTime > BrushUpdateInterval || distanceMoved > BrushMoveThreshold)
                 {
-                    var strength = _activeBrush.Intensity * deltaTime;
+                    var strength = _activeBrush.Intensity * deltaTime;   // FIXED - exact rate (meters per second)
                     var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
                     _eventBus.Publish(evt, true);
                     _lastBrushUpdateTime = currentTime;
