@@ -120,7 +120,10 @@ namespace MapRoom
         {
             if (string.IsNullOrEmpty(terrainName))
                 terrainName = "UntitledTerrain";
-            string saveDir = Path.Combine(ProjectSettings.Current.ActiveProject ?? AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain");
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath))
+                projectPath = AppDomain.CurrentDomain.BaseDirectory;
+            string saveDir = Path.Combine(projectPath, "Assets", "Terrain");
             Directory.CreateDirectory(saveDir);
             string tifPath = Path.Combine(saveDir, terrainName + ".tif");
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
@@ -221,7 +224,7 @@ namespace MapRoom
                 float distanceMoved = Vector3.Distance(_ghostPosition, _lastGhostPosition);
                 if (currentTime - _lastBrushUpdateTime > BrushUpdateInterval || distanceMoved > BrushMoveThreshold)
                 {
-                    var strength = _activeBrush.Intensity * deltaTime;   // FIXED - exact rate (meters per second)
+                    var strength = _activeBrush.Intensity * deltaTime;
                     var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
                     _eventBus.Publish(evt, true);
                     _lastBrushUpdateTime = currentTime;

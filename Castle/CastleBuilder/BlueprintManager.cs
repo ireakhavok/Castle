@@ -207,7 +207,7 @@ namespace CastleBuilder
             var data = new ProjectData { Name = name, LastContext = "Scene Editor" };
             string jsonPath = Path.Combine(dir, "project.json");
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
-            eventBus.Publish(new LoadProjectEvent { Path = dir });
+            ProjectSettings.Current.ActiveProject = dir;
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.SaveProjectAs] Forcing CURRENT blade '{_previousContext}' into memory");
