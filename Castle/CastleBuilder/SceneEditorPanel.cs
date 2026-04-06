@@ -4,6 +4,7 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
@@ -41,6 +42,9 @@ namespace CastleBuilder
         }
 
         private EditorScene _editorScene;
+        private bool _cameraMode = false;   // start in UI mode - no auto-capture (same as TerrainCreatorPanel)
+        private int _lastW;
+        private int _lastH;
 
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -122,15 +126,44 @@ namespace CastleBuilder
             // reserved for future buttons
         }
 
+        public override void ToggleCameraMode()
+        {
+            _cameraMode = !_cameraMode;
+            if (_cameraMode)
+            {
+                PanelManager.Current.CapturePanel(this);
+            }
+            else
+            {
+                PanelManager.Current.ReleasePanelCapture();
+            }
+        }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+            // Forward mouse input to base only when NOT in camera mode (UI buttons, etc.)
+            base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
 
-            // Forward mouse input exactly like AnimationViewerPanel (required for fly camera + brush)
+            float header = HasTitleBar ? HeaderHeight : 0f;
+            float contentX = Position.X;
+            float contentY = Position.Y + header;
+            float contentW = Size.X;
+            float contentH = Size.Y - header;
+
+            if (_cameraMode)
+            {
+                _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
+            }
+
+            // Forward to EditorScene (which already supports cameraMode parameter for fly camera)
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
+            _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
 
-            _editorScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased, true);
+            if (_cameraMode)
+            {
+                _controlContext.PopViewport();
+            }
         }
 
         protected override void RenderInnerContent()
@@ -146,6 +179,7 @@ namespace CastleBuilder
 
         public override void Dispose()
         {
+            PanelManager.Current.ReleasePanelCapture(); // safety cleanup
             _editorScene?.Dispose();
             base.Dispose();
         }

@@ -41,8 +41,10 @@ namespace CastleBuilder
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
             {
-                Console.WriteLine("[EditorScene] No active project loaded yet - empty mode");
-                _activeGameScene = null;
+                Console.WriteLine("[EditorScene] No active project - creating default 200×200 terrain scene");
+                _currentGameSceneName = "Default";
+                _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus);
+                _activeGameScene.Initialize(_width, _height);  // ← FIRST (creates buffer/shader)
                 return;
             }
 
@@ -82,10 +84,8 @@ namespace CastleBuilder
                     _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
                 }
 
-                // Critical: force terrain loading into the scene
-                _activeGameScene.LoadSceneData(sceneData);
-
-                _activeGameScene.Initialize(_width, _height);
+                _activeGameScene.Initialize(_width, _height);   // ← FIRST (fixes crash)
+                _activeGameScene.LoadSceneData(sceneData);       // ← SECOND
 
                 Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' from SceneData");
             }
@@ -104,7 +104,6 @@ namespace CastleBuilder
             }
         }
 
-        // Full mouse/keyboard forwarding for fly camera + brush tools
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
         {
             if (_activeGameScene is TerrainCreatorScene terrainScene)
@@ -119,7 +118,6 @@ namespace CastleBuilder
 
         public override void Update(float deltaTime)
         {
-            // Simple fallback for systems that only call basic Update
             _activeGameScene?.Update(deltaTime);
         }
 
