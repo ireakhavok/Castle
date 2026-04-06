@@ -30,7 +30,7 @@ namespace CastleBuilder
 
             public override bool HandleUIClick(HtmlElement elem)
             {
-                base.HandleUIClick(elem);   // required for data-hook processing
+                base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);
                 return true;
             }
@@ -42,7 +42,7 @@ namespace CastleBuilder
         }
 
         private EditorScene _editorScene;
-        private bool _cameraMode = false;   // start in UI mode - no auto-capture (same as TerrainCreatorPanel)
+        private bool _cameraMode = false;   // start in UI mode — no auto-capture
         private int _lastW;
         private int _lastH;
 
@@ -51,7 +51,7 @@ namespace CastleBuilder
         {
             HasTitleBar = true;
             IsClosable = true;
-            Scaling = ScalingMode.BestFit;
+            Scaling = ScalingMode.BestFit;   // same as TerrainCreatorPanel
             BaseWidth = 1280f;
             DockingMode = DockingMode.IDE;
             BaseHeight = 720f;
@@ -69,7 +69,6 @@ namespace CastleBuilder
             base.Init();
             _editorScene.Initialize((int)Size.X, (int)Size.Y);
 
-            // Force full project + terrain load on panel open
             _editorScene.LoadProjectData();
 
             UpdateSceneSelectorUI();
@@ -141,7 +140,7 @@ namespace CastleBuilder
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            // Forward mouse input to base only when NOT in camera mode (UI buttons, etc.)
+            // EXACT same pattern as TerrainCreatorPanel (this is what prevents stretching)
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
 
             float header = HasTitleBar ? HeaderHeight : 0f;
@@ -155,9 +154,9 @@ namespace CastleBuilder
                 _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
             }
 
-            // Forward to EditorScene (which already supports cameraMode parameter for fly camera)
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
+
             _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
 
             if (_cameraMode)
@@ -173,13 +172,13 @@ namespace CastleBuilder
 
         public override void OnLiveResize(float w, float h)
         {
-            _editorScene.Resize((int)w, (int)h);
+            _editorScene.Resize((int)w, (int)h);   // propagate exact size to inner scene
             base.OnLiveResize(w, h);
         }
 
         public override void Dispose()
         {
-            PanelManager.Current.ReleasePanelCapture(); // safety cleanup
+            PanelManager.Current.ReleasePanelCapture();
             _editorScene?.Dispose();
             base.Dispose();
         }

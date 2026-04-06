@@ -44,7 +44,7 @@ namespace CastleBuilder
                 Console.WriteLine("[EditorScene] No active project - creating default 200×200 terrain scene");
                 _currentGameSceneName = "Default";
                 _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus);
-                _activeGameScene.Initialize(_width, _height);  // ← FIRST (creates buffer/shader)
+                _activeGameScene.Initialize(_width, _height);
                 return;
             }
 
@@ -84,8 +84,8 @@ namespace CastleBuilder
                     _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
                 }
 
-                _activeGameScene.Initialize(_width, _height);   // ← FIRST (fixes crash)
-                _activeGameScene.LoadSceneData(sceneData);       // ← SECOND
+                _activeGameScene.Initialize(_width, _height);
+                _activeGameScene.LoadSceneData(sceneData);
 
                 Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' from SceneData");
             }
@@ -102,6 +102,13 @@ namespace CastleBuilder
                 ActivateCurrentGameScene();
                 Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName}");
             }
+        }
+
+        // NEW: Forward resize to the active inner scene (this is what was missing)
+        public override void Resize(int width, int height)
+        {
+            base.Resize(width, height);
+            _activeGameScene?.Resize(width, height);
         }
 
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
