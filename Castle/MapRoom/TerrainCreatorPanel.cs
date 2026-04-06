@@ -14,7 +14,6 @@ using System.Numerics;
 using System.Text;
 using ToolChest;
 using SiegeEngine.Core.Managers;
-
 namespace MapRoom
 {
     public class TerrainCreatorPanel : BasePanel
@@ -41,10 +40,11 @@ namespace MapRoom
         private TerrainCreatorScene _terrainScene;
         private string _initialTerrainPath;
         private TerrainCreationParams _creationParams;
-        private bool _cameraMode = true;
-        private bool _lastTab = false;
+        private bool _cameraMode = false;
         private int _lastW;
         private int _lastH;
+        private SceneData _currentSceneData;
+
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialTerrainPath = null)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -55,12 +55,18 @@ namespace MapRoom
             BaseWidth = 1280f;
             BaseHeight = 720f;
             _initialTerrainPath = initialTerrainPath;
+            _currentSceneData = null;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, TerrainCreationParams creationParams)
             : this(renderContext, controlContext, window, eventBus, creationParams?.ImportPath)
         {
             _creationParams = creationParams;
+        }
+        public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, SceneData sceneData)
+            : this(renderContext, controlContext, window, eventBus, (string)null)
+        {
+            _currentSceneData = sceneData;
         }
         protected override UIOverlay CreateUIOverlay()
         {
@@ -71,7 +77,12 @@ namespace MapRoom
             base.Init();
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
-            if (_creationParams != null)
+
+            if (_currentSceneData != null && _currentSceneData.Terrain != null && !string.IsNullOrEmpty(_currentSceneData.Terrain.HeightmapPath))
+            {
+                _terrainScene.LoadTerrain(_currentSceneData.Terrain.HeightmapPath);
+            }
+            else if (_creationParams != null)
             {
                 _terrainScene.CreateTerrain(_creationParams);
             }
@@ -83,6 +94,7 @@ namespace MapRoom
             {
                 _terrainScene.CreateBlank();
             }
+
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _eventBus.Subscribe<SelectBrushEvent>(OnBrushSelected);
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
@@ -108,6 +120,14 @@ namespace MapRoom
             if (hook == "LoadTerrainTexture")
             {
                 _terrainScene.SetColorTexture(e.Path);
+            }
+            else if (hook == "LoadTerrainFile")
+            {
+                _terrainScene.LoadTerrain(e.Path);
+                if (_currentSceneData != null && _currentSceneData.Terrain != null)
+                {
+                    _currentSceneData.Terrain.HeightmapPath = e.Path;
+                }
             }
         }
         private void OnBrushSelected(SelectBrushEvent e)
@@ -136,12 +156,18 @@ namespace MapRoom
             if (hook == "LoadTerrainTexture")
             {
                 string terrainDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", "Textures");
-                if (!Directory.Exists(terrainDir))
-                {
-                    Directory.CreateDirectory(terrainDir);
-                }
+                if (!Directory.Exists(terrainDir)) Directory.CreateDirectory(terrainDir);
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, terrainDir, ".jp2", ".tif", ".tiff", ".png", ".jpg");
                 fileSelector.UserData = "LoadTerrainTexture";
+                fileSelector.IsModal = true;
+                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
+            }
+            else if (hook == "LoadTerrain")
+            {
+                string terrainDir = Path.Combine(ProjectSettings.Current.ActiveProject ?? AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain");
+                if (!Directory.Exists(terrainDir)) Directory.CreateDirectory(terrainDir);
+                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, terrainDir, ".tif", ".tiff");
+                fileSelector.UserData = "LoadTerrainFile";
                 fileSelector.IsModal = true;
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
@@ -161,6 +187,18 @@ namespace MapRoom
                     string assetsDir = Path.Combine(ProjectSettings.Current.ActiveProject, "Assets");
                     _terrainScene.Export2D(assetsDir);
                 }
+            }
+        }
+        public override void ToggleCameraMode()
+        {
+            _cameraMode = !_cameraMode;
+            if (_cameraMode)
+            {
+                PanelManager.Current.CapturePanel(this);
+            }
+            else
+            {
+                PanelManager.Current.ReleasePanelCapture();
             }
         }
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -207,27 +245,8 @@ namespace MapRoom
         }
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            var tab = _controlContext.GetKey(_window, Key.Tab);
-            if (tab == InputAction.Press && !_lastTab)
-            {
-                _cameraMode = !_cameraMode;
-                _lastTab = true;
-
-                // NEW - activate robust capture exactly when camera mode changes
-                if (_cameraMode)
-                {
-                    PanelManager.Current.CapturePanel(this);
-                }
-                else
-                {
-                    PanelManager.Current.ReleasePanelCapture();
-                }
-            }
-            else if (tab != InputAction.Press)
-            {
-                _lastTab = false;
-            }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
+
             float header = HasTitleBar ? HeaderHeight : 0f;
             float contentX = Position.X;
             float contentY = Position.Y + header;
@@ -255,7 +274,7 @@ namespace MapRoom
         }
         public override void Dispose()
         {
-            PanelManager.Current.ReleasePanelCapture(); // safety cleanup
+            PanelManager.Current.ReleasePanelCapture();
             _terrainScene?.Dispose();
             base.Dispose();
         }

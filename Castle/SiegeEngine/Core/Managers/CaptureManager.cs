@@ -14,8 +14,8 @@ namespace SiegeEngine.Core.Managers
         public IPanel CurrentOwner => _currentOwner;
         public bool IsCapturing => _currentOwner != null;
 
-        private Vector2 _captureCenter;           // center of content area (no header)
-        private bool _wasCapturingLastFrame;      // track state for clean restore
+        private Vector2 _captureCenter;
+        private bool _wasCapturingLastFrame;
 
         public CaptureManager(IControlContext controlContext)
         {
@@ -29,7 +29,6 @@ namespace SiegeEngine.Core.Managers
 
             _currentOwner = panel;
 
-            // Calculate content area (excluding title bar)
             float contentY = panel.Position.Y + panel.HeaderHeight;
             float contentH = panel.Size.Y - panel.HeaderHeight;
             _captureCenter = new Vector2(
@@ -40,7 +39,6 @@ namespace SiegeEngine.Core.Managers
             var viewport = new Viewport(panel.Position.X, contentY, panel.Size.X, contentH);
             _controlContext.PushViewport(viewport);
 
-            // HARDWARE LOCK - first iteration (smallest possible)
             _controlContext.SetInputMode(panel.WindowHandle, CursorAttribute.Cursor, CursorMode.Disabled);
             _controlContext.SetCursorPos(panel.WindowHandle, _captureCenter.X, _captureCenter.Y);
 
@@ -53,7 +51,6 @@ namespace SiegeEngine.Core.Managers
             {
                 _controlContext.PopViewport();
 
-                // Restore normal cursor (only if we locked it)
                 if (_wasCapturingLastFrame)
                 {
                     _controlContext.SetInputMode(_currentOwner.WindowHandle, CursorAttribute.Cursor, CursorMode.Normal);
@@ -68,11 +65,6 @@ namespace SiegeEngine.Core.Managers
         {
             if (_currentOwner != null && _currentOwner.Visible)
             {
-                // FORCE RECENTER every frame - stops escape on fast movement
-                // (recenter happens AFTER panel.Update so deltas are still clean)
-                // REMOVED this line for this iteration (FlyCameraController now handles recentering again)
-                // _controlContext.SetCursorPos(_currentOwner.WindowHandle, _captureCenter.X, _captureCenter.Y);
-
                 _currentOwner.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
             }
         }

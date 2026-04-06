@@ -36,7 +36,7 @@ namespace SiegeEngine.Core.Interfaces
         void Render();
         void Dispose();
         DockState DockState { get; set; }
-        DockingMode DockingMode { get; set; }   // Per-panel control - no scene conflict
+        DockingMode DockingMode { get; set; }
         void Detach();
         Vector2 Position { get; set; }
         Vector2 Size { get; set; }
@@ -50,14 +50,12 @@ namespace SiegeEngine.Core.Interfaces
         bool HasTitleBar { get; set; }
         bool IsClosable { get; set; }
         void StartTitleBarDrag(Vector2 mousePos);
-
-        // Clean architectural addition: centralised close-button hit test so strategy no longer duplicates math
         bool IsOverCloseButton(Vector2 mousePos);
-
-        // REQUIRED: DockTabbedNode (and therefore the DockManager system) now controls closing
         void Close();
-
-        // NEW (minimal addition for CaptureManager hardware lock)
         nint WindowHandle { get; }
+
+        // Clean core abstraction: allows PanelManager to toggle camera mode on the true topmost panel only
+        // This is the ONLY way to handle Tab globally without circular dependencies or panel-specific code
+        void ToggleCameraMode();
     }
 }

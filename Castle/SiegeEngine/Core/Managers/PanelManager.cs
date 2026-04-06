@@ -31,6 +31,8 @@ namespace SiegeEngine.Core.Managers
 
         private DockingMode _sceneDefaultMode = DockingMode.Desktop;
 
+        private bool _lastGlobalTabPressed = false;
+
         public static PanelManager Current { get; private set; }
 
         public IDEDockingStrategy IDEStrategy => _ideStrategy;
@@ -118,6 +120,20 @@ namespace SiegeEngine.Core.Managers
             bool mouseReleased = _prevMouseDown && !currentMouseDown;
             _prevMouseDown = currentMouseDown;
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
+
+            // GLOBAL TAB - PRIORITIZE CURRENTLY CAPTURED PANEL (guarantees release on second Tab)
+            // If nothing is captured, fall back to topmost panel (normal behavior)
+            bool tabPressed = _controlContext.GetKey(_window, Key.Tab) == InputAction.Press;
+            if (tabPressed && !_lastGlobalTabPressed)
+            {
+                _lastGlobalTabPressed = true;
+                IPanel target = _captureManager.CurrentOwner ?? GetTopmostPanelAt(mousePos);
+                target?.ToggleCameraMode();
+            }
+            else if (!tabPressed)
+            {
+                _lastGlobalTabPressed = false;
+            }
 
             _captureManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
 
