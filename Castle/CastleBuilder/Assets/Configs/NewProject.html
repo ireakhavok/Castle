@@ -1,11 +1,9 @@
-<!-- Folder: CastleBuilder/Assets/Configs -->
-<!-- File: NewProject.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Project</title>
+    <!--<title>New Project</title>-->
     <style>
         * {
             box-sizing: border-box;
@@ -13,201 +11,141 @@
 
         body {
             margin: 0;
-            font-family: sans-serif;
-            background: #121212;
-            color: #ffffff;
+            font-family: 'Segoe UI', system-ui, Arial, sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
             overflow: hidden;
-        }
-
-        .screen {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100vh;
-            padding: 40px;
-            box-sizing: border-box;
-            background-image: url('../Static_Images/Main_Background.jpg');
-            background-repeat: no-repeat;
-            background-position: center center;
-        }
-
-        #main {
-            display: flex;
-        }
-
-        .menu-container {
-            display: flex;
-            width: 100%;
             height: 100%;
         }
 
-        .sidebar {
-            width: 250px;
-            display: flex;
-            flex-direction: column;
-            padding-right: 20px;
-            border-right: 1px solid #333;
-        }
-
-        .content-area {
-            flex: 1;
-            padding-left: 0px;
-            padding-right: 50px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .button {
-            background: rgba(51, 51, 51, 0.8);
-            padding: 10px 15px;
-            margin: 10px auto;
+        .modal {
+            width: 420px;
+            height: 460px;
+            background: #252526;
+            border: 1px solid #383838;
             border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 32px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 {
+            margin: 0 0 24px 0;
+            font-size: 20px;
+            font-weight: 600;
             text-align: center;
-            cursor: pointer;
-            transition: background 0.3s, transform 0.1s;
-            font-size: 16px;
-            font-weight: bold;
-            width: 250px;
-            border: 1px solid rgba(128, 128, 128, 1);
-        }
-
-        .sidebar .button {
-            width: 100%;
-            margin: 10px 0;
-        }
-
-        .button:hover {
-            background: rgba(77, 77, 77, 0.8);
-            transform: translateY(-2px);
-        }
-
-        .button:active {
-            transform: translateY(0);
-        }
-
-        h2, h3, h4 {
-            margin: 0 0 20px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        h3 {
-            font-size: 24px;
-        }
-
-        h4 {
-            font-size: 18px;
-            margin-bottom: 10px;
+            color: #7CFFCB;
         }
 
         label {
-            font-size: 16px;
-            margin-bottom: 10px;
-            font-weight: bold;
-            text-align: center;
-            width: 250px;
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #cccccc;
         }
 
         input[type="text"], select {
-            display: block;
-            background: rgba(51, 51, 51, 0.8);
-            color: #fff;
-            border: 1px solid rgba(128, 128, 128, 1);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 16px;
-            margin-bottom: 20px;
-            width: 250px;
-        }
-
-        select {
-            appearance: none;
-            cursor: pointer;
-            transition: background 0.3s;
+            width: 100%;
+            padding: 10px 12px;
+            background: #1e1e1e;
+            border: 1px solid #383838;
+            border-radius: 4px;
+            color: #ffffff;
+            font-size: 14px;
+            margin-bottom: 18px;
         }
 
             input[type="text"]:focus, select:focus {
                 outline: none;
-                background: rgba(77, 77, 77, 0.8);
+                border-color: #7CFFCB;
+                background: #2a2a2a;
             }
 
         .toggle {
             display: flex;
             align-items: center;
-            justify-content: center;
-            background: rgba(51, 51, 51, 0.8);
-            padding: 10px;
-            margin: 10px auto;
-            border-radius: 8px;
-            width: 250px;
-            cursor: pointer;
-            border: 1px solid rgba(128, 128, 128, 1);
+            gap: 10px;
+            margin-bottom: 24px;
+            font-size: 14px;
         }
 
-            .toggle input {
-                margin-right: 10px;
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: auto;
+        }
+
+        .button {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .primary {
+            background: #7CFFCB;
+            color: #111111;
+        }
+
+            .primary:hover {
+                background: #a0ffdb;
+                transform: translateY(-1px);
             }
 
-            .toggle:hover {
-                background: rgba(77, 77, 77, 0.8);
-            }
+        .cancel {
+            background: #383838;
+            color: #cccccc;
+        }
 
-            .toggle label {
-                width: auto;
+            .cancel:hover {
+                background: #4a4a4a;
             }
     </style>
 </head>
 <body>
-    <div id="main" class="screen">
-        <div class="menu-container">
-            <div class="sidebar">
-                <a href="MainMenu.html" class="button">Back</a>
-            </div>
-            <div class="content-area">
-                <h2>New Project</h2>
-                <label for="project-name">Project Name:</label>
-                <input type="text" id="project-name" placeholder="Enter project name">
+    <div class="modal">
+        <h2>New Project</h2>
 
-                <label for="game-type">Game Type:</label>
-                <select id="game-type">
-                    <option>2D</option>
-                    <option>2D Sidescrolling</option>
-                    <option>3D FPS</option>
-                    <option>3D Isometric</option>
-                    <option>3D Over Shoulder</option>
-                    <option>3D Third Person</option>
-                    <option>3D Dynamic</option>
-                </select>
+        <label for="project-name">Project Name</label>
+        <input type="text" id="project-name" placeholder="My Awesome Game">
 
-                <label for="project-mode">Mode:</label>
-                <select id="project-mode">
-                    <option>Single Player</option>
-                    <option>Hosted</option>
-                    <option>Server</option>
-                </select>
+        <label for="game-type">Game Type</label>
+        <select id="game-type">
+            <option>2D</option>
+            <option>2D Sidescrolling</option>
+            <option>3D FPS</option>
+            <option>3D Isometric</option>
+            <option>3D Over Shoulder</option>
+            <option>3D Third Person</option>
+            <option>3D Dynamic</option>
+        </select>
 
-                <div class="toggle">
-                    <input type="checkbox" id="allow-mods" checked>
-                    <label for="allow-mods">Allow Mods</label>
-                </div>
+        <label for="project-mode">Mode</label>
+        <select id="project-mode">
+            <option>Single Player</option>
+            <option>Hosted</option>
+            <option>Server</option>
+        </select>
 
-                <label for="project-location">Location:</label>
-                <input type="text" id="project-location" placeholder="Projects/MyProject" readonly>
+        <div class="toggle">
+            <input type="checkbox" id="allow-mods" checked>
+            <label for="allow-mods">Allow Mods</label>
+        </div>
 
-                <div class="button" data-hook="CastleBuilder.BlueprintManager.CreateNewProject">Create</div>
-            </div>
+        <div class="buttons">
+            <div class="button cancel" data-hook="Cancel">Cancel</div>
+            <div class="button primary" data-hook="CreateNewProjectConfirm">Create Project</div>
         </div>
     </div>
-    <script>
-        var projectNameInput = document.getElementById('project-name');
-        var locationInput = document.getElementById('project-location');
-        projectNameInput.addEventListener('input', function () {
-            locationInput.value = 'Projects/' + projectNameInput.value.replace(/\s+/g, '');
-        });
-    </script>
 </body>
 </html>

@@ -34,7 +34,6 @@ namespace MapRoom
         }
         private TwoDCreatorScene _twoDScene;
         private bool _cameraMode = false;
-        private bool _lastTab = false;
         private int _lastW;
         private int _lastH;
         public override bool WantsContinuousUpdate => true;
@@ -92,29 +91,22 @@ namespace MapRoom
             var selectEvt = new SelectSpriteEvent(0UL, e.Path, 2f, 2f);
             _eventBus.Publish(selectEvt);
         }
+        public override void ToggleCameraMode()
+        {
+            _cameraMode = !_cameraMode;
+            if (_cameraMode)
+            {
+                PanelManager.Current.CapturePanel(this);
+            }
+            else
+            {
+                PanelManager.Current.ReleasePanelCapture();
+            }
+        }
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            var tab = _controlContext.GetKey(_window, Key.Tab);
-            if (tab == InputAction.Press && !_lastTab)
-            {
-                _cameraMode = !_cameraMode;
-                _lastTab = true;
-
-                // NEW - use CaptureManager (exact same pattern that fixed TerrainCreatorPanel)
-                if (_cameraMode)
-                {
-                    PanelManager.Current.CapturePanel(this);
-                }
-                else
-                {
-                    PanelManager.Current.ReleasePanelCapture();
-                }
-            }
-            else if (tab != InputAction.Press)
-            {
-                _lastTab = false;
-            }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
+
             float header = HasTitleBar ? HeaderHeight : 0f;
             float contentX = Position.X;
             float contentY = Position.Y + header;
@@ -144,7 +136,7 @@ namespace MapRoom
         }
         public override void Dispose()
         {
-            PanelManager.Current.ReleasePanelCapture(); // safety cleanup
+            PanelManager.Current.ReleasePanelCapture();
             _twoDScene?.Dispose();
             base.Dispose();
         }

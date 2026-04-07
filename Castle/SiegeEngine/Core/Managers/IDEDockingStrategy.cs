@@ -76,6 +76,7 @@ namespace SiegeEngine.Core.Managers
             panel.IsClosable = true;
             panel.HeaderHeight = BasePanel.TitleHeight;
             panel.DockingMode = DockingMode.IDE;
+
             if (panel.DockState == DockState.Floating || panel.DockState == DockState.DockedHeader)
             {
                 if (!_floatingPanels.Contains(panel))
@@ -563,7 +564,7 @@ namespace SiegeEngine.Core.Managers
             }
             foreach (var panel in _floatingPanels)
             {
-                if (!panel.Visible) continue;
+                if (panel == null || !panel.Visible) continue;   // <--- SAFETY GUARD
                 int px = (int)panel.Position.X;
                 int py = winH - (int)(panel.Position.Y + panel.Size.Y);
                 uint pw = (uint)panel.Size.X;
@@ -655,20 +656,18 @@ namespace SiegeEngine.Core.Managers
         {
             var state = new SerializableLayoutState();
             state.Root = SerializeNode(_root);
-
             foreach (var panel in _floatingPanels)
             {
                 if (panel is BasePanel bp)
                 {
                     state.FloatingPanels.Add(new SerializableFloatingPanel
                     {
-                        PanelType = bp.GetType().AssemblyQualifiedName,  // ← changed to AssemblyQualifiedName
+                        PanelType = bp.GetType().AssemblyQualifiedName,
                         Position = bp.Position,
                         Size = bp.Size
                     });
                 }
             }
-
             var options = new JsonSerializerOptions { WriteIndented = true };
             return JsonSerializer.Serialize(state, options);
         }
@@ -676,17 +675,15 @@ namespace SiegeEngine.Core.Managers
         private SerializableDockNode SerializeNode(DockNode node)
         {
             if (node == null) return null;
-
             if (node is DockTabbedNode tab)
             {
                 return new SerializableDockNode
                 {
                     NodeType = "tabbed",
-                    Panels = tab.Panels.Select(p => (p as BasePanel)?.GetType().AssemblyQualifiedName ?? p.GetType().AssemblyQualifiedName).ToList(),  // ← changed to AssemblyQualifiedName
+                    Panels = tab.Panels.Select(p => (p as BasePanel)?.GetType().AssemblyQualifiedName ?? p.GetType().AssemblyQualifiedName).ToList(),
                     ActiveTabIndex = tab.ActiveIndex
                 };
             }
-
             if (node is DockSplitNode split)
             {
                 return new SerializableDockNode
@@ -698,25 +695,20 @@ namespace SiegeEngine.Core.Managers
                     Right = SerializeNode(split.Right)
                 };
             }
-
             return null;
         }
 
         public void DeserializeState(string json)
         {
             if (string.IsNullOrEmpty(json)) return;
-
             try
             {
                 ClearAll();
-
                 var state = JsonSerializer.Deserialize<SerializableLayoutState>(json);
-
                 if (state.Root != null)
                 {
                     _root = DeserializeNode(state.Root);
                 }
-
                 foreach (var fp in state.FloatingPanels)
                 {
                     var panel = CreatePanelByType(fp.PanelType);
@@ -726,12 +718,11 @@ namespace SiegeEngine.Core.Managers
                         panel.Size = fp.Size;
                         panel.DockState = DockState.Floating;
                         AddPanel(panel);
-                        Console.WriteLine($"[IDEDockingStrategy] Restored floating panel {fp.PanelType} at position {fp.Position} size {fp.Size}");
+                        Console.WriteLine($"[IDEDockingStrategy] Restored floating panel {fp.PanelType}");
                     }
                 }
-
                 _needsLayout = true;
-                Console.WriteLine($"[IDEDockingStrategy] SUCCESS: Restored full nested tree (IsVertical splits preserved) + real panels from saved layout");
+                Console.WriteLine($"[IDEDockingStrategy] SUCCESS: Restored full nested tree");
             }
             catch (Exception ex)
             {
@@ -748,7 +739,11 @@ namespace SiegeEngine.Core.Managers
                 if (t != null && typeof(IPanel).IsAssignableFrom(t))
                 {
                     var panel = (IPanel)Activator.CreateInstance(t, _renderContext, _controlContext, _window, _eventBus);
-                    panel.Init();
+
+                    // CRITICAL FIX: call Init() so _uiOverlay and all render state exists
+                    if (panel is BasePanel bp)
+                        bp.Init();
+
                     return panel;
                 }
             }
@@ -762,7 +757,6 @@ namespace SiegeEngine.Core.Managers
         private DockNode DeserializeNode(SerializableDockNode s)
         {
             if (s == null) return null;
-
             if (s.NodeType == "tabbed")
             {
                 var tab = new DockTabbedNode();
@@ -777,7 +771,6 @@ namespace SiegeEngine.Core.Managers
                 }
                 return tab;
             }
-
             if (s.NodeType == "split")
             {
                 var split = new DockSplitNode

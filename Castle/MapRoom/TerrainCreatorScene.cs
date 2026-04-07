@@ -14,7 +14,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using System.Collections.Generic;
-
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -25,18 +24,21 @@ namespace MapRoom
         private VertexBuffer _ghostBuffer;
         private HashSet<Guid> _processedModifications = new HashSet<Guid>();
         private bool _isBrushing = false;
-        // Throttling to prevent full mesh uploads on every single mouse tick (critical for large maps)
         private float _lastBrushUpdateTime = 0f;
         private Vector3 _lastGhostPosition = Vector3.Zero;
-        private const float BrushUpdateInterval = 0.033f; // ~30 Hz - responsive but dramatically lower GPU load
-        private const float BrushMoveThreshold = 0.3f; // only update if brush moved meaningfully
-        public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
-            : base(renderContext, controlContext, window, server, eventBus)
+        private const float BrushUpdateInterval = 0.0f;
+        private const float BrushMoveThreshold = 0.3f;
+        private SceneData _sceneData; // NEW: direct reference to project memory
+        public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
+            : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
+            _sceneData = sceneData;
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
         }
         public void CreateBlank()
         {
+            _terrainWidth = 200; // NEW: 200×200 default for new scenes
+            _terrainHeight = 200;
             _heightmap = new float[_terrainWidth, _terrainHeight];
             _minHeight = float.MaxValue;
             _maxHeight = float.MinValue;
@@ -50,7 +52,7 @@ namespace MapRoom
                     if (h > _maxHeight) _maxHeight = h;
                 }
             }
-            Console.WriteLine($"[TerrainCreatorScene] Created blank {_terrainWidth}×{_terrainHeight} terrain with height range {_minHeight:F1} to {_maxHeight:F1}");
+            Console.WriteLine($"[TerrainCreatorScene] Created blank 200×200 terrain with height range {_minHeight:F1} to {_maxHeight:F1}");
             _useCustomScale = true;
             BuildWireframeMesh(1);
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
@@ -103,6 +105,12 @@ namespace MapRoom
         public override void LoadTerrain(string path)
         {
             base.LoadTerrain(path);
+            // NEW: write path back into project memory object
+            if (_sceneData?.Terrain != null)
+            {
+                _sceneData.Terrain.HeightmapPath = path;
+                Console.WriteLine($"[TerrainCreatorScene] Synced loaded terrain path to SceneData memory");
+            }
         }
         public void SetColorTexture(string path)
         {
@@ -112,19 +120,28 @@ namespace MapRoom
         {
             if (string.IsNullOrEmpty(terrainName))
                 terrainName = "UntitledTerrain";
-            string saveDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", "Saved");
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath))
+                projectPath = AppDomain.CurrentDomain.BaseDirectory;
+            string saveDir = Path.Combine(projectPath, "Assets", "Terrain");
             Directory.CreateDirectory(saveDir);
             string tifPath = Path.Combine(saveDir, terrainName + ".tif");
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
             SaveAsPng(pngPath);
             CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
-            Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}'");
+            if (_sceneData?.Terrain != null)
+            {
+                // store RELATIVE path so it survives project moves
+                string relativePath = Path.GetRelativePath(projectPath, tifPath);
+                _sceneData.Terrain.HeightmapPath = relativePath;
+            }
+            Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → {tifPath}");
         }
         public void Export2D(string projectAssetsDir)
         {
             string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
             string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
-            TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath); // Example thresholds
+            TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
             Console.WriteLine($"[TerrainCreatorScene] Exported 2D tilemap to {fbxPath}");
         }
         private void SaveAsPng(string path)
@@ -212,7 +229,6 @@ namespace MapRoom
                     var strength = _activeBrush.Intensity * deltaTime;
                     var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
                     _eventBus.Publish(evt, true);
-                    // REMOVED local UpdateAffectedVertices here - now only called after heightmap is modified in ApplyModification
                     _lastBrushUpdateTime = currentTime;
                     _lastGhostPosition = _ghostPosition;
                 }
@@ -324,7 +340,6 @@ namespace MapRoom
                 Intensity = e.Strength
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
-            // Now guaranteed to run AFTER heightmap is modified
             UpdateAffectedVertices(e.WorldPos, e.Radius);
         }
     }

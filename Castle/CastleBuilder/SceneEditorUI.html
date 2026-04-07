@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        .scene-toolbar {
+            position: absolute;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 28, 36, 0.96);
+            padding: 12px 20px;
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+            border: 1px solid rgba(95,95,115,0.6);
+            z-index: 300;
+            font-family: system-ui, sans-serif;
+        }
+
+        .scene-label {
+            color: #d0d0d0;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        #sceneSelect {
+            min-width: 220px;
+            padding: 8px 12px;
+            background: #222228;
+            color: #f0f0f0;
+            border: 1px solid #555566;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+            #sceneSelect:focus {
+                border-color: #777799;
+            }
+
+        .new-scene-btn {
+            padding: 8px 18px;
+            background: #444455;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13.5px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+            .new-scene-btn:hover {
+                background: #555566;
+                transform: translateY(-1px);
+            }
+    </style>
+</head>
+<body>
+    <div class="scene-toolbar">
+        <span class="scene-label">Active Scene:</span>
+        <select id="sceneSelect" data-hook="SceneSelected">
+            <!-- Populated dynamically -->
+        </select>
+        <button class="new-scene-btn" data-hook="CreateNewScene">+ New Scene</button>
+    </div>
+</body>
+</html>

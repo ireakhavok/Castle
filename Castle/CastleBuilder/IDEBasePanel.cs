@@ -8,8 +8,7 @@ using SiegeEngine.Core.UI;
 using System;
 using System.IO;
 using System.Numerics;
-using System.Reflection;
-using CastleBuilder.Events;   // for ContextChangedEvent
+using CastleBuilder.Events;
 
 namespace CastleBuilder
 {
@@ -20,56 +19,18 @@ namespace CastleBuilder
             private readonly EventBus _eventBus;
 
             public IDEUIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-                : base(renderContext, controlContext, window)
+                : base(renderContext, controlContext, window, eventBus)
             {
                 _eventBus = eventBus;
                 _eventBus.Subscribe<ContextChangedEvent>(OnContextChanged);
             }
 
-            protected override void HandleDataHook(string hook)
-            {
-                Console.WriteLine($"[IDE Menu] Clicked: {hook}");
-                var parts = hook.Split('.');
-                if (parts.Length < 3) return;
-                string ns = parts[0];
-                string className = parts[1];
-                string methodName = parts[2];
-                Type type = null;
-                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    type = asm.GetType($"{ns}.{className}");
-                    if (type != null) break;
-                }
-                if (type == null)
-                {
-                    Console.WriteLine($"[IDE Menu] Type not found: {ns}.{className}");
-                    return;
-                }
-                var method = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public);
-                if (method != null)
-                {
-                    try
-                    {
-                        method.Invoke(null, new object[] { _renderContext, _controlContext, _window, _eventBus });
-                        Console.WriteLine($"[IDE Menu] SUCCESS: Opened panel via {hook}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[IDE Menu] Error calling {hook}: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"[IDE Menu] Method '{methodName}' not found on {ns}.{className}");
-                }
-            }
 
             private void OnContextChanged(ContextChangedEvent evt)
             {
                 string context = evt.Context ?? "Scene Editor";
                 Console.WriteLine($"[IDE Menu] Context changed to: {context}");
                 RefreshMenuForContext(context);
-                // Visual blade highlighting is already handled by the inline JS in IDE_UI.html
             }
 
             private void RefreshMenuForContext(string context)

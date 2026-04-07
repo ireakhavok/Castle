@@ -41,9 +41,9 @@ namespace MapRoom
             HasTitleBar = true;
             IsClosable = true;
             IsModal = true;
-            Scaling = ScalingMode.BestFit;
-            BaseWidth = 520f;
-            BaseHeight = 620f;
+            RenderOrder = 1100;
+            Scaling = ScalingMode.Fill;
+            Size = new Vector2(420, 460);
             AllowDragging = true;
             DockState = SiegeEngine.Core.Interfaces.DockState.Floating;
         }

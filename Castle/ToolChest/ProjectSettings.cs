@@ -3,7 +3,7 @@
 using System;
 using System.IO;
 
-namespace SiegeEngine.Core.Managers
+namespace ToolChest
 {
     public class ProjectSettings
     {

@@ -55,6 +55,7 @@ namespace SiegeEngine.Core.UI
         public bool HasTitleBar { get; set; } = false;
         public bool IsClosable { get; set; } = false;
         public int RenderOrder { get; set; } = 0;
+
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -175,8 +176,6 @@ namespace SiegeEngine.Core.UI
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
 
-            // === ONLY THE TRUE TOPMOST PANEL PROCESSES CONTENT EVENTS ===
-            // This swallows clicks, scroll, sliders, dropdowns, JS, etc. on lower panels
             if ((overPanel || WantsContinuousUpdate) && PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this)
             {
                 Vector2 relMousePos = absMousePos - Position;
@@ -187,7 +186,8 @@ namespace SiegeEngine.Core.UI
             }
         }
 
-        // ... rest of your file exactly unchanged (GetResizeHandle, StartResize, Render, OnPanelResize, etc.)
+        public virtual void ToggleCameraMode() { } // default no-op for non-camera panels
+
         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {
             float left = absMousePos.X - Position.X;

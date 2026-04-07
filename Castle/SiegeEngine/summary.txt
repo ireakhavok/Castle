@@ -93,6 +93,7 @@ Folder: Core
         - Calls: LayeredUIRenderer, PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
         - Calls: GetTopmostPanelAt, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
+      - void ToggleCameraMode()
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
       - void Render()
@@ -152,7 +153,6 @@ Folder: Core
       - void ReleaseCapture()
         - Calls: _controlContext.PopViewport, _controlContext.SetInputMode
       - void Update( Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta, float deltaTime)
-        - Calls: _controlContext.SetCursorPos
 - File: ClientGameServerProxy.cs
   - Class: ClientGameServerProxy (Namespace: SiegeEngine.Core.Networking)
     - Inherits: IGameServer
@@ -294,6 +294,12 @@ Folder: Core
       - uint NumArgumentDescs
       - nint pArgumentDescs
       - uint NodeMask
+- File: DataHookProcessor.cs
+  - Class: DataHookProcessor (Namespace: SiegeEngine.Core.UI)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.IO, System.Reflection
+    - Methods:
+      - void Process( BasePanel callerPanel = null,  EventBus eventBus,  IControlContext controlContext,  IRenderContext renderContext,  UIOverlay overlayForFormData = null,  nint window, string hook)
+        - Calls: ClosePanelEvent, mi.Invoke, mi5.Invoke
 - File: DesktopDockingStrategy.cs
   - Class: DesktopDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Inherits: IDockingStrategy
@@ -1031,10 +1037,9 @@ Folder: Core
     - Fields:
       - MenuPanel _parent
       - ModManager _modManager
-      - EventBus _eventBus
     - Methods:
       - void HandleDataHook(string hook)
-        - Calls: ClosePanelEvent, _document.getElementById, checked.ToString, mi.Invoke, mi5.Invoke
+        - Calls: DataHookProcessor.Process
       - void HandleLink(string href)
         - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
 - File: MeshData.cs
@@ -1271,6 +1276,7 @@ Folder: Core
       - DynamicDockingStrategy _dynamicStrategy
       - IDEDockingStrategy _ideStrategy
       - DockingMode _sceneDefaultMode
+      - bool _lastGlobalTabPressed
       - IDEDockingStrategy IDEStrategy
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
@@ -1285,7 +1291,7 @@ Folder: Core
       - void AutoCenterModal(IPanel panel)
         - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
       - void Update(float deltaTime)
-        - Calls: ClosePanelEvent, _controlContext.GetCursorPos, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
+        - Calls: ClosePanelEvent, GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
@@ -1355,14 +1361,6 @@ Folder: Core
     - Dependencies: System
     - Methods:
       - constructor PreviewComponent( string brushType, ulong playerId)
-- File: ProjectSettings.cs
-  - Class: ProjectSettings (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: System, System.IO
-    - Fields:
-      - string _projectsRoot
-    - Methods:
-      - constructor ProjectSettings()
-      - string GetLayoutTempPath(string projectPath)
 - File: PropertyNode.cs
   - Class: PropertyNode (Namespace: SiegeEngine.Core.AssetObjects)
     - Dependencies: System, System.Collections.Generic, System.Linq, System.Text, System.Threading.Tasks
@@ -1430,6 +1428,9 @@ Folder: Core
         - Calls: D3D11CreateDevice, IsOpenGLSupported, Marshal.Release, vkCreateInstance, vkDestroyInstance
       - List<string> DetectAvailable()
         - Calls: D3D11CreateDevice, D3D12CreateDevice, IsOpenGLSupported, Marshal.Release, vkCreateInstance, vkDestroyInstance
+- File: SceneData.cs
+  - Class: EnvironmentSettings (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: SceneManager.cs
   - Class: SceneManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Reflection
@@ -1769,11 +1770,12 @@ Folder: Core
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI.Elements, SiegeEngine.Core.UI.JSParser, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
       - nint _window
+      - EventBus _eventBus
       - ShaderProgram _uiShader
       - TextRenderer _textRenderer
       - UIQuadRenderer _quadRenderer
@@ -1786,7 +1788,7 @@ Folder: Core
       - bool _needsVerticalScrollbar
       - UIInteractionLayer _interactionLayer
     - Methods:
-      - constructor UIOverlay( IControlContext controlContext,  nint window, IRenderContext renderContext)
+      - constructor UIOverlay( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
       - void Init()
         - Calls: ShaderProgram, TextRenderer, UIInteractionLayer, UIQuadRenderer, _textRenderer.Initialize
       - void LoadUI( string baseDir = "", string html)
@@ -1796,6 +1798,7 @@ Folder: Core
       - void CollectClickables(HtmlElement elem)
         - Calls: elem.GetEffectiveDisplay
       - void HandleDataHook(string hook)
+        - Calls: DataHookProcessor.Process
       - void HandleLink(string href)
         - Calls: LoadUI
       - void RefreshUI()
@@ -1811,10 +1814,6 @@ Folder: Core
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - bool HandleUIClick(HtmlElement elem)
         - Calls: CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis
-      - here CloseAllOpenSelects()
-        - Calls: HandleDataHook, RefreshUI
-      - dropdown CloseAllOpenSelects()
-        - Calls: HandleDataHook
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
@@ -2146,16 +2145,13 @@ Folder: PlayerSystem
       - Vector2 CalculateAdjustedPosition( int windowHeight,  int windowWidth,  string positioningMode, Vector2 position)
 
 Folder: Scenes
-- File: EditorScene.cs
-  - Class: EditorScene (Namespace: SiegeEngine.Scenes)
+- File: GameScene.cs
+  - Class: GameScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System
     - Methods:
-      - void Initialize( int height, int width)
-      - void Update(float deltaTime)
-      - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _renderContext.Clear, _renderContext.ClearColor
+      - void LoadSceneData(SceneData data)
       - void Dispose()
 - File: ModelViewerScene.cs
   - Class: ModelViewerScene (Namespace: SiegeEngine.Scenes)
@@ -2281,7 +2277,7 @@ Folder: Scenes
       - void Dispose()
 - File: TerrainScene.cs
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
-    - Inherits: Scene
+    - Inherits: GameScene
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Numerics
     - Fields:
@@ -2305,6 +2301,10 @@ Folder: Scenes
       - int _meshVertsY
       - int _currentMeshStep
     - Methods:
+      - void LoadSceneData(SceneData data)
+        - Calls: InitializeBlankTerrain, LoadTerrain, SetColorTexture
+      - void InitializeBlankTerrain()
+        - Calls: BuildWireframeMesh
       - void Initialize( int height, int width)
         - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
       - void BuildWireframeMesh(float step)
@@ -2508,6 +2508,7 @@ SiegeEngine.Core.Definitions.CameraType
 SiegeEngine.Core.Definitions.DockingMode
 SiegeEngine.Core.Definitions.Entity
 SiegeEngine.Core.Definitions.EntityData
+SiegeEngine.Core.Definitions.EnvironmentSettings
 SiegeEngine.Core.Definitions.GameMode
 SiegeEngine.Core.Definitions.LightComponent
 SiegeEngine.Core.Definitions.LightType
@@ -2560,7 +2561,6 @@ SiegeEngine.Core.Managers.LevelManager
 SiegeEngine.Core.Managers.LobbyManager
 SiegeEngine.Core.Managers.ModManager
 SiegeEngine.Core.Managers.PanelManager
-SiegeEngine.Core.Managers.ProjectSettings
 SiegeEngine.Core.Managers.SceneManager
 SiegeEngine.Core.Managers.SerializableFloatingPanel
 SiegeEngine.Core.Managers.UISettingsManager
@@ -2604,6 +2604,7 @@ SiegeEngine.Core.Terrain.TilemapExporter
 SiegeEngine.Core.UI.BasePanel
 SiegeEngine.Core.UI.CssParser
 SiegeEngine.Core.UI.CssStyle
+SiegeEngine.Core.UI.DataHookProcessor
 SiegeEngine.Core.UI.Elements.ButtonElement
 SiegeEngine.Core.UI.Elements.DivElement
 SiegeEngine.Core.UI.Elements.InputElement
@@ -2643,8 +2644,8 @@ SiegeEngine.PlayerSystem.Player
 SiegeEngine.PlayerSystem.PlayerMovement
 SiegeEngine.PlayerSystem.PositionCalculator
 SiegeEngine.PlayerSystem.SwitchMenuEvent
-SiegeEngine.Scenes.EditorScene
 SiegeEngine.Scenes.FlyCameraController
+SiegeEngine.Scenes.GameScene
 SiegeEngine.Scenes.ModelViewerScene
 SiegeEngine.Scenes.Scene
 SiegeEngine.Scenes.StartingPoints.SandboxScene
