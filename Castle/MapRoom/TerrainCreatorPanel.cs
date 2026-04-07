@@ -14,6 +14,7 @@ using System.Numerics;
 using System.Text;
 using ToolChest;
 using SiegeEngine.Core.Managers;
+using System.Text.Json;
 
 namespace MapRoom
 {
@@ -24,7 +25,6 @@ namespace MapRoom
         private static nint _staticWindow;
         private static EventBus _staticEventBus;
         private static bool _subscriptionInitialized = false;
-
         private class TerrainUIOverlay : UIOverlay
         {
             private readonly TerrainCreatorPanel _parent;
@@ -39,7 +39,6 @@ namespace MapRoom
                 return true;
             }
         }
-
         private TerrainCreatorScene _terrainScene;
         private string _initialTerrainPath;
         private TerrainCreationParams _creationParams;
@@ -48,7 +47,7 @@ namespace MapRoom
         private int _lastH;
         private SceneData _currentSceneData;
 
-        // NEW 4-param constructor for layout deserialization (this is what was missing)
+        // 4-param constructor for layout deserialization
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : this(renderContext, controlContext, window, eventBus, (SceneData)null)
         {
@@ -75,9 +74,16 @@ namespace MapRoom
         }
 
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, SceneData sceneData)
-            : this(renderContext, controlContext, window, eventBus, (string)null)
+            : base(renderContext, controlContext, window, eventBus)
         {
+            HasTitleBar = true;
+            IsClosable = true;
+            Scaling = ScalingMode.BestFit;
+            DockingMode = DockingMode.IDE;
+            BaseWidth = 1280f;
+            BaseHeight = 720f;
             _currentSceneData = sceneData;
+            _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus, sceneData);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -91,8 +97,33 @@ namespace MapRoom
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
 
+            // Fallback for layout restore (4-param constructor) - load SceneData from project.json
+            if (_currentSceneData == null)
+            {
+                string projectPath = ProjectSettings.Current.ActiveProject;
+                if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
+                {
+                    string jsonPath = Path.Combine(projectPath, "project.json");
+                    if (File.Exists(jsonPath))
+                    {
+                        string json = File.ReadAllText(jsonPath);
+                        var projectData = JsonSerializer.Deserialize<ProjectData>(json);
+                        if (projectData?.Scenes != null)
+                        {
+                            string lastScene = projectData.LastOpenedScene ?? projectData.Scenes.Keys.FirstOrDefault();
+                            if (!string.IsNullOrEmpty(lastScene) && projectData.Scenes.TryGetValue(lastScene, out var sceneData))
+                            {
+                                _currentSceneData = sceneData;
+                                Console.WriteLine($"[TerrainCreatorPanel] Fallback loaded SceneData from project.json for scene '{lastScene}'");
+                            }
+                        }
+                    }
+                }
+            }
+
             if (_currentSceneData != null && _currentSceneData.Terrain != null && !string.IsNullOrEmpty(_currentSceneData.Terrain.HeightmapPath))
             {
+                Console.WriteLine($"[TerrainCreatorPanel] Loading terrain from SceneData relative path: {_currentSceneData.Terrain.HeightmapPath}");
                 _terrainScene.LoadTerrain(_currentSceneData.Terrain.HeightmapPath);
             }
             else if (_creationParams != null)
@@ -270,7 +301,6 @@ namespace MapRoom
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-
             float header = HasTitleBar ? HeaderHeight : 0f;
             float contentX = Position.X;
             float contentY = Position.Y + header;

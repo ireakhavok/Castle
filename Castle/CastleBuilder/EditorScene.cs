@@ -37,12 +37,14 @@ namespace CastleBuilder
             LoadProjectData();
         }
 
+        public ProjectData GetProjectData() => _projectData;
+
         public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
             {
-                Console.WriteLine("[EditorScene] No active project - creating default 200×200 terrain scene");
+                Console.WriteLine("[EditorScene] No active project - creating default");
                 _currentGameSceneName = "Default";
                 _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus);
                 _activeGameScene.Initialize(_width, _height);
@@ -73,7 +75,11 @@ namespace CastleBuilder
             {
                 _activeGameScene?.Dispose();
 
-                if (sceneData.SceneType == "TerrainTest" || sceneData.Terrain.HeightmapPath != null || _currentGameSceneName.Contains("Terrain"))
+                bool isTerrainScene = sceneData.SceneType == "TerrainTest" ||
+                                    !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath) ||
+                                    _currentGameSceneName.Contains("Terrain");
+
+                if (isTerrainScene)
                 {
                     _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
                 }
@@ -85,22 +91,30 @@ namespace CastleBuilder
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
 
-                if (_activeGameScene is TerrainCreatorScene tcs && !string.IsNullOrEmpty(sceneData.Terrain.HeightmapPath))
+                if (_activeGameScene is TerrainCreatorScene tcs && !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
                 {
                     tcs.LoadTerrain(sceneData.Terrain.HeightmapPath);
+                    Console.WriteLine($"[EditorScene] Loaded saved terrain (relative): {sceneData.Terrain.HeightmapPath}");
                 }
 
-                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' from SceneData (terrain restored)");
+                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (terrain restored)");
             }
         }
 
         public void FlushActiveSceneData()
         {
-            if (_activeGameScene is TerrainCreatorScene tcs)
+            if (_activeGameScene is TerrainCreatorScene tcs && _projectData?.Scenes != null)
             {
-                string name = _currentGameSceneName ?? "Main";
-                tcs.SaveTerrain(name);
-                Console.WriteLine($"[EditorScene] Terrain flushed on IDE Save for scene '{name}'");
+                if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sceneData))
+                {
+                    string name = _currentGameSceneName ?? "Main";
+                    tcs.SaveTerrain(name);
+
+                    if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
+                    sceneData.Terrain.HeightmapPath = $"Assets/Terrain/{name}.tif";
+
+                    Console.WriteLine($"[EditorScene] Flushed terrain - relative path stored: {sceneData.Terrain.HeightmapPath}");
+                }
             }
         }
 
