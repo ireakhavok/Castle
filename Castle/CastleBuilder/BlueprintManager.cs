@@ -186,6 +186,10 @@ namespace CastleBuilder
                 data = new ProjectData { Name = Path.GetFileName(projectPath) };
                 Console.WriteLine("[BlueprintManager.DoProjectSave] Creating new project data");
             }
+
+            // Flush live terrain heightmap before writing project.json
+            EditorScene.Current?.FlushActiveSceneData();
+
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written");
             if (!string.IsNullOrEmpty(_previousContext))
