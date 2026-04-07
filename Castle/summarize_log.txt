@@ -324,14 +324,14 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\CastleBuilder\bin
 Found: BlueprintManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
-Read 18721 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Read 18498 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Namespace: CastleBuilder
 Found 15 dependencies
 Found: CastleBuilder.csproj
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
-Read 5878 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
+Read 7205 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
 Found 16 dependencies
 Found: Events
@@ -524,13 +524,13 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\MapRoom\obj
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
-Read 13171 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
+Read 14984 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
-Found 14 dependencies
+Found 15 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
-Read 15624 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Read 16157 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 14 dependencies
 Found: TerrainCreatorUI.html
@@ -1937,6 +1937,12 @@ Namespace: ToolChest
 Found 4 dependencies
 Found: obj
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\ToolChest\obj
+Found: ProjectData.cs
+Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\ProjectData.cs
+Reading file: C:\repos\RealmFoundry\Castle\ToolChest\ProjectData.cs
+Read 555 chars from: C:\repos\RealmFoundry\Castle\ToolChest\ProjectData.cs
+Namespace: None
+Found 1 dependencies
 Found: ProjectSettings.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\ProjectSettings.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\ProjectSettings.cs
