@@ -17,18 +17,7 @@ using System.Text.Json;
 using ToolChest;
 namespace CastleBuilder
 {
-    public class ProjectData
-    {
-        public string Name { get; set; }
-        public string Type { get; set; }
-        public string Mode { get; set; }
-        public bool AllowMods { get; set; }
-        public Dictionary<string, SceneData> Scenes { get; set; } = new Dictionary<string, SceneData>();
-        public string Version { get; set; } = "1.0";
-        public string LastOpenedScene { get; set; } = string.Empty;
-        public string CameraType { get; set; } = "Perspective";
-        public string LastContext { get; set; } = "Scene Editor";
-    }
+
     public class BlueprintManager
     {
         private readonly EventBus _eventBus;
@@ -186,8 +175,18 @@ namespace CastleBuilder
                 data = new ProjectData { Name = Path.GetFileName(projectPath) };
                 Console.WriteLine("[BlueprintManager.DoProjectSave] Creating new project data");
             }
+
+            // Flush live terrain first
+            EditorScene.Current?.FlushActiveSceneData();
+
+            // Use the LIVE ProjectData from EditorScene (this is the fix)
+            if (EditorScene.Current != null)
+            {
+                data = EditorScene.Current.GetProjectData() ?? data;
+            }
+
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
-            Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written");
+            Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with terrain reference");
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Forcing CURRENT blade '{_previousContext}' into memory");

@@ -16,6 +16,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using ToolChest;
+
 namespace CastleBuilder
 {
     public class EditorScene : Scene
@@ -23,32 +24,45 @@ namespace CastleBuilder
         private ProjectData _projectData;
         private string _currentGameSceneName = string.Empty;
         private GameScene _activeGameScene;
-        public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
+
+        public static EditorScene Current { get; private set; }
+
+        public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+            : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
+            Current = this;
             LoadProjectData();
         }
+
+        public ProjectData GetProjectData() => _projectData;
+
         public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
             {
-                Console.WriteLine("[EditorScene] No active project - creating default 200×200 terrain scene");
+                Console.WriteLine("[EditorScene] No active project - creating default");
                 _currentGameSceneName = "Default";
                 _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus);
                 _activeGameScene.Initialize(_width, _height);
                 if (_activeGameScene is TerrainCreatorScene tcs) tcs.CreateBlank();
                 return;
             }
+
             string jsonPath = Path.Combine(projectPath, "project.json");
             if (!File.Exists(jsonPath)) return;
+
             string json = File.ReadAllText(jsonPath);
             _projectData = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
             if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
+
             _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
             ActivateCurrentGameScene();
         }
+
         private void ActivateCurrentGameScene()
         {
             if (string.IsNullOrEmpty(_currentGameSceneName) || _projectData?.Scenes == null)
@@ -56,10 +70,16 @@ namespace CastleBuilder
                 _activeGameScene = null;
                 return;
             }
+
             if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sceneData))
             {
                 _activeGameScene?.Dispose();
-                if (sceneData.SceneType == "TerrainTest" || sceneData.Terrain.HeightmapPath != null || _currentGameSceneName.Contains("Terrain"))
+
+                bool isTerrainScene = sceneData.SceneType == "TerrainTest" ||
+                                    !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath) ||
+                                    _currentGameSceneName.Contains("Terrain");
+
+                if (isTerrainScene)
                 {
                     _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
                 }
@@ -67,11 +87,37 @@ namespace CastleBuilder
                 {
                     _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
                 }
+
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
-                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' from SceneData");
+
+                if (_activeGameScene is TerrainCreatorScene tcs && !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
+                {
+                    tcs.LoadTerrain(sceneData.Terrain.HeightmapPath);
+                    Console.WriteLine($"[EditorScene] Loaded saved terrain (relative): {sceneData.Terrain.HeightmapPath}");
+                }
+
+                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (terrain restored)");
             }
         }
+
+        public void FlushActiveSceneData()
+        {
+            if (_activeGameScene is TerrainCreatorScene tcs && _projectData?.Scenes != null)
+            {
+                if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sceneData))
+                {
+                    string name = _currentGameSceneName ?? "Main";
+                    tcs.SaveTerrain(name);
+
+                    if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
+                    sceneData.Terrain.HeightmapPath = $"Assets/Terrain/{name}.tif";
+
+                    Console.WriteLine($"[EditorScene] Flushed terrain - relative path stored: {sceneData.Terrain.HeightmapPath}");
+                }
+            }
+        }
+
         public void SwitchGameScene(string sceneName)
         {
             if (_projectData?.Scenes?.ContainsKey(sceneName) == true)
@@ -82,11 +128,13 @@ namespace CastleBuilder
                 Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName}");
             }
         }
+
         public override void Resize(int width, int height)
         {
             base.Resize(width, height);
             _activeGameScene?.Resize(width, height);
         }
+
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
         {
             if (_activeGameScene is TerrainCreatorScene terrainScene)
@@ -98,13 +146,14 @@ namespace CastleBuilder
                 _activeGameScene.Update(deltaTime);
             }
         }
+
         public override void Update(float deltaTime)
         {
             _activeGameScene?.Update(deltaTime);
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
-            // FIXED: do NOT double-clear when the inner scene is TerrainCreatorScene (this was causing the UI corruption)
             if (!(_activeGameScene is TerrainCreatorScene))
             {
                 _renderContext.ClearColor(0.12f, 0.12f, 0.18f, 1f);
@@ -112,16 +161,22 @@ namespace CastleBuilder
             }
             _activeGameScene?.Render(entities ?? GetEntities());
         }
+
         public List<string> GetAvailableScenes() => _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
+
         public string CurrentGameScene => _currentGameSceneName;
+
         public override void Dispose()
         {
+            Current = null;
             _activeGameScene?.Dispose();
             base.Dispose();
         }
+
         private class BasicGameScene : GameScene
         {
-            public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data) : base(rc, cc, w, s, eb, data) { }
+            public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)
+                : base(rc, cc, w, s, eb, data) { }
             public override void Render(IReadOnlyList<Entity> entities) { }
         }
     }
