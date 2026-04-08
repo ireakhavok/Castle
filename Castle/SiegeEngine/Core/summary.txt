@@ -719,17 +719,8 @@ Folder: Interfaces
   - Class: IGameServer (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
 - File: IPanel.cs
-  - Class: IPanel (Namespace: SiegeEngine.Core.Interfaces)
-    - Dependencies: SiegeEngine.Core.Definitions, System.Numerics
-    - Methods:
-      - void Init()
-      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-      - void Render()
-      - void Dispose()
-      - void Detach()
-      - void OnPanelResize( float h, float w)
-      - ResizeHandle GetResizeHandle(Vector2 absMousePos)
-      - void StartResize( ResizeHandle handle, Vector2 mousePos)
+  - Class: IDataAwarePanel (Namespace: SiegeEngine.Core.Interfaces)
+    - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
 - File: IProjectionProvider.cs
   - Class: IProjectionProvider (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: System.Numerics
@@ -947,6 +938,7 @@ Folder: Managers
       - void Update(float deltaTime)
         - Calls: ClosePanelEvent, GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
+      - IEnumerable<IPanel> GetAllPanels()
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
@@ -2091,8 +2083,8 @@ SiegeEngine.Core.Events.SelectSpriteEvent
 SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
+SiegeEngine.Core.Interfaces.IDataAwarePanel
 SiegeEngine.Core.Interfaces.IGameServer
-SiegeEngine.Core.Interfaces.IPanel
 SiegeEngine.Core.Interfaces.IProjectionProvider
 SiegeEngine.Core.Interfaces.IRenderer
 SiegeEngine.Core.Interfaces.ISoundValidator
