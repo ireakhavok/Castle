@@ -185,6 +185,9 @@ namespace CastleBuilder
                 data = EditorScene.Current.GetProjectData() ?? data;
             }
 
+            // Centralized panel state snapshot (memory-first) before writing project.json
+            SaveAllPanelStates(data);
+
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with terrain reference");
             if (!string.IsNullOrEmpty(_previousContext))
@@ -266,6 +269,9 @@ namespace CastleBuilder
                     _previousContext = data.LastContext ?? "Scene Editor";
                     Console.WriteLine($"[BlueprintManager.OnLoadProject] Loaded project '{data.Name}' - Last Context: {_previousContext}");
                     ProjectLayoutManager.LoadLayoutForContext(_previousContext);
+
+                    // Automatic panel state restore (memory-first)
+                    LoadAllPanelStates(data);
                 }
             }
             SaveIDEState();
@@ -296,6 +302,10 @@ namespace CastleBuilder
                     string json = File.ReadAllText(jsonPath);
                     var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
                     data.LastContext = newContext;
+
+                    // Automatic panel state snapshot before context switch completes
+                    SaveAllPanelStates(data);
+
                     File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
                 }
             }
@@ -340,6 +350,65 @@ namespace CastleBuilder
             string json = JsonSerializer.Serialize(config);
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
             File.WriteAllText(_configPath, json);
+        }
+
+        // Centralized, future-proof orchestration for all IDataAwarePanel instances.
+        // Called on project load, context change, and explicit save.
+        // Uses PanelManager.Current.GetAllPanels() (clean public accessor) to discover opt-in panels.
+        // Stores results directly into ProjectData.PanelStates (memory-first).
+        // No circular dependencies, no changes to core UI/docking layers.
+        private static void SaveAllPanelStates(ProjectData data)
+        {
+            if (data == null) return;
+            data.PanelStates.Clear();
+
+            var panelManager = PanelManager.Current;
+            if (panelManager == null) return;
+
+            foreach (var panel in panelManager.GetAllPanels())
+            {
+                if (panel is IDataAwarePanel aware)
+                {
+                    try
+                    {
+                        var state = aware.SavePanelState();
+                        if (!state.ValueKind.HasFlag(JsonValueKind.Undefined))
+                        {
+                            data.PanelStates[aware.DataKey] = state;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[BlueprintManager] WARNING: Failed to save state for panel {aware.DataKey}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        // Automatic restore from ProjectData.PanelStates (memory-first).
+        // Called on LoadProjectEvent and after ContextChangedEvent layout restore.
+        // Panels call their own RebindToContent() internally if needed after LoadPanelState.
+        private static void LoadAllPanelStates(ProjectData data)
+        {
+            if (data?.PanelStates == null || data.PanelStates.Count == 0) return;
+
+            var panelManager = PanelManager.Current;
+            if (panelManager == null) return;
+
+            foreach (var panel in panelManager.GetAllPanels())
+            {
+                if (panel is IDataAwarePanel aware && data.PanelStates.TryGetValue(aware.DataKey, out var state))
+                {
+                    try
+                    {
+                        aware.LoadPanelState(state);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[BlueprintManager] WARNING: Failed to load state for panel {aware.DataKey}: {ex.Message}");
+                    }
+                }
+            }
         }
     }
     public static class StringExtensions

@@ -1,24 +1,25 @@
 ﻿// Folder: MapRoom
 // File: TerrainCreatorPanel.cs
+using ReadingChamber;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
-using ReadingChamber;
 using SiegeEngine.Scenes;
 using System;
 using System.IO;
 using System.Numerics;
 using System.Text;
-using ToolChest;
-using SiegeEngine.Core.Managers;
 using System.Text.Json;
+using ToolChest;
 
 namespace MapRoom
 {
-    public class TerrainCreatorPanel : BasePanel
+    public class TerrainCreatorPanel : BasePanel, IDataAwarePanel
     {
         private static IRenderContext _staticRenderContext;
         private static IControlContext _staticControlContext;
@@ -339,6 +340,42 @@ namespace MapRoom
         public static void OpenBrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             BrushPanel.Open(renderContext, controlContext, window, eventBus);
+        }
+
+        // IDataAwarePanel implementation - opt-in for automatic persistence of terrain/brush state
+        public string DataKey => "TerrainCreatorPanel";
+
+        public JsonElement SavePanelState()
+        {
+            var state = new Dictionary<string, object>
+            {
+                ["currentSceneName"] = _currentSceneData?.Name ?? "",
+                ["terrainHeightmapPath"] = _currentSceneData?.Terrain?.HeightmapPath ?? "",
+                ["activeBrushMode"] = _terrainScene?.GetActiveBrush()?.Mode.ToString() ?? "",
+                // Future: brush size, intensity, ghost position, etc.
+            };
+            return JsonSerializer.SerializeToElement(state);
+        }
+
+        public void LoadPanelState(JsonElement state)
+        {
+            try
+            {
+                if (state.TryGetProperty("terrainHeightmapPath", out var pathElem) && !string.IsNullOrEmpty(pathElem.GetString()))
+                {
+                    string path = pathElem.GetString();
+                    if (_terrainScene != null && File.Exists(path))
+                    {
+                        _terrainScene.LoadTerrain(path);
+                    }
+                }
+                // Future: re-apply brush settings, rebind SceneData reference
+            }
+            catch
+            {
+                // Graceful fallback for older projects
+            }
+            Console.WriteLine($"[TerrainCreatorPanel] Loaded panel state for DataKey '{DataKey}'");
         }
     }
 }

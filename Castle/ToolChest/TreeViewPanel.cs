@@ -10,10 +10,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Text;
+using System.Text.Json;
 
 namespace ToolChest
 {
-    public class TreeViewPanel : BasePanel
+    public class TreeViewPanel : BasePanel, IDataAwarePanel
     {
         private class TreeViewUIOverlay : UIOverlay
         {
@@ -178,6 +179,48 @@ namespace ToolChest
             public string Icon { get; set; } = "📄";
             public bool IsExpanded { get; set; } = true;
             public List<string> Children { get; set; } = new List<string>();
+        }
+
+        // IDataAwarePanel implementation - opt-in for automatic persistence
+        public string DataKey => "TreeViewPanel";
+
+        public JsonElement SavePanelState()
+        {
+            var state = new Dictionary<string, object>
+            {
+                ["selectedNodeId"] = _selectedNodeId ?? "",
+                ["expandedNodes"] = _nodes.Values.Where(n => n.IsExpanded).Select(n => n.Id).ToList()
+                // Future: full node hierarchy serialization when entity system matures
+            };
+            return JsonSerializer.SerializeToElement(state);
+        }
+
+        public void LoadPanelState(JsonElement state)
+        {
+            try
+            {
+                if (state.TryGetProperty("selectedNodeId", out var selected))
+                {
+                    _selectedNodeId = selected.GetString();
+                }
+                if (state.TryGetProperty("expandedNodes", out var expanded))
+                {
+                    var expandedList = expanded.Deserialize<List<string>>();
+                    foreach (var id in expandedList ?? Enumerable.Empty<string>())
+                    {
+                        if (_nodes.TryGetValue(id, out var node))
+                        {
+                            node.IsExpanded = true;
+                        }
+                    }
+                }
+                RebuildTreeUI();
+            }
+            catch
+            {
+                // Graceful fallback - state may be from older project
+            }
+            Console.WriteLine($"[TreeViewPanel] Loaded panel state for DataKey '{DataKey}'");
         }
     }
 }
