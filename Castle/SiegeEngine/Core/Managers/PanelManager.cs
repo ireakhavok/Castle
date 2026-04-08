@@ -211,6 +211,14 @@ namespace SiegeEngine.Core.Managers
             return _desktopStrategy.GetTopmostPanelAt(mousePos);
         }
 
+        // Clean, future-proof public accessor for BlueprintManager (and future mod panels).
+        // Returns all active panels (including modal and IDE panels) without exposing the private list.
+        // Required for IDataAwarePanel orchestration while keeping PanelManager unaware of project concepts.
+        public IEnumerable<IPanel> GetAllPanels()
+        {
+            return _panels;
+        }
+
         public void Render()
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);

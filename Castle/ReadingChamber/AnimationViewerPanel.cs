@@ -170,6 +170,11 @@ namespace ReadingChamber
             }
         }
 
+        // FUTURE-PROOF: This panel now continuously updates its animation playback
+        // even when the mouse is not over it (removes mouse-over requirement).
+        // Matches the exact pattern already used successfully by TwoDCreatorPanel.
+        public override bool WantsContinuousUpdate => true;
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);

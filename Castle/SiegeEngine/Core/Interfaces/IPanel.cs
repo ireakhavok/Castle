@@ -2,6 +2,7 @@
 // File: IPanel.cs
 using SiegeEngine.Core.Definitions;
 using System.Numerics;
+using System.Text.Json;
 
 namespace SiegeEngine.Core.Interfaces
 {
@@ -57,5 +58,17 @@ namespace SiegeEngine.Core.Interfaces
         // Clean core abstraction: allows PanelManager to toggle camera mode on the true topmost panel only
         // This is the ONLY way to handle Tab globally without circular dependencies or panel-specific code
         void ToggleCameraMode();
+    }
+
+    // Lightweight opt-in interface for automatic per-project panel state persistence.
+    // Lives in core (no CastleBuilder dependency). Uses only System.Text.Json.
+    // Panels implement this to snapshot/restore their internal runtime state (selected objects,
+    // tree expansions, active brushes, SceneData references, etc.) automatically on project
+    // load, context switch, and explicit save. Memory-first until FlushAllToDisk.
+    public interface IDataAwarePanel
+    {
+        string DataKey { get; }
+        JsonElement SavePanelState();
+        void LoadPanelState(JsonElement state);
     }
 }

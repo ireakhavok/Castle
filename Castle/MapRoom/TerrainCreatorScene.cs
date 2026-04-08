@@ -14,7 +14,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using System.Collections.Generic;
-
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -30,26 +29,21 @@ namespace MapRoom
         private const float BrushUpdateInterval = 0.0f;
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData;
-
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
             _sceneData = sceneData;
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
         }
-
         private string ResolveFullPath(string inputPath)
         {
             if (string.IsNullOrEmpty(inputPath)) return inputPath;
             if (Path.IsPathRooted(inputPath)) return Path.GetFullPath(inputPath);
-
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (string.IsNullOrEmpty(projectPath)) return inputPath;
-
             string fullPath = Path.Combine(projectPath, inputPath);
             return Path.GetFullPath(fullPath);
         }
-
         public void CreateBlank()
         {
             _terrainWidth = 200;
@@ -76,7 +70,6 @@ namespace MapRoom
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
-
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -118,7 +111,6 @@ namespace MapRoom
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
-
         public override void LoadTerrain(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -126,23 +118,18 @@ namespace MapRoom
                 base.LoadTerrain(path);
                 return;
             }
-
             string fullPath = ResolveFullPath(path);
             Console.WriteLine($"[TerrainCreatorScene] Loading terrain - relative '{path}' → full '{fullPath}'");
-
             base.LoadTerrain(fullPath);
-
             if (_sceneData?.Terrain != null)
             {
                 _sceneData.Terrain.HeightmapPath = path; // keep pure relative path as requested
             }
         }
-
         public void SetColorTexture(string path)
         {
             base.SetColorTexture(path);
         }
-
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -163,7 +150,6 @@ namespace MapRoom
             }
             Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → {tifPath}");
         }
-
         public void Export2D(string projectAssetsDir)
         {
             string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
@@ -171,7 +157,6 @@ namespace MapRoom
             TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
             Console.WriteLine($"[TerrainCreatorScene] Exported 2D tilemap to {fbxPath}");
         }
-
         private void SaveAsPng(string path)
         {
             int w = _terrainWidth;
@@ -190,18 +175,21 @@ namespace MapRoom
             }
             bmp.Save(path, ImageFormat.Png);
         }
-
         public void SetActiveBrush(ToolChest.Brush brush)
         {
             _activeBrush = brush;
         }
-
+        // Public getter for _activeBrush (required by IDataAwarePanel.SavePanelState in TerrainCreatorPanel).
+        // Keeps encapsulation, no variable name changes, future-proof for brush persistence across project loads/context switches.
+        public ToolChest.Brush GetActiveBrush()
+        {
+            return _activeBrush;
+        }
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
-
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
@@ -225,7 +213,6 @@ namespace MapRoom
             }
             _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
-
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -270,7 +257,6 @@ namespace MapRoom
                 _isBrushing = false;
             }
         }
-
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -298,7 +284,6 @@ namespace MapRoom
             }
             return false;
         }
-
         private Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
@@ -309,7 +294,6 @@ namespace MapRoom
                 MathF.Sin(pitchRad)
             ));
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -346,7 +330,6 @@ namespace MapRoom
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
-
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -359,14 +342,12 @@ namespace MapRoom
             _ghostBuffer?.Dispose();
             base.Dispose();
         }
-
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
-
         private void ApplyModification(TerrainModifiedEvent e)
         {
             var brush = new ToolChest.Brush

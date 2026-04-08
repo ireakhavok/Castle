@@ -13,10 +13,11 @@ using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 
 namespace ToolChest
 {
-    public class PropertiesPanel : BasePanel
+    public class PropertiesPanel : BasePanel, IDataAwarePanel
     {
         private class PropertiesUIOverlay : UIOverlay
         {
@@ -171,6 +172,28 @@ namespace ToolChest
         {
             var panel = new PropertiesPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
+        }
+
+        // IDataAwarePanel implementation - opt-in for automatic persistence
+        public string DataKey => "PropertiesPanel";
+
+        public JsonElement SavePanelState()
+        {
+            // Persist the current target reference (simple ID/path for future entity system)
+            var state = new Dictionary<string, object>
+            {
+                ["currentTargetType"] = _currentTarget?.GetType().FullName ?? "",
+                // Future: add entity ID, component path, etc. when full entity system is wired
+            };
+            return JsonSerializer.SerializeToElement(state);
+        }
+
+        public void LoadPanelState(JsonElement state)
+        {
+            // Restore target reference (stub for now - will bind to live EditorScene entities later)
+            // No immediate UI rebuild here - panels call RebindToContent internally after load if needed
+            Console.WriteLine($"[PropertiesPanel] Loaded panel state for DataKey '{DataKey}'");
+            // Future: re-resolve _currentTarget from saved ID/path via Scene/EditorScene
         }
     }
 }

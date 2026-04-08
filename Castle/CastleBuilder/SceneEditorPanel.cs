@@ -13,10 +13,11 @@ using System;
 using System.IO;
 using System.Numerics;
 using System.Text;
+using System.Text.Json;
 
 namespace CastleBuilder
 {
-    public class SceneEditorPanel : BasePanel
+    public class SceneEditorPanel : BasePanel, IDataAwarePanel
     {
         private class SceneEditorUIOverlay : UIOverlay
         {
@@ -187,6 +188,39 @@ namespace CastleBuilder
         {
             var panel = new SceneEditorPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
+        }
+
+        // IDataAwarePanel implementation - opt-in for automatic persistence of selected scene
+        public string DataKey => "SceneEditorPanel";
+
+        public JsonElement SavePanelState()
+        {
+            var state = new Dictionary<string, object>
+            {
+                ["currentSceneName"] = _editorScene?.CurrentGameScene ?? "Main"
+            };
+            return JsonSerializer.SerializeToElement(state);
+        }
+
+        public void LoadPanelState(JsonElement state)
+        {
+            try
+            {
+                if (state.TryGetProperty("currentSceneName", out var sceneNameElem))
+                {
+                    string sceneName = sceneNameElem.GetString();
+                    if (!string.IsNullOrEmpty(sceneName) && _editorScene != null)
+                    {
+                        _editorScene.SwitchGameScene(sceneName);
+                        UpdateSceneSelectorUI();
+                    }
+                }
+            }
+            catch
+            {
+                // Graceful fallback for older projects
+            }
+            Console.WriteLine($"[SceneEditorPanel] Loaded panel state for DataKey '{DataKey}'");
         }
     }
 }

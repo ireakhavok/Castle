@@ -323,7 +323,7 @@ Folder: MapRoom
   - Class: TerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, ToolChest
+    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
     - Fields:
       - TerrainCreatorPanel _parent
     - Methods:
@@ -345,11 +345,13 @@ Folder: MapRoom
       - float BrushMoveThreshold
       - SceneData _sceneData
     - Methods:
+      - string ResolveFullPath(string inputPath)
       - void CreateBlank()
         - Calls: BuildWireframeMesh
       - void CreateTerrain(TerrainCreationParams parameters)
         - Calls: BuildWireframeMesh, CreateBlank, LoadTerrain
       - void LoadTerrain(string path)
+        - Calls: ResolveFullPath
       - void SetColorTexture(string path)
       - void SaveTerrain(string terrainName)
         - Calls: CustomTerrainParser.SaveFloatTiff, SaveAsPng
@@ -2976,6 +2978,9 @@ Folder: ToolChest
     - Methods:
       - void TriggerSelectBrush(string brushType)
         - Calls: SelectBrushEvent, _steamEngine.GetSteamId
+- File: ProjectData.cs
+  - Class: ProjectData (Namespace: None)
+    - Dependencies: SiegeEngine.Core.Definitions
 - File: ProjectSettings.cs
   - Class: ProjectSettings (Namespace: ToolChest)
     - Dependencies: System, System.IO
