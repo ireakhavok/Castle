@@ -45,7 +45,7 @@ namespace ToolChest
             IsClosable = true;
             AllowDragging = true;
             DockState = DockState.Floating;
-            DockingMode = SiegeEngine.Core.Definitions.DockingMode.Dynamic;
+            DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
         }
 
         protected override UIOverlay CreateUIOverlay()
