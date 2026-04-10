@@ -37,6 +37,8 @@ namespace ToolChest
 
         private readonly Dictionary<string, TreeNode> _nodes = new Dictionary<string, TreeNode>();
         private string _selectedNodeId = null;
+        private string _currentContentType = null;
+        private readonly HashSet<string> _expandedNodeIds = new HashSet<string>();
 
         public TreeViewPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -46,6 +48,8 @@ namespace ToolChest
             AllowDragging = true;
             DockState = DockState.Floating;
             DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
+
+            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -60,13 +64,52 @@ namespace ToolChest
             LoadTreeUI();
         }
 
+        private void OnGenericEvent(GenericEvent e)
+        {
+            if (e.Hook == "OutlinerHierarchyUpdate")
+            {
+                Console.WriteLine($"[TreeViewPanel] *** HIERARCHY UPDATE RECEIVED *** contentType={e.Data.GetValueOrDefault("contentType", "unknown")}");
+                HandleOutlinerHierarchyUpdate(e);
+            }
+        }
+
+        private void HandleOutlinerHierarchyUpdate(GenericEvent e)
+        {
+            string newContentType = e.Data.GetValueOrDefault("contentType", "default");
+            string hierarchyJson = e.Data.GetValueOrDefault("hierarchy", "");
+
+            if (string.IsNullOrEmpty(hierarchyJson))
+            {
+                Console.WriteLine("[TreeViewPanel] WARNING: Empty hierarchy JSON received");
+                return;
+            }
+
+            if (_currentContentType != newContentType)
+            {
+                _currentContentType = newContentType;
+                _nodes.Clear();
+                _expandedNodeIds.Clear();
+                Console.WriteLine($"[TreeViewPanel] Content type changed to {newContentType} - full rebuild");
+            }
+
+            var rootNodes = JsonSerializer.Deserialize<List<TreeNode>>(hierarchyJson);
+            foreach (var node in rootNodes ?? Enumerable.Empty<TreeNode>())
+            {
+                _nodes[node.Id] = node;
+                if (_expandedNodeIds.Contains(node.Id))
+                    node.IsExpanded = true;
+            }
+
+            RebuildTreeUI();
+            Console.WriteLine($"[TreeViewPanel] Hierarchy rebuilt with {_nodes.Count} nodes for type {newContentType}");
+        }
+
         private void LoadTreeUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TreeViewPanelUI.html");
             if (!File.Exists(htmlPath))
             {
                 Console.WriteLine($"[TreeViewPanel] ERROR: TreeViewPanelUI.html not found at {htmlPath}");
-                Console.WriteLine("Create the static HTML file in the executable directory for fast iteration and preview.");
                 return;
             }
             string html = File.ReadAllText(htmlPath);
@@ -76,30 +119,45 @@ namespace ToolChest
             _uiOverlay.RefreshUI();
         }
 
-        public virtual void PopulateTree(IEnumerable<TreeNode> nodes)
-        {
-            _nodes.Clear();
-            foreach (var node in nodes)
-            {
-                _nodes[node.Id] = node;
-            }
-            RebuildTreeUI();
-        }
-
         private void RebuildTreeUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TreeViewPanelUI.html");
-            if (!File.Exists(htmlPath)) return;
+            if (!File.Exists(htmlPath))
+            {
+                Console.WriteLine("[TreeViewPanel] RebuildTreeUI failed - no HTML template");
+                return;
+            }
+
             string template = File.ReadAllText(htmlPath);
-            string nodesHtml = BuildTreeHtmlString("root", 0);
+            string nodesHtml = BuildTreeHtmlString();
+
+            Console.WriteLine($"[TreeViewPanel] Generated nodes HTML (first 400 chars):\n{nodesHtml.Substring(0, Math.Min(400, nodesHtml.Length))}");
+            Console.WriteLine($"[TreeViewPanel] Template contains <!--TREE_NODES--> ? {template.Contains("<!--TREE_NODES-->")}");
+
             string finalHtml = template.Replace("<!--TREE_NODES-->", nodesHtml);
+
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+
+            Console.WriteLine($"[TreeViewPanel] RebuildTreeUI complete - UIOverlay refreshed with {nodesHtml.Length} chars of tree HTML");
         }
 
-        private string BuildTreeHtmlString(string nodeId, int indent)
+        // FIXED: No longer assumes a single "root" node. Builds ALL top-level nodes (those with no ParentId).
+        // This works for any hierarchy we send from TerrainCreatorPanel or any future panel.
+        private string BuildTreeHtmlString()
+        {
+            var sb = new StringBuilder();
+            // Find all top-level nodes (no ParentId or ParentId is null/empty)
+            foreach (var node in _nodes.Values.Where(n => string.IsNullOrEmpty(n.ParentId)))
+            {
+                sb.Append(BuildTreeHtmlStringRecursive(node.Id, 0));
+            }
+            return sb.ToString();
+        }
+
+        private string BuildTreeHtmlStringRecursive(string nodeId, int indent)
         {
             if (!_nodes.TryGetValue(nodeId, out var node)) return "";
             string indentStr = new string(' ', indent * 4);
@@ -114,7 +172,7 @@ namespace ToolChest
                 sb.AppendLine($"{indentStr} <ul class=\"children\">");
                 foreach (var childId in node.Children)
                 {
-                    sb.Append(BuildTreeHtmlString(childId, indent + 1));
+                    sb.Append(BuildTreeHtmlStringRecursive(childId, indent + 1));
                 }
                 sb.AppendLine($"{indentStr} </ul>");
             }
@@ -130,6 +188,8 @@ namespace ToolChest
                 if (_nodes.TryGetValue(id, out var node))
                 {
                     node.IsExpanded = !node.IsExpanded;
+                    if (node.IsExpanded) _expandedNodeIds.Add(id);
+                    else _expandedNodeIds.Remove(id);
                     RebuildTreeUI();
                 }
             }
@@ -137,16 +197,6 @@ namespace ToolChest
             {
                 string id = hook.Substring(7);
                 _selectedNodeId = id;
-                RebuildTreeUI();
-                OnNodeSelected(id);
-            }
-            else if (hook == "RefreshTree")
-            {
-                Console.WriteLine("[TreeViewPanel] RefreshTree triggered - call PopulateTree from derived panel");
-            }
-            else if (hook == "CollapseAll")
-            {
-                foreach (var n in _nodes.Values) if (n.Children.Count > 0) n.IsExpanded = false;
                 RebuildTreeUI();
             }
         }
@@ -158,11 +208,6 @@ namespace ToolChest
             {
                 HandleDataHook(hook);
             }
-        }
-
-        protected virtual void OnNodeSelected(string nodeId)
-        {
-            Console.WriteLine($"[TreeViewPanel] Node selected: {nodeId}");
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -181,7 +226,6 @@ namespace ToolChest
             public List<string> Children { get; set; } = new List<string>();
         }
 
-        // IDataAwarePanel implementation - opt-in for automatic persistence
         public string DataKey => "TreeViewPanel";
 
         public JsonElement SavePanelState()
@@ -189,8 +233,8 @@ namespace ToolChest
             var state = new Dictionary<string, object>
             {
                 ["selectedNodeId"] = _selectedNodeId ?? "",
-                ["expandedNodes"] = _nodes.Values.Where(n => n.IsExpanded).Select(n => n.Id).ToList()
-                // Future: full node hierarchy serialization when entity system matures
+                ["expandedNodes"] = _expandedNodeIds.ToList(),
+                ["currentContentType"] = _currentContentType ?? ""
             };
             return JsonSerializer.SerializeToElement(state);
         }
@@ -200,26 +244,18 @@ namespace ToolChest
             try
             {
                 if (state.TryGetProperty("selectedNodeId", out var selected))
-                {
                     _selectedNodeId = selected.GetString();
-                }
                 if (state.TryGetProperty("expandedNodes", out var expanded))
                 {
-                    var expandedList = expanded.Deserialize<List<string>>();
-                    foreach (var id in expandedList ?? Enumerable.Empty<string>())
-                    {
-                        if (_nodes.TryGetValue(id, out var node))
-                        {
-                            node.IsExpanded = true;
-                        }
-                    }
+                    var list = expanded.Deserialize<List<string>>();
+                    _expandedNodeIds.Clear();
+                    if (list != null) foreach (var id in list) _expandedNodeIds.Add(id);
                 }
+                if (state.TryGetProperty("currentContentType", out var ct))
+                    _currentContentType = ct.GetString();
                 RebuildTreeUI();
             }
-            catch
-            {
-                // Graceful fallback - state may be from older project
-            }
+            catch { }
             Console.WriteLine($"[TreeViewPanel] Loaded panel state for DataKey '{DataKey}'");
         }
     }

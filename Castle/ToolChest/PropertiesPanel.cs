@@ -49,9 +49,10 @@ namespace ToolChest
             AllowDragging = true;
             DockState = DockState.Floating;
             DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
-            // === ONLY CHANGE: Proper starting size ===
             BaseWidth = 460f;
             BaseHeight = 320f;
+
+            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -66,13 +67,27 @@ namespace ToolChest
             LoadPropertiesUI();
         }
 
+        private void OnGenericEvent(GenericEvent e)
+        {
+            Console.WriteLine($"[PropertiesPanel] *** GENERIC EVENT RECEIVED *** Hook={e.Hook}");
+            if (e.Hook == "OutlinerHierarchyUpdate")
+            {
+                Console.WriteLine($"[PropertiesPanel] OutlinerHierarchyUpdate - showing panel properties for type {e.Data.GetValueOrDefault("contentType", "unknown")}");
+                RebuildPropertiesUI();
+            }
+            else if (e.Hook == "ItemSelected")
+            {
+                Console.WriteLine($"[PropertiesPanel] ItemSelected - showing item properties for {e.Data.GetValueOrDefault("itemId", "")}");
+                RebuildPropertiesUI();
+            }
+        }
+
         private void LoadPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
             if (!File.Exists(htmlPath))
             {
                 Console.WriteLine($"[PropertiesPanel] ERROR: PropertiesPanelUI.html not found at {htmlPath}");
-                Console.WriteLine("Please create the static HTML file in the executable folder for fast iteration.");
                 return;
             }
             string html = File.ReadAllText(htmlPath);
@@ -92,9 +107,9 @@ namespace ToolChest
         private void RebuildPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
-            if (!File.Exists(htmlPath) || _currentTarget == null) return;
+            if (!File.Exists(htmlPath)) return;
             string template = File.ReadAllText(htmlPath);
-            string contentHtml = BuildPropertiesHtml(_currentTarget, "", 0);
+            string contentHtml = _currentTarget != null ? BuildPropertiesHtml(_currentTarget, "", 0) : "<div style='padding:20px;color:#aaa;'>No selection</div>";
             string finalHtml = template.Replace("<!--PROPERTIES-->", contentHtml);
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
@@ -154,7 +169,7 @@ namespace ToolChest
                 string path = hook.Substring(12);
                 if (_propertyMap.TryGetValue(path, out var prop) && _currentTarget != null)
                 {
-                    Console.WriteLine($"[PropertiesPanel] SetProperty requested: {path} on target {_currentTarget.GetType().Name}");
+                    Console.WriteLine($"[PropertiesPanel] SetProperty requested: {path}");
                 }
             }
         }
@@ -174,26 +189,20 @@ namespace ToolChest
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
 
-        // IDataAwarePanel implementation - opt-in for automatic persistence
         public string DataKey => "PropertiesPanel";
 
         public JsonElement SavePanelState()
         {
-            // Persist the current target reference (simple ID/path for future entity system)
             var state = new Dictionary<string, object>
             {
-                ["currentTargetType"] = _currentTarget?.GetType().FullName ?? "",
-                // Future: add entity ID, component path, etc. when full entity system is wired
+                ["currentTargetType"] = _currentTarget?.GetType().FullName ?? ""
             };
             return JsonSerializer.SerializeToElement(state);
         }
 
         public void LoadPanelState(JsonElement state)
         {
-            // Restore target reference (stub for now - will bind to live EditorScene entities later)
-            // No immediate UI rebuild here - panels call RebindToContent internally after load if needed
             Console.WriteLine($"[PropertiesPanel] Loaded panel state for DataKey '{DataKey}'");
-            // Future: re-resolve _currentTarget from saved ID/path via Scene/EditorScene
         }
     }
 }

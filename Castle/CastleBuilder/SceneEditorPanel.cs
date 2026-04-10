@@ -43,7 +43,7 @@ namespace CastleBuilder
         }
 
         private EditorScene _editorScene;
-        private bool _cameraMode = false;   // start in UI mode — no auto-capture
+        private bool _cameraMode = false;
         private int _lastW;
         private int _lastH;
 
@@ -52,7 +52,7 @@ namespace CastleBuilder
         {
             HasTitleBar = true;
             IsClosable = true;
-            Scaling = ScalingMode.BestFit;   // same as TerrainCreatorPanel
+            Scaling = ScalingMode.BestFit;
             BaseWidth = 1280f;
             DockingMode = DockingMode.IDE;
             BaseHeight = 720f;
@@ -123,7 +123,6 @@ namespace CastleBuilder
 
         public void HandleUIClick(HtmlElement elem)
         {
-            // reserved for future buttons
         }
 
         public override void ToggleCameraMode()
@@ -141,7 +140,14 @@ namespace CastleBuilder
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            // EXACT same pattern as TerrainCreatorPanel (this is what prevents stretching)
+            // UNFILTERED focus check - the key fix for camera mode panels
+            bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
+            if (isTopmost && mousePressed)
+            {
+                Console.WriteLine($"[SceneEditorPanel] RAW MOUSE PRESS DETECTED in content area - calling OnContentFocusGained");
+                OnContentFocusGained();
+            }
+
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
 
             float header = HasTitleBar ? HeaderHeight : 0f;
@@ -173,7 +179,7 @@ namespace CastleBuilder
 
         public override void OnLiveResize(float w, float h)
         {
-            _editorScene.Resize((int)w, (int)h);   // propagate exact size to inner scene
+            _editorScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
 
@@ -190,7 +196,6 @@ namespace CastleBuilder
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
 
-        // IDataAwarePanel implementation - opt-in for automatic persistence of selected scene
         public string DataKey => "SceneEditorPanel";
 
         public JsonElement SavePanelState()
@@ -216,11 +221,38 @@ namespace CastleBuilder
                     }
                 }
             }
-            catch
-            {
-                // Graceful fallback for older projects
-            }
+            catch { }
             Console.WriteLine($"[SceneEditorPanel] Loaded panel state for DataKey '{DataKey}'");
+        }
+
+        // CRITICAL FOCUS REQUIREMENT - called reliably from Update
+        protected override void OnContentFocusGained()
+        {
+            Console.WriteLine("[SceneEditorPanel] *** OnContentFocusGained CALLED *** Publishing full hierarchy");
+
+            var root = new ToolChest.TreeViewPanel.TreeNode
+            {
+                Id = "scene-root",
+                Label = "Scene Editor",
+                Icon = "📐",
+                IsExpanded = true
+            };
+            root.Children.Add("scene-entities");
+            root.Children.Add("scene-lights");
+            root.Children.Add("scene-cameras");
+
+            var entities = new ToolChest.TreeViewPanel.TreeNode { Id = "scene-entities", Label = "Entities", Icon = "🧱", ParentId = "scene-root" };
+            var lights = new ToolChest.TreeViewPanel.TreeNode { Id = "scene-lights", Label = "Lights", Icon = "💡", ParentId = "scene-root" };
+            var cameras = new ToolChest.TreeViewPanel.TreeNode { Id = "scene-cameras", Label = "Cameras", Icon = "📹", ParentId = "scene-root" };
+
+            var nodes = new List<ToolChest.TreeViewPanel.TreeNode> { root, entities, lights, cameras };
+
+            var generic = new GenericEvent { Hook = "OutlinerHierarchyUpdate" };
+            generic.Data["contentType"] = "SceneEditor";
+            generic.Data["hierarchy"] = JsonSerializer.Serialize(nodes);
+            _eventBus.Publish(generic);
+
+            Console.WriteLine("[SceneEditorPanel] OutlinerHierarchyUpdate published with 4 nodes");
         }
     }
 }
