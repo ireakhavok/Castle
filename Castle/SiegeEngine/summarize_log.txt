@@ -424,7 +424,7 @@ Found 2 dependencies
 Found: EventBus.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EventBus.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EventBus.cs
-Read 12332 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EventBus.cs
+Read 12675 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EventBus.cs
 Namespace: SiegeEngine.Core.Events
 Found 10 dependencies
 Found: ExitEditorEvent.cs

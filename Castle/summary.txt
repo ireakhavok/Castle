@@ -155,7 +155,7 @@ Folder: CastleBuilder
   - Class: SceneEditorUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
@@ -298,6 +298,32 @@ Folder: GuildTower
 - File: Class1.cs
   - Class: Class1 (Namespace: GuildTower)
 
+Folder: Keystone
+- File: IOutlinerProvider.cs
+  - Class: IOutlinerProvider (Namespace: Keystone)
+    - Dependencies: System.Collections.Generic
+- File: OutlinerCoordinator.cs
+  - Class: OutlinerCoordinator (Namespace: Keystone)
+    - Dependencies: SiegeEngine.Core.Events, System, System.Collections.Generic
+    - Fields:
+      - OutlinerCoordinator _instance
+      - OutlinerCoordinator Instance
+      - IOutlinerProvider _lastActiveProvider
+      - EventBus _eventBus
+    - Methods:
+      - constructor OutlinerCoordinator()
+      - constructor OutlinerCoordinator()
+      - void Initialize(EventBus eventBus)
+      - void SetAsActiveProvider( EventBus eventBus, IOutlinerProvider provider)
+      - void NotifySelectionChanged(string nodeId)
+      - void NotifyHierarchyChanged()
+      - List<OutlinerNode> GetCurrentHierarchy( out string, [] selectedIds, out string[] expandedIds)
+      - void SaveExpandedState( IEnumerable<string> expanded, string contentType)
+      - void SaveSelectedState( IEnumerable<string> selected, string contentType)
+- File: OutlinerNode.cs
+  - Class: OutlinerNode (Namespace: Keystone)
+    - Dependencies: System.Collections.Generic
+
 Folder: MapRoom
 - File: CreateTerrainEvent.cs
   - Class: CreateTerrainEvent (Namespace: MapRoom)
@@ -323,7 +349,7 @@ Folder: MapRoom
   - Class: TerrainUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
     - Fields:
       - TerrainCreatorPanel _parent
     - Methods:
@@ -395,7 +421,7 @@ Folder: MapRoom
   - Class: TwoDCreatorUIOverlay (Namespace: MapRoom)
     - Inherits: UIOverlay
         
-    - Dependencies: ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, ToolChest
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
     - Fields:
       - TwoDCreatorPanel _parent
     - Methods:
@@ -448,7 +474,7 @@ Folder: ReadingChamber
   - Class: AssetUIOverlay (Namespace: ReadingChamber)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
+    - Dependencies: Keystone, SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
     - Fields:
       - AnimationViewerPanel _parent
     - Methods:
@@ -2972,9 +2998,6 @@ Folder: ToolChest
     - Methods:
       - void TriggerSelectBrush(string brushType)
         - Calls: SelectBrushEvent, _steamEngine.GetSteamId
-- File: IOutlinerNode.cs
-  - Class: IOutlinerNode (Namespace: ToolChest)
-    - Dependencies: SiegeEngine.Core.UI, System.Collections.Generic
 - File: ProjectData.cs
   - Class: ProjectData (Namespace: None)
     - Dependencies: SiegeEngine.Core.Definitions, System.Collections.Generic, System.Text.Json
@@ -2990,7 +3013,7 @@ Folder: ToolChest
   - Class: PropertiesUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.ComponentModel, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.ComponentModel, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
     - Fields:
       - PropertiesPanel _parent
     - Methods:
@@ -3007,8 +3030,15 @@ Folder: ToolChest
       - void HandleDataHook(string hook)
       - bool HandleUIClick(HtmlElement elem)
 - File: TreeViewPanel.cs
-  - Class: TreeNode (Namespace: ToolChest)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Numerics, System.Text, System.Text.Json
+  - Class: TreeViewUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text, System.Text.Json
+    - Fields:
+      - TreeViewPanel _parent
+    - Methods:
+      - void HandleDataHook(string hook)
+      - bool HandleUIClick(HtmlElement elem)
 
 Folder: Trebuchet
 - File: Launcher.cs

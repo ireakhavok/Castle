@@ -1,62 +1,39 @@
-Prompt for Next-Phase Outliner / Properties System Redesign
-We have successfully wired the focus-detection and GenericEvent flow (OutlinerHierarchyUpdate). TreeViewPanel now receives events and attempts to render a hierarchy, but the current implementation is unacceptable for the following reasons:
+You are an expert in custom UI systems and editor tooling. We are currently implementing a professional-grade Outliner (TreeViewPanel) + Properties inspector that must feel and behave exactly like Unity or Unreal Editor — crisp, responsive, perfectly styled, with no jank.
 
-Hardcoded fake nodes in TerrainCreatorPanel.OnContentFocusGained (and similar places) — this is not maintainable, not modder-friendly, and not future-proof.
-Selection behavior is broken: clicking a node often highlights large sections of the tree instead of the precise leaf/subsection.
-PropertiesPanel still shows "No selection" or generic placeholders because we are not dynamically binding real objects.
-The tree is built with raw string concatenation instead of using the existing production-grade HtmlElement / CssParser / HtmlParser system that the rest of the IDE already uses.
-Overall UI looks unprofessional (poor spacing, icons, hover states, selection highlight, collapse/expand behavior).
+What we have accomplished so far:
 
-New Architecture Requirements (strict):
+Full architecture with IOutlinerProvider, OutlinerCoordinator (static singleton tracking the last active panel), OutlinerNode, and clean one-way data flow. (this should actually be two-way, but whatever. we'll add that later)
 
-Dynamic Hierarchy Generation (no hardcoded strings) Every content panel that wants to own the Outliner must override a clean virtual method GetOutlinerHierarchy() that returns a real List<ToolChest.TreeViewPanel.TreeNode> built from actual runtime data.
+All major content panels (SceneEditorPanel, AnimationViewerPanel, TerrainCreatorPanel, TwoDCreatorPanel) now implement IOutlinerProvider and correctly call SetAsActiveProvider on focus.
 
-   * Use reflection where appropriate (e.g., inspect TerrainCreatorScene fields, _terrainScene heightmap data, active brush, scene entities, etc.).
-   * Provide a clean registration pattern so mods can add their own node types without touching core files.
+Selection in the tree correctly notifies PropertiesPanel with the real live object for reflection.
 
-Reusable Node Definitions Create a small set of static-ish, strongly-typed node classes (e.g., TerrainRootNode, HeightmapNode, BrushNode, SceneEntityNode) that inherit from or implement a common IOutlinerNode interface. These nodes know how to:
+Persistence of expanded/selected state per content panel works via the coordinator and IDataAwarePanel.
 
-   * Generate their own TreeNode representation.
-   * Provide metadata for PropertiesPanel (via reflection or explicit property bags).
+The system is modular, future-proof, and respects every existing contract (docking, camera mode, ProjectLayoutManager, etc.).
 
-Leverage Existing HTML/Element System Stop using raw string templates and  replacement. Instead, TreeViewPanel should build a real HtmlElement tree (using DivElement, LiElement, UlElement, etc.) via the existing HtmlParser / CssParser pipeline.
+Current state and exact problem: The user has reverted everything to the last known "wired" working state (the version before the last set of dynamic HTML changes). In that state, static mock .html files load and style perfectly. However, when the panels do dynamic rebuilds using template.Replace("<!--TREE_NODES-->", nodesHtml) or <!--PROPERTIES--> followed by _uiOverlay.LoadUI(finalHtml), the resulting tree and property grid appear completely unstyled or broken. The visual output does not match the clean, dark-themed, professional look of the static mock views.
 
-   * This gives us proper layout, styling, hover, and JS hook support for free.
-   * Add a ToHtmlElement() extension or method on TreeNode / IOutlinerNode so nodes can render themselves as proper UI elements.
+Explicit requirements for this fix:
 
-Precise Selection & Hover Logic
+The dynamically generated HTML strings must produce exactly the same visual result as the static mock files once passed through LoadUI + RefreshUI.
 
-   * Clicking a node (any level) must publish a precise GenericEvent with Hook = "ItemSelected" containing itemId, itemPath, and the actual backing object (or a reference the content panel understands).
-   * Hover should highlight only the exact row (modern tree styling).
-   * Selection must update PropertiesPanel immediately with reflection-based editable properties of the selected object.
+TreeViewPanel must render a clean, styled hierarchy with simple + / – toggles, proper indentation, hover states, and selected highlighting.
 
-PropertiesPanel Improvements
+PropertiesPanel must render a clean, styled flat property grid with labels and editors.
 
-   * When it receives "ItemSelected", it uses reflection (or the node’s GetProperties() method) to dynamically build a clean property grid using the existing InputElement, RangeElement, etc.
-   * Support nested objects and basic types out of the box.
-   * Keep it simple but professional (no more generic "No selection" fallback once a real node is selected).
+No inline styles as a crutch — rely on the existing CSS classes and the CssParser / UIOverlay pipeline.
 
-Professional CSS / Visual Polish
+The fix must be minimal, clean, and future-proof. Do not touch the HTML template files unless absolutely necessary.
 
-   * Modern, dark-themed tree (clean lines, proper indentation, subtle hover, crisp selection highlight, good typography).
-   * Icons should be consistent with the rest of the IDE.
-   * Collapse/expand arrows must be perfectly aligned and responsive.
-   * The entire panel should feel like a professional game-engine outliner (Unity/Unreal style).
+The solution must work for all panels that do dynamic content replacement (TreeView, Properties, and any others like AnimationViewer, TerrainCreator, etc.).
 
-Maintain Existing Contracts
+Pitfalls to watch for:
 
-   * Keep the GenericEvent + "OutlinerHierarchyUpdate" publish-on-focus model.
-   * Keep IDataAwarePanel persistence.
-   * Keep one-way communication (content panels never call TreeViewPanel directly).
-   * Zero breaking changes to camera mode, docking, resize, or existing panels.
-Deliverables for this phase:
+Whitespace, malformed HTML fragments, or missing wrapper elements
 
-Updated TreeViewPanel.cs that builds real HtmlElement trees instead of string templates.
-Updated PropertiesPanel.cs with dynamic reflection binding on selection.
-New IOutlinerNode interface + a few example node classes (Terrain-focused first).
-Clean GetOutlinerHierarchy() implementation in TerrainCreatorPanel (and stub in SceneEditorPanel).
-Modern CSS updates (provide the full TreeViewPanelUI.html + any needed CSS).
-Full removal of all hardcoded strings in OnContentFocusGained.
+not taking the HTML and reloading it through the uioverlay / html parser classes, like what is done for animationviewerpanel, that also dynamically loads html / css
 
-This is the professional-grade foundation we need before adding more panels or mod support.
-Start by giving me the full updated files for TreeViewPanel.cs, PropertiesPanel.cs, and TerrainCreatorPanel.cs (plus any new small helper classes/interfaces). Do not add more hardcoded strings. Make it dynamic and reflection-friendly from the start.
+The order/timing of LoadUI, RefreshUI, ApplyAll, and RecomputeLayout after a dynamic replace.
+
+Begin by confirming you understand the "last active panel" model and the revert-to-wired state, then deliver the fix.
