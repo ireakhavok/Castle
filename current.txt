@@ -1,14 +1,62 @@
-The current architecture, after our recent inspection of IDEBasePanel.cs, BasePanel.cs, ProjectLayoutManager.cs, BlueprintManager.cs, ProjectData.cs, PropertiesPanel.cs, TreeViewPanel.cs, PanelManager.cs, TerrainCreatorPanel.cs, TerrainCreatorScene.cs, and SceneEditorPanel.cs, already provides a solid foundation for project persistence and context-aware layout switching. BlueprintManager centrally orchestrates project.json loading/saving and ContextChangedEvent handling, while ProjectLayoutManager maintains a memory-first cache of per-context (“blade”) docking states that only flushes to disk when an active project Save is performed. BasePanel remains completely generic and unaware of any IDE or project concepts, ensuring the SiegeEngine core stays clean. The only missing piece is a consistent, automatic way for content panels and floating tool panels to persist and restore their own internal runtime state (such as selected objects, tree expansions, active brushes, or current scene references) across project loads, context switches, and layout restores.
-The precise goal of the dynamic panel data system is to make every panel that needs persistent state opt-in to automatic save/load behavior without any manual calls in individual panels or risk of circular dependencies. When a project is loaded or a context changes, the system should automatically restore each panel’s last-known data from memory only; when the project is saved or a context is left, the panel should automatically snapshot its current state into memory (not to JSON yet). This will eliminate the ad-hoc loading code currently scattered in TerrainCreatorPanel.Init(), SceneEditorPanel.Init(), and similar places, while giving PropertiesPanel and TreeViewPanel true persistence for the first time. Backend content changes (such as terrain sculpting in TerrainCreatorScene or entity placement in EditorScene) must instantly notify relevant panels via existing events like TerrainModifiedEvent and EntityPlacedEvent, so Properties, TreeView, and SceneEditor panels reflect the live model without polling. The result is a professional-grade editor where switching blades or reloading a project feels instantaneous and stateful, exactly like modern creative tools such as Blender or Unity.
+Prompt for Next-Phase Outliner / Properties System Redesign
+We have successfully wired the focus-detection and GenericEvent flow (OutlinerHierarchyUpdate). TreeViewPanel now receives events and attempts to render a hierarchy, but the current implementation is unacceptable for the following reasons:
 
-The core contract will be a new lightweight interface called IDataAwarePanel placed only in SiegeEngine.Core.Interfaces. It will declare three simple members: a read-only string DataKey that uniquely identifies the panel type (for example “PropertiesPanel”), plus System.Text.Json.JsonElement SavePanelState() and void LoadPanelState(System.Text.Json.JsonElement state). Because the interface lives in the core definitions layer and uses only System.Text.Json (already a dependency everywhere), no reference to ProjectData or any CastleBuilder type is introduced. Existing BasePanel and IPanel implementations remain untouched; any panel that wants data persistence simply implements this extra interface in its own namespace.
+Hardcoded fake nodes in TerrainCreatorPanel.OnContentFocusGained (and similar places) — this is not maintainable, not modder-friendly, and not future-proof.
+Selection behavior is broken: clicking a node often highlights large sections of the tree instead of the precise leaf/subsection.
+PropertiesPanel still shows "No selection" or generic placeholders because we are not dynamically binding real objects.
+The tree is built with raw string concatenation instead of using the existing production-grade HtmlElement / CssParser / HtmlParser system that the rest of the IDE already uses.
+Overall UI looks unprofessional (poor spacing, icons, hover states, selection highlight, collapse/expand behavior).
 
-ProjectData itself will be extended inside CastleBuilder with a single new dictionary field: Dictionary<string, System.Text.Json.JsonElement> PanelStates. This dictionary will store serialized panel-specific payloads keyed by DataKey, allowing arbitrary JSON objects per panel without forcing every panel to define its own strongly-typed DTO. Because the extension lives entirely inside the CastleBuilder namespace and ProjectData is already referenced by BlueprintManager and the terrain/scene panels, the change stays cleanly contained. When project.json is written or read, the dictionary is automatically included, so existing projects will gracefully ignore the new field until panels begin populating it. Backend content references (terrain heightmap paths, active SceneData, etc.) are stored inside the same PanelStates JSON blobs, marrying the two veins atomically.
+New Architecture Requirements (strict):
 
-Orchestration responsibility will be centralized in BlueprintManager (already the project lifecycle owner) working in lockstep with ProjectLayoutManager’s existing memory-first _memoryCache per blade/context. On LoadProjectEvent, ContextChangedEvent, and SaveProjectEvent, BlueprintManager will iterate over all currently active panels via the public PanelManager.Current collection, check which ones implement IDataAwarePanel, and call SavePanelState() or LoadPanelState() as appropriate, but only store the results in ProjectLayoutManager’s in-memory cache—never writing to JSON or disk. Live backend mutations (terrain sculpting, entity placement, etc.) continue to publish their existing events; any IDataAwarePanel can subscribe to those events and call an internal RebindToContent() method to instantly refresh its UI from the latest model. Only when an explicit SaveProject / SaveProjectAs triggers BlueprintManager.DoProjectSave() and ProjectLayoutManager.FlushAllToDisk() will the combined PanelStates dictionary be serialized into project.json and the per-context layout JSON files. This keeps the core rendering, UI, and docking layers completely unaware of data persistence while giving BlueprintManager a single, authoritative place to manage the save/restore lifecycle for both UI state and backend content references.
+Dynamic Hierarchy Generation (no hardcoded strings) Every content panel that wants to own the Outliner must override a clean virtual method GetOutlinerHierarchy() that returns a real List<ToolChest.TreeViewPanel.TreeNode> built from actual runtime data.
 
-Panel adoption will be strictly opt-in and incremental, beginning with the panels we already inspected. PropertiesPanel will implement IDataAwarePanel to persist its _currentTarget reference (serialized as a simple path or ID), TreeViewPanel will save/restore its _nodes dictionary and expansion state, TerrainCreatorPanel will snapshot active brush settings and the current SceneData reference inside its JSON blob, and SceneEditorPanel will persist the selected scene name. Future panels (AssetBrowserPanel, ConsolePanel, any mod-added panel) will simply add the interface and two tiny methods—no changes to BasePanel, PanelManager, or the docking strategies are required. Each panel keeps its own data logic inside its namespace, preserving the clean separation between SiegeEngine core, CastleBuilder project management, ToolChest editor tools, and MapRoom scene-specific editors.
+   * Use reflection where appropriate (e.g., inspect TerrainCreatorScene fields, _terrainScene heightmap data, active brush, scene entities, etc.).
+   * Provide a clean registration pattern so mods can add their own node types without touching core files.
 
-The benefits of this design are immediate and long-term. It guarantees zero circular dependencies because the new interface only uses System.Text.Json and lives in core, the core remains ignorant of IDE concepts or ProjectData, and all project-specific serialization stays inside CastleBuilder. State will survive full application restarts, context switches, and project reloads automatically, dramatically improving the creator experience. The system is future-proof: new panels can opt-in with minimal code, modders can add data-aware panels through the existing hook system, and we can iterate panel-by-panel without touching the foundational rendering or docking code. Once implemented, the editor will feel truly professional—every tool remembers exactly where you left it, and backend content changes are instantly reflected across all linked panels while everything remains memory-first until the user explicitly saves the project.
+Reusable Node Definitions Create a small set of static-ish, strongly-typed node classes (e.g., TerrainRootNode, HeightmapNode, BrushNode, SceneEntityNode) that inherit from or implement a common IOutlinerNode interface. These nodes know how to:
 
-This completes the detailed paragraph-by-paragraph explanation of the dynamic panel data architecture that correctly marries per-panel UI state with live backend content data while respecting the memory-first requirement and the existing “blades” system in ProjectLayoutManager. The plan is now fully fleshed out and builds directly on the recent IDEBasePanel and project-saving work. If this matches your vision and you are ready for the implementation phase, reply with “go” and I will immediately output only the complete, modified files (starting with the new interface in SiegeEngine.Core.Interfaces, the ProjectData extension in CastleBuilder, the updated BlueprintManager.cs, and the first wave of panel implementations) in the required folder/class-labelled C# code blocks.
+   * Generate their own TreeNode representation.
+   * Provide metadata for PropertiesPanel (via reflection or explicit property bags).
+
+Leverage Existing HTML/Element System Stop using raw string templates and  replacement. Instead, TreeViewPanel should build a real HtmlElement tree (using DivElement, LiElement, UlElement, etc.) via the existing HtmlParser / CssParser pipeline.
+
+   * This gives us proper layout, styling, hover, and JS hook support for free.
+   * Add a ToHtmlElement() extension or method on TreeNode / IOutlinerNode so nodes can render themselves as proper UI elements.
+
+Precise Selection & Hover Logic
+
+   * Clicking a node (any level) must publish a precise GenericEvent with Hook = "ItemSelected" containing itemId, itemPath, and the actual backing object (or a reference the content panel understands).
+   * Hover should highlight only the exact row (modern tree styling).
+   * Selection must update PropertiesPanel immediately with reflection-based editable properties of the selected object.
+
+PropertiesPanel Improvements
+
+   * When it receives "ItemSelected", it uses reflection (or the node’s GetProperties() method) to dynamically build a clean property grid using the existing InputElement, RangeElement, etc.
+   * Support nested objects and basic types out of the box.
+   * Keep it simple but professional (no more generic "No selection" fallback once a real node is selected).
+
+Professional CSS / Visual Polish
+
+   * Modern, dark-themed tree (clean lines, proper indentation, subtle hover, crisp selection highlight, good typography).
+   * Icons should be consistent with the rest of the IDE.
+   * Collapse/expand arrows must be perfectly aligned and responsive.
+   * The entire panel should feel like a professional game-engine outliner (Unity/Unreal style).
+
+Maintain Existing Contracts
+
+   * Keep the GenericEvent + "OutlinerHierarchyUpdate" publish-on-focus model.
+   * Keep IDataAwarePanel persistence.
+   * Keep one-way communication (content panels never call TreeViewPanel directly).
+   * Zero breaking changes to camera mode, docking, resize, or existing panels.
+Deliverables for this phase:
+
+Updated TreeViewPanel.cs that builds real HtmlElement trees instead of string templates.
+Updated PropertiesPanel.cs with dynamic reflection binding on selection.
+New IOutlinerNode interface + a few example node classes (Terrain-focused first).
+Clean GetOutlinerHierarchy() implementation in TerrainCreatorPanel (and stub in SceneEditorPanel).
+Modern CSS updates (provide the full TreeViewPanelUI.html + any needed CSS).
+Full removal of all hardcoded strings in OnContentFocusGained.
+
+This is the professional-grade foundation we need before adding more panels or mod support.
+Start by giving me the full updated files for TreeViewPanel.cs, PropertiesPanel.cs, and TerrainCreatorPanel.cs (plus any new small helper classes/interfaces). Do not add more hardcoded strings. Make it dynamic and reflection-friendly from the start.

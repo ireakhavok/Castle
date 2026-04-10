@@ -1485,7 +1485,8 @@ Folder: UI
       - void Init()
         - Calls: LayeredUIRenderer, PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: GetTopmostPanelAt, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
+        - Calls: GetTopmostPanelAt, OnContentFocusGained, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
+      - void OnContentFocusGained()
       - void ToggleCameraMode()
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
