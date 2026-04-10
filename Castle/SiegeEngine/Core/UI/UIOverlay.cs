@@ -39,13 +39,11 @@ namespace SiegeEngine.Core.UI
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
 
-        // Legacy 3-arg constructor for full backward compatibility with all existing panels
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
             : this(renderContext, controlContext, window, null)
         {
         }
 
-        // 4-arg constructor used by BasePanel and MenuPanel
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -70,10 +68,8 @@ namespace SiegeEngine.Core.UI
             HtmlParser parser = new HtmlParser();
             _cssParser.Clear();
             _uiRoot = parser.Parse(html);
-
             List<string> cssBlocks = new List<string>();
             List<string> scriptBlocks = new List<string>();
-
             Queue<HtmlElement> q = new Queue<HtmlElement>();
             q.Enqueue(_uiRoot);
             while (q.Count > 0)
@@ -97,7 +93,6 @@ namespace SiegeEngine.Core.UI
                 }
                 foreach (var c in e.Children) q.Enqueue(c);
             }
-
             _cssParser.Apply(CssParser.DefaultUserAgentCss);
             foreach (var css in cssBlocks)
             {
@@ -107,19 +102,15 @@ namespace SiegeEngine.Core.UI
             InitializeElementProperties(_uiRoot);
             _cssParser.ApplyAll(_uiRoot);
             InheritProperties(_uiRoot, null);
-
             _uiRoot.PrepareResources(baseDir, _controlContext, _window, _renderContext, _uiShader);
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
-
             _document = new JSDocument(this);
             _jsContext.Evaluator.RegisterGlobal("document", _document);
-
             foreach (var script in scriptBlocks)
             {
                 _jsContext.Run(script);
             }
-
             RefreshUI();
         }
 
@@ -189,18 +180,28 @@ namespace SiegeEngine.Core.UI
 
             string classes = elem.Attributes.GetValueOrDefault("class", "");
             string tagLower = elem.Tag.ToLower();
+
+            bool isTreeNode = tagLower == "li" && classes.Contains("node");
+
             if (!isOptionInsideClosedSelect &&
-                (classes.Contains("button") || classes.Contains("toggle") || tagLower == "select" || tagLower == "label" || tagLower == "a" || elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") || tagLower == "option" || elem.Attributes.ContainsKey("onchange") || elem.Attributes.ContainsKey("onmouseenter") || elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") || elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") || elem.Attributes.ContainsKey("onblur") || tagLower == "input" || (tagLower == "li" && (classes.Contains("nav-dropdown") || elem.Children.Any(c => c.Tag.ToLower() == "ul")))))
+                (isTreeNode ||
+                 classes.Contains("button") || classes.Contains("toggle") || tagLower == "select" || tagLower == "label" || tagLower == "a" ||
+                 elem.Attributes.ContainsKey("data-hook") || elem.Attributes.ContainsKey("onclick") || classes.Contains("select-option") ||
+                 tagLower == "option" || elem.Attributes.ContainsKey("onchange") || elem.Attributes.ContainsKey("onmouseenter") ||
+                 elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") ||
+                 elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") ||
+                 elem.Attributes.ContainsKey("onblur") || tagLower == "input" ||
+                 (tagLower == "li" && (classes.Contains("nav-dropdown") || elem.Children.Any(c => c.Tag.ToLower() == "ul")))))
             {
                 _uiClickables.Add(elem);
             }
+
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
 
         protected virtual void HandleDataHook(string hook)
         {
-            // SINGLE CENTRALIZED LOCATION FOR ALL DATA-HOOK PROCESSING
             DataHookProcessor.Process(hook, _renderContext, _controlContext, _window, _eventBus, this);
         }
 
@@ -290,21 +291,16 @@ namespace SiegeEngine.Core.UI
         public virtual bool HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return false;
-
             bool handled = false;
             bool valueChanged = false;
-
             if (!string.IsNullOrEmpty(elem.OnClickJS))
             {
                 _jsContext.RunWithThis(elem.OnClickJS, new JSElement(elem, this));
                 handled = true;
             }
-
             InvokeListeners(elem, "click");
-
             if (_document != null && _document.InvokeDocumentListeners("click", elem))
                 handled = true;
-
             if (elem.Tag == "a")
             {
                 string href = elem.Attributes.GetValueOrDefault("href", "");
@@ -437,7 +433,6 @@ namespace SiegeEngine.Core.UI
                         elem.Attributes["selected"] = "";
                         select.IsOpen = false;
                         valueChanged = true;
-
                         if (select.Attributes.ContainsKey("data-hook"))
                         {
                             string hook = select.Attributes["data-hook"];
@@ -456,7 +451,6 @@ namespace SiegeEngine.Core.UI
                     RefreshUI();
                 }
             }
-
             if (elem.Attributes.ContainsKey("data-hook"))
             {
                 if (elem.Tag != "select")
@@ -467,12 +461,10 @@ namespace SiegeEngine.Core.UI
                     handled = true;
                 }
             }
-
             if (valueChanged)
             {
                 TriggerChange(elem);
             }
-
             RefreshUI();
             return handled;
         }

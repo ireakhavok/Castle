@@ -65,36 +65,52 @@ namespace SiegeEngine.Core.UI.Elements
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
         }
 
-        // === SIMPLE FULL-ROW HOVER FOR TREE NODES ONLY ===
-        // This makes the entire <li class="node"> highlight when the mouse is anywhere over it
-        // (including the label text, toggle, and even the children area).
-        // No header-only restriction — this is what the CSS .node:hover expects.
+        private float GetTreeNodeHeaderHeight()
+        {
+            // For tree nodes we only want hover/click on the actual row (toggle + label), NOT the full subtree height
+            float headerHeight = 0f;
+            foreach (var child in Children)
+            {
+                if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol") break; // children list starts here
+                headerHeight = Math.Max(headerHeight, child.ComputedHeight);
+            }
+            // fallback to a sensible row height if layout not yet run
+            if (headerHeight < 1f) headerHeight = 28f;
+            return headerHeight;
+        }
+
         public override bool UpdateHover(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             if (Style.Display == "none") return false;
 
-            // Let children claim hover first (nested rows must still work independently)
-            bool anyChildHovered = false;
+            string classes = Attributes.GetValueOrDefault("class", "");
+            bool isTreeNode = classes.Contains("node");
+
+            // === ONLY nested child <li class="node"> blocks parent hover ===
+            bool anyNestedNodeHovered = false;
             for (int i = Children.Count - 1; i >= 0; i--)
             {
-                if (Children[i].UpdateHover(mousePos, viewportWidth, viewportHeight))
+                var child = Children[i];
+                if (child.UpdateHover(mousePos, viewportWidth, viewportHeight))
                 {
-                    anyChildHovered = true;
+                    if (child is LiElement childLi && childLi.Attributes.GetValueOrDefault("class", "").Contains("node"))
+                    {
+                        anyNestedNodeHovered = true;
+                    }
                 }
             }
 
-            // If a child (nested row) is hovered, this parent li does NOT get hover
-            if (anyChildHovered)
+            if (anyNestedNodeHovered)
             {
-                if (IsHover)
-                {
-                    IsHover = false;
-                }
+                if (IsHover) IsHover = false;
                 return true;
             }
 
-            // No child hovered → full-row hover for this li.node
-            float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+            if (ComputedWidth <= 0 || ComputedHeight <= 0) return false;
+
+            float testHeight = isTreeNode ? GetTreeNodeHeaderHeight() : ComputedHeight;
+
+            float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, testHeight, ComputedFullTransform, viewportWidth, viewportHeight);
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             for (int k = 0; k < 4; k++)
             {
@@ -109,16 +125,13 @@ namespace SiegeEngine.Core.UI.Elements
             float my = 1 - 2 * mousePos.Y / viewportHeight;
             bool over = !(mx < minX || mx > maxX || my < minY || my > maxY);
 
-            bool changed = false;
             if (over && !IsHover)
             {
                 IsHover = true;
-                changed = true;
             }
             else if (!over && IsHover)
             {
                 IsHover = false;
-                changed = true;
             }
 
             return over;
@@ -126,10 +139,15 @@ namespace SiegeEngine.Core.UI.Elements
 
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
-            bool hit = false;
+            string classes = Attributes.GetValueOrDefault("class", "");
+            bool isTreeNode = classes.Contains("node");
+
+            bool rowHit = false;
             if (ComputedWidth > 0 && ComputedHeight > 0)
             {
-                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, ComputedHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+                float testHeight = isTreeNode ? GetTreeNodeHeaderHeight() : ComputedHeight;
+
+                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, testHeight, ComputedFullTransform, viewportWidth, viewportHeight);
                 float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
                 for (int k = 0; k < 4; k++)
                 {
@@ -142,16 +160,27 @@ namespace SiegeEngine.Core.UI.Elements
                 }
                 float mx = 2 * mousePos.X / viewportWidth - 1;
                 float my = 1 - 2 * mousePos.Y / viewportHeight;
-                hit = !(mx < minX || mx > maxX || my < minY || my > maxY);
+                rowHit = !(mx < minX || mx > maxX || my < minY || my > maxY);
             }
-            if (hit)
+
+            if (rowHit)
             {
+                // Give children first chance — only nested tree node children can steal the click
                 for (int i = Children.Count - 1; i >= 0; i--)
                 {
-                    if (Children[i].HandleClick(mousePos, viewportWidth, viewportHeight)) return true;
+                    var child = Children[i];
+                    if (child.HandleClick(mousePos, viewportWidth, viewportHeight))
+                    {
+                        if (child is LiElement childLi && childLi.Attributes.GetValueOrDefault("class", "").Contains("node"))
+                        {
+                            return true;
+                        }
+                    }
                 }
             }
-            return hit;
+
+            // No nested node stole it → this row claims the click (text, toggle, padding all work)
+            return rowHit;
         }
 
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
