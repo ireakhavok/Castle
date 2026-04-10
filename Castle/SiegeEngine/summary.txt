@@ -970,8 +970,11 @@ Folder: Core
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, c.GetEffectiveDisplay, textRenderer.GetTextSize
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+      - float GetTreeNodeHeaderHeight()
+      - bool UpdateHover( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: GetTreeNodeHeaderHeight, HtmlLayoutUtils.GetNdcQuad
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: HtmlLayoutUtils.GetNdcQuad
+        - Calls: GetTreeNodeHeaderHeight, HtmlLayoutUtils.GetNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
 - File: LightComponent.cs
   - Class: LightComponent (Namespace: SiegeEngine.Core.Definitions)

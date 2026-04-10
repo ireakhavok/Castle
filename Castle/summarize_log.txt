@@ -1566,7 +1566,7 @@ Found 6 dependencies
 Found: LiElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
-Read 4723 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
+Read 8336 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 6 dependencies
 Found: NavElement.cs
@@ -1750,7 +1750,7 @@ Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 25794 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 25764 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 12 dependencies
 Found: HeirarchySummary.exe
@@ -1981,7 +1981,7 @@ Found 2 dependencies
 Found: PropertiesPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
-Read 7350 chars from: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
+Read 7150 chars from: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
 Namespace: ToolChest
 Found 15 dependencies
 Found: PropertiesPanelUI.html
@@ -1996,7 +1996,7 @@ Found: ToolChest.csproj
 Found: TreeViewPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
-Read 7817 chars from: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
+Read 7806 chars from: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
 Namespace: ToolChest
 Found 13 dependencies
 Found: TreeViewPanelUI.html
