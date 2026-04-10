@@ -126,31 +126,36 @@ namespace ToolChest
             var sb = new StringBuilder();
             foreach (var node in _nodes.Values.Where(n => string.IsNullOrEmpty(n.ParentId)))
             {
-                sb.Append(BuildTreeHtmlStringRecursive(node.Id, 0));
+                sb.Append(BuildTreeHtmlStringRecursive(node.Id));
             }
             return sb.ToString();
         }
 
-        private string BuildTreeHtmlStringRecursive(string nodeId, int indent)
+        private string BuildTreeHtmlStringRecursive(string nodeId)
         {
             if (!_nodes.TryGetValue(nodeId, out var node)) return "";
-            string indentStr = new string(' ', indent * 4);
+
             string toggle = node.Children.Count > 0 ? (node.IsExpanded ? "▼" : "▶") : " ";
-            string selected = node.Id == _selectedNodeId ? "selected" : "";
+            string selectedClass = node.Id == _selectedNodeId ? " selected" : "";
+
+            // === FIX: data-hook and click handling moved to the <li> itself ===
+            // This guarantees that clicking anywhere on the row (text, toggle, padding) triggers selection
             var sb = new StringBuilder();
-            sb.AppendLine($"{indentStr}<li class=\"node {selected}\" data-node-id=\"{node.Id}\">");
-            sb.AppendLine($"{indentStr} <span data-hook=\"Toggle:{node.Id}\" class=\"toggle\">{toggle}</span>");
-            sb.AppendLine($"{indentStr} <span data-hook=\"Select:{node.Id}\" class=\"label\">{node.Icon} {node.Label}</span>");
+            sb.Append($"<li class=\"node{selectedClass}\" data-node-id=\"{node.Id}\" data-hook=\"Select:{node.Id}\">");
+            sb.Append($"<span class=\"toggle\">{toggle}</span>");
+            sb.Append($"<span class=\"label\">{node.Icon} {node.Label}</span>");
+
             if (node.IsExpanded && node.Children.Count > 0)
             {
-                sb.AppendLine($"{indentStr} <ul class=\"children\">");
+                sb.Append("<ul class=\"children\">");
                 foreach (var childId in node.Children)
                 {
-                    sb.Append(BuildTreeHtmlStringRecursive(childId, indent + 1));
+                    sb.Append(BuildTreeHtmlStringRecursive(childId));
                 }
-                sb.AppendLine($"{indentStr} </ul>");
+                sb.Append("</ul>");
             }
-            sb.AppendLine($"{indentStr}</li>");
+
+            sb.Append("</li>");
             return sb.ToString();
         }
 

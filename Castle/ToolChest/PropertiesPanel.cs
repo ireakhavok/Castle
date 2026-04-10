@@ -96,9 +96,14 @@ namespace ToolChest
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
             if (!File.Exists(htmlPath)) return;
+
             string template = File.ReadAllText(htmlPath);
-            string contentHtml = _currentTarget != null ? BuildPropertiesHtml(_currentTarget, "", 0) : "<div style='padding:20px;color:#aaa;'>No selection</div>";
+            string contentHtml = _currentTarget != null
+                ? BuildPropertiesHtml(_currentTarget, "", 0)
+                : "<div class=\"no-selection\">No selection</div>";
+
             string finalHtml = template.Replace("<!--PROPERTIES-->", contentHtml);
+
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
@@ -107,38 +112,46 @@ namespace ToolChest
 
         private string BuildPropertiesHtml(object obj, string pathPrefix, int depth)
         {
-            if (obj == null || depth > 3) return "<div style='color:#666;padding:8px;'>[Null or too deep]</div>";
+            if (obj == null || depth > 3) return "<div class=\"property-null\">[Null or too deep]</div>";
+
             var sb = new StringBuilder();
             Type type = obj.GetType();
             string title = type.Name;
-            sb.AppendLine($"<details style='margin-bottom:4px;' open='false'>");
-            sb.AppendLine($" <summary style='background:#252526;padding:6px 10px;cursor:pointer;font-weight:bold;'>{title}</summary>");
-            sb.AppendLine($" <div style='padding:8px;background:#1e1e1e;border-left:2px solid #094771;'>");
+
+            sb.Append($"<div class=\"property-group\">");
+            sb.Append($"<div class=\"property-group-header\">{title}</div>");
+            sb.Append($"<div class=\"property-grid\">");
+
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && p.GetCustomAttribute<BrowsableAttribute>()?.Browsable != false)
                 .OrderBy(p => p.Name);
+
             foreach (var prop in properties)
             {
                 string fullPath = string.IsNullOrEmpty(pathPrefix) ? prop.Name : $"{pathPrefix}.{prop.Name}";
                 object value = prop.GetValue(obj);
                 string displayValue = value?.ToString() ?? "";
-                if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(Vector2) || prop.PropertyType == typeof(Vector3) || prop.PropertyType == typeof(Vector4) || prop.PropertyType == typeof(Quaternion))
+
+                if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) ||
+                    prop.PropertyType == typeof(Vector2) || prop.PropertyType == typeof(Vector3) ||
+                    prop.PropertyType == typeof(Vector4) || prop.PropertyType == typeof(Quaternion))
                 {
                     string inputType = GetInputType(prop.PropertyType);
-                    sb.AppendLine($" <div style='display:flex;align-items:center;margin:4px 0;padding:2px;'>");
-                    sb.AppendLine($" <span style='width:140px;color:#aaa;'>{prop.Name}</span>");
-                    sb.AppendLine($" <input type='{inputType}' data-hook='SetProperty:{fullPath}' value='{displayValue}' style='flex:1;background:#333;border:1px solid #555;color:#ccc;padding:4px;'>");
-                    sb.AppendLine($" </div>");
+                    sb.Append($"<div class=\"property-row\">");
+                    sb.Append($"<span class=\"property-label\">{prop.Name}</span>");
+                    sb.Append($"<input type=\"{inputType}\" class=\"property-value\" data-hook=\"SetProperty:{fullPath}\" value=\"{displayValue}\">");
+                    sb.Append($"</div>");
                 }
                 else
                 {
-                    sb.AppendLine($" <div style='margin:6px 0;'>");
+                    sb.Append($"<div class=\"property-row nested\">");
                     sb.Append(BuildPropertiesHtml(value, fullPath, depth + 1));
-                    sb.AppendLine($" </div>");
+                    sb.Append($"</div>");
                 }
             }
-            sb.AppendLine($" </div>");
-            sb.AppendLine($"</details>");
+
+            sb.Append($"</div>");
+            sb.Append($"</div>");
             return sb.ToString();
         }
 
