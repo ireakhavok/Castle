@@ -1,11 +1,13 @@
 ﻿// Folder: ReadingChamber
 // File: AnimationViewerPanel.cs
+using Keystone;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
@@ -19,10 +21,11 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.Json;
 
 namespace ReadingChamber
 {
-    public unsafe class AnimationViewerPanel : BasePanel
+    public unsafe class AnimationViewerPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
     {
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -42,16 +45,10 @@ namespace ReadingChamber
 
             public override bool HandleUIClick(HtmlElement elem)
             {
-                // Core dropdown + button logic runs first (select/option still works perfectly)
                 bool coreHandled = base.HandleUIClick(elem);
-
-                // Only custom non-dropdown buttons (LoadMesh etc.)
                 _parent.HandleUIClick(elem);
-
                 return coreHandled;
             }
-
-            // NO HandleDataHook override anymore - everything goes through GenericEvent subscription
         }
 
         private ModelViewerScene _viewerScene;
@@ -71,6 +68,8 @@ namespace ReadingChamber
             _viewerScene = new ModelViewerScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
 
+        public string ContentType => "AnimationViewer";
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new AssetUIOverlay(this, _renderContext, _controlContext, _window, _eventBus);
@@ -88,7 +87,6 @@ namespace ReadingChamber
             _animationFiles = _viewerScene.GetAnimationFiles();
             UpdateUIControls();
 
-            // Subscribe to events instead of using HandleDataHook overrides
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
 
@@ -104,7 +102,6 @@ namespace ReadingChamber
                 var select = _uiOverlay.FindElementById("animSelect") as SelectElement;
                 if (select != null && !string.IsNullOrEmpty(select.Value))
                 {
-                    Console.WriteLine($"[AnimationViewerPanel] Loading animation: {select.Value}");
                     _viewerScene.LoadAnimation(select.Value);
                 }
             }
@@ -124,6 +121,7 @@ namespace ReadingChamber
                 _animationFiles = _viewerScene.GetAnimationFiles();
                 UpdateUIControls();
                 _uiOverlay.RefreshUI();
+                NotifyHierarchyChanged();
             }
             else if (hook == "LoadArmature")
             {
@@ -170,9 +168,6 @@ namespace ReadingChamber
             }
         }
 
-        // FUTURE-PROOF: This panel now continuously updates its animation playback
-        // even when the mouse is not over it (removes mouse-over requirement).
-        // Matches the exact pattern already used successfully by TwoDCreatorPanel.
         public override bool WantsContinuousUpdate => true;
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
@@ -196,11 +191,47 @@ namespace ReadingChamber
 
         public override void Dispose()
         {
-
             _viewerScene.Dispose();
             _textRenderer.Dispose();
             _textShader.Dispose();
             base.Dispose();
+        }
+
+        public string DataKey => "AnimationViewerPanel";
+
+        public JsonElement SavePanelState()
+        {
+            return JsonSerializer.SerializeToElement(new Dictionary<string, object>());
+        }
+
+        public void LoadPanelState(JsonElement state)
+        {
+        }
+
+        protected override void OnContentFocusGained()
+        {
+            Console.WriteLine("[AnimationViewerPanel] OnContentFocusGained → notifying OutlinerCoordinator");
+            OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
+        }
+
+        public List<OutlinerNode> GetCurrentHierarchy()
+        {
+            var nodes = new List<OutlinerNode>();
+            nodes.Add(new OutlinerNode { Id = "anim-root", Label = "Animation Viewer", Icon = "🎬", Children = { "model", "skeleton", "animations" } });
+            nodes.Add(new OutlinerNode { Id = "model", Label = "Model", Icon = "📦", ParentId = "anim-root" });
+            nodes.Add(new OutlinerNode { Id = "skeleton", Label = "Skeleton", Icon = "🦴", ParentId = "anim-root" });
+            nodes.Add(new OutlinerNode { Id = "animations", Label = "Animations", Icon = "⏯️", ParentId = "anim-root" });
+            return nodes;
+        }
+
+        public object GetObjectForNode(string nodeId)
+        {
+            return null;
+        }
+
+        public void NotifyHierarchyChanged()
+        {
+            OutlinerCoordinator.Instance.NotifyHierarchyChanged();
         }
     }
 }

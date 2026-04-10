@@ -15,11 +15,12 @@ using System.IO;
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
+using Keystone;
 using ToolChest;
 
 namespace MapRoom
 {
-    public class TerrainCreatorPanel : BasePanel, IDataAwarePanel
+    public class TerrainCreatorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
     {
         private static IRenderContext _staticRenderContext;
         private static IControlContext _staticControlContext;
@@ -44,8 +45,6 @@ namespace MapRoom
         private string _initialTerrainPath;
         private TerrainCreationParams _creationParams;
         private bool _cameraMode = false;
-        private int _lastW;
-        private int _lastH;
         private SceneData _currentSceneData;
 
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -85,6 +84,8 @@ namespace MapRoom
             _currentSceneData = sceneData;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus, sceneData);
         }
+
+        public string ContentType => "TerrainCreator";
 
         protected override UIOverlay CreateUIOverlay()
         {
@@ -181,7 +182,7 @@ namespace MapRoom
                 _terrainScene.SetActiveBrush(null);
                 return;
             }
-            var brush = new ToolChest.Brush
+            var brush = new Brush
             {
                 Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.BrushMode, true),
                 Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.BrushShape, true),
@@ -194,6 +195,7 @@ namespace MapRoom
 
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
+            NotifyHierarchyChanged();
         }
 
         public void HandleUIClick(HtmlElement elem)
@@ -239,14 +241,8 @@ namespace MapRoom
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
-            if (_cameraMode)
-            {
-                PanelManager.Current.CapturePanel(this);
-            }
-            else
-            {
-                PanelManager.Current.ReleasePanelCapture();
-            }
+            if (_cameraMode) PanelManager.Current.CapturePanel(this);
+            else PanelManager.Current.ReleasePanelCapture();
         }
 
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -269,10 +265,7 @@ namespace MapRoom
             }
             string baseDir = AppDomain.CurrentDomain.BaseDirectory;
             string terrainDir = Path.Combine(baseDir, "Assets", "Terrain");
-            if (!Directory.Exists(terrainDir))
-            {
-                Directory.CreateDirectory(terrainDir);
-            }
+            if (!Directory.Exists(terrainDir)) Directory.CreateDirectory(terrainDir);
             var fileSelector = new FileSelectorPanel(renderContext, controlContext, window, eventBus, terrainDir, ".tif", ".tiff");
             fileSelector.UserData = "TerrainImport";
             fileSelector.IsModal = true;
@@ -299,10 +292,7 @@ namespace MapRoom
         {
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             if (isTopmost && mousePressed)
-            {
-                Console.WriteLine($"[TerrainCreatorPanel] RAW MOUSE PRESS DETECTED in content area - calling OnContentFocusGained");
                 OnContentFocusGained();
-            }
 
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
 
@@ -311,17 +301,11 @@ namespace MapRoom
             float contentY = Position.Y + header;
             float contentW = Size.X;
             float contentH = Size.Y - header;
-            if (_cameraMode)
-            {
-                _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
-            }
+            if (_cameraMode) _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
-            if (_cameraMode)
-            {
-                _controlContext.PopViewport();
-            }
+            if (_cameraMode) _controlContext.PopViewport();
         }
 
         protected override void RenderInnerContent()
@@ -353,78 +337,39 @@ namespace MapRoom
             var state = new Dictionary<string, object>
             {
                 ["currentSceneName"] = _currentSceneData?.Name ?? "",
-                ["terrainHeightmapPath"] = _currentSceneData?.Terrain?.HeightmapPath ?? "",
-                ["activeBrushMode"] = _terrainScene?.GetActiveBrush()?.Mode.ToString() ?? ""
+                ["terrainHeightmapPath"] = _currentSceneData?.Terrain?.HeightmapPath ?? ""
             };
             return JsonSerializer.SerializeToElement(state);
         }
 
         public void LoadPanelState(JsonElement state)
         {
-            try
-            {
-                if (state.TryGetProperty("terrainHeightmapPath", out var pathElem) && !string.IsNullOrEmpty(pathElem.GetString()))
-                {
-                    string path = pathElem.GetString();
-                    if (_terrainScene != null && File.Exists(path))
-                    {
-                        _terrainScene.LoadTerrain(path);
-                    }
-                }
-            }
-            catch { }
-            Console.WriteLine($"[TerrainCreatorPanel] Loaded panel state for DataKey '{DataKey}'");
         }
 
         protected override void OnContentFocusGained()
         {
-            Console.WriteLine("[TerrainCreatorPanel] *** OnContentFocusGained CALLED *** Publishing TERRAIN hierarchy");
+            Console.WriteLine("[TerrainCreatorPanel] OnContentFocusGained → notifying OutlinerCoordinator");
+            OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
+        }
 
-            // TERRAIN-ONLY hierarchy - exactly what exists right now. No assumptions about entities, lights, etc.
-            var root = new ToolChest.TreeViewPanel.TreeNode
-            {
-                Id = "root",                    // <-- must be "root" so the builder finds it
-                Label = "Terrain",
-                Icon = "🌲",
-                IsExpanded = true
-            };
+        public List<OutlinerNode> GetCurrentHierarchy()
+        {
+            var nodes = new List<OutlinerNode>();
+            nodes.Add(new OutlinerNode { Id = "terrain-root", Label = "Terrain", Icon = "🌲", Children = { "heightmap", "brush", "settings" } });
+            nodes.Add(new OutlinerNode { Id = "heightmap", Label = "Heightmap", Icon = "📏", ParentId = "terrain-root" });
+            nodes.Add(new OutlinerNode { Id = "brush", Label = "Active Brush", Icon = "🖌️", ParentId = "terrain-root" });
+            nodes.Add(new OutlinerNode { Id = "settings", Label = "Terrain Settings", Icon = "⚙️", ParentId = "terrain-root" });
+            return nodes;
+        }
 
-            root.Children.Add("terrain-heightmap");
-            root.Children.Add("terrain-brush");
-            root.Children.Add("terrain-settings");
+        public object GetObjectForNode(string nodeId)
+        {
+            return null;
+        }
 
-            var heightmapNode = new ToolChest.TreeViewPanel.TreeNode
-            {
-                Id = "terrain-heightmap",
-                Label = "Heightmap (200×200)",
-                Icon = "📏",
-                ParentId = "root"
-            };
-
-            var brushNode = new ToolChest.TreeViewPanel.TreeNode
-            {
-                Id = "terrain-brush",
-                Label = "Active Brush",
-                Icon = "🖌️",
-                ParentId = "root"
-            };
-
-            var settingsNode = new ToolChest.TreeViewPanel.TreeNode
-            {
-                Id = "terrain-settings",
-                Label = "Terrain Settings",
-                Icon = "⚙️",
-                ParentId = "root"
-            };
-
-            var nodes = new List<ToolChest.TreeViewPanel.TreeNode> { root, heightmapNode, brushNode, settingsNode };
-
-            var generic = new GenericEvent { Hook = "OutlinerHierarchyUpdate" };
-            generic.Data["contentType"] = "TerrainCreator";
-            generic.Data["hierarchy"] = JsonSerializer.Serialize(nodes);
-            _eventBus.Publish(generic);
-
-            Console.WriteLine("[TerrainCreatorPanel] OutlinerHierarchyUpdate published with terrain-only nodes (root Id = 'root')");
+        public void NotifyHierarchyChanged()
+        {
+            OutlinerCoordinator.Instance.NotifyHierarchyChanged();
         }
     }
 }

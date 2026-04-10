@@ -14,6 +14,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using Keystone;
 
 namespace ToolChest
 {
@@ -39,7 +40,6 @@ namespace ToolChest
         }
 
         private object _currentTarget;
-        private readonly Dictionary<string, PropertyInfo> _propertyMap = new Dictionary<string, PropertyInfo>();
 
         public PropertiesPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -69,39 +69,27 @@ namespace ToolChest
 
         private void OnGenericEvent(GenericEvent e)
         {
-            Console.WriteLine($"[PropertiesPanel] *** GENERIC EVENT RECEIVED *** Hook={e.Hook}");
-            if (e.Hook == "OutlinerHierarchyUpdate")
+            if (e.Hook == "OutlinerSelectionChanged")
             {
-                Console.WriteLine($"[PropertiesPanel] OutlinerHierarchyUpdate - showing panel properties for type {e.Data.GetValueOrDefault("contentType", "unknown")}");
-                RebuildPropertiesUI();
-            }
-            else if (e.Hook == "ItemSelected")
-            {
-                Console.WriteLine($"[PropertiesPanel] ItemSelected - showing item properties for {e.Data.GetValueOrDefault("itemId", "")}");
-                RebuildPropertiesUI();
+                string nodeId = e.Data.GetValueOrDefault("nodeId", "");
+                var provider = OutlinerCoordinator.Instance.GetLastActiveProvider();
+                if (provider != null)
+                {
+                    _currentTarget = provider.GetObjectForNode(nodeId);
+                    RebuildPropertiesUI();
+                }
             }
         }
 
         private void LoadPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
-            if (!File.Exists(htmlPath))
-            {
-                Console.WriteLine($"[PropertiesPanel] ERROR: PropertiesPanelUI.html not found at {htmlPath}");
-                return;
-            }
+            if (!File.Exists(htmlPath)) return;
             string html = File.ReadAllText(htmlPath);
             _uiOverlay.LoadUI(html);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
-        }
-
-        public void SetTarget(object target)
-        {
-            _currentTarget = target;
-            _propertyMap.Clear();
-            RebuildPropertiesUI();
         }
 
         private void RebuildPropertiesUI()
@@ -132,7 +120,6 @@ namespace ToolChest
             foreach (var prop in properties)
             {
                 string fullPath = string.IsNullOrEmpty(pathPrefix) ? prop.Name : $"{pathPrefix}.{prop.Name}";
-                _propertyMap[fullPath] = prop;
                 object value = prop.GetValue(obj);
                 string displayValue = value?.ToString() ?? "";
                 if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(Vector2) || prop.PropertyType == typeof(Vector3) || prop.PropertyType == typeof(Vector4) || prop.PropertyType == typeof(Quaternion))
@@ -164,14 +151,6 @@ namespace ToolChest
 
         public void HandleDataHook(string hook)
         {
-            if (hook.StartsWith("SetProperty:"))
-            {
-                string path = hook.Substring(12);
-                if (_propertyMap.TryGetValue(path, out var prop) && _currentTarget != null)
-                {
-                    Console.WriteLine($"[PropertiesPanel] SetProperty requested: {path}");
-                }
-            }
         }
 
         public void HandleUIClick(HtmlElement elem)
@@ -193,16 +172,11 @@ namespace ToolChest
 
         public JsonElement SavePanelState()
         {
-            var state = new Dictionary<string, object>
-            {
-                ["currentTargetType"] = _currentTarget?.GetType().FullName ?? ""
-            };
-            return JsonSerializer.SerializeToElement(state);
+            return JsonSerializer.SerializeToElement(new Dictionary<string, object>());
         }
 
         public void LoadPanelState(JsonElement state)
         {
-            Console.WriteLine($"[PropertiesPanel] Loaded panel state for DataKey '{DataKey}'");
         }
     }
 }
