@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Keystone\Keystone.csproj" />
     <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
   </ItemGroup>
 

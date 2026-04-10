@@ -719,17 +719,8 @@ Folder: Interfaces
   - Class: IGameServer (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
 - File: IPanel.cs
-  - Class: IPanel (Namespace: SiegeEngine.Core.Interfaces)
-    - Dependencies: SiegeEngine.Core.Definitions, System.Numerics
-    - Methods:
-      - void Init()
-      - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-      - void Render()
-      - void Dispose()
-      - void Detach()
-      - void OnPanelResize( float h, float w)
-      - ResizeHandle GetResizeHandle(Vector2 absMousePos)
-      - void StartResize( ResizeHandle handle, Vector2 mousePos)
+  - Class: IDataAwarePanel (Namespace: SiegeEngine.Core.Interfaces)
+    - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
 - File: IProjectionProvider.cs
   - Class: IProjectionProvider (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: System.Numerics
@@ -947,6 +938,7 @@ Folder: Managers
       - void Update(float deltaTime)
         - Calls: ClosePanelEvent, GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
+      - IEnumerable<IPanel> GetAllPanels()
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
       - void RemovePanel(IPanel panel)
@@ -1493,7 +1485,8 @@ Folder: UI
       - void Init()
         - Calls: LayeredUIRenderer, PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: GetTopmostPanelAt, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
+        - Calls: GetTopmostPanelAt, OnContentFocusGained, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
+      - void OnContentFocusGained()
       - void ToggleCameraMode()
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
@@ -1753,8 +1746,11 @@ Folder: UI
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, c.GetEffectiveDisplay, textRenderer.GetTextSize
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+      - float GetTreeNodeHeaderHeight()
+      - bool UpdateHover( float viewportHeight,  float viewportWidth, Vector2 mousePos)
+        - Calls: GetTreeNodeHeaderHeight, HtmlLayoutUtils.GetNdcQuad
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: HtmlLayoutUtils.GetNdcQuad
+        - Calls: GetTreeNodeHeaderHeight, HtmlLayoutUtils.GetNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
 - File: MenuPanel.cs
   - Class: MenuUIOverlay (Namespace: SiegeEngine.Core.UI)
@@ -2091,8 +2087,8 @@ SiegeEngine.Core.Events.SelectSpriteEvent
 SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
+SiegeEngine.Core.Interfaces.IDataAwarePanel
 SiegeEngine.Core.Interfaces.IGameServer
-SiegeEngine.Core.Interfaces.IPanel
 SiegeEngine.Core.Interfaces.IProjectionProvider
 SiegeEngine.Core.Interfaces.IRenderer
 SiegeEngine.Core.Interfaces.ISoundValidator

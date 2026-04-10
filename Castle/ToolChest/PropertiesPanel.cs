@@ -14,6 +14,7 @@ using System.Numerics;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using Keystone;
 
 namespace ToolChest
 {
@@ -39,7 +40,6 @@ namespace ToolChest
         }
 
         private object _currentTarget;
-        private readonly Dictionary<string, PropertyInfo> _propertyMap = new Dictionary<string, PropertyInfo>();
 
         public PropertiesPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -49,9 +49,10 @@ namespace ToolChest
             AllowDragging = true;
             DockState = DockState.Floating;
             DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
-            // === ONLY CHANGE: Proper starting size ===
             BaseWidth = 460f;
             BaseHeight = 320f;
+
+            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -66,15 +67,24 @@ namespace ToolChest
             LoadPropertiesUI();
         }
 
+        private void OnGenericEvent(GenericEvent e)
+        {
+            if (e.Hook == "OutlinerSelectionChanged")
+            {
+                string nodeId = e.Data.GetValueOrDefault("nodeId", "");
+                var provider = OutlinerCoordinator.Instance.GetLastActiveProvider();
+                if (provider != null)
+                {
+                    _currentTarget = provider.GetObjectForNode(nodeId);
+                    RebuildPropertiesUI();
+                }
+            }
+        }
+
         private void LoadPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
-            if (!File.Exists(htmlPath))
-            {
-                Console.WriteLine($"[PropertiesPanel] ERROR: PropertiesPanelUI.html not found at {htmlPath}");
-                Console.WriteLine("Please create the static HTML file in the executable folder for fast iteration.");
-                return;
-            }
+            if (!File.Exists(htmlPath)) return;
             string html = File.ReadAllText(htmlPath);
             _uiOverlay.LoadUI(html);
             _uiOverlay.PanelWidth = Size.X;
@@ -82,20 +92,18 @@ namespace ToolChest
             _uiOverlay.RefreshUI();
         }
 
-        public void SetTarget(object target)
-        {
-            _currentTarget = target;
-            _propertyMap.Clear();
-            RebuildPropertiesUI();
-        }
-
         private void RebuildPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
-            if (!File.Exists(htmlPath) || _currentTarget == null) return;
+            if (!File.Exists(htmlPath)) return;
+
             string template = File.ReadAllText(htmlPath);
-            string contentHtml = BuildPropertiesHtml(_currentTarget, "", 0);
+            string contentHtml = _currentTarget != null
+                ? BuildPropertiesHtml(_currentTarget, "", 0)
+                : "<div class=\"no-selection\">No selection</div>";
+
             string finalHtml = template.Replace("<!--PROPERTIES-->", contentHtml);
+
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
@@ -104,39 +112,46 @@ namespace ToolChest
 
         private string BuildPropertiesHtml(object obj, string pathPrefix, int depth)
         {
-            if (obj == null || depth > 3) return "<div style='color:#666;padding:8px;'>[Null or too deep]</div>";
+            if (obj == null || depth > 3) return "<div class=\"property-null\">[Null or too deep]</div>";
+
             var sb = new StringBuilder();
             Type type = obj.GetType();
             string title = type.Name;
-            sb.AppendLine($"<details style='margin-bottom:4px;' open='false'>");
-            sb.AppendLine($" <summary style='background:#252526;padding:6px 10px;cursor:pointer;font-weight:bold;'>{title}</summary>");
-            sb.AppendLine($" <div style='padding:8px;background:#1e1e1e;border-left:2px solid #094771;'>");
+
+            sb.Append($"<div class=\"property-group\">");
+            sb.Append($"<div class=\"property-group-header\">{title}</div>");
+            sb.Append($"<div class=\"property-grid\">");
+
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && p.GetCustomAttribute<BrowsableAttribute>()?.Browsable != false)
                 .OrderBy(p => p.Name);
+
             foreach (var prop in properties)
             {
                 string fullPath = string.IsNullOrEmpty(pathPrefix) ? prop.Name : $"{pathPrefix}.{prop.Name}";
-                _propertyMap[fullPath] = prop;
                 object value = prop.GetValue(obj);
                 string displayValue = value?.ToString() ?? "";
-                if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(Vector2) || prop.PropertyType == typeof(Vector3) || prop.PropertyType == typeof(Vector4) || prop.PropertyType == typeof(Quaternion))
+
+                if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) ||
+                    prop.PropertyType == typeof(Vector2) || prop.PropertyType == typeof(Vector3) ||
+                    prop.PropertyType == typeof(Vector4) || prop.PropertyType == typeof(Quaternion))
                 {
                     string inputType = GetInputType(prop.PropertyType);
-                    sb.AppendLine($" <div style='display:flex;align-items:center;margin:4px 0;padding:2px;'>");
-                    sb.AppendLine($" <span style='width:140px;color:#aaa;'>{prop.Name}</span>");
-                    sb.AppendLine($" <input type='{inputType}' data-hook='SetProperty:{fullPath}' value='{displayValue}' style='flex:1;background:#333;border:1px solid #555;color:#ccc;padding:4px;'>");
-                    sb.AppendLine($" </div>");
+                    sb.Append($"<div class=\"property-row\">");
+                    sb.Append($"<span class=\"property-label\">{prop.Name}</span>");
+                    sb.Append($"<input type=\"{inputType}\" class=\"property-value\" data-hook=\"SetProperty:{fullPath}\" value=\"{displayValue}\">");
+                    sb.Append($"</div>");
                 }
                 else
                 {
-                    sb.AppendLine($" <div style='margin:6px 0;'>");
+                    sb.Append($"<div class=\"property-row nested\">");
                     sb.Append(BuildPropertiesHtml(value, fullPath, depth + 1));
-                    sb.AppendLine($" </div>");
+                    sb.Append($"</div>");
                 }
             }
-            sb.AppendLine($" </div>");
-            sb.AppendLine($"</details>");
+
+            sb.Append($"</div>");
+            sb.Append($"</div>");
             return sb.ToString();
         }
 
@@ -149,14 +164,6 @@ namespace ToolChest
 
         public void HandleDataHook(string hook)
         {
-            if (hook.StartsWith("SetProperty:"))
-            {
-                string path = hook.Substring(12);
-                if (_propertyMap.TryGetValue(path, out var prop) && _currentTarget != null)
-                {
-                    Console.WriteLine($"[PropertiesPanel] SetProperty requested: {path} on target {_currentTarget.GetType().Name}");
-                }
-            }
         }
 
         public void HandleUIClick(HtmlElement elem)
@@ -174,26 +181,15 @@ namespace ToolChest
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
 
-        // IDataAwarePanel implementation - opt-in for automatic persistence
         public string DataKey => "PropertiesPanel";
 
         public JsonElement SavePanelState()
         {
-            // Persist the current target reference (simple ID/path for future entity system)
-            var state = new Dictionary<string, object>
-            {
-                ["currentTargetType"] = _currentTarget?.GetType().FullName ?? "",
-                // Future: add entity ID, component path, etc. when full entity system is wired
-            };
-            return JsonSerializer.SerializeToElement(state);
+            return JsonSerializer.SerializeToElement(new Dictionary<string, object>());
         }
 
         public void LoadPanelState(JsonElement state)
         {
-            // Restore target reference (stub for now - will bind to live EditorScene entities later)
-            // No immediate UI rebuild here - panels call RebindToContent internally after load if needed
-            Console.WriteLine($"[PropertiesPanel] Loaded panel state for DataKey '{DataKey}'");
-            // Future: re-resolve _currentTarget from saved ID/path via Scene/EditorScene
         }
     }
 }

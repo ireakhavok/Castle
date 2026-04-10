@@ -76,7 +76,6 @@ namespace SiegeEngine.Core.Managers
             panel.IsClosable = true;
             panel.HeaderHeight = BasePanel.TitleHeight;
             panel.DockingMode = DockingMode.IDE;
-
             if (panel.DockState == DockState.Floating || panel.DockState == DockState.DockedHeader)
             {
                 if (!_floatingPanels.Contains(panel))
@@ -162,28 +161,38 @@ namespace SiegeEngine.Core.Managers
         {
             if (_floatingPanels.Count == 0 && !HasActiveContent())
                 return;
+
             if (winW != _lastWinW || winH != _lastWinH)
             {
                 _lastWinW = winW;
                 _lastWinH = winH;
                 _needsLayout = true;
             }
+
             if (_root != null)
             {
                 _root = CollapseNode(_root);
                 if (_root == null) _root = new DockTabbedNode();
             }
+
             _splitterDraggingThisFrame = false;
-            if (_root != null)
+
+            // MINIMAL FIX ONLY: if mouse is over any floating panel, skip ALL docked input handling
+            // (prevents underlying splitter from starting when clicking a floating title bar)
+            IPanel top = PanelManager.Current?.GetTopmostPanelAt(mousePos);
+            bool mouseOverFloatingPanel = top != null && _floatingPanels.Contains(top);
+
+            if (!mouseOverFloatingPanel && _root != null)
             {
                 _root.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta, eventBus);
                 _splitterDraggingThisFrame = IsAnySplitterDragging(_root);
             }
+
             if (_splitterDraggingThisFrame)
             {
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
             }
-            else if (_root != null)
+            else if (_root != null && !mouseOverFloatingPanel)
             {
                 if (_root.HitTest(mousePos, out IPanel dockedHit, out bool isTitle, out bool isSplitter, out _, out _))
                 {
@@ -208,6 +217,7 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
+
             IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
@@ -226,6 +236,7 @@ namespace SiegeEngine.Core.Managers
                         break;
                 }
             }
+
             if (mousePressed && _draggingPanel == null && hoveredPanel == null && !_splitterDraggingThisFrame)
             {
                 if (_root != null && _root.HitTest(mousePos, out IPanel hit2, out bool isTitle2, out bool isSplitter2, out _, out _))
@@ -240,6 +251,7 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
+
             if (_draggingPanel != null && mouseDown)
             {
                 _draggingPanel.Position = mousePos - _dragOffset;
@@ -247,10 +259,12 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel.Position = new Vector2(_draggingPanel.Position.X, MenuBarHeight);
                 DetectHoverTarget(mousePos, winW, winH);
             }
+
             if (_resizingPanel != null && mouseDown)
             {
                 PerformLiveResize(mousePos, winW, winH);
             }
+
             if (_draggingPanel != null && mouseReleased)
             {
                 bool shouldDock = false;
@@ -355,6 +369,7 @@ namespace SiegeEngine.Core.Managers
                 _hoveringWorkspace = false;
                 _needsLayout = true;
             }
+
             if (_resizingPanel != null && mouseReleased)
             {
                 _resizingPanel.OnPanelResize(_resizingPanel.Size.X, _resizingPanel.Size.Y);
@@ -362,6 +377,7 @@ namespace SiegeEngine.Core.Managers
                 _activeResizeHandle = ResizeHandle.None;
                 _needsLayout = true;
             }
+
             if (_needsLayout && _root != null)
             {
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
@@ -564,7 +580,7 @@ namespace SiegeEngine.Core.Managers
             }
             foreach (var panel in _floatingPanels)
             {
-                if (panel == null || !panel.Visible) continue;   // <--- SAFETY GUARD
+                if (panel == null || !panel.Visible) continue;
                 int px = (int)panel.Position.X;
                 int py = winH - (int)(panel.Position.Y + panel.Size.Y);
                 uint pw = (uint)panel.Size.X;
@@ -739,11 +755,8 @@ namespace SiegeEngine.Core.Managers
                 if (t != null && typeof(IPanel).IsAssignableFrom(t))
                 {
                     var panel = (IPanel)Activator.CreateInstance(t, _renderContext, _controlContext, _window, _eventBus);
-
-                    // CRITICAL FIX: call Init() so _uiOverlay and all render state exists
                     if (panel is BasePanel bp)
                         bp.Init();
-
                     return panel;
                 }
             }

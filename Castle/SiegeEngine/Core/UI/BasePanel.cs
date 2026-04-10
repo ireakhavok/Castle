@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+﻿// Folder: SiegeEngine/Core/UI
 // File: BasePanel.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -176,7 +176,17 @@ namespace SiegeEngine.Core.UI
             bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                              absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
 
-            if ((overPanel || WantsContinuousUpdate) && PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this)
+            bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
+
+            // CRITICAL FOCUS REQUIREMENT (fixed): Fire on EVERY mouse press while this panel is topmost AND mouse is over the panel.
+            // This works reliably even when derived panels filter mousePressed for camera mode.
+            if (isTopmost && overPanel && mousePressed)
+            {
+                Console.WriteLine($"[BasePanel] FOCUS DETECTED → {GetType().Name} (topmost + mousePressed in content area)");
+                OnContentFocusGained();
+            }
+
+            if ((overPanel || WantsContinuousUpdate) && isTopmost)
             {
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
@@ -186,7 +196,14 @@ namespace SiegeEngine.Core.UI
             }
         }
 
-        public virtual void ToggleCameraMode() { } // default no-op for non-camera panels
+        // Virtual hook – content panels override to provide their hierarchy (clean, future-proof, no reflection needed yet)
+        protected virtual void OnContentFocusGained()
+        {
+            // Default no-op. Overridden by TerrainCreatorPanel, SceneEditorPanel, etc.
+            Console.WriteLine($"[BasePanel] OnContentFocusGained called on {GetType().Name} (default no-op)");
+        }
+
+        public virtual void ToggleCameraMode() { }
 
         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {

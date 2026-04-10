@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Events
+﻿// Folder: SiegeEngine/Core/Events
 // File: EventBus.cs
 using System;
 using System.Collections.Generic;
@@ -70,7 +70,6 @@ namespace SiegeEngine.Core.Events
 
             if (_subscribers.ContainsKey(type))
             {
-                // CRITICAL FIX: Take a snapshot so handlers can safely add/remove subscribers (e.g. OpenPanel + ClosePanel)
                 var handlersCopy = _subscribers[type].ToList();
 
                 foreach (var handler in handlersCopy)
@@ -167,6 +166,16 @@ namespace SiegeEngine.Core.Events
                 Console.WriteLine($"EventBus: Error processing network message: {ex.Message}");
             }
         }
+    }
+
+    // === NEW GENERIC EVENT (core-neutral) ===
+    // Used exclusively for notifying the editor outliner/inspector when the last-active content panel changes.
+    // No data, no IDE concepts, no network sync - purely internal notification.
+    public class ActivePanelChangedEvent : IEvent
+    {
+        public string Type => "ActivePanelChanged";
+        public byte[] Serialize() => Array.Empty<byte>();
+        public void Deserialize(byte[] data) { }
     }
 
     public class LobbyCreatedEvent : IEvent
