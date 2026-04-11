@@ -15,6 +15,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using ToolChest;
+
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -116,6 +117,42 @@ namespace MapRoom
                 _flyCamera.Yaw = 0f;
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
+        }
+
+        // OVERRIDE: This is the exact point where new flat terrains (no HeightmapPath) were being overwritten.
+        // We now respect the exact user-specified heightmap size that was handed off via ProjectSettings.Current.
+        public override void LoadSceneData(SceneData data)
+        {
+            // Memory-first path for brand-new flat terrains created via NewTerrainPanel
+            // (HeightmapPath is intentionally null until the user saves the project)
+            if (ProjectSettings.Current.CurrentHeightmap != null &&
+                (data?.Terrain == null || string.IsNullOrEmpty(data.Terrain.HeightmapPath)))
+            {
+                _heightmap = ProjectSettings.Current.CurrentHeightmap;
+                _terrainWidth = _heightmap.GetLength(0);
+                _terrainHeight = _heightmap.GetLength(1);
+                _minHeight = 0f;
+                _maxHeight = 0f;
+                for (int x = 0; x < _terrainWidth; x++)
+                {
+                    for (int y = 0; y < _terrainHeight; y++)
+                    {
+                        float h = _heightmap[x, y];
+                        if (h < _minHeight) _minHeight = h;
+                        if (h > _maxHeight) _maxHeight = h;
+                    }
+                }
+                _worldScaleX = data?.Terrain?.WorldScaleX ?? ProjectSettings.Current.CurrentSceneData?.Terrain?.WorldScaleX ?? 1.0f;
+                _worldScaleZ = data?.Terrain?.WorldScaleZ ?? ProjectSettings.Current.CurrentSceneData?.Terrain?.WorldScaleZ ?? 1.0f;
+                _useCustomScale = true;
+
+                Console.WriteLine($"[TerrainCreatorScene.LoadSceneData] Using CENTRAL in-memory heightmap ({_terrainWidth}×{_terrainHeight}) - preserving exact user size");
+                RebuildTerrainMesh();
+                return;
+            }
+
+            // Normal path (imported GeoTIFF or saved terrain)
+            base.LoadSceneData(data);
         }
 
         public override void LoadTerrain(string path)

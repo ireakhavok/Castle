@@ -140,7 +140,11 @@ namespace MapRoom
                 var sceneData = new SceneData { Name = parameters.Name, SceneType = "TerrainTest" };
                 sceneData.Terrain = new TerrainData
                 {
-                    HeightmapPath = parameters.ImportPath ?? $"Assets/Terrain/{parameters.Name}.tif",
+                    // CRITICAL: For brand-new flat terrains (no import) we deliberately leave HeightmapPath = null.
+                    // This keeps the terrain 100% in-memory via ProjectSettings.CurrentHeightmap.
+                    // EditorScene / TerrainScene will never call LoadTerrain on a non-existent .tif,
+                    // preventing the size from being overwritten by a large default (2049x2049).
+                    HeightmapPath = parameters.ImportPath,   // only set when a real GeoTIFF was imported
                     WorldScaleX = parameters.Resolution,
                     WorldScaleZ = parameters.Resolution,
                     VerticalExaggeration = parameters.VerticalExaggeration
