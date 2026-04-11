@@ -46,12 +46,10 @@ namespace MapRoom
         private TerrainCreationParams _creationParams;
         private bool _cameraMode = false;
         private SceneData _currentSceneData;
-
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : this(renderContext, controlContext, window, eventBus, (SceneData)null)
         {
         }
-
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialTerrainPath = null)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -65,13 +63,11 @@ namespace MapRoom
             _currentSceneData = null;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
-
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, TerrainCreationParams creationParams)
             : this(renderContext, controlContext, window, eventBus, creationParams?.ImportPath)
         {
             _creationParams = creationParams;
         }
-
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, SceneData sceneData)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -84,29 +80,29 @@ namespace MapRoom
             _currentSceneData = sceneData;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus, sceneData);
         }
-
         public string ContentType => "TerrainCreator";
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new TerrainUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
 
-            // Query central store first (heightmap is now authoritative and survives panel lifecycle)
+            // CENTRAL MEMORY STORE IS NOW AUTHORITATIVE FOR NEW FLAT TERRAINS
             if (ProjectSettings.Current.CurrentSceneData != null)
             {
                 _currentSceneData = ProjectSettings.Current.CurrentSceneData;
             }
 
-            if (_currentSceneData != null && _currentSceneData.Terrain != null && !string.IsNullOrEmpty(_currentSceneData.Terrain.HeightmapPath))
+            if (_currentSceneData != null)
             {
-                _terrainScene.LoadTerrain(_currentSceneData.Terrain.HeightmapPath);
+                // This is the unified path used by both SceneEditor and TerrainCreatorPanel.
+                // TerrainCreatorScene.LoadSceneData now contains the memory-first path that
+                // respects the exact user-specified size when HeightmapPath is null.
+                _terrainScene.LoadSceneData(_currentSceneData);
             }
             else if (_creationParams != null)
             {
@@ -115,13 +111,6 @@ namespace MapRoom
             else if (!string.IsNullOrEmpty(_initialTerrainPath))
             {
                 _terrainScene.LoadTerrain(_initialTerrainPath);
-            }
-            else if (ProjectSettings.Current.CurrentHeightmap != null)
-            {
-                // Fallback to central heightmap if already set by NewTerrainPanel or previous blade
-                Console.WriteLine("[TerrainCreatorPanel] Restoring heightmap from central ProjectSettings store");
-                // The scene already has its internal array; we simply re-use the reference from central store if needed
-                // (no copy - the reference is already shared)
             }
             else
             {
@@ -136,7 +125,6 @@ namespace MapRoom
             _uiOverlay.RefreshUI();
             LoadTerrainControlsUI();
         }
-
         private void LoadTerrainControlsUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TerrainCreatorUI.html");
@@ -148,7 +136,6 @@ namespace MapRoom
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void OnFileSelected(FileSelectedEvent e)
         {
             string hook = e.UserData as string;
@@ -167,7 +154,6 @@ namespace MapRoom
                 }
             }
         }
-
         private void OnBrushSelected(SelectBrushEvent e)
         {
             if (string.IsNullOrEmpty(e.BrushMode) || e.Size == 0f)
@@ -185,13 +171,11 @@ namespace MapRoom
             };
             _terrainScene.SetActiveBrush(brush);
         }
-
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             NotifyHierarchyChanged();
             // Heightmap is mutated in place - central store already holds the same reference
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -236,20 +220,17 @@ namespace MapRoom
                 }
             }
         }
-
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
             if (_cameraMode) PanelManager.Current.CapturePanel(this);
             else PanelManager.Current.ReleasePanelCapture();
         }
-
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new TerrainCreatorPanel(renderContext, controlContext, window, eventBus, (string)null);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
-
         public static void OpenImport(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _staticRenderContext = renderContext;
@@ -270,7 +251,6 @@ namespace MapRoom
             fileSelector.IsModal = true;
             eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
         }
-
         private static void StaticOnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData as string == "TerrainImport" && !string.IsNullOrEmpty(e.Path) && _staticRenderContext != null)
@@ -279,22 +259,18 @@ namespace MapRoom
                 _staticEventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
             }
         }
-
         private static void StaticOnCreateTerrain(CreateTerrainEvent e)
         {
             if (_staticRenderContext == null) return;
             var panel = new TerrainCreatorPanel(_staticRenderContext, _staticControlContext, _staticWindow, _staticEventBus, e.Params);
             _staticEventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             if (isTopmost && mousePressed)
                 OnContentFocusGained();
-
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-
             float header = HasTitleBar ? HeaderHeight : 0f;
             float contentX = Position.X;
             float contentY = Position.Y + header;
@@ -306,31 +282,25 @@ namespace MapRoom
             _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
             if (_cameraMode) _controlContext.PopViewport();
         }
-
         protected override void RenderInnerContent()
         {
             _terrainScene.Render(null);
         }
-
         public override void OnLiveResize(float w, float h)
         {
             _terrainScene.Resize((int)w, (int)h);
         }
-
         public override void Dispose()
         {
             PanelManager.Current.ReleasePanelCapture();
             _terrainScene?.Dispose();
             base.Dispose();
         }
-
         public static void OpenBrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             BrushPanel.Open(renderContext, controlContext, window, eventBus);
         }
-
         public string DataKey => "TerrainCreatorPanel";
-
         public JsonElement SavePanelState()
         {
             var state = new Dictionary<string, object>
@@ -340,17 +310,14 @@ namespace MapRoom
             };
             return JsonSerializer.SerializeToElement(state);
         }
-
         public void LoadPanelState(JsonElement state)
         {
         }
-
         protected override void OnContentFocusGained()
         {
             Console.WriteLine("[TerrainCreatorPanel] OnContentFocusGained → notifying OutlinerCoordinator");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
         }
-
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
@@ -360,12 +327,10 @@ namespace MapRoom
             nodes.Add(new OutlinerNode { Id = "settings", Label = "Terrain Settings", Icon = "⚙️", ParentId = "terrain-root" });
             return nodes;
         }
-
         public object GetObjectForNode(string nodeId)
         {
             return null;
         }
-
         public void NotifyHierarchyChanged()
         {
             OutlinerCoordinator.Instance.NotifyHierarchyChanged();
