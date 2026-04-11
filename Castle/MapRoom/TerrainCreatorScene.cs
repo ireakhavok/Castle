@@ -362,5 +362,8 @@ namespace MapRoom
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
             UpdateAffectedVertices(e.WorldPos, e.Radius);
         }
+
+        // NEW: Public getter exposing the live heightmap array reference (shared with Keystone.ProjectSettings)
+        public new float[,] GetHeightmap() => _heightmap;
     }
 }

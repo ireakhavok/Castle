@@ -50,6 +50,9 @@ namespace CastleBuilder
                 _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus);
                 _activeGameScene.Initialize(_width, _height);
                 if (_activeGameScene is TerrainCreatorScene tcs) tcs.CreateBlank();
+                // Hand-off to central store immediately
+                var defaultSceneData = new SceneData { Name = "Default", SceneType = "TerrainTest" };
+                ProjectSettings.Current.SetCurrentTerrain(defaultSceneData, ((TerrainCreatorScene)_activeGameScene).GetHeightmap(), "Default");
                 return;
             }
 
@@ -92,13 +95,18 @@ namespace CastleBuilder
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
 
-                if (_activeGameScene is TerrainCreatorScene tcs && !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
+                // Route through central store (heightmap reference is now authoritative)
+                if (_activeGameScene is TerrainCreatorScene tcs)
                 {
-                    tcs.LoadTerrain(sceneData.Terrain.HeightmapPath);
-                    Console.WriteLine($"[EditorScene] Loaded saved terrain (relative): {sceneData.Terrain.HeightmapPath}");
+                    ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain?.HeightmapPath);
+                    if (!string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
+                    {
+                        tcs.LoadTerrain(sceneData.Terrain.HeightmapPath);
+                        Console.WriteLine($"[EditorScene] Loaded saved terrain (relative): {sceneData.Terrain.HeightmapPath}");
+                    }
                 }
 
-                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (terrain restored)");
+                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (terrain restored via central store)");
             }
         }
 
@@ -113,6 +121,9 @@ namespace CastleBuilder
 
                     if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
                     sceneData.Terrain.HeightmapPath = $"Assets/Terrain/{name}.tif";
+
+                    // Re-hand-off the (possibly modified) heightmap to central store
+                    ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain.HeightmapPath);
 
                     Console.WriteLine($"[EditorScene] Flushed terrain - relative path stored: {sceneData.Terrain.HeightmapPath}");
                 }

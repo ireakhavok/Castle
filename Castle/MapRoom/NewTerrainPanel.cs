@@ -12,6 +12,7 @@ using System.IO;
 using System.Numerics;
 using ReadingChamber;
 using SiegeEngine.Core.UI.Elements;
+using Keystone;
 
 namespace MapRoom
 {
@@ -123,8 +124,28 @@ namespace MapRoom
                     ImportPath = _selectedImportPath
                 };
                 Console.WriteLine($"[NewTerrainPanel] Creating {parameters.Width}m x {parameters.Depth}m terrain with grid spacing {parameters.Resolution:F1}m per cell");
-                var terrainPanel = new TerrainCreatorPanel(_renderContext, _controlContext, _window, _eventBus, parameters);
-                _eventBus.Publish(new OpenPanelEvent(terrainPanel) { Mode = OpenMode.Replace });
+
+                // TEMPORARY scene used ONLY to generate the heightmap via TerrainManager / CreateTerrain
+                // This is the exact moment the live heightmap array is born.
+                var tempScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
+                tempScene.Initialize((int)Size.Y, (int)Size.X); // minimal init for mesh creation
+                tempScene.CreateTerrain(parameters);
+
+                // Hand-off to central Keystone store (shared reference, no copy)
+                var sceneData = new SceneData { Name = parameters.Name, SceneType = "TerrainTest" };
+                sceneData.Terrain = new TerrainData
+                {
+                    HeightmapPath = parameters.ImportPath ?? "Assets/Terrain/" + parameters.Name + ".tif",
+                    WorldScaleX = parameters.Resolution,
+                    WorldScaleZ = parameters.Resolution,
+                    VerticalExaggeration = parameters.VerticalExaggeration
+                };
+                ProjectSettings.Current.SetCurrentTerrain(sceneData, tempScene.GetHeightmap(), parameters.Name, sceneData.Terrain.HeightmapPath);
+
+                // TEMP scene is immediately disposed - heightmap reference lives on in ProjectSettings
+                tempScene.Dispose();
+
+                // Close the modal. No panel is opened here (per spec). The heightmap is now globally available.
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
             else if (hook == "CancelNewTerrain")

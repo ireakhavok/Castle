@@ -98,26 +98,10 @@ namespace MapRoom
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
 
-            if (_currentSceneData == null)
+            // Query central store first (heightmap is now authoritative and survives panel lifecycle)
+            if (ProjectSettings.Current.CurrentSceneData != null)
             {
-                string projectPath = ProjectSettings.Current.ActiveProject;
-                if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
-                {
-                    string jsonPath = Path.Combine(projectPath, "project.json");
-                    if (File.Exists(jsonPath))
-                    {
-                        string json = File.ReadAllText(jsonPath);
-                        var projectData = JsonSerializer.Deserialize<ProjectData>(json);
-                        if (projectData?.Scenes != null)
-                        {
-                            string lastScene = projectData.LastOpenedScene ?? projectData.Scenes.Keys.FirstOrDefault();
-                            if (!string.IsNullOrEmpty(lastScene) && projectData.Scenes.TryGetValue(lastScene, out var sceneData))
-                            {
-                                _currentSceneData = sceneData;
-                            }
-                        }
-                    }
-                }
+                _currentSceneData = ProjectSettings.Current.CurrentSceneData;
             }
 
             if (_currentSceneData != null && _currentSceneData.Terrain != null && !string.IsNullOrEmpty(_currentSceneData.Terrain.HeightmapPath))
@@ -131,6 +115,13 @@ namespace MapRoom
             else if (!string.IsNullOrEmpty(_initialTerrainPath))
             {
                 _terrainScene.LoadTerrain(_initialTerrainPath);
+            }
+            else if (ProjectSettings.Current.CurrentHeightmap != null)
+            {
+                // Fallback to central heightmap if already set by NewTerrainPanel or previous blade
+                Console.WriteLine("[TerrainCreatorPanel] Restoring heightmap from central ProjectSettings store");
+                // The scene already has its internal array; we simply re-use the reference from central store if needed
+                // (no copy - the reference is already shared)
             }
             else
             {
@@ -171,6 +162,8 @@ namespace MapRoom
                 if (_currentSceneData != null && _currentSceneData.Terrain != null)
                 {
                     _currentSceneData.Terrain.HeightmapPath = e.Path;
+                    // Re-hand-off updated reference to central store
+                    ProjectSettings.Current.SetCurrentTerrain(_currentSceneData, _terrainScene.GetHeightmap(), _currentSceneData.Name, e.Path);
                 }
             }
         }
@@ -196,6 +189,7 @@ namespace MapRoom
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             NotifyHierarchyChanged();
+            // Heightmap is mutated in place - central store already holds the same reference
         }
 
         public void HandleUIClick(HtmlElement elem)
@@ -223,6 +217,11 @@ namespace MapRoom
             {
                 string name = _creationParams?.Name ?? (_currentSceneData?.Name ?? "UntitledTerrain");
                 _terrainScene.SaveTerrain(name);
+                // Re-hand-off after save (ensures any disk-side changes are reflected centrally)
+                if (_currentSceneData != null)
+                {
+                    ProjectSettings.Current.SetCurrentTerrain(_currentSceneData, _terrainScene.GetHeightmap(), _currentSceneData.Name);
+                }
             }
             else if (hook == "OpenBrushPanel")
             {

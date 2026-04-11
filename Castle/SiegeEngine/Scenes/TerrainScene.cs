@@ -11,6 +11,7 @@ using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Scenes
 {
     public unsafe class TerrainScene : GameScene
@@ -375,5 +376,8 @@ namespace SiegeEngine.Scenes
             _terrainShader?.Dispose();
             base.Dispose();
         }
+
+        // NEW: Public getter exposing the live heightmap array reference (shared with Keystone.ProjectSettings)
+        public float[,] GetHeightmap() => _heightmap;
     }
 }
