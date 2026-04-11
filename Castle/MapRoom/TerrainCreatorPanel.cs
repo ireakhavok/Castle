@@ -17,7 +17,6 @@ using System.Text;
 using System.Text.Json;
 using Keystone;
 using ToolChest;
-
 namespace MapRoom
 {
     public class TerrainCreatorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -90,18 +89,16 @@ namespace MapRoom
             base.Init();
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
-
-            // CENTRAL MEMORY STORE IS NOW AUTHORITATIVE FOR NEW FLAT TERRAINS
             if (ProjectSettings.Current.CurrentSceneData != null)
             {
                 _currentSceneData = ProjectSettings.Current.CurrentSceneData;
             }
-
+            if (_currentSceneData == null)
+            {
+                TryLoadFromActiveProject();
+            }
             if (_currentSceneData != null)
             {
-                // This is the unified path used by both SceneEditor and TerrainCreatorPanel.
-                // TerrainCreatorScene.LoadSceneData now contains the memory-first path that
-                // respects the exact user-specified size when HeightmapPath is null.
                 _terrainScene.LoadSceneData(_currentSceneData);
             }
             else if (_creationParams != null)
@@ -116,7 +113,6 @@ namespace MapRoom
             {
                 _terrainScene.CreateBlank();
             }
-
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _eventBus.Subscribe<SelectBrushEvent>(OnBrushSelected);
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
@@ -124,6 +120,28 @@ namespace MapRoom
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
             LoadTerrainControlsUI();
+        }
+        private void TryLoadFromActiveProject()
+        {
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
+            string jsonPath = Path.Combine(projectPath, "project.json");
+            if (!File.Exists(jsonPath)) return;
+            string json = File.ReadAllText(jsonPath);
+            var projectData = JsonSerializer.Deserialize<ProjectData>(json);
+            if (projectData?.Scenes == null || projectData.Scenes.Count == 0) return;
+            string sceneName = projectData.LastOpenedScene ?? projectData.Scenes.Keys.FirstOrDefault() ?? "Main";
+            if (projectData.Scenes.TryGetValue(sceneName, out SceneData sceneData))
+            {
+                _currentSceneData = sceneData;
+                ProjectSettings.Current.SetCurrentTerrain(sceneData, null, sceneName);
+                if (!string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
+                {
+                    _terrainScene.LoadTerrain(sceneData.Terrain.HeightmapPath);
+                    Console.WriteLine($"[TerrainCreatorPanel] Loaded saved GeoTIFF for scene '{sceneName}'");
+                }
+                Console.WriteLine($"[TerrainCreatorPanel] Loaded saved scene '{sceneName}' from project.json (Save As path now respected)");
+            }
         }
         private void LoadTerrainControlsUI()
         {
@@ -138,21 +156,22 @@ namespace MapRoom
         }
         private void OnFileSelected(FileSelectedEvent e)
         {
-            string hook = e.UserData as string;
-            if (hook == "LoadTerrainTexture")
+            // STRICT UserData guard - only react to terrain-specific selections
+            string userData = e.UserData as string;
+            if (userData == "LoadTerrainTexture")
             {
                 _terrainScene.SetColorTexture(e.Path);
             }
-            else if (hook == "LoadTerrainFile")
+            else if (userData == "LoadTerrainFile")
             {
                 _terrainScene.LoadTerrain(e.Path);
                 if (_currentSceneData != null && _currentSceneData.Terrain != null)
                 {
                     _currentSceneData.Terrain.HeightmapPath = e.Path;
-                    // Re-hand-off updated reference to central store
                     ProjectSettings.Current.SetCurrentTerrain(_currentSceneData, _terrainScene.GetHeightmap(), _currentSceneData.Name, e.Path);
                 }
             }
+            // Ignore everything else (NewTerrainImport, LoadProject, etc.)
         }
         private void OnBrushSelected(SelectBrushEvent e)
         {
@@ -174,7 +193,6 @@ namespace MapRoom
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             NotifyHierarchyChanged();
-            // Heightmap is mutated in place - central store already holds the same reference
         }
         public void HandleUIClick(HtmlElement elem)
         {
@@ -201,7 +219,6 @@ namespace MapRoom
             {
                 string name = _creationParams?.Name ?? (_currentSceneData?.Name ?? "UntitledTerrain");
                 _terrainScene.SaveTerrain(name);
-                // Re-hand-off after save (ensures any disk-side changes are reflected centrally)
                 if (_currentSceneData != null)
                 {
                     ProjectSettings.Current.SetCurrentTerrain(_currentSceneData, _terrainScene.GetHeightmap(), _currentSceneData.Name);
