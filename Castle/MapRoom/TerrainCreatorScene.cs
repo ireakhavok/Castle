@@ -36,7 +36,7 @@ namespace MapRoom
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
             _sceneData = sceneData;
-            _isEditorContext = true; // forces full-resolution mesh everywhere in editor (fixes different line count)
+            _isEditorContext = true;
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
         }
 
@@ -69,7 +69,7 @@ namespace MapRoom
             }
             Console.WriteLine($"[TerrainCreatorScene] Created blank 200×200 terrain with height range {_minHeight:F1} to {_maxHeight:F1}");
             _useCustomScale = true;
-            RebuildTerrainMesh(); // full-resolution editor mesh
+            RebuildTerrainMesh();
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
             float centerY = (_terrainHeight * _worldScaleZ) / 2f;
             _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
@@ -119,12 +119,37 @@ namespace MapRoom
             }
         }
 
-        // OVERRIDE: This is the exact point where new flat terrains (no HeightmapPath) were being overwritten.
-        // We now respect the exact user-specified heightmap size that was handed off via ProjectSettings.Current.
         public override void LoadSceneData(SceneData data)
         {
-            // Memory-first path for brand-new flat terrains created via NewTerrainPanel
-            // (HeightmapPath is intentionally null until the user saves the project)
+            string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
+
+            // First priority: per-scene unsaved memory cache
+            float[,] cachedMap = ProjectSettings.Current.GetUnsavedHeightmap(sceneName);
+            if (cachedMap != null)
+            {
+                _heightmap = cachedMap;
+                _terrainWidth = _heightmap.GetLength(0);
+                _terrainHeight = _heightmap.GetLength(1);
+                _minHeight = 0f;
+                _maxHeight = 0f;
+                for (int x = 0; x < _terrainWidth; x++)
+                {
+                    for (int y = 0; y < _terrainHeight; y++)
+                    {
+                        float h = _heightmap[x, y];
+                        if (h < _minHeight) _minHeight = h;
+                        if (h > _maxHeight) _maxHeight = h;
+                    }
+                }
+                _worldScaleX = data?.Terrain?.WorldScaleX ?? 1.0f;
+                _worldScaleZ = data?.Terrain?.WorldScaleZ ?? 1.0f;
+                _useCustomScale = true;
+                Console.WriteLine($"[TerrainCreatorScene.LoadSceneData] Using PER-SCENE unsaved heightmap for '{sceneName}' ({_terrainWidth}×{_terrainHeight})");
+                RebuildTerrainMesh();
+                return;
+            }
+
+            // Second priority: global central store (for brand new scenes)
             if (ProjectSettings.Current.CurrentHeightmap != null &&
                 (data?.Terrain == null || string.IsNullOrEmpty(data.Terrain.HeightmapPath)))
             {
@@ -142,16 +167,15 @@ namespace MapRoom
                         if (h > _maxHeight) _maxHeight = h;
                     }
                 }
-                _worldScaleX = data?.Terrain?.WorldScaleX ?? ProjectSettings.Current.CurrentSceneData?.Terrain?.WorldScaleX ?? 1.0f;
-                _worldScaleZ = data?.Terrain?.WorldScaleZ ?? ProjectSettings.Current.CurrentSceneData?.Terrain?.WorldScaleZ ?? 1.0f;
+                _worldScaleX = data?.Terrain?.WorldScaleX ?? 1.0f;
+                _worldScaleZ = data?.Terrain?.WorldScaleZ ?? 1.0f;
                 _useCustomScale = true;
-
-                Console.WriteLine($"[TerrainCreatorScene.LoadSceneData] Using CENTRAL in-memory heightmap ({_terrainWidth}×{_terrainHeight}) - preserving exact user size");
+                Console.WriteLine($"[TerrainCreatorScene.LoadSceneData] Using CENTRAL in-memory heightmap ({_terrainWidth}×{_terrainHeight})");
                 RebuildTerrainMesh();
                 return;
             }
 
-            // Normal path (imported GeoTIFF or saved terrain)
+            // Normal path (saved on disk)
             base.LoadSceneData(data);
         }
 
@@ -169,7 +193,7 @@ namespace MapRoom
             {
                 _sceneData.Terrain.HeightmapPath = path;
             }
-            RebuildTerrainMesh(); // guarantees identical mesh density after load
+            RebuildTerrainMesh();
         }
 
         public void SetColorTexture(string path)
@@ -309,6 +333,12 @@ namespace MapRoom
             {
                 _isBrushing = false;
             }
+
+            // NEW: Keep unsaved changes in per-scene cache every frame while brushing
+            if (_sceneData?.Name != null)
+            {
+                ProjectSettings.Current.StoreUnsavedHeightmap(_sceneData.Name, _heightmap);
+            }
         }
 
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
@@ -419,7 +449,7 @@ namespace MapRoom
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
             UpdateAffectedVertices(e.WorldPos, e.Radius);
-            RebuildTerrainMesh(); // ensures live brush updates are reflected immediately
+            RebuildTerrainMesh();
         }
 
         public new float[,] GetHeightmap() => _heightmap;

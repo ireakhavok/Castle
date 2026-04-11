@@ -42,8 +42,8 @@ namespace CastleBuilder
 
         public void LoadProjectData()
         {
-            // ALWAYS load the full project.json first so we never lose existing scenes
             string projectPath = ProjectSettings.Current.ActiveProject;
+
             if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
             {
                 string jsonPath = Path.Combine(projectPath, "project.json");
@@ -63,25 +63,22 @@ namespace CastleBuilder
                 _projectData.Scenes = new Dictionary<string, SceneData>();
             }
 
-            // CENTRAL MEMORY STORE FIRST (new scene from NewTerrainPanel)
             if (ProjectSettings.Current.CurrentSceneData != null && ProjectSettings.Current.CurrentHeightmap != null)
             {
                 string newSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
                 _currentGameSceneName = newSceneName;
 
-                // MERGE - add to existing collection, never replace it
                 if (!_projectData.Scenes.ContainsKey(newSceneName))
                 {
                     _projectData.Scenes[newSceneName] = ProjectSettings.Current.CurrentSceneData;
                 }
                 _projectData.LastOpenedScene = newSceneName;
 
-                Console.WriteLine($"[EditorScene] Merged new scene '{newSceneName}' from central store (total scenes now: {_projectData.Scenes.Count})");
+                Console.WriteLine($"[EditorScene] Merged new scene '{newSceneName}' (total scenes: {_projectData.Scenes.Count})");
                 ActivateCurrentGameScene();
                 return;
             }
 
-            // Normal project load path
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
             {
                 Console.WriteLine("[EditorScene] No active project - creating default");

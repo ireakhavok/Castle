@@ -1,4 +1,4 @@
-this is fantastic. the only issue I'm having is that the dropdown that partially scissors / covers the panels from the IDEBasePanel is not being counted for the hit testing or whatever to not allow click events through it? and also the background for the dropdown is not being shown either? it's all because it's drawing over other panels and outside of it's own space, so IDK how we're going to handle that, but we definitely need to keep it from clicking through. 
+on scene switch the terrain editor scene should also switch....
 
 the floating panels were not loaded back with the same size and position, they were loaded with the default, I believe dictated by the idedockingstrategy?
 
