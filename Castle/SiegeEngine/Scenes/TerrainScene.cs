@@ -86,10 +86,11 @@ namespace SiegeEngine.Scenes
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
-            _heightmap = new float[_terrainWidth, _terrainHeight];
+            // Only setup rendering resources. Heightmap and mesh are always set in LoadSceneData / LoadTerrain / CreateTerrain.
+            // This is the native, correct order that matches how the temp scene in NewTerrainPanel works.
             _terrainBuffer = new VertexBuffer(_renderContext);
-            BuildWireframeMesh(1);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
+            // Do NOT allocate default heightmap or build mesh here - that would override the large GeoTIFF / custom terrain from central store.
         }
         protected virtual void BuildWireframeMesh(float step)
         {
@@ -377,7 +378,7 @@ namespace SiegeEngine.Scenes
             base.Dispose();
         }
 
-        // NEW: Public getter exposing the live heightmap array reference (shared with Keystone.ProjectSettings)
+        // Public getter exposing the live heightmap array reference (shared with Keystone.ProjectSettings)
         public float[,] GetHeightmap() => _heightmap;
     }
 }

@@ -2302,7 +2302,7 @@ Folder: Scenes
       - void InitializeBlankTerrain()
         - Calls: BuildWireframeMesh
       - void Initialize( int height, int width)
-        - Calls: BuildWireframeMesh, ShaderProgram, VertexBuffer
+        - Calls: ShaderProgram, VertexBuffer
       - void BuildWireframeMesh(float step)
         - Calls: ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV, _terrainIndices.Clear, _terrainVertices.Clear
       - void BuildTexturedMesh()
