@@ -9,6 +9,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
+using Keystone;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -62,11 +63,11 @@ namespace CastleBuilder
             string projectType = typeElem?.Value ?? "3D FPS";
             string mode = modeElem?.Value ?? "Single Player";
             bool allowMods = allowModsElem?.Checked ?? true;
-            string root = ProjectSettings.Current.ProjectsRoot;
+            string root = Keystone.ProjectSettings.Current.ProjectsRoot;
             string safeName = name.Replace(" ", "_").ReplaceInvalidFileChars();
             string dir = Path.Combine(root, safeName);
             Directory.CreateDirectory(dir);
-            var data = new ProjectData
+            var data = new Keystone.ProjectData
             {
                 Name = name,
                 Type = projectType,

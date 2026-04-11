@@ -5,10 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
-using ToolChest;
 
 
-namespace CastleBuilder
+namespace Keystone
 {
     public static class ProjectLayoutManager
     {

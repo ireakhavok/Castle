@@ -12,6 +12,7 @@ using System.IO;
 using System.Numerics;
 using ReadingChamber;
 using SiegeEngine.Core.UI.Elements;
+using Keystone;
 
 namespace MapRoom
 {
@@ -27,6 +28,14 @@ namespace MapRoom
             }
             public override bool HandleUIClick(HtmlElement elem)
             {
+                string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
+                if (hook == "CreateTerrain")
+                {
+                    // This hook is now fully handled in the parent class.
+                    // Do NOT let the base UIOverlay fire DataHookProcessor again.
+                    _parent.HandleUIClick(elem);
+                    return true;
+                }
                 _parent.HandleUIClick(elem);
                 base.HandleUIClick(elem);
                 return true;
@@ -123,8 +132,31 @@ namespace MapRoom
                     ImportPath = _selectedImportPath
                 };
                 Console.WriteLine($"[NewTerrainPanel] Creating {parameters.Width}m x {parameters.Depth}m terrain with grid spacing {parameters.Resolution:F1}m per cell");
-                var terrainPanel = new TerrainCreatorPanel(_renderContext, _controlContext, _window, _eventBus, parameters);
-                _eventBus.Publish(new OpenPanelEvent(terrainPanel) { Mode = OpenMode.Replace });
+
+                var tempScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
+                tempScene.Initialize((int)Size.Y, (int)Size.X);
+                tempScene.CreateTerrain(parameters);
+
+                var sceneData = new SceneData { Name = parameters.Name, SceneType = "TerrainTest" };
+                sceneData.Terrain = new TerrainData
+                {
+                    // CRITICAL: For brand-new flat terrains (no import) we deliberately leave HeightmapPath = null.
+                    // This keeps the terrain 100% in-memory via ProjectSettings.CurrentHeightmap.
+                    // EditorScene / TerrainScene will never call LoadTerrain on a non-existent .tif,
+                    // preventing the size from being overwritten by a large default (2049x2049).
+                    HeightmapPath = parameters.ImportPath,   // only set when a real GeoTIFF was imported
+                    WorldScaleX = parameters.Resolution,
+                    WorldScaleZ = parameters.Resolution,
+                    VerticalExaggeration = parameters.VerticalExaggeration
+                };
+                ProjectSettings.Current.SetCurrentTerrain(sceneData, tempScene.GetHeightmap(), parameters.Name, sceneData.Terrain.HeightmapPath);
+
+                tempScene.Dispose();
+
+                // Do NOT open editor here - MapRoom cannot reference CastleBuilder
+                // The user is already in Scene Editor blade (or will switch to it). 
+                // SceneEditorPanel will pick up the new terrain from ProjectSettings.Current on next activation.
+
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
             else if (hook == "CancelNewTerrain")

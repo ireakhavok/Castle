@@ -1,39 +1,6 @@
-You are an expert in custom UI systems and editor tooling. We are currently implementing a professional-grade Outliner (TreeViewPanel) + Properties inspector that must feel and behave exactly like Unity or Unreal Editor — crisp, responsive, perfectly styled, with no jank.
 
-What we have accomplished so far:
+okay so  we were working on the data back-end for terrain yesterday and we were able to get both geotiff's and custom flat heightmaps loading correctly for the case of a non-loaded project, however, the grid resolutions were not the same, the geotiff when loaded into the terrain creator had something like 10x the number of lines as the same information loaded into sceneeditor. the number of lines needs to be the same
 
-Full architecture with IOutlinerProvider, OutlinerCoordinator (static singleton tracking the last active panel), OutlinerNode, and clean one-way data flow. (this should actually be two-way, but whatever. we'll add that later)
+issue #2, when switching scenes inside the sceneeditorpanel, the data back end updates, but then the terraincreatorscene doesn't update dynamically, and when re-loading the window no terrain becomes loaded. this does show that the memory back-end does update, but the information doesn't get refreshed? 
 
-All major content panels (SceneEditorPanel, AnimationViewerPanel, TerrainCreatorPanel, TwoDCreatorPanel) now implement IOutlinerProvider and correctly call SetAsActiveProvider on focus.
-
-Selection in the tree correctly notifies PropertiesPanel with the real live object for reflection.
-
-Persistence of expanded/selected state per content panel works via the coordinator and IDataAwarePanel.
-
-The system is modular, future-proof, and respects every existing contract (docking, camera mode, ProjectLayoutManager, etc.).
-
-Current state and exact problem: The user has reverted everything to the last known "wired" working state (the version before the last set of dynamic HTML changes). In that state, static mock .html files load and style perfectly. However, when the panels do dynamic rebuilds using template.Replace("<!--TREE_NODES-->", nodesHtml) or <!--PROPERTIES--> followed by _uiOverlay.LoadUI(finalHtml), the resulting tree and property grid appear completely unstyled or broken. The visual output does not match the clean, dark-themed, professional look of the static mock views.
-
-Explicit requirements for this fix:
-
-The dynamically generated HTML strings must produce exactly the same visual result as the static mock files once passed through LoadUI + RefreshUI.
-
-TreeViewPanel must render a clean, styled hierarchy with simple + / – toggles, proper indentation, hover states, and selected highlighting.
-
-PropertiesPanel must render a clean, styled flat property grid with labels and editors.
-
-No inline styles as a crutch — rely on the existing CSS classes and the CssParser / UIOverlay pipeline.
-
-The fix must be minimal, clean, and future-proof. Do not touch the HTML template files unless absolutely necessary.
-
-The solution must work for all panels that do dynamic content replacement (TreeView, Properties, and any others like AnimationViewer, TerrainCreator, etc.).
-
-Pitfalls to watch for:
-
-Whitespace, malformed HTML fragments, or missing wrapper elements
-
-not taking the HTML and reloading it through the uioverlay / html parser classes, like what is done for animationviewerpanel, that also dynamically loads html / css
-
-The order/timing of LoadUI, RefreshUI, ApplyAll, and RecomputeLayout after a dynamic replace.
-
-Begin by confirming you understand the "last active panel" model and the revert-to-wired state, then deliver the fix.
+the only difference between the in project version and the non-in project version is that the multiple scene options i don't think ever get added to the sceneeditorpanel so that case wouldn't happen, but any updates to adding a new terrain via the dropdown "new terrain" would trigger the same need for the scene editor to refresh, just in the opposite direction. 
