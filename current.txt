@@ -1,39 +1,7 @@
-You are an expert in custom UI systems and editor tooling. We are currently implementing a professional-grade Outliner (TreeViewPanel) + Properties inspector that must feel and behave exactly like Unity or Unreal Editor — crisp, responsive, perfectly styled, with no jank.
+When the user clicks "Create Terrain" in NewTerrainPanel (whether a 2048×2048 custom flat or a real GeoTIFF like the 3200×1525 USGS10m output), the temp TerrainCreatorScene successfully loads or generates the full-size heightmap array. ProjectSettings.Current.SetCurrentTerrain correctly stores the large reference (logs explicitly show "shared heightmap reference set (3200x1525)" or "2049x2049"). The GeoTiffParser runs, reports correct dimensions, correct min/max heights (2501.6m to 4344.0m), correct scale, and even saves the debug PNG. The central store now holds the real large array.
 
-What we have accomplished so far:
+Immediately after closing the NewTerrainPanel, the user clicks the button that triggers MenuCommands.OpenEditorScene. This opens SceneEditorPanel, which calls EditorScene.LoadProjectData. The central-store branch is hit ("Using terrain from central store (3200x1525)"), the SceneData is copied, ActivateCurrentGameScene runs, a new TerrainCreatorScene is instantiated, and LoadTerrain is called again on the same file. All the loading logs repeat with the same correct 3200×1525 numbers.
 
-Full architecture with IOutlinerProvider, OutlinerCoordinator (static singleton tracking the last active panel), OutlinerNode, and clean one-way data flow. (this should actually be two-way, but whatever. we'll add that later)
+Yet the final rendered grid in the Scene Editor panel is tiny — visually squished into a very small area on screen, as if the mesh was built for a 200×200 default terrain instead of the actual loaded dimensions. The heightmap array itself is the large one (confirmed by the repeated correct loading logs), but the visible mesh, camera positioning, and world scaling do not match the true size. The terrain appears as a tiny patch in the middle of the viewport instead of filling the expected world space.
 
-All major content panels (SceneEditorPanel, AnimationViewerPanel, TerrainCreatorPanel, TwoDCreatorPanel) now implement IOutlinerProvider and correctly call SetAsActiveProvider on focus.
-
-Selection in the tree correctly notifies PropertiesPanel with the real live object for reflection.
-
-Persistence of expanded/selected state per content panel works via the coordinator and IDataAwarePanel.
-
-The system is modular, future-proof, and respects every existing contract (docking, camera mode, ProjectLayoutManager, etc.).
-
-Current state and exact problem: The user has reverted everything to the last known "wired" working state (the version before the last set of dynamic HTML changes). In that state, static mock .html files load and style perfectly. However, when the panels do dynamic rebuilds using template.Replace("<!--TREE_NODES-->", nodesHtml) or <!--PROPERTIES--> followed by _uiOverlay.LoadUI(finalHtml), the resulting tree and property grid appear completely unstyled or broken. The visual output does not match the clean, dark-themed, professional look of the static mock views.
-
-Explicit requirements for this fix:
-
-The dynamically generated HTML strings must produce exactly the same visual result as the static mock files once passed through LoadUI + RefreshUI.
-
-TreeViewPanel must render a clean, styled hierarchy with simple + / – toggles, proper indentation, hover states, and selected highlighting.
-
-PropertiesPanel must render a clean, styled flat property grid with labels and editors.
-
-No inline styles as a crutch — rely on the existing CSS classes and the CssParser / UIOverlay pipeline.
-
-The fix must be minimal, clean, and future-proof. Do not touch the HTML template files unless absolutely necessary.
-
-The solution must work for all panels that do dynamic content replacement (TreeView, Properties, and any others like AnimationViewer, TerrainCreator, etc.).
-
-Pitfalls to watch for:
-
-Whitespace, malformed HTML fragments, or missing wrapper elements
-
-not taking the HTML and reloading it through the uioverlay / html parser classes, like what is done for animationviewerpanel, that also dynamically loads html / css
-
-The order/timing of LoadUI, RefreshUI, ApplyAll, and RecomputeLayout after a dynamic replace.
-
-Begin by confirming you understand the "last active panel" model and the revert-to-wired state, then deliver the fix.
+This exact same heightmap renders at full correct size and scale when used directly in a standalone TerrainCreatorPanel. The discrepancy only appears when the terrain is created through NewTerrainPanel and then displayed through the EditorScene → TerrainCreatorScene path in SceneEditorPanel. The central store has the correct data, the loading code has the correct data, but the final rendered output in the editor does not.
