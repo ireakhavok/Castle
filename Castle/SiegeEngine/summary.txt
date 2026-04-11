@@ -1923,7 +1923,7 @@ Folder: Core
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer
       - void UpdateWithPositionNormalUV( List<uint> indices, List<float> vertices)
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer
-      - void UpdateVerticesPartial( int startVertexIndex,  int vertexCount, List<float> vertices)
+      - void UpdateVerticesPartial( int startVertexIndex,  int stride = 9,  int vertexCount, List<float> vertices)
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferSubData
 - File: Viewport.cs
   - Class: Viewport (Namespace: SiegeEngine.Core.ContextManagement)
@@ -2311,7 +2311,7 @@ Folder: Scenes
       - void BuildTexturedMesh()
         - Calls: BuildWireframeMesh, ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV, _terrainIndices.Clear, _terrainVertices.Clear
       - void UpdateAffectedVertices( float radius, Vector3 worldPos)
-        - Calls: GetHeight, RebuildTerrainMesh, _terrainBuffer.UpdateCustomWithUV
+        - Calls: GetHeight, RebuildTerrainMesh, _terrainBuffer.UpdateVerticesPartial
       - void ComputeWorldScale()
       - float GetHeight( float y, float x)
       - void LoadTerrain(string path)

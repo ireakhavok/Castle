@@ -829,7 +829,7 @@ Found 1 dependencies
 Found: VertexBuffer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\VertexBuffer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\VertexBuffer.cs
-Read 9660 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\VertexBuffer.cs
+Read 9445 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\VertexBuffer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 5 dependencies
 Found: WindowNative.cs
@@ -1222,7 +1222,7 @@ Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 17755 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 17994 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: SiegeEngine.csproj

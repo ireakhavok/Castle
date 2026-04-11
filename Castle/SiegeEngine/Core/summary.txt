@@ -1377,7 +1377,7 @@ Folder: Rendering
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer
       - void UpdateWithPositionNormalUV( List<uint> indices, List<float> vertices)
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer
-      - void UpdateVerticesPartial( int startVertexIndex,  int vertexCount, List<float> vertices)
+      - void UpdateVerticesPartial( int startVertexIndex,  int stride = 9,  int vertexCount, List<float> vertices)
         - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferSubData
 - File: WaterShader.cs
   - Class: WaterShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
