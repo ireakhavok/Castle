@@ -17,7 +17,6 @@ using System.Text;
 using System.Text.Json;
 using Keystone;
 using ToolChest;
-
 namespace MapRoom
 {
     public class TerrainCreatorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -97,6 +96,13 @@ namespace MapRoom
                 _currentSceneData = ProjectSettings.Current.CurrentSceneData;
             }
 
+            // NEW: Robust project load path (exactly mirrors EditorScene.LoadProjectData)
+            // This ensures that after Save As + reload, TerrainCreatorPanel respects saved TIFF + SceneData
+            if (_currentSceneData == null)
+            {
+                TryLoadFromActiveProject();
+            }
+
             if (_currentSceneData != null)
             {
                 // This is the unified path used by both SceneEditor and TerrainCreatorPanel.
@@ -116,7 +122,6 @@ namespace MapRoom
             {
                 _terrainScene.CreateBlank();
             }
-
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _eventBus.Subscribe<SelectBrushEvent>(OnBrushSelected);
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
@@ -125,6 +130,29 @@ namespace MapRoom
             _uiOverlay.RefreshUI();
             LoadTerrainControlsUI();
         }
+
+        // Helper that mirrors EditorScene.LoadProjectData exactly so both panels behave identically after Save As
+        private void TryLoadFromActiveProject()
+        {
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
+
+            string jsonPath = Path.Combine(projectPath, "project.json");
+            if (!File.Exists(jsonPath)) return;
+
+            string json = File.ReadAllText(jsonPath);
+            var projectData = JsonSerializer.Deserialize<ProjectData>(json);
+            if (projectData?.Scenes == null || projectData.Scenes.Count == 0) return;
+
+            string sceneName = projectData.LastOpenedScene ?? projectData.Scenes.Keys.FirstOrDefault() ?? "Main";
+            if (projectData.Scenes.TryGetValue(sceneName, out SceneData sceneData))
+            {
+                _currentSceneData = sceneData;
+                ProjectSettings.Current.SetCurrentTerrain(sceneData, null, sceneName); // heightmap will be loaded by LoadSceneData
+                Console.WriteLine($"[TerrainCreatorPanel] Loaded saved scene '{sceneName}' from project.json (Save As path now respected)");
+            }
+        }
+
         private void LoadTerrainControlsUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TerrainCreatorUI.html");
