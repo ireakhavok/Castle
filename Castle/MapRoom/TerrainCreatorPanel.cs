@@ -90,14 +90,11 @@ namespace MapRoom
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
 
-            // CENTRAL MEMORY STORE IS NOW AUTHORITATIVE FOR NEW FLAT TERRAINS
             if (ProjectSettings.Current.CurrentSceneData != null)
             {
                 _currentSceneData = ProjectSettings.Current.CurrentSceneData;
             }
 
-            // NEW: Robust project load path (exactly mirrors EditorScene.LoadProjectData)
-            // This ensures that after Save As + reload, TerrainCreatorPanel respects saved TIFF + SceneData
             if (_currentSceneData == null)
             {
                 TryLoadFromActiveProject();
@@ -105,9 +102,6 @@ namespace MapRoom
 
             if (_currentSceneData != null)
             {
-                // This is the unified path used by both SceneEditor and TerrainCreatorPanel.
-                // TerrainCreatorScene.LoadSceneData now contains the memory-first path that
-                // respects the exact user-specified size when HeightmapPath is null.
                 _terrainScene.LoadSceneData(_currentSceneData);
             }
             else if (_creationParams != null)
@@ -131,7 +125,6 @@ namespace MapRoom
             LoadTerrainControlsUI();
         }
 
-        // Helper that mirrors EditorScene.LoadProjectData exactly so both panels behave identically after Save As
         private void TryLoadFromActiveProject()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -148,7 +141,14 @@ namespace MapRoom
             if (projectData.Scenes.TryGetValue(sceneName, out SceneData sceneData))
             {
                 _currentSceneData = sceneData;
-                ProjectSettings.Current.SetCurrentTerrain(sceneData, null, sceneName); // heightmap will be loaded by LoadSceneData
+                ProjectSettings.Current.SetCurrentTerrain(sceneData, null, sceneName);
+
+                // EXPLICIT LOAD FOR SAVED GEOTIFF - this was the missing piece
+                if (!string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
+                {
+                    _terrainScene.LoadTerrain(sceneData.Terrain.HeightmapPath);
+                    Console.WriteLine($"[TerrainCreatorPanel] Loaded saved GeoTIFF for scene '{sceneName}'");
+                }
                 Console.WriteLine($"[TerrainCreatorPanel] Loaded saved scene '{sceneName}' from project.json (Save As path now respected)");
             }
         }
@@ -177,7 +177,6 @@ namespace MapRoom
                 if (_currentSceneData != null && _currentSceneData.Terrain != null)
                 {
                     _currentSceneData.Terrain.HeightmapPath = e.Path;
-                    // Re-hand-off updated reference to central store
                     ProjectSettings.Current.SetCurrentTerrain(_currentSceneData, _terrainScene.GetHeightmap(), _currentSceneData.Name, e.Path);
                 }
             }
@@ -202,7 +201,6 @@ namespace MapRoom
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             NotifyHierarchyChanged();
-            // Heightmap is mutated in place - central store already holds the same reference
         }
         public void HandleUIClick(HtmlElement elem)
         {
@@ -229,7 +227,6 @@ namespace MapRoom
             {
                 string name = _creationParams?.Name ?? (_currentSceneData?.Name ?? "UntitledTerrain");
                 _terrainScene.SaveTerrain(name);
-                // Re-hand-off after save (ensures any disk-side changes are reflected centrally)
                 if (_currentSceneData != null)
                 {
                     ProjectSettings.Current.SetCurrentTerrain(_currentSceneData, _terrainScene.GetHeightmap(), _currentSceneData.Name);

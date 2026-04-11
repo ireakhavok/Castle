@@ -123,7 +123,14 @@ namespace MapRoom
         {
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
 
-            // First priority: per-scene unsaved memory cache
+            // Priority 1: saved GeoTIFF path (this was missing in the panel load path)
+            if (data?.Terrain != null && !string.IsNullOrEmpty(data.Terrain.HeightmapPath))
+            {
+                LoadTerrain(data.Terrain.HeightmapPath);
+                return;
+            }
+
+            // Priority 2: per-scene unsaved memory cache
             float[,] cachedMap = ProjectSettings.Current.GetUnsavedHeightmap(sceneName);
             if (cachedMap != null)
             {
@@ -149,7 +156,7 @@ namespace MapRoom
                 return;
             }
 
-            // Second priority: global central store (for brand new scenes)
+            // Priority 3: global central store (new flat terrains)
             if (ProjectSettings.Current.CurrentHeightmap != null &&
                 (data?.Terrain == null || string.IsNullOrEmpty(data.Terrain.HeightmapPath)))
             {
@@ -175,7 +182,7 @@ namespace MapRoom
                 return;
             }
 
-            // Normal path (saved on disk)
+            // Fallback
             base.LoadSceneData(data);
         }
 
@@ -334,7 +341,6 @@ namespace MapRoom
                 _isBrushing = false;
             }
 
-            // NEW: Keep unsaved changes in per-scene cache every frame while brushing
             if (_sceneData?.Name != null)
             {
                 ProjectSettings.Current.StoreUnsavedHeightmap(_sceneData.Name, _heightmap);
