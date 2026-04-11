@@ -328,12 +328,14 @@ Folder: Keystone
       - void FlushAllToDisk()
 - File: ProjectSettings.cs
   - Class: ProjectSettings (Namespace: Keystone)
-    - Dependencies: SiegeEngine.Core.Definitions, System, System.IO
+    - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.IO
     - Fields:
       - string _projectsRoot
     - Methods:
       - constructor ProjectSettings()
       - void SetCurrentTerrain( string heightmapPath = null,  string sceneName = null, SceneData sceneData, ] heightmap)
+      - ] GetUnsavedHeightmap(string sceneName)
+      - void StoreUnsavedHeightmap(] heightmap, string sceneName)
       - string GetLayoutTempPath(string projectPath)
 
 Folder: MapRoom
@@ -389,7 +391,7 @@ Folder: MapRoom
       - void CreateTerrain(TerrainCreationParams parameters)
         - Calls: CreateBlank, LoadTerrain, RebuildTerrainMesh
       - void LoadSceneData(SceneData data)
-        - Calls: RebuildTerrainMesh
+        - Calls: LoadTerrain, ProjectSettings.Current.GetUnsavedHeightmap, RebuildTerrainMesh
       - void LoadTerrain(string path)
         - Calls: RebuildTerrainMesh, ResolveFullPath
       - void SetColorTexture(string path)
@@ -405,7 +407,7 @@ Folder: MapRoom
       - void UpdateGhostMesh()
         - Calls: _ghostBuffer.UpdateCustomWithUV
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
-        - Calls: GetLookDirection, RayTerrainIntersect, TerrainModifiedEvent, UpdateGhostMesh, _activeBrush.Falloff.ToString, _activeBrush.Mode.ToString, _activeBrush.Shape.ToString, _controlContext.GetTime
+        - Calls: GetLookDirection, ProjectSettings.Current.StoreUnsavedHeightmap, RayTerrainIntersect, TerrainModifiedEvent, UpdateGhostMesh, _activeBrush.Falloff.ToString, _activeBrush.Mode.ToString, _activeBrush.Shape.ToString, _controlContext.GetTime
       - bool RayTerrainIntersect( Vector3 dir,  out Vector3, Vector3 origin)
         - Calls: GetHeight
       - Vector3 GetLookDirection()
