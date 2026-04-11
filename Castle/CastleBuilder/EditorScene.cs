@@ -42,15 +42,37 @@ namespace CastleBuilder
 
         public void LoadProjectData()
         {
+            // NATIVE CENTRAL-STORE FIRST: always respect whatever NewTerrainPanel (or any other creator) has placed here
+            if (ProjectSettings.Current.CurrentSceneData != null && ProjectSettings.Current.CurrentHeightmap != null)
+            {
+                _currentGameSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
+                Console.WriteLine($"[EditorScene] Using terrain from central store ({ProjectSettings.Current.CurrentHeightmap.GetLength(0)}×{ProjectSettings.Current.CurrentHeightmap.GetLength(1)})");
+
+                // If we have no project yet, create a minimal in-memory project so the rest of the system works
+                if (_projectData == null)
+                {
+                    _projectData = new ProjectData();
+                    _projectData.Scenes = new Dictionary<string, SceneData>();
+                }
+                if (!_projectData.Scenes.ContainsKey(_currentGameSceneName))
+                {
+                    _projectData.Scenes[_currentGameSceneName] = ProjectSettings.Current.CurrentSceneData;
+                    _projectData.LastOpenedScene = _currentGameSceneName;
+                }
+
+                ActivateCurrentGameScene();
+                return;
+            }
+
+            // Only reach here if the central store is empty (normal project load path)
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
             {
-                Console.WriteLine("[EditorScene] No active project - creating default");
+                Console.WriteLine("[EditorScene] No active project and no central terrain - creating default");
                 _currentGameSceneName = "Default";
                 _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus);
                 _activeGameScene.Initialize(_width, _height);
                 if (_activeGameScene is TerrainCreatorScene tcs) tcs.CreateBlank();
-                // Hand-off to central store immediately
                 var defaultSceneData = new SceneData { Name = "Default", SceneType = "TerrainTest" };
                 ProjectSettings.Current.SetCurrentTerrain(defaultSceneData, ((TerrainCreatorScene)_activeGameScene).GetHeightmap(), "Default");
                 return;
@@ -95,7 +117,6 @@ namespace CastleBuilder
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
 
-                // Route through central store (heightmap reference is now authoritative)
                 if (_activeGameScene is TerrainCreatorScene tcs)
                 {
                     ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain?.HeightmapPath);
@@ -106,7 +127,7 @@ namespace CastleBuilder
                     }
                 }
 
-                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (terrain restored via central store)");
+                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (central store respected)");
             }
         }
 
@@ -122,7 +143,6 @@ namespace CastleBuilder
                     if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
                     sceneData.Terrain.HeightmapPath = $"Assets/Terrain/{name}.tif";
 
-                    // Re-hand-off the (possibly modified) heightmap to central store
                     ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain.HeightmapPath);
 
                     Console.WriteLine($"[EditorScene] Flushed terrain - relative path stored: {sceneData.Terrain.HeightmapPath}");
@@ -137,7 +157,7 @@ namespace CastleBuilder
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
                 ActivateCurrentGameScene();
-                Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName}");
+                Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName} (central ProjectSettings memory updated)");
             }
         }
 

@@ -28,6 +28,14 @@ namespace MapRoom
             }
             public override bool HandleUIClick(HtmlElement elem)
             {
+                string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
+                if (hook == "CreateTerrain")
+                {
+                    // This hook is now fully handled in the parent class.
+                    // Do NOT let the base UIOverlay fire DataHookProcessor again.
+                    _parent.HandleUIClick(elem);
+                    return true;
+                }
                 _parent.HandleUIClick(elem);
                 base.HandleUIClick(elem);
                 return true;
@@ -125,27 +133,26 @@ namespace MapRoom
                 };
                 Console.WriteLine($"[NewTerrainPanel] Creating {parameters.Width}m x {parameters.Depth}m terrain with grid spacing {parameters.Resolution:F1}m per cell");
 
-                // TEMPORARY scene used ONLY to generate the heightmap via TerrainManager / CreateTerrain
-                // This is the exact moment the live heightmap array is born.
                 var tempScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
-                tempScene.Initialize((int)Size.Y, (int)Size.X); // minimal init for mesh creation
+                tempScene.Initialize((int)Size.Y, (int)Size.X);
                 tempScene.CreateTerrain(parameters);
 
-                // Hand-off to central Keystone store (shared reference, no copy)
                 var sceneData = new SceneData { Name = parameters.Name, SceneType = "TerrainTest" };
                 sceneData.Terrain = new TerrainData
                 {
-                    HeightmapPath = parameters.ImportPath ?? "Assets/Terrain/" + parameters.Name + ".tif",
+                    HeightmapPath = parameters.ImportPath ?? $"Assets/Terrain/{parameters.Name}.tif",
                     WorldScaleX = parameters.Resolution,
                     WorldScaleZ = parameters.Resolution,
                     VerticalExaggeration = parameters.VerticalExaggeration
                 };
                 ProjectSettings.Current.SetCurrentTerrain(sceneData, tempScene.GetHeightmap(), parameters.Name, sceneData.Terrain.HeightmapPath);
 
-                // TEMP scene is immediately disposed - heightmap reference lives on in ProjectSettings
                 tempScene.Dispose();
 
-                // Close the modal. No panel is opened here (per spec). The heightmap is now globally available.
+                // Do NOT open editor here - MapRoom cannot reference CastleBuilder
+                // The user is already in Scene Editor blade (or will switch to it). 
+                // SceneEditorPanel will pick up the new terrain from ProjectSettings.Current on next activation.
+
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
             else if (hook == "CancelNewTerrain")
