@@ -41,6 +41,7 @@ namespace CastleBuilder
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<ContextChangedEvent>(OnContextChanged);
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
+            _eventBus.Subscribe<CreateTerrainEvent>(OnCreateTerrain);
             _configPath = GetDefaultIDEPath();
             Console.WriteLine("[BlueprintManager] Constructor finished - all events subscribed");
         }
@@ -84,6 +85,25 @@ namespace CastleBuilder
             Console.WriteLine($"[BlueprintManager] New project created: {dir}");
             Load(renderContext, controlContext, window, eventBus);
         }
+        private void OnCreateTerrain(CreateTerrainEvent evt)
+        {
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+            {
+                Console.WriteLine("[BlueprintManager.OnCreateTerrain] No active project - new scene stays in central memory only");
+                return;
+            }
+
+            // NO FILE WRITE HERE - we only add to in-memory list
+            // The dropdown will be refreshed by the LoadProjectEvent, and EditorScene will merge the new scene
+            SceneData sceneData = ProjectSettings.Current.CurrentSceneData;
+            if (sceneData == null) return;
+
+            Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' added to in-memory list - no disk write until Save");
+
+            // Refresh UI/dropdown so old scenes stay and new one appears
+            _eventBus.Publish(new LoadProjectEvent { Path = projectPath });
+        }
         public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
@@ -113,14 +133,12 @@ namespace CastleBuilder
                 WorldScaleZ = 1.0f,
                 VerticalExaggeration = 1.0f
             };
-            // Create fresh in-memory heightmap for the new scene (prevents any overwrite of previous scenes)
             int w = 200;
             int h = 200;
             float[,] newHeightmap = new float[w, h];
             for (int x = 0; x < w; x++)
                 for (int y = 0; y < h; y++)
                     newHeightmap[x, y] = 0f;
-            // Hand-off to central memory store so TerrainCreatorScene.LoadSceneData uses the correct per-scene data
             ProjectSettings.Current.SetCurrentTerrain(sceneData, newHeightmap, sceneName);
             data.Scenes[sceneName] = sceneData;
             data.LastOpenedScene = sceneName;
@@ -184,14 +202,11 @@ namespace CastleBuilder
                 data = new ProjectData { Name = Path.GetFileName(projectPath) };
                 Console.WriteLine("[BlueprintManager.DoProjectSave] Creating new project data");
             }
-            // Flush live terrain first
             EditorScene.Current?.FlushActiveSceneData();
-            // Use the LIVE ProjectData from EditorScene (this is the fix)
             if (EditorScene.Current != null)
             {
                 data = EditorScene.Current.GetProjectData() ?? data;
             }
-            // Centralized panel state snapshot (memory-first) before writing project.json
             SaveAllPanelStates(data);
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with terrain reference");
@@ -212,7 +227,6 @@ namespace CastleBuilder
             string dir = Path.Combine(folder, safeName);
             Directory.CreateDirectory(dir);
             string currentProject = ProjectSettings.Current.ActiveProject;
-            // Full project copy (including existing Assets/Terrain TIFFs, Scenes, etc.) so Save As acts exactly like Save but to a new location
             if (!string.IsNullOrEmpty(currentProject) && Directory.Exists(currentProject) && currentProject != dir)
             {
                 CopyDirectory(currentProject, dir);
@@ -220,18 +234,14 @@ namespace CastleBuilder
             }
             else
             {
-                // Bare skeleton only if no current project
                 var data = new ProjectData { Name = name, LastContext = "Scene Editor" };
                 string jsonPath = Path.Combine(dir, "project.json");
                 File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
                 Directory.CreateDirectory(Path.Combine(dir, "Scenes"));
                 Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             }
-            // Switch active project to the new location
             ProjectSettings.Current.ActiveProject = dir;
-            // Flush ALL live in-memory data (terrain TIFFs, full ProjectData.Scenes, panel states, layout) into the NEW directory
             DoProjectSave();
-            // Reload the new project so everything is in sync
             eventBus.Publish(new LoadProjectEvent { Path = dir });
             Console.WriteLine($"[BlueprintManager.SaveProjectAs] Save As complete - new project fully populated and active at {dir}");
         }
@@ -302,7 +312,6 @@ namespace CastleBuilder
                     _previousContext = data.LastContext ?? "Scene Editor";
                     Console.WriteLine($"[BlueprintManager.OnLoadProject] Loaded project '{data.Name}' - Last Context: {_previousContext}");
                     ProjectLayoutManager.LoadLayoutForContext(_previousContext);
-                    // Automatic panel state restore (memory-first)
                     LoadAllPanelStates(data);
                 }
             }
@@ -334,7 +343,6 @@ namespace CastleBuilder
                     string json = File.ReadAllText(jsonPath);
                     var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
                     data.LastContext = newContext;
-                    // Automatic panel state snapshot before context switch completes
                     SaveAllPanelStates(data);
                     File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
                 }
@@ -381,11 +389,6 @@ namespace CastleBuilder
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
             File.WriteAllText(_configPath, json);
         }
-        // Centralized, future-proof orchestration for all IDataAwarePanel instances.
-        // Called on project load, context change, and explicit save.
-        // Uses PanelManager.Current.GetAllPanels() (clean public accessor) to discover opt-in panels.
-        // Stores results directly into ProjectData.PanelStates (memory-first).
-        // No circular dependencies, no changes to core UI/docking layers.
         private static void SaveAllPanelStates(ProjectData data)
         {
             if (data == null) return;
@@ -411,9 +414,6 @@ namespace CastleBuilder
                 }
             }
         }
-        // Automatic restore from ProjectData.PanelStates (memory-first).
-        // Called on LoadProjectEvent and after ContextChangedEvent layout restore.
-        // Panels call their own RebindToContent() internally if needed after LoadPanelState.
         private static void LoadAllPanelStates(ProjectData data)
         {
             if (data?.PanelStates == null || data.PanelStates.Count == 0) return;

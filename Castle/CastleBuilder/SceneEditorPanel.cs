@@ -104,14 +104,12 @@ namespace CastleBuilder
                 var select = _uiOverlay.FindElementById("sceneSelect") as SelectElement;
                 if (select != null && !string.IsNullOrEmpty(select.Value))
                 {
-                    // Scene switching now fully updates central ProjectSettings memory (heightmap reference survives)
                     _editorScene.SwitchGameScene(select.Value);
                     UpdateSceneSelectorUI();
                 }
             }
             else if (hook == "CreateNewScene")
             {
-                // Still routed through MenuCommands (which now opens NewTerrainPanel modal)
                 MenuCommands.CreateNewScene(_renderContext, _controlContext, _window, _eventBus);
                 UpdateSceneSelectorUI();
             }

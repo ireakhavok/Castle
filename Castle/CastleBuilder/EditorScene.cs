@@ -42,33 +42,49 @@ namespace CastleBuilder
 
         public void LoadProjectData()
         {
-            // NATIVE CENTRAL-STORE FIRST: always respect whatever NewTerrainPanel (or any other creator) has placed here
+            // ALWAYS load the full project.json first so we never lose existing scenes
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
+            {
+                string jsonPath = Path.Combine(projectPath, "project.json");
+                if (File.Exists(jsonPath))
+                {
+                    string json = File.ReadAllText(jsonPath);
+                    _projectData = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+                }
+            }
+
+            if (_projectData == null)
+            {
+                _projectData = new ProjectData();
+            }
+            if (_projectData.Scenes == null)
+            {
+                _projectData.Scenes = new Dictionary<string, SceneData>();
+            }
+
+            // CENTRAL MEMORY STORE FIRST (new scene from NewTerrainPanel)
             if (ProjectSettings.Current.CurrentSceneData != null && ProjectSettings.Current.CurrentHeightmap != null)
             {
-                _currentGameSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
-                Console.WriteLine($"[EditorScene] Using terrain from central store ({ProjectSettings.Current.CurrentHeightmap.GetLength(0)}×{ProjectSettings.Current.CurrentHeightmap.GetLength(1)})");
+                string newSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
+                _currentGameSceneName = newSceneName;
 
-                // If we have no project yet, create a minimal in-memory project so the rest of the system works
-                if (_projectData == null)
+                // MERGE - add to existing collection, never replace it
+                if (!_projectData.Scenes.ContainsKey(newSceneName))
                 {
-                    _projectData = new ProjectData();
-                    _projectData.Scenes = new Dictionary<string, SceneData>();
+                    _projectData.Scenes[newSceneName] = ProjectSettings.Current.CurrentSceneData;
                 }
-                if (!_projectData.Scenes.ContainsKey(_currentGameSceneName))
-                {
-                    _projectData.Scenes[_currentGameSceneName] = ProjectSettings.Current.CurrentSceneData;
-                    _projectData.LastOpenedScene = _currentGameSceneName;
-                }
+                _projectData.LastOpenedScene = newSceneName;
 
+                Console.WriteLine($"[EditorScene] Merged new scene '{newSceneName}' from central store (total scenes now: {_projectData.Scenes.Count})");
                 ActivateCurrentGameScene();
                 return;
             }
 
-            // Only reach here if the central store is empty (normal project load path)
-            string projectPath = ProjectSettings.Current.ActiveProject;
+            // Normal project load path
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
             {
-                Console.WriteLine("[EditorScene] No active project and no central terrain - creating default");
+                Console.WriteLine("[EditorScene] No active project - creating default");
                 _currentGameSceneName = "Default";
                 _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus);
                 _activeGameScene.Initialize(_width, _height);
@@ -77,13 +93,6 @@ namespace CastleBuilder
                 ProjectSettings.Current.SetCurrentTerrain(defaultSceneData, ((TerrainCreatorScene)_activeGameScene).GetHeightmap(), "Default");
                 return;
             }
-
-            string jsonPath = Path.Combine(projectPath, "project.json");
-            if (!File.Exists(jsonPath)) return;
-
-            string json = File.ReadAllText(jsonPath);
-            _projectData = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
-            if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
 
             _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
             ActivateCurrentGameScene();
@@ -127,7 +136,7 @@ namespace CastleBuilder
                     }
                 }
 
-                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (central store respected)");
+                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (all previous scenes preserved)");
             }
         }
 
@@ -157,7 +166,7 @@ namespace CastleBuilder
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
                 ActivateCurrentGameScene();
-                Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName} (central ProjectSettings memory updated)");
+                Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName}");
             }
         }
 
