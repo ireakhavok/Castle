@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine.Core
-// File: Rendering/VertexBuffer.cs
+﻿// Folder: SiegeEngine.Core/Rendering
+// File: VertexBuffer.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using System;
@@ -17,6 +17,7 @@ namespace SiegeEngine.Core.Rendering
         private uint _vertexCount;
         private uint _indexCount;
         private bool _disposed;
+
         public uint Vao => _vao;
 
         public VertexBuffer(IRenderContext renderContext)
@@ -36,13 +37,17 @@ namespace SiegeEngine.Core.Rendering
                 if (physics != null && entity.Type == "Water")
                 {
                     Vector3 pos = physics.Position;
-                    vertices.Add(pos.X); vertices.Add(pos.Y); vertices.Add(pos.Z);
-                    vertices.Add(0.0f); vertices.Add(0.5f); vertices.Add(1.0f); vertices.Add(1.0f);
+                    vertices.Add(pos.X);
+                    vertices.Add(pos.Y);
+                    vertices.Add(pos.Z);
+                    vertices.Add(0.0f);
+                    vertices.Add(0.5f);
+                    vertices.Add(1.0f);
+                    vertices.Add(1.0f);
                 }
             }
             var indices = new List<uint>();
-            for (uint i = 0; i < vertices.Count / 7; i++)
-                indices.Add(i);
+            for (uint i = 0; i < vertices.Count / 7; i++) indices.Add(i);
             _vertexCount = (uint)(vertices.Count / 7);
             _indexCount = (uint)indices.Count;
             _renderContext.BindVertexArray(_vao);
@@ -165,31 +170,21 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
         }
 
-        // FIXED: Partial GPU update using BufferSubData - only uploads changed vertices
-        // byteSize is now uint to match IRenderContext.BufferSubData signature (fixes CS1503)
-        public void UpdateVerticesPartial(List<float> vertices, int startVertexIndex, int vertexCount)
+        public void UpdateVerticesPartial(List<float> vertices, int startVertexIndex, int vertexCount, int stride = 9)
         {
             if (vertexCount <= 0 || startVertexIndex < 0 || vertices == null) return;
-
-            const int stride = 9;
             int startElement = startVertexIndex * stride;
             int elementCount = vertexCount * stride;
-
             if (startElement + elementCount > vertices.Count) return;
-
             int byteOffset = startElement * sizeof(float);
             uint byteSize = (uint)(elementCount * sizeof(float));
-
-            // Small temporary array with only the changed vertices (extremely fast & safe)
             float[] tempSlice = new float[elementCount];
             for (int i = 0; i < elementCount; i++)
             {
                 tempSlice[i] = vertices[startElement + i];
             }
-
             _renderContext.BindVertexArray(_vao);
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
-
             fixed (float* vertexPtr = tempSlice)
             {
                 _renderContext.BufferSubData(_renderContext.Enums.ArrayBuffer, byteOffset, byteSize, vertexPtr);

@@ -38,7 +38,6 @@ namespace SiegeEngine.Scenes
         protected int _meshVertsX = 0;
         protected int _meshVertsY = 0;
         protected int _currentMeshStep = 1;
-
         // Editor contexts always render at full resolution for identical visual density (fixes inconsistent line count between TerrainCreator and SceneEditor)
         protected bool _isEditorContext = false;
 
@@ -258,7 +257,12 @@ namespace SiegeEngine.Scenes
                     }
                 }
             }
-            _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
+            for (int mx = minMeshX; mx <= maxMeshX; mx++)
+            {
+                int rowStartVertex = mx * _meshVertsY + minMeshY;
+                int rowVertexCount = maxMeshY - minMeshY + 1;
+                _terrainBuffer.UpdateVerticesPartial(_terrainVertices, rowStartVertex, rowVertexCount, 9);
+            }
         }
 
         private void ComputeWorldScale()
