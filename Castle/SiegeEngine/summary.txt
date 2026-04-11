@@ -2309,7 +2309,6 @@ Folder: Scenes
         - Calls: BuildWireframeMesh, ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV, _terrainIndices.Clear, _terrainVertices.Clear
       - void UpdateAffectedVertices( float radius, Vector3 worldPos)
         - Calls: BuildWireframeMesh, GetHeight, _terrainBuffer.UpdateCustomWithUV
-      - void ComputeWorldScale()
       - float GetHeight( float y, float x)
       - void LoadTerrain(string path)
         - Calls: BuildWireframeMesh, ComputeWorldScale, GeoTiffParser.ParseGeoReference, GetHeight
