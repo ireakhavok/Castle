@@ -1,5 +1,6 @@
 ﻿// Folder: MapRoom
 // File: TerrainCreatorScene.cs
+using Keystone;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -7,14 +8,13 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Terrain;
 using SiegeEngine.Scenes;
-using ToolChest;
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
-using Keystone;
 using System.IO;
 using System.Numerics;
-using System.Collections.Generic;
+using ToolChest;
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -30,12 +30,15 @@ namespace MapRoom
         private const float BrushUpdateInterval = 0.0f;
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData;
+
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
             _sceneData = sceneData;
+            _isEditorContext = true; // forces full-resolution mesh everywhere in editor (fixes different line count)
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
         }
+
         private string ResolveFullPath(string inputPath)
         {
             if (string.IsNullOrEmpty(inputPath)) return inputPath;
@@ -45,6 +48,7 @@ namespace MapRoom
             string fullPath = Path.Combine(projectPath, inputPath);
             return Path.GetFullPath(fullPath);
         }
+
         public void CreateBlank()
         {
             _terrainWidth = 200;
@@ -64,13 +68,14 @@ namespace MapRoom
             }
             Console.WriteLine($"[TerrainCreatorScene] Created blank 200×200 terrain with height range {_minHeight:F1} to {_maxHeight:F1}");
             _useCustomScale = true;
-            BuildWireframeMesh(1);
+            RebuildTerrainMesh(); // full-resolution editor mesh
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
             float centerY = (_terrainHeight * _worldScaleZ) / 2f;
             _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
+
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -104,7 +109,7 @@ namespace MapRoom
                 }
                 Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain");
                 _useCustomScale = true;
-                BuildWireframeMesh(1);
+                RebuildTerrainMesh();
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerY = (_terrainHeight * _worldScaleZ) / 2f;
                 _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
@@ -112,6 +117,7 @@ namespace MapRoom
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
+
         public override void LoadTerrain(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -124,13 +130,16 @@ namespace MapRoom
             base.LoadTerrain(fullPath);
             if (_sceneData?.Terrain != null)
             {
-                _sceneData.Terrain.HeightmapPath = path; // keep pure relative path as requested
+                _sceneData.Terrain.HeightmapPath = path;
             }
+            RebuildTerrainMesh(); // guarantees identical mesh density after load
         }
+
         public void SetColorTexture(string path)
         {
             base.SetColorTexture(path);
         }
+
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -150,7 +159,9 @@ namespace MapRoom
                 _sceneData.Terrain.HeightmapPath = relativePath;
             }
             Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → {tifPath}");
+            RebuildTerrainMesh();
         }
+
         public void Export2D(string projectAssetsDir)
         {
             string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
@@ -158,6 +169,7 @@ namespace MapRoom
             TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
             Console.WriteLine($"[TerrainCreatorScene] Exported 2D tilemap to {fbxPath}");
         }
+
         private void SaveAsPng(string path)
         {
             int w = _terrainWidth;
@@ -176,28 +188,30 @@ namespace MapRoom
             }
             bmp.Save(path, ImageFormat.Png);
         }
+
         public void SetActiveBrush(ToolChest.Brush brush)
         {
             _activeBrush = brush;
         }
-        // Public getter for _activeBrush (required by IDataAwarePanel.SavePanelState in TerrainCreatorPanel).
-        // Keeps encapsulation, no variable name changes, future-proof for brush persistence across project loads/context switches.
+
         public ToolChest.Brush GetActiveBrush()
         {
             return _activeBrush;
         }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
+
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
             var vertices = new List<float>();
             var indices = new List<uint>();
             int segments = 48;
-            float r = Math.Max(_activeBrush.Size, 1f);
+            float r = Math.Max(_activeBrush?.Size ?? 1f, 1f);
             for (int i = 0; i <= segments; i++)
             {
                 float angle = i * MathF.PI * 2f / segments;
@@ -214,6 +228,7 @@ namespace MapRoom
             }
             _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
+
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -258,6 +273,7 @@ namespace MapRoom
                 _isBrushing = false;
             }
         }
+
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -285,6 +301,7 @@ namespace MapRoom
             }
             return false;
         }
+
         private Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
@@ -295,6 +312,7 @@ namespace MapRoom
                 MathF.Sin(pitchRad)
             ));
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -331,6 +349,7 @@ namespace MapRoom
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
+
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -343,12 +362,14 @@ namespace MapRoom
             _ghostBuffer?.Dispose();
             base.Dispose();
         }
+
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
+
         private void ApplyModification(TerrainModifiedEvent e)
         {
             var brush = new ToolChest.Brush
@@ -361,9 +382,9 @@ namespace MapRoom
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
             UpdateAffectedVertices(e.WorldPos, e.Radius);
+            RebuildTerrainMesh(); // ensures live brush updates are reflected immediately
         }
 
-        // NEW: Public getter exposing the live heightmap array reference (shared with Keystone.ProjectSettings)
         public new float[,] GetHeightmap() => _heightmap;
     }
 }

@@ -11,7 +11,6 @@ using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Scenes
 {
     public unsafe class TerrainScene : GameScene
@@ -39,6 +38,9 @@ namespace SiegeEngine.Scenes
         protected int _meshVertsY = 0;
         protected int _currentMeshStep = 1;
 
+        // Editor contexts always render at full resolution for identical visual density (fixes inconsistent line count between TerrainCreator and SceneEditor)
+        protected bool _isEditorContext = false;
+
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -50,11 +52,6 @@ namespace SiegeEngine.Scenes
             base.LoadSceneData(data);
             if (data?.Terrain != null)
             {
-                // DO NOT force _useCustomScale or scales here when a HeightmapPath exists.
-                // LoadTerrain (called below) is now the single authoritative source of scale/dimensions
-                // for both real GeoTIFFs (GeoRef metadata) and custom-flat terrains.
-                // This eliminates the tiny-mesh bug in the EditorScene path while leaving the direct
-                // TerrainCreatorPanel / NewTerrainPanel temp-scene path completely unchanged.
                 if (!string.IsNullOrEmpty(data.Terrain.HeightmapPath))
                 {
                     Console.WriteLine($"[TerrainScene] Loading terrain from SceneData: {data.Terrain.HeightmapPath}");
@@ -92,29 +89,28 @@ namespace SiegeEngine.Scenes
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
-            // Only setup rendering resources. Heightmap and mesh are always set in LoadSceneData / LoadTerrain / CreateTerrain.
-            // This is the native, correct order that matches how the temp scene in NewTerrainPanel works.
             _terrainBuffer = new VertexBuffer(_renderContext);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
-            // Do NOT allocate default heightmap or build mesh here - that would override the large GeoTIFF / custom terrain from central store.
         }
 
         protected virtual void BuildWireframeMesh(float step)
         {
+            // EDITOR CONSISTENCY FIX: always use full resolution (step=1) in editor contexts
+            float effectiveStep = _isEditorContext ? 1f : step;
             ComputeWorldScale();
             _terrainVertices.Clear();
             _terrainIndices.Clear();
-            _currentMeshStep = (int)step;
-            int stepsX = (int)Math.Floor(_terrainWidth / step);
-            int stepsY = (int)Math.Floor(_terrainHeight / step);
+            _currentMeshStep = (int)effectiveStep;
+            int stepsX = (int)Math.Floor(_terrainWidth / effectiveStep);
+            int stepsY = (int)Math.Floor(_terrainHeight / effectiveStep);
             _meshVertsX = stepsX + 1;
             _meshVertsY = stepsY + 1;
             for (int x = 0; x <= stepsX; x++)
             {
                 for (int y = 0; y <= stepsY; y++)
                 {
-                    float wx = x * step * _worldScaleX;
-                    float wy = y * step * _worldScaleZ;
+                    float wx = x * effectiveStep * _worldScaleX;
+                    float wy = y * effectiveStep * _worldScaleZ;
                     float z = GetHeight(wx, wy) * VerticalExaggeration;
                     _terrainVertices.Add(wx); _terrainVertices.Add(wy); _terrainVertices.Add(z);
                     _terrainVertices.Add(0.7f); _terrainVertices.Add(0.9f); _terrainVertices.Add(1.0f); _terrainVertices.Add(1.0f);
@@ -134,6 +130,15 @@ namespace SiegeEngine.Scenes
                 }
             }
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
+            Console.WriteLine($"[TerrainScene.BuildWireframeMesh] Built {_meshVertsX}×{_meshVertsY} mesh (effective step={effectiveStep})");
+        }
+
+        // Public rebuild entry point – higher-level panels call this after loading new SceneData (fixes dynamic refresh on scene switch)
+        public virtual void RebuildTerrainMesh()
+        {
+            if (_heightmap == null) return;
+            BuildWireframeMesh(1);
+            Console.WriteLine($"[TerrainScene.RebuildTerrainMesh] Mesh rebuilt from live heightmap ({_terrainWidth}×{_terrainHeight})");
         }
 
         protected virtual void BuildTexturedMesh()
@@ -227,7 +232,7 @@ namespace SiegeEngine.Scenes
         {
             if (_terrainVertices.Count == 0 || _heightmap == null || _currentMeshStep < 1 || _meshVertsX == 0)
             {
-                BuildWireframeMesh(1);
+                RebuildTerrainMesh();
                 return;
             }
             float worldCellSize = Math.Max(_worldScaleX, _worldScaleZ);
@@ -257,10 +262,6 @@ namespace SiegeEngine.Scenes
 
         private void ComputeWorldScale()
         {
-            // Real GeoTIFFs always take priority – their metadata is authoritative.
-            // This guarantees that even when LoadSceneData previously set a stale
-            // _useCustomScale=true (from NewTerrainPanel's UI Resolution value),
-            // we still apply the correct meters-per-pixel scale from GeoRef.
             if (_terrainGeoRef != null && _terrainGeoRef.IsValid)
             {
                 if (_terrainGeoRef.IsMeters)
@@ -277,11 +278,7 @@ namespace SiegeEngine.Scenes
                 _useCustomScale = false;
                 return;
             }
-
-            // Fallback for truly custom-flat terrains (no file metadata)
-            if (_useCustomScale)
-                return;
-
+            if (_useCustomScale) return;
             _worldScaleX = _worldScaleZ = 1.0f;
         }
 
@@ -302,30 +299,20 @@ namespace SiegeEngine.Scenes
                 _heightmap = TerrainManager.LoadTerrain(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight, out isCustomFlat, out customScaleX, out customScaleZ);
                 _terrainGeoRef = GeoTiffParser.ParseGeoReference(path);
                 Console.WriteLine($"[TerrainScene] Heightmap loaded: {_terrainWidth}x{_terrainHeight}, Height range: {_minHeight:F1} to {_maxHeight:F1}");
-                float avgScale = (_worldScaleX + _worldScaleZ) / 2f;
-                WireframeStep = avgScale > 5f ? 8 : avgScale > 2f ? 4 : 1;
-                Console.WriteLine($"[TerrainScene] Adjusted wireframe step to {WireframeStep} based on scale ~{avgScale:F1}m/cell");
                 if (isCustomFlat)
                 {
                     _worldScaleX = customScaleX;
                     _worldScaleZ = customScaleZ;
                     _useCustomScale = true;
-                    BuildWireframeMesh(1);
-                    float centerX = ((_terrainWidth - 1) * _worldScaleX) * 0.5f;
-                    float centerY = ((_terrainHeight - 1) * _worldScaleZ) * 0.5f;
-                    float centerHeight = GetHeight(centerX, centerY);
-                    _flyCamera.Position = new Vector3(centerX, centerY + 8f, centerHeight + 5f);
-                    _flyCamera.Yaw = 0f;
-                    _flyCamera.Pitch = -0.85f;
                 }
                 else
                 {
                     ComputeWorldScale();
-                    BuildWireframeMesh(WireframeStep);
-                    float centerX = (_terrainWidth * _worldScaleX) / 2f;
-                    float centerY = (_terrainHeight * _worldScaleZ) / 2f;
-                    _flyCamera.Position = new Vector3(centerX, centerY + 5000, _maxHeight * 1.5f);
                 }
+                BuildWireframeMesh(1);
+                float centerX = (_terrainWidth * _worldScaleX) / 2f;
+                float centerY = (_terrainHeight * _worldScaleZ) / 2f;
+                _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
             }
             catch (Exception ex)
             {
@@ -340,15 +327,6 @@ namespace SiegeEngine.Scenes
             {
                 _colorGeoRef = GeoTiffParser.ParseGeoReference(path);
                 _hasColorTexture = _colorGeoRef.IsValid;
-                if (_terrainGeoRef.IsValid && _colorGeoRef.IsValid)
-                {
-                    bool overlaps = !(_colorGeoRef.MaxEast < _terrainGeoRef.MinEast ||
-                                      _colorGeoRef.MinEast > _terrainGeoRef.MaxEast ||
-                                      _colorGeoRef.MaxNorth < _terrainGeoRef.MinNorth ||
-                                      _colorGeoRef.MinNorth > _terrainGeoRef.MaxNorth);
-                    Console.WriteLine($"[TerrainScene] Texture-DEM overlap (exact bounds): {overlaps}");
-                }
-                Console.WriteLine($"[TerrainScene] Color texture loaded: {path} (geo valid: {_hasColorTexture})");
                 BuildTexturedMesh();
             }
         }
@@ -401,7 +379,6 @@ namespace SiegeEngine.Scenes
             base.Dispose();
         }
 
-        // Public getter exposing the live heightmap array reference (shared with Keystone.ProjectSettings)
         public float[,] GetHeightmap() => _heightmap;
     }
 }
