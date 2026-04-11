@@ -3,7 +3,7 @@
 using System;
 using System.IO;
 
-namespace ToolChest
+namespace Keystone
 {
     public class ProjectSettings
     {
