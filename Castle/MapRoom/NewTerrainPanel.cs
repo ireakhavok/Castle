@@ -63,6 +63,7 @@ namespace MapRoom
         public override void Init()
         {
             base.Init();
+            // ONLY subscribe once and only react to our own UserData
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             LoadNewTerrainFormUI();
         }
@@ -167,9 +168,11 @@ namespace MapRoom
 
         private void OnFileSelected(FileSelectedEvent e)
         {
+            // STRICT guard - only react to our own UserData
             if (e.UserData as string == "NewTerrainImport" && !string.IsNullOrEmpty(e.Path))
             {
                 _selectedImportPath = e.Path;
+                Console.WriteLine($"[NewTerrainPanel] Selected GeoTIFF for import: {e.Path} (waiting for Create button)");
             }
         }
 

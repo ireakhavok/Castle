@@ -89,17 +89,14 @@ namespace MapRoom
             base.Init();
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
-
             if (ProjectSettings.Current.CurrentSceneData != null)
             {
                 _currentSceneData = ProjectSettings.Current.CurrentSceneData;
             }
-
             if (_currentSceneData == null)
             {
                 TryLoadFromActiveProject();
             }
-
             if (_currentSceneData != null)
             {
                 _terrainScene.LoadSceneData(_currentSceneData);
@@ -124,26 +121,20 @@ namespace MapRoom
             _uiOverlay.RefreshUI();
             LoadTerrainControlsUI();
         }
-
         private void TryLoadFromActiveProject()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
-
             string jsonPath = Path.Combine(projectPath, "project.json");
             if (!File.Exists(jsonPath)) return;
-
             string json = File.ReadAllText(jsonPath);
             var projectData = JsonSerializer.Deserialize<ProjectData>(json);
             if (projectData?.Scenes == null || projectData.Scenes.Count == 0) return;
-
             string sceneName = projectData.LastOpenedScene ?? projectData.Scenes.Keys.FirstOrDefault() ?? "Main";
             if (projectData.Scenes.TryGetValue(sceneName, out SceneData sceneData))
             {
                 _currentSceneData = sceneData;
                 ProjectSettings.Current.SetCurrentTerrain(sceneData, null, sceneName);
-
-                // EXPLICIT LOAD FOR SAVED GEOTIFF - this was the missing piece
                 if (!string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
                 {
                     _terrainScene.LoadTerrain(sceneData.Terrain.HeightmapPath);
@@ -152,7 +143,6 @@ namespace MapRoom
                 Console.WriteLine($"[TerrainCreatorPanel] Loaded saved scene '{sceneName}' from project.json (Save As path now respected)");
             }
         }
-
         private void LoadTerrainControlsUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TerrainCreatorUI.html");
@@ -166,12 +156,13 @@ namespace MapRoom
         }
         private void OnFileSelected(FileSelectedEvent e)
         {
-            string hook = e.UserData as string;
-            if (hook == "LoadTerrainTexture")
+            // STRICT UserData guard - only react to terrain-specific selections
+            string userData = e.UserData as string;
+            if (userData == "LoadTerrainTexture")
             {
                 _terrainScene.SetColorTexture(e.Path);
             }
-            else if (hook == "LoadTerrainFile")
+            else if (userData == "LoadTerrainFile")
             {
                 _terrainScene.LoadTerrain(e.Path);
                 if (_currentSceneData != null && _currentSceneData.Terrain != null)
@@ -180,6 +171,7 @@ namespace MapRoom
                     ProjectSettings.Current.SetCurrentTerrain(_currentSceneData, _terrainScene.GetHeightmap(), _currentSceneData.Name, e.Path);
                 }
             }
+            // Ignore everything else (NewTerrainImport, LoadProject, etc.)
         }
         private void OnBrushSelected(SelectBrushEvent e)
         {

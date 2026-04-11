@@ -16,6 +16,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using ToolChest;
+
 namespace CastleBuilder
 {
     public class BlueprintManager
@@ -24,6 +25,7 @@ namespace CastleBuilder
         private readonly string _configPath;
         private static BlueprintManager _instance;
         private static string _previousContext = "Scene Editor";
+
         private static void EnsureInitialized(EventBus eventBus)
         {
             if (_instance == null && eventBus != null)
@@ -32,6 +34,7 @@ namespace CastleBuilder
                 Console.WriteLine("[BlueprintManager] Lazy-initialized (event subscriptions now active)");
             }
         }
+
         public BlueprintManager(EventBus eventBus)
         {
             _eventBus = eventBus;
@@ -45,12 +48,14 @@ namespace CastleBuilder
             _configPath = GetDefaultIDEPath();
             Console.WriteLine("[BlueprintManager] Constructor finished - all events subscribed");
         }
+
         public static void Load(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
             var idePanel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(idePanel) { Mode = OpenMode.Replace });
         }
+
         public static void CreateNewProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, UIOverlay overlay)
         {
             EnsureInitialized(eventBus);
@@ -85,6 +90,7 @@ namespace CastleBuilder
             Console.WriteLine($"[BlueprintManager] New project created: {dir}");
             Load(renderContext, controlContext, window, eventBus);
         }
+
         private void OnCreateTerrain(CreateTerrainEvent evt)
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -93,17 +99,12 @@ namespace CastleBuilder
                 Console.WriteLine("[BlueprintManager.OnCreateTerrain] No active project - new scene stays in central memory only");
                 return;
             }
-
-            // NO FILE WRITE HERE - we only add to in-memory list
-            // The dropdown will be refreshed by the LoadProjectEvent, and EditorScene will merge the new scene
             SceneData sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
-
             Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' added to in-memory list - no disk write until Save");
-
-            // Refresh UI/dropdown so old scenes stay and new one appears
             _eventBus.Publish(new LoadProjectEvent { Path = projectPath });
         }
+
         public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
@@ -148,6 +149,7 @@ namespace CastleBuilder
             eventBus.Publish(new OpenPanelEvent(terrainPanel) { Mode = OpenMode.Replace });
             eventBus.Publish(new LoadProjectEvent { Path = projectPath });
         }
+
         public static void EnsureDefaultSceneIfNeeded()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -172,12 +174,14 @@ namespace CastleBuilder
                 Console.WriteLine("[BlueprintManager] Auto-created default scene 'Main' with 200×200 terrain");
             }
         }
+
         public static void SaveCurrentProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
             Console.WriteLine("[BlueprintManager] SaveCurrentProject called - direct save");
             DoProjectSave();
         }
+
         private static void DoProjectSave()
         {
             Console.WriteLine("[BlueprintManager.DoProjectSave] === DIRECT SAVE START ===");
@@ -218,6 +222,7 @@ namespace CastleBuilder
             ProjectLayoutManager.FlushAllToDisk();
             Console.WriteLine("[BlueprintManager.DoProjectSave] All blades committed to disk");
         }
+
         public static void SaveProjectAs(string folder, string name, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
@@ -245,6 +250,7 @@ namespace CastleBuilder
             eventBus.Publish(new LoadProjectEvent { Path = dir });
             Console.WriteLine($"[BlueprintManager.SaveProjectAs] Save As complete - new project fully populated and active at {dir}");
         }
+
         private static void CopyDirectory(string sourceDir, string targetDir)
         {
             DirectoryInfo diSource = new DirectoryInfo(sourceDir);
@@ -261,6 +267,7 @@ namespace CastleBuilder
                 CopyDirectory(diSourceSubDir.FullName, Path.Combine(diTarget.FullName, diSourceSubDir.Name));
             }
         }
+
         private void OnGenericEvent(GenericEvent evt)
         {
             if (evt.Hook == "CastleBuilder.NewProject")
@@ -277,6 +284,7 @@ namespace CastleBuilder
                 _eventBus.Publish(new NewProjectEvent { Name = name, ProjectType = projectType, Mode = mode, AllowMods = allowMods, Path = path });
             }
         }
+
         private void OnNewProject(NewProjectEvent evt)
         {
             string root = ProjectSettings.Current.ProjectsRoot;
@@ -296,6 +304,7 @@ namespace CastleBuilder
             Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             _eventBus.Publish(new LoadProjectEvent { Path = dir });
         }
+
         private void OnLoadProject(LoadProjectEvent evt)
         {
             if (string.IsNullOrEmpty(evt.Path) || !Directory.Exists(evt.Path)) return;
@@ -317,11 +326,13 @@ namespace CastleBuilder
             }
             SaveIDEState();
         }
+
         private void OnSaveProject(SaveProjectEvent evt)
         {
             Console.WriteLine("[BlueprintManager.OnSaveProject] SaveProjectEvent received - calling direct save");
             DoProjectSave();
         }
+
         private void OnContextChanged(ContextChangedEvent evt)
         {
             string newContext = evt.Context ?? "Scene Editor";
@@ -350,8 +361,14 @@ namespace CastleBuilder
             _previousContext = newContext;
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory hotswap)");
         }
+
         private void OnFileSelected(FileSelectedEvent e)
         {
+            // STRICT guard - only react when UserData explicitly says we are loading a project
+            if (e.UserData as string != "LoadProject")
+            {
+                return; // ignore terrain import selections, color texture selections, etc.
+            }
             if (string.IsNullOrEmpty(e.Path)) return;
             string projectPath = e.Path;
             if (File.Exists(projectPath) && !Directory.Exists(projectPath))
@@ -369,6 +386,7 @@ namespace CastleBuilder
                 Console.WriteLine($"[BlueprintManager.OnFileSelected] Ignored selection (not a valid project folder): {e.Path}");
             }
         }
+
         private string GetTemplate(string type)
         {
             string templatesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Templates");
@@ -377,10 +395,12 @@ namespace CastleBuilder
                 return File.ReadAllText(templateFile);
             return "{\"Name\": \"{name}\", \"Type\": \"" + type + "\", \"Mode\": \"{mode}\", \"AllowMods\": {allowMods}, \"CameraType\": \"" + (type == "2D" ? "AngledOrtho" : "Perspective") + "\", \"LastContext\": \"Scene Editor\"}";
         }
+
         private string GetDefaultIDEPath()
         {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CastleBuilder", "config.json");
         }
+
         private void SaveIDEState()
         {
             if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject)) return;
@@ -389,6 +409,7 @@ namespace CastleBuilder
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
             File.WriteAllText(_configPath, json);
         }
+
         private static void SaveAllPanelStates(ProjectData data)
         {
             if (data == null) return;
@@ -414,6 +435,7 @@ namespace CastleBuilder
                 }
             }
         }
+
         private static void LoadAllPanelStates(ProjectData data)
         {
             if (data?.PanelStates == null || data.PanelStates.Count == 0) return;

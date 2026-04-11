@@ -122,15 +122,11 @@ namespace MapRoom
         public override void LoadSceneData(SceneData data)
         {
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
-
-            // Priority 1: saved GeoTIFF path (this was missing in the panel load path)
             if (data?.Terrain != null && !string.IsNullOrEmpty(data.Terrain.HeightmapPath))
             {
                 LoadTerrain(data.Terrain.HeightmapPath);
                 return;
             }
-
-            // Priority 2: per-scene unsaved memory cache
             float[,] cachedMap = ProjectSettings.Current.GetUnsavedHeightmap(sceneName);
             if (cachedMap != null)
             {
@@ -155,8 +151,6 @@ namespace MapRoom
                 RebuildTerrainMesh();
                 return;
             }
-
-            // Priority 3: global central store (new flat terrains)
             if (ProjectSettings.Current.CurrentHeightmap != null &&
                 (data?.Terrain == null || string.IsNullOrEmpty(data.Terrain.HeightmapPath)))
             {
@@ -181,8 +175,6 @@ namespace MapRoom
                 RebuildTerrainMesh();
                 return;
             }
-
-            // Fallback
             base.LoadSceneData(data);
         }
 
@@ -217,10 +209,30 @@ namespace MapRoom
                 projectPath = AppDomain.CurrentDomain.BaseDirectory;
             string saveDir = Path.Combine(projectPath, "Assets", "Terrain");
             Directory.CreateDirectory(saveDir);
+
+            // Only copy the SINGLE selected GeoTIFF (if this was an import)
+            if (_sceneData?.Terrain != null && !string.IsNullOrEmpty(_sceneData.Terrain.HeightmapPath))
+            {
+                string fullOriginal = ResolveFullPath(_sceneData.Terrain.HeightmapPath);
+                if (File.Exists(fullOriginal))
+                {
+                    string targetName = terrainName + Path.GetExtension(fullOriginal);
+                    string targetPath = Path.Combine(saveDir, targetName);
+                    if (!string.Equals(fullOriginal, targetPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        File.Copy(fullOriginal, targetPath, true);
+                        Console.WriteLine($"[TerrainCreatorScene] Copied original GeoTIFF '{fullOriginal}' → project '{targetPath}'");
+                    }
+                    string relativePath = Path.GetRelativePath(projectPath, targetPath);
+                    _sceneData.Terrain.HeightmapPath = relativePath;
+                }
+            }
+
             string tifPath = Path.Combine(saveDir, terrainName + ".tif");
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
             SaveAsPng(pngPath);
             CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
+
             if (_sceneData?.Terrain != null)
             {
                 string relativePath = Path.GetRelativePath(projectPath, tifPath);
@@ -340,7 +352,6 @@ namespace MapRoom
             {
                 _isBrushing = false;
             }
-
             if (_sceneData?.Name != null)
             {
                 ProjectSettings.Current.StoreUnsavedHeightmap(_sceneData.Name, _heightmap);

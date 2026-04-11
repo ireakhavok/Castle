@@ -101,10 +101,7 @@ namespace CastleBuilder
 
         public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            // CHANGED: Always open NewTerrainPanel modal first (full UI for GeoTIFF OR custom flat)
-            // This guarantees the heightmap is created through TerrainManager and immediately handed off
-            // to Keystone.ProjectSettings.Current.SetCurrentTerrain (central memory store).
-            // No direct BlueprintManager.CreateNewScene + OpenEditorScene any more.
+            // Always open NewTerrainPanel modal first (full UI for GeoTIFF OR custom flat)
             NewTerrainPanel.Open(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands.CreateNewScene] Opened NewTerrainPanel modal (central store hand-off will occur on CreateTerrain)");
         }
