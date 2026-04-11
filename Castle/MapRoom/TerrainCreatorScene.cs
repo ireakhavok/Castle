@@ -210,7 +210,6 @@ namespace MapRoom
             string saveDir = Path.Combine(projectPath, "Assets", "Terrain");
             Directory.CreateDirectory(saveDir);
 
-            // Only copy the SINGLE selected GeoTIFF (if this was an import)
             if (_sceneData?.Terrain != null && !string.IsNullOrEmpty(_sceneData.Terrain.HeightmapPath))
             {
                 string fullOriginal = ResolveFullPath(_sceneData.Terrain.HeightmapPath);
@@ -465,8 +464,9 @@ namespace MapRoom
                 Intensity = e.Strength
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
+            // ONLY partial update – this was the pre-localization optimization
             UpdateAffectedVertices(e.WorldPos, e.Radius);
-            RebuildTerrainMesh();
+            // NO full RebuildTerrainMesh() on every brush stroke
         }
 
         public new float[,] GetHeightmap() => _heightmap;
