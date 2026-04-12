@@ -75,6 +75,7 @@ namespace ToolChest
                 if (provider != null)
                 {
                     _currentTarget = provider.GetObjectForNode(nodeId);
+                    Console.WriteLine($"[PropertiesPanel] Selection changed - nodeId: {nodeId} | Target type: {_currentTarget?.GetType().FullName ?? "null"}");
                     RebuildPropertiesUI();
                 }
             }
@@ -116,14 +117,19 @@ namespace ToolChest
             var sb = new StringBuilder();
             var type = obj.GetType();
 
-            // Public properties
+            // Always show what object we're inspecting
+            sb.Append($"<div class=\"property-row\">");
+            sb.Append($"<div class=\"property-name\">Inspected Type</div>");
+            sb.Append($"<input type=\"text\" value=\"{type.FullName}\" readonly>");
+            sb.Append($"</div>");
+
+            // Public properties (skip indexers)
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead)
+                .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
                 .OrderBy(p => p.Name);
 
             foreach (var prop in properties)
             {
-                string fullPath = string.IsNullOrEmpty(pathPrefix) ? prop.Name : $"{pathPrefix}.{prop.Name}";
                 object value = prop.GetValue(obj);
                 string displayValue = value?.ToString() ?? "[null]";
 
@@ -133,13 +139,12 @@ namespace ToolChest
                 sb.Append($"</div>");
             }
 
-            // Public fields (for completeness)
+            // Public fields
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance)
                 .OrderBy(f => f.Name);
 
             foreach (var field in fields)
             {
-                string fullPath = string.IsNullOrEmpty(pathPrefix) ? field.Name : $"{pathPrefix}.{field.Name}";
                 object value = field.GetValue(obj);
                 string displayValue = value?.ToString() ?? "[null]";
 

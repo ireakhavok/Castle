@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Keystone;
@@ -40,6 +41,7 @@ namespace ToolChest
         private readonly Dictionary<string, OutlinerNode> _nodes = new Dictionary<string, OutlinerNode>();
         private string _selectedNodeId = null;
         private readonly HashSet<string> _expandedNodeIds = new HashSet<string>();
+        private object _currentRootObject;
 
         public TreeViewPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -69,29 +71,78 @@ namespace ToolChest
         {
             if (e.Hook == "OutlinerHierarchyUpdate")
             {
+                var provider = OutlinerCoordinator.Instance.GetLastActiveProvider();
+                if (provider != null)
+                {
+                    _currentRootObject = provider.GetObjectForNode("root") ?? provider.GetObjectForNode("anim-root");
+                }
                 RefreshHierarchy();
             }
         }
 
         private void RefreshHierarchy()
         {
-            var hierarchy = OutlinerCoordinator.Instance.GetCurrentHierarchy(out string[] expanded, out string[] selected);
-
             _nodes.Clear();
             _expandedNodeIds.Clear();
-            _expandedNodeIds.UnionWith(expanded);
 
-            foreach (var node in hierarchy)
+            if (_currentRootObject != null)
             {
-                _nodes[node.Id] = node;
-                if (_expandedNodeIds.Contains(node.Id))
-                    node.IsExpanded = true;
+                var rootNode = BuildReflectionNode(_currentRootObject, "root", _currentRootObject.GetType().Name, 0);
+                _nodes["root"] = rootNode;
+            }
+            else
+            {
+                var rootNode = new OutlinerNode { Id = "root", Label = "No Object", Icon = "❓" };
+                _nodes["root"] = rootNode;
             }
 
-            if (selected.Length > 0)
-                _selectedNodeId = selected[0];
-
             RebuildTreeUI();
+        }
+
+        private OutlinerNode BuildReflectionNode(object obj, string id, string label, int depth)
+        {
+            if (obj == null || depth > 4) return new OutlinerNode { Id = id, Label = label, Icon = "📦" };
+
+            var node = new OutlinerNode
+            {
+                Id = id,
+                Label = label,
+                Icon = depth == 0 ? "📦" : "📌",
+                AssociatedObject = obj
+            };
+
+            var type = obj.GetType();
+
+            // Properties
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
+                .OrderBy(p => p.Name);
+
+            foreach (var prop in properties)
+            {
+                object value = prop.GetValue(obj);
+                string childId = $"{id}.{prop.Name}";
+                var child = BuildReflectionNode(value, childId, prop.Name, depth + 1);
+                child.ParentId = id;
+                node.Children.Add(childId);
+                _nodes[childId] = child;
+            }
+
+            // Fields
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance)
+                .OrderBy(f => f.Name);
+
+            foreach (var field in fields)
+            {
+                object value = field.GetValue(obj);
+                string childId = $"{id}.{field.Name}";
+                var child = BuildReflectionNode(value, childId, field.Name, depth + 1);
+                child.ParentId = id;
+                node.Children.Add(childId);
+                _nodes[childId] = child;
+            }
+
+            return node;
         }
 
         private void LoadTreeUI()
@@ -124,33 +175,33 @@ namespace ToolChest
         private string BuildTreeHtmlString()
         {
             var sb = new StringBuilder();
-            foreach (var node in _nodes.Values.Where(n => string.IsNullOrEmpty(n.ParentId)))
+            if (_nodes.TryGetValue("root", out var root))
             {
-                sb.Append(BuildTreeHtmlStringRecursive(node.Id));
+                sb.Append(BuildTreeHtmlStringRecursive("root", 0));
             }
             return sb.ToString();
         }
 
-        private string BuildTreeHtmlStringRecursive(string nodeId)
+        // FLAT + INDENTED HTML - this fixes the overlapping and highlighting issues
+        private string BuildTreeHtmlStringRecursive(string nodeId, int indentLevel)
         {
             if (!_nodes.TryGetValue(nodeId, out var node)) return "";
 
+            string indent = new string(' ', indentLevel * 4); // visual indentation
             string toggle = node.Children.Count > 0 ? (node.IsExpanded ? "▼" : "▶") : " ";
             string selectedClass = node.Id == _selectedNodeId ? " selected" : "";
 
             var sb = new StringBuilder();
             sb.Append($"<li class=\"node{selectedClass}\" data-node-id=\"{node.Id}\" data-hook=\"Select:{node.Id}\">");
             sb.Append($"<span class=\"toggle\">{toggle}</span>");
-            sb.Append($"<span class=\"label\">{node.Icon} {node.Label}</span>");
+            sb.Append($"<span class=\"label\">{indent}{node.Icon} {node.Label}</span>");
 
             if (node.IsExpanded && node.Children.Count > 0)
             {
-                sb.Append("<ul class=\"children\">");
                 foreach (var childId in node.Children)
                 {
-                    sb.Append(BuildTreeHtmlStringRecursive(childId));
+                    sb.Append(BuildTreeHtmlStringRecursive(childId, indentLevel + 1));
                 }
-                sb.Append("</ul>");
             }
 
             sb.Append("</li>");
@@ -180,7 +231,6 @@ namespace ToolChest
                 _selectedNodeId = id;
 
                 OutlinerCoordinator.Instance.NotifySelectionChanged(id);
-
                 OutlinerCoordinator.Instance.SaveSelectedState(
                     OutlinerCoordinator.Instance.GetLastActiveProvider()?.ContentType ?? "", new[] { id });
 
