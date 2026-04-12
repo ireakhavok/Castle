@@ -41,12 +41,10 @@ namespace SiegeEngine.Core.Managers
         private bool _needsLayout = true;
         private int _lastWinW;
         private int _lastWinH;
-
         // window-edge docking (left / right / bottom of whole window, 20% size)
         private DockState _hoverEdge = DockState.Floating;
         private Vector2 _edgePreviewPos;
         private Vector2 _edgePreviewSize;
-
         public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -169,6 +167,11 @@ namespace SiegeEngine.Core.Managers
                 _root = CollapseNode(_root);
                 if (_root == null) _root = new DockTabbedNode();
             }
+            // Ensure Rects are always up-to-date for accurate HitTest / workspace detection during drag
+            if (_root != null && !_splitterDraggingThisFrame)
+            {
+                _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
+            }
             _splitterDraggingThisFrame = false;
             IPanel top = PanelManager.Current?.GetTopmostPanelAt(mousePos);
             bool mouseOverFloatingPanel = top != null && _floatingPanels.Contains(top);
@@ -251,13 +254,11 @@ namespace SiegeEngine.Core.Managers
             }
             if (_draggingPanel != null && mouseReleased)
             {
-                Console.WriteLine($"[IDEDockingStrategy] DROP DETECTED - draggingPanel: {_draggingPanel?.GetType().Name ?? "null"} | _showHoverIcons: {_showHoverIcons} | _hoveringWorkspace: {_hoveringWorkspace} | _hoverEdge: {_hoverEdge} | _hoveredPanelDuringDrag: {_hoveredPanelDuringDrag?.GetType().Name ?? "null"}");
                 bool shouldDock = false;
                 if (_showHoverIcons)
                 {
                     if (_hoveredPanelDuringDrag != null)
                     {
-                        Console.WriteLine("[IDEDockingStrategy] DROP PATH: Hovered existing panel (center icons)");
                         if (Vector2.Distance(mousePos, _hoverIconCenter) < IconSize * 0.8f)
                         {
                             DockNode targetNode = null;
@@ -318,13 +319,11 @@ namespace SiegeEngine.Core.Managers
                     }
                     else if (_hoveringWorkspace)
                     {
-                        Console.WriteLine("[IDEDockingStrategy] DROP PATH: Central workspace");
                         if (_root != null)
                         {
-                            // Force layout update so Rect values are current before we pick the largest tabbed node
+                            // Force fresh layout so Rects are guaranteed current
                             _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
                             var mainTab = FindLargestTabbedNode(_root);
-                            Console.WriteLine($"[IDEDockingStrategy] FindLargestTabbedNode returned: {mainTab?.GetType().Name ?? "null"}");
                             if (mainTab != null)
                                 mainTab.AddPanel(_draggingPanel);
                             else
@@ -334,7 +333,6 @@ namespace SiegeEngine.Core.Managers
                     }
                     else if (_hoverEdge != DockState.Floating)
                     {
-                        Console.WriteLine($"[IDEDockingStrategy] DROP PATH: Window edge -> {_hoverEdge}");
                         DockToWindowEdge(_hoverEdge, winW, winH);
                         shouldDock = true;
                     }
@@ -344,7 +342,6 @@ namespace SiegeEngine.Core.Managers
                     _floatingPanels.Remove(_draggingPanel);
                     _draggingPanel.DockState = DockState.Tabbed;
                     _draggingPanel.AllowDragging = true;
-                    Console.WriteLine($"[IDEDockingStrategy] Panel docked successfully");
                 }
                 else
                 {
@@ -359,7 +356,6 @@ namespace SiegeEngine.Core.Managers
                     _draggingPanel.DockState = DockState.Floating;
                     _draggingPanel.AllowDragging = true;
                     RestoreOriginalFloatingSize(_draggingPanel);
-                    Console.WriteLine("[IDEDockingStrategy] Panel left floating (no dock target)");
                 }
                 if (_draggingPanel is BasePanel bp) bp.ResetDragState();
                 _draggingPanel = null;
@@ -382,7 +378,6 @@ namespace SiegeEngine.Core.Managers
                 _needsLayout = false;
             }
         }
-
         private DockTabbedNode FindLargestTabbedNode(DockNode node)
         {
             if (node == null) return null;
@@ -399,7 +394,6 @@ namespace SiegeEngine.Core.Managers
             }
             return null;
         }
-
         private void PerformLiveResize(Vector2 mousePos, int winW, int winH)
         {
             if (_resizingPanel == null) return;
@@ -558,13 +552,11 @@ namespace SiegeEngine.Core.Managers
             _showHoverIcons = false;
             _hoveringWorkspace = false;
             _hoverEdge = DockState.Floating;
-
             // 1. WINDOW-EDGE ZONES FIRST (highest priority)
             const float EdgeThreshold = 90f;
             bool nearLeft = mousePos.X < EdgeThreshold;
             bool nearRight = mousePos.X > winW - EdgeThreshold;
             bool nearBottom = mousePos.Y > winH - EdgeThreshold;
-
             if (nearLeft)
             {
                 _hoverEdge = DockState.DockedLeft;
@@ -589,7 +581,6 @@ namespace SiegeEngine.Core.Managers
                 _edgePreviewSize = new Vector2(winW, winH * 0.2f);
                 return;
             }
-
             // 2. Existing docked panel hover (center icons)
             if (_root != null && _root.HitTest(mousePos, out IPanel dockedHit, out _, out _, out _, out _))
             {
@@ -601,7 +592,6 @@ namespace SiegeEngine.Core.Managers
                     return;
                 }
             }
-
             // 3. Central workspace fallback
             if (mousePos.Y > MenuBarHeight)
             {
@@ -615,11 +605,14 @@ namespace SiegeEngine.Core.Managers
             if (_root == null)
                 _root = new DockTabbedNode();
 
-            var newRoot = new DockSplitNode();
             var newTab = new DockTabbedNode();
             newTab.AddPanel(_draggingPanel);
 
             const float ratio = 0.2f;
+
+            // Always wrap the ENTIRE previous root as the workspace sibling.
+            // This guarantees left + right + center (or any combination) coexist correctly.
+            DockSplitNode newRoot = new DockSplitNode();
 
             if (edge == DockState.DockedLeft)
             {
@@ -672,7 +665,6 @@ namespace SiegeEngine.Core.Managers
             renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
             renderContext.Disable(renderContext.Enums.DepthTest);
-
             if (_showHoverIcons)
             {
                 if (_hoveredPanelDuringDrag != null || _hoveringWorkspace)
@@ -699,7 +691,6 @@ namespace SiegeEngine.Core.Managers
                     _quadRenderer.DrawLine(cx + cs * 0.5f + shaftLen - 28, cy - 18, cx + cs * 0.5f + shaftLen, cy, thickness, ac, winW, winH);
                     _quadRenderer.DrawLine(cx + cs * 0.5f + shaftLen - 28, cy + 18, cx + cs * 0.5f + shaftLen, cy, thickness, ac, winW, winH);
                 }
-
                 if (_hoverEdge != DockState.Floating)
                 {
                     Vector4 barColor = new Vector4(0.1f, 0.7f, 1.0f, 0.75f);
@@ -707,7 +698,6 @@ namespace SiegeEngine.Core.Managers
                     float arrowLen = 32f;
                     float arrowThickness = 5f;
                     Vector4 arrowColor = new Vector4(1f, 1f, 1f, 1f);
-
                     if (_hoverEdge == DockState.DockedLeft)
                     {
                         _quadRenderer.DrawQuad(0, MenuBarHeight, barThickness, winH - MenuBarHeight, barColor, winW, winH);
