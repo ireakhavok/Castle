@@ -198,5 +198,10 @@ namespace SiegeEngine.Core.UI.Elements
             }
             return false;
         }
+
+        public void CloseDropdown()
+        {
+            _isPinnedOpen = false;
+        }
     }
 }

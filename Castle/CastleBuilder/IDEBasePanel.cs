@@ -1,14 +1,15 @@
 ﻿// Folder: CastleBuilder
 // File: IDEBasePanel.cs
+using CastleBuilder.Events;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
+using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
 using System.Numerics;
-using CastleBuilder.Events;
 
 namespace CastleBuilder
 {
@@ -24,7 +25,6 @@ namespace CastleBuilder
                 _eventBus = eventBus;
                 _eventBus.Subscribe<ContextChangedEvent>(OnContextChanged);
             }
-
 
             private void OnContextChanged(ContextChangedEvent evt)
             {
@@ -72,10 +72,12 @@ namespace CastleBuilder
 
         public override void Init()
         {
-            base.Init();
+            // === SET EXACT SIZE BEFORE base.Init() TO ELIMINATE INITIALIZATION FLICKER ===
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             Size = new Vector2(winW, 28f);
             Position = Vector2.Zero;
+
+            base.Init();
 
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))
