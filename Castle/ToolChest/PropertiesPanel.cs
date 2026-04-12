@@ -7,7 +7,6 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -50,7 +49,7 @@ namespace ToolChest
             DockState = DockState.Floating;
             DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
             BaseWidth = 460f;
-            BaseHeight = 320f;
+            BaseHeight = 420f;
 
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
         }
@@ -100,7 +99,7 @@ namespace ToolChest
             string template = File.ReadAllText(htmlPath);
             string contentHtml = _currentTarget != null
                 ? BuildPropertiesHtml(_currentTarget, "", 0)
-                : "<div class=\"no-selection\">No selection</div>";
+                : "";
 
             string finalHtml = template.Replace("<!--PROPERTIES-->", contentHtml);
 
@@ -112,68 +111,49 @@ namespace ToolChest
 
         private string BuildPropertiesHtml(object obj, string pathPrefix, int depth)
         {
-            if (obj == null || depth > 3) return "<div class=\"property-null\">[Null or too deep]</div>";
+            if (obj == null || depth > 1) return "";
 
             var sb = new StringBuilder();
-            Type type = obj.GetType();
-            string title = type.Name;
+            var type = obj.GetType();
 
-            sb.Append($"<div class=\"property-group\">");
-            sb.Append($"<div class=\"property-group-header\">{title}</div>");
-            sb.Append($"<div class=\"property-grid\">");
-
+            // Public properties
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && p.GetCustomAttribute<BrowsableAttribute>()?.Browsable != false)
+                .Where(p => p.CanRead)
                 .OrderBy(p => p.Name);
 
             foreach (var prop in properties)
             {
                 string fullPath = string.IsNullOrEmpty(pathPrefix) ? prop.Name : $"{pathPrefix}.{prop.Name}";
                 object value = prop.GetValue(obj);
-                string displayValue = value?.ToString() ?? "";
+                string displayValue = value?.ToString() ?? "[null]";
 
-                if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) ||
-                    prop.PropertyType == typeof(Vector2) || prop.PropertyType == typeof(Vector3) ||
-                    prop.PropertyType == typeof(Vector4) || prop.PropertyType == typeof(Quaternion))
-                {
-                    string inputType = GetInputType(prop.PropertyType);
-                    sb.Append($"<div class=\"property-row\">");
-                    sb.Append($"<span class=\"property-label\">{prop.Name}</span>");
-                    sb.Append($"<input type=\"{inputType}\" class=\"property-value\" data-hook=\"SetProperty:{fullPath}\" value=\"{displayValue}\">");
-                    sb.Append($"</div>");
-                }
-                else
-                {
-                    sb.Append($"<div class=\"property-row nested\">");
-                    sb.Append(BuildPropertiesHtml(value, fullPath, depth + 1));
-                    sb.Append($"</div>");
-                }
+                sb.Append($"<div class=\"property-row\">");
+                sb.Append($"<div class=\"property-name\">{prop.Name}</div>");
+                sb.Append($"<input type=\"text\" value=\"{displayValue}\" readonly>");
+                sb.Append($"</div>");
             }
 
-            sb.Append($"</div>");
-            sb.Append($"</div>");
+            // Public fields (for completeness)
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance)
+                .OrderBy(f => f.Name);
+
+            foreach (var field in fields)
+            {
+                string fullPath = string.IsNullOrEmpty(pathPrefix) ? field.Name : $"{pathPrefix}.{field.Name}";
+                object value = field.GetValue(obj);
+                string displayValue = value?.ToString() ?? "[null]";
+
+                sb.Append($"<div class=\"property-row\">");
+                sb.Append($"<div class=\"property-name\">{field.Name}</div>");
+                sb.Append($"<input type=\"text\" value=\"{displayValue}\" readonly>");
+                sb.Append($"</div>");
+            }
+
             return sb.ToString();
         }
 
-        private string GetInputType(Type t)
-        {
-            if (t == typeof(bool)) return "checkbox";
-            if (t == typeof(int) || t == typeof(float)) return "number";
-            return "text";
-        }
-
-        public void HandleDataHook(string hook)
-        {
-        }
-
-        public void HandleUIClick(HtmlElement elem)
-        {
-            string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
-            if (!string.IsNullOrEmpty(hook))
-            {
-                HandleDataHook(hook);
-            }
-        }
+        public void HandleDataHook(string hook) { }
+        public void HandleUIClick(HtmlElement elem) { }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -188,8 +168,6 @@ namespace ToolChest
             return JsonSerializer.SerializeToElement(new Dictionary<string, object>());
         }
 
-        public void LoadPanelState(JsonElement state)
-        {
-        }
+        public void LoadPanelState(JsonElement state) { }
     }
 }

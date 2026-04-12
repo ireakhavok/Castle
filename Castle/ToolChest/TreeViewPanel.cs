@@ -138,8 +138,6 @@ namespace ToolChest
             string toggle = node.Children.Count > 0 ? (node.IsExpanded ? "▼" : "▶") : " ";
             string selectedClass = node.Id == _selectedNodeId ? " selected" : "";
 
-            // === FIX: data-hook and click handling moved to the <li> itself ===
-            // This guarantees that clicking anywhere on the row (text, toggle, padding) triggers selection
             var sb = new StringBuilder();
             sb.Append($"<li class=\"node{selectedClass}\" data-node-id=\"{node.Id}\" data-hook=\"Select:{node.Id}\">");
             sb.Append($"<span class=\"toggle\">{toggle}</span>");

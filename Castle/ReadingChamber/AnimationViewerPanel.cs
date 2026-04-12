@@ -226,7 +226,9 @@ namespace ReadingChamber
 
         public object GetObjectForNode(string nodeId)
         {
-            return null;
+            // Return the actual viewer scene so Properties panel can reflect over it
+            // (this is the real data source for this panel)
+            return _viewerScene;
         }
 
         public void NotifyHierarchyChanged()
