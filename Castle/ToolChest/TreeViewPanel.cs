@@ -41,6 +41,8 @@ namespace ToolChest
         private readonly Dictionary<string, OutlinerNode> _nodes = new Dictionary<string, OutlinerNode>();
         private string _selectedNodeId = null;
         private readonly HashSet<string> _expandedNodeIds = new HashSet<string>();
+
+        // Root object we are currently reflecting on
         private object _currentRootObject;
 
         public TreeViewPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -71,10 +73,13 @@ namespace ToolChest
         {
             if (e.Hook == "OutlinerHierarchyUpdate")
             {
+                // Get the root object from the active provider
                 var provider = OutlinerCoordinator.Instance.GetLastActiveProvider();
                 if (provider != null)
                 {
-                    _currentRootObject = provider.GetObjectForNode("root") ?? provider.GetObjectForNode("anim-root");
+                    _currentRootObject = provider.GetObjectForNode("root"); // root is special key for top-level object
+                    if (_currentRootObject == null)
+                        _currentRootObject = provider.GetObjectForNode("anim-root"); // fallback for AnimationViewer
                 }
                 RefreshHierarchy();
             }
@@ -87,33 +92,37 @@ namespace ToolChest
 
             if (_currentRootObject != null)
             {
-                var rootNode = BuildReflectionNode(_currentRootObject, "root", _currentRootObject.GetType().Name, 0);
+                // Build the entire hierarchy using reflection on the root object
+                var rootNode = BuildReflectionNode(_currentRootObject, "root", _currentRootObject.GetType().Name);
                 _nodes["root"] = rootNode;
             }
             else
             {
-                var rootNode = new OutlinerNode { Id = "root", Label = "No Object", Icon = "❓" };
+                // Fallback empty root if nothing is provided
+                var rootNode = new OutlinerNode { Id = "root", Label = "No Object Selected", Icon = "❓" };
                 _nodes["root"] = rootNode;
             }
 
             RebuildTreeUI();
         }
 
-        private OutlinerNode BuildReflectionNode(object obj, string id, string label, int depth)
+        // RECURSIVE REFLECTION BUILDER - this is what you asked for
+        private OutlinerNode BuildReflectionNode(object obj, string id, string label, int depth = 0)
         {
-            if (obj == null || depth > 4) return new OutlinerNode { Id = id, Label = label, Icon = "📦" };
+            if (obj == null || depth > 3) // prevent infinite recursion on deep nesting
+                return new OutlinerNode { Id = id, Label = label, Icon = "📦" };
 
             var node = new OutlinerNode
             {
                 Id = id,
                 Label = label,
-                Icon = depth == 0 ? "📦" : "📌",
+                Icon = "📦",
                 AssociatedObject = obj
             };
 
             var type = obj.GetType();
 
-            // Properties
+            // Public properties
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
                 .OrderBy(p => p.Name);
@@ -122,13 +131,13 @@ namespace ToolChest
             {
                 object value = prop.GetValue(obj);
                 string childId = $"{id}.{prop.Name}";
-                var child = BuildReflectionNode(value, childId, prop.Name, depth + 1);
-                child.ParentId = id;
+                var childNode = BuildReflectionNode(value, childId, prop.Name, depth + 1);
+                childNode.ParentId = id;
                 node.Children.Add(childId);
-                _nodes[childId] = child;
+                _nodes[childId] = childNode;
             }
 
-            // Fields
+            // Public fields
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance)
                 .OrderBy(f => f.Name);
 
@@ -136,10 +145,10 @@ namespace ToolChest
             {
                 object value = field.GetValue(obj);
                 string childId = $"{id}.{field.Name}";
-                var child = BuildReflectionNode(value, childId, field.Name, depth + 1);
-                child.ParentId = id;
+                var childNode = BuildReflectionNode(value, childId, field.Name, depth + 1);
+                childNode.ParentId = id;
                 node.Children.Add(childId);
-                _nodes[childId] = child;
+                _nodes[childId] = childNode;
             }
 
             return node;
@@ -177,31 +186,31 @@ namespace ToolChest
             var sb = new StringBuilder();
             if (_nodes.TryGetValue("root", out var root))
             {
-                sb.Append(BuildTreeHtmlStringRecursive("root", 0));
+                sb.Append(BuildTreeHtmlStringRecursive("root"));
             }
             return sb.ToString();
         }
 
-        // FLAT + INDENTED HTML - this fixes the overlapping and highlighting issues
-        private string BuildTreeHtmlStringRecursive(string nodeId, int indentLevel)
+        private string BuildTreeHtmlStringRecursive(string nodeId)
         {
             if (!_nodes.TryGetValue(nodeId, out var node)) return "";
 
-            string indent = new string(' ', indentLevel * 4); // visual indentation
             string toggle = node.Children.Count > 0 ? (node.IsExpanded ? "▼" : "▶") : " ";
             string selectedClass = node.Id == _selectedNodeId ? " selected" : "";
 
             var sb = new StringBuilder();
             sb.Append($"<li class=\"node{selectedClass}\" data-node-id=\"{node.Id}\" data-hook=\"Select:{node.Id}\">");
             sb.Append($"<span class=\"toggle\">{toggle}</span>");
-            sb.Append($"<span class=\"label\">{indent}{node.Icon} {node.Label}</span>");
+            sb.Append($"<span class=\"label\">{node.Icon} {node.Label}</span>");
 
             if (node.IsExpanded && node.Children.Count > 0)
             {
+                sb.Append("<ul class=\"children\">");
                 foreach (var childId in node.Children)
                 {
-                    sb.Append(BuildTreeHtmlStringRecursive(childId, indentLevel + 1));
+                    sb.Append(BuildTreeHtmlStringRecursive(childId));
                 }
+                sb.Append("</ul>");
             }
 
             sb.Append("</li>");
@@ -231,6 +240,7 @@ namespace ToolChest
                 _selectedNodeId = id;
 
                 OutlinerCoordinator.Instance.NotifySelectionChanged(id);
+
                 OutlinerCoordinator.Instance.SaveSelectedState(
                     OutlinerCoordinator.Instance.GetLastActiveProvider()?.ContentType ?? "", new[] { id });
 
