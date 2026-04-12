@@ -1,4 +1,6 @@
-﻿<!DOCTYPE html>
+﻿<!-- Folder: (root) -->
+<!-- File: TreeViewPanelUI.html -->
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -34,7 +36,7 @@
         .tree-container {
             flex: 1;
             overflow: auto;
-            padding: 8px;
+            padding: 4px 2px;
         }
 
         ul {
@@ -44,9 +46,13 @@
         }
 
         .node {
-            padding: 2px 0;
+            display: block;
+            padding: 2px 4px;
             cursor: pointer;
             user-select: none;
+            min-height: 28px;
+            box-sizing: border-box;
+            position: relative;
         }
 
             .node:hover {
@@ -63,15 +69,20 @@
             width: 18px;
             color: #888888;
             cursor: pointer;
+            font-size: 12px;
+            vertical-align: middle;
         }
 
         .label {
-            padding-left: 4px;
+            padding-left: 2px;
+            vertical-align: middle;
+            display: inline-block;
         }
 
         .children {
-            padding-left: 20px;
-            margin: 2px 0;
+            padding-left: 22px;
+            margin-top: 2px;
+            margin-bottom: 2px;
         }
 
         .footer {

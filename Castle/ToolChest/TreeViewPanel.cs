@@ -37,14 +37,10 @@ namespace ToolChest
                 return true;
             }
         }
-
         private readonly Dictionary<string, OutlinerNode> _nodes = new Dictionary<string, OutlinerNode>();
         private string _selectedNodeId = null;
         private readonly HashSet<string> _expandedNodeIds = new HashSet<string>();
-
-        // Root object we are currently reflecting on
         private object _currentRootObject;
-
         public TreeViewPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -53,65 +49,52 @@ namespace ToolChest
             AllowDragging = true;
             DockState = DockState.Floating;
             DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
-
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new TreeViewUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadTreeUI();
         }
-
         private void OnGenericEvent(GenericEvent e)
         {
             if (e.Hook == "OutlinerHierarchyUpdate")
             {
-                // Get the root object from the active provider
                 var provider = OutlinerCoordinator.Instance.GetLastActiveProvider();
                 if (provider != null)
                 {
-                    _currentRootObject = provider.GetObjectForNode("root"); // root is special key for top-level object
+                    _currentRootObject = provider.GetObjectForNode("root");
                     if (_currentRootObject == null)
-                        _currentRootObject = provider.GetObjectForNode("anim-root"); // fallback for AnimationViewer
+                        _currentRootObject = provider.GetObjectForNode("anim-root");
                 }
                 RefreshHierarchy();
             }
         }
-
         private void RefreshHierarchy()
         {
             _nodes.Clear();
             _expandedNodeIds.Clear();
-
             if (_currentRootObject != null)
             {
-                // Build the entire hierarchy using reflection on the root object
                 var rootNode = BuildReflectionNode(_currentRootObject, "root", _currentRootObject.GetType().Name);
                 _nodes["root"] = rootNode;
             }
             else
             {
-                // Fallback empty root if nothing is provided
                 var rootNode = new OutlinerNode { Id = "root", Label = "No Object Selected", Icon = "❓" };
                 _nodes["root"] = rootNode;
             }
-
             RebuildTreeUI();
         }
-
-        // RECURSIVE REFLECTION BUILDER - this is what you asked for
         private OutlinerNode BuildReflectionNode(object obj, string id, string label, int depth = 0)
         {
-            if (obj == null || depth > 3) // prevent infinite recursion on deep nesting
+            if (obj == null || depth > 3)
                 return new OutlinerNode { Id = id, Label = label, Icon = "📦" };
-
             var node = new OutlinerNode
             {
                 Id = id,
@@ -119,14 +102,10 @@ namespace ToolChest
                 Icon = "📦",
                 AssociatedObject = obj
             };
-
             var type = obj.GetType();
-
-            // Public properties
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
                 .OrderBy(p => p.Name);
-
             foreach (var prop in properties)
             {
                 object value = prop.GetValue(obj);
@@ -136,11 +115,8 @@ namespace ToolChest
                 node.Children.Add(childId);
                 _nodes[childId] = childNode;
             }
-
-            // Public fields
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance)
                 .OrderBy(f => f.Name);
-
             foreach (var field in fields)
             {
                 object value = field.GetValue(obj);
@@ -150,10 +126,8 @@ namespace ToolChest
                 node.Children.Add(childId);
                 _nodes[childId] = childNode;
             }
-
             return node;
         }
-
         private void LoadTreeUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TreeViewPanelUI.html");
@@ -164,23 +138,18 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private void RebuildTreeUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TreeViewPanelUI.html");
             if (!File.Exists(htmlPath)) return;
-
             string template = File.ReadAllText(htmlPath);
             string nodesHtml = BuildTreeHtmlString();
-
             string finalHtml = template.Replace("<!--TREE_NODES-->", nodesHtml);
-
             _uiOverlay.LoadUI(finalHtml);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-
         private string BuildTreeHtmlString()
         {
             var sb = new StringBuilder();
@@ -190,19 +159,15 @@ namespace ToolChest
             }
             return sb.ToString();
         }
-
         private string BuildTreeHtmlStringRecursive(string nodeId)
         {
             if (!_nodes.TryGetValue(nodeId, out var node)) return "";
-
             string toggle = node.Children.Count > 0 ? (node.IsExpanded ? "▼" : "▶") : " ";
             string selectedClass = node.Id == _selectedNodeId ? " selected" : "";
-
             var sb = new StringBuilder();
             sb.Append($"<li class=\"node{selectedClass}\" data-node-id=\"{node.Id}\" data-hook=\"Select:{node.Id}\">");
-            sb.Append($"<span class=\"toggle\">{toggle}</span>");
+            sb.Append($"<span class=\"toggle\" data-hook=\"Toggle:{node.Id}\">{toggle}</span>");
             sb.Append($"<span class=\"label\">{node.Icon} {node.Label}</span>");
-
             if (node.IsExpanded && node.Children.Count > 0)
             {
                 sb.Append("<ul class=\"children\">");
@@ -212,11 +177,9 @@ namespace ToolChest
                 }
                 sb.Append("</ul>");
             }
-
             sb.Append("</li>");
             return sb.ToString();
         }
-
         public void HandleDataHook(string hook)
         {
             if (hook.StartsWith("Toggle:"))
@@ -227,10 +190,8 @@ namespace ToolChest
                     node.IsExpanded = !node.IsExpanded;
                     if (node.IsExpanded) _expandedNodeIds.Add(id);
                     else _expandedNodeIds.Remove(id);
-
                     OutlinerCoordinator.Instance.SaveExpandedState(
                         OutlinerCoordinator.Instance.GetLastActiveProvider()?.ContentType ?? "", _expandedNodeIds);
-
                     RebuildTreeUI();
                 }
             }
@@ -238,16 +199,12 @@ namespace ToolChest
             {
                 string id = hook.Substring(7);
                 _selectedNodeId = id;
-
                 OutlinerCoordinator.Instance.NotifySelectionChanged(id);
-
                 OutlinerCoordinator.Instance.SaveSelectedState(
                     OutlinerCoordinator.Instance.GetLastActiveProvider()?.ContentType ?? "", new[] { id });
-
                 RebuildTreeUI();
             }
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -256,15 +213,12 @@ namespace ToolChest
                 HandleDataHook(hook);
             }
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new TreeViewPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
-
         public string DataKey => "TreeViewPanel";
-
         public JsonElement SavePanelState()
         {
             var state = new Dictionary<string, object>
@@ -274,7 +228,6 @@ namespace ToolChest
             };
             return JsonSerializer.SerializeToElement(state);
         }
-
         public void LoadPanelState(JsonElement state)
         {
         }
