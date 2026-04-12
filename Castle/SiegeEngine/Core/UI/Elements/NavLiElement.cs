@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+﻿// Folder: SiegeEngine.Core.UI.Elements
 // File: NavLiElement.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
@@ -197,6 +197,11 @@ namespace SiegeEngine.Core.UI.Elements
                 current = current.Parent;
             }
             return false;
+        }
+
+        public void CloseDropdown()
+        {
+            _isPinnedOpen = false;
         }
     }
 }

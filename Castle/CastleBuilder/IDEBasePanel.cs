@@ -1,14 +1,15 @@
 ﻿// Folder: CastleBuilder
 // File: IDEBasePanel.cs
+using CastleBuilder.Events;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
+using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
 using System.Numerics;
-using CastleBuilder.Events;
 
 namespace CastleBuilder
 {
@@ -24,7 +25,6 @@ namespace CastleBuilder
                 _eventBus = eventBus;
                 _eventBus.Subscribe<ContextChangedEvent>(OnContextChanged);
             }
-
 
             private void OnContextChanged(ContextChangedEvent evt)
             {
@@ -54,6 +54,38 @@ namespace CastleBuilder
                     Console.WriteLine("  Panels menu now shows: Project Settings, Mod Manager, Server Rules, Blueprint Governance");
                 }
             }
+
+            // === FINAL FIX FOR DATA-HOOK DROPDOWNS ===
+            // We close the dropdown AND force IsHover = false on the parent NavLiElement.
+            // This prevents UpdateHover from re-opening the dropdown on the next frame
+            // (the mouse is still physically over the top-level nav item after the click).
+            protected override void HandleDataHook(string hook)
+            {
+                CloseAllOpenNavDropdowns();
+                RefreshUI();
+
+                base.HandleDataHook(hook);
+            }
+
+            private void CloseAllOpenNavDropdowns()
+            {
+                var navLis = FindElementsByTag("li")
+                    .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
+                    .Cast<NavLiElement>()
+                    .ToList();
+
+                foreach (var nav in navLis)
+                {
+                    nav.CloseDropdown();
+                    nav.IsHover = false;   // critical: stops UpdateHover from re-showing the dropdown
+
+                    var dropdownUl = nav.Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
+                    if (dropdownUl != null)
+                    {
+                        dropdownUl.Style.Display = "none";
+                    }
+                }
+            }
         }
 
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -72,10 +104,12 @@ namespace CastleBuilder
 
         public override void Init()
         {
-            base.Init();
+            // Size set before base.Init() eliminates the single-frame full-screen flicker
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             Size = new Vector2(winW, 28f);
             Position = Vector2.Zero;
+
+            base.Init();
 
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))

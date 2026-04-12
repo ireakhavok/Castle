@@ -460,6 +460,7 @@ namespace SiegeEngine.Core.UI
                     HandleDataHook(hook);
                     handled = true;
                 }
+                CloseAllOpenNavDropdowns();
             }
             if (valueChanged)
             {
@@ -467,6 +468,19 @@ namespace SiegeEngine.Core.UI
             }
             RefreshUI();
             return handled;
+        }
+
+        private void CloseAllOpenNavDropdowns()
+        {
+            var navLis = FindElementsByTag("li")
+                .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
+                .Cast<NavLiElement>()
+                .ToList();
+
+            foreach (var nav in navLis)
+            {
+                nav.CloseDropdown();
+            }
         }
 
         public void CloseAllOpenSelects()
@@ -558,10 +572,12 @@ namespace SiegeEngine.Core.UI
                     }
                 }
             }
-            _needsVerticalScrollbar = ContentFullHeight > PanelHeight - ReservedHeaderHeight + 0.1f;
+            float usableHeight = PanelHeight - ReservedHeaderHeight;
+            float effectiveContentHeight = Math.Max(0f, ContentFullHeight - ReservedHeaderHeight);
+            _needsVerticalScrollbar = effectiveContentHeight > usableHeight + 0.1f;
             if (_needsVerticalScrollbar)
             {
-                ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, ContentFullHeight - (PanelHeight - ReservedHeaderHeight));
+                ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, effectiveContentHeight - usableHeight);
             }
             else
             {
@@ -571,9 +587,15 @@ namespace SiegeEngine.Core.UI
 
         public void Scroll(float deltaY)
         {
-            if (!_needsVerticalScrollbar) return;
+            if (!_needsVerticalScrollbar)
+            {
+                ScrollOffsetY = 0f;
+                return;
+            }
             ScrollOffsetY -= deltaY * 30f;
-            ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, ContentFullHeight - (PanelHeight - ReservedHeaderHeight));
+            float usableHeight = PanelHeight - ReservedHeaderHeight;
+            float effectiveContentHeight = Math.Max(0f, ContentFullHeight - ReservedHeaderHeight);
+            ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, effectiveContentHeight - usableHeight);
         }
 
         public virtual void Dispose()
