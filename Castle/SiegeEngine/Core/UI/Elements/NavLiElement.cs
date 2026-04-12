@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+﻿// Folder: SiegeEngine.Core.UI.Elements
 // File: NavLiElement.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
