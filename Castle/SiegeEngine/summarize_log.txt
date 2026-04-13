@@ -933,7 +933,7 @@ Found 6 dependencies
 Found: LiElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
-Read 8336 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
+Read 8629 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\LiElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 6 dependencies
 Found: NavElement.cs
@@ -1087,7 +1087,7 @@ Found 7 dependencies
 Found: Layout.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
-Read 65312 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
+Read 65314 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: MenuPanel.cs

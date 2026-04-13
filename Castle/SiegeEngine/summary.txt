@@ -939,12 +939,11 @@ Folder: Core
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
     - Methods:
+      - float GetFullContentExtentForParent()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
-        - Calls: CalculateIntrinsicContentHeight, ComputeIntrinsicSize, FindContainingBlock, HtmlLayoutUtils.ComputeTransform, HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, child.GetEffectiveDisplay
+        - Calls: ComputeIntrinsicSize, FindContainingBlock, HtmlLayoutUtils.ComputeTransform, HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, LayoutFlexChildren, LayoutGridChildren, child.GetEffectiveDisplay, child.GetFullContentExtentForParent
       - void LayoutFlexChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout
-      - float CalculateIntrinsicContentHeight( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: elem.ComputeIntrinsicSize, elem.GetEffectiveDisplay
       - void LayoutGridChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, LayoutBlockChildren, c.GetEffectiveDisplay, child.ComputeIntrinsicSize, child.ComputeLayout, float.Parse, int.Parse
       - void LayoutBlockChildren( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
@@ -968,13 +967,13 @@ Folder: Core
     - Methods:
       - constructor LiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
-        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, c.GetEffectiveDisplay, textRenderer.GetTextSize
-      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings, child.GetEffectiveDisplay
       - float GetTreeNodeHeaderHeight()
-      - bool UpdateHover( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: GetTreeNodeHeaderHeight, HtmlLayoutUtils.GetNdcQuad
+      - HtmlElement GetNodeRowElement()
+      - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+        - Calls: GetNodeRowElement, GetTreeNodeHeaderHeight, HtmlLayoutUtils.GetNdcQuad, UpdateHover, base.UpdateHover
       - bool HandleClick( float viewportHeight,  float viewportWidth, Vector2 mousePos)
-        - Calls: GetTreeNodeHeaderHeight, HtmlLayoutUtils.GetNdcQuad
+        - Calls: GetNodeRowElement, HtmlLayoutUtils.GetNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
 - File: LightComponent.cs
   - Class: LightComponent (Namespace: SiegeEngine.Core.Definitions)

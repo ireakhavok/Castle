@@ -3,3 +3,15 @@ on scene switch the terrain editor scene should also switch....
 the floating panels were not loaded back with the same size and position, they were loaded with the default, I believe dictated by the idedockingstrategy?
 
 the area of body items is off. 
+
+the file browser is wrong it adds all to the dom. 
+
+the background is not the correct height. 
+
+the animationviewer panel is receiving updates from other panels all the same. it needs continuous updates, but just not from the mouse it's to keep the animation going....
+
+need to add all ascii characters
+
+need to fix system text size issue vs static size and resizing
+
+docking issues for full screen stuff in idedockingstrategy
