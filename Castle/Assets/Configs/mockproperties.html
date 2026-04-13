@@ -2,94 +2,223 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!--<title>Mock Properties - Clean Inspector</title>-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body {
+        html, body {
+            height: 100%;
             margin: 0;
             padding: 0;
             background: #1e1e1e;
-            color: #ccc;
+            color: #cccccc;
             font-family: Arial, sans-serif;
             font-size: 13px;
-            height: 100vh;
             overflow: hidden;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
         .header {
             background: #252526;
             padding: 8px 12px;
-            border-bottom: 1px solid #333;
+            border-bottom: 1px solid #333333;
             font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .content {
-            padding: 8px;
+            flex: 1;
             overflow: auto;
-            height: calc(100vh - 88px);
+            padding: 8px;
+        }
+
+        details {
+            margin-bottom: 6px;
+            border: 1px solid #333;
+            border-radius: 3px;
+        }
+
+        summary {
+            background: #252526;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-weight: bold;
+            user-select: none;
         }
 
         .property-row {
             display: flex;
             align-items: center;
-            background: #252526;
-            margin-bottom: 1px;
-            padding: 6px 10px;
+            margin: 4px 0;
+            padding: 4px 8px;
         }
 
-            .property-row:hover {
-                background: #2d2d2d;
-            }
-
         .property-name {
-            width: 150px;
-            color: #aaa;
+            width: 140px;
+            color: #aaaaaa;
             flex-shrink: 0;
         }
 
         input {
             flex: 1;
-            background: #333;
-            border: 1px solid #555;
-            color: #ccc;
+            background: #333333;
+            border: 1px solid #555555;
+            color: #cccccc;
             padding: 4px 6px;
         }
+
+            input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+            }
 
         .footer {
             background: #252526;
             padding: 6px;
-            text-align: center;
+            border-top: 1px solid #333333;
             font-size: 11px;
-            color: #888;
-            border-top: 1px solid #333;
+            color: #888888;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <div class="header">Properties - Player (Entity 1)</div>
+    <div class="panel">
+        <div class="header">
+            <span id="headerTitle">Properties</span>
+        </div>
 
-    <div class="content">
-        <div class="property-row">
-            <div class="property-name">Position X</div>
-            <input type="number" value="12.5">
+        <div class="content" id="propertiesContent">
+            <div class="property-row">
+                <div class="property-name">Position X</div>
+                <input type="number" value="12.5">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position Y</div>
+                <input type="number" value="8.3">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Rotation</div>
+                <input type="number" value="45">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Health</div>
+                <input type="number" value="100">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Is Visible</div>
+                <input type="checkbox" checked>
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position X</div>
+                <input type="number" value="12.5">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position Y</div>
+                <input type="number" value="8.3">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Rotation</div>
+                <input type="number" value="45">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Health</div>
+                <input type="number" value="100">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Is Visible</div>
+                <input type="checkbox" checked>
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position X</div>
+                <input type="number" value="12.5">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position Y</div>
+                <input type="number" value="8.3">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Rotation</div>
+                <input type="number" value="45">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Health</div>
+                <input type="number" value="100">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Is Visible</div>
+                <input type="checkbox" checked>
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position X</div>
+                <input type="number" value="12.5">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position Y</div>
+                <input type="number" value="8.3">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Rotation</div>
+                <input type="number" value="45">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Health</div>
+                <input type="number" value="100">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Is Visible</div>
+                <input type="checkbox" checked>
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position X</div>
+                <input type="number" value="12.5">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position Y</div>
+                <input type="number" value="8.3">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Rotation</div>
+                <input type="number" value="45">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Health</div>
+                <input type="number" value="100">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Is Visible</div>
+                <input type="checkbox" checked>
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position X</div>
+                <input type="number" value="12.5">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Position Y</div>
+                <input type="number" value="8.3">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Rotation</div>
+                <input type="number" value="45">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Health</div>
+                <input type="number" value="100">
+            </div>
+            <div class="property-row">
+                <div class="property-name">Is Visible</div>
+                <input type="checkbox" checked>
+            </div>
         </div>
-        <div class="property-row">
-            <div class="property-name">Position Y</div>
-            <input type="number" value="8.3">
-        </div>
-        <div class="property-row">
-            <div class="property-name">Rotation</div>
-            <input type="number" value="45">
-        </div>
-        <div class="property-row">
-            <div class="property-name">Health</div>
-            <input type="number" value="100">
-        </div>
-        <div class="property-row">
-            <div class="property-name">Is Visible</div>
-            <input type="checkbox" checked>
+
+        <div class="footer">
+            Select an object in the Hierarchy to inspect
         </div>
     </div>
-
-    <div class="footer">Select an object in the Hierarchy to inspect</div>
 </body>
 </html>
