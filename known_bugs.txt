@@ -15,3 +15,5 @@ need to add all ascii characters
 need to fix system text size issue vs static size and resizing
 
 docking issues for full screen stuff in idedockingstrategy
+
+some panels that do not have a flex grow area allow the panel to resize larger than the default area so they exhibit the same clear area. we need to keep panels that are a defined max height that don't flex vertically to be resized past the maximum dimensions. 
