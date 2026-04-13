@@ -66,6 +66,21 @@ namespace SiegeEngine.Core.UI.Elements
             return height;
         }
 
+        private HtmlElement GetNodeRowElement()
+        {
+            // Find the <div class="node-row"> that contains toggle + label
+            foreach (var child in Children)
+            {
+                if (child is HtmlElement elem &&
+                    elem.Attributes.TryGetValue("class", out var cls) &&
+                    cls.Contains("node-row"))
+                {
+                    return elem;
+                }
+            }
+            return null;
+        }
+
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
             // Let base block layout position header + children normally (this fixes sibling stacking)
@@ -92,17 +107,29 @@ namespace SiegeEngine.Core.UI.Elements
             string classes = Attributes.GetValueOrDefault("class", "");
             bool isTreeNode = classes.Contains("node");
 
-            // Nested nodes get first chance
+            // === CRITICAL: children get first chance and block parent hover ===
             for (int i = Children.Count - 1; i >= 0; i--)
             {
                 if (Children[i].UpdateHover(mousePos, viewportWidth, viewportHeight))
-                    return true;
+                    return true; // child (or deeper) already handled hover
             }
 
             if (!isTreeNode) return base.UpdateHover(mousePos, viewportWidth, viewportHeight);
 
-            float testHeight = GetTreeNodeHeaderHeight();
-            float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, testHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+            // Only test hover on the exact .node-row element (header row)
+            var nodeRow = GetNodeRowElement();
+            if (nodeRow == null)
+                return base.UpdateHover(mousePos, viewportWidth, viewportHeight);
+
+            // Use the node-row's exact computed bounds
+            float[] ndc = HtmlLayoutUtils.GetNdcQuad(
+                nodeRow.ComputedPosition.X,
+                nodeRow.ComputedPosition.Y,
+                nodeRow.ComputedWidth,
+                nodeRow.ComputedHeight,
+                ComputedFullTransform,
+                viewportWidth,
+                viewportHeight);
 
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             for (int k = 0; k < 4; k++)
@@ -129,7 +156,7 @@ namespace SiegeEngine.Core.UI.Elements
             string classes = Attributes.GetValueOrDefault("class", "");
             bool isTreeNode = classes.Contains("node");
 
-            // Nested nodes get first chance
+            // Children get first chance (toggle clicks, etc.)
             for (int i = Children.Count - 1; i >= 0; i--)
             {
                 if (Children[i].HandleClick(mousePos, viewportWidth, viewportHeight))
@@ -138,8 +165,19 @@ namespace SiegeEngine.Core.UI.Elements
 
             if (!isTreeNode) return base.HandleClick(mousePos, viewportWidth, viewportHeight);
 
-            float testHeight = GetTreeNodeHeaderHeight();
-            float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, testHeight, ComputedFullTransform, viewportWidth, viewportHeight);
+            // Only the header row can be clicked
+            var nodeRow = GetNodeRowElement();
+            if (nodeRow == null)
+                return base.HandleClick(mousePos, viewportWidth, viewportHeight);
+
+            float[] ndc = HtmlLayoutUtils.GetNdcQuad(
+                nodeRow.ComputedPosition.X,
+                nodeRow.ComputedPosition.Y,
+                nodeRow.ComputedWidth,
+                nodeRow.ComputedHeight,
+                ComputedFullTransform,
+                viewportWidth,
+                viewportHeight);
 
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             for (int k = 0; k < 4; k++)

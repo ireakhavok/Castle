@@ -165,9 +165,13 @@ namespace ToolChest
             string toggle = node.Children.Count > 0 ? (node.IsExpanded ? "▼" : "▶") : " ";
             string selectedClass = node.Id == _selectedNodeId ? " selected" : "";
             var sb = new StringBuilder();
-            sb.Append($"<li class=\"node{selectedClass}\" data-node-id=\"{node.Id}\" data-hook=\"Select:{node.Id}\">");
+            sb.Append($"<li class=\"node{selectedClass}\">");
+            // data-hook and data-node-id now live on the interactive .node-row div
+            // so clicks anywhere in the header row are correctly detected by the UI system
+            sb.Append($"<div class=\"node-row\" data-node-id=\"{node.Id}\" data-hook=\"Select:{node.Id}\">");
             sb.Append($"<span class=\"toggle\" data-hook=\"Toggle:{node.Id}\">{toggle}</span>");
             sb.Append($"<span class=\"label\">{node.Icon} {node.Label}</span>");
+            sb.Append("</div>");
             if (node.IsExpanded && node.Children.Count > 0)
             {
                 sb.Append("<ul class=\"children\">");

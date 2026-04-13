@@ -1,6 +1,4 @@
-﻿<!-- Folder: (root) -->
-<!-- File: TreeViewPanelUI.html -->
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -47,7 +45,7 @@
 
         .node {
             display: block;
-            padding: 2px 4px;
+            padding: 0;
             cursor: pointer;
             user-select: none;
             min-height: 28px;
@@ -55,14 +53,21 @@
             position: relative;
         }
 
-            .node:hover {
+        .node-row {
+            display: flex;
+            align-items: center;
+            padding: 2px 4px;
+            min-height: 28px;
+        }
+
+            .node-row:hover {
                 background: #2d2d2d;
             }
 
-            .node.selected {
-                background: #094771;
-                color: white;
-            }
+        .node.selected .node-row {
+            background: #094771;
+            color: white;
+        }
 
         .toggle {
             display: inline-block;
