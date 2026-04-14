@@ -1146,8 +1146,6 @@ Folder: Rendering
       - UIQuadRenderer _quadRenderer
     - Methods:
       - constructor LayeredUIRenderer( IControlContext controlContext,  UIQuadRenderer quadRenderer, IRenderContext renderContext)
-      - void RenderPanel(BasePanel panel)
-        - Calls: AnimationViewerPanel.Render, _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, panel.RenderContentLayer, panel.chrome.Render
 - File: ModelRenderer.cs
   - Class: ModelRenderer (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.Shaders, System, System.Numerics
@@ -1844,6 +1842,8 @@ Folder: UI
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics
     - Methods:
+      - void RenderBackgroundOnly( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, _bgRenderer.Render, quadRenderer.DrawNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, quadRenderer.DrawNdcQuad
 - File: SelectElement.cs
@@ -1990,6 +1990,8 @@ Folder: UI
         - Calls: HtmlLayoutUtils.GetNdcQuad, _quadRenderer.DrawNdcQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _uiRoot.Render, sel.RenderDropdown
       - void Render()
         - Calls: RenderUI
+      - void RenderBackgrounds( float h, float w)
+        - Calls: _uiRoot.RenderBackgroundOnly
       - void RecomputeLayout( float h, float w)
         - Calls: UpdateContentHeight, _uiRoot.ComputeLayout, _uiRoot.UpdateFullTransforms
       - void UpdateContentHeight()
