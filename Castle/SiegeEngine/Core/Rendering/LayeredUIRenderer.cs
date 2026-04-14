@@ -34,14 +34,20 @@ namespace SiegeEngine.Core.Rendering
             uint fullW = (uint)panel.Size.X;
             uint fullH = (uint)panel.Size.Y;
 
+            // Background-only pass (before scissor) - now uses only normal styles (no hover/active)
+            if (panel._uiOverlay != null)
+            {
+                panel._uiOverlay.RenderBackgrounds(fullW, fullH);
+            }
+
             _renderContext.Enable(_renderContext.Enums.ScissorTest);
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 
-            // FULL panel size exactly like the original AnimationViewerPanel.Render (no HeaderHeight subtraction anywhere)
+            // FULL panel size exactly like the original AnimationViewerPanel.Render
             panel.RenderContentLayer();
 
-            // Restore full panel scissor BEFORE chrome (this is what fixed the chrome rendering)
+            // Restore full panel scissor BEFORE chrome
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 

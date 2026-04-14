@@ -17,7 +17,7 @@ namespace SiegeEngine.Core.UI
         protected readonly IControlContext _controlContext;
         protected readonly nint _window;
         protected readonly EventBus _eventBus;
-        protected UIOverlay _uiOverlay;
+        public UIOverlay _uiOverlay;
         protected int _lastW;
         protected int _lastH;
         public DockState DockState { get; set; } = DockState.Floating;

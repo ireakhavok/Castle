@@ -536,6 +536,17 @@ namespace SiegeEngine.Core.UI
             }
         }
 
+        /// <summary>
+        /// Calls the background-only rendering pass (before scissor).
+        /// </summary>
+        public virtual void RenderBackgrounds(float w, float h)
+        {
+            if (_uiRoot != null)
+            {
+                _uiRoot.RenderBackgroundOnly(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
+            }
+        }
+
         public void RecomputeLayout(float w, float h)
         {
             if (_uiRoot == null) return;
