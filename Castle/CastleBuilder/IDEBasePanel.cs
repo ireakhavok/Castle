@@ -10,6 +10,7 @@ using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
 using System.Numerics;
+using System.Linq;
 
 namespace CastleBuilder
 {
@@ -150,6 +151,31 @@ namespace CastleBuilder
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _uiOverlay.Render();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+        }
+
+        // === IDE-SPECIFIC IsMouseOver OVERRIDE (per instruction) ===
+        // This extends the base geometric test to also include open nav dropdowns.
+        // This is the only place where nav-specific logic is added.
+        public override bool IsMouseOver(Vector2 absMousePos)
+        {
+            // First check the base panel geometry (the menu bar itself)
+            if (base.IsMouseOver(absMousePos))
+                return true;
+
+            // Additional check for any open nav dropdowns
+            if (_uiOverlay != null)
+            {
+                var navLis = _uiOverlay.FindElementsByTag("li")
+                    .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
+                    .Cast<NavLiElement>();
+
+                foreach (var nav in navLis)
+                {
+                    if (nav.UpdateHover(absMousePos, Size.X, Size.Y))
+                        return true;
+                }
+            }
+            return false;
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

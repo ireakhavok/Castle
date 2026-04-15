@@ -92,6 +92,19 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
+
+        // === CENTRALIZED MOUSE-OVER LOGIC (first iterative step only) ===
+        // This is the single place where the basic geometric hit test lives.
+        // All previous duplicated rect checks are now replaced by this method.
+        // No other files or logic have been touched.
+        public virtual bool IsMouseOver(Vector2 absMousePos)
+        {
+            if (!Visible) return false;
+
+            return absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
+                   absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
+        }
+
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
@@ -173,8 +186,7 @@ namespace SiegeEngine.Core.UI
                 return;
             }
 
-            bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
-                             absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
+            bool overPanel = IsMouseOver(absMousePos);  // now uses the centralized method
 
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
 

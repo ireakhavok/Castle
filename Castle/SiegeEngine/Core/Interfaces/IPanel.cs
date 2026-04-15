@@ -58,6 +58,13 @@ namespace SiegeEngine.Core.Interfaces
         // Clean core abstraction: allows PanelManager to toggle camera mode on the true topmost panel only
         // This is the ONLY way to handle Tab globally without circular dependencies or panel-specific code
         void ToggleCameraMode();
+
+        // === CENTRALIZED MOUSE-OVER LOGIC (first iterative step only) ===
+        // All "is mouse over this panel" checks are now consolidated here.
+        // BasePanel will provide the basic geometric test.
+        // IDEBasePanel will override to also include open nav dropdowns.
+        // No other files are modified in this step.
+        bool IsMouseOver(Vector2 absMousePos);
     }
 
     // Lightweight opt-in interface for automatic per-project panel state persistence.
