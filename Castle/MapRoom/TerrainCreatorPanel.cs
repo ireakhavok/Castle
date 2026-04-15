@@ -330,7 +330,7 @@ namespace MapRoom
         public void LoadPanelState(JsonElement state)
         {
         }
-        protected override void OnContentFocusGained()
+        public override void OnContentFocusGained()
         {
             Console.WriteLine("[TerrainCreatorPanel] OnContentFocusGained → notifying OutlinerCoordinator");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);

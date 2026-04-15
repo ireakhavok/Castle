@@ -1287,7 +1287,7 @@ Folder: Core
       - void Update(float deltaTime)
         - Calls: ClosePanelEvent, GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
-        - Calls: m.IsMouseOver
+        - Calls: IDEBasePanel.IsMouseOver, bp.IsOverCloseButton, m.IsMouseOver, p.IsMouseOver
       - IEnumerable<IPanel> GetAllPanels()
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport

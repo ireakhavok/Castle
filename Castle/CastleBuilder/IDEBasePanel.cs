@@ -56,10 +56,6 @@ namespace CastleBuilder
                 }
             }
 
-            // === FINAL FIX FOR DATA-HOOK DROPDOWNS ===
-            // We close the dropdown AND force IsHover = false on the parent NavLiElement.
-            // This prevents UpdateHover from re-opening the dropdown on the next frame
-            // (the mouse is still physically over the top-level nav item after the click).
             protected override void HandleDataHook(string hook)
             {
                 CloseAllOpenNavDropdowns();
@@ -78,7 +74,7 @@ namespace CastleBuilder
                 foreach (var nav in navLis)
                 {
                     nav.CloseDropdown();
-                    nav.IsHover = false;   // critical: stops UpdateHover from re-showing the dropdown
+                    nav.IsHover = false;
 
                     var dropdownUl = nav.Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
                     if (dropdownUl != null)
@@ -88,6 +84,8 @@ namespace CastleBuilder
                 }
             }
         }
+
+        private bool _lastFrameHadOpenDropdown = false;   // used to detect newly-opened dropdowns
 
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -105,7 +103,6 @@ namespace CastleBuilder
 
         public override void Init()
         {
-            // Size set before base.Init() eliminates the single-frame full-screen flicker
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             Size = new Vector2(winW, 28f);
             Position = Vector2.Zero;
@@ -133,8 +130,54 @@ namespace CastleBuilder
 
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.RefreshUI();
+
+            // Run the normal UI update first (this processes clicks that open the dropdown)
             _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
+
+            // Now force immediate hover recalc on open dropdowns so CSS appears instantly
+            bool hasOpenDropdownNow = UpdateOpenDropdownHovers(absMousePos);
+
+            // If a dropdown just opened this frame, do a one-time RefreshUI to guarantee CSS is applied
+            if (hasOpenDropdownNow && !_lastFrameHadOpenDropdown)
+            {
+                _uiOverlay.RefreshUI();
+            }
+
+            _lastFrameHadOpenDropdown = hasOpenDropdownNow;
+        }
+
+        /// <summary>
+        /// Forces immediate hover recalc on every open dropdown subtree.
+        /// Returns true if any dropdown is currently open.
+        /// </summary>
+        private bool UpdateOpenDropdownHovers(Vector2 absMousePos)
+        {
+            if (_uiOverlay == null) return false;
+
+            bool anyOpen = false;
+
+            var navLis = _uiOverlay.FindElementsByTag("li")
+                .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
+                .Cast<NavLiElement>();
+
+            foreach (var nav in navLis)
+            {
+                var dropdownUl = nav.Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
+                if (dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
+                {
+                    anyOpen = true;
+
+                    // Force parent to be hovered so the dropdown stays active
+                    bool originalNavHover = nav.IsHover;
+                    nav.IsHover = true;
+
+                    // Force the dropdown UL itself to update hover (this propagates to all children)
+                    dropdownUl.UpdateHover(absMousePos, (int)Size.X, (int)Size.Y);
+
+                    nav.IsHover = originalNavHover;
+                }
+            }
+            return anyOpen;
         }
 
         public override void Render()
@@ -153,16 +196,11 @@ namespace CastleBuilder
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
 
-        // === IDE-SPECIFIC IsMouseOver OVERRIDE (per instruction) ===
-        // This extends the base geometric test to also include open nav dropdowns.
-        // This is the only place where nav-specific logic is added.
         public override bool IsMouseOver(Vector2 absMousePos)
         {
-            // First check the base panel geometry (the menu bar itself)
             if (base.IsMouseOver(absMousePos))
                 return true;
 
-            // Additional check for any open nav dropdowns
             if (_uiOverlay != null)
             {
                 var navLis = _uiOverlay.FindElementsByTag("li")
@@ -171,8 +209,19 @@ namespace CastleBuilder
 
                 foreach (var nav in navLis)
                 {
-                    if (nav.UpdateHover(absMousePos, Size.X, Size.Y))
-                        return true;
+                    var dropdownUl = nav.Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
+                    if (dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
+                    {
+                        bool originalHover = nav.IsHover;
+                        nav.IsHover = true;
+
+                        bool hit = nav.UpdateHover(absMousePos, (int)Size.X, (int)Size.Y);
+
+                        nav.IsHover = originalHover;
+
+                        if (hit)
+                            return true;
+                    }
                 }
             }
             return false;

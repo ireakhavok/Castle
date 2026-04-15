@@ -208,7 +208,7 @@ namespace ReadingChamber
         {
         }
 
-        protected override void OnContentFocusGained()
+        public override void OnContentFocusGained()
         {
             Console.WriteLine("[AnimationViewerPanel] OnContentFocusGained → notifying OutlinerCoordinator");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);

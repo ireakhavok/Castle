@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Managers
 {
     public class PanelManager
@@ -30,6 +31,7 @@ namespace SiegeEngine.Core.Managers
         private bool _lastGlobalTabPressed = false;
         public static PanelManager Current { get; private set; }
         public IDEDockingStrategy IDEStrategy => _ideStrategy;
+
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -48,18 +50,22 @@ namespace SiegeEngine.Core.Managers
             });
             Current = this;
         }
+
         public void SetSceneDefaultDockingMode(DockingMode mode)
         {
             _sceneDefaultMode = mode;
         }
+
         private void OnOpenPanel(OpenPanelEvent e)
         {
             AddPanel(e.Panel);
         }
+
         private void OnClosePanel(ClosePanelEvent e)
         {
             RemovePanel(e.Panel);
         }
+
         public void AddPanel(IPanel panel)
         {
             _panels.Add(panel);
@@ -86,6 +92,7 @@ namespace SiegeEngine.Core.Managers
                 _desktopStrategy.AddPanel(panel);
             }
         }
+
         private void AutoCenterModal(IPanel panel)
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
@@ -94,6 +101,7 @@ namespace SiegeEngine.Core.Managers
             panel.Position = new Vector2(Math.Max(40f, x), Math.Max(40f, y));
             panel.OnPanelResize(panel.Size.X, panel.Size.Y);
         }
+
         public void Update(float deltaTime)
         {
             _controlContext.GetCursorPos(_window, out double mx, out double my);
@@ -162,6 +170,7 @@ namespace SiegeEngine.Core.Managers
             }
             _scrollDelta = 0f;
         }
+
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
             // Modals absolute highest
@@ -171,40 +180,33 @@ namespace SiegeEngine.Core.Managers
                 if (m.Visible && m.IsMouseOver(mousePos))
                     return m;
             }
-
             // Special chrome priority for floating panels (close button + title bar)
-            // This preserves close button and title drag functionality exactly as before
             foreach (var p in _panels)
             {
                 if (p is BasePanel bp && bp.Visible && bp.HasTitleBar)
                 {
                     if (bp.IsOverCloseButton(mousePos))
                         return bp;
-                    bool overTitle = mousePos.Y >= bp.Position.Y && mousePos.Y <= bp.Position.Y + BasePanel.TitleHeight;
-                    if (overTitle && bp.AllowDragging && bp.DockState == DockState.Floating)
-                        return bp;
                 }
             }
-
             // General content + dropdown priority using virtual IsMouseOver + RenderOrder
-            // IDEBasePanel.IsMouseOver (which includes open NavLiElement dropdowns) can now win here
             var candidates = _panels
                 .Where(p => p.Visible && p.IsMouseOver(mousePos))
                 .ToList();
-
             candidates.Sort((a, b) =>
             {
                 int orderA = (a as BasePanel)?.RenderOrder ?? 0;
                 int orderB = (b as BasePanel)?.RenderOrder ?? 0;
                 return orderB.CompareTo(orderA);
             });
-
             return candidates.Count > 0 ? candidates[0] : null;
         }
+
         public IEnumerable<IPanel> GetAllPanels()
         {
             return _panels;
         }
+
         public void Render()
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
@@ -236,6 +238,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
+
         public void RemovePanel(IPanel panel)
         {
             if (_captureManager.CurrentOwner == panel)
@@ -248,10 +251,12 @@ namespace SiegeEngine.Core.Managers
             _panels.Remove(panel);
             panel.Dispose();
         }
+
         public void CapturePanel(IPanel panel)
         {
             _captureManager.RequestCapture(panel);
         }
+
         public void ReleasePanelCapture()
         {
             _captureManager.ReleaseCapture();

@@ -164,7 +164,7 @@ namespace MapRoom
         {
         }
 
-        protected override void OnContentFocusGained()
+        public override void OnContentFocusGained()
         {
             Console.WriteLine("[TwoDCreatorPanel] OnContentFocusGained → notifying OutlinerCoordinator");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);

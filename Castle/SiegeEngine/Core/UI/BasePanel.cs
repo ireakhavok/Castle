@@ -209,7 +209,7 @@ namespace SiegeEngine.Core.UI
         }
 
         // Virtual hook – content panels override to provide their hierarchy (clean, future-proof, no reflection needed yet)
-        protected virtual void OnContentFocusGained()
+        public virtual void OnContentFocusGained()
         {
             // Default no-op. Overridden by TerrainCreatorPanel, SceneEditorPanel, etc.
             Console.WriteLine($"[BasePanel] OnContentFocusGained called on {GetType().Name} (default no-op)");

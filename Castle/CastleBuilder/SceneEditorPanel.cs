@@ -182,7 +182,7 @@ namespace CastleBuilder
         {
         }
 
-        protected override void OnContentFocusGained()
+        public override void OnContentFocusGained()
         {
             Console.WriteLine("[SceneEditorPanel] OnContentFocusGained → notifying OutlinerCoordinator");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
