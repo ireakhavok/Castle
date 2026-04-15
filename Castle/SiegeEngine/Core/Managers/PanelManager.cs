@@ -103,8 +103,6 @@ namespace SiegeEngine.Core.Managers
             bool mouseReleased = _prevMouseDown && !currentMouseDown;
             _prevMouseDown = currentMouseDown;
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            // GLOBAL TAB - PRIORITIZE CURRENTLY CAPTURED PANEL (guarantees release on second Tab)
-            // If nothing is captured, fall back to topmost panel (normal behavior)
             bool tabPressed = _controlContext.GetKey(_window, Key.Tab) == InputAction.Press;
             if (tabPressed && !_lastGlobalTabPressed)
             {
@@ -166,21 +164,43 @@ namespace SiegeEngine.Core.Managers
         }
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
+            // Modals absolute highest
             for (int i = _modalPanels.Count - 1; i >= 0; i--)
             {
                 var m = _modalPanels[i];
                 if (m.Visible && m.IsMouseOver(mousePos))
                     return m;
             }
-            IPanel p = _ideStrategy.GetTopmostPanelAt(mousePos);
-            if (p != null) return p;
-            p = _dynamicStrategy.GetTopmostPanelAt(mousePos);
-            if (p != null) return p;
-            return _desktopStrategy.GetTopmostPanelAt(mousePos);
+
+            // Special chrome priority for floating panels (close button + title bar)
+            // This preserves close button and title drag functionality exactly as before
+            foreach (var p in _panels)
+            {
+                if (p is BasePanel bp && bp.Visible && bp.HasTitleBar)
+                {
+                    if (bp.IsOverCloseButton(mousePos))
+                        return bp;
+                    bool overTitle = mousePos.Y >= bp.Position.Y && mousePos.Y <= bp.Position.Y + BasePanel.TitleHeight;
+                    if (overTitle && bp.AllowDragging && bp.DockState == DockState.Floating)
+                        return bp;
+                }
+            }
+
+            // General content + dropdown priority using virtual IsMouseOver + RenderOrder
+            // IDEBasePanel.IsMouseOver (which includes open NavLiElement dropdowns) can now win here
+            var candidates = _panels
+                .Where(p => p.Visible && p.IsMouseOver(mousePos))
+                .ToList();
+
+            candidates.Sort((a, b) =>
+            {
+                int orderA = (a as BasePanel)?.RenderOrder ?? 0;
+                int orderB = (b as BasePanel)?.RenderOrder ?? 0;
+                return orderB.CompareTo(orderA);
+            });
+
+            return candidates.Count > 0 ? candidates[0] : null;
         }
-        // Clean, future-proof public accessor for BlueprintManager (and future mod panels).
-        // Returns all active panels (including modal and IDE panels) without exposing the private list.
-        // Required for IDataAwarePanel orchestration while keeping PanelManager unaware of project concepts.
         public IEnumerable<IPanel> GetAllPanels()
         {
             return _panels;

@@ -91,8 +91,9 @@ Folder: Core
         - Calls: UIOverlay
       - void Init()
         - Calls: LayeredUIRenderer, PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
+      - bool IsMouseOver(Vector2 absMousePos)
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
-        - Calls: GetTopmostPanelAt, OnContentFocusGained, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
+        - Calls: GetTopmostPanelAt, IsMouseOver, OnContentFocusGained, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
       - void OnContentFocusGained()
       - void ToggleCameraMode()
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
@@ -1286,6 +1287,7 @@ Folder: Core
       - void Update(float deltaTime)
         - Calls: ClosePanelEvent, GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
+        - Calls: m.IsMouseOver
       - IEnumerable<IPanel> GetAllPanels()
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
