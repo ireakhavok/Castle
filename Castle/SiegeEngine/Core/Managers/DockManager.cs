@@ -211,7 +211,6 @@ namespace SiegeEngine.Core.Managers
             Rect = new Vector4(x, y, w, h);
             foreach (var panel in Panels)
             {
-                // Only update and call OnPanelResize if something actually changed
                 bool sizeChanged = Math.Abs(panel.Size.X - w) > 0.01f || Math.Abs(panel.Size.Y - h) > 0.01f;
                 bool positionChanged = Math.Abs(panel.Position.X - x) > 0.01f || Math.Abs(panel.Position.Y - y) > 0.01f;
 
@@ -219,7 +218,7 @@ namespace SiegeEngine.Core.Managers
                 {
                     panel.Position = new Vector2(x, y);
                     panel.Size = new Vector2(w, h);
-                    panel.OnPanelResize(w, h);   // now only when needed
+                    panel.OnPanelResize(w, h);
                 }
             }
         }
@@ -256,11 +255,25 @@ namespace SiegeEngine.Core.Managers
 
         public override bool Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus)
         {
-            if (ActiveIndex >= 0 && ActiveIndex < Panels.Count)
+            if (ActiveIndex < 0 || ActiveIndex >= Panels.Count) return false;
+
+            var activePanel = Panels[ActiveIndex];
+
+            // === CRITICAL FIX FOR DOUBLE-UPDATE ===
+            // If this panel is already the global topmost panel (from PanelManager's topmost path),
+            // we skip the duplicate call here. This eliminates the double Update on every tabbed/docked panel
+            // (AnimationViewerPanel, TerrainCreatorPanel, SceneEditorPanel, etc.) while preserving
+            // scroll, focus, and input handling.
+            bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(mousePos) == activePanel;
+            if (isTopmost)
             {
-                var activePanel = Panels[ActiveIndex];
-                activePanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                // Already handled by the authoritative topmost path in PanelManager
+                return false;
             }
+
+            // Normal tabbed-panel update path
+            activePanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+
             if (HitTest(mousePos, out IPanel hit, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex))
             {
                 if (isTab && mousePressed && tabIndex != ActiveIndex && tabIndex >= 0 && tabIndex < Panels.Count)
