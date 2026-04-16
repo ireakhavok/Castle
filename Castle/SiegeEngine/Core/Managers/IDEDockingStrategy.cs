@@ -42,6 +42,7 @@ namespace SiegeEngine.Core.Managers
         private bool _needsLayout = true;
         private int _lastWinW;
         private int _lastWinH;
+        // window-edge docking (left / right / bottom of whole window, 20% size)
         private DockState _hoverEdge = DockState.Floating;
         private Vector2 _edgePreviewPos;
         private Vector2 _edgePreviewSize;
@@ -144,12 +145,21 @@ namespace SiegeEngine.Core.Managers
             return false;
         }
 
-        // === REQUIRED BY IDockingStrategy INTERFACE ===
-        // Now delegates directly to the global router (which already sorts by RenderOrder + addition order)
-        // This guarantees hit-testing order = render order ("last drawn = top") for all floating panels.
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
-            return PanelManager.Current?.GetTopmostPanelAt(mousePos);
+            for (int i = _floatingPanels.Count - 1; i >= 0; i--)
+            {
+                var panel = _floatingPanels[i];
+                if (!panel.Visible) continue;
+                bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
+                                 mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
+                if (overPanel) return panel;
+            }
+            if (_root != null && _root.HitTest(mousePos, out IPanel dockedHit, out _, out _, out _, out _))
+            {
+                if (dockedHit != null) return dockedHit;
+            }
+            return null;
         }
 
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
@@ -157,9 +167,17 @@ namespace SiegeEngine.Core.Managers
             if (_floatingPanels.Count == 0 && !HasActiveContent())
                 return;
 
+            // =====================================================================
+            // CRITICAL: RESPECT GLOBAL TOPMOST PANEL (RenderOrder)
+            // If a higher-priority panel (IDE menu bar with RenderOrder = 1000, or any overlay) 
+            // is topmost, this strategy has NO RIGHT to handle input, drag, resize, or hit-testing.
+            // This stops the aggressive floating-panel / title-bar / tear-out logic from stealing clicks.
+            // =====================================================================
             IPanel topmost = PanelManager.Current?.GetTopmostPanelAt(mousePos);
             if (topmost is BasePanel topmostBasePanel && topmostBasePanel.RenderOrder > 0)
             {
+                // High-priority panel owns the mouse — do NOTHING
+                // (menu bar, modals, future overlays all protected automatically)
                 return;
             }
 
@@ -176,13 +194,15 @@ namespace SiegeEngine.Core.Managers
                 if (_root == null) _root = new DockTabbedNode();
             }
 
+            // Ensure Rects are always up-to-date for accurate HitTest / workspace detection during drag
             if (_root != null && !_splitterDraggingThisFrame)
             {
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
             }
             _splitterDraggingThisFrame = false;
 
-            bool mouseOverFloatingPanel = topmost != null && _floatingPanels.Contains(topmost);
+            IPanel top = PanelManager.Current?.GetTopmostPanelAt(mousePos);
+            bool mouseOverFloatingPanel = top != null && _floatingPanels.Contains(top);
 
             if (!mouseOverFloatingPanel && _root != null)
             {
@@ -220,21 +240,26 @@ namespace SiegeEngine.Core.Managers
                 }
             }
 
+            IPanel hoveredPanel = null;
             for (int i = _floatingPanels.Count - 1; i >= 0; i--)
             {
                 var panel = _floatingPanels[i];
                 if (!panel.Visible) continue;
-
-                if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == panel)
+                bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
+                                 mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
+                if (overPanel)
                 {
-                    panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                    if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == panel)
+                    {
+                        hoveredPanel = panel;
+                        panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+                    }
+                    if (HandleSinglePanel(panel, mousePos, mousePressed, winW, winH))
+                        break;
                 }
-
-                if (HandleSinglePanel(panel, mousePos, mousePressed, winW, winH))
-                    break;
             }
 
-            if (mousePressed && _draggingPanel == null && !_splitterDraggingThisFrame)
+            if (mousePressed && _draggingPanel == null && hoveredPanel == null && !_splitterDraggingThisFrame)
             {
                 if (_root != null && _root.HitTest(mousePos, out IPanel hit2, out bool isTitle2, out bool isSplitter2, out _, out _))
                 {
@@ -774,6 +799,9 @@ namespace SiegeEngine.Core.Managers
                 _root.ComputeLayout(0, MenuBarHeight, winW, winH - MenuBarHeight);
         }
 
+        // =====================================================================
+        // Serialization / deserialization (unchanged)
+        // =====================================================================
         private class SerializableLayoutState
         {
             public SerializableDockNode Root { get; set; }
