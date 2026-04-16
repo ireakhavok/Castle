@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+﻿// Folder: SiegeEngine/Core/UI
 // File: PanelChrome.cs
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
@@ -20,19 +20,14 @@ namespace SiegeEngine.Core.UI
 
         public bool HandleUpdate(Vector2 absMousePos, bool mousePressed, bool mouseReleased)
         {
-            // === ONLY THE TRUE TOPMOST PANEL CAN EVER PROCESS CLOSE BUTTON OR TITLE DRAG ===
-            // This stops the bleed when close buttons line up on overlapping panels.
-            // No changes anywhere else — BasePanel, strategies, or PanelManager untouched.
             if (PanelManager.Current?.GetTopmostPanelAt(absMousePos) != _owner)
-            {
                 return false;
-            }
 
             float closeX = _owner.Position.X + _owner.Size.X - 24f;
             bool overClose = absMousePos.X >= closeX && absMousePos.X <= _owner.Position.X + _owner.Size.X &&
                              absMousePos.Y >= _owner.Position.Y && absMousePos.Y <= _owner.Position.Y + _titleHeight;
 
-            if (mousePressed && overClose && _owner.IsClosable)
+            if (mouseReleased && overClose && _owner.IsClosable)
             {
                 _owner.Close();
                 return true;
@@ -49,19 +44,16 @@ namespace SiegeEngine.Core.UI
 
         public void Render(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight)
         {
-            // Title bar background – full width exactly as you wanted
             quadRenderer.DrawQuad(0, 0, panelWidth, _titleHeight, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), panelWidth, panelHeight);
 
             if (_owner.IsClosable)
             {
-                // Close button background
                 float btnX = panelWidth - 26f;
                 float btnY = 3f;
                 float btnW = 20f;
                 float btnH = _titleHeight - 6f;
                 quadRenderer.DrawQuad(btnX, btnY, btnW, btnH, new Vector4(0.2f, 0.2f, 0.2f, 1.0f), panelWidth, panelHeight);
 
-                // X matches the panel border color (same gray as bc)
                 float closeX = panelWidth - 24f;
                 float closeY = (_titleHeight - 14f) * 0.5f;
                 float len = 14f;

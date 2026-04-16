@@ -56,6 +56,9 @@ namespace SiegeEngine.Core.UI
         public bool IsClosable { get; set; } = false;
         public int RenderOrder { get; set; } = 0;
 
+        // Quick-consume flag used by PanelManager to stop mouseReleased from reaching lower panels
+        public static bool MouseReleasedConsumedThisFrame { get; set; } = false;
+
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -73,15 +76,7 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.Init();
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _layeredRenderer = new LayeredUIRenderer(_renderContext, _controlContext, _quadRenderer);
-            //if (DockState == DockState.Floating && BaseWidth > 100 && BaseHeight > 100)
-            //{
             Size = new Vector2(BaseWidth, BaseHeight);
-            //}
-            //else
-            //{
-            //    _controlContext.GetWindowSize(_window, out int w, out int h);
-            //    Size = new Vector2(w, h);
-            //}
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             if (HasTitleBar)
@@ -93,14 +88,9 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.RefreshUI();
         }
 
-        // === CENTRALIZED MOUSE-OVER LOGIC (first iterative step only) ===
-        // This is the single place where the basic geometric hit test lives.
-        // All previous duplicated rect checks are now replaced by this method.
-        // No other files or logic have been touched.
         public virtual bool IsMouseOver(Vector2 absMousePos)
         {
             if (!Visible) return false;
-
             return absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                    absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
         }
@@ -112,7 +102,10 @@ namespace SiegeEngine.Core.UI
             if (HasTitleBar && chrome != null)
             {
                 if (chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
+                {
+                    MouseReleasedConsumedThisFrame = true;   // <--- QUICK CONSUME FLAG
                     return;
+                }
             }
 
             if (_isDragging)
@@ -186,19 +179,16 @@ namespace SiegeEngine.Core.UI
                 return;
             }
 
-            bool overPanel = IsMouseOver(absMousePos);  // now uses the centralized method
-
+            bool overPanel = IsMouseOver(absMousePos);
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
 
-            // CRITICAL FOCUS REQUIREMENT (fixed): Fire on EVERY mouse press while this panel is topmost AND mouse is over the panel.
-            // This works reliably even when derived panels filter mousePressed for camera mode.
             if (isTopmost && overPanel && mousePressed)
             {
                 Console.WriteLine($"[BasePanel] FOCUS DETECTED → {GetType().Name} (topmost + mousePressed in content area)");
                 OnContentFocusGained();
             }
 
-            if ((overPanel || WantsContinuousUpdate) && isTopmost)
+            if (isTopmost)
             {
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
@@ -208,10 +198,8 @@ namespace SiegeEngine.Core.UI
             }
         }
 
-        // Virtual hook – content panels override to provide their hierarchy (clean, future-proof, no reflection needed yet)
         public virtual void OnContentFocusGained()
         {
-            // Default no-op. Overridden by TerrainCreatorPanel, SceneEditorPanel, etc.
             Console.WriteLine($"[BasePanel] OnContentFocusGained called on {GetType().Name} (default no-op)");
         }
 

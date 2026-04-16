@@ -30,7 +30,7 @@ namespace SiegeEngine.Core.Managers
         private DockingMode _sceneDefaultMode = DockingMode.Desktop;
         private bool _lastGlobalTabPressed = false;
 
-        private readonly PanelInputRouter _router;   // central ownership only
+        private readonly PanelInputRouter _router;
 
         public static PanelManager Current { get; private set; }
         public IDEDockingStrategy IDEStrategy => _ideStrategy;
@@ -118,7 +118,9 @@ namespace SiegeEngine.Core.Managers
             bool mousePressed = !_prevMouseDown && currentMouseDown;
             bool mouseReleased = _prevMouseDown && !currentMouseDown;
             _prevMouseDown = currentMouseDown;
+
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
+
             bool tabPressed = _controlContext.GetKey(_window, Key.Tab) == InputAction.Press;
             if (tabPressed && !_lastGlobalTabPressed)
             {
@@ -130,54 +132,38 @@ namespace SiegeEngine.Core.Managers
             {
                 _lastGlobalTabPressed = false;
             }
+
             _captureManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
+
             if (!_captureManager.IsCapturing)
             {
-                bool modalHandled = false;
-                for (int i = _modalPanels.Count - 1; i >= 0; i--)
+                IPanel topmost = GetTopmostPanelAt(mousePos);
+                if (topmost != null)
                 {
-                    var panel = _modalPanels[i];
-                    if (panel.Visible)
+                    topmost.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
+
+                    // === QUICK CONSUME FIX ===
+                    // If BasePanel just handled a close (or any other action) on mouseReleased,
+                    // we null the mouseReleased flag so no lower overlapping panel can ever see it.
+                    if (BasePanel.MouseReleasedConsumedThisFrame && mouseReleased)
                     {
-                        panel.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
-                        modalHandled = true;
-                        break;
+                        mouseReleased = false;
+                        BasePanel.MouseReleasedConsumedThisFrame = false;
                     }
                 }
-                if (modalHandled && mouseReleased)
-                {
-                    bool clickedOnModal = false;
-                    for (int i = _modalPanels.Count - 1; i >= 0; i--)
-                    {
-                        var m = _modalPanels[i];
-                        if (m.Visible)
-                        {
-                            bool over = mousePos.X >= m.Position.X && mousePos.X <= m.Position.X + m.Size.X &&
-                                        mousePos.Y >= m.Position.Y && mousePos.Y <= m.Position.Y + m.Size.Y;
-                            if (over)
-                            {
-                                clickedOnModal = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!clickedOnModal && _modalPanels.Count > 0)
-                    {
-                        _eventBus.Publish(new ClosePanelEvent(_modalPanels.Last()));
-                    }
-                }
-                if (!modalHandled)
-                {
-                    if (_desktopStrategy.HasActiveContent())
-                        _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                    if (_dynamicStrategy.HasActiveContent())
-                        _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                    if (_ideStrategy.HasActiveContent())
-                        _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                }
+
+                // Non-modal panels go through strategies — but mouseReleased is now safely nulled if a close happened
+                if (_desktopStrategy.HasActiveContent())
+                    _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_dynamicStrategy.HasActiveContent())
+                    _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_ideStrategy.HasActiveContent())
+                    _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
             }
+
             _router.ClearForcedOverdraw();
             _scrollDelta = 0f;
+            BasePanel.MouseReleasedConsumedThisFrame = false;   // reset for next frame
         }
 
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
