@@ -5,6 +5,7 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Managers
@@ -28,7 +29,7 @@ namespace SiegeEngine.Core.Managers
 
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
-            // Modals first
+            // Modals first (unchanged)
             for (int i = _allPanels.Count - 1; i >= 0; i--)
             {
                 var p = _allPanels[i];
@@ -36,20 +37,27 @@ namespace SiegeEngine.Core.Managers
                     return p;
             }
 
-            // Forced overdraw (dropdowns, popups)
+            // Forced overdraw (dropdowns, popups, etc.) (unchanged)
             foreach (var p in _forcedOverdrawThisFrame)
             {
                 if (p.Visible && p.IsMouseOver(mousePos))
                     return p;
             }
 
-            // Normal panels
-            for (int i = _allPanels.Count - 1; i >= 0; i--)
+            // NORMAL PANELS: respect RenderOrder descending (higher number = higher priority)
+            // This is the exact fix needed so IDEBasePanel (RenderOrder = 1000) is checked
+            // BEFORE any content panels when the mouse is over the menu bar or dropdown.
+            var sortedPanels = _allPanels
+                .Where(p => p.Visible && !(p is BasePanel bp && bp.IsModal))
+                .OrderByDescending(p => (p as BasePanel)?.RenderOrder ?? 0)
+                .ToList();
+
+            foreach (var p in sortedPanels)
             {
-                var p = _allPanels[i];
-                if (p.Visible && p.IsMouseOver(mousePos))
+                if (p.IsMouseOver(mousePos))
                     return p;
             }
+
             return null;
         }
 

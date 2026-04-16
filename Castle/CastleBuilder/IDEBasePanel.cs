@@ -61,7 +61,6 @@ namespace CastleBuilder
             {
                 CloseAllOpenNavDropdowns();
                 RefreshUI();
-
                 base.HandleDataHook(hook);
             }
 
@@ -95,6 +94,10 @@ namespace CastleBuilder
             DockState = DockState.Tabbed;
             IsModal = false;
             RenderOrder = 1000;
+
+            // Prevent BasePanel from forcing full-screen size on the menu bar
+            BaseWidth = 0f;
+            BaseHeight = 0f;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -105,10 +108,12 @@ namespace CastleBuilder
         public override void Init()
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            Size = new Vector2(winW, 28f);
             Position = Vector2.Zero;
 
-            base.Init();
+            base.Init();   // let BasePanel do normal init first
+
+            // FORCE exact menu-bar size AFTER base.Init() so it sticks
+            Size = new Vector2(winW, 28f);
 
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))
@@ -125,7 +130,12 @@ namespace CastleBuilder
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            if (!Visible) return;
+            // Let BasePanel handle dragging, resizing, topmost checks, focus, etc.
+            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+
+            // Only do menu-bar specific work if this panel is truly topmost
+            if (PanelManager.Current?.GetTopmostPanelAt(absMousePos) != this)
+                return;
 
             Vector2 relMousePos = absMousePos - Position;
 
@@ -190,7 +200,9 @@ namespace CastleBuilder
 
         public override bool IsMouseOver(Vector2 absMousePos)
         {
-            if (base.IsMouseOver(absMousePos))
+            // Strict menu-bar rect only (top 28px) + dropdowns
+            if (absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
+                absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + 28f)
                 return true;
 
             if (_uiOverlay != null)
@@ -201,19 +213,16 @@ namespace CastleBuilder
 
                 foreach (var nav in navLis)
                 {
-                    if (nav.IsDropdownOpen)   // ← now reliably true during input
+                    if (nav.IsDropdownOpen)
                     {
                         PanelManager.Current?.ForceDrawOverThisFrame(this);
 
                         bool originalHover = nav.IsHover;
                         nav.IsHover = true;
-
                         bool hit = nav.UpdateHover(absMousePos, (int)Size.X, (int)Size.Y);
-
                         nav.IsHover = originalHover;
 
-                        if (hit)
-                            return true;
+                        if (hit) return true;
                     }
                 }
             }

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+﻿// Folder: SiegeEngine/Core/UI
 // File: UIOverlay.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -536,9 +536,6 @@ namespace SiegeEngine.Core.UI
             }
         }
 
-        /// <summary>
-        /// Calls the background-only rendering pass (before scissor).
-        /// </summary>
         public virtual void RenderBackgrounds(float w, float h)
         {
             if (_uiRoot != null)
@@ -644,5 +641,10 @@ namespace SiegeEngine.Core.UI
             }
             return false;
         }
+
+        /// <summary>
+        /// Public accessor for TextRenderer so IDEBasePanel can pre-compute dropdown layouts during Update().
+        /// </summary>
+        public TextRenderer TextRenderer => _textRenderer;
     }
 }

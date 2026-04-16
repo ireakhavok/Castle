@@ -73,15 +73,15 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.Init();
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _layeredRenderer = new LayeredUIRenderer(_renderContext, _controlContext, _quadRenderer);
-            if (DockState == DockState.Floating && BaseWidth > 100 && BaseHeight > 100)
-            {
-                Size = new Vector2(BaseWidth, BaseHeight);
-            }
-            else
-            {
-                _controlContext.GetWindowSize(_window, out int w, out int h);
-                Size = new Vector2(w, h);
-            }
+            //if (DockState == DockState.Floating && BaseWidth > 100 && BaseHeight > 100)
+            //{
+            Size = new Vector2(BaseWidth, BaseHeight);
+            //}
+            //else
+            //{
+            //    _controlContext.GetWindowSize(_window, out int w, out int h);
+            //    Size = new Vector2(w, h);
+            //}
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             if (HasTitleBar)
