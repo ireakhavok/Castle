@@ -29,7 +29,7 @@ namespace SiegeEngine.Core.Managers
 
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
-            // Modals first (unchanged - always absolute top)
+            // Modals first (unchanged)
             for (int i = _allPanels.Count - 1; i >= 0; i--)
             {
                 var p = _allPanels[i];
@@ -37,21 +37,19 @@ namespace SiegeEngine.Core.Managers
                     return p;
             }
 
-            // Forced overdraw (dropdowns, popups, etc.) (unchanged)
+            // Forced overdraw (dropdowns, popups, etc.) - these must always be checked
             foreach (var p in _forcedOverdrawThisFrame)
             {
                 if (p.Visible && p.IsMouseOver(mousePos))
                     return p;
             }
 
-            // NORMAL PANELS: respect RenderOrder descending FIRST
-            // When RenderOrder is EQUAL (most floating IDE panels are 0), fall back to
-            // addition order (later added panel = higher priority = checked first).
-            // This makes hit-testing EXACTLY match rendering order ("last drawn = top").
+            // NORMAL PANELS: RenderOrder descending + addition-order tie-breaker
+            // When RenderOrder is the same (most panels are 0), the panel added last wins (last drawn = top)
             var sortedPanels = _allPanels
                 .Where(p => p.Visible && !(p is BasePanel bp && bp.IsModal))
                 .OrderByDescending(p => (p as BasePanel)?.RenderOrder ?? 0)
-                .ThenByDescending(p => _allPanels.IndexOf(p))   // later in list = drawn last = wins input
+                .ThenByDescending(p => _allPanels.IndexOf(p))
                 .ToList();
 
             foreach (var p in sortedPanels)

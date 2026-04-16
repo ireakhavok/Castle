@@ -56,7 +56,6 @@ namespace SiegeEngine.Core.UI
         public bool IsClosable { get; set; } = false;
         public int RenderOrder { get; set; } = 0;
 
-        // Quick-consume flag used by PanelManager to stop mouseReleased from reaching lower panels
         public static bool MouseReleasedConsumedThisFrame { get; set; } = false;
 
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -103,7 +102,7 @@ namespace SiegeEngine.Core.UI
             {
                 if (chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
                 {
-                    MouseReleasedConsumedThisFrame = true;   // <--- QUICK CONSUME FLAG
+                    MouseReleasedConsumedThisFrame = true;
                     return;
                 }
             }
@@ -184,10 +183,11 @@ namespace SiegeEngine.Core.UI
 
             if (isTopmost && overPanel && mousePressed)
             {
-                Console.WriteLine($"[BasePanel] FOCUS DETECTED → {GetType().Name} (topmost + mousePressed in content area)");
                 OnContentFocusGained();
             }
 
+            // UIOverlay always receives input when this panel is topmost
+            // (select dropdowns, options, etc. are handled inside _uiOverlay.Update)
             if (isTopmost)
             {
                 Vector2 relMousePos = absMousePos - Position;
