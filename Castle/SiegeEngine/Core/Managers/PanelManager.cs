@@ -29,7 +29,6 @@ namespace SiegeEngine.Core.Managers
         private IDEDockingStrategy _ideStrategy;
         private DockingMode _sceneDefaultMode = DockingMode.Desktop;
         private bool _lastGlobalTabPressed = false;
-
         private readonly PanelInputRouter _router;
 
         public static PanelManager Current { get; private set; }
@@ -138,13 +137,12 @@ namespace SiegeEngine.Core.Managers
             if (!_captureManager.IsCapturing)
             {
                 IPanel topmost = GetTopmostPanelAt(mousePos);
+
+                // === AUTHORITATIVE TOPMOST UPDATE (full mouse events + focus) ===
                 if (topmost != null)
                 {
                     topmost.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
 
-                    // === QUICK CONSUME FIX ===
-                    // If BasePanel just handled a close (or any other action) on mouseReleased,
-                    // we null the mouseReleased flag so no lower overlapping panel can ever see it.
                     if (BasePanel.MouseReleasedConsumedThisFrame && mouseReleased)
                     {
                         mouseReleased = false;
@@ -152,7 +150,26 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
 
-                // Non-modal panels go through strategies — but mouseReleased is now safely nulled if a close happened
+                // === CONTINUOUS UPDATE PASS ===
+                // Panels that want continuous updates (AnimationViewerPanel, etc.) must run every frame.
+                // - If they are topmost → they already got the full call above (skip to avoid double)
+                // - If they are NOT topmost → call with mouse events zeroed so they never steal clicks
+                foreach (var panel in _panels)
+                {
+                    if (panel is BasePanel bp && bp.WantsContinuousUpdate)
+                    {
+                        bool isTopmost = (topmost == panel);
+                        if (isTopmost) continue;   // <--- SKIP - already updated in topmost path
+
+                        bool passMouseDown = false;
+                        bool passMousePressed = false;
+                        bool passMouseReleased = false;
+
+                        panel.Update(deltaTime, mousePos, passMouseDown, passMousePressed, passMouseReleased, _scrollDelta);
+                    }
+                }
+
+                // Strategy updates (layout, dragging, splitter, etc.)
                 if (_desktopStrategy.HasActiveContent())
                     _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
                 if (_dynamicStrategy.HasActiveContent())
@@ -163,7 +180,7 @@ namespace SiegeEngine.Core.Managers
 
             _router.ClearForcedOverdraw();
             _scrollDelta = 0f;
-            BasePanel.MouseReleasedConsumedThisFrame = false;   // reset for next frame
+            BasePanel.MouseReleasedConsumedThisFrame = false;
         }
 
         public IPanel GetTopmostPanelAt(Vector2 mousePos)

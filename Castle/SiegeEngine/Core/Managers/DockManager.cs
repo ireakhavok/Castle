@@ -257,23 +257,13 @@ namespace SiegeEngine.Core.Managers
         {
             if (ActiveIndex < 0 || ActiveIndex >= Panels.Count) return false;
 
-            var activePanel = Panels[ActiveIndex];
+            // === NO MORE UPDATE CALL HERE ===
+            // PanelManager is now the single authoritative source of Update for every panel.
+            // This eliminates the double-update that was happening on every tabbed/docked IDE panel
+            // (AnimationViewerPanel, TerrainCreatorPanel, SceneEditorPanel, etc.).
+            // Continuous-update panels are handled centrally in PanelManager below.
 
-            // === CRITICAL FIX FOR DOUBLE-UPDATE ===
-            // If this panel is already the global topmost panel (from PanelManager's topmost path),
-            // we skip the duplicate call here. This eliminates the double Update on every tabbed/docked panel
-            // (AnimationViewerPanel, TerrainCreatorPanel, SceneEditorPanel, etc.) while preserving
-            // scroll, focus, and input handling.
-            bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(mousePos) == activePanel;
-            if (isTopmost)
-            {
-                // Already handled by the authoritative topmost path in PanelManager
-                return false;
-            }
-
-            // Normal tabbed-panel update path
-            activePanel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-
+            // Tab switching logic stays untouched
             if (HitTest(mousePos, out IPanel hit, out bool isTitle, out bool isSplitter, out bool isTab, out int tabIndex))
             {
                 if (isTab && mousePressed && tabIndex != ActiveIndex && tabIndex >= 0 && tabIndex < Panels.Count)
