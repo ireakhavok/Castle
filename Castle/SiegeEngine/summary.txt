@@ -1128,6 +1128,7 @@ Folder: Core
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - bool _isPinnedOpen
+      - bool IsDropdownOpen
     - Methods:
       - constructor NavLiElement()
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
@@ -1253,6 +1254,20 @@ Folder: Core
       - void Render( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
         - Calls: quadRenderer.DrawLine, quadRenderer.DrawQuad
       - void Dispose()
+- File: PanelInputRouter.cs
+  - Class: PanelInputRouter (Namespace: SiegeEngine.Core.Managers)
+    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - List<IPanel> _allPanels
+      - HashSet<IPanel> _forcedOverdrawThisFrame
+    - Methods:
+      - void AddPanel(IPanel panel)
+      - void RemovePanel(IPanel panel)
+      - IPanel GetTopmostPanelAt(Vector2 mousePos)
+        - Calls: bp.IsMouseOver, p.IsMouseOver
+      - void ForceDrawOverThisFrame(IPanel panel)
+      - void ClearForcedOverdraw()
+        - Calls: _forcedOverdrawThisFrame.Clear
 - File: PanelManager.cs
   - Class: PanelManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics
@@ -1271,6 +1286,7 @@ Folder: Core
       - IDEDockingStrategy _ideStrategy
       - DockingMode _sceneDefaultMode
       - bool _lastGlobalTabPressed
+      - PanelInputRouter _router
       - IDEDockingStrategy IDEStrategy
     - Methods:
       - constructor PanelManager( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
@@ -1285,9 +1301,9 @@ Folder: Core
       - void AutoCenterModal(IPanel panel)
         - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
       - void Update(float deltaTime)
-        - Calls: ClosePanelEvent, GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent
+        - Calls: ClosePanelEvent, GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _router.ClearForcedOverdraw
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
-        - Calls: IDEBasePanel.IsMouseOver, bp.IsOverCloseButton, m.IsMouseOver, p.IsMouseOver
+      - void ForceDrawOverThisFrame(IPanel panel)
       - IEnumerable<IPanel> GetAllPanels()
       - void Render()
         - Calls: _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport
@@ -2565,6 +2581,7 @@ SiegeEngine.Core.Managers.IDockingStrategy
 SiegeEngine.Core.Managers.LevelManager
 SiegeEngine.Core.Managers.LobbyManager
 SiegeEngine.Core.Managers.ModManager
+SiegeEngine.Core.Managers.PanelInputRouter
 SiegeEngine.Core.Managers.PanelManager
 SiegeEngine.Core.Managers.SceneManager
 SiegeEngine.Core.Managers.SerializableFloatingPanel

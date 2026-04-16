@@ -29,6 +29,9 @@ namespace SiegeEngine.Core.Managers
         private IDEDockingStrategy _ideStrategy;
         private DockingMode _sceneDefaultMode = DockingMode.Desktop;
         private bool _lastGlobalTabPressed = false;
+
+        private readonly PanelInputRouter _router;   // central ownership only
+
         public static PanelManager Current { get; private set; }
         public IDEDockingStrategy IDEStrategy => _ideStrategy;
 
@@ -39,9 +42,13 @@ namespace SiegeEngine.Core.Managers
             _window = window;
             _eventBus = eventBus;
             _captureManager = new CaptureManager(controlContext);
+
+            _router = new PanelInputRouter();
+
             _desktopStrategy = new DesktopDockingStrategy(renderContext, controlContext, eventBus);
             _dynamicStrategy = new DynamicDockingStrategy(renderContext, controlContext, eventBus);
             _ideStrategy = new IDEDockingStrategy(renderContext, controlContext, window, eventBus);
+
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
             _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
             _controlContext.SetScrollCallback(_window, (nint w, double xoffset, double yoffset) =>
@@ -69,6 +76,7 @@ namespace SiegeEngine.Core.Managers
         public void AddPanel(IPanel panel)
         {
             _panels.Add(panel);
+            _router.AddPanel(panel);
             panel.Init();
             if (panel is BasePanel bp && bp.IsModal)
             {
@@ -168,38 +176,18 @@ namespace SiegeEngine.Core.Managers
                         _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
                 }
             }
+            _router.ClearForcedOverdraw();
             _scrollDelta = 0f;
         }
 
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
-            // Modals absolute highest
-            for (int i = _modalPanels.Count - 1; i >= 0; i--)
-            {
-                var m = _modalPanels[i];
-                if (m.Visible && m.IsMouseOver(mousePos))
-                    return m;
-            }
-            // Special chrome priority for floating panels (close button + title bar)
-            foreach (var p in _panels)
-            {
-                if (p is BasePanel bp && bp.Visible && bp.HasTitleBar)
-                {
-                    if (bp.IsOverCloseButton(mousePos))
-                        return bp;
-                }
-            }
-            // General content + dropdown priority using virtual IsMouseOver + RenderOrder
-            var candidates = _panels
-                .Where(p => p.Visible && p.IsMouseOver(mousePos))
-                .ToList();
-            candidates.Sort((a, b) =>
-            {
-                int orderA = (a as BasePanel)?.RenderOrder ?? 0;
-                int orderB = (b as BasePanel)?.RenderOrder ?? 0;
-                return orderB.CompareTo(orderA);
-            });
-            return candidates.Count > 0 ? candidates[0] : null;
+            return _router.GetTopmostPanelAt(mousePos);
+        }
+
+        public void ForceDrawOverThisFrame(IPanel panel)
+        {
+            _router.ForceDrawOverThisFrame(panel);
         }
 
         public IEnumerable<IPanel> GetAllPanels()
@@ -243,6 +231,7 @@ namespace SiegeEngine.Core.Managers
         {
             if (_captureManager.CurrentOwner == panel)
                 _captureManager.ReleaseCapture();
+            _router.RemovePanel(panel);
             panel.Detach();
             _modalPanels.Remove(panel);
             _desktopStrategy.RemovePanel(panel);

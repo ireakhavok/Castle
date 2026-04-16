@@ -4,13 +4,14 @@ using CastleBuilder.Events;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
-using System.Numerics;
 using System.Linq;
+using System.Numerics;
 
 namespace CastleBuilder
 {
@@ -85,7 +86,7 @@ namespace CastleBuilder
             }
         }
 
-        private bool _lastFrameHadOpenDropdown = false;   // used to detect newly-opened dropdowns
+        private bool _lastFrameHadOpenDropdown = false;
 
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -131,13 +132,10 @@ namespace CastleBuilder
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
 
-            // Run the normal UI update first (this processes clicks that open the dropdown)
             _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
 
-            // Now force immediate hover recalc on open dropdowns so CSS appears instantly
             bool hasOpenDropdownNow = UpdateOpenDropdownHovers(absMousePos);
 
-            // If a dropdown just opened this frame, do a one-time RefreshUI to guarantee CSS is applied
             if (hasOpenDropdownNow && !_lastFrameHadOpenDropdown)
             {
                 _uiOverlay.RefreshUI();
@@ -146,10 +144,6 @@ namespace CastleBuilder
             _lastFrameHadOpenDropdown = hasOpenDropdownNow;
         }
 
-        /// <summary>
-        /// Forces immediate hover recalc on every open dropdown subtree.
-        /// Returns true if any dropdown is currently open.
-        /// </summary>
         private bool UpdateOpenDropdownHovers(Vector2 absMousePos)
         {
             if (_uiOverlay == null) return false;
@@ -167,11 +161,9 @@ namespace CastleBuilder
                 {
                     anyOpen = true;
 
-                    // Force parent to be hovered so the dropdown stays active
                     bool originalNavHover = nav.IsHover;
                     nav.IsHover = true;
 
-                    // Force the dropdown UL itself to update hover (this propagates to all children)
                     dropdownUl.UpdateHover(absMousePos, (int)Size.X, (int)Size.Y);
 
                     nav.IsHover = originalNavHover;
@@ -209,9 +201,10 @@ namespace CastleBuilder
 
                 foreach (var nav in navLis)
                 {
-                    var dropdownUl = nav.Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
-                    if (dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
+                    if (nav.IsDropdownOpen)   // ← now reliably true during input
                     {
+                        PanelManager.Current?.ForceDrawOverThisFrame(this);
+
                         bool originalHover = nav.IsHover;
                         nav.IsHover = true;
 

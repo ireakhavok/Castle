@@ -11,12 +11,15 @@ namespace SiegeEngine.Core.UI.Elements
 {
     public class NavLiElement : HtmlElement
     {
-        private bool _isPinnedOpen = false;   // click-to-keep-open state (stays until click elsewhere)
+        private bool _isPinnedOpen = false;
 
         public NavLiElement()
         {
             Tag = "li";
         }
+
+        // RELIABLE open state — purely logical, updated during Update phase
+        public bool IsDropdownOpen => IsNavDropdownParent() && (_isPinnedOpen || IsHover);
 
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
@@ -53,7 +56,6 @@ namespace SiegeEngine.Core.UI.Elements
                 if (float.IsNaN(finalHeight) || finalHeight < 28f) finalHeight = 28f;
                 return new Vector2(fullWidth, finalHeight);
             }
-            // === TOP-LEVEL NAV ITEMS ===
             string foundText2 = "";
             float maxWidth = 0f;
             float totalHeight = 0f;
@@ -87,7 +89,6 @@ namespace SiegeEngine.Core.UI.Elements
 
         public override bool UpdateHover(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
-            // Direct hit test on this li (works for top-level and submenu items)
             bool hitOnLi = false;
             if (ComputedWidth > 0 && ComputedHeight > 0)
             {
@@ -107,7 +108,6 @@ namespace SiegeEngine.Core.UI.Elements
                 hitOnLi = !(mx < minX || mx > maxX || my < minY || my > maxY);
             }
 
-            // For dropdown parents: also check if mouse is inside the open dropdown
             bool dropdownHit = false;
             var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
             if (IsNavDropdownParent() && dropdownUl != null && (IsHover || _isPinnedOpen) && dropdownUl.GetEffectiveDisplay() != "none")
@@ -119,12 +119,10 @@ namespace SiegeEngine.Core.UI.Elements
 
             if (IsNavDropdownParent() || IsTopLevelNavItem())
             {
-                // Top-level stays hovered if mouse is on it OR in dropdown OR pinned
                 IsHover = hitOnLi || dropdownHit || _isPinnedOpen;
             }
             else if (isSubmenuItem)
             {
-                // Submenu items highlight only when directly hovered
                 IsHover = hitOnLi;
             }
 
@@ -135,7 +133,6 @@ namespace SiegeEngine.Core.UI.Elements
         {
             if (UpdateHover(mousePos, viewportWidth, viewportHeight))
             {
-                // Toggle pinned open state for top-level dropdowns
                 if (IsNavDropdownParent() || IsTopLevelNavItem())
                 {
                     _isPinnedOpen = !_isPinnedOpen;
