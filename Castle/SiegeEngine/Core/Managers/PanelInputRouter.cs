@@ -29,7 +29,7 @@ namespace SiegeEngine.Core.Managers
 
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
-            // Modals first (unchanged)
+            // Modals first (unchanged - always absolute top)
             for (int i = _allPanels.Count - 1; i >= 0; i--)
             {
                 var p = _allPanels[i];
@@ -44,10 +44,20 @@ namespace SiegeEngine.Core.Managers
                     return p;
             }
 
-            // NORMAL PANELS: RenderOrder descending + addition-order tie-breaker
+            // === CRITICAL FIX: Floating panels (including IDE floating panels) must ALWAYS win ===
+            // They are rendered LAST in IDEDockingStrategy.Render (after docked root), so they are visually on top.
+            // We therefore check them FIRST in hit-testing, in reverse order of addition (last added = topmost).
+            for (int i = _allPanels.Count - 1; i >= 0; i--)
+            {
+                var p = _allPanels[i];
+                if (p is BasePanel bp && bp.DockState == DockState.Floating && p.Visible && bp.IsMouseOver(mousePos))
+                    return p;
+            }
+
+            // NORMAL DOCKED PANELS (including IDE docked content)
             // When RenderOrder is the same (most panels are 0), the panel added last wins (last drawn = top)
             var sortedPanels = _allPanels
-                .Where(p => p.Visible && !(p is BasePanel bp && bp.IsModal))
+                .Where(p => p.Visible && !(p is BasePanel bp && (bp.IsModal || bp.DockState == DockState.Floating)))
                 .OrderByDescending(p => (p as BasePanel)?.RenderOrder ?? 0)
                 .ThenByDescending(p => _allPanels.IndexOf(p))
                 .ToList();
