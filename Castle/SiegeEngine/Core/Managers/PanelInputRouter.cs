@@ -29,6 +29,20 @@ namespace SiegeEngine.Core.Managers
 
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
+            // === CENTRALIZED TOPMOST PRIORITY: high RenderOrder panels (IDEBasePanel menu bar + dropdown overlays) ALWAYS win first ===
+            // This guarantees the global menu bar (which draws dropdowns over everything) receives hover/clicks even after project load adds many panels.
+            var highRenderOrder = _allPanels
+                .Where(p => p.Visible && (p as BasePanel)?.RenderOrder > 0)
+                .OrderByDescending(p => (p as BasePanel)?.RenderOrder ?? 0)
+                .ThenByDescending(p => _allPanels.IndexOf(p))
+                .ToList();
+
+            foreach (var p in highRenderOrder)
+            {
+                if (p.IsMouseOver(mousePos))
+                    return p;
+            }
+
             // Modals first (unchanged - always absolute top)
             for (int i = _allPanels.Count - 1; i >= 0; i--)
             {
