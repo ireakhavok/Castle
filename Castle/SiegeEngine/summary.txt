@@ -1447,7 +1447,7 @@ Folder: Core
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: SceneManager.cs
   - Class: SceneManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Reflection
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics
     - Fields:
       - EventBus _eventBus
       - IRenderContext _renderContext
@@ -1465,13 +1465,9 @@ Folder: Core
       - IGameServer _server
     - Methods:
       - constructor SceneManager( IControlContext controlContext,  IRenderContext renderContext,  ISteamEngine steamEngine,  InputHandler inputHandler,  MenuPanel menuPanel,  ModManager modManager,  UISettingsManager settingsManager,  nint window, EventBus eventBus)
-      - void Update(float deltaTime)
-      - void Render()
-        - Calls: _server.GetEntities
-      - void Resize( int height, int width)
       - void Dispose()
       - void OnSwitchScene(SwitchSceneEvent e)
-        - Calls: ClientGameServerProxy, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, _currentScene.Initialize, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem, ctor.Invoke
+        - Calls: ClientGameServerProxy, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
 - File: SceneShader.cs
   - Class: SceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Dependencies: System
@@ -2172,6 +2168,9 @@ Folder: Scenes
     - Methods:
       - void LoadSceneData(SceneData data)
       - void Dispose()
+- File: IScene.cs
+  - Class: IScene (Namespace: SiegeEngine.Scenes)
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.PlayerSystem, System.Collections.Generic
 - File: ModelViewerScene.cs
   - Class: ModelViewerScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
@@ -2251,6 +2250,10 @@ Folder: Scenes
       - ShaderProgram _gridShader
       - VertexBuffer _gridBuffer
     - Methods:
+      - constructor SandboxScene()
+        - Calls: SceneRegistry.Register
+      - constructor SandboxScene()
+        - Calls: SwitchSceneEvent
       - void Launch( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: SwitchSceneEvent
       - void Initialize( int height, int width)
@@ -2263,7 +2266,7 @@ Folder: Scenes
       - void Dispose()
 - File: Scene.cs
   - Class: Scene (Namespace: SiegeEngine.Scenes)
-    - Inherits: IDisposable
+    - Inherits: IScene, IDisposable
     
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
     - Fields:
@@ -2294,6 +2297,23 @@ Folder: Scenes
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
       - void AddSystem(GameSystem system)
       - void Dispose()
+- File: SceneContext.cs
+  - Class: SceneContext (Namespace: SiegeEngine.Scenes)
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.PlayerSystem
+    - Methods:
+      - SceneContext CreateCore(
+            EventBus eventBus, 
+            IControlContext controlContext, 
+            IGameServer server, 
+            IRenderContext renderContext, 
+            nint window)
+- File: SceneRegistry.cs
+  - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
+    - Dependencies: System, System.Collections.Generic
+    - Methods:
+      - void Register( IScene> factory, string sceneName)
+      - IScene Create( SceneContext context, string sceneName)
+        - Calls: factory
 - File: TerrainScene.cs
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
     - Inherits: GameScene
@@ -2669,8 +2689,11 @@ SiegeEngine.PlayerSystem.PositionCalculator
 SiegeEngine.PlayerSystem.SwitchMenuEvent
 SiegeEngine.Scenes.FlyCameraController
 SiegeEngine.Scenes.GameScene
+SiegeEngine.Scenes.IScene
+  SiegeEngine.Scenes.Scene
 SiegeEngine.Scenes.ModelViewerScene
-SiegeEngine.Scenes.Scene
+SiegeEngine.Scenes.SceneContext
+SiegeEngine.Scenes.SceneRegistry
 SiegeEngine.Scenes.StartingPoints.SandboxScene
 SiegeEngine.Scenes.StartingPoints.TwoDSandboxScene
 SiegeEngine.Scenes.TerrainScene
