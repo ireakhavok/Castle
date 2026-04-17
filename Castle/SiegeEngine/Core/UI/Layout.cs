@@ -13,8 +13,13 @@ namespace SiegeEngine.Core.UI
 {
     public partial class HtmlElement
     {
+        public virtual float GetFullContentExtentForParent()
+        {
+            return (_needsVerticalScrollbar && _contentFullHeight > 0f) ? _contentFullHeight : ComputedHeight;
+        }
         public virtual void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
+            string id = Attributes.GetValueOrDefault("id", "no-id");
             CssStyle effectiveStyle = Style;
             if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle ts))
             {
@@ -171,7 +176,15 @@ namespace SiegeEngine.Core.UI
             }
             if (hasVerticalOverflow)
             {
-                _contentFullHeight = CalculateIntrinsicContentHeight(viewportWidth, viewportHeight, textRenderer, fs);
+                _contentFullHeight = 0f;
+                foreach (var child in Children)
+                {
+                    if (child.GetEffectiveDisplay() != "none")
+                    {
+                        float childBottom = child.ComputedPosition.Y + child.ComputedHeight - ComputedContentY;
+                        _contentFullHeight = Math.Max(_contentFullHeight, childBottom);
+                    }
+                }
             }
             else
             {
@@ -180,7 +193,8 @@ namespace SiegeEngine.Core.UI
                 {
                     if (child.GetEffectiveDisplay() != "none")
                     {
-                        _contentFullHeight = Math.Max(_contentFullHeight, child.ComputedPosition.Y + child.ComputedHeight - ComputedContentY);
+                        float childBottom = child.ComputedPosition.Y + child.GetFullContentExtentForParent() - ComputedContentY;
+                        _contentFullHeight = Math.Max(_contentFullHeight, childBottom);
                     }
                 }
             }
@@ -455,7 +469,8 @@ namespace SiegeEngine.Core.UI
                     }
                 }
                 child.ComputeLayout(child_pos_x, child_pos_y, child_w, child_h, viewportWidth, viewportHeight, textRenderer, fs, forced_width, forced_height);
-                current_main += childBaseMain[i] + childMarginStart[i] + childMarginEnd[i];
+                float childMainExtent = (!isRow && child._needsVerticalScrollbar && child._contentFullHeight > 0f) ? child._contentFullHeight : childBaseMain[i];
+                current_main += childMainExtent + childMarginStart[i] + childMarginEnd[i];
                 float computed_cross = isRow ? child.ComputedHeight : child.ComputedWidth;
                 float allocated_cross = child_cross + c_m_cross_start + c_m_cross_end;
                 if (computed_cross < allocated_cross - c_m_cross_start - c_m_cross_end)
@@ -486,29 +501,6 @@ namespace SiegeEngine.Core.UI
             {
                 child.ComputeLayout(ComputedContentX, ComputedContentY, ComputedContentWidth, ComputedContentHeight, viewportWidth, viewportHeight, textRenderer, fs);
             }
-        }
-        private float CalculateIntrinsicContentHeight(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
-        {
-            float total = 0f;
-            Queue<HtmlElement> queue = new Queue<HtmlElement>();
-            foreach (var child in Children)
-            {
-                queue.Enqueue(child);
-            }
-            while (queue.Count > 0)
-            {
-                var elem = queue.Dequeue();
-                if (elem.GetEffectiveDisplay() != "none")
-                {
-                    Vector2 intrinsic = elem.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                    total += intrinsic.Y;
-                }
-                foreach (var child in elem.Children)
-                {
-                    queue.Enqueue(child);
-                }
-            }
-            return total;
         }
         private void LayoutGridChildren(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
@@ -956,6 +948,7 @@ namespace SiegeEngine.Core.UI
         }
         public virtual Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
+            string id = Attributes.GetValueOrDefault("id", "no-id");
             if (!_intrinsicDirty && _cachedViewportWidth == viewportWidth && _cachedViewportHeight == viewportHeight && _cachedFs == fs)
             {
                 return _cachedIntrinsicSize;

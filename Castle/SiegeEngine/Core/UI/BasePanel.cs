@@ -17,7 +17,7 @@ namespace SiegeEngine.Core.UI
         protected readonly IControlContext _controlContext;
         protected readonly nint _window;
         protected readonly EventBus _eventBus;
-        protected UIOverlay _uiOverlay;
+        public UIOverlay _uiOverlay;
         protected int _lastW;
         protected int _lastH;
         public DockState DockState { get; set; } = DockState.Floating;
@@ -56,6 +56,8 @@ namespace SiegeEngine.Core.UI
         public bool IsClosable { get; set; } = false;
         public int RenderOrder { get; set; } = 0;
 
+        public static bool MouseReleasedConsumedThisFrame { get; set; } = false;
+
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -73,15 +75,7 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.Init();
             _quadRenderer = new UIQuadRenderer(_renderContext);
             _layeredRenderer = new LayeredUIRenderer(_renderContext, _controlContext, _quadRenderer);
-            if (DockState == DockState.Floating && BaseWidth > 100 && BaseHeight > 100)
-            {
-                Size = new Vector2(BaseWidth, BaseHeight);
-            }
-            else
-            {
-                _controlContext.GetWindowSize(_window, out int w, out int h);
-                Size = new Vector2(w, h);
-            }
+            Size = new Vector2(BaseWidth, BaseHeight);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             if (HasTitleBar)
@@ -92,6 +86,14 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
+
+        public virtual bool IsMouseOver(Vector2 absMousePos)
+        {
+            if (!Visible) return false;
+            return absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
+                   absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
+        }
+
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
@@ -99,7 +101,10 @@ namespace SiegeEngine.Core.UI
             if (HasTitleBar && chrome != null)
             {
                 if (chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
+                {
+                    MouseReleasedConsumedThisFrame = true;
                     return;
+                }
             }
 
             if (_isDragging)
@@ -173,20 +178,17 @@ namespace SiegeEngine.Core.UI
                 return;
             }
 
-            bool overPanel = absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
-                             absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
-
+            bool overPanel = IsMouseOver(absMousePos);
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
 
-            // CRITICAL FOCUS REQUIREMENT (fixed): Fire on EVERY mouse press while this panel is topmost AND mouse is over the panel.
-            // This works reliably even when derived panels filter mousePressed for camera mode.
             if (isTopmost && overPanel && mousePressed)
             {
-                Console.WriteLine($"[BasePanel] FOCUS DETECTED → {GetType().Name} (topmost + mousePressed in content area)");
                 OnContentFocusGained();
             }
 
-            if ((overPanel || WantsContinuousUpdate) && isTopmost)
+            // UIOverlay always receives input when this panel is topmost
+            // (select dropdowns, options, etc. are handled inside _uiOverlay.Update)
+            if (isTopmost)
             {
                 Vector2 relMousePos = absMousePos - Position;
                 _uiOverlay.PanelWidth = Size.X;
@@ -196,10 +198,8 @@ namespace SiegeEngine.Core.UI
             }
         }
 
-        // Virtual hook – content panels override to provide their hierarchy (clean, future-proof, no reflection needed yet)
-        protected virtual void OnContentFocusGained()
+        public virtual void OnContentFocusGained()
         {
-            // Default no-op. Overridden by TerrainCreatorPanel, SceneEditorPanel, etc.
             Console.WriteLine($"[BasePanel] OnContentFocusGained called on {GetType().Name} (default no-op)");
         }
 

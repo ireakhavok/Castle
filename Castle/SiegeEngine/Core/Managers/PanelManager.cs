@@ -24,17 +24,14 @@ namespace SiegeEngine.Core.Managers
         private readonly List<IPanel> _modalPanels = new List<IPanel>();
         private float _scrollDelta = 0f;
         private readonly CaptureManager _captureManager;
-
         private IDockingStrategy _desktopStrategy;
         private DynamicDockingStrategy _dynamicStrategy;
         private IDEDockingStrategy _ideStrategy;
-
         private DockingMode _sceneDefaultMode = DockingMode.Desktop;
-
         private bool _lastGlobalTabPressed = false;
+        private readonly PanelInputRouter _router;
 
         public static PanelManager Current { get; private set; }
-
         public IDEDockingStrategy IDEStrategy => _ideStrategy;
 
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -44,6 +41,8 @@ namespace SiegeEngine.Core.Managers
             _window = window;
             _eventBus = eventBus;
             _captureManager = new CaptureManager(controlContext);
+
+            _router = new PanelInputRouter();
 
             _desktopStrategy = new DesktopDockingStrategy(renderContext, controlContext, eventBus);
             _dynamicStrategy = new DynamicDockingStrategy(renderContext, controlContext, eventBus);
@@ -55,7 +54,6 @@ namespace SiegeEngine.Core.Managers
             {
                 _scrollDelta += (float)yoffset;
             });
-
             Current = this;
         }
 
@@ -77,8 +75,8 @@ namespace SiegeEngine.Core.Managers
         public void AddPanel(IPanel panel)
         {
             _panels.Add(panel);
+            _router.AddPanel(panel);
             panel.Init();
-
             if (panel is BasePanel bp && bp.IsModal)
             {
                 _modalPanels.Add(panel);
@@ -119,10 +117,9 @@ namespace SiegeEngine.Core.Managers
             bool mousePressed = !_prevMouseDown && currentMouseDown;
             bool mouseReleased = _prevMouseDown && !currentMouseDown;
             _prevMouseDown = currentMouseDown;
+
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
 
-            // GLOBAL TAB - PRIORITIZE CURRENTLY CAPTURED PANEL (guarantees release on second Tab)
-            // If nothing is captured, fall back to topmost panel (normal behavior)
             bool tabPressed = _controlContext.GetKey(_window, Key.Tab) == InputAction.Press;
             if (tabPressed && !_lastGlobalTabPressed)
             {
@@ -139,81 +136,63 @@ namespace SiegeEngine.Core.Managers
 
             if (!_captureManager.IsCapturing)
             {
-                bool modalHandled = false;
+                IPanel topmost = GetTopmostPanelAt(mousePos);
 
-                for (int i = _modalPanels.Count - 1; i >= 0; i--)
+                // === AUTHORITATIVE TOPMOST UPDATE (full mouse events + focus) ===
+                if (topmost != null)
                 {
-                    var panel = _modalPanels[i];
-                    if (panel.Visible)
+                    topmost.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
+
+                    if (BasePanel.MouseReleasedConsumedThisFrame && mouseReleased)
                     {
-                        panel.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
-                        modalHandled = true;
-                        break;
+                        mouseReleased = false;
+                        BasePanel.MouseReleasedConsumedThisFrame = false;
                     }
                 }
 
-                if (modalHandled && mouseReleased)
+                // === CONTINUOUS UPDATE PASS ===
+                // Panels that want continuous updates (AnimationViewerPanel, etc.) must run every frame.
+                // - If they are topmost → they already got the full call above (skip to avoid double)
+                // - If they are NOT topmost → call with mouse events zeroed so they never steal clicks
+                foreach (var panel in _panels)
                 {
-                    bool clickedOnModal = false;
-                    for (int i = _modalPanels.Count - 1; i >= 0; i--)
+                    if (panel is BasePanel bp && bp.WantsContinuousUpdate)
                     {
-                        var m = _modalPanels[i];
-                        if (m.Visible)
-                        {
-                            bool over = mousePos.X >= m.Position.X && mousePos.X <= m.Position.X + m.Size.X &&
-                                        mousePos.Y >= m.Position.Y && mousePos.Y <= m.Position.Y + m.Size.Y;
-                            if (over)
-                            {
-                                clickedOnModal = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!clickedOnModal && _modalPanels.Count > 0)
-                    {
-                        _eventBus.Publish(new ClosePanelEvent(_modalPanels.Last()));
+                        bool isTopmost = (topmost == panel);
+                        if (isTopmost) continue;   // <--- SKIP - already updated in topmost path
+
+                        bool passMouseDown = false;
+                        bool passMousePressed = false;
+                        bool passMouseReleased = false;
+
+                        panel.Update(deltaTime, mousePos, passMouseDown, passMousePressed, passMouseReleased, _scrollDelta);
                     }
                 }
 
-                if (!modalHandled)
-                {
-                    if (_desktopStrategy.HasActiveContent())
-                        _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                    if (_dynamicStrategy.HasActiveContent())
-                        _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                    if (_ideStrategy.HasActiveContent())
-                        _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
-                }
+                // Strategy updates (layout, dragging, splitter, etc.)
+                if (_desktopStrategy.HasActiveContent())
+                    _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_dynamicStrategy.HasActiveContent())
+                    _dynamicStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                if (_ideStrategy.HasActiveContent())
+                    _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
             }
 
+            _router.ClearForcedOverdraw();
             _scrollDelta = 0f;
+            BasePanel.MouseReleasedConsumedThisFrame = false;
         }
 
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
-            for (int i = _modalPanels.Count - 1; i >= 0; i--)
-            {
-                var m = _modalPanels[i];
-                if (m.Visible)
-                {
-                    bool over = mousePos.X >= m.Position.X && mousePos.X <= m.Position.X + m.Size.X &&
-                                mousePos.Y >= m.Position.Y && mousePos.Y <= m.Position.Y + m.Size.Y;
-                    if (over) return m;
-                }
-            }
-
-            IPanel p = _ideStrategy.GetTopmostPanelAt(mousePos);
-            if (p != null) return p;
-
-            p = _dynamicStrategy.GetTopmostPanelAt(mousePos);
-            if (p != null) return p;
-
-            return _desktopStrategy.GetTopmostPanelAt(mousePos);
+            return _router.GetTopmostPanelAt(mousePos);
         }
 
-        // Clean, future-proof public accessor for BlueprintManager (and future mod panels).
-        // Returns all active panels (including modal and IDE panels) without exposing the private list.
-        // Required for IDataAwarePanel orchestration while keeping PanelManager unaware of project concepts.
+        public void ForceDrawOverThisFrame(IPanel panel)
+        {
+            _router.ForceDrawOverThisFrame(panel);
+        }
+
         public IEnumerable<IPanel> GetAllPanels()
         {
             return _panels;
@@ -224,14 +203,12 @@ namespace SiegeEngine.Core.Managers
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
-
             if (_desktopStrategy.HasActiveContent())
                 _desktopStrategy.Render(_renderContext, winW, winH);
             if (_dynamicStrategy.HasActiveContent())
                 _dynamicStrategy.Render(_renderContext, winW, winH);
             if (_ideStrategy.HasActiveContent())
                 _ideStrategy.Render(_renderContext, winW, winH);
-
             foreach (var panel in _modalPanels)
             {
                 if (panel.Visible)
@@ -241,7 +218,6 @@ namespace SiegeEngine.Core.Managers
                     _renderContext.Enable(_renderContext.Enums.DepthTest);
                 }
             }
-
             var highPriority = _panels.Where(p => (p as BasePanel)?.RenderOrder > 0).OrderByDescending(p => (p as BasePanel)?.RenderOrder);
             foreach (var panel in highPriority)
             {
@@ -258,14 +234,12 @@ namespace SiegeEngine.Core.Managers
         {
             if (_captureManager.CurrentOwner == panel)
                 _captureManager.ReleaseCapture();
-
+            _router.RemovePanel(panel);
             panel.Detach();
-
             _modalPanels.Remove(panel);
             _desktopStrategy.RemovePanel(panel);
             _dynamicStrategy.RemovePanel(panel);
             _ideStrategy.RemovePanel(panel);
-
             _panels.Remove(panel);
             panel.Dispose();
         }

@@ -21,7 +21,7 @@ namespace SiegeEngine.Scenes
 {
     public unsafe class ModelViewerScene : Scene
     {
-        private FBXModel _model;
+        public FBXModel _model;
         private ModelManager.ModelData _modelData;
         private string _currentAnimationPath;   // CHANGED: now stores full file path instead of internal name
         private VertexBuffer _skeletonBuffer;

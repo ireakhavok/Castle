@@ -18,65 +18,86 @@ namespace SiegeEngine.Core.UI.Elements
 
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
-            float maxWidth = 0f;
-            float totalHeight = 0f;
-            string foundText = "";
-            Queue<HtmlElement> queue = new Queue<HtmlElement>();
+            // Header row only (toggle + label) - this keeps rows tight
+            float headerWidth = 0f;
+            float headerHeight = 28f; // default tree row height
+
             foreach (var child in Children)
             {
-                queue.Enqueue(child);
-            }
-            while (queue.Count > 0)
-            {
-                var elem = queue.Dequeue();
-                if (elem is TextElement textElem && !string.IsNullOrWhiteSpace(textElem.Content))
-                {
-                    foundText = textElem.Content.Trim();
-                    Vector2 textSize = textRenderer.GetTextSize(foundText, fs, elem.Style.FontFamily ?? Style.FontFamily ?? "Arial");
-                    maxWidth = Math.Max(maxWidth, textSize.X);
-                    totalHeight = Math.Max(totalHeight, textSize.Y);
-                }
-                foreach (var c in elem.Children)
-                {
-                    queue.Enqueue(c);
-                }
+                if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
+                    break;
+
+                Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                headerWidth = Math.Max(headerWidth, childSize.X);
+                headerHeight = Math.Max(headerHeight, childSize.Y);
             }
 
-            foreach (var child in Children.Where(c => c.GetEffectiveDisplay() != "none"))
-            {
-                if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
-                {
-                    Vector2 childSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
-                    maxWidth = Math.Max(maxWidth, childSize.X);
-                    totalHeight += childSize.Y;
-                }
-            }
             Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
             Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
-            float finalWidth = maxWidth + pad.W + pad.Y + borderW.W + borderW.Y;
-            float finalHeight = totalHeight + pad.X + pad.Z + borderW.X + borderW.Z;
-            if (float.IsNaN(finalWidth) || finalWidth < 30f) finalWidth = 120f;
-            if (float.IsNaN(finalHeight) || finalHeight < 20f) finalHeight = 28f;
-            return new Vector2(finalWidth, finalHeight);
-        }
 
-        public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
-        {
-            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
+            float finalWidth = headerWidth + pad.W + pad.Y + borderW.W + borderW.Y + 30f; // space for toggle + indent
+            float finalHeight = headerHeight + pad.X + pad.Z + borderW.X + borderW.Z;
+
+            // IMPORTANT: add full expanded subtree height so parent <ul> can push siblings down correctly
+            foreach (var child in Children)
+            {
+                if ((child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol") && child.GetEffectiveDisplay() != "none")
+                {
+                    Vector2 subtreeSize = child.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+                    finalHeight += subtreeSize.Y + 4f; // tiny gap
+                    finalWidth = Math.Max(finalWidth, subtreeSize.X + 22f); // indented width
+                }
+            }
+
+            if (float.IsNaN(finalWidth) || finalWidth < 40f) finalWidth = 180f;
+            if (float.IsNaN(finalHeight) || finalHeight < 28f) finalHeight = 28f;
+
+            return new Vector2(finalWidth, finalHeight);
         }
 
         private float GetTreeNodeHeaderHeight()
         {
-            // For tree nodes we only want hover/click on the actual row (toggle + label), NOT the full subtree height
-            float headerHeight = 0f;
+            float height = 28f;
             foreach (var child in Children)
             {
-                if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol") break; // children list starts here
-                headerHeight = Math.Max(headerHeight, child.ComputedHeight);
+                if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol") break;
+                height = Math.Max(height, child.ComputedHeight);
             }
-            // fallback to a sensible row height if layout not yet run
-            if (headerHeight < 1f) headerHeight = 28f;
-            return headerHeight;
+            return height;
+        }
+
+        private HtmlElement GetNodeRowElement()
+        {
+            // Find the <div class="node-row"> that contains toggle + label
+            foreach (var child in Children)
+            {
+                if (child is HtmlElement elem &&
+                    elem.Attributes.TryGetValue("class", out var cls) &&
+                    cls.Contains("node-row"))
+                {
+                    return elem;
+                }
+            }
+            return null;
+        }
+
+        public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
+        {
+            // Let base block layout position header + children normally (this fixes sibling stacking)
+            base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
+
+            // After base layout runs, ensure the li's final height includes the full subtree
+            // (so next sibling in parent ul is pushed down correctly)
+            float fullHeight = GetTreeNodeHeaderHeight();
+            foreach (var child in Children)
+            {
+                if (child.Tag.ToLower() == "ul" || child.Tag.ToLower() == "ol")
+                {
+                    fullHeight += child.ComputedHeight + 4f;
+                    break;
+                }
+            }
+            ComputedHeight = Math.Max(ComputedHeight, fullHeight);
         }
 
         public override bool UpdateHover(Vector2 mousePos, float viewportWidth, float viewportHeight)
@@ -86,31 +107,30 @@ namespace SiegeEngine.Core.UI.Elements
             string classes = Attributes.GetValueOrDefault("class", "");
             bool isTreeNode = classes.Contains("node");
 
-            // === ONLY nested child <li class="node"> blocks parent hover ===
-            bool anyNestedNodeHovered = false;
+            // === CRITICAL: children get first chance and block parent hover ===
             for (int i = Children.Count - 1; i >= 0; i--)
             {
-                var child = Children[i];
-                if (child.UpdateHover(mousePos, viewportWidth, viewportHeight))
-                {
-                    if (child is LiElement childLi && childLi.Attributes.GetValueOrDefault("class", "").Contains("node"))
-                    {
-                        anyNestedNodeHovered = true;
-                    }
-                }
+                if (Children[i].UpdateHover(mousePos, viewportWidth, viewportHeight))
+                    return true; // child (or deeper) already handled hover
             }
 
-            if (anyNestedNodeHovered)
-            {
-                if (IsHover) IsHover = false;
-                return true;
-            }
+            if (!isTreeNode) return base.UpdateHover(mousePos, viewportWidth, viewportHeight);
 
-            if (ComputedWidth <= 0 || ComputedHeight <= 0) return false;
+            // Only test hover on the exact .node-row element (header row)
+            var nodeRow = GetNodeRowElement();
+            if (nodeRow == null)
+                return base.UpdateHover(mousePos, viewportWidth, viewportHeight);
 
-            float testHeight = isTreeNode ? GetTreeNodeHeaderHeight() : ComputedHeight;
+            // Use the node-row's exact computed bounds
+            float[] ndc = HtmlLayoutUtils.GetNdcQuad(
+                nodeRow.ComputedPosition.X,
+                nodeRow.ComputedPosition.Y,
+                nodeRow.ComputedWidth,
+                nodeRow.ComputedHeight,
+                ComputedFullTransform,
+                viewportWidth,
+                viewportHeight);
 
-            float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, testHeight, ComputedFullTransform, viewportWidth, viewportHeight);
             float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
             for (int k = 0; k < 4; k++)
             {
@@ -125,14 +145,8 @@ namespace SiegeEngine.Core.UI.Elements
             float my = 1 - 2 * mousePos.Y / viewportHeight;
             bool over = !(mx < minX || mx > maxX || my < minY || my > maxY);
 
-            if (over && !IsHover)
-            {
-                IsHover = true;
-            }
-            else if (!over && IsHover)
-            {
-                IsHover = false;
-            }
+            if (over && !IsHover) IsHover = true;
+            else if (!over && IsHover) IsHover = false;
 
             return over;
         }
@@ -142,44 +156,43 @@ namespace SiegeEngine.Core.UI.Elements
             string classes = Attributes.GetValueOrDefault("class", "");
             bool isTreeNode = classes.Contains("node");
 
-            bool rowHit = false;
-            if (ComputedWidth > 0 && ComputedHeight > 0)
+            // Children get first chance (toggle clicks, etc.)
+            for (int i = Children.Count - 1; i >= 0; i--)
             {
-                float testHeight = isTreeNode ? GetTreeNodeHeaderHeight() : ComputedHeight;
-
-                float[] ndc = HtmlLayoutUtils.GetNdcQuad(ComputedPosition.X, ComputedPosition.Y, ComputedWidth, testHeight, ComputedFullTransform, viewportWidth, viewportHeight);
-                float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
-                for (int k = 0; k < 4; k++)
-                {
-                    float nx = ndc[k * 2];
-                    float ny = ndc[k * 2 + 1];
-                    minX = Math.Min(minX, nx);
-                    maxX = Math.Max(maxX, nx);
-                    minY = Math.Min(minY, ny);
-                    maxY = Math.Max(maxY, ny);
-                }
-                float mx = 2 * mousePos.X / viewportWidth - 1;
-                float my = 1 - 2 * mousePos.Y / viewportHeight;
-                rowHit = !(mx < minX || mx > maxX || my < minY || my > maxY);
+                if (Children[i].HandleClick(mousePos, viewportWidth, viewportHeight))
+                    return true;
             }
 
-            if (rowHit)
-            {
-                // Give children first chance — only nested tree node children can steal the click
-                for (int i = Children.Count - 1; i >= 0; i--)
-                {
-                    var child = Children[i];
-                    if (child.HandleClick(mousePos, viewportWidth, viewportHeight))
-                    {
-                        if (child is LiElement childLi && childLi.Attributes.GetValueOrDefault("class", "").Contains("node"))
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
+            if (!isTreeNode) return base.HandleClick(mousePos, viewportWidth, viewportHeight);
 
-            // No nested node stole it → this row claims the click (text, toggle, padding all work)
+            // Only the header row can be clicked
+            var nodeRow = GetNodeRowElement();
+            if (nodeRow == null)
+                return base.HandleClick(mousePos, viewportWidth, viewportHeight);
+
+            float[] ndc = HtmlLayoutUtils.GetNdcQuad(
+                nodeRow.ComputedPosition.X,
+                nodeRow.ComputedPosition.Y,
+                nodeRow.ComputedWidth,
+                nodeRow.ComputedHeight,
+                ComputedFullTransform,
+                viewportWidth,
+                viewportHeight);
+
+            float minX = float.MaxValue, maxX = float.MinValue, minY = float.MaxValue, maxY = float.MinValue;
+            for (int k = 0; k < 4; k++)
+            {
+                float nx = ndc[k * 2];
+                float ny = ndc[k * 2 + 1];
+                minX = Math.Min(minX, nx);
+                maxX = Math.Max(maxX, nx);
+                minY = Math.Min(minY, ny);
+                maxY = Math.Max(maxY, ny);
+            }
+            float mx = 2 * mousePos.X / viewportWidth - 1;
+            float my = 1 - 2 * mousePos.Y / viewportHeight;
+            bool rowHit = !(mx < minX || mx > maxX || my < minY || my > maxY);
+
             return rowHit;
         }
 

@@ -4,11 +4,13 @@ using CastleBuilder.Events;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 
 namespace CastleBuilder
@@ -55,15 +57,10 @@ namespace CastleBuilder
                 }
             }
 
-            // === FINAL FIX FOR DATA-HOOK DROPDOWNS ===
-            // We close the dropdown AND force IsHover = false on the parent NavLiElement.
-            // This prevents UpdateHover from re-opening the dropdown on the next frame
-            // (the mouse is still physically over the top-level nav item after the click).
             protected override void HandleDataHook(string hook)
             {
                 CloseAllOpenNavDropdowns();
                 RefreshUI();
-
                 base.HandleDataHook(hook);
             }
 
@@ -77,7 +74,7 @@ namespace CastleBuilder
                 foreach (var nav in navLis)
                 {
                     nav.CloseDropdown();
-                    nav.IsHover = false;   // critical: stops UpdateHover from re-showing the dropdown
+                    nav.IsHover = false;
 
                     var dropdownUl = nav.Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
                     if (dropdownUl != null)
@@ -88,6 +85,8 @@ namespace CastleBuilder
             }
         }
 
+        private bool _lastFrameHadOpenDropdown = false;
+
         public IDEBasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -95,6 +94,9 @@ namespace CastleBuilder
             DockState = DockState.Tabbed;
             IsModal = false;
             RenderOrder = 1000;
+
+            BaseWidth = 0f;
+            BaseHeight = 0f;
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -104,12 +106,12 @@ namespace CastleBuilder
 
         public override void Init()
         {
-            // Size set before base.Init() eliminates the single-frame full-screen flicker
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            Size = new Vector2(winW, 28f);
             Position = Vector2.Zero;
 
             base.Init();
+
+            Size = new Vector2(winW, 28f);
 
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))
@@ -126,14 +128,48 @@ namespace CastleBuilder
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            if (!Visible) return;
+            base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+
+            if (PanelManager.Current?.GetTopmostPanelAt(absMousePos) != this)
+                return;
 
             Vector2 relMousePos = absMousePos - Position;
 
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.RefreshUI();
+
             _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
+
+            bool hasOpenDropdownNow = UpdateOpenDropdownHovers(relMousePos);  // use RELATIVE mouse for correct coords
+
+            if (hasOpenDropdownNow && !_lastFrameHadOpenDropdown)
+            {
+                _uiOverlay.RefreshUI();
+            }
+
+            _lastFrameHadOpenDropdown = hasOpenDropdownNow;
+        }
+
+        private bool UpdateOpenDropdownHovers(Vector2 relMousePos)
+        {
+            if (_uiOverlay == null) return false;
+
+            bool anyOpen = false;
+
+            var navLis = _uiOverlay.FindElementsByTag("li")
+                .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
+                .Cast<NavLiElement>();
+
+            foreach (var nav in navLis)
+            {
+                var dropdownUl = nav.Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
+                if (dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
+                {
+                    anyOpen = true;
+                    dropdownUl.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);  // correct relative coords
+                }
+            }
+            return anyOpen;
         }
 
         public override void Render()
@@ -150,6 +186,35 @@ namespace CastleBuilder
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _uiOverlay.Render();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+        }
+
+        public override bool IsMouseOver(Vector2 absMousePos)
+        {
+            if (absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
+                absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + 28f)
+                return true;
+
+            if (_uiOverlay != null)
+            {
+                Vector2 relMousePos = absMousePos - Position;  // CRITICAL: convert to panel-relative for correct dropdown hit test
+
+                var navLis = _uiOverlay.FindElementsByTag("li")
+                    .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
+                    .Cast<NavLiElement>();
+
+                foreach (var nav in navLis)
+                {
+                    if (nav.IsDropdownOpen)
+                    {
+                        PanelManager.Current?.ForceDrawOverThisFrame(this);
+
+                        bool hit = nav.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);  // use RELATIVE — now triggers auto-close when mouse leaves dropdown area
+
+                        if (hit) return true;
+                    }
+                }
+            }
+            return false;
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

@@ -208,7 +208,7 @@ namespace ReadingChamber
         {
         }
 
-        protected override void OnContentFocusGained()
+        public override void OnContentFocusGained()
         {
             Console.WriteLine("[AnimationViewerPanel] OnContentFocusGained → notifying OutlinerCoordinator");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
@@ -217,16 +217,51 @@ namespace ReadingChamber
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
-            nodes.Add(new OutlinerNode { Id = "anim-root", Label = "Animation Viewer", Icon = "🎬", Children = { "model", "skeleton", "animations" } });
-            nodes.Add(new OutlinerNode { Id = "model", Label = "Model", Icon = "📦", ParentId = "anim-root" });
-            nodes.Add(new OutlinerNode { Id = "skeleton", Label = "Skeleton", Icon = "🦴", ParentId = "anim-root" });
-            nodes.Add(new OutlinerNode { Id = "animations", Label = "Animations", Icon = "⏯️", ParentId = "anim-root" });
+
+            var root = new OutlinerNode { Id = "anim-root", Label = "Animation Viewer", Icon = "🎬" };
+            nodes.Add(root);
+
+            var modelNode = new OutlinerNode
+            {
+                Id = "model",
+                Label = "Model",
+                Icon = "📦",
+                ParentId = "anim-root",
+                AssociatedObject = _viewerScene  // real scene object for Model node
+            };
+            root.Children.Add("model");
+            nodes.Add(modelNode);
+
+            var skeletonNode = new OutlinerNode
+            {
+                Id = "skeleton",
+                Label = "Skeleton",
+                Icon = "🦴",
+                ParentId = "anim-root",
+                AssociatedObject = _viewerScene  // real scene object for Skeleton node
+            };
+            root.Children.Add("skeleton");
+            nodes.Add(skeletonNode);
+
+            var animationsNode = new OutlinerNode
+            {
+                Id = "animations",
+                Label = "Animations",
+                Icon = "⏯️",
+                ParentId = "anim-root",
+                AssociatedObject = _animationFiles   // actual list of animation files for Animations node
+            };
+            root.Children.Add("animations");
+            nodes.Add(animationsNode);
+
             return nodes;
         }
 
         public object GetObjectForNode(string nodeId)
         {
-            return null;
+            // Return the exact object attached to the clicked node
+            var node = GetCurrentHierarchy().FirstOrDefault(n => n.Id == nodeId);
+            return node?.AssociatedObject ?? _viewerScene;
         }
 
         public void NotifyHierarchyChanged()

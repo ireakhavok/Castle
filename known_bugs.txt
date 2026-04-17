@@ -3,3 +3,21 @@ on scene switch the terrain editor scene should also switch....
 the floating panels were not loaded back with the same size and position, they were loaded with the default, I believe dictated by the idedockingstrategy?
 
 the area of body items is off. 
+
+the file browser is wrong it adds all to the dom. 
+
+the background is not the correct height. 
+
+the animationviewer panel is receiving updates from other panels all the same. it needs continuous updates, but just not from the mouse it's to keep the animation going....
+
+need to add all ascii characters
+
+need to fix system text size issue vs static size and resizing
+
+docking issues for full screen stuff in idedockingstrategy
+
+some panels that do not have a flex grow area allow the panel to resize larger than the default area so they exhibit the same clear area. we need to keep panels that are a defined max height that don't flex vertically to be resized past the maximum dimensions. 
+
+"document" causes a space at the top of html files, and title appears un styled.
+
+when you place a panel in ide docking strategy on the left hand side it draws correctly, but then the hover over is wrong and doesn't account that there is a panel in the space to the right. there are three panels docked but it only see's two spaces to dock to from the two in the sidepanel. adding more sidepanels or sidpanels to another side panel works, but then you can't add a panel to the third view that was docked first. 

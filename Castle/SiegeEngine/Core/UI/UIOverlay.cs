@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
+﻿// Folder: SiegeEngine/Core/UI
 // File: UIOverlay.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -536,6 +536,14 @@ namespace SiegeEngine.Core.UI
             }
         }
 
+        public virtual void RenderBackgrounds(float w, float h)
+        {
+            if (_uiRoot != null)
+            {
+                _uiRoot.RenderBackgroundOnly(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
+            }
+        }
+
         public void RecomputeLayout(float w, float h)
         {
             if (_uiRoot == null) return;
@@ -633,5 +641,10 @@ namespace SiegeEngine.Core.UI
             }
             return false;
         }
+
+        /// <summary>
+        /// Public accessor for TextRenderer so IDEBasePanel can pre-compute dropdown layouts during Update().
+        /// </summary>
+        public TextRenderer TextRenderer => _textRenderer;
     }
 }

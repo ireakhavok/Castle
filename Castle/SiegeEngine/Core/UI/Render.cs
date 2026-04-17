@@ -13,6 +13,77 @@ namespace SiegeEngine.Core.UI
 
     public partial class HtmlElement
     {
+        /// <summary>
+        /// Background-only rendering (called BEFORE scissor).
+        /// Draws ONLY the current element's NORMAL background (color + image + uniform border).
+        /// IMPORTANT: We deliberately SKIP :hover and :active pseudo-styles here.
+        /// This eliminates the duplicate/ghost hover highlights while still giving
+        /// scrollable containers full _contentFullHeight backgrounds.
+        /// Hover effects now only appear once in the normal Render() path inside the scissor.
+        /// </summary>
+        public virtual void RenderBackgroundOnly(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+        {
+            CssStyle effectiveStyle = Style;
+            // ONLY permanent pseudo-states (checked, focus, target). NO hover/active.
+            if (Checked && PseudoStyles.TryGetValue("checked", out CssStyle checkedStyle))
+                effectiveStyle = checkedStyle;
+            if (IsFocused && PseudoStyles.TryGetValue("focus", out CssStyle focusStyle))
+                effectiveStyle = focusStyle;
+            if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle targetStyle))
+                effectiveStyle = targetStyle;
+
+            if (effectiveStyle.Display == "none") return;
+
+            Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
+
+            float backgroundHeight = (_needsVerticalScrollbar && _contentFullHeight > ComputedBackgroundHeight + 0.1f)
+                ? _contentFullHeight
+                : ComputedBackgroundHeight;
+
+            Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
+            Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
+            Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
+            Vector4 borderLeftC = effectiveStyle.BorderLeftColor != Vector4.Zero ? effectiveStyle.BorderLeftColor : effectiveStyle.BorderColor;
+            Vector4 borderW = BorderWidth;
+            bool uniformBorder = borderW.X == borderW.Y && borderW.Y == borderW.Z && borderW.Z == borderW.W;
+            bool uniformColor = borderTopC == borderRightC && borderRightC == borderBottomC && borderBottomC == borderLeftC;
+            bool hasUniformBorder = uniformBorder && uniformColor && borderW.X > 0;
+            Vector4 br = HtmlLayoutUtils.ParseSides(effectiveStyle.BorderRadiusStr, ComputedBackgroundWidth, viewportWidth, viewportHeight);
+            float minRad = Math.Min(ComputedBackgroundWidth / 2, ComputedBackgroundHeight / 2);
+            br.X = Math.Min(br.X, minRad);
+            br.Y = Math.Min(br.Y, minRad);
+            br.Z = Math.Min(br.Z, minRad);
+            br.W = Math.Min(br.W, minRad);
+            bool hasBg = effectiveStyle.BackgroundColor != Vector4.Zero || _bgRenderer != null;
+            bool useShaderForBorder = br != Vector4.Zero && hasUniformBorder;
+            float drawX = useShaderForBorder ? ComputedPosition.X : ComputedBackgroundX;
+            float drawY = useShaderForBorder ? ComputedPosition.Y : ComputedBackgroundY;
+            float drawW = useShaderForBorder ? ComputedWidth : ComputedBackgroundWidth;
+            float drawH = useShaderForBorder ? ComputedHeight : backgroundHeight;
+            float bw = useShaderForBorder ? borderW.X : 0f;
+            Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
+
+            if (hasBg || useShaderForBorder)
+            {
+                float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
+                quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(drawW, drawH), bw, borderC);
+            }
+            if (_bgRenderer != null)
+            {
+                _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, backgroundHeight, viewportWidth, viewportHeight);
+            }
+
+            // Recurse for nested scrollable containers (still use scrolled matrix for children)
+            Matrix4x4 childMatrix = _needsVerticalScrollbar
+                ? localMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0)
+                : localMatrix;
+
+            foreach (var child in Children)
+            {
+                child.RenderBackgroundOnly(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, childMatrix);
+            }
+        }
+
         public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
