@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
-// File: SceneManager.cs
-using SiegeEngine.Core.AssetParsing;
+﻿using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -13,7 +11,6 @@ using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
 using System.Numerics;
-using System.Reflection;
 
 namespace SiegeEngine.Core.Managers
 {
@@ -28,11 +25,13 @@ namespace SiegeEngine.Core.Managers
         private readonly ISteamEngine _steamEngine;
         private readonly InputHandler _inputHandler;
         private readonly MenuPanel _menuPanel;
+
         private Scene _currentScene;
         private Player _player;
         private PlayerMovement _playerMovement;
         private ModelManager _modelManager;
         private IGameServer _server;
+
         public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, nint window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuPanel menuPanel)
         {
             _eventBus = eventBus;
@@ -46,88 +45,61 @@ namespace SiegeEngine.Core.Managers
             _menuPanel = menuPanel;
             _eventBus.Subscribe<SwitchSceneEvent>(OnSwitchScene);
         }
-        public void Update(float deltaTime)
-        {
-            if (_currentScene != null)
-            {
-                _currentScene.Update(deltaTime);
-            }
-        }
-        public void Render()
-        {
-            if (_currentScene != null)
-            {
-                _currentScene.Render(_server.GetEntities());
-            }
-        }
-        public void Resize(int width, int height)
-        {
-            if (_currentScene != null)
-            {
-                _currentScene.Resize(width, height);
-            }
-        }
+
+        public void Update(float deltaTime) => _currentScene?.Update(deltaTime);
+        public void Render() => _currentScene?.Render(_server?.GetEntities() ?? Array.Empty<Entity>());
+        public void Resize(int width, int height) => _currentScene?.Resize(width, height);
+
         public void Dispose()
         {
-            if (_currentScene != null)
-            {
-                _currentScene.Dispose();
-                _currentScene = null;
-            }
+            _currentScene?.Dispose();
+            _currentScene = null;
         }
+
         private void OnSwitchScene(SwitchSceneEvent e)
         {
-            Console.WriteLine($"SceneManager: SwitchSceneEvent received for {e.SceneName}");
-            Dispose(); // Clean up previous scene
-            if (_menuPanel != null)
-            {
-                _menuPanel.Visible = false; // Hide menu on scene switch
-            }
-            _server = new ClientGameServerProxy(_eventBus); // Secure proxy
+            Console.WriteLine($"SceneManager: Switching to '{e.SceneName}'");
+
+            Dispose();
+
+            if (_menuPanel != null) _menuPanel.Visible = false;
+
+            _server = new ClientGameServerProxy(_eventBus);
             var predictionSystem = new ClientPredictionSystem(_server, _eventBus);
             _server.AddSystem(predictionSystem);
+
             _modelManager = new ModelManager(_renderContext);
             _modelManager.LoadModel(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx"));
+
             Vector3 startPos = new Vector3(10, 10, 0);
             _player = new Player(1, startPos, ((SteamEngine)_steamEngine).GetSteamId(), _modelManager);
             _player.InitializeCamera(_controlContext, _window);
+
             var playerEntity = new Entity { Id = 1, Type = "Player" };
             playerEntity.AddComponent(_player);
             playerEntity.AddComponent(_player.Physics);
-            var modelComp = new ModelComponent { Model = _player.Model, Key = "man_mesh" };
-            playerEntity.AddComponent(modelComp);
+            playerEntity.AddComponent(new ModelComponent { Model = _player.Model, Key = "man_mesh" });
             _server.AddEntity(playerEntity);
+
             _playerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
-            // Dynamic scene loading
-            string sceneClassName = e.SceneName.Replace(" ", "_").Replace("-", "_") + "Scene";
-            Type sceneType = Type.GetType($"SiegeEngine.Scenes.StartingPoints.{sceneClassName}");
-            if (sceneType != null && sceneType.IsSubclassOf(typeof(Scene)))
+
+            var ctx = new SceneContext
             {
-                ConstructorInfo ctor = sceneType.GetConstructor(new Type[]
-                {
-                    typeof(IRenderContext), typeof(IControlContext), typeof(nint),
-                    typeof(Player), typeof(IGameServer), typeof(PlayerMovement), typeof(EventBus), typeof(ModelManager)
-                });
-                if (ctor != null)
-                {
-                    _currentScene = (Scene)ctor.Invoke(new object[]
-                    {
-                        _renderContext, _controlContext, _window,
-                        _player, _server, _playerMovement, _eventBus, _modelManager
-                    });
-                    _currentScene.SetPlayer(_player);
-                    _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
-                    Console.WriteLine($"SceneManager: Dynamically loaded and initialized {sceneClassName}");
-                }
-                else
-                {
-                    Console.WriteLine($"SceneManager: Constructor not found for {sceneClassName}");
-                }
-            }
-            else
-            {
-                Console.WriteLine($"SceneManager: Scene type not found or invalid: {sceneClassName}");
-            }
+                RenderContext = _renderContext,
+                ControlContext = _controlContext,
+                Window = _window,
+                Server = _server,
+                EventBus = _eventBus,
+                Player = _player,
+                PlayerMovement = _playerMovement,
+                ModelManager = _modelManager
+            };
+
+            _currentScene = (Scene)SceneRegistry.Create(e.SceneName, ctx);
+            _currentScene.SetPlayer(_player);
+            _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
+
+            Console.WriteLine($"SceneManager: '{e.SceneName}' initialized.");
         }
     }
 }

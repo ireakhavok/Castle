@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Scenes
-// File: Scene.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -14,7 +12,7 @@ using System.Numerics;
 
 namespace SiegeEngine.Scenes
 {
-    public abstract class Scene : IDisposable
+    public abstract class Scene : IScene, IDisposable
     {
         protected readonly IRenderContext _renderContext;
         protected readonly IControlContext _controlContext;
