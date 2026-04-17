@@ -18,6 +18,25 @@ namespace SiegeEngine.Scenes.StartingPoints
 {
     public unsafe class SandboxScene : Scene
     {
+        static SandboxScene()
+        {
+            SceneRegistry.Register("Sandbox", ctx =>
+            {
+                if (ctx.Player == null || ctx.Server == null || ctx.PlayerMovement == null || ctx.ModelManager == null)
+                    throw new InvalidOperationException("SandboxScene requires Player, Server, PlayerMovement and ModelManager in SceneContext.");
+
+                return new SandboxScene(
+                    ctx.RenderContext,
+                    ctx.ControlContext,
+                    ctx.Window,
+                    ctx.Player,
+                    ctx.Server,
+                    ctx.PlayerMovement,
+                    ctx.EventBus,
+                    ctx.ModelManager);
+            });
+        }
+
         public static void Launch(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             eventBus.Publish(new SwitchSceneEvent("Sandbox"));
@@ -30,7 +49,6 @@ namespace SiegeEngine.Scenes.StartingPoints
         private float _scrollDelta;
         private ShaderProgram _gridShader;
 
-        // Added back the grid buffer that was used in RenderContent
         protected VertexBuffer _gridBuffer;
 
         public SandboxScene(IRenderContext renderContext, IControlContext controlContext, nint window, Player player, IGameServer server, PlayerMovement playerMovement, EventBus eventBus, ModelManager modelManager)
@@ -92,7 +110,6 @@ namespace SiegeEngine.Scenes.StartingPoints
 
         protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            // Grid
             _gridShader.Use();
             _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
             _gridShader.SetMatrix4("uView", view);
@@ -102,7 +119,6 @@ namespace SiegeEngine.Scenes.StartingPoints
             _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
             _renderContext.Enable(_renderContext.Enums.DepthTest);
 
-            // Player model using shared renderer
             var playerEntity = _server.GetEntityById(_player.EntityId);
             var modelComp = playerEntity?.GetComponent<ModelComponent>();
             var physics = _player.Physics;
