@@ -45,11 +45,24 @@ namespace SiegeEngine.Scenes
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
             _flyCamera = new FlyCameraController(controlContext, window);
+
+            // === CRITICAL INITIALIZATION - prevents null after panel close/reopen ===
+            _terrainGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
+            _colorGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
         }
 
         public override void LoadSceneData(SceneData data)
         {
             base.LoadSceneData(data);
+
+            // === ALWAYS reset geo references on scene load (fixes stale null state after panel close) ===
+            _terrainGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
+            _colorGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
+            _hasColorTexture = false;
+            _terrainTextureId = 0;
+            _useCustomScale = false;
+            _heightmap = null;
+
             if (data?.Terrain != null)
             {
                 if (!string.IsNullOrEmpty(data.Terrain.HeightmapPath))
@@ -143,11 +156,13 @@ namespace SiegeEngine.Scenes
 
         protected virtual void BuildTexturedMesh()
         {
-            if (!_hasColorTexture || !_colorGeoRef.IsValid || !_terrainGeoRef.IsValid)
+            // === SAFE GUARD - never allow null geo refs ===
+            if (!_hasColorTexture || _colorGeoRef == null || !_colorGeoRef.IsValid || _terrainGeoRef == null || !_terrainGeoRef.IsValid)
             {
                 BuildWireframeMesh(WireframeStep);
                 return;
             }
+
             ComputeWorldScale();
             _terrainVertices.Clear();
             _terrainIndices.Clear();
@@ -157,6 +172,7 @@ namespace SiegeEngine.Scenes
             int stepsY = _terrainHeight / step;
             _meshVertsX = stepsX + 1;
             _meshVertsY = stepsY + 1;
+
             double tieEastMeters, tieNorthMeters;
             int demZone = 0;
             float scaleEastMeters, scaleNorthMeters;
@@ -177,12 +193,14 @@ namespace SiegeEngine.Scenes
                 scaleEastMeters = (float)(_terrainGeoRef.PixelScale.X * 111319.9f * Math.Cos(_terrainGeoRef.TiePointModel.Y * Math.PI / 180.0));
                 scaleNorthMeters = _terrainGeoRef.PixelScale.Y * 111319.9f;
             }
+
             float colorMinEast = _colorGeoRef.MinEast;
             float colorMaxEast = _colorGeoRef.MaxEast;
             float colorMinNorth = _colorGeoRef.MinNorth;
             float colorMaxNorth = _colorGeoRef.MaxNorth;
             float colorExtentEast = colorMaxEast - colorMinEast;
             float colorExtentNorth = colorMaxNorth - colorMinNorth;
+
             for (int x = 0; x <= stepsX; x++)
             {
                 for (int y = 0; y <= stepsY; y++)
@@ -192,6 +210,7 @@ namespace SiegeEngine.Scenes
                     float z = GetHeight(wx, wy) * VerticalExaggeration;
                     _terrainVertices.Add(wx); _terrainVertices.Add(wy); _terrainVertices.Add(z);
                     _terrainVertices.Add(0.7f); _terrainVertices.Add(0.9f); _terrainVertices.Add(1.0f); _terrainVertices.Add(1.0f);
+
                     float fracX = (float)x / stepsX;
                     float fracY = (float)y / stepsY;
                     float meshEastMeters, meshNorthMeters;
@@ -208,11 +227,13 @@ namespace SiegeEngine.Scenes
                         meshEastMeters = (float)e;
                         meshNorthMeters = (float)n;
                     }
+
                     float u = (meshEastMeters - colorMinEast) / colorExtentEast;
                     float v = 1.0f - (meshNorthMeters - colorMinNorth) / colorExtentNorth;
                     _terrainVertices.Add(u); _terrainVertices.Add(v);
                 }
             }
+
             for (int x = 0; x < stepsX; x++)
             {
                 for (int y = 0; y < stepsY; y++)
