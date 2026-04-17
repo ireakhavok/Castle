@@ -10,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Managers
 {
     public class PanelManager
@@ -30,10 +29,8 @@ namespace SiegeEngine.Core.Managers
         private DockingMode _sceneDefaultMode = DockingMode.Desktop;
         private bool _lastGlobalTabPressed = false;
         private readonly PanelInputRouter _router;
-
         public static PanelManager Current { get; private set; }
         public IDEDockingStrategy IDEStrategy => _ideStrategy;
-
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -41,13 +38,10 @@ namespace SiegeEngine.Core.Managers
             _window = window;
             _eventBus = eventBus;
             _captureManager = new CaptureManager(controlContext);
-
             _router = new PanelInputRouter();
-
             _desktopStrategy = new DesktopDockingStrategy(renderContext, controlContext, eventBus);
             _dynamicStrategy = new DynamicDockingStrategy(renderContext, controlContext, eventBus);
             _ideStrategy = new IDEDockingStrategy(renderContext, controlContext, window, eventBus);
-
             _eventBus.Subscribe<OpenPanelEvent>(OnOpenPanel);
             _eventBus.Subscribe<ClosePanelEvent>(OnClosePanel);
             _controlContext.SetScrollCallback(_window, (nint w, double xoffset, double yoffset) =>
@@ -56,24 +50,22 @@ namespace SiegeEngine.Core.Managers
             });
             Current = this;
         }
-
         public void SetSceneDefaultDockingMode(DockingMode mode)
         {
             _sceneDefaultMode = mode;
         }
-
         private void OnOpenPanel(OpenPanelEvent e)
         {
             AddPanel(e.Panel);
         }
-
         private void OnClosePanel(ClosePanelEvent e)
         {
             RemovePanel(e.Panel);
         }
-
         public void AddPanel(IPanel panel)
         {
+            if (panel == null) return;
+            if (_panels.Contains(panel)) return;   // CENTRALIZED GUARD: prevents double-registration / double-Init from deserialize path
             _panels.Add(panel);
             _router.AddPanel(panel);
             panel.Init();
@@ -99,7 +91,6 @@ namespace SiegeEngine.Core.Managers
                 _desktopStrategy.AddPanel(panel);
             }
         }
-
         private void AutoCenterModal(IPanel panel)
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
@@ -108,7 +99,6 @@ namespace SiegeEngine.Core.Managers
             panel.Position = new Vector2(Math.Max(40f, x), Math.Max(40f, y));
             panel.OnPanelResize(panel.Size.X, panel.Size.Y);
         }
-
         public void Update(float deltaTime)
         {
             _controlContext.GetCursorPos(_window, out double mx, out double my);
@@ -117,9 +107,7 @@ namespace SiegeEngine.Core.Managers
             bool mousePressed = !_prevMouseDown && currentMouseDown;
             bool mouseReleased = _prevMouseDown && !currentMouseDown;
             _prevMouseDown = currentMouseDown;
-
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
-
             bool tabPressed = _controlContext.GetKey(_window, Key.Tab) == InputAction.Press;
             if (tabPressed && !_lastGlobalTabPressed)
             {
@@ -131,25 +119,20 @@ namespace SiegeEngine.Core.Managers
             {
                 _lastGlobalTabPressed = false;
             }
-
             _captureManager.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
-
             if (!_captureManager.IsCapturing)
             {
                 IPanel topmost = GetTopmostPanelAt(mousePos);
-
                 // === AUTHORITATIVE TOPMOST UPDATE (full mouse events + focus) ===
                 if (topmost != null)
                 {
                     topmost.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
-
                     if (BasePanel.MouseReleasedConsumedThisFrame && mouseReleased)
                     {
                         mouseReleased = false;
                         BasePanel.MouseReleasedConsumedThisFrame = false;
                     }
                 }
-
                 // === CONTINUOUS UPDATE PASS ===
                 // Panels that want continuous updates (AnimationViewerPanel, etc.) must run every frame.
                 // - If they are topmost → they already got the full call above (skip to avoid double)
@@ -159,16 +142,13 @@ namespace SiegeEngine.Core.Managers
                     if (panel is BasePanel bp && bp.WantsContinuousUpdate)
                     {
                         bool isTopmost = (topmost == panel);
-                        if (isTopmost) continue;   // <--- SKIP - already updated in topmost path
-
+                        if (isTopmost) continue; // <--- SKIP - already updated in topmost path
                         bool passMouseDown = false;
                         bool passMousePressed = false;
                         bool passMouseReleased = false;
-
                         panel.Update(deltaTime, mousePos, passMouseDown, passMousePressed, passMouseReleased, _scrollDelta);
                     }
                 }
-
                 // Strategy updates (layout, dragging, splitter, etc.)
                 if (_desktopStrategy.HasActiveContent())
                     _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
@@ -177,27 +157,22 @@ namespace SiegeEngine.Core.Managers
                 if (_ideStrategy.HasActiveContent())
                     _ideStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
             }
-
             _router.ClearForcedOverdraw();
             _scrollDelta = 0f;
             BasePanel.MouseReleasedConsumedThisFrame = false;
         }
-
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
             return _router.GetTopmostPanelAt(mousePos);
         }
-
         public void ForceDrawOverThisFrame(IPanel panel)
         {
             _router.ForceDrawOverThisFrame(panel);
         }
-
         public IEnumerable<IPanel> GetAllPanels()
         {
             return _panels;
         }
-
         public void Render()
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
@@ -229,7 +204,6 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
-
         public void RemovePanel(IPanel panel)
         {
             if (_captureManager.CurrentOwner == panel)
@@ -243,12 +217,10 @@ namespace SiegeEngine.Core.Managers
             _panels.Remove(panel);
             panel.Dispose();
         }
-
         public void CapturePanel(IPanel panel)
         {
             _captureManager.RequestCapture(panel);
         }
-
         public void ReleasePanelCapture()
         {
             _captureManager.ReleaseCapture();
