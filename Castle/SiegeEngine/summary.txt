@@ -90,7 +90,7 @@ Folder: Core
       - UIOverlay CreateUIOverlay()
         - Calls: UIOverlay
       - void Init()
-        - Calls: LayeredUIRenderer, PanelChrome, UIQuadRenderer, _controlContext.GetWindowSize, _uiOverlay.RefreshUI
+        - Calls: LayeredUIRenderer, PanelChrome, UIQuadRenderer, _uiOverlay.RefreshUI
       - bool IsMouseOver(Vector2 absMousePos)
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
         - Calls: GetTopmostPanelAt, IsMouseOver, OnContentFocusGained, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
@@ -1256,7 +1256,7 @@ Folder: Core
       - void Dispose()
 - File: PanelInputRouter.cs
   - Class: PanelInputRouter (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - List<IPanel> _allPanels
       - HashSet<IPanel> _forcedOverdrawThisFrame
@@ -1301,7 +1301,7 @@ Folder: Core
       - void AutoCenterModal(IPanel panel)
         - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
       - void Update(float deltaTime)
-        - Calls: ClosePanelEvent, GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _router.ClearForcedOverdraw
+        - Calls: GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _router.ClearForcedOverdraw
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
       - void ForceDrawOverThisFrame(IPanel panel)
       - IEnumerable<IPanel> GetAllPanels()
@@ -1801,6 +1801,7 @@ Folder: Core
       - JSDocument _document
       - bool _needsVerticalScrollbar
       - UIInteractionLayer _interactionLayer
+      - TextRenderer TextRenderer
     - Methods:
       - constructor UIOverlay( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
       - void Init()

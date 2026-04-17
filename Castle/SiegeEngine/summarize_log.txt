@@ -577,7 +577,7 @@ Found 7 dependencies
 Found: DockManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
-Read 13126 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
+Read 13302 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DockManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 9 dependencies
 Found: DynamicDockingStrategy.cs
@@ -595,7 +595,7 @@ Found 2 dependencies
 Found: IDEDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
-Read 41511 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Read 40341 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 12 dependencies
 Found: LevelManager.cs
@@ -619,13 +619,13 @@ Found 7 dependencies
 Found: PanelInputRouter.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelInputRouter.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelInputRouter.cs
-Read 1930 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelInputRouter.cs
+Read 2379 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelInputRouter.cs
 Namespace: SiegeEngine.Core.Managers
-Found 6 dependencies
+Found 7 dependencies
 Found: PanelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
-Read 10069 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
+Read 10219 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 10 dependencies
 Found: SceneManager.cs
@@ -887,7 +887,7 @@ Found: ..
 Found: BasePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
-Read 13347 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
+Read 12459 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\BasePanel.cs
 Namespace: SiegeEngine.Core.UI
 Found 8 dependencies
 Found: Core.cs
@@ -1105,7 +1105,7 @@ Found 9 dependencies
 Found: PanelChrome.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
-Read 3174 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
+Read 2686 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
 Namespace: SiegeEngine.Core.UI
 Found 4 dependencies
 Found: Render.cs
@@ -1123,7 +1123,7 @@ Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 26918 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 27018 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 12 dependencies
 Found: HeirarchySummary.exe
