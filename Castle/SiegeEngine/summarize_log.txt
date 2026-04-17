@@ -619,7 +619,7 @@ Found 7 dependencies
 Found: PanelInputRouter.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelInputRouter.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelInputRouter.cs
-Read 2379 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelInputRouter.cs
+Read 3034 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelInputRouter.cs
 Namespace: SiegeEngine.Core.Managers
 Found 7 dependencies
 Found: PanelManager.cs
@@ -1228,7 +1228,7 @@ Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 17994 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 18773 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: SiegeEngine.csproj

@@ -914,7 +914,7 @@ Folder: Managers
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
-        - Calls: bp.IsMouseOver, p.IsMouseOver
+        - Calls: IDEDockingStrategy.Render, bp.IsMouseOver, p.IsMouseOver
       - void ForceDrawOverThisFrame(IPanel panel)
       - void ClearForcedOverdraw()
         - Calls: _forcedOverdrawThisFrame.Clear
