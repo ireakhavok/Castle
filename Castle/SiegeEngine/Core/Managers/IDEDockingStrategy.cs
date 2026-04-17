@@ -507,14 +507,14 @@ namespace SiegeEngine.Core.Managers
         }
         private bool HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
         {
-            bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
-                             mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
+            bool overPanel = mousePos.X >= panel.Position.X && panel.Position.X <= panel.Position.X + panel.Size.X &&
+                             mousePos.Y >= panel.Position.Y && panel.Position.Y <= panel.Position.Y + panel.Size.Y;
             if (!overPanel) return false;
             if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
             {
                 if (panel.IsOverCloseButton(mousePos))
                     return false;
-                bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + BasePanel.TitleHeight;
+                bool overTitle = mousePos.Y >= panel.Position.Y && panel.Position.Y <= panel.Position.Y + BasePanel.TitleHeight;
                 if (overTitle)
                 {
                     _draggingPanel = panel;
@@ -814,7 +814,7 @@ namespace SiegeEngine.Core.Managers
                 if (state.Root != null)
                 {
                     _root = DeserializeNode(state.Root);
-                    RegisterAllPanelsInTree(_root);   // CENTRALIZED: every docked panel now goes through OpenPanelEvent
+                    RegisterAllPanelsInTree(_root); // CENTRALIZED: every docked panel now goes through OpenPanelEvent
                 }
                 foreach (var fp in state.FloatingPanels)
                 {
@@ -824,7 +824,7 @@ namespace SiegeEngine.Core.Managers
                         panel.Position = fp.Position;
                         panel.Size = fp.Size;
                         panel.DockState = DockState.Floating;
-                        _eventBus.Publish(new OpenPanelEvent(panel));   // CENTRALIZED: floating panels now go through OpenPanelEvent
+                        _eventBus.Publish(new OpenPanelEvent(panel)); // CENTRALIZED: floating panels now go through OpenPanelEvent
                         Console.WriteLine($"[IDEDockingStrategy] Restored floating panel {fp.PanelType}");
                     }
                 }
@@ -859,8 +859,9 @@ namespace SiegeEngine.Core.Managers
                 if (t != null && typeof(IPanel).IsAssignableFrom(t))
                 {
                     var panel = (IPanel)Activator.CreateInstance(t, _renderContext, _controlContext, _window, _eventBus);
-                    if (panel is BasePanel bp)
-                        bp.Init();
+                    // REMOVED: direct bp.Init() call — panels must ONLY initialize through the centralized AddPanel path
+                    // (which also registers them with PanelManager._panels and PanelInputRouter). Calling Init() here
+                    // caused duplicate subscriptions (GenericEvent, FileSelectedEvent, etc.) after project load.
                     return panel;
                 }
             }
