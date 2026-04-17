@@ -99,7 +99,7 @@ namespace SiegeEngine.Core.Managers
             _currentScene.SetPlayer(_player);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
 
-            Console.WriteLine($"SceneManager: '{e.SceneName}' initialized.");
+            Console.WriteLine($"SceneManager: '{e.SceneName}' initialized successfully via registry.");
         }
     }
 }
