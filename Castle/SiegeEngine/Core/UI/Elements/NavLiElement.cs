@@ -18,11 +18,11 @@ namespace SiegeEngine.Core.UI.Elements
             Tag = "li";
         }
 
-        // RELIABLE open state — purely logical, updated during Update phase
         public bool IsDropdownOpen => IsNavDropdownParent() && (_isPinnedOpen || IsHover);
 
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
+            // ... (unchanged from provided full code)
             bool isSubmenuItem = false;
             if (Parent != null)
             {
@@ -110,7 +110,7 @@ namespace SiegeEngine.Core.UI.Elements
 
             bool dropdownHit = false;
             var dropdownUl = Children.FirstOrDefault(c => c.Tag.ToLower() == "ul");
-            if (IsNavDropdownParent() && dropdownUl != null && (IsHover || _isPinnedOpen) && dropdownUl.GetEffectiveDisplay() != "none")
+            if (IsNavDropdownParent() && dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
             {
                 dropdownHit = dropdownUl.UpdateHover(mousePos, viewportWidth, viewportHeight);
             }
@@ -119,14 +119,19 @@ namespace SiegeEngine.Core.UI.Elements
 
             if (IsNavDropdownParent() || IsTopLevelNavItem())
             {
-                IsHover = hitOnLi || dropdownHit || _isPinnedOpen;
+                IsHover = hitOnLi || dropdownHit;
             }
             else if (isSubmenuItem)
             {
                 IsHover = hitOnLi;
             }
 
-            return hitOnLi || dropdownHit || _isPinnedOpen;
+            if (IsNavDropdownParent() && _isPinnedOpen && !hitOnLi && !dropdownHit)
+            {
+                _isPinnedOpen = false;
+            }
+
+            return hitOnLi || dropdownHit;
         }
 
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)

@@ -95,7 +95,6 @@ namespace CastleBuilder
             IsModal = false;
             RenderOrder = 1000;
 
-            // Prevent BasePanel from forcing full-screen size on the menu bar
             BaseWidth = 0f;
             BaseHeight = 0f;
         }
@@ -110,9 +109,8 @@ namespace CastleBuilder
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
             Position = Vector2.Zero;
 
-            base.Init();   // let BasePanel do normal init first
+            base.Init();
 
-            // FORCE exact menu-bar size AFTER base.Init() so it sticks
             Size = new Vector2(winW, 28f);
 
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
@@ -130,10 +128,8 @@ namespace CastleBuilder
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            // Let BasePanel handle dragging, resizing, topmost checks, focus, etc.
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
 
-            // Only do menu-bar specific work if this panel is truly topmost
             if (PanelManager.Current?.GetTopmostPanelAt(absMousePos) != this)
                 return;
 
@@ -144,7 +140,7 @@ namespace CastleBuilder
 
             _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
 
-            bool hasOpenDropdownNow = UpdateOpenDropdownHovers(absMousePos);
+            bool hasOpenDropdownNow = UpdateOpenDropdownHovers(relMousePos);  // use RELATIVE mouse for correct coords
 
             if (hasOpenDropdownNow && !_lastFrameHadOpenDropdown)
             {
@@ -154,7 +150,7 @@ namespace CastleBuilder
             _lastFrameHadOpenDropdown = hasOpenDropdownNow;
         }
 
-        private bool UpdateOpenDropdownHovers(Vector2 absMousePos)
+        private bool UpdateOpenDropdownHovers(Vector2 relMousePos)
         {
             if (_uiOverlay == null) return false;
 
@@ -170,13 +166,7 @@ namespace CastleBuilder
                 if (dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
                 {
                     anyOpen = true;
-
-                    bool originalNavHover = nav.IsHover;
-                    nav.IsHover = true;
-
-                    dropdownUl.UpdateHover(absMousePos, (int)Size.X, (int)Size.Y);
-
-                    nav.IsHover = originalNavHover;
+                    dropdownUl.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);  // correct relative coords
                 }
             }
             return anyOpen;
@@ -200,13 +190,14 @@ namespace CastleBuilder
 
         public override bool IsMouseOver(Vector2 absMousePos)
         {
-            // Strict menu-bar rect only (top 28px) + dropdowns
             if (absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                 absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + 28f)
                 return true;
 
             if (_uiOverlay != null)
             {
+                Vector2 relMousePos = absMousePos - Position;  // CRITICAL: convert to panel-relative for correct dropdown hit test
+
                 var navLis = _uiOverlay.FindElementsByTag("li")
                     .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
                     .Cast<NavLiElement>();
@@ -217,10 +208,7 @@ namespace CastleBuilder
                     {
                         PanelManager.Current?.ForceDrawOverThisFrame(this);
 
-                        bool originalHover = nav.IsHover;
-                        nav.IsHover = true;
-                        bool hit = nav.UpdateHover(absMousePos, (int)Size.X, (int)Size.Y);
-                        nav.IsHover = originalHover;
+                        bool hit = nav.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);  // use RELATIVE — now triggers auto-close when mouse leaves dropdown area
 
                         if (hit) return true;
                     }
