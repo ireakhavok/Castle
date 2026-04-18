@@ -1078,3 +1078,47 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSParser
 Read 37312 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSParser.cs
 Namespace: SiegeEngine.Core.UI.JSParser
 Found 3 dependencies
+Found: JSStandardLibrary.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSStandardLibrary.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSStandardLibrary.cs
+Read 25096 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSStandardLibrary.cs
+Namespace: SiegeEngine.Core.UI.JSParser
+Found 7 dependencies
+Found: Layout.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
+Read 65314 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Layout.cs
+Namespace: SiegeEngine.Core.UI
+Found 9 dependencies
+Found: MenuPanel.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
+Read 4354 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\MenuPanel.cs
+Namespace: SiegeEngine.Core.UI
+Found 9 dependencies
+Found: PanelChrome.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
+Read 2686 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\PanelChrome.cs
+Namespace: SiegeEngine.Core.UI
+Found 4 dependencies
+Found: Render.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
+Read 12584 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
+Namespace: SiegeEngine.Core.UI
+Found 7 dependencies
+Found: UIInteractionLayer.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
+Read 14696 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
+Namespace: SiegeEngine.Core.UI
+Found 9 dependencies
+Found: UIOverlay.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 27018 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Namespace: SiegeEngine.Core.UI
+Found 12 dependencies
+Writing output for 11 folders
+Scan complete
