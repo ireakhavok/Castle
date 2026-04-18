@@ -42,9 +42,21 @@ namespace ToolChest
         private static ConsolePanel _activeInstance;
 
         private string _filter = "";
-        private int _lastLogCount;
         private bool _dirty;
         private double _lastRebuildTime;
+        private float _scrollOffsetY; // pixels from top of log content
+        private readonly List<LogEntry> _visibleLines = new List<LogEntry>();
+        private const float ToolbarHeight = 32f;
+        private const float LogPadding = 8f;
+        private const float FontSize = 12f;
+        private const string FontFamily = "Consolas";
+
+        private class LogEntry
+        {
+            public string Text;
+            public Vector4 Color;
+            public float Height;
+        }
 
         static ConsolePanel()
         {
@@ -91,6 +103,10 @@ namespace ToolChest
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             _activeInstance = this;
             LoadConsoleUI();
+            if (_allLogLines.Count > 0)
+            {
+                _dirty = true;
+            }
         }
 
         public override void Detach()
@@ -119,7 +135,10 @@ namespace ToolChest
                 _allLogLines.Add(formatted);
                 if (_allLogLines.Count > 2500) _allLogLines.RemoveAt(0);
             }
-            if (_activeInstance != null) _activeInstance._dirty = true;   // just mark dirty — no heavy work
+            if (_activeInstance != null)
+            {
+                _activeInstance._dirty = true;
+            }
         }
 
         public void AddLog(string message) { AddLogInternal(message); }
@@ -134,47 +153,82 @@ namespace ToolChest
             if (filterEl != null)
             {
                 string cur = filterEl.Value ?? "";
-                if (cur != _filter) { _filter = cur; _dirty = true; }
+                if (cur != _filter)
+                {
+                    _filter = cur;
+                    _scrollOffsetY = 0f;
+                    _dirty = true;
+                }
             }
 
-            // throttled rebuild (max ~12 times/sec) — keeps it at rest
+            // scroll handling for custom log area
+            if (scrollDelta != 0f)
+            {
+                _scrollOffsetY = Math.Max(0f, _scrollOffsetY - scrollDelta * 28f);
+                // clamp will happen in Render
+            }
+
+            // throttled rebuild (~12 fps max when dirty) — keeps CPU at rest when idle
             double now = _controlContext.GetTime();
             if (_dirty && (now - _lastRebuildTime) > 0.08)
             {
-                RebuildLogUI();
+                RebuildVisibleLines();
                 _lastRebuildTime = now;
                 _dirty = false;
             }
         }
 
-        private void RebuildLogUI()
+        private void RebuildVisibleLines()
         {
-            if (_uiOverlay == null) return;
-            string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "ConsolePanelUI.html");
-            if (!File.Exists(path)) return;
+            _visibleLines.Clear();
+            List<string> snap;
+            lock (_logLock) { snap = new List<string>(_allLogLines); }
 
-            string html = File.ReadAllText(path).Replace("<!--LOGS-->", BuildFilteredLogHtml());
-            _uiOverlay.LoadUI(html);
-            _uiOverlay.PanelWidth = Size.X;
-            _uiOverlay.PanelHeight = Size.Y;
-            _uiOverlay.RefreshUI();
-        }
-
-        private string BuildFilteredLogHtml()
-        {
-            var sb = new StringBuilder();
-            List<string> snap; lock (_logLock) { snap = new List<string>(_allLogLines); }
             string f = _filter?.ToUpperInvariant() ?? "";
+            float maxWidth = Math.Max(50f, Size.X - 2f * LogPadding);
+
             foreach (var line in snap)
             {
                 if (!string.IsNullOrEmpty(f) && !line.ToUpperInvariant().Contains(f)) continue;
                 string lvl = GetLevel(line);
                 if (!_enabledLevels.Contains(lvl)) continue;
-                string col = lvl == "ERROR" ? "#ff6b6b" : lvl == "WARN" ? "#ffd93d" : lvl == "DEBUG" ? "#6bcb77" : "#cccccc";
-                string safe = line.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
-                sb.AppendLine($"<div class=\"log-line\" style=\"color:{col}\">{safe}</div>");
+
+                Vector4 col = GetLevelColor(lvl);
+                WrapAndAddLine(line, col, maxWidth);
             }
-            return sb.ToString();
+        }
+
+        private void WrapAndAddLine(string line, Vector4 color, float maxWidth)
+        {
+            if (string.IsNullOrEmpty(line))
+            {
+                float h = _uiOverlay.TextRenderer.GetLineHeight(FontSize, FontFamily);
+                _visibleLines.Add(new LogEntry { Text = "", Color = color, Height = h });
+                return;
+            }
+
+            string[] words = line.Split(' ');
+            string current = "";
+            float lineH = _uiOverlay.TextRenderer.GetLineHeight(FontSize, FontFamily);
+
+            foreach (var word in words)
+            {
+                string test = current.Length == 0 ? word : current + " " + word;
+                Vector2 sz = _uiOverlay.TextRenderer.GetTextSize(test, FontSize, FontFamily);
+                if (sz.X > maxWidth && current.Length > 0)
+                {
+                    _visibleLines.Add(new LogEntry { Text = current, Color = color, Height = lineH });
+                    current = word;
+                }
+                else
+                {
+                    current = test;
+                }
+            }
+            if (current.Length > 0)
+            {
+                _visibleLines.Add(new LogEntry { Text = current, Color = color, Height = lineH });
+            }
         }
 
         private static string GetLevel(string line)
@@ -187,12 +241,24 @@ namespace ToolChest
             return "UNKNOWN";
         }
 
+        private static Vector4 GetLevelColor(string lvl)
+        {
+            return lvl switch
+            {
+                "ERROR" => new Vector4(1.0f, 0.42f, 0.42f, 1.0f),
+                "WARN" => new Vector4(1.0f, 0.85f, 0.24f, 1.0f),
+                "DEBUG" => new Vector4(0.42f, 0.80f, 0.47f, 1.0f),
+                _ => new Vector4(0.80f, 0.80f, 0.80f, 1.0f)
+            };
+        }
+
         public void HandleDataHook(string hook)
         {
             if (hook == "Clear")
             {
                 lock (_logLock) _allLogLines.Clear();
-                _lastLogCount = 0;
+                _visibleLines.Clear();
+                _scrollOffsetY = 0f;
                 _dirty = true;
             }
             else if (hook == "TogglePause")
@@ -204,6 +270,7 @@ namespace ToolChest
             {
                 string lvl = hook.Substring(12).ToUpperInvariant();
                 if (_enabledLevels.Contains(lvl)) _enabledLevels.Remove(lvl); else _enabledLevels.Add(lvl);
+                _scrollOffsetY = 0f;
                 _dirty = true;
             }
         }
@@ -212,6 +279,66 @@ namespace ToolChest
         {
             string h = elem.Attributes.GetValueOrDefault("data-hook", "");
             if (!string.IsNullOrEmpty(h)) HandleDataHook(h);
+        }
+
+        protected override void RenderContentLayer()
+        {
+            base.RenderContentLayer(); // draws toolbar HTML + chrome
+            if (_uiOverlay == null || !Visible) return;
+
+            if (_dirty)
+            {
+                RebuildVisibleLines();
+                _dirty = false;
+            }
+
+            float titleH = HasTitleBar ? TitleHeight : 0f;
+            float logAreaTop = titleH + ToolbarHeight;           // panel-local Y
+            float logAreaLeft = LogPadding;
+            float logAreaWidth = Size.X - 2f * LogPadding;
+            float logAreaHeight = Size.Y - logAreaTop;
+
+            if (logAreaWidth < 20f || logAreaHeight < 10f) return;
+
+            // clamp scroll
+            float totalHeight = 0f;
+            foreach (var e in _visibleLines) totalHeight += e.Height + 1f;
+            float maxScroll = Math.Max(0f, totalHeight - logAreaHeight + 20f);
+            _scrollOffsetY = Math.Clamp(_scrollOffsetY, 0f, maxScroll);
+
+            float y = logAreaTop - _scrollOffsetY;
+            float lineSpacing = 1f;
+
+            for (int i = 0; i < _visibleLines.Count; i++)
+            {
+                var entry = _visibleLines[i];
+                if (y + entry.Height < logAreaTop) { y += entry.Height + lineSpacing; continue; }
+                if (y > logAreaTop + logAreaHeight) break;
+
+                _uiOverlay.TextRenderer.RenderText(
+                    entry.Text,
+                    logAreaLeft,
+                    y,
+                    Size.X,
+                    Size.Y,
+                    FontSize,
+                    entry.Color,
+                    FontFamily);
+
+                y += entry.Height + lineSpacing;
+            }
+        }
+
+        public override void OnPanelResize(float w, float h)
+        {
+            base.OnPanelResize(w, h);
+            _dirty = true; // re-wrap for new width
+        }
+
+        public override void OnLiveResize(float w, float h)
+        {
+            base.OnLiveResize(w, h);
+            _dirty = true;
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
