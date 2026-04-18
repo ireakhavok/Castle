@@ -21,21 +21,13 @@
             height: 100%;
         }
 
-        .header {
-            background: #252526;
-            padding: 6px 10px;
-            border-bottom: 1px solid #333;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-        }
-
         .toolbar {
             background: #252526;
             padding: 4px 8px;
             border-bottom: 1px solid #333;
             display: flex;
-            gap: 6px;
+            gap: 8px;
+            align-items: center;
         }
 
         .log-container {
@@ -43,59 +35,79 @@
             overflow: auto;
             padding: 8px;
             background: #0d0d0d;
+            font-size: 12px;
+            line-height: 1.4;
         }
 
         .log-line {
             padding: 1px 4px;
             white-space: pre-wrap;
+            word-break: break-all;
         }
 
-        .input-area {
-            background: #252526;
-            padding: 6px;
-            border-top: 1px solid #333;
-            display: flex;
-        }
-
-        input {
-            flex: 1;
+        input[type="search"] {
             background: #1e1e1e;
             border: 1px solid #555;
             color: #ccc;
-            padding: 6px;
+            padding: 5px 8px;
             font-family: 'Consolas', monospace;
+            width: 220px;
         }
 
         button {
             background: #333;
             color: #ccc;
             border: 1px solid #555;
-            padding: 6px 12px;
-            margin-left: 4px;
+            padding: 5px 12px;
             cursor: pointer;
+            font-size: 12px;
         }
 
             button:hover {
                 background: #444;
             }
+
+        .levels {
+            display: flex;
+            gap: 10px;
+            margin-left: 12px;
+            font-size: 11px;
+        }
+
+            .levels label {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                cursor: pointer;
+            }
+
+            .levels input[type="checkbox"] {
+                accent-color: #0d7377;
+            }
+
+        .ide-title {
+            padding: 0 8px 0 4px;
+            color: #7CFFCB;
+            font-weight: 600;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
     <div class="panel">
-        <div class="header">
-            <span>Console</span>
-        </div>
         <div class="toolbar">
             <button data-hook="Clear">Clear</button>
-            <input id="filterInput" placeholder="Filter..." style="width:200px;" oninput="/* handled in C# via rebuild */">
+            <input id="filterInput" type="search" placeholder="Filter logs...">
+            <button data-hook="TogglePause" id="pauseBtn">Pause</button>
+            <div class="levels">
+                <label style="color:#ff6b6b;"><input type="checkbox" data-hook="ToggleLevel:ERROR" checked> ERR</label>
+                <label style="color:#ffd93d;"><input type="checkbox" data-hook="ToggleLevel:WARN" checked> WARN</label>
+                <label style="color:#6bcb77;"><input type="checkbox" data-hook="ToggleLevel:INFO" checked> INFO</label>
+                <label style="color:#6bcb77;"><input type="checkbox" data-hook="ToggleLevel:DEBUG" checked> DEBUG</label>
+            </div>
+            <div class="ide-title" style="margin-left:auto;">Console</div>
         </div>
-        <div class="log-container" id="logContainer">
-            <!--LOGS-->
-        </div>
-        <div class="input-area">
-            <input id="commandInput" placeholder="Enter command..." data-hook="SubmitCommand">
-            <button data-hook="SubmitCommand">Send</button>
-        </div>
+        <div class="log-container" id="logContainer"><!--LOGS--></div>
     </div>
 </body>
 </html>
