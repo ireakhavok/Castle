@@ -45,11 +45,13 @@ namespace ToolChest
         private bool _dirty;
         private double _lastRebuildTime;
         private float _scrollOffsetY; // pixels from top of log content
+        private bool _autoScroll = true;
         private readonly List<LogEntry> _visibleLines = new List<LogEntry>();
         private const float ToolbarHeight = 32f;
         private const float LogPadding = 8f;
         private const float FontSize = 12f;
         private const string FontFamily = "Consolas";
+        private const float ScrollbarWidth = 7f;
 
         private class LogEntry
         {
@@ -157,15 +159,16 @@ namespace ToolChest
                 {
                     _filter = cur;
                     _scrollOffsetY = 0f;
+                    _autoScroll = true;
                     _dirty = true;
                 }
             }
 
-            // scroll handling for custom log area
+            // scroll handling + auto-scroll logic
             if (scrollDelta != 0f)
             {
                 _scrollOffsetY = Math.Max(0f, _scrollOffsetY - scrollDelta * 28f);
-                // clamp will happen in Render
+                if (scrollDelta < 0f) _autoScroll = false; // user scrolled up → stop auto-follow
             }
 
             // throttled rebuild (~12 fps max when dirty) — keeps CPU at rest when idle
@@ -175,6 +178,15 @@ namespace ToolChest
                 RebuildVisibleLines();
                 _lastRebuildTime = now;
                 _dirty = false;
+            }
+
+            // re-enable auto-scroll when user reaches bottom
+            float totalH = 0f;
+            foreach (var e in _visibleLines) totalH += e.Height + 1f;
+            float maxScroll = Math.Max(0f, totalH - (Size.Y - (HasTitleBar ? TitleHeight : 0f) - ToolbarHeight) + 20f);
+            if (_scrollOffsetY >= maxScroll - 5f)
+            {
+                _autoScroll = true;
             }
         }
 
@@ -195,6 +207,15 @@ namespace ToolChest
 
                 Vector4 col = GetLevelColor(lvl);
                 WrapAndAddLine(line, col, maxWidth);
+            }
+
+            // auto-scroll to bottom on new content (unless user has scrolled up)
+            if (_autoScroll)
+            {
+                float totalH = 0f;
+                foreach (var e in _visibleLines) totalH += e.Height + 1f;
+                float logH = Size.Y - (HasTitleBar ? TitleHeight : 0f) - ToolbarHeight;
+                _scrollOffsetY = Math.Max(0f, totalH - logH + 20f);
             }
         }
 
@@ -259,6 +280,7 @@ namespace ToolChest
                 lock (_logLock) _allLogLines.Clear();
                 _visibleLines.Clear();
                 _scrollOffsetY = 0f;
+                _autoScroll = true;
                 _dirty = true;
             }
             else if (hook == "TogglePause")
@@ -271,6 +293,7 @@ namespace ToolChest
                 string lvl = hook.Substring(12).ToUpperInvariant();
                 if (_enabledLevels.Contains(lvl)) _enabledLevels.Remove(lvl); else _enabledLevels.Add(lvl);
                 _scrollOffsetY = 0f;
+                _autoScroll = true;
                 _dirty = true;
             }
         }
@@ -327,6 +350,32 @@ namespace ToolChest
 
                 y += entry.Height + lineSpacing;
             }
+
+            // draw scrollbar (only when needed)
+            DrawScrollbar(logAreaTop, logAreaLeft, logAreaWidth, logAreaHeight, totalHeight);
+        }
+
+        private void DrawScrollbar(float logTop, float logLeft, float logW, float logH, float totalH)
+        {
+            if (totalH <= logH + 1f) return; // nothing to scroll
+
+            float trackX = logLeft + logW - ScrollbarWidth - 1f;
+            float trackY = logTop + 2f;
+            float trackW = ScrollbarWidth;
+            float trackH = logH - 4f;
+
+            // track
+            float[] trackNdc = HtmlLayoutUtils.GetNdcQuad(trackX, trackY, trackW, trackH, Matrix4x4.Identity, Size.X, Size.Y);
+            QuadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.18f, 0.18f, 0.18f, 0.95f));
+
+            // thumb
+            float thumbRatio = logH / totalH;
+            float thumbH = Math.Max(18f, trackH * thumbRatio);
+            float thumbTravel = trackH - thumbH;
+            float thumbY = trackY + (_scrollOffsetY / Math.Max(1f, totalH - logH)) * thumbTravel;
+
+            float[] thumbNdc = HtmlLayoutUtils.GetNdcQuad(trackX + 1f, thumbY, trackW - 2f, thumbH, Matrix4x4.Identity, Size.X, Size.Y);
+            QuadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.45f, 0.45f, 0.45f, 1.0f));
         }
 
         public override void OnPanelResize(float w, float h)
