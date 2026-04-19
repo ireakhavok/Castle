@@ -94,7 +94,24 @@ namespace CastleBuilder
             }
             SceneData sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
-            Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' added to in-memory list - no disk write until Save");
+            string jsonPath = Path.Combine(projectPath, "project.json");
+            ProjectData data = File.Exists(jsonPath) ? JsonSerializer.Deserialize<ProjectData>(File.ReadAllText(jsonPath)) ?? new ProjectData() : new ProjectData();
+            if (data.Scenes == null) data.Scenes = new Dictionary<string, SceneData>();
+            if (!data.Scenes.ContainsKey(sceneData.Name))
+            {
+                data.Scenes[sceneData.Name] = sceneData;
+                data.LastOpenedScene = sceneData.Name;
+                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+                Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' added to project.json (in-memory until next full save)");
+            }
+            var panelManager = PanelManager.Current;
+            if (panelManager != null)
+            {
+                foreach (var p in panelManager.GetAllPanels())
+                {
+                    if (p is SceneEditorPanel sep) sep.RefreshSceneList();
+                }
+            }
         }
         public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -105,43 +122,7 @@ namespace CastleBuilder
                 Console.WriteLine("[BlueprintManager.CreateNewScene] ERROR: No active project");
                 return;
             }
-            string jsonPath = Path.Combine(projectPath, "project.json");
-            ProjectData data;
-            if (File.Exists(jsonPath))
-            {
-                string json = File.ReadAllText(jsonPath);
-                data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
-            }
-            else
-            {
-                data = new ProjectData { Name = Path.GetFileName(projectPath) };
-            }
-            if (data.Scenes == null) data.Scenes = new Dictionary<string, SceneData>();
-            string sceneName = $"Scene_{data.Scenes.Count + 1}";
-            var sceneData = new SceneData { Name = sceneName, SceneType = "TerrainTest" };
-            sceneData.Terrain = new TerrainData
-            {
-                WorldScaleX = 1.0f,
-                WorldScaleZ = 1.0f,
-                VerticalExaggeration = 1.0f
-            };
-            int w = 200;
-            int h = 200;
-            float[,] newHeightmap = new float[w, h];
-            for (int x = 0; x < w; x++)
-                for (int y = 0; y < h; y++)
-                    newHeightmap[x, y] = 0f;
-            ProjectSettings.Current.SetCurrentTerrain(sceneData, newHeightmap, sceneName);
-            var level = new Level(eventBus) { Name = sceneName };
-            level.Terrain = sceneData.Terrain;
-            ProjectSettings.Current.SetCurrentLevel(level);
-            data.Scenes[sceneName] = sceneData;
-            data.LastOpenedScene = sceneName;
-            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
-            Console.WriteLine($"[BlueprintManager] New scene created: {sceneName} (200×200 default terrain + Level container initialized)");
-            var terrainPanel = new TerrainCreatorPanel(renderContext, controlContext, window, eventBus, sceneData);
-            eventBus.Publish(new OpenPanelEvent(terrainPanel) { Mode = OpenMode.Replace });
-            eventBus.Publish(new LoadProjectEvent { Path = projectPath });
+            NewTerrainPanel.Open(renderContext, controlContext, window, eventBus);
         }
         public static void EnsureDefaultSceneIfNeeded()
         {
@@ -213,7 +194,6 @@ namespace CastleBuilder
                     Console.WriteLine($"[BlueprintManager.DoProjectSave] Level '{level.Name}' serialized into scene '{currentSceneName}' ({level.Entities.Count} entities)");
                 }
             }
-            // === GEO-TIFF SAFE GUARD: respect original import path stored in CurrentHeightmapPath ===
             string originalPath = ProjectSettings.Current.CurrentHeightmapPath;
             bool isRealGeoTiff = false;
             if (!string.IsNullOrEmpty(originalPath))

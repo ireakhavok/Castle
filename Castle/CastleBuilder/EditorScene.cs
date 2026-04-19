@@ -139,24 +139,23 @@ namespace CastleBuilder
         {
             if (_activeGameScene is TerrainCreatorScene tcs && _projectData?.Scenes != null)
             {
-                if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sceneData))
+                foreach (var kvp in _projectData.Scenes)
                 {
-                    string name = _currentGameSceneName ?? "Main";
-                    tcs.SaveTerrain(name);
-
-                    if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
-
-                    // Only overwrite path if SaveTerrain produced a custom .tif (i.e. not a verbatim GeoTIFF copy)
-                    string currentPath = sceneData.Terrain.HeightmapPath ?? "";
+                    string sceneName = kvp.Key;
+                    var sd = kvp.Value;
+                    if (sd.Terrain == null) sd.Terrain = new TerrainData();
+                    tcs.SaveTerrain(sceneName);
+                    string currentPath = sd.Terrain.HeightmapPath ?? "";
                     if (!currentPath.Contains("Assets/Terrain") || currentPath.EndsWith(".tif", StringComparison.OrdinalIgnoreCase))
                     {
-                        sceneData.Terrain.HeightmapPath = $"Assets/Terrain/{name}.tif";
+                        sd.Terrain.HeightmapPath = $"Assets/Terrain/{sceneName}.tif";
                     }
-
-                    ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain.HeightmapPath);
-
-                    Console.WriteLine($"[EditorScene] Flushed terrain - relative path stored: {sceneData.Terrain.HeightmapPath}");
                 }
+                if (_projectData.Scenes.ContainsKey(_currentGameSceneName))
+                {
+                    ProjectSettings.Current.SetCurrentTerrain(_projectData.Scenes[_currentGameSceneName], tcs.GetHeightmap(), _currentGameSceneName, _projectData.Scenes[_currentGameSceneName].Terrain.HeightmapPath);
+                }
+                Console.WriteLine($"[EditorScene] Flushed all scenes - current: {_currentGameSceneName}");
             }
         }
 
