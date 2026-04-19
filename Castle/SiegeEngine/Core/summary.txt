@@ -341,11 +341,18 @@ Folder: Definitions
   - Class: DockingMode (Namespace: SiegeEngine.Core.Definitions)
 - File: Entity.cs
   - Class: Entity (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic
+    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
     - Methods:
       - constructor Entity()
       - void SetParent(Entity parent)
       - void AddChild(Entity child)
+      - EntityData ToData()
+      - Entity FromData(EntityData data)
+        - Calls: Entity
+      - constructor Entity()
+- File: EntityData.cs
+  - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: GameMode.cs
   - Class: GameMode (Namespace: SiegeEngine.Core.Definitions)
 - File: InputEnums.cs
@@ -354,8 +361,11 @@ Folder: Definitions
 - File: InventoryComponent.cs
   - Class: Rarity (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System, System.Collections.Generic
+- File: Level.cs
+  - Class: LevelDto (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.Events, System, System.Collections.Generic, System.Numerics, System.Text.Json
 - File: LevelData.cs
-  - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
+  - Class: LevelData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: LightComponent.cs
   - Class: LightComponent (Namespace: SiegeEngine.Core.Definitions)
@@ -2071,6 +2081,8 @@ SiegeEngine.Core.Definitions.Entity
 SiegeEngine.Core.Definitions.EntityData
 SiegeEngine.Core.Definitions.EnvironmentSettings
 SiegeEngine.Core.Definitions.GameMode
+SiegeEngine.Core.Definitions.LevelData
+SiegeEngine.Core.Definitions.LevelDto
 SiegeEngine.Core.Definitions.LightComponent
 SiegeEngine.Core.Definitions.LightType
 SiegeEngine.Core.Definitions.MaterialProperties
