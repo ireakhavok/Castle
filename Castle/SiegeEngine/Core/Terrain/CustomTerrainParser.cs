@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Terrain
-// File: CustomTerrainParser.cs
-using System;
+﻿using System;
 using System.IO;
 namespace SiegeEngine.Core.Terrain
 {
@@ -135,6 +133,7 @@ namespace SiegeEngine.Core.Terrain
         {
             scaleX = 1.0f;
             scaleZ = 1.0f;
+            bool foundCustomTags = false;
             try
             {
                 byte[] bytes = File.ReadAllBytes(filePath);
@@ -142,8 +141,6 @@ namespace SiegeEngine.Core.Terrain
 
                 uint ifdOffset = BitConverter.ToUInt32(bytes, 4);
                 ushort numEntries = BitConverter.ToUInt16(bytes, (int)ifdOffset);
-
-                Console.WriteLine($"[CustomTerrainParser.TryGetCustomScale] {filePath} - {numEntries} tags, file size {bytes.Length}");
 
                 for (uint i = 0; i < numEntries; i++)
                 {
@@ -153,16 +150,15 @@ namespace SiegeEngine.Core.Terrain
 
                     if (tag == 65000 || tag == 65001)
                     {
+                        foundCustomTags = true;
                         uint off = valueOrOffset;
                         double val = BitConverter.ToDouble(bytes, (int)off);
-                        Console.WriteLine($"[CustomTerrainParser.TryGetCustomScale] Found tag {tag} -> offset {off}, double value = {val}");
                         if (tag == 65000) scaleX = (float)val;
                         if (tag == 65001) scaleZ = (float)val;
                     }
                 }
 
-                Console.WriteLine($"[CustomTerrainParser.TryGetCustomScale] Final scales read: X={scaleX:F3}, Z={scaleZ:F3}");
-                return scaleX > 0.001f && scaleZ > 0.001f;
+                return foundCustomTags; // true ONLY if we actually found and parsed our custom tags
             }
             catch (Exception ex)
             {

@@ -1,6 +1,4 @@
-﻿// Folder: CastleBuilder
-// File: EditorScene.cs
-using MapRoom;
+﻿using MapRoom;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -147,7 +145,13 @@ namespace CastleBuilder
                     tcs.SaveTerrain(name);
 
                     if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
-                    sceneData.Terrain.HeightmapPath = $"Assets/Terrain/{name}.tif";
+
+                    // Only overwrite path if SaveTerrain produced a custom .tif (i.e. not a verbatim GeoTIFF copy)
+                    string currentPath = sceneData.Terrain.HeightmapPath ?? "";
+                    if (!currentPath.Contains("Assets/Terrain") || currentPath.EndsWith(".tif", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sceneData.Terrain.HeightmapPath = $"Assets/Terrain/{name}.tif";
+                    }
 
                     ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain.HeightmapPath);
 

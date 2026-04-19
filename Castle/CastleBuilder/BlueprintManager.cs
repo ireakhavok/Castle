@@ -95,8 +95,6 @@ namespace CastleBuilder
             SceneData sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
             Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' added to in-memory list - no disk write until Save");
-            // === REMOVED: LoadProjectEvent publish (was causing unwanted full reload on every new scene/terrain) ===
-            // The scene is already registered in memory and will be persisted on next explicit SaveProject.
         }
         public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -215,7 +213,19 @@ namespace CastleBuilder
                     Console.WriteLine($"[BlueprintManager.DoProjectSave] Level '{level.Name}' serialized into scene '{currentSceneName}' ({level.Entities.Count} entities)");
                 }
             }
-            if (ProjectSettings.Current.CurrentHeightmap != null && !string.IsNullOrEmpty(ProjectSettings.Current.CurrentSceneName))
+            // === GEO-TIFF SAFE GUARD: respect original import path stored in CurrentHeightmapPath ===
+            string originalPath = ProjectSettings.Current.CurrentHeightmapPath;
+            bool isRealGeoTiff = false;
+            if (!string.IsNullOrEmpty(originalPath))
+            {
+                string fullOriginal = Path.IsPathRooted(originalPath) ? originalPath : Path.Combine(projectPath, originalPath);
+                if (File.Exists(fullOriginal) && !CustomTerrainParser.TryGetCustomScale(fullOriginal, out _, out _))
+                {
+                    isRealGeoTiff = true;
+                    Console.WriteLine($"[BlueprintManager.DoProjectSave] Detected real GeoTIFF at {fullOriginal} - skipping custom save");
+                }
+            }
+            if (!isRealGeoTiff && ProjectSettings.Current.CurrentHeightmap != null && !string.IsNullOrEmpty(ProjectSettings.Current.CurrentSceneName))
             {
                 string sceneName = ProjectSettings.Current.CurrentSceneName;
                 string saveDir = Path.Combine(projectPath, "Assets", "Terrain");
