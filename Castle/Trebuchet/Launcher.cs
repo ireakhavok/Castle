@@ -1,5 +1,4 @@
-﻿// Folder: Trebuchet
-// File: Launcher.cs
+﻿// Trebuchet/Launcher.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.PlayerSystem;
@@ -38,7 +37,6 @@ namespace Trebuchet
         private Process _serverProcess;
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
-        //private BlueprintManager _blueprintManager; // kept for reference but no longer instantiated here
 
         public void Start(string context)
         {
@@ -51,7 +49,7 @@ namespace Trebuchet
                     Console.WriteLine($"Failed to load steam_api64.dll. Error code: {Marshal.GetLastWin32Error()}");
                     return;
                 }
-                _serverProcess = Process.Start("Citadel.exe", "--local");
+
                 using (_steamEngine = new SteamEngine())
                 {
                     _eventBus = new EventBus((SteamEngine)_steamEngine);
@@ -84,8 +82,6 @@ namespace Trebuchet
                     _menuPanel.DockState = DockState.Tabbed;
                     _menuPanel.Init();
                     _eventBus.RegisterNamespace("CastleBuilder.Events");
-                    // BlueprintManager is now lazy - activated only by dynamic hook from HTML
-                    // _blueprintManager = new BlueprintManager(_eventBus);   <--- REMOVED
 
                     _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuPanel);
                     _panelManager = new PanelManager(_renderContext, _controlContext, _window, _eventBus);
