@@ -1,6 +1,4 @@
-﻿// Folder: MapRoom
-// File: TerrainCreatorScene.cs
-using Keystone;
+﻿using Keystone;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -15,7 +13,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using ToolChest;
-
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -31,7 +28,6 @@ namespace MapRoom
         private const float BrushUpdateInterval = 0.0f;
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData;
-
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -39,7 +35,6 @@ namespace MapRoom
             _isEditorContext = true;
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
         }
-
         private string ResolveFullPath(string inputPath)
         {
             if (string.IsNullOrEmpty(inputPath)) return inputPath;
@@ -49,7 +44,6 @@ namespace MapRoom
             string fullPath = Path.Combine(projectPath, inputPath);
             return Path.GetFullPath(fullPath);
         }
-
         public void CreateBlank()
         {
             _terrainWidth = 200;
@@ -76,7 +70,6 @@ namespace MapRoom
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
-
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -95,6 +88,25 @@ namespace MapRoom
             {
                 Console.WriteLine($"[TerrainCreatorScene] Loading GeoTIFF: {parameters.ImportPath}");
                 LoadTerrain(parameters.ImportPath);
+                // === FIX: persist the imported GeoTIFF path into SceneData so it survives save/reload ===
+                if (_sceneData?.Terrain != null)
+                {
+                    string projectPath = ProjectSettings.Current.ActiveProject;
+                    if (!string.IsNullOrEmpty(projectPath) && Path.IsPathRooted(parameters.ImportPath))
+                    {
+                        try
+                        {
+                            string relative = Path.GetRelativePath(projectPath, parameters.ImportPath);
+                            _sceneData.Terrain.HeightmapPath = relative;
+                            Console.WriteLine($"[TerrainCreatorScene] GeoTIFF path stored in SceneData: {relative}");
+                        }
+                        catch { _sceneData.Terrain.HeightmapPath = parameters.ImportPath; }
+                    }
+                    else
+                    {
+                        _sceneData.Terrain.HeightmapPath = parameters.ImportPath;
+                    }
+                }
             }
             else
             {
@@ -118,7 +130,6 @@ namespace MapRoom
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
-
         public override void LoadSceneData(SceneData data)
         {
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
@@ -177,7 +188,6 @@ namespace MapRoom
             }
             base.LoadSceneData(data);
         }
-
         public override void LoadTerrain(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -194,12 +204,10 @@ namespace MapRoom
             }
             RebuildTerrainMesh();
         }
-
         public void SetColorTexture(string path)
         {
             base.SetColorTexture(path);
         }
-
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -209,7 +217,6 @@ namespace MapRoom
                 projectPath = AppDomain.CurrentDomain.BaseDirectory;
             string saveDir = Path.Combine(projectPath, "Assets", "Terrain");
             Directory.CreateDirectory(saveDir);
-
             if (_sceneData?.Terrain != null && !string.IsNullOrEmpty(_sceneData.Terrain.HeightmapPath))
             {
                 string fullOriginal = ResolveFullPath(_sceneData.Terrain.HeightmapPath);
@@ -226,12 +233,10 @@ namespace MapRoom
                     _sceneData.Terrain.HeightmapPath = relativePath;
                 }
             }
-
             string tifPath = Path.Combine(saveDir, terrainName + ".tif");
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
             SaveAsPng(pngPath);
             CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
-
             if (_sceneData?.Terrain != null)
             {
                 string relativePath = Path.GetRelativePath(projectPath, tifPath);
@@ -240,7 +245,6 @@ namespace MapRoom
             Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → {tifPath}");
             RebuildTerrainMesh();
         }
-
         public void Export2D(string projectAssetsDir)
         {
             string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
@@ -248,7 +252,6 @@ namespace MapRoom
             TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
             Console.WriteLine($"[TerrainCreatorScene] Exported 2D tilemap to {fbxPath}");
         }
-
         private void SaveAsPng(string path)
         {
             int w = _terrainWidth;
@@ -267,23 +270,19 @@ namespace MapRoom
             }
             bmp.Save(path, ImageFormat.Png);
         }
-
         public void SetActiveBrush(ToolChest.Brush brush)
         {
             _activeBrush = brush;
         }
-
         public ToolChest.Brush GetActiveBrush()
         {
             return _activeBrush;
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
-
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
@@ -307,7 +306,6 @@ namespace MapRoom
             }
             _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
-
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -355,8 +353,12 @@ namespace MapRoom
             {
                 ProjectSettings.Current.StoreUnsavedHeightmap(_sceneData.Name, _heightmap);
             }
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level != null && _sceneData != null)
+            {
+                level.Terrain = _sceneData.Terrain;
+            }
         }
-
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -384,7 +386,6 @@ namespace MapRoom
             }
             return false;
         }
-
         private Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
@@ -395,7 +396,6 @@ namespace MapRoom
                 MathF.Sin(pitchRad)
             ));
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -432,7 +432,6 @@ namespace MapRoom
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
-
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -445,14 +444,12 @@ namespace MapRoom
             _ghostBuffer?.Dispose();
             base.Dispose();
         }
-
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
-
         private void ApplyModification(TerrainModifiedEvent e)
         {
             var brush = new ToolChest.Brush
@@ -464,11 +461,8 @@ namespace MapRoom
                 Intensity = e.Strength
             };
             brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
-            // ONLY partial update – this was the pre-localization optimization
             UpdateAffectedVertices(e.WorldPos, e.Radius);
-            // NO full RebuildTerrainMesh() on every brush stroke
         }
-
         public new float[,] GetHeightmap() => _heightmap;
     }
 }
