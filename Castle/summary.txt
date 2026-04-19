@@ -10,7 +10,7 @@ Folder: Assets
     - Dependencies: System, System.IO, YamlDotNet.RepresentationModel
     - Methods:
       - int CountGameObjects(string prefabPath)
-        - Calls: yaml.Load
+        - Calls: Console.WriteLine, yaml.Load
 - File: UnityAssetFileType.cs
   - Class: UnityAssetFileType (Namespace: SiegeEngine.Core.UnityAssetLoader)
 - File: UnityAssetScanner.cs
@@ -53,8 +53,9 @@ Folder: CastleBuilder
       - EventBus _eventBus
     - Methods:
       - void OnContextChanged(ContextChangedEvent evt)
-        - Calls: RefreshMenuForContext
+        - Calls: Console.WriteLine, RefreshMenuForContext
       - void RefreshMenuForContext(string context)
+        - Calls: Console.WriteLine
       - void HandleDataHook(string hook)
         - Calls: CloseAllOpenNavDropdowns, RefreshUI
       - void CloseAllOpenNavDropdowns()
@@ -76,14 +77,17 @@ Folder: CastleBuilder
       - string DefaultProjectsPath
     - Methods:
       - void SwitchToTerrain( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine
       - void SwitchToAnimator( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine
       - void SwitchToSceneEditor( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: BlueprintManager.EnsureDefaultSceneIfNeeded
+        - Calls: BlueprintManager.EnsureDefaultSceneIfNeeded, Console.WriteLine
       - void SwitchToConfiguration( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine
       - void LoadProject( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: OpenPanelEvent
       - void SaveProject( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: BlueprintManager.SaveCurrentProject
+        - Calls: BlueprintManager.SaveCurrentProject, Console.WriteLine
       - void SaveProjectAs( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: OpenPanelEvent, SaveProjectPanel
       - void OpenTerrain( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
@@ -101,9 +105,9 @@ Folder: CastleBuilder
       - void OpenEditorScene( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: OpenPanelEvent, SceneEditorPanel
       - void CreateNewScene( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: NewTerrainPanel.Open
+        - Calls: Console.WriteLine, NewTerrainPanel.Open
       - void NewProject( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: NewProjectPanel.Open
+        - Calls: Console.WriteLine, NewProjectPanel.Open
 - File: NewProjectEvent.cs
   - Class: NewProjectEvent (Namespace: CastleBuilder.Events)
     - Inherits: IEvent
@@ -185,36 +189,38 @@ Folder: Citadel
       - constructor GameServer( NetworkManager networkManager = null,  bool isEditor = false, EventBus eventBus)
         - Calls: AddSystem, subscribeMethod.Invoke
       - void AddEntity(Entity entity)
-        - Calls: UpdateSpatialGrid
+        - Calls: Console.WriteLine, UpdateSpatialGrid
       - void RemoveEntity(int id)
-        - Calls: RemoveFromSpatialGrid
+        - Calls: Console.WriteLine, RemoveFromSpatialGrid
       - void AddSystem(GameSystem system)
+        - Calls: Console.WriteLine
       - void Update(float deltaTime)
-        - Calls: CheckOcclusion, GetEntities, GetNearbyEntities, _validationSystem.IsAuthoritativeMode
+        - Calls: CheckOcclusion, Console.WriteLine, GetEntities, GetNearbyEntities, _validationSystem.IsAuthoritativeMode
       - bool ValidateAndUpdateMovement( Quaternion requestedRotation,  Vector2 requestedPosition,  ulong steamId, int entityId)
-        - Calls: _validationSystem.ValidateMovement
+        - Calls: Console.WriteLine, _validationSystem.ValidateMovement
       - bool ValidateInventory( object data,  string action, int entityId)
       - byte[] Serialize()
         - Calls: GetEntities, _deltaTracker.GetDeltas
       - void Deserialize(byte[] data)
         - Calls: GetEntityById
       - RayTraceResult RequestRayTrace( Vector3 direction,  float maxDistance, Vector3 start)
-        - Calls: ApproximateNormal, GetNearbyEntities, RayAABBIntersect
+        - Calls: ApproximateNormal, Console.WriteLine, GetNearbyEntities, RayAABBIntersect
       - bool RayAABBIntersect( Vector3 boxMax,  Vector3 boxMin,  Vector3 rayDirection,  out float, Vector3 rayOrigin)
       - Vector3 ApproximateNormal( PhysicsComponent physics, Vector3 hitPoint)
       - void OnExitEditor(ExitEditorEvent e)
-        - Calls: PlayerExitedEditorEvent
+        - Calls: Console.WriteLine, PlayerExitedEditorEvent
       - void OnEntityPlaced(EntityPlacedEvent e)
-        - Calls: AddEntity, PhysicsComponent, Player
+        - Calls: AddEntity, Console.WriteLine, PhysicsComponent, Player
       - void OnItemPickedUp(ItemPickedUpEvent e)
-        - Calls: GetEntityById, _validationSystem.ValidateInventory
+        - Calls: Console.WriteLine, GetEntityById, _validationSystem.ValidateInventory
       - void OnPhysicsCollision(PhysicsCollisionEvent e)
-        - Calls: GetEntityById, _validationSystem.ValidateCombat
+        - Calls: Console.WriteLine, GetEntityById, _validationSystem.ValidateCombat
       - void OnPlayerExitedEditor(PlayerExitedEditorEvent e)
+        - Calls: Console.WriteLine
       - void OnMouseInput(MouseInputEvent e)
-        - Calls: _validationSystem.ValidateMouseInput
+        - Calls: Console.WriteLine, _validationSystem.ValidateMouseInput
       - void OnKeyInput(KeyInputEvent e)
-        - Calls: _validationSystem.ValidateKeyInput
+        - Calls: Console.WriteLine, _validationSystem.ValidateKeyInput
       - bool CheckOcclusion( Vector3 end, Vector3 start)
         - Calls: GetNearbyEntities
       - void UpdateSpatialGrid(Entity entity)
@@ -232,6 +238,7 @@ Folder: Citadel
     - Methods:
       - constructor NetworkManager( EventBus eventBus, SteamEngine steamEngine)
       - void Start()
+        - Calls: Console.WriteLine
       - void SendToAll(byte[] data)
       - void Receive(byte[] data)
         - Calls: _eventBus.ProcessNetworkMessage
@@ -242,7 +249,7 @@ Folder: Citadel
     - Dependencies: Citadel.Server, SiegeEngine.Core.Definitions, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
     - Methods:
       - void Update(float deltaTime)
-        - Calls: _server.GetEntities
+        - Calls: Console.WriteLine, _server.GetEntities
 - File: ServerProgram.cs
   - Class: ServerProgram (Namespace: Citadel)
     - Dependencies: Citadel.Network, Citadel.Server, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Diagnostics, System.Linq
@@ -253,7 +260,7 @@ Folder: Citadel
       - NetworkManager _networkManager
     - Methods:
       - void Main(string[] args)
-        - Calls: Dispose, EventBus, GameServer, NetworkManager, SteamEngine, _gameServer.Update, _networkManager.Start, _steamEngine.Initialize, _steamEngine.InitializeServer, _steamEngine.RunCallbacks
+        - Calls: Console.WriteLine, Dispose, EventBus, GameServer, NetworkManager, SteamEngine, _gameServer.Update, _networkManager.Start, _steamEngine.Initialize, _steamEngine.InitializeServer, _steamEngine.RunCallbacks
 - File: ServerValidationSystem.cs
   - Class: ServerValidationSystem (Namespace: Citadel.Server)
     - Inherits: GameSystem, ISoundValidator
@@ -269,13 +276,15 @@ Folder: Citadel
       - bool IsAuthoritativeMode()
       - void Update(float deltaTime)
       - bool ValidateMovement( Quaternion rotation,  Vector2 position,  ulong steamId, int entityId)
-        - Calls: EntityMovedEvent, _server.GetEntityById
+        - Calls: Console.WriteLine, EntityMovedEvent, _server.GetEntityById
       - bool ValidateCombat( float damage,  int targetId, int entityId)
-        - Calls: _server.GetEntityById
+        - Calls: Console.WriteLine, _server.GetEntityById
       - bool ValidateInventory( object data,  string action, int entityId)
-        - Calls: _server.GetEntityById
+        - Calls: Console.WriteLine, _server.GetEntityById
       - bool ValidateMouseInput( InputAction action,  MouseButton button,  Vector2 position, ulong steamId)
+        - Calls: Console.WriteLine
       - bool ValidateKeyInput( InputAction action,  Key key, ulong steamId)
+        - Calls: Console.WriteLine
       - bool ValidateSoundSource(SoundSource source)
         - Calls: _server.GetEntityById
 
@@ -285,9 +294,9 @@ Folder: Foundation
     - Dependencies: SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, System, System.Diagnostics, System.Runtime.InteropServices, Trebuchet
     - Methods:
       - int MessageBox( string caption,  string text,  uint type, nint hWnd)
-        - Calls: RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
+        - Calls: Console.WriteLine, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
       - void Main(string[] args)
-        - Calls: MessageBox, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
+        - Calls: Console.WriteLine, MessageBox, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
 
 Folder: GuildTower
 - File: Class1.cs
@@ -310,6 +319,7 @@ Folder: Keystone
       - constructor OutlinerCoordinator()
       - void Initialize(EventBus eventBus)
       - void SetAsActiveProvider( EventBus eventBus, IOutlinerProvider provider)
+        - Calls: Console.WriteLine
       - void NotifySelectionChanged(string nodeId)
       - void NotifyHierarchyChanged()
       - List<OutlinerNode> GetCurrentHierarchy( out string, [] selectedIds, out string[] expandedIds)
@@ -326,10 +336,11 @@ Folder: Keystone
     - Dependencies: SiegeEngine.Core.Managers, System, System.Collections.Generic, System.IO, System.Text.Json
     - Methods:
       - void SaveCurrentLayout(string contextName)
-        - Calls: strategy.SerializeState
+        - Calls: Console.WriteLine, strategy.SerializeState
       - void LoadLayoutForContext(string contextName)
-        - Calls: strategy.ClearAll, strategy.DeserializeState
+        - Calls: Console.WriteLine, strategy.ClearAll, strategy.DeserializeState
       - void FlushAllToDisk()
+        - Calls: Console.WriteLine
 - File: ProjectSettings.cs
   - Class: ProjectSettings (Namespace: Keystone)
     - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.IO
@@ -338,6 +349,7 @@ Folder: Keystone
     - Methods:
       - constructor ProjectSettings()
       - void SetCurrentTerrain( string heightmapPath = null,  string sceneName = null, SceneData sceneData, ] heightmap)
+        - Calls: Console.WriteLine
       - ] GetUnsavedHeightmap(string sceneName)
       - void StoreUnsavedHeightmap(] heightmap, string sceneName)
       - string GetLayoutTempPath(string projectPath)
@@ -391,18 +403,18 @@ Folder: MapRoom
     - Methods:
       - string ResolveFullPath(string inputPath)
       - void CreateBlank()
-        - Calls: RebuildTerrainMesh
+        - Calls: Console.WriteLine, RebuildTerrainMesh
       - void CreateTerrain(TerrainCreationParams parameters)
-        - Calls: CreateBlank, LoadTerrain, RebuildTerrainMesh
+        - Calls: Console.WriteLine, CreateBlank, LoadTerrain, RebuildTerrainMesh
       - void LoadSceneData(SceneData data)
-        - Calls: LoadTerrain, ProjectSettings.Current.GetUnsavedHeightmap, RebuildTerrainMesh
+        - Calls: Console.WriteLine, LoadTerrain, ProjectSettings.Current.GetUnsavedHeightmap, RebuildTerrainMesh
       - void LoadTerrain(string path)
-        - Calls: RebuildTerrainMesh, ResolveFullPath
+        - Calls: Console.WriteLine, RebuildTerrainMesh, ResolveFullPath
       - void SetColorTexture(string path)
       - void SaveTerrain(string terrainName)
-        - Calls: CustomTerrainParser.SaveFloatTiff, RebuildTerrainMesh, ResolveFullPath, SaveAsPng
+        - Calls: Console.WriteLine, CustomTerrainParser.SaveFloatTiff, RebuildTerrainMesh, ResolveFullPath, SaveAsPng
       - void Export2D(string projectAssetsDir)
-        - Calls: TilemapExporter.ExportToMesh
+        - Calls: Console.WriteLine, TilemapExporter.ExportToMesh
       - void SaveAsPng(string path)
       - void SetActiveBrush(Brush brush)
       - Brush GetActiveBrush()
@@ -586,7 +598,7 @@ Folder: SiegeEngine
       - void SetListenerPosition(Vector3 position)
       - void Update(float deltaTime)
       - void OnSoundEmission(SoundEmissionEvent e)
-        - Calls: PlaySound, RayTraceSound, _validationSystem.ValidateSoundSource
+        - Calls: Console.WriteLine, PlaySound, RayTraceSound, _validationSystem.ValidateSoundSource
       - void OnSoundEvent(SoundEvent e)
         - Calls: PlaySound
       - SoundRayTraceResult RayTraceSound(SoundSource source)
@@ -595,9 +607,9 @@ Folder: SiegeEngine
       - Vector3 RandomScatterDirection( float coneAngleDeg, Vector3 direction)
       - RayTraceResult SimulateClientRayTrace( Vector3 direction, Vector3 start)
       - void PlaySound( SoundRayTraceResult result, SoundSource source)
-        - Calls: ApplyLowPassFilter, ConvertMp3ToWav, Task.Run, audioData.Clone
+        - Calls: ApplyLowPassFilter, Console.WriteLine, ConvertMp3ToWav, Task.Run, audioData.Clone, writer.Write
       - byte[] ConvertMp3ToWav(byte[] mp3Data)
-        - Calls: DecodeMp3Frames, GetMp3SampleRate
+        - Calls: Console.WriteLine, DecodeMp3Frames, GetMp3SampleRate, writer.Write
       - int GetMp3SampleRate(byte[] header)
       - short[] DecodeMp3Frames( int channels,  int sampleRate, Stream mp3Stream)
         - Calls: Array.Resize, CalculateFrameSize, DecodeMp3Frame
@@ -617,7 +629,7 @@ Folder: SiegeEngine
     - Methods:
       - constructor BackgroundRenderer( IRenderContext renderContext,  nint window, IControlContext controlContext)
       - void Initialize( ShaderProgram shaderProgram, string backgroundPath)
-        - Calls: BitConverter.ToString, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.GenBuffers, _renderContext.GenTextures, _renderContext.GenVertexArrays, _renderContext.GetError, _renderContext.PixelStore, _renderContext.TexImage2D, _renderContext.TexParameter, _renderContext.VertexAttribPointer
+        - Calls: BitConverter.ToString, Console.WriteLine, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.EnableVertexAttribArray, _renderContext.GenBuffers, _renderContext.GenTextures, _renderContext.GenVertexArrays, _renderContext.GetError, _renderContext.PixelStore, _renderContext.TexImage2D, _renderContext.TexParameter, _renderContext.VertexAttribPointer
       - void Render( float height,  float posY,  float viewportHeight,  float viewportWidth,  float width, float posX)
         - Calls: _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.DrawArrays, _shaderProgram.SetMatrix4, _shaderProgram.SetUniform, _shaderProgram.Use
       - void Dispose()
@@ -669,6 +681,7 @@ Folder: SiegeEngine
       - void Update( Vector2 absMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta = 0f, float deltaTime)
         - Calls: GetTopmostPanelAt, IsMouseOver, OnContentFocusGained, OnLiveResize, OnPanelResize, _uiOverlay.Scroll, chrome.HandleUpdate
       - void OnContentFocusGained()
+        - Calls: Console.WriteLine
       - void ToggleCameraMode()
       - ResizeHandle GetResizeHandle(Vector2 absMousePos)
       - void StartResize( ResizeHandle handle, Vector2 mousePos)
@@ -746,8 +759,9 @@ Folder: SiegeEngine
       - constructor CameraController( IntPtr window,  Player player = null, IControlContext controlContext)
         - Calls: UpdateCamera
       - void Update( bool isGameActive,  float scrollDelta, float deltaTime)
-        - Calls: ChangePerspective, UpdateCamera, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.SetInputMode
+        - Calls: ChangePerspective, Console.WriteLine, UpdateCamera, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetWindowAttrib, _controlContext.SetInputMode
       - void ChangePerspective()
+        - Calls: Console.WriteLine
       - void UpdateCamera()
 - File: CameraType.cs
   - Class: CameraType (Namespace: SiegeEngine.Core.Definitions)
@@ -805,10 +819,10 @@ Folder: SiegeEngine
       - float _maxDistance
     - Methods:
       - void EnqueueMovementRequest( Quaternion requestedRotation,  Vector2 requestedPos,  ulong steamId, int entityId)
-        - Calls: MovementRequest
+        - Calls: Console.WriteLine, MovementRequest
       - void Update(float deltaTime)
       - void OnEntityMoved(EntityMovedEvent e)
-        - Calls: _pendingMoves.Clear, _server.GetEntityById
+        - Calls: Console.WriteLine, _pendingMoves.Clear, _server.GetEntityById
 - File: ClosePanelEvent.cs
   - Class: ClosePanelEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -853,7 +867,7 @@ Folder: SiegeEngine
       - HtmlElement FindContainingBlock()
       - void UpdateFullTransforms(Matrix4x4 parentMatrix)
       - void PrepareResources( IControlContext controlContext,  IRenderContext renderContext,  ShaderProgram shader,  nint window, string baseDir)
-        - Calls: BackgroundRenderer, _bgRenderer.Initialize
+        - Calls: BackgroundRenderer, Console.WriteLine, _bgRenderer.Initialize
       - HtmlElement FindElementById(string id)
       - float GetAncestorScrollOffset()
 - File: CssParser.cs
@@ -898,7 +912,7 @@ Folder: SiegeEngine
     - Methods:
       - CssStyle Clone()
       - void SetProperty( string val, string key)
-        - Calls: ParseColor
+        - Calls: Console.WriteLine, ParseColor
 - File: CustomEvent.cs
   - Class: CustomEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -912,13 +926,17 @@ Folder: SiegeEngine
     - Dependencies: System, System.IO
     - Methods:
       - void SaveFloatTiff( float worldScaleX,  float worldScaleZ, ] heightmap, string path)
-        - Calls: WriteTiffTag
+        - Calls: Console.WriteLine, WriteTiffTag, bw.Write
       - void WriteTiffTag( uint count,  uint value,  ushort tag,  ushort type, BinaryWriter bw)
+        - Calls: bw.Write
       - ] Load( out float,  out int, string filePath)
         - Calls: LoadHeightmapOnly, TryGetCustomScale
       - return LoadHeightmapOnly( out height,  out maxHeight,  out minHeight,  out width)
+        - Calls: Console.WriteLine
       - ] LoadHeightmapOnly( out float,  out int, string filePath)
+        - Calls: Console.WriteLine
       - bool TryGetCustomScale( out float, string filePath)
+        - Calls: Console.WriteLine
 - File: D3D12Native.cs
   - Class: D3D12_COMMAND_SIGNATURE_DESC (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: System, System.Runtime.InteropServices
@@ -932,7 +950,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.IO, System.Reflection
     - Methods:
       - void Process( BasePanel callerPanel = null,  EventBus eventBus,  IControlContext controlContext,  IRenderContext renderContext,  UIOverlay overlayForFormData = null,  nint window, string hook)
-        - Calls: ClosePanelEvent, mi.Invoke, mi5.Invoke
+        - Calls: ClosePanelEvent, Console.WriteLine, mi.Invoke, mi5.Invoke
 - File: DesktopDockingStrategy.cs
   - Class: DesktopDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Inherits: IDockingStrategy
@@ -1064,11 +1082,11 @@ Folder: SiegeEngine
       - constructor EditorTextRenderer( nint window, IRenderContext renderContext)
         - Calls: SystemFontRenderer
       - void Initialize(ShaderProgram shaderProgram)
-        - Calls: _fontRenderer.GetCharacterData, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.BufferData, _renderContext.Enable, _renderContext.EnableVertexAttribArray, _renderContext.GenBuffers, _renderContext.GenTextures, _renderContext.GenVertexArrays, _renderContext.GetError, _renderContext.PixelStore, _renderContext.TexImage2D, _renderContext.TexParameter, _renderContext.VertexAttribPointer
+        - Calls: Console.WriteLine, _fontRenderer.GetCharacterData, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.BufferData, _renderContext.Enable, _renderContext.EnableVertexAttribArray, _renderContext.GenBuffers, _renderContext.GenTextures, _renderContext.GenVertexArrays, _renderContext.GetError, _renderContext.PixelStore, _renderContext.TexImage2D, _renderContext.TexParameter, _renderContext.VertexAttribPointer
       - void RenderText( float fontSize = 16.0f,  float startX,  float startY,  int height,  int width, string text)
-        - Calls: RenderTextPass, _renderContext.ActiveTexture, _renderContext.BindVertexArray, _renderContext.ColorMask, _renderContext.DepthMask, _renderContext.Disable, _renderContext.IsBuffer, _renderContext.IsVertexArray, _renderContext.UseProgram, _renderContext.Viewport, _shaderProgram.SetUniform, _shaderProgram.Use
+        - Calls: Console.WriteLine, RenderTextPass, _renderContext.ActiveTexture, _renderContext.BindVertexArray, _renderContext.ColorMask, _renderContext.DepthMask, _renderContext.Disable, _renderContext.IsBuffer, _renderContext.IsVertexArray, _renderContext.UseProgram, _renderContext.Viewport, _shaderProgram.SetUniform, _shaderProgram.Use
       - void RenderTextPass( Vector4 color,  bool useTexture = true,  float fontSize,  float startX,  float startY,  int height,  int width, string text)
-        - Calls: _fontRenderer.GetCharacterData, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferSubData, _renderContext.DisableVertexAttribArray, _renderContext.DrawArrays, _renderContext.EnableVertexAttribArray, _renderContext.GetError, _renderContext.IsTexture, _renderContext.UseProgram, _renderContext.VertexAttribPointer, _shaderProgram.SetMatrix4, _shaderProgram.SetUniform, _shaderProgram.Use
+        - Calls: Console.WriteLine, _fontRenderer.GetCharacterData, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BufferSubData, _renderContext.DisableVertexAttribArray, _renderContext.DrawArrays, _renderContext.EnableVertexAttribArray, _renderContext.GetError, _renderContext.IsTexture, _renderContext.UseProgram, _renderContext.VertexAttribPointer, _shaderProgram.SetMatrix4, _shaderProgram.SetUniform, _shaderProgram.Use
       - void Dispose()
         - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteTexture, _renderContext.DeleteVertexArray
 - File: Entity.cs
@@ -1255,6 +1273,7 @@ Folder: SiegeEngine
       - int MaxTotalLogs
     - Methods:
       - void Log(string message)
+        - Calls: Console.WriteLine
       - FBXModel CreateDefaultCubeModel()
 - File: FBXParserUtils.cs
   - Class: FBXParserUtils (Namespace: SiegeEngine.Core.AssetParsing)
@@ -1265,13 +1284,14 @@ Folder: SiegeEngine
       - void PrintMatrix(Matrix4x4 m)
         - Calls: FBXParserBase.Log
       - int[] ParseRawArrayAsInt(byte[] raw)
-        - Calls: DecompressData
+        - Calls: Console.WriteLine, DecompressData
       - double[] ParseRawArrayAsDouble(byte[] raw)
-        - Calls: DecompressData
+        - Calls: Console.WriteLine, DecompressData
       - byte[] DecompressData( int expectedLen, byte[] compressed)
         - Calls: FBXParserBase.Log
       - float GetValueAtTime( float defaultVal,  float[] values,  long time, long[] times)
       - float[] ParseKeyValues( int expectedLength, BaseNode keyValueNode)
+        - Calls: Console.WriteLine
       - float GetPropertyFloat(object value)
         - Calls: float.Parse
       - int GetPropertyInt(object value)
@@ -1293,6 +1313,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.ComponentModel.Design, System.Linq, System.Numerics, YamlDotNet.Serialization
     - Methods:
       - void PrintMatrix(Matrix4x4 m)
+        - Calls: Console.WriteLine
 - File: FBXVertex.cs
   - Class: FBXVertex (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Numerics
@@ -1356,6 +1377,7 @@ Folder: SiegeEngine
       - GameMode _selectedMode
     - Methods:
       - void SelectMode(GameMode mode)
+        - Calls: Console.WriteLine
       - GameMode GetSelectedMode()
 - File: GameRenderer.cs
   - Class: GameRenderer (Namespace: SiegeEngine.Core.Rendering)
@@ -1372,12 +1394,12 @@ Folder: SiegeEngine
       - bool _disposed
     - Methods:
       - void Initialize( Player player,  int height,  int width, nint windowHandle)
-        - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.BufferData, _renderContext.ClearColor, _renderContext.Enable, _renderContext.EnableVertexAttribArray, _renderContext.GenBuffer, _renderContext.GenVertexArray, _renderContext.VertexAttribPointer, _renderContext.Viewport
+        - Calls: Console.WriteLine, _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.BufferData, _renderContext.ClearColor, _renderContext.Enable, _renderContext.EnableVertexAttribArray, _renderContext.GenBuffer, _renderContext.GenVertexArray, _renderContext.VertexAttribPointer, _renderContext.Viewport
       - void Clear()
       - void SetViewport( int height, int width)
-        - Calls: _renderContext.Viewport
+        - Calls: Console.WriteLine, _renderContext.Viewport
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: Clear, Matrix3x3, Matrix4x4.Transpose, PlayerMovement, _gridShader.SetMatrix4, _gridShader.Use, _modelManager.TryGetModelData, _modelShader.SetMatrix3Array, _modelShader.SetMatrix4, _modelShader.SetMatrix4Array, _modelShader.SetUniform, _modelShader.Use, _player.Update, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawArrays, _renderContext.DrawElements, _waterShader.SetMatrix4, _waterShader.Use, modelComp.Model.Skeleton.ComputeGlobalTransforms
+        - Calls: Clear, Console.WriteLine, Matrix3x3, Matrix4x4.Transpose, PlayerMovement, _gridShader.SetMatrix4, _gridShader.Use, _modelManager.TryGetModelData, _modelShader.SetMatrix3Array, _modelShader.SetMatrix4, _modelShader.SetMatrix4Array, _modelShader.SetUniform, _modelShader.Use, _player.Update, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.ActiveTexture, _renderContext.BindBuffer, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.DrawArrays, _renderContext.DrawElements, _waterShader.SetMatrix4, _waterShader.Use, modelComp.Model.Skeleton.ComputeGlobalTransforms
       - void Resize( int height, int width)
         - Calls: SetViewport
       - void Dispose()
@@ -1568,15 +1590,17 @@ Folder: SiegeEngine
         - Calls: SetupInputCallbacks
       - void ResetMouseReleased()
       - void SetMouseCallback( InputAction> callback, string id)
+        - Calls: Console.WriteLine
       - void SetKeyCallback( InputAction> callback, string id)
+        - Calls: Console.WriteLine
       - void SetupInputCallbacks()
-        - Calls: Invoke, SendKeyInput, SendMouseButton, SendMousePosition, _controlContext.SetCursorPosCallback, _controlContext.SetKeyCallback, _controlContext.SetMouseButtonCallback
+        - Calls: Console.WriteLine, Invoke, SendKeyInput, SendMouseButton, SendMousePosition, _controlContext.SetCursorPosCallback, _controlContext.SetKeyCallback, _controlContext.SetMouseButtonCallback
       - void SendMousePosition()
-        - Calls: _steamEngine.GetSteamId, _steamEngine.SendP2PMessage
+        - Calls: Console.WriteLine, _steamEngine.GetSteamId, _steamEngine.SendP2PMessage
       - void SendMouseButton( InputAction action, MouseButton button)
-        - Calls: _steamEngine.GetSteamId, _steamEngine.SendP2PMessage
+        - Calls: Console.WriteLine, _steamEngine.GetSteamId, _steamEngine.SendP2PMessage
       - void SendKeyInput( InputAction action, Key key)
-        - Calls: _steamEngine.GetSteamId, _steamEngine.SendP2PMessage
+        - Calls: Console.WriteLine, _steamEngine.GetSteamId, _steamEngine.SendP2PMessage
 - File: InventoryComponent.cs
   - Class: Rarity (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System, System.Collections.Generic
@@ -1606,7 +1630,7 @@ Folder: SiegeEngine
       - object Run(string code)
         - Calls: Evaluator.Evaluate, JSParser, parser.Parse
       - object RunWithThis( object thisObj, string code)
-        - Calls: Evaluator.CurrentScope, Evaluator.PopScope, Evaluator.PushScope, Run
+        - Calls: Console.WriteLine, Evaluator.CurrentScope, Evaluator.PopScope, Evaluator.PushScope, Run
 - File: JSDocument.cs
   - Class: JSClickEvent (Namespace: SiegeEngine.Core.UI.JSParser)
     - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Linq
@@ -1682,6 +1706,7 @@ Folder: SiegeEngine
     - Dependencies: System
     - Methods:
       - void LoadLevel(string levelName)
+        - Calls: Console.WriteLine
 - File: LiElement.cs
   - Class: LiElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -1770,7 +1795,7 @@ Folder: SiegeEngine
       - void HandleDataHook(string hook)
         - Calls: DataHookProcessor.Process
       - void HandleLink(string href)
-        - Calls: LoadUI, RefreshUI, _modManager.ResolvePath
+        - Calls: Console.WriteLine, LoadUI, RefreshUI, _modManager.ResolvePath
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
@@ -1790,12 +1815,15 @@ Folder: SiegeEngine
       - constructor ModManager( ISteamEngine steamEngine, string modsDirectory)
         - Calls: LoadLocalMods, LoadWorkshopMods
       - void LoadLocalMods()
-        - Calls: LoadMod
+        - Calls: Console.WriteLine, LoadMod
       - void LoadWorkshopMods()
-        - Calls: LoadMod, _steamEngine.GetSubscribedWorkshopItems, _steamEngine.GetWorkshopItemInstallInfo
+        - Calls: Console.WriteLine, LoadMod, _steamEngine.GetSubscribedWorkshopItems, _steamEngine.GetWorkshopItemInstallInfo
       - void LoadMod(string modJsonPath)
+        - Calls: Console.WriteLine
       - string ResolvePath(string relativePath)
+        - Calls: Console.WriteLine
       - string GetMenuConfigPath()
+        - Calls: Console.WriteLine
 - File: ModelComponent.cs
   - Class: ModelComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -1873,7 +1901,7 @@ Folder: SiegeEngine
       - void LoadArmature(string path)
         - Calls: ResetAnimationState, SetRestPose, _ModelManager.AttachSkeleton, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
       - void LoadAnimation(string animPath)
-        - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, ResetAnimationState, SetRestPose, UpdateTransformsFromTime, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
+        - Calls: ApplyRestPoseFromModel, Console.WriteLine, FBXParser.BuildModelFromForest, FBXParser.Load, ResetAnimationState, SetRestPose, UpdateTransformsFromTime, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
       - void ApplyRestPoseFromModel(FBXModel sourceModel)
         - Calls: tgtBone.ComputeLocal
       - void UpdateTransformsFromTime(float time)
@@ -1957,9 +1985,9 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Text
     - Methods:
       - void ParseNodes( FBXFileForest forest,  FBXNode parentNode,  long fileLength,  long parentEndOffset,  uint version, BinaryReader reader)
-        - Calls: FBXParserBase.Log, ParseProperties
+        - Calls: Console.WriteLine, FBXParserBase.Log, ParseProperties
       - void ParseProperties( FBXNode node,  long numProperties,  long propEnd,  long propStart,  uint version, BinaryReader reader)
-        - Calls: ParseProperty
+        - Calls: Console.WriteLine, ParseProperty
       - PropertyNode ParseProperty(BinaryReader reader)
         - Calls: ConvertRawToArray, DecompressData, FBXParserBase.Log, GetTypeSize
       - int GetTypeSize(char typeCode)
@@ -2161,7 +2189,7 @@ Folder: SiegeEngine
       - PhysicsComponent Physics
     - Methods:
       - constructor Player( ModelManager modelLoader = null,  Vector3 position,  ulong steamId = 0, int entityId)
-        - Calls: FBXParserBase.CreateDefaultCubeModel, PhysicsComponent, modelLoader.TryGetModel
+        - Calls: Console.WriteLine, FBXParserBase.CreateDefaultCubeModel, PhysicsComponent, modelLoader.TryGetModel
       - void InitializeCamera( IntPtr window, IControlContext controlContext)
         - Calls: CameraController
       - void Update( IntPtr window,  PlayerMovement movement,  bool isGameActive,  float scrollDelta, float deltaTime)
@@ -2177,7 +2205,7 @@ Folder: SiegeEngine
       - bool _godMode
     - Methods:
       - void Update(float deltaTime)
-        - Calls: EntityMovedEvent, _controlContext.GetKey, _server.GetEntities
+        - Calls: Console.WriteLine, EntityMovedEvent, _controlContext.GetKey, _server.GetEntities
 - File: PlayerExitedEditorEvent.cs
   - Class: PlayerExitedEditorEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -2206,9 +2234,11 @@ Folder: SiegeEngine
       - constructor PlayerMovement( ClientPredictionSystem predictionSystem,  EventBus eventBus = null, InputHandler inputHandler)
         - Calls: _inputHandler.SetKeyCallback
       - void OnKeyInput( InputAction action, Key key)
+        - Calls: Console.WriteLine
       - void OnNetworkKeyInput(KeyInputEvent e)
+        - Calls: Console.WriteLine
       - void Update( CameraController camera,  Quaternion> sendMovementRequest,  float deltaTime, Player player)
-        - Calls: _predictionSystem.EnqueueMovementRequest
+        - Calls: Console.WriteLine, _predictionSystem.EnqueueMovementRequest
       - void ResetFrame()
 - File: PointShader.cs
   - Class: PointShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
@@ -2398,7 +2428,7 @@ Folder: SiegeEngine
       - constructor SceneManager( IControlContext controlContext,  IRenderContext renderContext,  ISteamEngine steamEngine,  InputHandler inputHandler,  MenuPanel menuPanel,  ModManager modManager,  UISettingsManager settingsManager,  nint window, EventBus eventBus)
       - void Dispose()
       - void OnSwitchScene(SwitchSceneEvent e)
-        - Calls: ClientGameServerProxy, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
+        - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
 - File: SceneRegistry.cs
   - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
     - Dependencies: System, System.Collections.Generic
@@ -2482,7 +2512,7 @@ Folder: SiegeEngine
       - void SetMatrix3Array( Matrix3x3[] matrices, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix3
       - void Dispose()
-        - Calls: _renderContext.DeleteProgram
+        - Calls: Console.WriteLine, _renderContext.DeleteProgram
 - File: ShaderSetup.cs
   - Class: ShaderSetup (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering.Shaders, Silk.NET.OpenGL
@@ -2521,7 +2551,7 @@ Folder: SiegeEngine
     - Methods:
       - constructor Spawner(IGameServer server)
       - Entity SpawnEntity( Vector3 position, string type)
-        - Calls: Player, _server.AddEntity, _server.GetEntities
+        - Calls: Console.WriteLine, Player, _server.AddEntity, _server.GetEntities
 - File: SpriteComponent.cs
   - Class: SpriteComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -2605,15 +2635,15 @@ Folder: SiegeEngine
       - bool _isEditorContext
     - Methods:
       - void LoadSceneData(SceneData data)
-        - Calls: InitializeBlankTerrain, LoadTerrain, SetColorTexture
+        - Calls: Console.WriteLine, InitializeBlankTerrain, LoadTerrain, SetColorTexture
       - void InitializeBlankTerrain()
         - Calls: BuildWireframeMesh
       - void Initialize( int height, int width)
         - Calls: ShaderProgram, VertexBuffer
       - void BuildWireframeMesh(float step)
-        - Calls: ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV, _terrainIndices.Clear, _terrainVertices.Clear
+        - Calls: ComputeWorldScale, Console.WriteLine, GetHeight, _terrainBuffer.UpdateCustomWithUV, _terrainIndices.Clear, _terrainVertices.Clear
       - void RebuildTerrainMesh()
-        - Calls: BuildWireframeMesh
+        - Calls: BuildWireframeMesh, Console.WriteLine
       - void BuildTexturedMesh()
         - Calls: BuildWireframeMesh, ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV, _terrainIndices.Clear, _terrainVertices.Clear
       - void UpdateAffectedVertices( float radius, Vector3 worldPos)
@@ -2621,7 +2651,7 @@ Folder: SiegeEngine
       - void ComputeWorldScale()
       - float GetHeight( float y, float x)
       - void LoadTerrain(string path)
-        - Calls: BuildWireframeMesh, ComputeWorldScale, GeoTiffParser.ParseGeoReference
+        - Calls: BuildWireframeMesh, ComputeWorldScale, Console.WriteLine, GeoTiffParser.ParseGeoReference
       - void SetColorTexture(string path)
         - Calls: BuildTexturedMesh, GeoTiffParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
       - void Update(float deltaTime)
@@ -2635,6 +2665,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.IO
     - Methods:
       - uint LoadColorTexture( string path, IRenderContext renderContext)
+        - Calls: Console.WriteLine
 - File: TextElement.cs
   - Class: TextElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -2681,7 +2712,7 @@ Folder: SiegeEngine
       - HashSet<byte> ValidTgaTypes
     - Methods:
       - return LoadTextureFromBitmap()
-        - Calls: renderContext.BindTexture, renderContext.DeleteTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
+        - Calls: Console.WriteLine, renderContext.BindTexture, renderContext.DeleteTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
 - File: ThElement.cs
   - Class: ThElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -2694,7 +2725,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, System, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
     - Methods:
       - void ExportToMesh( float thresholdGrass,  float thresholdRock,  string atlasPngPath,  string outputFbxPath, ] heightmap)
-        - Calls: FBXParser.Export
+        - Calls: Console.WriteLine, FBXParser.Export
 - File: TimeOfDayChangedEvent.cs
   - Class: TimeOfDayChangedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -2821,7 +2852,7 @@ Folder: SiegeEngine
       - void HandleDataHook(string hook)
         - Calls: DataHookProcessor.Process
       - void HandleLink(string href)
-        - Calls: LoadUI
+        - Calls: Console.WriteLine, LoadUI
       - void RefreshUI()
         - Calls: CollectClickables, InheritProperties, RecomputeLayout, _cssParser.ApplyAll, _uiClickables.Clear, _uiRoot.MarkIntrinsicDirty
       - HtmlElement FindElementById(string id)
@@ -2834,7 +2865,7 @@ Folder: SiegeEngine
       - return FindElementsByTag()
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - bool HandleUIClick(HtmlElement elem)
-        - Calls: CloseAllOpenNavDropdowns, CloseAllOpenSelects, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis
+        - Calls: CloseAllOpenNavDropdowns, CloseAllOpenSelects, Console.WriteLine, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis
       - void CloseAllOpenNavDropdowns()
         - Calls: FindElementsByTag, nav.CloseDropdown, nav.IsNavDropdownParent
       - void CloseAllOpenSelects()
@@ -2890,17 +2921,17 @@ Folder: SiegeEngine
     - Methods:
       - constructor UISettingsManager()
       - void UpdateWindowSize( bool saveSettings = true,  int height, int width)
-        - Calls: GetAspectRatio, SaveSettings
+        - Calls: Console.WriteLine, GetAspectRatio, SaveSettings
       - string GetAspectRatio( int height, int width)
       - int GCD( int b, int a)
       - void UpdateFullscreen( bool saveSettings = true, bool isFullscreen)
-        - Calls: SaveSettings
+        - Calls: Console.WriteLine, SaveSettings
       - void UpdateIconIndices( int> newIndices)
-        - Calls: SaveSettings
+        - Calls: Console.WriteLine, SaveSettings
       - void LoadSettings()
-        - Calls: availObj.ToString, fullscreenObj.ToString, heightObj.ToString, iconIndicesObj.ToString, rendererObj.ToString, widthObj.ToString
+        - Calls: Console.WriteLine, availObj.ToString, fullscreenObj.ToString, heightObj.ToString, iconIndicesObj.ToString, rendererObj.ToString, widthObj.ToString
       - void SaveSettings()
-        - Calls: JsonSerializer.Serialize
+        - Calls: Console.WriteLine, JsonSerializer.Serialize
 - File: UiShader.cs
   - Class: UiShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -3050,23 +3081,33 @@ Folder: ToolChest
     - Methods:
       - void HandleDataHook(string hook)
         - Calls: _parent.HandleBrushDataHook
-- File: ConsolePanel.cs
-  - Class: ConsoleUIOverlay (Namespace: ToolChest)
-    - Inherits: UIOverlay
-        
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
+- File: ConsoleLogEvent.cs
+  - Class: ConsoleLogEvent (Namespace: ToolChest)
+    - Inherits: IEvent
+    
+    - Dependencies: SiegeEngine.Core.Events, System.Text, System.Text.Json
     - Fields:
-      - ConsolePanel _parent
+      - string Type
     - Methods:
-      - void HandleDataHook(string hook)
-      - bool HandleUIClick(HtmlElement elem)
+      - constructor ConsoleLogEvent()
+      - constructor ConsoleLogEvent(string message)
+      - void Deserialize(byte[] data)
+- File: ConsolePanel.cs
+  - Class: LogCaptureWriter (Namespace: ToolChest)
+    - Inherits: TextWriter
+        
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text
+    - Methods:
+      - void WriteLine(string value)
+        - Calls: AddLogInternal
+      - void Write(char value)
 - File: EditorActionConfig.cs
   - Class: EditorActionConfig (Namespace: ToolChest)
     - Inherits: GameActionConfig 
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Networking, SiegeEngine.PlayerSystem, System
     - Methods:
       - void TriggerSelectBrush(string brushType)
-        - Calls: SelectBrushEvent, _steamEngine.GetSteamId
+        - Calls: Console.WriteLine, SelectBrushEvent, _steamEngine.GetSteamId
 - File: PropertiesPanel.cs
   - Class: PropertiesUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -3120,4 +3161,4 @@ Folder: Trebuchet
       - BlueprintManager _blueprintManager
     - Methods:
       - void Start(string context)
-        - Calls: BlueprintManager, Dispose, EventBus, InputHandler, LoadLibrary, ModManager, PanelManager, SaveSettings, SceneManager, SteamEngine, Terminate, UISettingsManager, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _panelManager.Render, _panelManager.Update, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
+        - Calls: BlueprintManager, Console.WriteLine, Dispose, EventBus, InputHandler, LoadLibrary, ModManager, PanelManager, SaveSettings, SceneManager, SteamEngine, Terminate, UISettingsManager, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _panelManager.Render, _panelManager.Update, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks

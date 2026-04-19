@@ -1987,12 +1987,18 @@ Read 5616 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Namespace: ToolChest
 Found 9 dependencies
 Found: BrushPanelUI.html
+Found: ConsoleLogEvent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\ConsoleLogEvent.cs
+Reading file: C:\repos\RealmFoundry\Castle\ToolChest\ConsoleLogEvent.cs
+Read 643 chars from: C:\repos\RealmFoundry\Castle\ToolChest\ConsoleLogEvent.cs
+Namespace: ToolChest
+Found 3 dependencies
 Found: ConsolePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
-Read 4864 chars from: C:\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
+Read 14906 chars from: C:\repos\RealmFoundry\Castle\ToolChest\ConsolePanel.cs
 Namespace: ToolChest
-Found 10 dependencies
+Found 11 dependencies
 Found: ConsolePanelUI.html
 Found: EditorActionConfig.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\EditorActionConfig.cs

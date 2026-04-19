@@ -17,8 +17,7 @@ namespace SiegeEngine.Core.Managers
 
         public void AddPanel(IPanel panel)
         {
-            if (!_allPanels.Contains(panel))
-                _allPanels.Add(panel);
+            if (!_allPanels.Contains(panel)) _allPanels.Add(panel);
         }
 
         public void RemovePanel(IPanel panel)
@@ -29,21 +28,10 @@ namespace SiegeEngine.Core.Managers
 
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
-            // === CENTRALIZED TOPMOST PRIORITY: high RenderOrder panels (IDEBasePanel menu bar + dropdown overlays) ALWAYS win first ===
-            // This guarantees the global menu bar (which draws dropdowns over everything) receives hover/clicks even after project load adds many panels.
-            var highRenderOrder = _allPanels
-                .Where(p => p.Visible && (p as BasePanel)?.RenderOrder > 0)
-                .OrderByDescending(p => (p as BasePanel)?.RenderOrder ?? 0)
-                .ThenByDescending(p => _allPanels.IndexOf(p))
-                .ToList();
-
-            foreach (var p in highRenderOrder)
-            {
-                if (p.IsMouseOver(mousePos))
-                    return p;
-            }
-
-            // Modals first (unchanged - always absolute top)
+            // === MODALS ARE ABSOLUTE TOP PRIORITY (must win even over high-RenderOrder panels) ===
+            // This fixes the exact symptom: NewTerrainPanel (RenderOrder 1100, IsModal) stealing input from
+            // child FileSelectorPanel (RenderOrder 1000, IsModal) when their bounds overlap.
+            // Modals are always rendered last in PanelManager.Render and must block everything underneath.
             for (int i = _allPanels.Count - 1; i >= 0; i--)
             {
                 var p = _allPanels[i];
@@ -51,11 +39,22 @@ namespace SiegeEngine.Core.Managers
                     return p;
             }
 
+            // === CENTRALIZED TOPMOST PRIORITY: high RenderOrder panels (IDEBasePanel menu bar + dropdown overlays) ALWAYS win first ===
+            // This guarantees the global menu bar (which draws dropdowns over everything) receives hover/clicks even after project load adds many panels.
+            var highRenderOrder = _allPanels
+                .Where(p => p.Visible && (p as BasePanel)?.RenderOrder > 0)
+                .OrderByDescending(p => (p as BasePanel)?.RenderOrder ?? 0)
+                .ThenByDescending(p => _allPanels.IndexOf(p))
+                .ToList();
+            foreach (var p in highRenderOrder)
+            {
+                if (p.IsMouseOver(mousePos)) return p;
+            }
+
             // Forced overdraw (dropdowns, popups, etc.) - these must always be checked
             foreach (var p in _forcedOverdrawThisFrame)
             {
-                if (p.Visible && p.IsMouseOver(mousePos))
-                    return p;
+                if (p.Visible && p.IsMouseOver(mousePos)) return p;
             }
 
             // === CRITICAL FIX: Floating panels (including IDE floating panels) must ALWAYS win ===
@@ -64,8 +63,7 @@ namespace SiegeEngine.Core.Managers
             for (int i = _allPanels.Count - 1; i >= 0; i--)
             {
                 var p = _allPanels[i];
-                if (p is BasePanel bp && bp.DockState == DockState.Floating && p.Visible && bp.IsMouseOver(mousePos))
-                    return p;
+                if (p is BasePanel bp && bp.DockState == DockState.Floating && p.Visible && bp.IsMouseOver(mousePos)) return p;
             }
 
             // NORMAL DOCKED PANELS (including IDE docked content)
@@ -75,20 +73,16 @@ namespace SiegeEngine.Core.Managers
                 .OrderByDescending(p => (p as BasePanel)?.RenderOrder ?? 0)
                 .ThenByDescending(p => _allPanels.IndexOf(p))
                 .ToList();
-
             foreach (var p in sortedPanels)
             {
-                if (p.IsMouseOver(mousePos))
-                    return p;
+                if (p.IsMouseOver(mousePos)) return p;
             }
-
             return null;
         }
 
         public void ForceDrawOverThisFrame(IPanel panel)
         {
-            if (panel != null && panel.Visible)
-                _forcedOverdrawThisFrame.Add(panel);
+            if (panel != null && panel.Visible) _forcedOverdrawThisFrame.Add(panel);
         }
 
         public void ClearForcedOverdraw()
