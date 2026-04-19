@@ -13,16 +13,4 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("entities")]
         public List<EntityData> Entities { get; set; } = new List<EntityData>();
     }
-
-    public class EntityData
-    {
-        [JsonPropertyName("type")]
-        public string Type { get; set; }
-        [JsonPropertyName("position")]
-        public Vector3 Position { get; set; }
-        [JsonPropertyName("textureId")]
-        public int TextureId { get; set; }
-        [JsonPropertyName("height")]
-        public float Height { get; set; }
-    }
 }
