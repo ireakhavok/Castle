@@ -27,11 +27,11 @@ namespace Citadel
 
             if (isLocal)
             {
-                Console.WriteLine("ServerProgram: Running in local mode (authoritative server for single-player testing)");
+                Console.WriteLine("ServerProgram: Running in local authoritative mode (single-player testing)");
             }
             else if (isServerMode)
             {
-                Console.WriteLine("ServerProgram: Running in dedicated server mode");
+                Console.WriteLine("ServerProgram: Running in dedicated server mode (port 27015)");
             }
 
             try
@@ -40,30 +40,33 @@ namespace Citadel
                 _steamEngine = new SteamEngine(_eventBus);
                 if (!_steamEngine.Initialize())
                 {
-                    Console.WriteLine("Citadel: SteamEngine init failed.");
+                    Console.WriteLine("Citadel: Steam client init failed. Dedicated server requires Steam running.");
                     return;
                 }
+
                 if (!_steamEngine.InitializeServer(0, 27015, "Citadel Server"))
                 {
-                    Console.WriteLine("Citadel: Server init failed.");
+                    Console.WriteLine("Citadel: Steam GameServer init failed on port 27015.");
                     return;
                 }
-                _gameServer = new GameServer(_eventBus);
+
+                _gameServer = new GameServer(_eventBus, null, isEditor: false);
                 _networkManager = new NetworkManager(_steamEngine, _eventBus);
                 _networkManager.Start();
+
                 Console.WriteLine("Citadel: Server running on port 27015. Press ESC to stop.");
 
                 bool running = true;
                 var sw = Stopwatch.StartNew();
+                Console.CancelKeyPress += (s, e) => { running = false; e.Cancel = true; };
+
                 while (running)
                 {
                     if (Console.KeyAvailable)
                     {
                         var key = Console.ReadKey(true).Key;
                         if (key == ConsoleKey.Escape)
-                        {
                             running = false;
-                        }
                     }
 
                     _steamEngine.RunCallbacks();
@@ -75,12 +78,14 @@ namespace Citadel
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Citadel: Error - {ex}");
+                Console.WriteLine($"Citadel: Fatal error - {ex}");
             }
             finally
             {
-                Console.WriteLine("Citadel: Shutting down...");
+                Console.WriteLine("Citadel: Shutting down server...");
+                _gameServer = null;
                 _steamEngine?.Dispose();
+                Console.WriteLine("Citadel: Shutdown complete.");
             }
         }
     }
