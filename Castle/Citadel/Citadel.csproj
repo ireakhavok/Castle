@@ -15,8 +15,18 @@
 		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 		<PublishTrimmed>false</PublishTrimmed>
 		<PublishReadyToRun>false</PublishReadyToRun>
-		<!-- Publish to a clean folder to avoid any conflict with Libraries\ -->
 		<PublishDir>$(SolutionDir)publish\</PublishDir>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\Libraries\steam_api64.dll">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<!-- Force copy after every Publish with visible logging -->
+	<Target Name="CopySingleFileToLibraries" AfterTargets="Publish">
+		<Exec Command="echo Copying single-file Citadel.exe to Libraries... &amp;&amp; xcopy /Y &quot;$(PublishDir)$(AssemblyName).exe&quot; &quot;$(SolutionDir)Libraries\&quot; /I &amp;&amp; echo SUCCESS: Citadel.exe copied to Libraries\" />
+	</Target>
 
 </Project>
