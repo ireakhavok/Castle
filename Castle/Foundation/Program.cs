@@ -22,8 +22,7 @@ namespace Foundation
                 Console.WriteLine("Foundation: Launching dedicated Citadel server...");
 
                 // Robust path to the published Citadel.exe (copied by Citadel post-build to Libraries)
-                string solutionRoot = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".."));
-                string citadelExe = Path.Combine(solutionRoot, "Libraries", "Citadel.exe");
+                string citadelExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
 
                 if (!File.Exists(citadelExe))
                 {
