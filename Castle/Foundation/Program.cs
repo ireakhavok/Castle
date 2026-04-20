@@ -16,6 +16,8 @@ namespace Foundation
 
         static void Main(string[] args)
         {
+            bool testDedicated = args.Contains("--test-dedicated");
+
             if (args.Contains("--server"))
             {
                 Console.WriteLine("Foundation: Launching dedicated Citadel server...");
@@ -101,7 +103,7 @@ namespace Foundation
             try
             {
                 var launcher = new Launcher();
-                launcher.Start(settings.CurrentRenderer);
+                launcher.Start(settings.CurrentRenderer, testDedicated);
             }
             catch (Exception ex)
             {

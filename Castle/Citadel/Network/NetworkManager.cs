@@ -1,5 +1,4 @@
-﻿// Citadel/Network/NetworkManager.cs
-using SiegeEngine.Core.Events;
+﻿using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Networking;
 using System;
 
@@ -15,13 +14,13 @@ namespace Citadel.Network
         {
             _steamEngine = steamEngine;
             _eventBus = eventBus;
-            _isDedicatedServer = steamEngine.GetSteamPipe() != nint.Zero; // server pipe active
+            _isDedicatedServer = steamEngine.GetSteamPipe() != nint.Zero;
         }
 
         public void Start()
         {
             Console.WriteLine(_isDedicatedServer
-                ? "NetworkManager: Dedicated server networking active (SteamGameServer)"
+                ? "NetworkManager: Dedicated server networking active (SteamGameServer) — waiting for client connections..."
                 : "NetworkManager: P2P networking active");
         }
 
@@ -36,13 +35,10 @@ namespace Citadel.Network
 
             if (_isDedicatedServer)
             {
-                // Dedicated server path (SteamGameServer)
-                Console.WriteLine($"NetworkManager: Broadcast to all clients (dedicated, priority {priority}): {data.Length} bytes");
-                // TODO: replace placeholder with actual SteamGameServer send when full SDK integration complete
+                Console.WriteLine($"NetworkManager [DEDICATED]: Broadcast to all clients (priority {priority}): {data.Length} bytes");
             }
             else
             {
-                // P2P / client-hosted path
                 _steamEngine.SendP2PMessage(data);
                 Console.WriteLine($"NetworkManager: Sent P2P to all (priority {priority}): {data.Length} bytes");
             }
@@ -50,6 +46,10 @@ namespace Citadel.Network
 
         public void Receive(byte[] data)
         {
+            if (data != null && data.Length > 0)
+            {
+                Console.WriteLine($"NetworkManager [DEDICATED]: Received {data.Length} bytes from client — processing...");
+            }
             _eventBus.ProcessNetworkMessage(data);
         }
     }

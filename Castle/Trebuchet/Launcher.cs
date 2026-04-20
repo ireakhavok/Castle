@@ -35,7 +35,7 @@ namespace Trebuchet
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
 
-        public void Start(string context)
+        public void Start(string context, bool testDedicated = false)
         {
             try
             {
@@ -47,9 +47,15 @@ namespace Trebuchet
                     return;
                 }
 
-                // RESTORED from old working version — automatically starts local authoritative server
-                _serverProcess = Process.Start("Citadel.exe", "--local");
-                Console.WriteLine("Launcher: Started local authoritative Citadel server (--local) for validation layer.");
+                if (!testDedicated)
+                {
+                    _serverProcess = Process.Start("Citadel.exe", "--local");
+                    Console.WriteLine("Launcher: Started local authoritative Citadel server (--local) for validation layer.");
+                }
+                else
+                {
+                    Console.WriteLine("Launcher: TEST MODE — connecting to dedicated server on localhost:27015 (no local server spawned)");
+                }
 
                 using (_steamEngine = new SteamEngine())
                 {
@@ -59,6 +65,15 @@ namespace Trebuchet
                         Console.WriteLine("Launcher: SteamEngine initialization failed.");
                         return;
                     }
+
+                    // === NEW: Connect to dedicated server when in test mode ===
+                    if (testDedicated)
+                    {
+                        ulong dedicatedServerSteamId = 76561197960265728; // from server log
+                        ((SteamEngine)_steamEngine).ConnectP2P(dedicatedServerSteamId);
+                        Console.WriteLine($"TEST: P2P connection initiated to dedicated server SteamID {dedicatedServerSteamId}");
+                    }
+
                     _settingsManager = new UISettingsManager();
                     _settingsManager.LoadSettings();
                     if (_settingsManager.WindowWidth == 0 || _settingsManager.WindowHeight == 0)
