@@ -1,8 +1,10 @@
-﻿// Trebuchet/Launcher.cs
-using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Networking;
+using SiegeEngine.Core.UI;
 using SiegeEngine.PlayerSystem;
-using SiegeEngine.Core.Rendering;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
@@ -11,13 +13,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using System.Reflection;
-using SiegeEngine.Core.Managers;
-using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Events;
-using SiegeEngine.Core.Networking;
-using SiegeEngine.Core.UI;
+using System.Runtime.InteropServices;
 
 namespace Trebuchet
 {
@@ -49,6 +46,10 @@ namespace Trebuchet
                     Console.WriteLine($"Failed to load steam_api64.dll. Error code: {Marshal.GetLastWin32Error()}");
                     return;
                 }
+
+                // RESTORED from old working version — automatically starts local authoritative server
+                _serverProcess = Process.Start("Citadel.exe", "--local");
+                Console.WriteLine("Launcher: Started local authoritative Citadel server (--local) for validation layer.");
 
                 using (_steamEngine = new SteamEngine())
                 {

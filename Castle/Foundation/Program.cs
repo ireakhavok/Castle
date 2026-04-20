@@ -1,5 +1,4 @@
-﻿// Foundation/Program.cs
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -21,7 +20,6 @@ namespace Foundation
             {
                 Console.WriteLine("Foundation: Launching dedicated Citadel server...");
 
-                // Robust path to the published Citadel.exe (copied by Citadel post-build to Libraries)
                 string citadelExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
 
                 if (!File.Exists(citadelExe))
@@ -50,7 +48,37 @@ namespace Foundation
                 return;
             }
 
-            // Normal client launcher path (unchanged)
+            if (args.Contains("--local"))
+            {
+                Console.WriteLine("Foundation: Launching local authoritative Citadel server (--local)...");
+
+                string citadelExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
+
+                if (!File.Exists(citadelExe))
+                {
+                    Console.WriteLine($"ERROR: Citadel.exe not found at: {citadelExe}");
+                    return;
+                }
+
+                try
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = citadelExe,
+                        Arguments = "--local",
+                        UseShellExecute = true,
+                        WorkingDirectory = Path.GetDirectoryName(citadelExe)
+                    };
+                    Process.Start(psi);
+                    Console.WriteLine("Foundation: Local authoritative server launched successfully.");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to launch local Citadel server: {ex.Message}");
+                }
+                return;
+            }
+
             var steam = new SteamEngine();
             if (!steam.Initialize())
             {

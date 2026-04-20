@@ -14,17 +14,9 @@
 		<UseAppHost>true</UseAppHost>
 		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
 		<PublishTrimmed>false</PublishTrimmed>
+		<PublishReadyToRun>false</PublishReadyToRun>
+		<!-- Publish to a clean folder to avoid any conflict with Libraries\ -->
+		<PublishDir>$(SolutionDir)publish\</PublishDir>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<None Include="..\Libraries\steam_api64.dll">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
-
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="xcopy /Y &quot;$(TargetDir)$(AssemblyName).exe&quot; &quot;$(SolutionDir)Libraries\&quot; /I" />
-		<Exec Command="xcopy /Y &quot;$(TargetDir)steam_api64.dll&quot; &quot;$(SolutionDir)Libraries\&quot; /I" />
-	</Target>
 
 </Project>
