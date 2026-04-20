@@ -406,6 +406,7 @@ Found: ..
 Found: bin
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\Citadel\bin
 Found: Citadel.csproj
+Found: Citadel.csproj.user
 Found: Network
 Listing folder: C:\repos\RealmFoundry\Castle\Citadel\Network
 Found: .
@@ -413,11 +414,23 @@ Found: ..
 Found: NetworkManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
-Read 1422 chars from: C:\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
+Read 1789 chars from: C:\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
 Namespace: Citadel.Network
 Found 3 dependencies
 Found: obj
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\Citadel\obj
+Found: Properties
+Listing folder: C:\repos\RealmFoundry\Castle\Citadel\Properties
+Found: .
+Found: ..
+Found: PublishProfiles
+Listing folder: C:\repos\RealmFoundry\Castle\Citadel\Properties\PublishProfiles
+Found: .
+Found: ..
+Found: FolderProfile.pubxml
+Found: FolderProfile.pubxml.user
+Found: FolderProfile1.pubxml
+Found: FolderProfile1.pubxml.user
 Found: Server
 Listing folder: C:\repos\RealmFoundry\Castle\Citadel\Server
 Found: .
@@ -443,9 +456,9 @@ Found 8 dependencies
 Found: ServerProgram.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
 Reading file: C:\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
-Read 1974 chars from: C:\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
+Read 3161 chars from: C:\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
 Namespace: Citadel
-Found 7 dependencies
+Found 8 dependencies
 Found: Systems
 Listing folder: C:\repos\RealmFoundry\Castle\Citadel\Systems
 Found: .
@@ -468,9 +481,9 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\Foundation\obj
 Found: Program.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Foundation\Program.cs
 Reading file: C:\repos\RealmFoundry\Castle\Foundation\Program.cs
-Read 1515 chars from: C:\repos\RealmFoundry\Castle\Foundation\Program.cs
+Read 4074 chars from: C:\repos\RealmFoundry\Castle\Foundation\Program.cs
 Namespace: Foundation
-Found 7 dependencies
+Found 8 dependencies
 Found: GuildTower
 Listing folder: C:\repos\RealmFoundry\Castle\GuildTower
 Found: .
@@ -1322,7 +1335,7 @@ Found 1 dependencies
 Found: SteamEngine.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
-Read 25236 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
+Read 27128 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
 Namespace: SiegeEngine.Core.Networking
 Found 6 dependencies
 Found: Rendering
@@ -2051,9 +2064,9 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\Trebuchet\bin
 Found: Launcher.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 6576 chars from: C:\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 7081 chars from: C:\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
-Found 19 dependencies
+Found 17 dependencies
 Found: obj
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\Trebuchet\obj
 Found: Trebuchet.csproj
