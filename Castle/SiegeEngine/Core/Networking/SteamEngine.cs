@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Core/Networking
+// File: SteamEngine.cs
+using System;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
@@ -23,7 +25,7 @@ namespace SiegeEngine.Core.Networking
         private readonly EventBus _eventBus;
         private readonly List<byte[]> _receivedMessages = new List<byte[]>();
         private readonly Dictionary<ulong, int> _connectionHandles = new Dictionary<ulong, int>();
-        private readonly Dictionary<int, bool> _connectionReady = new Dictionary<int, bool>(); // NEW
+        private readonly Dictionary<int, bool> _connectionReady = new Dictionary<int, bool>();
 
         public SteamEngine(EventBus eventBus = null)
         {
@@ -134,7 +136,7 @@ namespace SiegeEngine.Core.Networking
                         SteamUGCRequestUGCDetailsResult_t result = Marshal.PtrToStructure<SteamUGCRequestUGCDetailsResult_t>(msg.m_pubParam);
                         OnWorkshopItemCreated(result);
                     }
-                    else if (msg.m_iCallback == 1220) // NEW: P2P connection status
+                    else if (msg.m_iCallback == 1220) // P2P connection status
                     {
                         SteamNetConnectionStatusChanged_t result = Marshal.PtrToStructure<SteamNetConnectionStatusChanged_t>(msg.m_pubParam);
                         OnConnectionStatusChanged(result);
@@ -161,16 +163,20 @@ namespace SiegeEngine.Core.Networking
             }
         }
 
-        // NEW: Handle P2P connection ready state
         private void OnConnectionStatusChanged(SteamNetConnectionStatusChanged_t result)
         {
             int conn = result.m_hConn;
             int newState = result.m_info.m_eState;
 
-            if (newState == 3) // k_ESteamNetworkingConnectionState_Connected
+            if (newState == 2) // k_ESteamNetworkingConnectionState_Connecting
+            {
+                int acceptResult = SteamAPI_ISteamNetworkingSockets_AcceptConnection(_networking, conn);
+                Console.WriteLine($"SteamEngine: Accepted incoming P2P connection {conn} (result: {acceptResult})");
+            }
+            else if (newState == 3) // k_ESteamNetworkingConnectionState_Connected
             {
                 _connectionReady[conn] = true;
-                Console.WriteLine($"P2P connection {conn} is now READY");
+                Console.WriteLine($"P2P connection {conn} is now READY - events can now flow bidirectionally");
             }
             else if (newState >= 4)
             {
@@ -186,12 +192,18 @@ namespace SiegeEngine.Core.Networking
             return _user != nint.Zero ? SteamAPI_ISteamUser_GetSteamID(_user) : 0;
         }
 
+        public void CreateDedicatedLobby()
+        {
+            if (_lobbyCreated) return;
+            Console.WriteLine("SteamEngine: Creating public dedicated server lobby (dedicated=true)...");
+            SteamAPI_ISteamMatchmaking_CreateLobby(_matchmaking, 1, 64); // eLobbyTypePublic = 1, max 64 players
+        }
+
         public void CreateLobby(int maxPlayers)
         {
             if (_lobbyCreated) return;
             SteamAPI_ISteamMatchmaking_CreateLobby(_matchmaking, 1, maxPlayers);
             Console.WriteLine($"Creating lobby with max players: {maxPlayers}");
-            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "modVersion", "1.0.0");
         }
 
         public void JoinLobby(ulong lobbyId)
@@ -245,6 +257,10 @@ namespace SiegeEngine.Core.Networking
             SteamAPI_ISteamGameServer_SetServerName(_gameServer, serverName);
             SteamAPI_ISteamGameServer_LogOnAnonymous(_gameServer);
             Console.WriteLine($"Server started: {serverName} on port {port}");
+
+            // Create dedicated lobby on client interface (production pattern)
+            CreateDedicatedLobby();
+
             return true;
         }
 
@@ -325,7 +341,7 @@ namespace SiegeEngine.Core.Networking
                 {
                     int conn = kvp.Value;
                     if (!_connectionReady.ContainsKey(conn) || !_connectionReady[conn])
-                        continue; // skip until ready
+                        continue;
 
                     uint result = SteamAPI_ISteamNetworkingSockets_SendMessageToConnection(_networking, conn, messagePtr, (uint)data.Length, 0, out long _);
                     if (result == 0)
@@ -396,7 +412,14 @@ namespace SiegeEngine.Core.Networking
             _lobbyCreated = true;
             _lobbyId = result.m_ulSteamIDLobby;
             Console.WriteLine($"Lobby created successfully: {_lobbyId}");
+
+            // Production dedicated server metadata (step 1 of the plan)
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "dedicated", "true");
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "port", "27015");
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "serverName", "Citadel Dedicated Server");
             SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "modVersion", "1.0.0");
+
+            Console.WriteLine($"Dedicated lobby ready - metadata set (dedicated=true, port=27015). Clients can now find and join this lobby.");
             JoinLobby(_lobbyId);
             _eventBus.Publish(new LobbyCreatedEvent(_lobbyId), true);
         }
@@ -451,7 +474,7 @@ namespace SiegeEngine.Core.Networking
         [StructLayout(LayoutKind.Sequential)]
         private struct SteamNetworkingIdentity
         {
-            public int m_eType;        // NEW — must be 1 for SteamID
+            public int m_eType;
             public ulong m_steamID64;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 152)]
             public byte[] m_padding;
@@ -466,7 +489,6 @@ namespace SiegeEngine.Core.Networking
             public string m_pchTitle;
         }
 
-        // NEW struct for connection status
         [StructLayout(LayoutKind.Sequential)]
         private struct SteamNetConnectionStatusChanged_t
         {
@@ -479,10 +501,10 @@ namespace SiegeEngine.Core.Networking
         private struct SteamNetConnectionInfo_t
         {
             public int m_eState;
-            // other fields not needed
         }
 
-        // === ALL YOUR ORIGINAL DLLIMPORT LINES BELOW (unchanged) ===
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamNetworkingSockets_AcceptConnection")]
+        private static extern int SteamAPI_ISteamNetworkingSockets_AcceptConnection(nint instance, int hConn);
 
         [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_InitSafe")]
         [return: MarshalAs(UnmanagedType.I1)]

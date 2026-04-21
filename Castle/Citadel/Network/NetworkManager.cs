@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Events;
+﻿// Folder: Citadel/Network
+// File: NetworkManager.cs
+using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Networking;
 using System;
 
@@ -20,7 +22,7 @@ namespace Citadel.Network
         public void Start()
         {
             Console.WriteLine(_isDedicatedServer
-                ? "NetworkManager: Dedicated server networking active (SteamGameServer) — waiting for client connections..."
+                ? "NetworkManager: Dedicated server networking active (SteamGameServer + lobby) — waiting for client connections..."
                 : "NetworkManager: P2P networking active");
         }
 

@@ -1,4 +1,5 @@
-﻿// Citadel/ServerProgram.cs
+﻿// Folder: Citadel
+// File: ServerProgram.cs
 using Citadel.Network;
 using Citadel.Server;
 using SiegeEngine.Core.Events;
@@ -54,7 +55,7 @@ namespace Citadel
                 _networkManager = new NetworkManager(_steamEngine, _eventBus);
                 _networkManager.Start();
 
-                Console.WriteLine("Citadel: Server running on port 27015. Press ESC to stop.");
+                Console.WriteLine("Citadel: Server running on port 27015 with dedicated lobby (dedicated=true). Press ESC to stop.");
 
                 bool running = true;
                 var sw = Stopwatch.StartNew();
