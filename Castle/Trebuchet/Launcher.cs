@@ -37,7 +37,7 @@ namespace Trebuchet
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
 
-        public void Start(string context, bool testDedicated = false)
+        public void Start(string context, bool testDedicated = false, ulong specificLobbyId = 0)
         {
             try
             {
@@ -56,7 +56,7 @@ namespace Trebuchet
                 }
                 else
                 {
-                    Console.WriteLine("Launcher: TEST MODE — connecting to dedicated server via lobby discovery (no local server spawned)");
+                    Console.WriteLine($"Launcher: TEST MODE — joining dedicated lobby {specificLobbyId} (no local server spawned)");
                 }
 
                 using (_steamEngine = new SteamEngine())
@@ -68,11 +68,13 @@ namespace Trebuchet
                         return;
                     }
 
-                    if (testDedicated)
+                    if (testDedicated && specificLobbyId != 0)
                     {
-                        // Step 2 of the plan: Client requests dedicated lobbies (dedicated=true filter)
-                        ((SteamEngine)_steamEngine).RequestDedicatedLobbies();
-                        Console.WriteLine("TEST: Requested dedicated lobby list (dedicated=true) and will auto-join + connect P2P to lobby owner");
+                        ((SteamEngine)_steamEngine).JoinSpecificLobby(specificLobbyId);
+                    }
+                    else if (testDedicated)
+                    {
+                        Console.WriteLine("ERROR: --test-dedicated requires --lobby <ID> (copy from server log)");
                     }
 
                     _settingsManager = new UISettingsManager();
@@ -144,6 +146,7 @@ namespace Trebuchet
                 _contextManager?.Terminate();
             }
         }
+
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr LoadLibrary(string lpFileName);
     }

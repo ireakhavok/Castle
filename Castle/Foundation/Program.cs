@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: Foundation
+// File: Program.cs
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -17,6 +19,28 @@ namespace Foundation
         static void Main(string[] args)
         {
             bool testDedicated = args.Contains("--test-dedicated");
+            ulong specificLobbyId = 0;
+
+            // Parse --lobby <ID> when --test-dedicated is used
+            if (testDedicated)
+            {
+                for (int i = 0; i < args.Length - 1; i++)
+                {
+                    if (args[i] == "--lobby" && ulong.TryParse(args[i + 1], out ulong id))
+                    {
+                        specificLobbyId = id;
+                        Console.WriteLine($"Foundation: Using specific lobby ID {specificLobbyId} for test-dedicated connection");
+                        break;
+                    }
+                }
+
+                if (specificLobbyId == 0)
+                {
+                    Console.WriteLine("ERROR: --test-dedicated requires --lobby <ID> (copy the Lobby ID from the server log)");
+                    Console.WriteLine("Example: ./Foundation.exe --test-dedicated --lobby 109775242653177801");
+                    return;
+                }
+            }
 
             if (args.Contains("--server"))
             {
@@ -103,7 +127,7 @@ namespace Foundation
             try
             {
                 var launcher = new Launcher();
-                launcher.Start(settings.CurrentRenderer, testDedicated);
+                launcher.Start(settings.CurrentRenderer, testDedicated, specificLobbyId);
             }
             catch (Exception ex)
             {
