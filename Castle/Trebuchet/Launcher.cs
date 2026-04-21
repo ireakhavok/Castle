@@ -56,7 +56,7 @@ namespace Trebuchet
                 }
                 else
                 {
-                    Console.WriteLine("Launcher: TEST MODE — connecting to dedicated server via lobby (no local server spawned)");
+                    Console.WriteLine("Launcher: TEST MODE — connecting to dedicated server via lobby discovery (no local server spawned)");
                 }
 
                 using (_steamEngine = new SteamEngine())
@@ -68,18 +68,11 @@ namespace Trebuchet
                         return;
                     }
 
-                    // === Dedicated server test mode: join lobby (step 2-3 of the plan) ===
                     if (testDedicated)
                     {
-                        // For immediate testing we join the first available dedicated lobby.
-                        // In production this would be expanded with UI lobby browser.
-                        Console.WriteLine("TEST: Requesting dedicated lobby list and joining first match (dedicated=true)...");
-                        // SteamEngine now automatically creates the lobby on server; client joins via matchmaking.
-                        // For this iteration we rely on the server lobby being created and visible.
-                        // (Lobby ID is printed by server; client can be extended later with RequestLobbyList + filter)
-                        ulong dedicatedServerSteamId = ((SteamEngine)_steamEngine).GetSteamId(); // fallback if needed
-                        ((SteamEngine)_steamEngine).ConnectP2P(dedicatedServerSteamId); // will be replaced by lobby owner after join
-                        Console.WriteLine($"TEST: P2P connection initiated (will use lobby owner SteamID once joined)");
+                        // Step 2 of the plan: Client requests dedicated lobbies (dedicated=true filter)
+                        ((SteamEngine)_steamEngine).RequestDedicatedLobbies();
+                        Console.WriteLine("TEST: Requested dedicated lobby list (dedicated=true) and will auto-join + connect P2P to lobby owner");
                     }
 
                     _settingsManager = new UISettingsManager();
