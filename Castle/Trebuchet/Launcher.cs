@@ -1,6 +1,4 @@
-﻿// Folder: Trebuchet
-// File: Launcher.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
@@ -37,7 +35,7 @@ namespace Trebuchet
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
 
-        public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0)
+        public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0, bool discoverP2PHost = false, ulong joinLobbyId = 0)
         {
             try
             {
@@ -49,7 +47,7 @@ namespace Trebuchet
                     return;
                 }
 
-                if (!discoverDedicated && connectToServerSteamId == 0)
+                if (!discoverDedicated && connectToServerSteamId == 0 && !discoverP2PHost)
                 {
                     _serverProcess = Process.Start("Citadel.exe", "--local");
                     Console.WriteLine("Launcher: Started local authoritative Citadel server (--local) for validation layer.");
@@ -62,6 +60,10 @@ namespace Trebuchet
                 {
                     Console.WriteLine($"Launcher: DIRECT CONNECT MODE — connecting to dedicated server {connectToServerSteamId}");
                 }
+                else if (discoverP2PHost)
+                {
+                    Console.WriteLine("Launcher: P2P HOST DISCOVER MODE — searching for P2P authoritative host lobbies...");
+                }
 
                 using (_steamEngine = new SteamEngine())
                 {
@@ -72,9 +74,18 @@ namespace Trebuchet
                         return;
                     }
 
-                    if (connectToServerSteamId != 0)
+                    // Lobby / connection logic — supports dedicated, direct connect, P2P host discovery, and --join
+                    if (joinLobbyId != 0)
+                    {
+                        ((SteamEngine)_steamEngine).JoinSpecificLobby(joinLobbyId);
+                    }
+                    else if (connectToServerSteamId != 0)
                     {
                         ((SteamEngine)_steamEngine).ConnectToDedicatedServer(connectToServerSteamId);
+                    }
+                    else if (discoverP2PHost)
+                    {
+                        ((SteamEngine)_steamEngine).RequestP2PHostLobbies();
                     }
                     else if (discoverDedicated)
                     {

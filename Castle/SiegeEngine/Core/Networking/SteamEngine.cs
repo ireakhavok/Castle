@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Networking
-// File: SteamEngine.cs
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Collections.Generic;
@@ -27,6 +25,9 @@ namespace SiegeEngine.Core.Networking
         private readonly List<byte[]> _receivedMessages = new List<byte[]>();
         private readonly Dictionary<ulong, long> _connectionHandles = new Dictionary<ulong, long>();
         private readonly Dictionary<long, bool> _connectionReady = new Dictionary<long, bool>();
+
+        // P2P host mode flag (set by Citadel --p2p-host or future client host path). Used only for lobby metadata.
+        private bool _isP2PHostMode = false;
 
         public SteamEngine(EventBus eventBus = null)
         {
@@ -201,9 +202,17 @@ namespace SiegeEngine.Core.Networking
             SteamAPI_ISteamMatchmaking_RequestLobbyList(_matchmaking);
         }
 
+        // NEW: P2P host discovery (separate from dedicated so dedicated path remains untouched)
+        public void RequestP2PHostLobbies()
+        {
+            Console.WriteLine("Client: Searching for P2P authoritative host lobbies (p2p-host=true)...");
+            SteamAPI_ISteamMatchmaking_AddRequestLobbyListStringFilter(_matchmaking, "p2p-host", "true", 0);
+            SteamAPI_ISteamMatchmaking_RequestLobbyList(_matchmaking);
+        }
+
         public void JoinSpecificLobby(ulong lobbyId)
         {
-            Console.WriteLine($"Client: Joining specific dedicated lobby ID {lobbyId}");
+            Console.WriteLine($"Client: Joining specific lobby ID {lobbyId}");
             JoinLobby(lobbyId);
         }
 
@@ -420,6 +429,13 @@ namespace SiegeEngine.Core.Networking
             }
         }
 
+        // NEW: Allow Citadel --p2p-host (or future paths) to mark lobby as P2P host
+        public void SetP2PHostMode(bool isHost)
+        {
+            _isP2PHostMode = isHost;
+            Console.WriteLine($"SteamEngine: P2P host mode set to {isHost} (affects lobby metadata only)");
+        }
+
         private void OnLobbyCreated(LobbyCreated_t result)
         {
             if (result.m_eResult != 1)
@@ -438,14 +454,17 @@ namespace SiegeEngine.Core.Networking
             _lobbyCreated = true;
             _lobbyId = result.m_ulSteamIDLobby;
 
-            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "dedicated", "true");
-            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "port", "27015");
-            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "serverName", "Citadel Dedicated Server");
+            // P2P host metadata (keeps dedicated path 100% untouched)
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "dedicated", _isP2PHostMode ? "false" : "true");
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "p2p-host", _isP2PHostMode ? "true" : "false");
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "serverName", _isP2PHostMode ? "P2P Authoritative Host" : "Citadel Dedicated Server");
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "port", _isP2PHostMode ? "0" : "27015");
             SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "modVersion", "1.0.0");
 
-            Console.WriteLine($"=== LOBBY CREATED (client-side) ===");
+            Console.WriteLine($"=== LOBBY CREATED ===");
             Console.WriteLine($"Lobby ID: {_lobbyId}");
-            Console.WriteLine($"=======================================");
+            Console.WriteLine($"P2P Host: {_isP2PHostMode}");
+            Console.WriteLine($"=====================");
 
             _eventBus.Publish(new LobbyCreatedEvent(_lobbyId), true);
         }

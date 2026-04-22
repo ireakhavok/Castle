@@ -1,6 +1,4 @@
-﻿// Folder: Foundation
-// File: Program.cs
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -49,6 +47,42 @@ namespace Foundation
                 if (specificLobbyId == 0)
                 {
                     Console.WriteLine("Foundation: --discover-dedicated mode — will auto-discover or create dedicated lobbies");
+                }
+            }
+
+            // NEW: --host launches P2P authoritative host (Citadel.exe --p2p-host self-contained) + client that discovers P2P host lobbies
+            bool isP2PHost = args.Contains("--host");
+            bool discoverP2PHost = false;
+
+            if (isP2PHost)
+            {
+                Console.WriteLine("Foundation: P2P HOST MODE — launching self-contained Citadel.exe --p2p-host (authoritative) + client");
+
+                string citadelExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
+                if (File.Exists(citadelExe))
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = citadelExe,
+                        Arguments = "--p2p-host",
+                        UseShellExecute = true,
+                        WorkingDirectory = Path.GetDirectoryName(citadelExe)
+                    };
+                    Process.Start(psi);
+                    Console.WriteLine("Foundation: P2P host authoritative process started. Client will discover and join its lobby.");
+                }
+                discoverP2PHost = true; // client side will request P2P host lobbies
+            }
+
+            // NEW: --join <lobbyId> for direct join to P2P host or dedicated (optional lobby ID)
+            ulong joinLobbyId = 0;
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] == "--join" && ulong.TryParse(args[i + 1], out ulong id))
+                {
+                    joinLobbyId = id;
+                    Console.WriteLine($"Foundation: Joining lobby {joinLobbyId} (P2P host or dedicated)");
+                    break;
                 }
             }
 
@@ -136,7 +170,7 @@ namespace Foundation
             try
             {
                 var launcher = new Launcher();
-                launcher.Start(settings.CurrentRenderer, discoverDedicated, specificLobbyId, connectToServerSteamId);
+                launcher.Start(settings.CurrentRenderer, discoverDedicated, specificLobbyId, connectToServerSteamId, discoverP2PHost, joinLobbyId);
             }
             catch (Exception ex)
             {
