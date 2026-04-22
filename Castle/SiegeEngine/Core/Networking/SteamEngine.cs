@@ -475,6 +475,11 @@ namespace SiegeEngine.Core.Networking
 
             _eventBus.Publish(new LobbyJoinedEvent(joinedLobbyId), true);
         }
+        public void ConnectToDedicatedServer(ulong serverSteamId)
+        {
+            Console.WriteLine($"Client: Connecting directly to dedicated server SteamID {serverSteamId}");
+            ConnectP2P(serverSteamId);
+        }
 
         private void OnLobbyMatchList(LobbyMatchList_t result)
         {

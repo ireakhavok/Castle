@@ -37,7 +37,7 @@ namespace Trebuchet
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
 
-        public void Start(string context, bool testDedicated = false, ulong specificLobbyId = 0)
+        public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0)
         {
             try
             {
@@ -49,14 +49,18 @@ namespace Trebuchet
                     return;
                 }
 
-                if (!testDedicated)
+                if (!discoverDedicated && connectToServerSteamId == 0)
                 {
                     _serverProcess = Process.Start("Citadel.exe", "--local");
                     Console.WriteLine("Launcher: Started local authoritative Citadel server (--local) for validation layer.");
                 }
-                else
+                else if (discoverDedicated)
                 {
-                    Console.WriteLine("Launcher: TEST MODE — searching for dedicated lobbies (dedicated=true)...");
+                    Console.WriteLine("Launcher: DISCOVER MODE — searching for or creating dedicated lobbies...");
+                }
+                else if (connectToServerSteamId != 0)
+                {
+                    Console.WriteLine($"Launcher: DIRECT CONNECT MODE — connecting to dedicated server {connectToServerSteamId}");
                 }
 
                 using (_steamEngine = new SteamEngine())
@@ -68,7 +72,11 @@ namespace Trebuchet
                         return;
                     }
 
-                    if (testDedicated)
+                    if (connectToServerSteamId != 0)
+                    {
+                        ((SteamEngine)_steamEngine).ConnectToDedicatedServer(connectToServerSteamId);
+                    }
+                    else if (discoverDedicated)
                     {
                         if (specificLobbyId != 0)
                         {
@@ -76,7 +84,6 @@ namespace Trebuchet
                         }
                         else
                         {
-                            // Client creates the discovery lobby with dedicated=true
                             ((SteamEngine)_steamEngine).CreateLobby(64);
                         }
                     }
