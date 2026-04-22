@@ -217,6 +217,7 @@ namespace SiegeEngine.Core.Networking
         }
 
         public nint GetSteamPipe() => _hSteamPipe;
+        public nint GetHSteamServerPipe() => _hSteamServerPipe;
 
         public ulong GetSteamId()
         {

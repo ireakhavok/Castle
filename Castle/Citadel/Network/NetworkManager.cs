@@ -1,6 +1,4 @@
-﻿// Folder: Citadel/Network
-// File: NetworkManager.cs
-using SiegeEngine.Core.Events;
+﻿using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Networking;
 using System;
 
@@ -16,14 +14,23 @@ namespace Citadel.Network
         {
             _steamEngine = steamEngine;
             _eventBus = eventBus;
-            _isDedicatedServer = steamEngine is SteamEngine se && se.GetSteamPipe() != nint.Zero;  /* && pass flag from outside if needed */;
+
+            // FIXED: Properly detect true dedicated server vs P2P host
+            // P2P host uses client Steam (no GameServer pipe), dedicated uses InitializeServer()
+            _isDedicatedServer = steamEngine.GetSteamPipe() == nint.Zero ||
+                                 (steamEngine is SteamEngine se && se.GetHSteamServerPipe() != nint.Zero);
         }
 
         public void Start()
         {
-            Console.WriteLine(_isDedicatedServer
-                ? "NetworkManager: Dedicated server networking active (SteamGameServer + lobby) — waiting for client connections..."
-                : "NetworkManager: P2P networking active");
+            if (_isDedicatedServer)
+            {
+                Console.WriteLine("NetworkManager: Dedicated server networking active (SteamGameServer + lobby) — waiting for client connections...");
+            }
+            else
+            {
+                Console.WriteLine("NetworkManager: P2P host/client networking active — using Steam P2P");
+            }
         }
 
         public void SendToAll(byte[] data)
@@ -42,7 +49,7 @@ namespace Citadel.Network
             else
             {
                 _steamEngine.SendP2PMessage(data);
-                Console.WriteLine($"NetworkManager: Sent P2P to all (priority {priority}): {data.Length} bytes");
+                Console.WriteLine($"NetworkManager [P2P]: Sent P2P to all (priority {priority}): {data.Length} bytes");
             }
         }
 
@@ -50,7 +57,7 @@ namespace Citadel.Network
         {
             if (data != null && data.Length > 0)
             {
-                Console.WriteLine($"NetworkManager [DEDICATED]: Received {data.Length} bytes from client — processing...");
+                Console.WriteLine($"NetworkManager: Received {data.Length} bytes — processing...");
             }
             _eventBus.ProcessNetworkMessage(data);
         }
