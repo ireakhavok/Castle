@@ -27,6 +27,10 @@ namespace SiegeEngine.Core.Networking
         private readonly List<byte[]> _receivedMessages = new List<byte[]>();
         private readonly Dictionary<ulong, long> _connectionHandles = new Dictionary<ulong, long>();
         private readonly Dictionary<long, bool> _connectionReady = new Dictionary<long, bool>();
+        private nint _createLobbyCall;
+        private bool _pendingDedicatedLobby;
+        private int _lobbyRetryCount;
+        private DateTime _lastLobbyAttempt = DateTime.MinValue;
 
         public SteamEngine(EventBus eventBus = null)
         {
@@ -161,6 +165,51 @@ namespace SiegeEngine.Core.Networking
                 {
                     Marshal.FreeHGlobal(serverCallbackMsg);
                 }
+
+                // Future-proof SteamAPICall_t result polling for CreateLobby with aggressive logging and retry
+                if (_createLobbyCall != nint.Zero)
+                {
+                    nint utils = SteamAPI_SteamUtils_v010();
+                    bool bFailed;
+                    bool completed = SteamAPI_ISteamUtils_IsAPICallCompleted(utils, _createLobbyCall, out bFailed);
+                    if (completed)
+                    {
+                        Console.WriteLine($"[SERVER] CreateLobby call {_createLobbyCall} COMPLETED, bFailed={bFailed}");
+                        LobbyCreated_t result = default;
+                        int cbSize = Marshal.SizeOf<LobbyCreated_t>();
+                        if (SteamAPI_ISteamUtils_GetAPICallResult(utils, _createLobbyCall, ref result, cbSize, 510, out bFailed) && !bFailed)
+                        {
+                            Console.WriteLine($"[SERVER] CreateLobby GetAPICallResult eResult={result.m_eResult}");
+                            OnLobbyCreated(result);
+                            _createLobbyCall = nint.Zero;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[SERVER] CreateLobby GetAPICallResult failed or bFailed=true");
+                            _createLobbyCall = nint.Zero;
+                        }
+                    }
+                }
+            }
+
+            // Retry logic for dedicated lobby creation (future-proof for timing/Steam server state)
+            if (_pendingDedicatedLobby && !_lobbyCreated && _hSteamServerPipe != nint.Zero)
+            {
+                if ((DateTime.Now - _lastLobbyAttempt).TotalSeconds > 2.0 || _lobbyRetryCount == 0)
+                {
+                    _lastLobbyAttempt = DateTime.Now;
+                    _lobbyRetryCount++;
+                    if (_lobbyRetryCount <= 5)
+                    {
+                        Console.WriteLine($"[SERVER] Retrying dedicated lobby creation (attempt {_lobbyRetryCount}/5)...");
+                        CreateDedicatedLobby();
+                    }
+                    else
+                    {
+                        Console.WriteLine("[SERVER] Dedicated lobby creation failed after 5 retries. Check Steam GameServer logon and permissions.");
+                        _pendingDedicatedLobby = false;
+                    }
+                }
             }
 
             lock (_receivedMessages)
@@ -226,7 +275,11 @@ namespace SiegeEngine.Core.Networking
         {
             if (_lobbyCreated || !_isDedicatedServer) return;
             Console.WriteLine("SteamEngine: Creating public dedicated server lobby (dedicated=true)...");
-            SteamAPI_ISteamMatchmaking_CreateLobby(_matchmaking, 1, 64);
+            _createLobbyCall = SteamAPI_ISteamMatchmaking_CreateLobby(_matchmaking, 1, 64);
+            if (_createLobbyCall != nint.Zero)
+            {
+                Console.WriteLine($"SteamEngine: CreateLobby SteamAPICall_t issued: {_createLobbyCall}");
+            }
         }
 
         public void CreateLobby(int maxPlayers)
@@ -275,7 +328,9 @@ namespace SiegeEngine.Core.Networking
             SteamAPI_ISteamGameServer_LogOnAnonymous(_gameServer);
             Console.WriteLine($"Server started: {serverName} on port {port}");
 
-            CreateDedicatedLobby();
+            _pendingDedicatedLobby = true;
+            _lobbyRetryCount = 0;
+            _lastLobbyAttempt = DateTime.MinValue;
 
             return true;
         }
@@ -424,19 +479,22 @@ namespace SiegeEngine.Core.Networking
 
         private void OnLobbyCreated(LobbyCreated_t result)
         {
-            if (!_isDedicatedServer)
+            if (result.m_eResult != 1)
             {
-                Console.WriteLine($"[CLIENT] Ignored stray LobbyCreated callback (result {result.m_eResult})");
+                if (!_isDedicatedServer)
+                {
+                    Console.WriteLine($"[CLIENT] Ignored stray LobbyCreated callback (result {result.m_eResult})");
+                }
+                else
+                {
+                    Console.WriteLine($"[SERVER] Lobby creation failed with result {result.m_eResult}");
+                }
                 return;
             }
 
-            if (result.m_eResult != 1)
-            {
-                Console.WriteLine($"Lobby creation failed: {result.m_eResult}");
-                return;
-            }
             _lobbyCreated = true;
             _lobbyId = result.m_ulSteamIDLobby;
+            _pendingDedicatedLobby = false;
 
             SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "dedicated", "true");
             SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "port", "27015");
@@ -694,5 +752,16 @@ namespace SiegeEngine.Core.Networking
         [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamUGC_GetItemInstallInfo")]
         [return: MarshalAs(UnmanagedType.I1)]
         private static extern bool SteamAPI_ISteamUGC_GetItemInstallInfo(nint instance, ulong nPublishedFileID, out ulong punSizeOnDisk, StringBuilder pchFolder, uint cchFolderSize, out uint punTimeStamp);
+
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_SteamUtils_v010")]
+        private static extern nint SteamAPI_SteamUtils_v010();
+
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamUtils_IsAPICallCompleted")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool SteamAPI_ISteamUtils_IsAPICallCompleted(nint instance, nint hSteamAPICall, out bool pbFailed);
+
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamUtils_GetAPICallResult")]
+        [return: MarshalAs(UnmanagedType.I1)]
+        private static extern bool SteamAPI_ISteamUtils_GetAPICallResult(nint instance, nint hSteamAPICall, ref LobbyCreated_t pCallback, int cubCallback, int iCallbackExpected, out bool pbFailed);
     }
 }
