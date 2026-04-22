@@ -21,7 +21,7 @@ namespace Foundation
             bool testDedicated = args.Contains("--test-dedicated");
             ulong specificLobbyId = 0;
 
-            // Parse --lobby <ID> when --test-dedicated is used
+            // Parse optional --lobby <ID> (still supported if you want to use it)
             if (testDedicated)
             {
                 for (int i = 0; i < args.Length - 1; i++)
@@ -36,9 +36,7 @@ namespace Foundation
 
                 if (specificLobbyId == 0)
                 {
-                    Console.WriteLine("ERROR: --test-dedicated requires --lobby <ID> (copy the Lobby ID from the server log)");
-                    Console.WriteLine("Example: ./Foundation.exe --test-dedicated --lobby 109775242653177801");
-                    return;
+                    Console.WriteLine("Foundation: --test-dedicated mode — will auto-discover dedicated lobbies (dedicated=true)");
                 }
             }
 

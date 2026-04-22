@@ -16,7 +16,7 @@ namespace Citadel.Network
         {
             _steamEngine = steamEngine;
             _eventBus = eventBus;
-            _isDedicatedServer = steamEngine.GetSteamPipe() != nint.Zero;
+            _isDedicatedServer = steamEngine is SteamEngine se && se.GetSteamPipe() != nint.Zero;  /* && pass flag from outside if needed */;
         }
 
         public void Start()

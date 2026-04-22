@@ -56,7 +56,7 @@ namespace Trebuchet
                 }
                 else
                 {
-                    Console.WriteLine($"Launcher: TEST MODE — joining dedicated lobby {specificLobbyId} (no local server spawned)");
+                    Console.WriteLine("Launcher: TEST MODE — searching for dedicated lobbies (dedicated=true)...");
                 }
 
                 using (_steamEngine = new SteamEngine())
@@ -68,13 +68,18 @@ namespace Trebuchet
                         return;
                     }
 
-                    if (testDedicated && specificLobbyId != 0)
+                    if (testDedicated)
                     {
-                        ((SteamEngine)_steamEngine).JoinSpecificLobby(specificLobbyId);
-                    }
-                    else if (testDedicated)
-                    {
-                        Console.WriteLine("ERROR: --test-dedicated requires --lobby <ID> (copy from server log)");
+                        if (specificLobbyId != 0)
+                        {
+                            // Optional: still support direct ID if you want
+                            ((SteamEngine)_steamEngine).JoinSpecificLobby(specificLobbyId);
+                        }
+                        else
+                        {
+                            // Proper way: discover dedicated lobbies automatically
+                            ((SteamEngine)_steamEngine).RequestDedicatedLobbies();
+                        }
                     }
 
                     _settingsManager = new UISettingsManager();
