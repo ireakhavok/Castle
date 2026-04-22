@@ -55,7 +55,7 @@ namespace Citadel
                 _networkManager = new NetworkManager(_steamEngine, _eventBus);
                 _networkManager.Start();
 
-                Console.WriteLine("Citadel: Server running on port 27015 with dedicated lobby (dedicated=true). Press ESC to stop.");
+                Console.WriteLine("Citadel: Dedicated server running on port 27015. Waiting for client connections... Press ESC to stop.");
 
                 bool running = true;
                 var sw = Stopwatch.StartNew();

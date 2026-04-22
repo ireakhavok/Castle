@@ -72,13 +72,12 @@ namespace Trebuchet
                     {
                         if (specificLobbyId != 0)
                         {
-                            // Optional: still support direct ID if you want
                             ((SteamEngine)_steamEngine).JoinSpecificLobby(specificLobbyId);
                         }
                         else
                         {
-                            // Proper way: discover dedicated lobbies automatically
-                            ((SteamEngine)_steamEngine).RequestDedicatedLobbies();
+                            // Client creates the discovery lobby with dedicated=true
+                            ((SteamEngine)_steamEngine).CreateLobby(64);
                         }
                     }
 
