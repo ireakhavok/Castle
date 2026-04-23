@@ -19,12 +19,8 @@ Folder: AssetParsing
   - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
 - File: AnimationBlendStack.cs
-  - Class: AnimationBlendStack (Namespace: SiegeEngine.Core.AssetParsing.Model)
+  - Class: MovementBlendConfig (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
-    - Methods:
-      - void AddClip( Vector3 coord,  bool loop = true,  float end = -1f,  float speed = 1f,  float start = 0f, string path)
-      - void RemoveClip(int index)
-      - AnimationClipEntry GetClipAt(Vector3 params3D)
 - File: AnimationClipEntry.cs
   - Class: AnimationClipEntry (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Numerics
@@ -2067,7 +2063,6 @@ SiegeEngine.Core.AssetParsing.FBXParserUtils
 SiegeEngine.Core.AssetParsing.FBXSettings
 SiegeEngine.Core.AssetParsing.FBXSkeletonParser
 SiegeEngine.Core.AssetParsing.Model.Animation
-SiegeEngine.Core.AssetParsing.Model.AnimationBlendStack
 SiegeEngine.Core.AssetParsing.Model.AnimationClipEntry
 SiegeEngine.Core.AssetParsing.Model.Bone
 SiegeEngine.Core.AssetParsing.Model.FBXMesh
@@ -2076,6 +2071,7 @@ SiegeEngine.Core.AssetParsing.Model.FBXVertex
 SiegeEngine.Core.AssetParsing.Model.Keyframe
 SiegeEngine.Core.AssetParsing.Model.Material
 SiegeEngine.Core.AssetParsing.Model.MeshData
+SiegeEngine.Core.AssetParsing.Model.MovementBlendConfig
 SiegeEngine.Core.AssetParsing.Model.Skeleton
 SiegeEngine.Core.AssetParsing.Model.TextureInfo
 SiegeEngine.Core.AssetParsing.ModelMeshRender

@@ -6,12 +6,8 @@ Folder: Core
   - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
 - File: AnimationBlendStack.cs
-  - Class: AnimationBlendStack (Namespace: SiegeEngine.Core.AssetParsing.Model)
+  - Class: MovementBlendConfig (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
-    - Methods:
-      - void AddClip( Vector3 coord,  bool loop = true,  float end = -1f,  float speed = 1f,  float start = 0f, string path)
-      - void RemoveClip(int index)
-      - AnimationClipEntry GetClipAt(Vector3 params3D)
 - File: AnimationClipEntry.cs
   - Class: AnimationClipEntry (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Numerics
@@ -2232,6 +2228,8 @@ Folder: Scenes
       - int _currentFrameIndex
       - bool _showSkeleton
       - bool _showBindPoseSkeleton
+      - AnimationBlendStack _blendPreviewStack
+      - Vector3 _blendPreviewParams
     - Methods:
       - void Initialize( int width, int height)
         - Calls: DiscoverAnimationFiles, LoadMesh, ShaderProgram, VertexBuffer
@@ -2242,9 +2240,13 @@ Folder: Scenes
         - Calls: ResetAnimationState, SetRestPose, _ModelManager.AttachSkeleton, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
       - void LoadAnimation(string animPath)
         - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, ResetAnimationState, SetRestPose, UpdateTransformsFromTime, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
+      - void AttachBlendAnimations(AnimationBlendStack stack)
+        - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, LoadAnimation, SetRestPose, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
       - void ApplyRestPoseFromModel(FBXModel sourceModel)
         - Calls: tgtBone.ComputeLocal
       - void UpdateTransformsFromTime(float time)
+        - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms
+      - void ComputeBlendedTransforms(float deltaTime)
         - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms
       - void CenterCamera()
       - void DiscoverAnimationFiles()
@@ -2252,12 +2254,14 @@ Folder: Scenes
         - Calls: Vertex, _skeletonBuffer.UpdateCustom
       - void SetRestPose()
         - Calls: Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, Vertex, _bindSkeletonBuffer.UpdateCustom, _model.Skeleton.ComputeGlobalTransforms
+      - void SetBlendPreview( Vector3 currentParams, AnimationBlendStack stack)
+        - Calls: AttachBlendAnimations, ComputeBlendedTransforms
       - List<string> GetAnimationFiles()
       - string GetFrameInfo()
       - void TogglePlay()
       - void Update(float deltaTime)
       - void Update( Vector2 relMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
-        - Calls: UpdateSkeletonVisualization, UpdateTransformsFromTime, _controlContext.GetKey, _controlContext.GetMouseButton
+        - Calls: ComputeBlendedTransforms, UpdateSkeletonVisualization, UpdateTransformsFromTime, _controlContext.GetKey, _controlContext.GetMouseButton
       - void Render(IReadOnlyList<Entity> entities)
         - Calls: _modelRenderer.RenderModel, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.Clear, _renderContext.ClearColor, _renderContext.CullFace, _renderContext.DepthFunc, _renderContext.DepthMask, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.FrontFace
       - void Dispose()
@@ -2551,7 +2555,6 @@ SiegeEngine.Core.AssetParsing.FBXParserUtils
 SiegeEngine.Core.AssetParsing.FBXSettings
 SiegeEngine.Core.AssetParsing.FBXSkeletonParser
 SiegeEngine.Core.AssetParsing.Model.Animation
-SiegeEngine.Core.AssetParsing.Model.AnimationBlendStack
 SiegeEngine.Core.AssetParsing.Model.AnimationClipEntry
 SiegeEngine.Core.AssetParsing.Model.Bone
 SiegeEngine.Core.AssetParsing.Model.FBXMesh
@@ -2560,6 +2563,7 @@ SiegeEngine.Core.AssetParsing.Model.FBXVertex
 SiegeEngine.Core.AssetParsing.Model.Keyframe
 SiegeEngine.Core.AssetParsing.Model.Material
 SiegeEngine.Core.AssetParsing.Model.MeshData
+SiegeEngine.Core.AssetParsing.Model.MovementBlendConfig
 SiegeEngine.Core.AssetParsing.Model.Skeleton
 SiegeEngine.Core.AssetParsing.Model.TextureInfo
 SiegeEngine.Core.AssetParsing.ModelMeshRender
