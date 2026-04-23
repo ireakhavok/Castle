@@ -58,6 +58,7 @@ namespace Keystone
                 _unsavedHeightmaps[sceneName] = heightmap;
             }
         }
+        public List<string> GetUnsavedHeightmapKeys() => new List<string>(_unsavedHeightmaps.Keys);
         public string GetLayoutTempPath(string projectPath)
         {
             if (string.IsNullOrEmpty(projectPath)) return null;

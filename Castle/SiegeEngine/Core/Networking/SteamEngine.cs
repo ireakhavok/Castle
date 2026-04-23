@@ -20,9 +20,14 @@ namespace SiegeEngine.Core.Networking
         private bool _lobbyJoined;
         private ulong _lobbyId;
         private bool _disposed;
+        private bool _isDedicatedServer;
         private readonly EventBus _eventBus;
         private readonly List<byte[]> _receivedMessages = new List<byte[]>();
-        private readonly Dictionary<ulong, int> _connectionHandles = new Dictionary<ulong, int>();
+        private readonly Dictionary<ulong, long> _connectionHandles = new Dictionary<ulong, long>();
+        private readonly Dictionary<long, bool> _connectionReady = new Dictionary<long, bool>();
+
+        // P2P host mode flag (set by Citadel --p2p-host or future client host path). Used only for lobby metadata.
+        private bool _isP2PHostMode = false;
 
         public SteamEngine(EventBus eventBus = null)
         {
@@ -110,6 +115,7 @@ namespace SiegeEngine.Core.Networking
 
         public void RunCallbacks()
         {
+            // CLIENT PIPE
             SteamAPI_ManualDispatch_RunFrame(_hSteamPipe);
             nint callbackMsg = Marshal.AllocHGlobal(Marshal.SizeOf<CallbackMsg_t>());
             try
@@ -117,21 +123,12 @@ namespace SiegeEngine.Core.Networking
                 while (SteamAPI_ManualDispatch_GetNextCallback(_hSteamPipe, callbackMsg))
                 {
                     CallbackMsg_t msg = Marshal.PtrToStructure<CallbackMsg_t>(callbackMsg);
-                    if (msg.m_iCallback == 510) // LobbyCreated_t callback ID
-                    {
-                        LobbyCreated_t result = Marshal.PtrToStructure<LobbyCreated_t>(msg.m_pubParam);
-                        OnLobbyCreated(result);
-                    }
-                    else if (msg.m_iCallback == 504) // LobbyEnter_t callback ID
-                    {
-                        LobbyEnter_t result = Marshal.PtrToStructure<LobbyEnter_t>(msg.m_pubParam);
-                        OnLobbyEnter(result);
-                    }
-                    else if (msg.m_iCallback == 1001) // SteamUGCRequestUGCDetailsResult_t callback ID
-                    {
-                        SteamUGCRequestUGCDetailsResult_t result = Marshal.PtrToStructure<SteamUGCRequestUGCDetailsResult_t>(msg.m_pubParam);
-                        OnWorkshopItemCreated(result);
-                    }
+
+                    if (msg.m_iCallback == 510) OnLobbyCreated(Marshal.PtrToStructure<LobbyCreated_t>(msg.m_pubParam));
+                    else if (msg.m_iCallback == 504) OnLobbyEnter(Marshal.PtrToStructure<LobbyEnter_t>(msg.m_pubParam));
+                    else if (msg.m_iCallback == 512) OnLobbyMatchList(Marshal.PtrToStructure<LobbyMatchList_t>(msg.m_pubParam));
+                    else if (msg.m_iCallback == 1220) OnConnectionStatusChanged(Marshal.PtrToStructure<SteamNetConnectionStatusChanged_t>(msg.m_pubParam));
+
                     SteamAPI_ManualDispatch_FreeLastCallback(_hSteamPipe);
                 }
             }
@@ -139,9 +136,32 @@ namespace SiegeEngine.Core.Networking
             {
                 Marshal.FreeHGlobal(callbackMsg);
             }
+
+            // SERVER PIPE
             if (_hSteamServerPipe != nint.Zero)
             {
                 SteamGameServer_RunCallbacks();
+
+                SteamAPI_ManualDispatch_RunFrame(_hSteamServerPipe);
+                nint serverCallbackMsg = Marshal.AllocHGlobal(Marshal.SizeOf<CallbackMsg_t>());
+                try
+                {
+                    while (SteamAPI_ManualDispatch_GetNextCallback(_hSteamServerPipe, serverCallbackMsg))
+                    {
+                        CallbackMsg_t msg = Marshal.PtrToStructure<CallbackMsg_t>(serverCallbackMsg);
+
+                        if (msg.m_iCallback == 510) OnLobbyCreated(Marshal.PtrToStructure<LobbyCreated_t>(msg.m_pubParam));
+                        else if (msg.m_iCallback == 504) OnLobbyEnter(Marshal.PtrToStructure<LobbyEnter_t>(msg.m_pubParam));
+                        else if (msg.m_iCallback == 512) OnLobbyMatchList(Marshal.PtrToStructure<LobbyMatchList_t>(msg.m_pubParam));
+                        else if (msg.m_iCallback == 1220) OnConnectionStatusChanged(Marshal.PtrToStructure<SteamNetConnectionStatusChanged_t>(msg.m_pubParam));
+
+                        SteamAPI_ManualDispatch_FreeLastCallback(_hSteamServerPipe);
+                    }
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(serverCallbackMsg);
+                }
             }
 
             lock (_receivedMessages)
@@ -152,11 +172,64 @@ namespace SiegeEngine.Core.Networking
             }
         }
 
+        private void OnConnectionStatusChanged(SteamNetConnectionStatusChanged_t result)
+        {
+            long conn = result.m_hConn;
+            int newState = result.m_info.m_eState;
+
+            Console.WriteLine($"[SteamEngine] Connection status changed - Handle: {conn}, New State: {newState}");
+
+            if (newState == 2)
+            {
+                int acceptResult = SteamAPI_ISteamNetworkingSockets_AcceptConnection(_networking, (int)conn);
+                Console.WriteLine($"SteamEngine: Accepted incoming connection {conn} (result: {acceptResult})");
+            }
+            else if (newState == 3)
+            {
+                _connectionReady[conn] = true;
+                Console.WriteLine($"CONNECTION {conn} is now READY");
+            }
+            else if (newState >= 4)
+            {
+                _connectionReady[conn] = false;
+            }
+        }
+
+        public void RequestDedicatedLobbies()
+        {
+            Console.WriteLine("Client: Searching for dedicated lobbies (dedicated=true)...");
+            SteamAPI_ISteamMatchmaking_AddRequestLobbyListStringFilter(_matchmaking, "dedicated", "true", 0);
+            SteamAPI_ISteamMatchmaking_RequestLobbyList(_matchmaking);
+        }
+
+        // NEW: P2P host discovery (separate from dedicated so dedicated path remains untouched)
+        public void RequestP2PHostLobbies()
+        {
+            Console.WriteLine("Client: Searching for P2P authoritative host lobbies (p2p-host=true)...");
+            SteamAPI_ISteamMatchmaking_AddRequestLobbyListStringFilter(_matchmaking, "p2p-host", "true", 0);
+            SteamAPI_ISteamMatchmaking_RequestLobbyList(_matchmaking);
+        }
+
+        public void JoinSpecificLobby(ulong lobbyId)
+        {
+            Console.WriteLine($"Client: Joining specific lobby ID {lobbyId}");
+            JoinLobby(lobbyId);
+        }
+
         public nint GetSteamPipe() => _hSteamPipe;
+        public nint GetHSteamServerPipe() => _hSteamServerPipe;
 
         public ulong GetSteamId()
         {
             return _user != nint.Zero ? SteamAPI_ISteamUser_GetSteamID(_user) : 0;
+        }
+
+        public ulong GetLobbyOwner(ulong lobbyId)
+        {
+            if (_matchmaking == nint.Zero) return 0;
+            ulong owner = SteamAPI_ISteamMatchmaking_GetLobbyOwner(_matchmaking, lobbyId);
+            Console.WriteLine($"SteamEngine: Lobby {lobbyId} owner SteamID: {owner}");
+            return owner;
         }
 
         public void CreateLobby(int maxPlayers)
@@ -164,38 +237,22 @@ namespace SiegeEngine.Core.Networking
             if (_lobbyCreated) return;
             SteamAPI_ISteamMatchmaking_CreateLobby(_matchmaking, 1, maxPlayers);
             Console.WriteLine($"Creating lobby with max players: {maxPlayers}");
-            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "modVersion", "1.0.0");
         }
 
         public void JoinLobby(ulong lobbyId)
         {
             SteamAPI_ISteamMatchmaking_JoinLobby(_matchmaking, (long)lobbyId);
             Console.WriteLine($"Joining lobby: {lobbyId}");
-
-            StringBuilder version = new StringBuilder(256);
-            if (SteamAPI_ISteamMatchmaking_GetLobbyData(_matchmaking, lobbyId, "modVersion", version, 256))
-            {
-                string lobbyVersion = version.ToString();
-                string localVersion = "1.0.0";
-                if (!string.IsNullOrEmpty(lobbyVersion) && lobbyVersion != localVersion)
-                {
-                    Console.WriteLine($"Mod version mismatch: Lobby {lobbyVersion}, Local {localVersion}");
-                }
-                else
-                {
-                    Console.WriteLine($"Mod version matched: {lobbyVersion}");
-                }
-            }
         }
 
         public bool IsLobbyCreated() => _lobbyCreated;
-
         public bool IsLobbyJoined() => _lobbyJoined;
-
         public ulong GetLobbyId() => _lobbyId;
 
         public bool InitializeServer(uint ip, ushort port, string serverName)
         {
+            _isDedicatedServer = true;
+
             if (!SteamGameServer_Init(ip, port, (ushort)(port + 1), 0, 480, "1.0.0"))
             {
                 Console.WriteLine("Failed to initialize Steam Game Server.");
@@ -220,6 +277,7 @@ namespace SiegeEngine.Core.Networking
             SteamAPI_ISteamGameServer_SetServerName(_gameServer, serverName);
             SteamAPI_ISteamGameServer_LogOnAnonymous(_gameServer);
             Console.WriteLine($"Server started: {serverName} on port {port}");
+
             return true;
         }
 
@@ -275,34 +333,52 @@ namespace SiegeEngine.Core.Networking
 
         public void ConnectP2P(ulong steamId)
         {
-            SteamNetworkingIdentity identity = new SteamNetworkingIdentity { m_steamID64 = steamId };
+            ulong localSteamId = GetSteamId();
+            if (steamId == localSteamId)
+            {
+                Console.WriteLine("SteamEngine: Skipping P2P to self (localhost testing)");
+                return;
+            }
+
+            Console.WriteLine($"Client: Connecting P2P to lobby owner SteamID {steamId}");
+            SteamNetworkingIdentity identity = new SteamNetworkingIdentity
+            {
+                m_eType = 1,
+                m_steamID64 = steamId
+            };
+
             nint connection = SteamAPI_ISteamNetworkingSockets_ConnectP2P(_networking, ref identity, 0, nint.Zero, 0);
-            _connectionHandles[steamId] = (int)connection;
-            Console.WriteLine($"P2P connection initiated to SteamID: {steamId}, Connection Handle: {connection}");
+            long handle = (long)connection;
+            _connectionHandles[steamId] = handle;
+            _connectionReady[handle] = false;
+            Console.WriteLine($"P2P connection initiated to SteamID: {steamId}, Handle: {handle}");
         }
 
         public void SendP2PMessage(byte[] data)
         {
-            if (data == null || data.Length == 0) return;
-            if (_connectionHandles.Count == 0)
-            {
-                //Console.WriteLine("SteamEngine: No active P2P connections to send message.");
-                return;
-            }
+            if (data == null || data.Length == 0 || _connectionHandles.Count == 0) return;
+
             nint messagePtr = Marshal.AllocHGlobal(data.Length);
             try
             {
                 Marshal.Copy(data, 0, messagePtr, data.Length);
                 foreach (var kvp in _connectionHandles)
                 {
-                    uint result = SteamAPI_ISteamNetworkingSockets_SendMessageToConnection(_networking, kvp.Value, messagePtr, (uint)data.Length, 0, out long _);
+                    long conn = kvp.Value;
+                    if (!_connectionReady.ContainsKey(conn) || !_connectionReady[conn])
+                    {
+                        Console.WriteLine($"SteamEngine: Skipping send to connection {conn} - not READY yet");
+                        continue;
+                    }
+
+                    uint result = SteamAPI_ISteamNetworkingSockets_SendMessageToConnection(_networking, (int)conn, messagePtr, (uint)data.Length, 0, out long _);
                     if (result == 0)
                     {
-                        Console.WriteLine($"SteamEngine: Sent P2P message: {data.Length} bytes to SteamID {kvp.Key}");
+                        Console.WriteLine($"SteamEngine: Sent {data.Length} bytes successfully to connection {conn}");
                     }
                     else
                     {
-                        Console.WriteLine($"SteamEngine: Failed to send P2P message to SteamID {kvp.Key}: Error code {result}");
+                        Console.WriteLine($"SteamEngine: Send failed to connection {conn} (error {result})");
                     }
                 }
             }
@@ -354,31 +430,92 @@ namespace SiegeEngine.Core.Networking
             }
         }
 
+        // NEW: Allow Citadel --p2p-host (or future paths) to mark lobby as P2P host
+        public void SetP2PHostMode(bool isHost)
+        {
+            _isP2PHostMode = isHost;
+            Console.WriteLine($"SteamEngine: P2P host mode set to {isHost} (affects lobby metadata only)");
+        }
+
         private void OnLobbyCreated(LobbyCreated_t result)
         {
             if (result.m_eResult != 1)
             {
-                Console.WriteLine($"Lobby creation failed: {result.m_eResult}");
+                if (!_isDedicatedServer)
+                {
+                    Console.WriteLine($"[CLIENT] Ignored stray LobbyCreated callback (result {result.m_eResult})");
+                }
+                else
+                {
+                    Console.WriteLine($"[SERVER] Lobby creation callback received (ignored on dedicated server)");
+                }
                 return;
             }
+
             _lobbyCreated = true;
             _lobbyId = result.m_ulSteamIDLobby;
-            Console.WriteLine($"Lobby created successfully: {_lobbyId}");
+
+            // P2P host metadata (keeps dedicated path 100% untouched)
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "dedicated", _isP2PHostMode ? "false" : "true");
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "p2p-host", _isP2PHostMode ? "true" : "false");
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "serverName", _isP2PHostMode ? "P2P Authoritative Host" : "Citadel Dedicated Server");
+            SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "port", _isP2PHostMode ? "0" : "27015");
             SteamAPI_ISteamMatchmaking_SetLobbyData(_matchmaking, _lobbyId, "modVersion", "1.0.0");
-            JoinLobby(_lobbyId);
+
+            Console.WriteLine($"=== LOBBY CREATED ===");
+            Console.WriteLine($"Lobby ID: {_lobbyId}");
+            Console.WriteLine($"P2P Host: {_isP2PHostMode}");
+            Console.WriteLine($"=====================");
+
             _eventBus.Publish(new LobbyCreatedEvent(_lobbyId), true);
         }
 
         private void OnLobbyEnter(LobbyEnter_t result)
         {
+            if (_isDedicatedServer)
+            {
+                Console.WriteLine("[SERVER] Ignoring LobbyEnter callback - server does not join lobbies");
+                return;
+            }
+
             if (result.m_EChatRoomEnterResponse != 1)
             {
                 Console.WriteLine($"Failed to join lobby: {result.m_EChatRoomEnterResponse}");
                 return;
             }
             _lobbyJoined = true;
-            Console.WriteLine($"Successfully joined lobby: {result.m_ulSteamIDLobby}");
-            _eventBus.Publish(new LobbyJoinedEvent(result.m_ulSteamIDLobby), true);
+            ulong joinedLobbyId = result.m_ulSteamIDLobby;
+            Console.WriteLine($"Successfully joined lobby: {joinedLobbyId}");
+
+            ulong ownerSteamId = GetLobbyOwner(joinedLobbyId);
+            if (ownerSteamId != 0)
+            {
+                ConnectP2P(ownerSteamId);
+            }
+
+            _eventBus.Publish(new LobbyJoinedEvent(joinedLobbyId), true);
+        }
+        public void ConnectToDedicatedServer(ulong serverSteamId)
+        {
+            Console.WriteLine($"Client: Connecting directly to dedicated server SteamID {serverSteamId}");
+            ConnectP2P(serverSteamId);
+        }
+
+        private void OnLobbyMatchList(LobbyMatchList_t result)
+        {
+            Console.WriteLine($"Client: Found {result.m_nLobbiesMatching} dedicated lobbies");
+
+            if (result.m_nLobbiesMatching > 0)
+            {
+                ulong firstLobby = SteamAPI_ISteamMatchmaking_GetLobbyByIndex(_matchmaking, 0);
+                Console.WriteLine($"Client: Auto-joining first dedicated lobby {firstLobby}");
+                JoinLobby(firstLobby);
+            }
+            else
+            {
+                Console.WriteLine("Client: No dedicated lobbies found. Creating one for testing...");
+                CreateLobby(64);
+            }
         }
 
         private void OnWorkshopItemCreated(SteamUGCRequestUGCDetailsResult_t result)
@@ -417,11 +554,32 @@ namespace SiegeEngine.Core.Networking
         }
 
         [StructLayout(LayoutKind.Sequential)]
+        private struct LobbyMatchList_t
+        {
+            public uint m_nLobbiesMatching;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
         private struct SteamNetworkingIdentity
         {
+            public int m_eType;
             public ulong m_steamID64;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 152)]
             public byte[] m_padding;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SteamNetConnectionStatusChanged_t
+        {
+            public long m_hConn;
+            public SteamNetConnectionInfo_t m_info;
+            public int m_eOldState;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SteamNetConnectionInfo_t
+        {
+            public int m_eState;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -432,6 +590,21 @@ namespace SiegeEngine.Core.Networking
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
             public string m_pchTitle;
         }
+
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamNetworkingSockets_AcceptConnection")]
+        private static extern int SteamAPI_ISteamNetworkingSockets_AcceptConnection(nint instance, int hConn);
+
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamMatchmaking_GetLobbyOwner")]
+        private static extern ulong SteamAPI_ISteamMatchmaking_GetLobbyOwner(nint instance, ulong steamIDLobby);
+
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamMatchmaking_AddRequestLobbyListStringFilter")]
+        private static extern void SteamAPI_ISteamMatchmaking_AddRequestLobbyListStringFilter(nint instance, string pchKeyToMatch, string pchValueToMatch, int eComparisonType);
+
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamMatchmaking_RequestLobbyList")]
+        private static extern nint SteamAPI_ISteamMatchmaking_RequestLobbyList(nint instance);
+
+        [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_ISteamMatchmaking_GetLobbyByIndex")]
+        private static extern ulong SteamAPI_ISteamMatchmaking_GetLobbyByIndex(nint instance, int iLobby);
 
         [DllImport("steam_api64.dll", CallingConvention = CallingConvention.Cdecl, EntryPoint = "SteamAPI_InitSafe")]
         [return: MarshalAs(UnmanagedType.I1)]

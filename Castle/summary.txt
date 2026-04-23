@@ -23,7 +23,7 @@ Folder: Assets
 Folder: CastleBuilder
 - File: BlueprintManager.cs
   - Class: StringExtensions (Namespace: CastleBuilder)
-    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.IO, System.Text.Json, ToolChest
+    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Terrain, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.IO, System.Text.Json, ToolChest
     - Methods:
       - string ReplaceInvalidFileChars(this string)
         - Calls: c.ToString
@@ -235,13 +235,17 @@ Folder: Citadel
     - Fields:
       - SteamEngine _steamEngine
       - EventBus _eventBus
+      - bool _isDedicatedServer
     - Methods:
       - constructor NetworkManager( EventBus eventBus, SteamEngine steamEngine)
+        - Calls: se.GetSteamPipe
       - void Start()
         - Calls: Console.WriteLine
       - void SendToAll(byte[] data)
+      - void SendToAll( int priority, byte[] data)
+        - Calls: Console.WriteLine, _steamEngine.SendP2PMessage
       - void Receive(byte[] data)
-        - Calls: _eventBus.ProcessNetworkMessage
+        - Calls: Console.WriteLine, _eventBus.ProcessNetworkMessage
 - File: PhysicsSystem.cs
   - Class: PhysicsSystem (Namespace: Citadel.Systems)
     - Inherits: GameSystem
@@ -252,7 +256,7 @@ Folder: Citadel
         - Calls: Console.WriteLine, _server.GetEntities
 - File: ServerProgram.cs
   - Class: ServerProgram (Namespace: Citadel)
-    - Dependencies: Citadel.Network, Citadel.Server, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Diagnostics, System.Linq
+    - Dependencies: Citadel.Network, Citadel.Server, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Diagnostics, System.Linq, System.Threading
     - Fields:
       - SteamEngine _steamEngine
       - GameServer _gameServer
@@ -291,12 +295,12 @@ Folder: Citadel
 Folder: Foundation
 - File: Program.cs
   - Class: Program (Namespace: Foundation)
-    - Dependencies: SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, System, System.Diagnostics, System.Runtime.InteropServices, Trebuchet
+    - Dependencies: SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, System, System.Diagnostics, System.IO, System.Runtime.InteropServices, Trebuchet
     - Methods:
       - int MessageBox( string caption,  string text,  uint type, nint hWnd)
-        - Calls: Console.WriteLine, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
+        - Calls: Console.WriteLine, Process.Start, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
       - void Main(string[] args)
-        - Calls: Console.WriteLine, MessageBox, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
+        - Calls: Console.WriteLine, MessageBox, Process.Start, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
 
 Folder: GuildTower
 - File: Class1.cs
@@ -343,12 +347,14 @@ Folder: Keystone
         - Calls: Console.WriteLine
 - File: ProjectSettings.cs
   - Class: ProjectSettings (Namespace: Keystone)
-    - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.IO
+    - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.IO, System.Reflection.Emit
     - Fields:
       - string _projectsRoot
     - Methods:
       - constructor ProjectSettings()
       - void SetCurrentTerrain( string heightmapPath = null,  string sceneName = null, SceneData sceneData, ] heightmap)
+        - Calls: Console.WriteLine
+      - void SetCurrentLevel(Level level)
         - Calls: Console.WriteLine
       - ] GetUnsavedHeightmap(string sceneName)
       - void StoreUnsavedHeightmap(] heightmap, string sceneName)
@@ -412,7 +418,7 @@ Folder: MapRoom
         - Calls: Console.WriteLine, RebuildTerrainMesh, ResolveFullPath
       - void SetColorTexture(string path)
       - void SaveTerrain(string terrainName)
-        - Calls: Console.WriteLine, CustomTerrainParser.SaveFloatTiff, RebuildTerrainMesh, ResolveFullPath, SaveAsPng
+        - Calls: Console.WriteLine, CustomTerrainParser.SaveFloatTiff, CustomTerrainParser.TryGetCustomScale, RebuildTerrainMesh, ResolveFullPath, SaveAsPng
       - void Export2D(string projectAssetsDir)
         - Calls: Console.WriteLine, TilemapExporter.ExportToMesh
       - void SaveAsPng(string path)
@@ -434,7 +440,7 @@ Folder: MapRoom
       - void OnTerrainModified(TerrainModifiedEvent e)
         - Calls: ApplyModification
       - void ApplyModification(TerrainModifiedEvent e)
-        - Calls: Enum.Parse, RebuildTerrainMesh, UpdateAffectedVertices, brush.Apply
+        - Calls: Enum.Parse, UpdateAffectedVertices, brush.Apply
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
@@ -1091,11 +1097,15 @@ Folder: SiegeEngine
         - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteTexture, _renderContext.DeleteVertexArray
 - File: Entity.cs
   - Class: Entity (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic
+    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
     - Methods:
       - constructor Entity()
       - void SetParent(Entity parent)
       - void AddChild(Entity child)
+      - EntityData ToData()
+      - Entity FromData(EntityData data)
+        - Calls: Entity
+      - constructor Entity()
 - File: EntityAddedEvent.cs
   - Class: EntityAddedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -1107,6 +1117,9 @@ Folder: SiegeEngine
       - constructor EntityAddedEvent(Entity entity)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+- File: EntityData.cs
+  - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: EntityMovedEvent.cs
   - Class: EntityMovedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -1698,8 +1711,11 @@ Folder: SiegeEngine
       - void ShiftX( float off, HtmlElement e)
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.GetEffectiveDisplay, float.Parse, int.Parse, textRenderer.GetTextSize
+- File: Level.cs
+  - Class: LevelDto (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.Events, System, System.Collections.Generic, System.Numerics, System.Text.Json
 - File: LevelData.cs
-  - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
+  - Class: LevelData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: LevelManager.cs
   - Class: LevelManager (Namespace: SiegeEngine.Core.Managers)
@@ -2093,7 +2109,7 @@ Folder: SiegeEngine
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
-        - Calls: IDEDockingStrategy.Render, bp.IsMouseOver, p.IsMouseOver
+        - Calls: IDEDockingStrategy.Render, NewTerrainPanel, bp.IsMouseOver, p.IsMouseOver
       - void ForceDrawOverThisFrame(IPanel panel)
       - void ClearForcedOverdraw()
         - Calls: _forcedOverdrawThisFrame.Clear
@@ -3142,7 +3158,7 @@ Folder: ToolChest
 Folder: Trebuchet
 - File: Launcher.cs
   - Class: Launcher (Namespace: Trebuchet)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
     - Fields:
       - bool _isRunning
       - IntPtr _window
@@ -3158,7 +3174,6 @@ Folder: Trebuchet
       - Process _serverProcess
       - SceneManager _sceneManager
       - PanelManager _panelManager
-      - BlueprintManager _blueprintManager
     - Methods:
-      - void Start(string context)
-        - Calls: BlueprintManager, Console.WriteLine, Dispose, EventBus, InputHandler, LoadLibrary, ModManager, PanelManager, SaveSettings, SceneManager, SteamEngine, Terminate, UISettingsManager, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _panelManager.Render, _panelManager.Update, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
+      - void Start( bool discoverDedicated = false,  ulong connectToServerSteamId = 0,  ulong specificLobbyId = 0, string context)
+        - Calls: ConnectToDedicatedServer, Console.WriteLine, CreateLobby, Dispose, EventBus, InputHandler, JoinSpecificLobby, LoadLibrary, ModManager, PanelManager, SaveSettings, SceneManager, SteamEngine, Terminate, UISettingsManager, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _panelManager.Render, _panelManager.Update, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks

@@ -1,6 +1,4 @@
-﻿// Folder: CastleBuilder
-// File: EditorScene.cs
-using MapRoom;
+﻿using MapRoom;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -74,7 +72,7 @@ namespace CastleBuilder
                 }
                 _projectData.LastOpenedScene = newSceneName;
 
-                Console.WriteLine($"[EditorScene] Merged new scene '{newSceneName}' (total scenes: {_projectData.Scenes.Count})");
+                Console.WriteLine($"[EditorScene] Merged new scene '{newSceneName}' from cache (total scenes: {_projectData.Scenes.Count})");
                 ActivateCurrentGameScene();
                 return;
             }
@@ -125,11 +123,14 @@ namespace CastleBuilder
 
                 if (_activeGameScene is TerrainCreatorScene tcs)
                 {
-                    ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain?.HeightmapPath);
+                    float[,] cached = ProjectSettings.Current.GetUnsavedHeightmap(_currentGameSceneName);
+                    float[,] heightmapToUse = cached ?? tcs.GetHeightmap();
+
+                    ProjectSettings.Current.SetCurrentTerrain(sceneData, heightmapToUse, _currentGameSceneName, sceneData.Terrain?.HeightmapPath);
                     if (!string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
                     {
                         tcs.LoadTerrain(sceneData.Terrain.HeightmapPath);
-                        Console.WriteLine($"[EditorScene] Loaded saved terrain (relative): {sceneData.Terrain.HeightmapPath}");
+                        Console.WriteLine($"[EditorScene] Loaded terrain for '{_currentGameSceneName}' from path (cached heightmap used if present)");
                     }
                 }
 
@@ -147,11 +148,16 @@ namespace CastleBuilder
                     tcs.SaveTerrain(name);
 
                     if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
-                    sceneData.Terrain.HeightmapPath = $"Assets/Terrain/{name}.tif";
+
+                    string currentPath = sceneData.Terrain.HeightmapPath ?? "";
+                    if (!currentPath.Contains("Assets/Terrain") || currentPath.EndsWith(".tif", StringComparison.OrdinalIgnoreCase))
+                    {
+                        sceneData.Terrain.HeightmapPath = $"Assets/Terrain/{name}.tif";
+                    }
 
                     ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain.HeightmapPath);
 
-                    Console.WriteLine($"[EditorScene] Flushed terrain - relative path stored: {sceneData.Terrain.HeightmapPath}");
+                    Console.WriteLine($"[EditorScene] Flushed terrain for scene '{name}' - path preserved: {sceneData.Terrain.HeightmapPath}");
                 }
             }
         }
@@ -200,7 +206,13 @@ namespace CastleBuilder
             _activeGameScene?.Render(entities ?? GetEntities());
         }
 
-        public List<string> GetAvailableScenes() => _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
+        public List<string> GetAvailableScenes()
+        {
+            var keys = _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
+            var scenes = new HashSet<string>(keys);
+            foreach (var key in ProjectSettings.Current.GetUnsavedHeightmapKeys()) scenes.Add(key);
+            return scenes.ToList();
+        }
 
         public string CurrentGameScene => _currentGameSceneName;
 

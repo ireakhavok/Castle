@@ -88,7 +88,6 @@ namespace MapRoom
             {
                 Console.WriteLine($"[TerrainCreatorScene] Loading GeoTIFF: {parameters.ImportPath}");
                 LoadTerrain(parameters.ImportPath);
-                // === FIX: persist the imported GeoTIFF path into SceneData so it survives save/reload ===
                 if (_sceneData?.Terrain != null)
                 {
                     string projectPath = ProjectSettings.Current.ActiveProject;
@@ -217,22 +216,29 @@ namespace MapRoom
                 projectPath = AppDomain.CurrentDomain.BaseDirectory;
             string saveDir = Path.Combine(projectPath, "Assets", "Terrain");
             Directory.CreateDirectory(saveDir);
+            // === GEO-TIFF VERBATIM COPY (protects original metadata) ===
             if (_sceneData?.Terrain != null && !string.IsNullOrEmpty(_sceneData.Terrain.HeightmapPath))
             {
                 string fullOriginal = ResolveFullPath(_sceneData.Terrain.HeightmapPath);
                 if (File.Exists(fullOriginal))
                 {
-                    string targetName = terrainName + Path.GetExtension(fullOriginal);
-                    string targetPath = Path.Combine(saveDir, targetName);
-                    if (!string.Equals(fullOriginal, targetPath, StringComparison.OrdinalIgnoreCase))
+                    // Definitive test: real GeoTIFF has NO custom 65000/65001 tags
+                    if (!CustomTerrainParser.TryGetCustomScale(fullOriginal, out _, out _))
                     {
-                        File.Copy(fullOriginal, targetPath, true);
-                        Console.WriteLine($"[TerrainCreatorScene] Copied original GeoTIFF '{fullOriginal}' → project '{targetPath}'");
+                        string targetName = terrainName + Path.GetExtension(fullOriginal);
+                        string targetPath = Path.Combine(saveDir, targetName);
+                        if (!string.Equals(fullOriginal, targetPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            File.Copy(fullOriginal, targetPath, true);
+                            Console.WriteLine($"[TerrainCreatorScene] VERBATIM COPY of real GeoTIFF '{fullOriginal}' → '{targetPath}' (geo tags preserved)");
+                        }
+                        string relativePath = Path.GetRelativePath(projectPath, targetPath);
+                        _sceneData.Terrain.HeightmapPath = relativePath;
+                        return; // SKIP custom save entirely
                     }
-                    string relativePath = Path.GetRelativePath(projectPath, targetPath);
-                    _sceneData.Terrain.HeightmapPath = relativePath;
                 }
             }
+            // Only reached for true custom/flat terrains
             string tifPath = Path.Combine(saveDir, terrainName + ".tif");
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
             SaveAsPng(pngPath);
@@ -242,7 +248,7 @@ namespace MapRoom
                 string relativePath = Path.GetRelativePath(projectPath, tifPath);
                 _sceneData.Terrain.HeightmapPath = relativePath;
             }
-            Console.WriteLine($"[TerrainCreatorScene] Saved terrain '{terrainName}' → {tifPath}");
+            Console.WriteLine($"[TerrainCreatorScene] Saved custom terrain '{terrainName}' → {tifPath}");
             RebuildTerrainMesh();
         }
         public void Export2D(string projectAssetsDir)

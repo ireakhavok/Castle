@@ -1,4 +1,311 @@
-The core requirement is that the brush system must remain a fully independent and reusable component because it will be needed across many different contexts in the future, including terrain height sculpting, 2D sprite and color spraying, FBX mesh vertex painting, decal placement, and potentially other creative tools. Embedding the controls directly into any single panel would create tight coupling and make future reuse difficult, so the correct architectural decision is to keep BrushPanel as a standalone, well-tested module that can be opened from anywhere while still feeling integrated when used over a 3D viewport.
-The current implementation feels disjointed because BrushPanel inherits the full BasePanel chrome, including a title bar, close button, and docking behavior, which causes it to fight for input focus and z-order with the underlying terrain viewport. The goal is to solve this without sacrificing reusability by adding a lightweight "overlay mode" to BrushPanel that allows it to be opened as a frameless, alpha-backed, right-positioned floating control surface that stays on top of the viewport without stealing its input or requiring the user to manage another full window.
-To achieve this, BasePanel will gain a simple ShowTitleBarAndChrome property that defaults to true but can be set to false when the panel should behave as a minimal overlay. BrushPanel will expose a new OpenAsOverlay method that accepts a desired screen position and an optional parent panel reference. When called this way, the panel will automatically position itself to the right side of the terrain viewport, use a semi-transparent dark background, suppress the title bar and standard chrome, become non-draggable by default except for a small grip area, and set a high RenderOrder so it renders cleanly on top without interfering with the main 3D interaction.
-This approach satisfies both the immediate need for a pleasant, Blender-like integrated feel inside the Terrain Creator and the long-term requirement for a single, testable, reusable brush component that can be opened from the 2D sprite editor, future mesh painting tools, or any other context. Because the brush state and logic remain centralized in one place, values can be easily set, validated, and propagated across different panels during regression testing and development. The implementation will focus on making the overlay mode feel native and out of the way while preserving the full-featured panel behavior when opened standalone.
+EXECUTIVE SUMMARY
+
+SiegeEngine is already one of the most ambitious and complete custom game engine + creation platform projects in existence. It contains:
+
+* Production-grade rendering abstraction (IRenderContext, ShaderProgram, VertexBuffer with partial updates and custom UV data)
+
+* Full FBX asset pipeline (meshes, skeletons, animations, bone remapping, coordinate system fixes)
+
+* Strongly-typed EventBus that seamlessly bridges client and server
+
+* Authoritative multiplayer server with delta compression, spatial grids, occlusion checks, validation, and client prediction
+
+* Fully functional dockable IDE built on the exact same systems (making the editor inherently self-moddable)
+
+* Working terrain sculpting with brushes, ghost preview, heightmap import/export, wireframe + textured modes
+
+* Sophisticated multi-strategy docking system with floating panels, snapping, live resize, and modal support
+
+The single remaining gap: Persistent, serializable scene/level state (entities + terrain), a seamless Edit ↔ Play loop, and an export pipeline that produces a shippable game.
+
+These are the final pieces that turn the current advanced prototype into a complete, usable game creation platform that fulfills the original vision of empowering solo hobbyists, small teams, and larger communities to build, mod, share, and play custom multiplayer games without steep learning curves, mod conflicts, or inadequate multiplayer support.
+
+This document is the definitive, multi-stage reference bible. It explains the current architecture in extreme depth, maps every existing class and system, provides the complete 6-week execution plan with full integration details, and outlines the 12-month vision beyond the initial phase. It is designed to be used across multiple stages of development.
+
+PART 1: CURRENT ARCHITECTURE — EXTREMELY DETAILED ANALYSIS
+
+1.1 Project & Scene Management (The Core Gap)
+
+Current State (from full source analysis of BlueprintManager.cs, ProjectSettings.cs, SceneData.cs, and TerrainCreatorScene.cs):
+
+BlueprintManager.cs is the central orchestrator. It subscribes to:
+
+* NewProjectEvent
+
+* LoadProjectEvent
+
+* SaveProjectEvent
+
+* CreateTerrainEvent
+
+* ContextChangedEvent
+
+* FileSelectedEvent
+
+* GenericEvent
+
+On CreateNewProject it creates the folder structure (Scenes/, Assets/, Mods/), writes project.json, and publishes LoadProjectEvent. On Save it calls DoProjectSave() which writes project.json + layout but does NOT serialize actual placed entities or heightmaps (they remain in memory or as external .tif files).
+
+ProjectSettings.cs is a singleton (Current). It holds:
+
+* ActiveProject
+
+* CameraType
+
+* CurrentSceneData
+
+* CurrentHeightmap (in-memory float[,])
+
+* Private _unsavedHeightmaps dictionary (per-scene cache)
+
+It has SetCurrentTerrain() and StoreUnsavedHeightmap() but never writes to disk. It is purely a shared memory cache used by TerrainCreatorScene and BlueprintManager.
+
+SceneData.cs (SiegeEngine.Core.Definitions) already has the correct schema:
+
+* Name
+
+* SceneType
+
+* Terrain (TerrainData with HeightmapPath, ColorTexturePath, WorldScaleX/Z, VerticalExaggeration)
+
+* Entities (List)
+
+* Environment (TimeOfDay, Weather, AmbientColor, FogDensity)
+
+* CustomData
+
+This schema is ready — it just isn't being fully populated or serialized yet.
+
+TerrainCreatorScene.cs is the most advanced editor scene. It owns:
+
+* _heightmap (float[,])
+
+* _activeBrush
+
+* Ghost mesh for brush preview
+
+* Partial vertex updates (UpdateAffectedVertices)
+
+* Calls ProjectSettings.Current.StoreUnsavedHeightmap on every brush stroke
+
+* LoadSceneData() already checks for unsaved heightmaps first
+
+* SaveTerrain() writes .tif + .png but does not update a central persistent container
+
+The Fundamental Gap: There is no central, persistent, serializable container that owns both terrain + entities and can be saved/loaded as a complete level. Entities are created via EntityPlacedEvent but live only in GameServer._entities (transient). Heightmaps live only in ProjectSettings memory or external files. SaveProject never captures the actual built content.
+
+1.2 Entity Lifecycle (Current State)
+
+Entity.cs exists with basic parent/child hierarchy and TransformComponent. EntityPlacedEvent, EntityAddedEvent, EntityMovedEvent, EntityRemovedEvent are all defined and published. GameServer has AddEntity/RemoveEntity and maintains List. However, there is no persistent owner. When a project is saved and reloaded, all placed entities disappear because nothing serializes them into project.json or SceneData.Entities.
+
+The new Level class will solve this by becoming the single source of truth for persistent content.
+
+1.3 Docking & Panel System (Already Production-Grade)
+
+PanelManager + PanelInputRouter + DesktopDockingStrategy + DynamicDockingStrategy + IDEDockingStrategy form a sophisticated, multi-strategy system with:
+
+* Floating panels
+
+* Snapping
+
+* Live resize
+
+* Modal support
+
+* Forced overdraw
+
+* RenderOrder priority
+
+The recent fix (moving modal check to absolute top in PanelInputRouter) resolved the exact input-stealing bug reported in NewTerrainPanel + FileSelectorPanel. This system requires no major changes — only minor wiring for the new Level ownership.
+
+1.4 EventBus & Networking (Already Complete)
+
+Strongly-typed IEvent objects, EventBus with Subscribe/Publish (including network bridging), SteamEngine P2P + lobbies + Workshop, ClientPredictionSystem, ServerValidationSystem, EntityDeltaTracker, spatial grids, occlusion, and authoritative validation are all production-ready. The new plan simply reuses these mechanisms (EntityPlacedEvent will trigger Level.AddEntity, etc.).
+
+1.5 Rendering, FBX, UI, and Modding (All Mature)
+
+* IRenderContext, ShaderProgram, VertexBuffer (with partial updates)
+
+* Full FBX pipeline (meshes, skeletons, animations, coordinate remapping)
+
+* UIOverlay + HtmlParser + CssParser + typed elements (ButtonElement, RangeElement, SelectElement, etc.)
+
+* DataHookProcessor
+
+* ModManager (local + Steam Workshop)
+
+* Self-moddable hooks via fully-qualified namespace strings
+
+All of these are complete and robust. The 6-week plan touches none of these core systems.
+
+PART 2: THE 6-WEEK EXECUTION PLAN — ULTRA-DETAILED
+
+Phase 1: Core Level Foundation (Weeks 1–2)
+
+Goal: Create the missing central Level class that owns entities + terrain and can fully serialize/deserialize. This becomes the single source of truth for persistent content.
+
+New Core Class: SiegeEngine/Core/Definitions/Level.cs (Full Skeleton)
+
+```csharp
+
+public class Level : IDisposable
+
+{
+
+    public string Name { get; set; } = "Untitled";
+
+    public List<Entity> Entities { get; } = new List<Entity>();
+
+    public TerrainData Terrain { get; set; } = new TerrainData();
+
+    public EnvironmentSettings Environment { get; set; } = new EnvironmentSettings();
+
+    public Dictionary<string, object> CustomData { get; } = new Dictionary<string, object>();
+
+    private readonly EventBus _eventBus;
+
+    public Level(EventBus eventBus = null)
+
+    {
+
+        _eventBus = eventBus;
+
+    }
+
+    public void AddEntity(Entity e)
+
+    {
+
+        Entities.Add(e);
+
+        _eventBus?.Publish(new EntityAddedEvent(e));
+
+    }
+
+    public Entity PlaceEntity(Vector3 pos, string prefabGuid, Quaternion rot = default, Vector3 scale = default)
+
+    {
+
+        var entity = new Entity { Position = pos, Rotation = rot, Scale = scale };
+
+        // TODO: Load prefab via AssetReference and attach components (ModelComponent, PhysicsComponent, etc.)
+
+        AddEntity(entity);
+
+        return entity;
+
+    }
+
+    public byte[] Serialize()
+
+    {
+
+        var dto = new LevelDto
+
+        {
+
+            Name = Name,
+
+            Terrain = Terrain,
+
+            Environment = Environment,
+
+            Entities = Entities.Select(e => e.ToData()).ToList(),
+
+            CustomData = CustomData
+
+        };
+
+        return JsonSerializer.SerializeToUtf8Bytes(dto);
+
+    }
+
+    public static Level Deserialize(byte[] data, EventBus eventBus = null)
+
+    {
+
+        var dto = JsonSerializer.Deserialize<LevelDto>(data);
+
+        var level = new Level(eventBus)
+
+        {
+
+            Name = dto.Name,
+
+            Terrain = dto.Terrain,
+
+            Environment = dto.Environment
+
+        };
+
+        foreach (var ed in dto.Entities)
+
+            level.Entities.Add(Entity.FromData(ed));
+
+        return level;
+
+    }
+
+    public void Dispose() { /* cleanup if needed */ }
+
+}
+
+```
+
+Exact Integration Points:
+
+* TerrainCreatorScene — Add private Level _activeLevel; On brush stroke: _activeLevel.Terrain.Heightmap = _heightmap; Keep ProjectSettings.Current.StoreUnsavedHeightmap for backward compatibility.
+
+* BlueprintManager.CreateNewScene — After creating SceneData, also create new Level, store in ProjectSettings, and open TerrainCreatorPanel with the Level.
+
+* DoProjectSave — After writing project.json, call activeLevel?.Serialize() and embed under the current scene entry.
+
+* GameServer — On AddEntity/RemoveEntity, also update the active Level.Entities if in editor mode.
+
+Success Metric for Phase 1: Create terrain + place 5 objects → Save → Close application → Reopen → Everything is exactly where it was, including transforms and prefab references.
+
+Phase 2: Play Mode Infrastructure (Week 3)
+
+Key addition: Level.CaptureEditorState() returns a lightweight snapshot (entity transforms + terrain reference). Level.RestoreEditorState(snapshot) reapplies it. GameServer gains IsPlayMode flag that changes validation (stricter in play mode). MenuCommands.SwitchToSceneEditor becomes the Play/Stop toggle.
+
+Success Metric for Phase 2: Edit terrain + place objects → hit Play → walk around, jump, interact with other players → hit Stop → everything returns exactly as left.
+
+Phase 3: Entity Placement & Hierarchy (Weeks 4–5)
+
+New Core API: Level.PlaceEntity(Vector3 pos, string prefabGuid, Quaternion rot = default, Vector3 scale = default) — single point of truth. Creates Entity, adds ModelComponent + PhysicsComponent + TransformComponent, publishes EntityPlacedEvent, adds to GameServer, and adds to Level.Entities. Asset Browser drag will call this. Hierarchy panel will reflect Level.Entities.
+
+Success Metric for Phase 3: Drag 15 different models into scene, move/rotate/scale them, save, reload — all transforms, prefabs, and components persist perfectly.
+
+Phase 4: Export Pipeline (Week 6)
+
+New Core Class: GameExporter.Export(Level level, string outputFolder) — walks all AssetReferences (including terrain heightmap and textures), copies only used files into assets/, writes level.json, optionally packages minimal launcher + server. BlueprintManager exposes "Export Game" that calls this.
+
+Success Metric for Phase 4: Build scene with sculpted terrain + 8 objects → Export → run exported folder → see exact level with working multiplayer.
+
+PART 3: 12-MONTH VISION ROADMAP (Beyond 6 Weeks)
+
+Months 3–4: Polish & Usability
+
+* Global Undo/Redo stack (Command pattern) across all panels
+
+* Prefab round-trip (create → save as .prefab → drag to instantiate with all components)
+
+* Multiplayer lobby browser + dedicated server support
+
+Months 5–6: Scripting & Modding
+
+* Scripting layer (JS or C# hot-reload) for custom game logic
+
+* Asset store / Workshop publishing for scenes, prefabs, and mods
+
+* Visual scripting nodes for common behaviors
+
+Months 7–12: Advanced Features
+
+* AI behavior trees and pathfinding
+
+* Advanced terrain tools (erosion, vegetation, rivers)
+
+* Multiplayer matchmaking and leaderboards
+
+* Built-in analytics and crash reporting

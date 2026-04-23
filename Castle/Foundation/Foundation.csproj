@@ -25,6 +25,10 @@
   <None Include="..\Libraries\steam_api64.dll">  <!-- Relative or absolute path -->
     <CopyToOutputDirectory>Always</CopyToOutputDirectory>
   </None>
+  <None Include="..\Libraries\Citadel.exe">
+		<!-- Relative or absolute path -->
+		<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </None>
 </ItemGroup>
 
 </Project>

@@ -1,6 +1,4 @@
-﻿// Folder: CastleBuilder
-// File: SceneEditorPanel.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -76,6 +74,11 @@ namespace CastleBuilder
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+        }
+
+        public void RefreshSceneList()
+        {
+            UpdateSceneSelectorUI();
         }
 
         private void UpdateSceneSelectorUI()

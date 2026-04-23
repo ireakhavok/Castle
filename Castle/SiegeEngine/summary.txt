@@ -442,11 +442,15 @@ Folder: Core
         - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteTexture, _renderContext.DeleteVertexArray
 - File: Entity.cs
   - Class: Entity (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic
+    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
     - Methods:
       - constructor Entity()
       - void SetParent(Entity parent)
       - void AddChild(Entity child)
+      - EntityData ToData()
+      - Entity FromData(EntityData data)
+        - Calls: Entity
+      - constructor Entity()
 - File: EntityAddedEvent.cs
   - Class: EntityAddedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -458,6 +462,9 @@ Folder: Core
       - constructor EntityAddedEvent(Entity entity)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+- File: EntityData.cs
+  - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: EntityMovedEvent.cs
   - Class: EntityMovedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -950,8 +957,11 @@ Folder: Core
       - void ShiftX( float off, HtmlElement e)
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
         - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParseMargins, HtmlLayoutUtils.ParsePaddings, HtmlLayoutUtils.ParseSize, c.GetEffectiveDisplay, child.GetEffectiveDisplay, float.Parse, int.Parse, textRenderer.GetTextSize
+- File: Level.cs
+  - Class: LevelDto (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.Events, System, System.Collections.Generic, System.Numerics, System.Text.Json
 - File: LevelData.cs
-  - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
+  - Class: LevelData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: LevelManager.cs
   - Class: LevelManager (Namespace: SiegeEngine.Core.Managers)
@@ -2552,6 +2562,8 @@ SiegeEngine.Core.Definitions.Entity
 SiegeEngine.Core.Definitions.EntityData
 SiegeEngine.Core.Definitions.EnvironmentSettings
 SiegeEngine.Core.Definitions.GameMode
+SiegeEngine.Core.Definitions.LevelData
+SiegeEngine.Core.Definitions.LevelDto
 SiegeEngine.Core.Definitions.LightComponent
 SiegeEngine.Core.Definitions.LightType
 SiegeEngine.Core.Definitions.MaterialProperties

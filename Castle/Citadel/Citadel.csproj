@@ -1,26 +1,33 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <ItemGroup>
-    <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
+	</ItemGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>  <!-- Ensure it's a console EXE -->
-    <TargetFramework>net9.0</TargetFramework>
-    <SelfContained>true</SelfContained>
-    <PublishSingleFile>true</PublishSingleFile>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>  <!-- Change for your OS/platform -->
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>  <!-- Optional: Compresses the EXE -->
-    <UseAppHost>true</UseAppHost>
-  </PropertyGroup>
-<ItemGroup>
-  <None Include="..\Libraries\steam_api64.dll">  <!-- Relative or absolute path -->
-    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-  </None>
-</ItemGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net9.0</TargetFramework>
+		<SelfContained>true</SelfContained>
+		<PublishSingleFile>true</PublishSingleFile>
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+		<UseAppHost>true</UseAppHost>
+		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+		<PublishTrimmed>false</PublishTrimmed>
+		<PublishReadyToRun>false</PublishReadyToRun>
+		<PublishDir>$(SolutionDir)publish\</PublishDir>
+		<Configurations>Debug;Release</Configurations>
+	</PropertyGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="xcopy /Y &quot;$(TargetDir)$(AssemblyName).exe&quot; &quot;$(SolutionDir)Libraries\&quot;" />
-  </Target>
+	<ItemGroup>
+		<None Include="..\Libraries\steam_api64.dll">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<!-- Force copy after every Publish with visible logging -->
+	<Target Name="CopySingleFileToLibraries" AfterTargets="Publish">
+		<Exec Command="echo Copying single-file Citadel.exe to Libraries... &amp;&amp; xcopy /Y &quot;$(PublishDir)$(AssemblyName).exe&quot; &quot;$(SolutionDir)Libraries\&quot; /I &amp;&amp; echo SUCCESS: Citadel.exe copied to Libraries\" />
+	</Target>
 
 </Project>

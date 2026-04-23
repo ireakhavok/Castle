@@ -1,9 +1,10 @@
-﻿// Folder: Trebuchet
-// File: Launcher.cs
-using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Networking;
+using SiegeEngine.Core.UI;
 using SiegeEngine.PlayerSystem;
-using SiegeEngine.Core.Rendering;
 using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
@@ -12,13 +13,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using System.Reflection;
-using SiegeEngine.Core.Managers;
-using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Events;
-using SiegeEngine.Core.Networking;
-using SiegeEngine.Core.UI;
+using System.Runtime.InteropServices;
 
 namespace Trebuchet
 {
@@ -38,9 +34,8 @@ namespace Trebuchet
         private Process _serverProcess;
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
-        //private BlueprintManager _blueprintManager; // kept for reference but no longer instantiated here
 
-        public void Start(string context)
+        public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0, bool discoverP2PHost = false, ulong joinLobbyId = 0)
         {
             try
             {
@@ -51,7 +46,25 @@ namespace Trebuchet
                     Console.WriteLine($"Failed to load steam_api64.dll. Error code: {Marshal.GetLastWin32Error()}");
                     return;
                 }
-                _serverProcess = Process.Start("Citadel.exe", "--local");
+
+                if (!discoverDedicated && connectToServerSteamId == 0 && !discoverP2PHost)
+                {
+                    _serverProcess = Process.Start("Citadel.exe", "--local");
+                    Console.WriteLine("Launcher: Started local authoritative Citadel server (--local) for validation layer.");
+                }
+                else if (discoverDedicated)
+                {
+                    Console.WriteLine("Launcher: DISCOVER MODE — searching for or creating dedicated lobbies...");
+                }
+                else if (connectToServerSteamId != 0)
+                {
+                    Console.WriteLine($"Launcher: DIRECT CONNECT MODE — connecting to dedicated server {connectToServerSteamId}");
+                }
+                else if (discoverP2PHost)
+                {
+                    Console.WriteLine("Launcher: P2P HOST DISCOVER MODE — searching for P2P authoritative host lobbies...");
+                }
+
                 using (_steamEngine = new SteamEngine())
                 {
                     _eventBus = new EventBus((SteamEngine)_steamEngine);
@@ -60,6 +73,32 @@ namespace Trebuchet
                         Console.WriteLine("Launcher: SteamEngine initialization failed.");
                         return;
                     }
+
+                    // Lobby / connection logic — supports dedicated, direct connect, P2P host discovery, and --join
+                    if (joinLobbyId != 0)
+                    {
+                        ((SteamEngine)_steamEngine).JoinSpecificLobby(joinLobbyId);
+                    }
+                    else if (connectToServerSteamId != 0)
+                    {
+                        ((SteamEngine)_steamEngine).ConnectToDedicatedServer(connectToServerSteamId);
+                    }
+                    else if (discoverP2PHost)
+                    {
+                        ((SteamEngine)_steamEngine).RequestP2PHostLobbies();
+                    }
+                    else if (discoverDedicated)
+                    {
+                        if (specificLobbyId != 0)
+                        {
+                            ((SteamEngine)_steamEngine).JoinSpecificLobby(specificLobbyId);
+                        }
+                        else
+                        {
+                            ((SteamEngine)_steamEngine).CreateLobby(64);
+                        }
+                    }
+
                     _settingsManager = new UISettingsManager();
                     _settingsManager.LoadSettings();
                     if (_settingsManager.WindowWidth == 0 || _settingsManager.WindowHeight == 0)
@@ -84,8 +123,6 @@ namespace Trebuchet
                     _menuPanel.DockState = DockState.Tabbed;
                     _menuPanel.Init();
                     _eventBus.RegisterNamespace("CastleBuilder.Events");
-                    // BlueprintManager is now lazy - activated only by dynamic hook from HTML
-                    // _blueprintManager = new BlueprintManager(_eventBus);   <--- REMOVED
 
                     _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuPanel);
                     _panelManager = new PanelManager(_renderContext, _controlContext, _window, _eventBus);
@@ -131,6 +168,7 @@ namespace Trebuchet
                 _contextManager?.Terminate();
             }
         }
+
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr LoadLibrary(string lpFileName);
     }
