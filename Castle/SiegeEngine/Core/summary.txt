@@ -18,6 +18,16 @@ Folder: AssetParsing
 - File: Animation.cs
   - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
+- File: AnimationBlendStack.cs
+  - Class: AnimationBlendStack (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Methods:
+      - void AddClip( Vector3 coord,  bool loop = true,  float end = -1f,  float speed = 1f,  float start = 0f, string path)
+      - void RemoveClip(int index)
+      - AnimationClipEntry GetClipAt(Vector3 params3D)
+- File: AnimationClipEntry.cs
+  - Class: AnimationClipEntry (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Numerics
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
@@ -335,6 +345,11 @@ Folder: Definitions
   - Class: AnimationComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
     
+- File: BlendedAnimationComponent.cs
+  - Class: BlendedAnimationComponent (Namespace: SiegeEngine.Core.Definitions)
+    - Inherits: IComponent
+    
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Numerics
 - File: CameraType.cs
   - Class: CameraType (Namespace: SiegeEngine.Core.Definitions)
 - File: DockingMode.cs
@@ -2052,6 +2067,8 @@ SiegeEngine.Core.AssetParsing.FBXParserUtils
 SiegeEngine.Core.AssetParsing.FBXSettings
 SiegeEngine.Core.AssetParsing.FBXSkeletonParser
 SiegeEngine.Core.AssetParsing.Model.Animation
+SiegeEngine.Core.AssetParsing.Model.AnimationBlendStack
+SiegeEngine.Core.AssetParsing.Model.AnimationClipEntry
 SiegeEngine.Core.AssetParsing.Model.Bone
 SiegeEngine.Core.AssetParsing.Model.FBXMesh
 SiegeEngine.Core.AssetParsing.Model.FBXModel
@@ -2075,6 +2092,7 @@ SiegeEngine.Core.ContextManagement.OpenGLRenderContext
 SiegeEngine.Core.ContextManagement.Viewport
 SiegeEngine.Core.ContextManagement.VkDeviceCreateInfo
 SiegeEngine.Core.Definitions.AnimationComponent
+SiegeEngine.Core.Definitions.BlendedAnimationComponent
 SiegeEngine.Core.Definitions.CameraType
 SiegeEngine.Core.Definitions.DockingMode
 SiegeEngine.Core.Definitions.Entity
