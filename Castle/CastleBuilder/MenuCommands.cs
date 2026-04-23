@@ -111,5 +111,16 @@ namespace CastleBuilder
             NewProjectPanel.Open(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands] New Project panel opened");
         }
+        public static void OpenAnimationTimeline(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            AnimationTimelinePanel.Open(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] Animation Timeline panel opened");
+        }
+
+        public static void OpenAnimationBlend(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            AnimationBlendPanel.Open(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] Animation Blend panel opened");
+        }
     }
 }
