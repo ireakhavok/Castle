@@ -81,8 +81,9 @@ namespace ToolChest
 
         private void OnGenericEvent(GenericEvent e)
         {
-            if (e.Hook == "BlendPointChanged")
+            if (e.Hook == "BlendPointChanged" || e.Hook == "GridClicked")
             {
+                // live update current point from inputs or grid
                 var xEl = _uiOverlay.FindElementById("blendX") as InputElement;
                 var yEl = _uiOverlay.FindElementById("blendY") as InputElement;
                 var zEl = _uiOverlay.FindElementById("blendZ") as RangeElement;
@@ -94,13 +95,6 @@ namespace ToolChest
                         float.Parse(zEl.Value.ToString() ?? "0"));
                 }
             }
-            else if (e.Hook == "AddClipAtPoint")
-            {
-                var fs = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, "Assets", ".fbx");
-                fs.UserData = "AddBlendClipAtCurrentPoint";
-                fs.IsModal = true;
-                _eventBus.Publish(new OpenPanelEvent(fs) { Mode = OpenMode.Overlay });
-            }
             else if (e.Hook == "SelectClipForTimeline")
             {
                 var select = _uiOverlay.FindElementById("clipList") as SelectElement;
@@ -110,6 +104,7 @@ namespace ToolChest
                     if (idx >= 0 && idx < _currentStack.Clips.Count)
                     {
                         var clip = _currentStack.Clips[idx];
+                        AnimationTimelinePanel.Open(_renderContext, _controlContext, _window, _eventBus);
                         _eventBus.Publish(new GenericEvent { Hook = "OpenTimelineForClip", Data = new Dictionary<string, string> { { "path", clip.AnimationPath }, { "index", idx.ToString() } } });
                     }
                 }
@@ -119,7 +114,15 @@ namespace ToolChest
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
-            if (hook == "CreatePack")
+            if (hook == "AddClipAtPoint")
+            {
+                string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
+                fileSelector.UserData = "AddBlendClipAtCurrentPoint";
+                fileSelector.IsModal = true;
+                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
+            }
+            else if (hook == "CreatePack")
             {
                 CreateAnimationPack();
             }
