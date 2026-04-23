@@ -85,14 +85,13 @@ namespace ToolChest
             {
                 var xEl = _uiOverlay.FindElementById("blendX") as InputElement;
                 var yEl = _uiOverlay.FindElementById("blendY") as InputElement;
-                var zEl = _uiOverlay.FindElementById("blendZ") as InputElement;
+                var zEl = _uiOverlay.FindElementById("blendZ") as RangeElement;
                 if (xEl != null && yEl != null && zEl != null)
                 {
                     _currentBlendPoint = new Vector3(
                         float.Parse(xEl.Value ?? "0"),
                         float.Parse(yEl.Value ?? "0"),
-                        float.Parse(zEl.Value ?? "0"));
-                    // live preview update (re-uses existing animation update path)
+                        float.Parse(zEl.Value.ToString() ?? "0"));
                 }
             }
             else if (e.Hook == "AddClipAtPoint")
@@ -124,10 +123,6 @@ namespace ToolChest
             {
                 CreateAnimationPack();
             }
-            else if (hook == "AddClipAtPoint")
-            {
-                // handled via event above
-            }
         }
 
         private void CreateAnimationPack()
@@ -144,13 +139,20 @@ namespace ToolChest
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-            Vector2 rel = absMousePos - Position;
-            _previewScene.Update(deltaTime, rel, mouseDown, mousePressed, mouseReleased);
+            Vector2 relMouse = absMousePos - Position;
+            Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
+            _previewScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
         }
 
         protected override void RenderInnerContent()
         {
             _previewScene.Render(null);
+        }
+
+        public override void OnLiveResize(float w, float h)
+        {
+            _previewScene.Resize((int)w, (int)h);
+            base.OnLiveResize(w, h);
         }
 
         public string DataKey => "AnimationBlendPanel";
