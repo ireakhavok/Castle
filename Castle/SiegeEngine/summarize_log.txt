@@ -677,7 +677,7 @@ Found 1 dependencies
 Found: SteamEngine.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
-Read 25236 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
+Read 33119 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
 Namespace: SiegeEngine.Core.Networking
 Found 6 dependencies
 Found: Rendering
