@@ -324,18 +324,18 @@ namespace ToolChest
                 float gy = gridElem.ComputedPosition.Y;
                 float gw = gridElem.ComputedWidth;
                 float gh = gridElem.ComputedHeight;
-                // Current blend point (green with white border for visibility)
+                // Current blend point (green fill + white border)
                 float cx = gx + ((_currentBlendPoint.X + 1f) / 2f * gw);
                 float cy = gy + ((_currentBlendPoint.Y + 1f) / 2f * gh);
-                _quadRenderer.DrawQuad(cx - 7, cy - 7, 14, 14, new Vector4(1f, 1f, 1f, 1f), Size.X, Size.Y);
                 _quadRenderer.DrawQuad(cx - 6, cy - 6, 12, 12, new Vector4(0.29f, 0.87f, 0.5f, 1f), Size.X, Size.Y);
-                // Clip dots (orange with white border)
+                _quadRenderer.DrawQuad(cx - 7, cy - 7, 14, 14, new Vector4(1f, 1f, 1f, 1f), Size.X, Size.Y);
+                // Clip dots (orange fill + white border) — different color as requested
                 foreach (var clip in _currentStack.Clips)
                 {
                     float px = gx + ((clip.BlendCoordinate.X + 1f) / 2f * gw);
                     float py = gy + ((clip.BlendCoordinate.Y + 1f) / 2f * gh);
-                    _quadRenderer.DrawQuad(px - 6, py - 6, 12, 12, new Vector4(1f, 1f, 1f, 1f), Size.X, Size.Y);
                     _quadRenderer.DrawQuad(px - 5, py - 5, 10, 10, new Vector4(0.96f, 0.62f, 0.04f, 1f), Size.X, Size.Y);
+                    _quadRenderer.DrawQuad(px - 6, py - 6, 12, 12, new Vector4(1f, 1f, 1f, 1f), Size.X, Size.Y);
                 }
             }
         }
