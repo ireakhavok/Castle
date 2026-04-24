@@ -1598,7 +1598,7 @@ Found 7 dependencies
 Found: CssParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
-Read 28215 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
+Read 28162 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
 Namespace: SiegeEngine.Core.UI
 Found 5 dependencies
 Found: CssStyle.cs
@@ -1810,9 +1810,9 @@ Found 4 dependencies
 Found: Render.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
-Read 12584 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
+Read 16353 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Namespace: SiegeEngine.Core.UI
-Found 7 dependencies
+Found 8 dependencies
 Found: UIInteractionLayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
@@ -1905,7 +1905,7 @@ Found 3 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 28741 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 29365 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
@@ -2022,7 +2022,7 @@ Found: ..
 Found: AnimationBlendPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
-Read 15399 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
+Read 19904 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Namespace: ToolChest
 Found 20 dependencies
 Found: AnimationBlendUI.html
