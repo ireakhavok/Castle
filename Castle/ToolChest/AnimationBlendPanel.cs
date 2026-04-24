@@ -47,6 +47,7 @@ namespace ToolChest
         private bool _spaceWasDown = false;
         private int _draggingClipIndex = -1;
         private bool _draggingCurrentPoint = false;
+        private bool _greenLocked = false;   // once user moves green, it stays put
         public AnimationBlendPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -82,7 +83,7 @@ namespace ToolChest
         {
             if (e.Hook == "BlendPointChanged" || e.Hook == "GridClicked")
             {
-                if (_draggingCurrentPoint) return; // completely ignore all external updates while dragging green
+                if (_greenLocked) return;   // green is now user-controlled — ignore all external changes
 
                 var xEl = _uiOverlay.FindElementById("blendX") as InputElement;
                 var yEl = _uiOverlay.FindElementById("blendY") as InputElement;
@@ -263,7 +264,11 @@ namespace ToolChest
                     bool hitGreen = Math.Abs(relMouse.X - cx) < 14 && Math.Abs(relMouse.Y - cy) < 14;
                     if (hitGreen)
                     {
-                        if (mouseDown) _draggingCurrentPoint = true;
+                        if (mouseDown)
+                        {
+                            _draggingCurrentPoint = true;
+                            _greenLocked = true;   // lock green forever once user touches it
+                        }
                     }
                     else
                     {
@@ -331,11 +336,6 @@ namespace ToolChest
                 }
                 if (mouseReleased)
                 {
-                    // Final safeguard: keep whatever position the green dot had on release
-                    if (_draggingCurrentPoint)
-                    {
-                        // position is already correct from the last drag frame
-                    }
                     _draggingCurrentPoint = false;
                     _draggingClipIndex = -1;
                 }
