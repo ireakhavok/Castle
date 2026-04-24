@@ -82,6 +82,8 @@ namespace ToolChest
         {
             if (e.Hook == "BlendPointChanged" || e.Hook == "GridClicked")
             {
+                if (_draggingCurrentPoint) return; // completely ignore all external updates while dragging green
+
                 var xEl = _uiOverlay.FindElementById("blendX") as InputElement;
                 var yEl = _uiOverlay.FindElementById("blendY") as InputElement;
                 var zEl = _uiOverlay.FindElementById("blendZ") as RangeElement;
@@ -256,7 +258,6 @@ namespace ToolChest
                 bool overGrid = relMouse.X >= gx && relMouse.X <= gx + gw && relMouse.Y >= gy && relMouse.Y <= gy + gh;
                 if (overGrid && mousePressed)
                 {
-                    // Hit test GREEN first
                     float cx = gx + ((_currentBlendPoint.X + 1f) / 2f * gw);
                     float cy = gy + ((_currentBlendPoint.Y + 1f) / 2f * gh);
                     bool hitGreen = Math.Abs(relMouse.X - cx) < 14 && Math.Abs(relMouse.Y - cy) < 14;
@@ -266,7 +267,6 @@ namespace ToolChest
                     }
                     else
                     {
-                        // Hit test ORANGE second
                         int hitIndex = -1;
                         for (int i = 0; i < _currentStack.Clips.Count; i++)
                         {
@@ -298,7 +298,6 @@ namespace ToolChest
                         }
                         else
                         {
-                            // Empty grid
                             float normX = (relMouse.X - gx) / gw * 2f - 1f;
                             float normY = (relMouse.Y - gy) / gh * 2f - 1f;
                             _currentBlendPoint = new Vector3(normX, normY, _currentBlendPoint.Z);
@@ -314,7 +313,6 @@ namespace ToolChest
                         }
                     }
                 }
-                // === DRAG HELD ACROSS FRAMES (until mouse release) ===
                 if (_draggingCurrentPoint && !mouseReleased)
                 {
                     float normX = (relMouse.X - gx) / gw * 2f - 1f;
@@ -333,6 +331,11 @@ namespace ToolChest
                 }
                 if (mouseReleased)
                 {
+                    // Final safeguard: keep whatever position the green dot had on release
+                    if (_draggingCurrentPoint)
+                    {
+                        // position is already correct from the last drag frame
+                    }
                     _draggingCurrentPoint = false;
                     _draggingClipIndex = -1;
                 }
@@ -352,12 +355,10 @@ namespace ToolChest
                 float gy = gridElem.ComputedPosition.Y;
                 float gw = gridElem.ComputedWidth;
                 float gh = gridElem.ComputedHeight;
-                // Green = live preview cursor
                 float cx = gx + ((_currentBlendPoint.X + 1f) / 2f * gw);
                 float cy = gy + ((_currentBlendPoint.Y + 1f) / 2f * gh);
                 _quadRenderer.DrawQuad(cx - 6, cy - 6, 12, 12, new Vector4(0.29f, 0.87f, 0.5f, 1f), Size.X, Size.Y);
                 _quadRenderer.DrawQuad(cx - 7, cy - 7, 14, 14, new Vector4(1f, 1f, 1f, 1f), Size.X, Size.Y);
-                // Orange = placed clips
                 foreach (var clip in _currentStack.Clips)
                 {
                     float px = gx + ((clip.BlendCoordinate.X + 1f) / 2f * gw);
