@@ -2241,7 +2241,7 @@ Folder: Scenes
       - void LoadAnimation(string animPath)
         - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, ResetAnimationState, SetRestPose, UpdateTransformsFromTime, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
       - void AttachBlendAnimations(AnimationBlendStack stack)
-        - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, LoadAnimation, SetRestPose, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
+        - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, SetRestPose, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
       - void ApplyRestPoseFromModel(FBXModel sourceModel)
         - Calls: tgtBone.ComputeLocal
       - void UpdateTransformsFromTime(float time)

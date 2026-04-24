@@ -1905,7 +1905,7 @@ Found 3 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 28893 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 28741 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
@@ -2022,7 +2022,7 @@ Found: ..
 Found: AnimationBlendPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
-Read 15659 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
+Read 15399 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Namespace: ToolChest
 Found 20 dependencies
 Found: AnimationBlendUI.html

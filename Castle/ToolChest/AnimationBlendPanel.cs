@@ -44,6 +44,7 @@ namespace ToolChest
         private Vector3 _currentBlendPoint = Vector3.Zero;
         private bool _linkToPlayer = false;
         private bool _snapEnabled = true;
+        private bool _spaceWasDown = false;
         public AnimationBlendPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -161,6 +162,7 @@ namespace ToolChest
                 Vector3 coord = _currentBlendPoint;
                 if (_currentStack.SnapEnabled) coord = _currentStack.SnapCoordinate(coord);
                 _currentStack.AddClip(e.Path, coord);
+                _previewScene.SetBlendPreview(_currentStack, _currentBlendPoint);
                 _previewScene.TogglePlay();
                 UpdateGridMarkers();
                 _uiOverlay.RefreshUI();
@@ -245,6 +247,12 @@ namespace ToolChest
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+            bool spaceDown = _controlContext.GetKey(_window, Key.Space) == InputAction.Press;
+            if (!spaceDown && _spaceWasDown)
+            {
+                _previewScene.TogglePlay();
+            }
+            _spaceWasDown = spaceDown;
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _previewScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);

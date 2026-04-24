@@ -139,9 +139,10 @@ namespace SiegeEngine.Scenes
                 .Select(c => c.AnimationPath)
                 .Distinct()
                 .ToList();
+            bool attachedAny = false;
             foreach (var animPath in uniquePaths)
             {
-                if (animPath == _currentAnimationPath) continue; // already correctly loaded + rest-posed by caller (LoadAnimation)
+                if (animPath == _currentAnimationPath) continue;
                 try
                 {
                     FBXFileForest animForest = FBXParser.Load(animPath);
@@ -149,13 +150,17 @@ namespace SiegeEngine.Scenes
                     _ModelManager.AttachAnimation(_currentModelKey, animPath);
                     _ModelManager.TryGetModel(_currentModelKey, out _model);
                     ApplyRestPoseFromModel(animModel);
+                    attachedAny = true;
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[ModelViewerScene] Failed to attach additional blend animation {animPath}: {ex.Message}");
                 }
             }
-            SetRestPose();
+            if (attachedAny)
+            {
+                SetRestPose();
+            }
         }
         private void ApplyRestPoseFromModel(FBXModel sourceModel)
         {
@@ -249,6 +254,16 @@ namespace SiegeEngine.Scenes
         private void ComputeBlendedTransforms(float deltaTime)
         {
             if (_blendPreviewStack == null || _blendPreviewStack.Clips.Count == 0 || _model == null || _model.Skeleton == null) return;
+            if (_blendPreviewStack.Clips.Count == 1)
+            {
+                if (_isPlaying)
+                {
+                    _currentTime += deltaTime;
+                    if (_currentTime > _duration) _currentTime -= _duration;
+                }
+                UpdateTransformsFromTime(_currentTime);
+                return;
+            }
             var stack = _blendPreviewStack;
             var params3D = _blendPreviewParams;
             float totalWeight = 0f;
@@ -266,11 +281,16 @@ namespace SiegeEngine.Scenes
             {
                 var clip = stack.Clips[c];
                 if (string.IsNullOrEmpty(clip.AnimationPath)) continue;
-                clip.LocalTime += deltaTime * clip.PlaybackSpeed;
+                if (_isPlaying)
+                {
+                    clip.LocalTime += deltaTime * clip.PlaybackSpeed;
+                }
                 float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : 1f;
                 if (clip.Loop && clip.LocalTime > clipDur) clip.LocalTime = 0f;
                 float sampleTime = clip.StartFrame + (clip.LocalTime % clipDur);
-                var anim = _model.Animations.Find(a => a.Name == System.IO.Path.GetFileNameWithoutExtension(clip.AnimationPath));
+                var animName = System.IO.Path.GetFileNameWithoutExtension(clip.AnimationPath);
+                var anim = _model.Animations.FirstOrDefault(a => a.Name == animName);
+                if (anim == null) anim = _model.Animations.LastOrDefault();
                 if (anim == null || anim.Keyframes.Count == 0) continue;
                 int lower = 0, upper = anim.Keyframes.Count - 1;
                 for (int i = 1; i < anim.Keyframes.Count; i++)
