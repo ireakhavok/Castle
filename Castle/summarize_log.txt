@@ -869,9 +869,9 @@ Found 1 dependencies
 Found: ModelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\ModelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\ModelManager.cs
-Read 21982 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\ModelManager.cs
+Read 22847 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\ModelManager.cs
 Namespace: SiegeEngine.Core.AssetParsing
-Found 10 dependencies
+Found 9 dependencies
 Found: NodeParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\NodeParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\NodeParser.cs
@@ -961,7 +961,7 @@ Found 0 dependencies
 Found: BlendedAnimationComponent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
-Read 465 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
+Read 595 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 3 dependencies
 Found: CameraType.cs
@@ -1934,7 +1934,7 @@ Found 3 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 27137 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 26205 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
@@ -1988,9 +1988,9 @@ Found: ..
 Found: AnimationSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
-Read 2213 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Read 2778 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
 Namespace: SiegeEngine.Systems
-Found 7 dependencies
+Found 6 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs

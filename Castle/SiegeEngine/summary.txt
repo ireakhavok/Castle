@@ -1096,7 +1096,7 @@ Folder: Core
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Numerics
 - File: ModelManager.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
 - File: ModelRenderer.cs
   - Class: ModelRenderer (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.Shaders, System, System.Numerics
@@ -2254,7 +2254,7 @@ Folder: Scenes
       - void ApplyRestPoseFromModel(FBXModel sourceModel)
         - Calls: tgtBone.ComputeLocal
       - void UpdateTransformsFromTime(float time)
-        - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms
+        - Calls: ComputeBlendedLocals, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms, tempStack.ComputeBlendedLocals
       - void ComputeBlendedTransforms(float deltaTime)
         - Calls: Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _blendPreviewStack.ComputeBlendedLocals, _model.Skeleton.ComputeGlobalTransforms
       - void CenterCamera()
@@ -2432,12 +2432,12 @@ Folder: Systems
   - Class: AnimationSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Fields:
+      - Vector3 _lastBlendParams
     - Methods:
       - void Update(float deltaTime)
         - Calls: UpdateBlendedAnimation, _server.GetEntities
-      - void UpdateBlendedAnimation( ModelComponent modelComp,  float deltaTime, BlendedAnimationComponent blendComp)
-        - Calls: Matrix3x3, Matrix4x4.Transpose, blendComp.Pack.CreateBlendStack, modelComp.Model.Skeleton.ComputeGlobalTransforms, stack.ComputeBlendedLocals
 - File: AudioSystem.cs
   - Class: AudioSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem

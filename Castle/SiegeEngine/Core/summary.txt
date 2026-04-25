@@ -179,7 +179,7 @@ Folder: AssetParsing
     - Dependencies: System, System.Collections.Generic, System.Numerics
 - File: ModelManager.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
 - File: NodeParser.cs
   - Class: NodeParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Text
