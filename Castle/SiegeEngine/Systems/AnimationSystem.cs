@@ -1,8 +1,9 @@
-﻿using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.AssetParsing.Model;
+﻿using SiegeEngine.Core.AssetParsing.Model;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 
 namespace SiegeEngine.Systems
@@ -39,9 +40,7 @@ namespace SiegeEngine.Systems
             var animation = modelComp.Model.Animations.Find(a => a.Name == animComp.CurrentAnimation);
             if (animation != null && animation.Keyframes.Count > 0)
             {
-                // reuse existing lerping logic from ModelViewerScene pattern
                 float t = animComp.Time % animation.Duration;
-                // (full lerp code omitted for brevity — identical to ModelViewerScene.UpdateTransformsFromTime)
             }
         }
 
@@ -53,7 +52,6 @@ namespace SiegeEngine.Systems
             var stack = blendComp.BlendStack;
             var params3D = blendComp.CurrentBlendParams;
 
-            // compute weights (inverse distance, normalized)
             float totalWeight = 0f;
             var weights = new float[stack.Clips.Count];
             for (int i = 0; i < stack.Clips.Count; i++)
@@ -64,39 +62,47 @@ namespace SiegeEngine.Systems
             }
             for (int i = 0; i < weights.Length; i++) weights[i] /= totalWeight;
 
-            // sample each clip at its adjusted local time
-            var blendedLocals = new Matrix4x4[modelComp.Model.Skeleton.Bones.Count];
-            for (int b = 0; b < blendedLocals.Length; b++) blendedLocals[b] = Matrix4x4.Identity;
+            var finalPos = new Vector3[modelComp.Model.Skeleton.Bones.Count];
+            var finalRot = new Quaternion[modelComp.Model.Skeleton.Bones.Count];
+            var finalScale = new Vector3[modelComp.Model.Skeleton.Bones.Count];
+            for (int b = 0; b < modelComp.Model.Skeleton.Bones.Count; b++)
+            {
+                finalPos[b] = Vector3.Zero;
+                finalRot[b] = Quaternion.Identity;
+                finalScale[b] = Vector3.Zero;
+            }
 
             for (int c = 0; c < stack.Clips.Count; c++)
             {
                 var clip = stack.Clips[c];
                 if (string.IsNullOrEmpty(clip.AnimationPath)) continue;
 
-                // advance local time (respect speed + loop)
                 clip.LocalTime += deltaTime * clip.PlaybackSpeed * blendComp.MasterSpeed;
-                float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : 1f;
-                if (clip.Loop && clip.LocalTime > clipDur) clip.LocalTime = 0f;
-
-                float sampleTime = clip.StartFrame + (clip.LocalTime % clipDur);
-
-                // find matching animation in model (assume already attached)
                 var anim = modelComp.Model.Animations.Find(a => a.Name == System.IO.Path.GetFileNameWithoutExtension(clip.AnimationPath));
                 if (anim == null || anim.Keyframes.Count == 0) continue;
 
-                // lerp locals for this clip (identical to ModelViewerScene)
+                float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
+                float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : animDuration;
+                if (clip.Loop && clip.LocalTime > clipDur) clip.LocalTime = 0f;
+
+                float sampleTime = clip.StartFrame + (clip.LocalTime % clipDur);
+                float normalizedT = (sampleTime - clip.StartFrame) / Math.Max(animDuration, 0.001f);
+                normalizedT = Math.Clamp(normalizedT, 0f, 1f);
+                float lookupTime = clip.StartFrame + normalizedT * animDuration;
+
                 int lower = 0, upper = anim.Keyframes.Count - 1;
                 for (int i = 1; i < anim.Keyframes.Count; i++)
                 {
-                    if (anim.Keyframes[i].Time > sampleTime) { upper = i; lower = i - 1; break; }
+                    if (anim.Keyframes[i].Time > lookupTime) { upper = i; lower = i - 1; break; }
                 }
-                float frac = (anim.Keyframes[upper].Time - anim.Keyframes[lower].Time > 0)
-                    ? (sampleTime - anim.Keyframes[lower].Time) / (anim.Keyframes[upper].Time - anim.Keyframes[lower].Time) : 0f;
+                float t0 = anim.Keyframes[lower].Time;
+                float t1 = anim.Keyframes[upper].Time;
+                float frac = (t1 - t0 > 0) ? (lookupTime - t0) / (t1 - t0) : 0f;
 
                 var l0 = anim.Keyframes[lower].BoneTransforms;
                 var l1 = anim.Keyframes[upper].BoneTransforms;
 
-                for (int b = 0; b < Math.Min(blendedLocals.Length, l0.Count); b++)
+                for (int b = 0; b < Math.Min(modelComp.Model.Skeleton.Bones.Count, l0.Count); b++)
                 {
                     if (Matrix4x4.Decompose(l0[b], out Vector3 s0, out Quaternion r0, out Vector3 p0) &&
                         Matrix4x4.Decompose(l1[b], out Vector3 s1, out Quaternion r1, out Vector3 p1))
@@ -104,10 +110,17 @@ namespace SiegeEngine.Systems
                         Vector3 p = Vector3.Lerp(p0, p1, frac);
                         Quaternion r = Quaternion.Normalize(Quaternion.Slerp(r0, r1, frac));
                         Vector3 s = Vector3.Lerp(s0, s1, frac);
-                        Matrix4x4 local = modelComp.Model.Skeleton.Bones[b].ComputeLocal(p, r, s);
-                        blendedLocals[b] = Matrix4x4.Lerp(blendedLocals[b], local, weights[c]);
+                        finalPos[b] += p * weights[c];
+                        finalRot[b] = Quaternion.Normalize(Quaternion.Slerp(finalRot[b], r, weights[c]));
+                        finalScale[b] += s * weights[c];
                     }
                 }
+            }
+
+            var blendedLocals = new Matrix4x4[modelComp.Model.Skeleton.Bones.Count];
+            for (int b = 0; b < modelComp.Model.Skeleton.Bones.Count; b++)
+            {
+                blendedLocals[b] = modelComp.Model.Skeleton.Bones[b].ComputeLocal(finalPos[b], finalRot[b], finalScale[b]);
             }
 
             var globals = modelComp.Model.Skeleton.ComputeGlobalTransforms(blendedLocals);

@@ -47,7 +47,7 @@ namespace ToolChest
         private bool _spaceWasDown = false;
         private int _draggingClipIndex = -1;
         private bool _draggingCurrentPoint = false;
-        private bool _greenLocked = false;   // once user moves green, it stays put
+        private bool _greenLocked = false;
         public AnimationBlendPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -83,7 +83,7 @@ namespace ToolChest
         {
             if (e.Hook == "BlendPointChanged" || e.Hook == "GridClicked")
             {
-                if (_greenLocked) return;   // green is now user-controlled — ignore all external changes
+                if (_greenLocked) return;
 
                 var xEl = _uiOverlay.FindElementById("blendX") as InputElement;
                 var yEl = _uiOverlay.FindElementById("blendY") as InputElement;
@@ -267,7 +267,7 @@ namespace ToolChest
                         if (mouseDown)
                         {
                             _draggingCurrentPoint = true;
-                            _greenLocked = true;   // lock green forever once user touches it
+                            _greenLocked = true;
                         }
                     }
                     else
