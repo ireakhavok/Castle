@@ -53,6 +53,7 @@ namespace SiegeEngine.Scenes
         private bool _showBindPoseSkeleton = false;
         private AnimationBlendStack _blendPreviewStack;
         private Vector3 _blendPreviewParams = Vector3.Zero;
+        private List<string> _lastAttachedPaths = new List<string>();
         public ModelViewerScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -292,7 +293,6 @@ namespace SiegeEngine.Scenes
                 {
                     clip.LocalTime += deltaTime * clip.PlaybackSpeed;
                 }
-                // FIX: use clip index to guarantee correct animation (prevents name collision bug)
                 var anim = (c < _model.Animations.Count) ? _model.Animations[c] : _model.Animations.LastOrDefault();
                 if (anim == null || anim.Keyframes.Count == 0) continue;
                 float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
@@ -483,9 +483,23 @@ namespace SiegeEngine.Scenes
                 }
                 if (stack.Clips.Count > 0)
                 {
-                    AttachBlendAnimations(stack);
+                    var currentPaths = stack.Clips.Select(c => c.AnimationPath).Where(p => !string.IsNullOrEmpty(p)).ToList();
+                    bool pathsChanged = !_lastAttachedPaths.SequenceEqual(currentPaths);
+                    if (pathsChanged)
+                    {
+                        AttachBlendAnimations(stack);
+                        _lastAttachedPaths = new List<string>(currentPaths);
+                    }
                     ComputeBlendedTransforms(0f);
                 }
+            }
+        }
+        public void UpdateBlendPreviewParams(Vector3 currentParams)
+        {
+            _blendPreviewParams = currentParams;
+            if (_blendPreviewStack != null && _blendPreviewStack.Clips.Count > 0)
+            {
+                ComputeBlendedTransforms(0f);
             }
         }
         public List<string> GetAnimationFiles()

@@ -84,7 +84,6 @@ namespace ToolChest
             if (e.Hook == "BlendPointChanged" || e.Hook == "GridClicked")
             {
                 if (_greenLocked) return;
-
                 var xEl = _uiOverlay.FindElementById("blendX") as InputElement;
                 var yEl = _uiOverlay.FindElementById("blendY") as InputElement;
                 var zEl = _uiOverlay.FindElementById("blendZ") as RangeElement;
@@ -323,7 +322,7 @@ namespace ToolChest
                     float normX = (relMouse.X - gx) / gw * 2f - 1f;
                     float normY = (relMouse.Y - gy) / gh * 2f - 1f;
                     _currentBlendPoint = new Vector3(normX, normY, _currentBlendPoint.Z);
-                    _previewScene.SetBlendPreview(_currentStack, _currentBlendPoint);
+                    _previewScene.UpdateBlendPreviewParams(_currentBlendPoint);
                     UpdateGridMarkers();
                 }
                 if (_draggingClipIndex >= 0 && !mouseReleased)
