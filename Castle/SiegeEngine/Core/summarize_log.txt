@@ -38,6 +38,12 @@ Found: AssetParsing
 Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing
 Found: .
 Found: ..
+Found: AnimationPack.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\AnimationPack.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\AnimationPack.cs
+Read 1296 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\AnimationPack.cs
+Namespace: SiegeEngine.Core.AssetParsing.Model
+Found 4 dependencies
 Found: FBXAnimationParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXAnimationParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXAnimationParser.cs
@@ -165,7 +171,7 @@ Found 1 dependencies
 Found: ModelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\ModelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\ModelManager.cs
-Read 20451 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\ModelManager.cs
+Read 21982 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\ModelManager.cs
 Namespace: SiegeEngine.Core.AssetParsing
 Found 10 dependencies
 Found: NodeParser.cs
@@ -257,7 +263,7 @@ Found 0 dependencies
 Found: BlendedAnimationComponent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
-Read 477 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
+Read 465 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 3 dependencies
 Found: CameraType.cs
