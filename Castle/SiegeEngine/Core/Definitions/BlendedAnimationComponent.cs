@@ -6,7 +6,7 @@ namespace SiegeEngine.Core.Definitions
 {
     public class BlendedAnimationComponent : IComponent
     {
-        public AnimationBlendStack BlendStack { get; set; }
+        public AnimationPack Pack { get; set; }
         public Vector3 CurrentBlendParams { get; set; } = Vector3.Zero;
         public float GlobalTime { get; set; }
         public bool Playing { get; set; } = true;

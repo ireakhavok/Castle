@@ -216,9 +216,17 @@ namespace ToolChest
         }
         private void CreateAnimationPack()
         {
+            var pack = new AnimationPack("blend_pack_" + DateTime.Now.Ticks, _currentStack.Name ?? "Blend Pack");
+            pack.Clips = _currentStack.Clips;
+            pack.Animations = _previewScene._model?.Animations ?? new List<Animation>();
+
             var entity = new Entity { Type = "BlendedAnimation" };
-            entity.AddComponent(new ModelComponent { Model = _previewScene._model, Key = _currentStack.Name });
-            entity.AddComponent(new BlendedAnimationComponent { BlendStack = _currentStack, CurrentBlendParams = _currentBlendPoint });
+            entity.AddComponent(new ModelComponent { Model = _previewScene._model, Key = _currentStack.Name ?? "blend_model" });
+            entity.AddComponent(new BlendedAnimationComponent
+            {
+                Pack = pack,
+                CurrentBlendParams = _currentBlendPoint
+            });
             _eventBus.Publish(new EntityPlacedEvent(entity.Id, "BlendedAnimation", entity.Transform.Position, false, null));
             Console.WriteLine("[AnimationBlendPanel] 3D Animation pack entity created and placed");
         }
