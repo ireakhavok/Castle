@@ -15,6 +15,14 @@ Folder: Core
   - Class: AnimationComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
     
+- File: AnimationPack.cs
+  - Class: AnimationPack (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Numerics
+    - Methods:
+      - constructor AnimationPack()
+      - constructor AnimationPack( string name, string id)
+      - void AddClip(AnimationClipEntry clip)
+      - AnimationBlendStack CreateBlendStack()
 - File: AnimationShader.cs
   - Class: AnimationShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -2427,10 +2435,9 @@ Folder: Systems
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - void Update(float deltaTime)
-        - Calls: UpdateBlendedAnimation, UpdateSingleAnimation, _server.GetEntities
-      - void UpdateSingleAnimation( ModelComponent modelComp,  float deltaTime, AnimationComponent animComp)
+        - Calls: UpdateBlendedAnimation, _server.GetEntities
       - void UpdateBlendedAnimation( ModelComponent modelComp,  float deltaTime, BlendedAnimationComponent blendComp)
-        - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, modelComp.Model.Skeleton.ComputeGlobalTransforms
+        - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, blendComp.Pack.CreateBlendStack, modelComp.Model.Skeleton.ComputeGlobalTransforms
 - File: AudioSystem.cs
   - Class: AudioSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem

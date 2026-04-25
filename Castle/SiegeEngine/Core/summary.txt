@@ -24,6 +24,14 @@ Folder: AssetParsing
 - File: AnimationClipEntry.cs
   - Class: AnimationClipEntry (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Numerics
+- File: AnimationPack.cs
+  - Class: AnimationPack (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Numerics
+    - Methods:
+      - constructor AnimationPack()
+      - constructor AnimationPack( string name, string id)
+      - void AddClip(AnimationClipEntry clip)
+      - AnimationBlendStack CreateBlendStack()
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
@@ -2064,6 +2072,7 @@ SiegeEngine.Core.AssetParsing.FBXSettings
 SiegeEngine.Core.AssetParsing.FBXSkeletonParser
 SiegeEngine.Core.AssetParsing.Model.Animation
 SiegeEngine.Core.AssetParsing.Model.AnimationClipEntry
+SiegeEngine.Core.AssetParsing.Model.AnimationPack
 SiegeEngine.Core.AssetParsing.Model.Bone
 SiegeEngine.Core.AssetParsing.Model.FBXMesh
 SiegeEngine.Core.AssetParsing.Model.FBXModel
