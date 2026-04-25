@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetParsing.Model;
+﻿// Folder: SiegeEngine.Core.Definitions
+// File: BlendedAnimationComponent.cs
+using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Numerics;
 
@@ -11,5 +13,6 @@ namespace SiegeEngine.Core.Definitions
         public float GlobalTime { get; set; }
         public bool Playing { get; set; } = true;
         public float MasterSpeed { get; set; } = 1.0f;
+        public bool IsStatic { get; set; } = false;
     }
 }

@@ -1,15 +1,20 @@
-﻿using SiegeEngine.Core.AssetParsing.Model;
+﻿// Folder: SiegeEngine.Systems
+// File: AnimationSystem.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Systems
 {
     public class AnimationSystem : GameSystem
     {
+        private Vector3 _lastBlendParams = Vector3.Zero;
+
         public AnimationSystem(IGameServer server) : base(server) { }
+
         public override void Update(float deltaTime)
         {
             foreach (var entity in _server.GetEntities())
@@ -22,14 +27,32 @@ namespace SiegeEngine.Systems
                 }
             }
         }
+
         private void UpdateBlendedAnimation(BlendedAnimationComponent blendComp, ModelComponent modelComp, float deltaTime)
         {
             if (!blendComp.Playing || blendComp.Pack == null) return;
+
+            // MMO performance: static characters skip blending entirely
+            if (blendComp.IsStatic)
+            {
+                return; // last pose already stored in modelComp
+            }
+
+            // Cheap early-out: skip expensive blend if params haven't moved meaningfully
+            float paramDelta = Vector3.Distance(blendComp.CurrentBlendParams, _lastBlendParams);
+            if (paramDelta < 0.001f)
+            {
+                return;
+            }
+            _lastBlendParams = blendComp.CurrentBlendParams;
+
             blendComp.GlobalTime += deltaTime * blendComp.MasterSpeed;
+
             var stack = blendComp.Pack.CreateBlendStack();
             var params3D = blendComp.CurrentBlendParams;
             var blendedLocals = stack.ComputeBlendedLocals(params3D, deltaTime, blendComp.Playing, modelComp.Model);
-            if (blendedLocals == null) return; // single-clip or edge case handled by caller if needed
+            if (blendedLocals == null) return;
+
             var globals = modelComp.Model.Skeleton.ComputeGlobalTransforms(blendedLocals);
             modelComp.NormalBoneTransforms = new Matrix3x3[globals.Length];
             for (int i = 0; i < globals.Length; i++)
