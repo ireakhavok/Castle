@@ -70,8 +70,45 @@ namespace SiegeEngine.Core.AssetParsing.Model
             if (Clips.Count == 0 || model == null || model.Skeleton == null) return null;
             if (Clips.Count == 1)
             {
-                // single-clip path left to caller (UpdateTransformsFromTime style)
-                return null;
+                var clip = Clips[0];
+                if (string.IsNullOrEmpty(clip.AnimationPath)) return null;
+                if (isPlaying) clip.LocalTime += deltaTime * clip.PlaybackSpeed;
+                var anim = model.Animations.LastOrDefault();
+                if (anim == null || anim.Keyframes.Count == 0) return null;
+                float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
+                float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : animDuration;
+                if (clip.Loop && clip.LocalTime > clipDur) clip.LocalTime = 0f;
+                float sampleTime = clip.StartFrame + (clip.LocalTime % clipDur);
+                float normalizedT = (sampleTime - clip.StartFrame) / Math.Max(animDuration, 0.001f);
+                normalizedT = Math.Clamp(normalizedT, 0f, 1f);
+                float lookupTime = clip.StartFrame + normalizedT * animDuration;
+                int lower = 0, upper = anim.Keyframes.Count - 1;
+                for (int i = 1; i < anim.Keyframes.Count; i++)
+                {
+                    if (anim.Keyframes[i].Time > lookupTime) { upper = i; lower = i - 1; break; }
+                }
+                float t0 = anim.Keyframes[lower].Time;
+                float t1 = anim.Keyframes[upper].Time;
+                float frac = (t1 - t0 > 0) ? (lookupTime - t0) / (t1 - t0) : 0f;
+                var l0 = anim.Keyframes[lower].BoneTransforms;
+                var l1 = anim.Keyframes[upper].BoneTransforms;
+                var lerpedLocals = new Matrix4x4[model.Skeleton.Bones.Count];
+                for (int b = 0; b < Math.Min(model.Skeleton.Bones.Count, l0.Count); b++)
+                {
+                    if (Matrix4x4.Decompose(l0[b], out Vector3 s0, out Quaternion r0, out Vector3 p0) &&
+                        Matrix4x4.Decompose(l1[b], out Vector3 s1, out Quaternion r1, out Vector3 p1))
+                    {
+                        Vector3 p = Vector3.Lerp(p0, p1, frac);
+                        Quaternion r = Quaternion.Normalize(Quaternion.Slerp(r0, r1, frac));
+                        Vector3 s = Vector3.Lerp(s0, s1, frac);
+                        lerpedLocals[b] = model.Skeleton.Bones[b].ComputeLocal(p, r, s);
+                    }
+                    else
+                    {
+                        lerpedLocals[b] = l0[b];
+                    }
+                }
+                return lerpedLocals;
             }
             float totalWeight = 0f;
             var weights = new float[Clips.Count];
