@@ -78,7 +78,10 @@ namespace SiegeEngine.Core.AssetParsing.Model
             for (int i = 0; i < Clips.Count; i++)
             {
                 float dist = Vector3.Distance(params3D, Clips[i].BlendCoordinate);
-                weights[i] = 1f / (dist * dist + 0.0001f);
+                float vecFactor = 1f;
+                if (Clips[i].BlendCoordinate.LengthSquared() < 0.1f) // idle clip
+                    vecFactor = Math.Clamp(1f - (params3D.Length() * 0.6f), 0.15f, 1f);
+                weights[i] = vecFactor / (dist * dist + 0.0001f);
                 totalWeight += weights[i];
             }
             for (int i = 0; i < weights.Length; i++) weights[i] /= totalWeight;

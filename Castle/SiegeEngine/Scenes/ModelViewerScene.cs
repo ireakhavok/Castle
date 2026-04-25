@@ -255,16 +255,6 @@ namespace SiegeEngine.Scenes
         private void ComputeBlendedTransforms(float deltaTime)
         {
             if (_blendPreviewStack == null || _blendPreviewStack.Clips.Count == 0 || _model == null || _model.Skeleton == null) return;
-            if (_blendPreviewStack.Clips.Count == 1)
-            {
-                if (_isPlaying)
-                {
-                    _currentTime += deltaTime;
-                    if (_currentTime > _duration) _currentTime -= _duration;
-                }
-                UpdateTransformsFromTime(_currentTime);
-                return;
-            }
             var blendedLocals = _blendPreviewStack.ComputeBlendedLocals(_blendPreviewParams, deltaTime, _isPlaying, _model);
             if (blendedLocals == null) return;
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms(blendedLocals);
