@@ -78,7 +78,8 @@ namespace SiegeEngine.Systems
                 if (string.IsNullOrEmpty(clip.AnimationPath)) continue;
 
                 clip.LocalTime += deltaTime * clip.PlaybackSpeed * blendComp.MasterSpeed;
-                var anim = modelComp.Model.Animations.Find(a => a.Name == System.IO.Path.GetFileNameWithoutExtension(clip.AnimationPath));
+                // FIX: use clip index to guarantee correct animation (prevents name collision bug)
+                var anim = (c < modelComp.Model.Animations.Count) ? modelComp.Model.Animations[c] : modelComp.Model.Animations.LastOrDefault();
                 if (anim == null || anim.Keyframes.Count == 0) continue;
 
                 float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);

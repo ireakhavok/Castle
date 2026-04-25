@@ -292,9 +292,8 @@ namespace SiegeEngine.Scenes
                 {
                     clip.LocalTime += deltaTime * clip.PlaybackSpeed;
                 }
-                var animName = System.IO.Path.GetFileNameWithoutExtension(clip.AnimationPath);
-                var anim = _model.Animations.FirstOrDefault(a => a.Name == animName);
-                if (anim == null) anim = _model.Animations.LastOrDefault();
+                // FIX: use clip index to guarantee correct animation (prevents name collision bug)
+                var anim = (c < _model.Animations.Count) ? _model.Animations[c] : _model.Animations.LastOrDefault();
                 if (anim == null || anim.Keyframes.Count == 0) continue;
                 float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
                 float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : animDuration;
