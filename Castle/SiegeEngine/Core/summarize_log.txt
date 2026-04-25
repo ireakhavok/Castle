@@ -105,9 +105,9 @@ Found 3 dependencies
 Found: AnimationBlendStack.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
-Read 3386 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
+Read 10488 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
 Namespace: SiegeEngine.Core.AssetParsing.Model
-Found 4 dependencies
+Found 5 dependencies
 Found: AnimationClipEntry.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationClipEntry.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationClipEntry.cs

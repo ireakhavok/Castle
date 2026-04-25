@@ -83,6 +83,12 @@ Found: Jumping_Landing.fbx
 Found: Jumping_v2.fbx
 Found: Jumping_v2.fbx._metadata.json
 Found: LeftRunning.fbx
+Found: LeftRunning_v2.fbm
+Listing folder: C:\repos\RealmFoundry\Castle\Assets\Characters\Man_Mesh.fbm\LeftRunning_v2.fbm
+Found: .
+Found: ..
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Normals.tga
 Found: LeftRunning_v2.fbx
 Found: Man_Body_Albedo.tga
 Found: Man_Body_Ao.tga
@@ -797,9 +803,9 @@ Found 3 dependencies
 Found: AnimationBlendStack.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
-Read 3386 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
+Read 10488 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
 Namespace: SiegeEngine.Core.AssetParsing.Model
-Found 4 dependencies
+Found 5 dependencies
 Found: AnimationClipEntry.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationClipEntry.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationClipEntry.cs
@@ -1928,7 +1934,7 @@ Found 3 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 31806 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 27137 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
@@ -1982,7 +1988,7 @@ Found: ..
 Found: AnimationSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
-Read 6582 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Read 2213 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
 Namespace: SiegeEngine.Systems
 Found 7 dependencies
 Found: AudioSystem.cs

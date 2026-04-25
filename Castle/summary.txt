@@ -559,7 +559,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
 - File: AnimationBlendStack.cs
   - Class: MovementBlendConfig (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json.Serialization
 - File: AnimationClipEntry.cs
   - Class: AnimationClipEntry (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Numerics
@@ -592,7 +592,7 @@ Folder: SiegeEngine
       - void Update(float deltaTime)
         - Calls: UpdateBlendedAnimation, _server.GetEntities
       - void UpdateBlendedAnimation( ModelComponent modelComp,  float deltaTime, BlendedAnimationComponent blendComp)
-        - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, blendComp.Pack.CreateBlendStack, modelComp.Model.Skeleton.ComputeGlobalTransforms
+        - Calls: Matrix3x3, Matrix4x4.Transpose, blendComp.Pack.CreateBlendStack, modelComp.Model.Skeleton.ComputeGlobalTransforms, stack.ComputeBlendedLocals
 - File: AssetShader.cs
   - Class: AssetShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1953,7 +1953,7 @@ Folder: SiegeEngine
       - void UpdateTransformsFromTime(float time)
         - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms
       - void ComputeBlendedTransforms(float deltaTime)
-        - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, UpdateTransformsFromTime, _model.Skeleton.ComputeGlobalTransforms
+        - Calls: Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _blendPreviewStack.ComputeBlendedLocals, _model.Skeleton.ComputeGlobalTransforms
       - void CenterCamera()
       - void DiscoverAnimationFiles()
       - void UpdateSkeletonVisualization()

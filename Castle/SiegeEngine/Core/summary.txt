@@ -20,7 +20,7 @@ Folder: AssetParsing
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
 - File: AnimationBlendStack.cs
   - Class: MovementBlendConfig (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Dependencies: System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json.Serialization
 - File: AnimationClipEntry.cs
   - Class: AnimationClipEntry (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Numerics
