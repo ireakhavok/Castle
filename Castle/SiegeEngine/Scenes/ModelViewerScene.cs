@@ -271,8 +271,8 @@ namespace SiegeEngine.Scenes
             var weights = new float[stack.Clips.Count];
             for (int i = 0; i < stack.Clips.Count; i++)
             {
-                float dist = Vector3.Distance(params3D, stack.Clips[i].BlendCoordinate) + 0.0001f;
-                weights[i] = 1f / dist;
+                float dist = Vector3.Distance(params3D, stack.Clips[i].BlendCoordinate);
+                weights[i] = 1f / (dist * dist + 0.0001f);
                 totalWeight += weights[i];
             }
             for (int i = 0; i < weights.Length; i++) weights[i] /= totalWeight;
