@@ -5,6 +5,12 @@ Folder: Core
 - File: Animation.cs
   - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
+- File: AnimationBlendStack.cs
+  - Class: MovementBlendConfig (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+- File: AnimationClipEntry.cs
+  - Class: AnimationClipEntry (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Numerics
 - File: AnimationComponent.cs
   - Class: AnimationComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -114,6 +120,11 @@ Folder: Core
       - void Close()
         - Calls: ClosePanelEvent
       - bool IsOverCloseButton(Vector2 mousePos)
+- File: BlendedAnimationComponent.cs
+  - Class: BlendedAnimationComponent (Namespace: SiegeEngine.Core.Definitions)
+    - Inherits: IComponent
+    
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Numerics
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
@@ -1403,12 +1414,12 @@ Folder: Core
         - Calls: HtmlLayoutUtils.GetNdcQuad, quadRenderer.DrawNdcQuad
 - File: Render.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.RegularExpressions
     - Methods:
       - void RenderBackgroundOnly( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, _bgRenderer.Render, quadRenderer.DrawNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, _bgRenderer.Render, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, quadRenderer.DrawNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
 - File: Renderer.cs
   - Class: Renderer (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IRenderer
@@ -2217,6 +2228,9 @@ Folder: Scenes
       - int _currentFrameIndex
       - bool _showSkeleton
       - bool _showBindPoseSkeleton
+      - AnimationBlendStack _blendPreviewStack
+      - Vector3 _blendPreviewParams
+      - List<string> _lastAttachedPaths
     - Methods:
       - void Initialize( int width, int height)
         - Calls: DiscoverAnimationFiles, LoadMesh, ShaderProgram, VertexBuffer
@@ -2227,22 +2241,30 @@ Folder: Scenes
         - Calls: ResetAnimationState, SetRestPose, _ModelManager.AttachSkeleton, _ModelManager.TryGetModel, _ModelManager.TryGetModelData
       - void LoadAnimation(string animPath)
         - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, ResetAnimationState, SetRestPose, UpdateTransformsFromTime, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
+      - void AttachBlendAnimations(AnimationBlendStack stack)
+        - Calls: ApplyRestPoseFromModel, FBXParser.BuildModelFromForest, FBXParser.Load, SetRestPose, _ModelManager.AttachAnimation, _ModelManager.TryGetModel
       - void ApplyRestPoseFromModel(FBXModel sourceModel)
         - Calls: tgtBone.ComputeLocal
       - void UpdateTransformsFromTime(float time)
         - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms
+      - void ComputeBlendedTransforms(float deltaTime)
+        - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, UpdateTransformsFromTime, _model.Skeleton.ComputeGlobalTransforms
       - void CenterCamera()
       - void DiscoverAnimationFiles()
       - void UpdateSkeletonVisualization()
         - Calls: Vertex, _skeletonBuffer.UpdateCustom
       - void SetRestPose()
         - Calls: Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, Vertex, _bindSkeletonBuffer.UpdateCustom, _model.Skeleton.ComputeGlobalTransforms
+      - void SetBlendPreview( Vector3 currentParams, AnimationBlendStack stack)
+        - Calls: AttachBlendAnimations, ComputeBlendedTransforms
+      - void UpdateBlendPreviewParams(Vector3 currentParams)
+        - Calls: ComputeBlendedTransforms
       - List<string> GetAnimationFiles()
       - string GetFrameInfo()
       - void TogglePlay()
       - void Update(float deltaTime)
       - void Update( Vector2 relMousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
-        - Calls: UpdateSkeletonVisualization, UpdateTransformsFromTime, _controlContext.GetKey, _controlContext.GetMouseButton
+        - Calls: ComputeBlendedTransforms, UpdateSkeletonVisualization, UpdateTransformsFromTime, _controlContext.GetKey, _controlContext.GetMouseButton
       - void Render(IReadOnlyList<Entity> entities)
         - Calls: _modelRenderer.RenderModel, _pointShader.SetMatrix4, _pointShader.Use, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.Clear, _renderContext.ClearColor, _renderContext.CullFace, _renderContext.DepthFunc, _renderContext.DepthMask, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.FrontFace
       - void Dispose()
@@ -2402,10 +2424,13 @@ Folder: Systems
   - Class: AnimationSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - void Update(float deltaTime)
-        - Calls: Inverse, Matrix3x3, _server.GetEntities, modelComp.Model.Skeleton.ComputeGlobalTransforms
+        - Calls: UpdateBlendedAnimation, UpdateSingleAnimation, _server.GetEntities
+      - void UpdateSingleAnimation( ModelComponent modelComp,  float deltaTime, AnimationComponent animComp)
+      - void UpdateBlendedAnimation( ModelComponent modelComp,  float deltaTime, BlendedAnimationComponent blendComp)
+        - Calls: ComputeLocal, Matrix3x3, Matrix4x4.Transpose, modelComp.Model.Skeleton.ComputeGlobalTransforms
 - File: AudioSystem.cs
   - Class: AudioSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
@@ -2516,204 +2541,3 @@ Folder: Systems
     - Methods:
       - void Update(float deltaTime)
         - Calls: EntityMovedEvent, _controlContext.GetKey, _server.GetEntities
-
-Class Hierarchy:
-FileSelectedEvent
-JSRegex
-SiegeEngine.Core.AssetObjects.BaseNode
-SiegeEngine.Core.AssetObjects.FBXFileForest
-SiegeEngine.Core.AssetObjects.FBXNode
-SiegeEngine.Core.AssetObjects.PropertyNode
-SiegeEngine.Core.AssetParsing.FBXAnimationParser
-SiegeEngine.Core.AssetParsing.FBXCoordinateUtils
-SiegeEngine.Core.AssetParsing.FBXMeshParser
-SiegeEngine.Core.AssetParsing.FBXParser
-SiegeEngine.Core.AssetParsing.FBXParserBase
-SiegeEngine.Core.AssetParsing.FBXParserUtils
-SiegeEngine.Core.AssetParsing.FBXSettings
-SiegeEngine.Core.AssetParsing.FBXSkeletonParser
-SiegeEngine.Core.AssetParsing.Model.Animation
-SiegeEngine.Core.AssetParsing.Model.Bone
-SiegeEngine.Core.AssetParsing.Model.FBXMesh
-SiegeEngine.Core.AssetParsing.Model.FBXModel
-SiegeEngine.Core.AssetParsing.Model.FBXVertex
-SiegeEngine.Core.AssetParsing.Model.Keyframe
-SiegeEngine.Core.AssetParsing.Model.Material
-SiegeEngine.Core.AssetParsing.Model.MeshData
-SiegeEngine.Core.AssetParsing.Model.Skeleton
-SiegeEngine.Core.AssetParsing.Model.TextureInfo
-SiegeEngine.Core.AssetParsing.ModelMeshRender
-SiegeEngine.Core.AssetParsing.NodeParser
-SiegeEngine.Core.ContextManagement.AbstractRenderEnums
-SiegeEngine.Core.ContextManagement.ContextManager
-SiegeEngine.Core.ContextManagement.D3D12_COMMAND_SIGNATURE_DESC
-SiegeEngine.Core.ContextManagement.GlfwControlContext
-SiegeEngine.Core.ContextManagement.IControlContext
-SiegeEngine.Core.ContextManagement.IRenderContext
-SiegeEngine.Core.ContextManagement.OpenGLContextManager
-SiegeEngine.Core.ContextManagement.OpenGLEnums
-SiegeEngine.Core.ContextManagement.OpenGLRenderContext
-SiegeEngine.Core.ContextManagement.Viewport
-SiegeEngine.Core.ContextManagement.VkDeviceCreateInfo
-SiegeEngine.Core.Definitions.AnimationComponent
-SiegeEngine.Core.Definitions.CameraType
-SiegeEngine.Core.Definitions.DockingMode
-SiegeEngine.Core.Definitions.Entity
-SiegeEngine.Core.Definitions.EntityData
-SiegeEngine.Core.Definitions.EnvironmentSettings
-SiegeEngine.Core.Definitions.GameMode
-SiegeEngine.Core.Definitions.LevelData
-SiegeEngine.Core.Definitions.LevelDto
-SiegeEngine.Core.Definitions.LightComponent
-SiegeEngine.Core.Definitions.LightType
-SiegeEngine.Core.Definitions.MaterialProperties
-SiegeEngine.Core.Definitions.Matrix3x3
-SiegeEngine.Core.Definitions.ModInfo
-SiegeEngine.Core.Definitions.ModelComponent
-SiegeEngine.Core.Definitions.PhysicsComponent
-SiegeEngine.Core.Definitions.PreviewComponent
-SiegeEngine.Core.Definitions.Rarity
-SiegeEngine.Core.Definitions.SoundSource
-SiegeEngine.Core.Definitions.Spawner
-SiegeEngine.Core.Definitions.SpriteComponent
-SiegeEngine.Core.Definitions.TransformComponent
-SiegeEngine.Core.Definitions.WallComponent
-SiegeEngine.Core.Definitions.WeatherState
-SiegeEngine.Core.Definitions.WindowAttribute
-SiegeEngine.Core.Events.ClosePanelEvent
-SiegeEngine.Core.Events.CustomEvent
-SiegeEngine.Core.Events.EntityAddedEvent
-SiegeEngine.Core.Events.EntityMovedEvent
-SiegeEngine.Core.Events.EntityPlacedEvent
-SiegeEngine.Core.Events.EntityRemovedEvent
-SiegeEngine.Core.Events.ExitEditorEvent
-SiegeEngine.Core.Events.GenericEvent
-SiegeEngine.Core.Events.ItemPickedUpEvent
-SiegeEngine.Core.Events.MovementRequestEvent
-SiegeEngine.Core.Events.OpenPanelEvent
-SiegeEngine.Core.Events.PhysicsCollisionEvent
-SiegeEngine.Core.Events.PlayerExitedEditorEvent
-SiegeEngine.Core.Events.ProtectedEventAttribute
-SiegeEngine.Core.Events.SelectBrushEvent
-SiegeEngine.Core.Events.SelectSpriteEvent
-SiegeEngine.Core.Events.SoundRayTraceResult
-SiegeEngine.Core.Events.TimeOfDayChangedEvent
-SiegeEngine.Core.Events.WeatherChangedEvent
-SiegeEngine.Core.Interfaces.IDataAwarePanel
-SiegeEngine.Core.Interfaces.IGameServer
-SiegeEngine.Core.Interfaces.IProjectionProvider
-SiegeEngine.Core.Interfaces.IRenderer
-SiegeEngine.Core.Interfaces.ISoundValidator
-SiegeEngine.Core.Interfaces.ISteamEngine
-SiegeEngine.Core.Managers.CaptureManager
-SiegeEngine.Core.Managers.DesktopDockingStrategy
-SiegeEngine.Core.Managers.DockManager
-SiegeEngine.Core.Managers.DynamicDockingStrategy
-SiegeEngine.Core.Managers.GameModeManager
-SiegeEngine.Core.Managers.IDockingStrategy
-SiegeEngine.Core.Managers.LevelManager
-SiegeEngine.Core.Managers.LobbyManager
-SiegeEngine.Core.Managers.ModManager
-SiegeEngine.Core.Managers.PanelInputRouter
-SiegeEngine.Core.Managers.PanelManager
-SiegeEngine.Core.Managers.SceneManager
-SiegeEngine.Core.Managers.SerializableFloatingPanel
-SiegeEngine.Core.Managers.UISettingsManager
-SiegeEngine.Core.Managers.acquired
-SiegeEngine.Core.Networking.ClientGameServerProxy
-SiegeEngine.Core.Networking.MovementRequest
-SiegeEngine.Core.Networking.SteamUGCRequestUGCDetailsResult_t
-SiegeEngine.Core.Rendering.BackgroundRenderer
-SiegeEngine.Core.Rendering.CachedGlyphRun
-SiegeEngine.Core.Rendering.CharacterData
-SiegeEngine.Core.Rendering.EditorTextRenderer
-SiegeEngine.Core.Rendering.GameRenderer
-SiegeEngine.Core.Rendering.LayeredUIRenderer
-SiegeEngine.Core.Rendering.ModelRenderer
-SiegeEngine.Core.Rendering.OrthoProjection
-SiegeEngine.Core.Rendering.POINT
-SiegeEngine.Core.Rendering.PerspectiveProjection
-SiegeEngine.Core.Rendering.Renderer
-SiegeEngine.Core.Rendering.RendererDetector
-SiegeEngine.Core.Rendering.ShaderProgram
-SiegeEngine.Core.Rendering.ShaderSetup
-SiegeEngine.Core.Rendering.Shaders.AnimationShader
-SiegeEngine.Core.Rendering.Shaders.AssetShader
-SiegeEngine.Core.Rendering.Shaders.EditorSceneShader
-SiegeEngine.Core.Rendering.Shaders.ModelShader
-SiegeEngine.Core.Rendering.Shaders.PointShader
-SiegeEngine.Core.Rendering.Shaders.SceneShader
-SiegeEngine.Core.Rendering.Shaders.SpriteShader
-SiegeEngine.Core.Rendering.Shaders.TextShader
-SiegeEngine.Core.Rendering.Shaders.UiShader
-SiegeEngine.Core.Rendering.Shaders.WaterShader
-SiegeEngine.Core.Rendering.TextureLoader
-SiegeEngine.Core.Rendering.UIQuadRenderer
-SiegeEngine.Core.Rendering.Vertex
-SiegeEngine.Core.Rendering.VertexBuffer
-SiegeEngine.Core.Terrain.CustomTerrainParser
-SiegeEngine.Core.Terrain.GeoReference
-SiegeEngine.Core.Terrain.TerrainTextureParser
-SiegeEngine.Core.Terrain.TerrainType
-SiegeEngine.Core.Terrain.TilemapExporter
-SiegeEngine.Core.UI.BasePanel
-SiegeEngine.Core.UI.CssParser
-SiegeEngine.Core.UI.CssStyle
-SiegeEngine.Core.UI.DataHookProcessor
-SiegeEngine.Core.UI.Elements.ButtonElement
-SiegeEngine.Core.UI.Elements.DivElement
-SiegeEngine.Core.UI.Elements.InputElement
-SiegeEngine.Core.UI.Elements.LiElement
-SiegeEngine.Core.UI.Elements.NavElement
-SiegeEngine.Core.UI.Elements.NavLiElement
-SiegeEngine.Core.UI.Elements.NavUlElement
-SiegeEngine.Core.UI.Elements.OlElement
-SiegeEngine.Core.UI.Elements.OptionElement
-SiegeEngine.Core.UI.Elements.RangeElement
-SiegeEngine.Core.UI.Elements.SelectElement
-SiegeEngine.Core.UI.Elements.TableElement
-SiegeEngine.Core.UI.Elements.TdElement
-SiegeEngine.Core.UI.Elements.TextElement
-SiegeEngine.Core.UI.Elements.ThElement
-SiegeEngine.Core.UI.Elements.TrElement
-SiegeEngine.Core.UI.Elements.UlElement
-SiegeEngine.Core.UI.HtmlElement
-SiegeEngine.Core.UI.HtmlLayoutUtils
-SiegeEngine.Core.UI.HtmlParser
-SiegeEngine.Core.UI.JSParser.ClassList
-SiegeEngine.Core.UI.JSParser.JSBinding
-SiegeEngine.Core.UI.JSParser.JSClickEvent
-SiegeEngine.Core.UI.JSParser.JSContext
-SiegeEngine.Core.UI.JSParser.JSDate
-SiegeEngine.Core.UI.JSParser.ReturnException
-SiegeEngine.Core.UI.JSParser.Token
-SiegeEngine.Core.UI.MenuUIOverlay
-SiegeEngine.Core.UI.PanelChrome
-SiegeEngine.Core.UI.UIInteractionLayer
-SiegeEngine.Core.UI.UIOverlay
-SiegeEngine.PlayerSystem.AngledOrthoCamera
-SiegeEngine.PlayerSystem.CameraController
-SiegeEngine.PlayerSystem.CameraControllerExtensions
-SiegeEngine.PlayerSystem.InputHandler
-SiegeEngine.PlayerSystem.Player
-SiegeEngine.PlayerSystem.PlayerMovement
-SiegeEngine.PlayerSystem.PositionCalculator
-SiegeEngine.PlayerSystem.SwitchMenuEvent
-SiegeEngine.Scenes.FlyCameraController
-SiegeEngine.Scenes.GameScene
-SiegeEngine.Scenes.IScene
-  SiegeEngine.Scenes.Scene
-SiegeEngine.Scenes.ModelViewerScene
-SiegeEngine.Scenes.SceneContext
-SiegeEngine.Scenes.SceneRegistry
-SiegeEngine.Scenes.StartingPoints.SandboxScene
-SiegeEngine.Scenes.StartingPoints.TwoDSandboxScene
-SiegeEngine.Scenes.TerrainScene
-SiegeEngine.Systems.AnimationSystem
-SiegeEngine.Systems.AudioSystem
-SiegeEngine.Systems.ClientPredictionSystem
-SiegeEngine.Systems.EnvironmentSystem
-SiegeEngine.Systems.GameSystem
-SiegeEngine.Systems.LightingSystem
-SiegeEngine.Systems.PlayerControllerSystem
-SwitchSceneEvent

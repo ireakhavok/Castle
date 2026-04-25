@@ -1,16 +1,13 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: render.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
-
+using System.Text.RegularExpressions;
 namespace SiegeEngine.Core.UI
 {
-
     public partial class HtmlElement
     {
         /// <summary>
@@ -31,15 +28,11 @@ namespace SiegeEngine.Core.UI
                 effectiveStyle = focusStyle;
             if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle targetStyle))
                 effectiveStyle = targetStyle;
-
             if (effectiveStyle.Display == "none") return;
-
             Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
-
             float backgroundHeight = (_needsVerticalScrollbar && _contentFullHeight > ComputedBackgroundHeight + 0.1f)
                 ? _contentFullHeight
                 : ComputedBackgroundHeight;
-
             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
@@ -62,28 +55,56 @@ namespace SiegeEngine.Core.UI
             float drawH = useShaderForBorder ? ComputedHeight : backgroundHeight;
             float bw = useShaderForBorder ? borderW.X : 0f;
             Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
-
+            Vector4 fillColor = effectiveStyle.BackgroundColor;
+            if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
+            {
+                fillColor = Vector4.Zero;
+            }
             if (hasBg || useShaderForBorder)
             {
                 float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(drawW, drawH), bw, borderC);
+                quadRenderer.DrawNdcQuad(bgNdc, fillColor, br, new Vector2(drawW, drawH), bw, borderC);
+            }
+            if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
+            {
+                Vector4 gridColor = new Vector4(0.267f, 0.267f, 0.267f, 1f);
+                float step = 28f;
+                var sizeMatch = Regex.Match(effectiveStyle.Background, @"/\s*(\d+(?:\.\d+)?)px");
+                if (sizeMatch.Success) float.TryParse(sizeMatch.Groups[1].Value, out step);
+                var colorMatch = Regex.Match(effectiveStyle.Background, @"#([0-9a-fA-F]{3,6})");
+                if (colorMatch.Success)
+                {
+                    string hex = colorMatch.Groups[1].Value;
+                    if (hex.Length == 3) hex = "" + hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                    if (hex.Length == 6)
+                    {
+                        int r = int.Parse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
+                        int g = int.Parse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber);
+                        int b = int.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
+                        gridColor = new Vector4(r / 255f, g / 255f, b / 255f, 1f);
+                    }
+                }
+                for (float x = 0; x <= drawW; x += step)
+                {
+                    quadRenderer.DrawLine(drawX + x, drawY, drawX + x, drawY + drawH, 1f, gridColor, viewportWidth, viewportHeight);
+                }
+                for (float y = 0; y <= drawH; y += step)
+                {
+                    quadRenderer.DrawLine(drawX, drawY + y, drawX + drawW, drawY + y, 1f, gridColor, viewportWidth, viewportHeight);
+                }
             }
             if (_bgRenderer != null)
             {
                 _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, backgroundHeight, viewportWidth, viewportHeight);
             }
-
-            // Recurse for nested scrollable containers (still use scrolled matrix for children)
             Matrix4x4 childMatrix = _needsVerticalScrollbar
                 ? localMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0)
                 : localMatrix;
-
             foreach (var child in Children)
             {
                 child.RenderBackgroundOnly(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, childMatrix);
             }
         }
-
         public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
@@ -135,10 +156,43 @@ namespace SiegeEngine.Core.UI
             float drawH = useShaderForBorder ? ComputedHeight : ComputedBackgroundHeight;
             float bw = useShaderForBorder ? borderW.X : 0f;
             Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
+            Vector4 fillColor = effectiveStyle.BackgroundColor;
+            if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
+            {
+                fillColor = Vector4.Zero;
+            }
             if (hasBg || useShaderForBorder)
             {
                 float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
-                quadRenderer.DrawNdcQuad(bgNdc, effectiveStyle.BackgroundColor, br, new Vector2(drawW, drawH), bw, borderC);
+                quadRenderer.DrawNdcQuad(bgNdc, fillColor, br, new Vector2(drawW, drawH), bw, borderC);
+            }
+            if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
+            {
+                Vector4 gridColor = new Vector4(0.267f, 0.267f, 0.267f, 1f);
+                float step = 28f;
+                var sizeMatch = Regex.Match(effectiveStyle.Background, @"/\s*(\d+(?:\.\d+)?)px");
+                if (sizeMatch.Success) float.TryParse(sizeMatch.Groups[1].Value, out step);
+                var colorMatch = Regex.Match(effectiveStyle.Background, @"#([0-9a-fA-F]{3,6})");
+                if (colorMatch.Success)
+                {
+                    string hex = colorMatch.Groups[1].Value;
+                    if (hex.Length == 3) hex = "" + hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+                    if (hex.Length == 6)
+                    {
+                        int r = int.Parse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber);
+                        int g = int.Parse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber);
+                        int b = int.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber);
+                        gridColor = new Vector4(r / 255f, g / 255f, b / 255f, 1f);
+                    }
+                }
+                for (float x = 0; x <= drawW; x += step)
+                {
+                    quadRenderer.DrawLine(drawX + x, drawY, drawX + x, drawY + drawH, 1f, gridColor, viewportWidth, viewportHeight);
+                }
+                for (float y = 0; y <= drawH; y += step)
+                {
+                    quadRenderer.DrawLine(drawX, drawY + y, drawX + drawW, drawY + y, 1f, gridColor, viewportWidth, viewportHeight);
+                }
             }
             if (_bgRenderer != null)
             {

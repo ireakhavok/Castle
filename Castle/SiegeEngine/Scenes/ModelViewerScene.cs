@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Scenes
-// File: ModelViewerScene.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -17,13 +15,14 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace SiegeEngine.Scenes
 {
     public unsafe class ModelViewerScene : Scene
     {
         public FBXModel _model;
         private ModelManager.ModelData _modelData;
-        private string _currentAnimationPath;   // CHANGED: now stores full file path instead of internal name
+        private string _currentAnimationPath;
         private VertexBuffer _skeletonBuffer;
         private VertexBuffer _bindSkeletonBuffer;
         private ShaderProgram _pointShader;
@@ -51,9 +50,11 @@ namespace SiegeEngine.Scenes
         private float _currentTime = 0f;
         private float _duration = 0f;
         private int _currentFrameIndex = 0;
-
         private bool _showSkeleton = false;
         private bool _showBindPoseSkeleton = false;
+        private AnimationBlendStack _blendPreviewStack;
+        private Vector3 _blendPreviewParams = Vector3.Zero;
+        private List<string> _lastAttachedPaths = new List<string>();
 
         public ModelViewerScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -92,9 +93,7 @@ namespace SiegeEngine.Scenes
             _currentModelKey = Path.GetFileNameWithoutExtension(path).ToLower();
             _ModelManager.TryGetModel(_currentModelKey, out _model);
             _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
-
             ResetAnimationState();
-
             if (_model.HasSkin)
             {
                 SetRestPose();
@@ -108,9 +107,7 @@ namespace SiegeEngine.Scenes
             _ModelManager.AttachSkeleton(_currentModelKey, path);
             _ModelManager.TryGetModel(_currentModelKey, out _model);
             _ModelManager.TryGetModelData(_currentModelKey, out _modelData);
-
             ResetAnimationState();
-
             if (_model.HasSkin)
             {
                 SetRestPose();
@@ -120,34 +117,58 @@ namespace SiegeEngine.Scenes
         public void LoadAnimation(string animPath)
         {
             if (string.IsNullOrEmpty(animPath)) return;
-
             ResetAnimationState();
-
             FBXFileForest animForest = FBXParser.Load(animPath);
             FBXModel animModel = FBXParser.BuildModelFromForest(animForest);
             _ModelManager.AttachAnimation(_currentModelKey, animPath);
             _ModelManager.TryGetModel(_currentModelKey, out _model);
-
             ApplyRestPoseFromModel(animModel);
             SetRestPose();
-
-            // FIXED: Store full file path instead of internal FBX name (Blender always uses the same name)
             _currentAnimationPath = animPath;
-
             if (_model.Animations.Count > 0)
             {
                 var newAnim = _model.Animations.Last();
                 _duration = newAnim.Duration;
                 Console.WriteLine($"[ModelViewerScene] Loaded animation from {Path.GetFileName(animPath)} → duration {_duration:F2}s");
             }
-
             _currentTime = 0f;
             _isPlaying = false;
             _currentFrameIndex = 0;
-
             if (!string.IsNullOrEmpty(_currentAnimationPath))
             {
                 UpdateTransformsFromTime(0f);
+            }
+        }
+
+        public void AttachBlendAnimations(AnimationBlendStack stack)
+        {
+            if (stack == null || _model == null || string.IsNullOrEmpty(_currentModelKey) || stack.Clips.Count == 0) return;
+            var uniquePaths = stack.Clips
+                .Where(c => !string.IsNullOrEmpty(c.AnimationPath))
+                .Select(c => c.AnimationPath)
+                .Distinct()
+                .ToList();
+            bool attachedAny = false;
+            foreach (var animPath in uniquePaths)
+            {
+                if (animPath == _currentAnimationPath) continue;
+                try
+                {
+                    FBXFileForest animForest = FBXParser.Load(animPath);
+                    FBXModel animModel = FBXParser.BuildModelFromForest(animForest);
+                    _ModelManager.AttachAnimation(_currentModelKey, animPath);
+                    _ModelManager.TryGetModel(_currentModelKey, out _model);
+                    ApplyRestPoseFromModel(animModel);
+                    attachedAny = true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ModelViewerScene] Failed to attach additional blend animation {animPath}: {ex.Message}");
+                }
+            }
+            if (attachedAny)
+            {
+                SetRestPose();
             }
         }
 
@@ -184,10 +205,7 @@ namespace SiegeEngine.Scenes
         private void UpdateTransformsFromTime(float time)
         {
             if (_model == null || _model.Skeleton == null || string.IsNullOrEmpty(_currentAnimationPath) || _model.Animations.Count == 0) return;
-
-            // FIXED: Always use the last attached animation (AttachAnimation replaces the list)
             var animation = _model.Animations.Last();
-
             int lower = 0;
             int upper = animation.Keyframes.Count - 1;
             for (int i = 1; i < animation.Keyframes.Count; i++)
@@ -203,7 +221,6 @@ namespace SiegeEngine.Scenes
             float t1 = animation.Keyframes[upper].Time;
             float frac = (t1 - t0 > 0) ? (time - t0) / (t1 - t0) : 0f;
             _currentFrameIndex = lower;
-
             var l0 = animation.Keyframes[lower].BoneTransforms;
             var l1 = animation.Keyframes[upper].BoneTransforms;
             var lerpedLocals = new Matrix4x4[l0.Count];
@@ -224,8 +241,128 @@ namespace SiegeEngine.Scenes
                     lerpedLocals[i] = lm0;
                 }
             }
-
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms(lerpedLocals);
+            _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
+            _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
+            for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
+            {
+                _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
+                if (Matrix4x4.Invert(_boneMatrices[i], out Matrix4x4 inv))
+                {
+                    Matrix4x4 invT = Matrix4x4.Transpose(inv);
+                    _currentNormalTransforms[i] = new Matrix3x3(
+                        invT.M11, invT.M12, invT.M13,
+                        invT.M21, invT.M22, invT.M23,
+                        invT.M31, invT.M32, invT.M33);
+                }
+                else
+                {
+                    _currentNormalTransforms[i] = Matrix3x3.Identity;
+                }
+            }
+            UpdateSkeletonVisualization();
+        }
+
+        private void ComputeBlendedTransforms(float deltaTime)
+        {
+            if (_blendPreviewStack == null || _blendPreviewStack.Clips.Count == 0 || _model == null || _model.Skeleton == null) return;
+            if (_blendPreviewStack.Clips.Count == 1)
+            {
+                if (_isPlaying)
+                {
+                    _currentTime += deltaTime;
+                    if (_currentTime > _duration) _currentTime -= _duration;
+                }
+                UpdateTransformsFromTime(_currentTime);
+                return;
+            }
+            var stack = _blendPreviewStack;
+            var params3D = _blendPreviewParams;
+            float totalWeight = 0f;
+            var weights = new float[stack.Clips.Count];
+            for (int i = 0; i < stack.Clips.Count; i++)
+            {
+                float dist = Vector3.Distance(params3D, stack.Clips[i].BlendCoordinate) + 0.0001f;
+                weights[i] = 1f / dist;
+                totalWeight += weights[i];
+            }
+            for (int i = 0; i < weights.Length; i++) weights[i] /= totalWeight;
+
+            var finalPos = new Vector3[_model.Skeleton.Bones.Count];
+            var finalRot = new Quaternion[_model.Skeleton.Bones.Count];
+            var finalScale = new Vector3[_model.Skeleton.Bones.Count];
+            for (int b = 0; b < _model.Skeleton.Bones.Count; b++)
+            {
+                finalPos[b] = Vector3.Zero;
+                finalRot[b] = new Quaternion(0, 0, 0, 0);
+                finalScale[b] = Vector3.Zero;
+            }
+
+            bool firstClip = true;
+            for (int c = 0; c < stack.Clips.Count; c++)
+            {
+                var clip = stack.Clips[c];
+                if (string.IsNullOrEmpty(clip.AnimationPath)) continue;
+                if (_isPlaying)
+                {
+                    clip.LocalTime += deltaTime * clip.PlaybackSpeed;
+                }
+                var anim = (c < _model.Animations.Count) ? _model.Animations[c] : _model.Animations.LastOrDefault();
+                if (anim == null || anim.Keyframes.Count == 0) continue;
+                float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
+                float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : animDuration;
+                if (clip.Loop && clip.LocalTime > clipDur) clip.LocalTime = 0f;
+                float sampleTime = clip.StartFrame + (clip.LocalTime % clipDur);
+                float normalizedT = (sampleTime - clip.StartFrame) / Math.Max(animDuration, 0.001f);
+                normalizedT = Math.Clamp(normalizedT, 0f, 1f);
+                float lookupTime = clip.StartFrame + normalizedT * animDuration;
+                int lower = 0, upper = anim.Keyframes.Count - 1;
+                for (int i = 1; i < anim.Keyframes.Count; i++)
+                {
+                    if (anim.Keyframes[i].Time > lookupTime) { upper = i; lower = i - 1; break; }
+                }
+                float t0 = anim.Keyframes[lower].Time;
+                float t1 = anim.Keyframes[upper].Time;
+                float frac = (t1 - t0 > 0) ? (lookupTime - t0) / (t1 - t0) : 0f;
+                var l0 = anim.Keyframes[lower].BoneTransforms;
+                var l1 = anim.Keyframes[upper].BoneTransforms;
+                for (int b = 0; b < Math.Min(_model.Skeleton.Bones.Count, l0.Count); b++)
+                {
+                    if (Matrix4x4.Decompose(l0[b], out Vector3 s0, out Quaternion r0, out Vector3 p0) &&
+                        Matrix4x4.Decompose(l1[b], out Vector3 s1, out Quaternion r1, out Vector3 p1))
+                    {
+                        Vector3 p = Vector3.Lerp(p0, p1, frac);
+                        Quaternion r = Quaternion.Normalize(Quaternion.Slerp(r0, r1, frac));
+                        Vector3 s = Vector3.Lerp(s0, s1, frac);
+
+                        if (firstClip)
+                        {
+                            finalRot[b] = r;
+                            firstClip = false;
+                        }
+                        else
+                        {
+                            if (Quaternion.Dot(finalRot[b], r) < 0f)
+                                r = Quaternion.Negate(r);
+                        }
+
+                        finalPos[b] += p * weights[c];
+                        finalRot[b].X += r.X * weights[c];
+                        finalRot[b].Y += r.Y * weights[c];
+                        finalRot[b].Z += r.Z * weights[c];
+                        finalRot[b].W += r.W * weights[c];
+                        finalScale[b] += s * weights[c];
+                    }
+                }
+            }
+
+            var blendedLocals = new Matrix4x4[_model.Skeleton.Bones.Count];
+            for (int b = 0; b < _model.Skeleton.Bones.Count; b++)
+            {
+                Quaternion blendedR = Quaternion.Normalize(finalRot[b]);
+                blendedLocals[b] = _model.Skeleton.Bones[b].ComputeLocal(finalPos[b], blendedR, finalScale[b]);
+            }
+            _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms(blendedLocals);
             _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
@@ -309,7 +446,6 @@ namespace SiegeEngine.Scenes
                 restLocals[i] = _model.Skeleton.Bones[i].LocalRest;
             }
             if (_model.Skeleton == null || _model.Skeleton.Bones.Count == 0) return;
-
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms();
             _currentBindGlobals = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentBindGlobalsVis = new Matrix4x4[_model.Skeleton.Bones.Count];
@@ -328,7 +464,6 @@ namespace SiegeEngine.Scenes
                 }
             }
             UpdateSkeletonVisualization();
-
             if (_model.Skeleton != null && _currentBindGlobalsVis != null)
             {
                 var vertices = new List<Vertex>();
@@ -350,7 +485,6 @@ namespace SiegeEngine.Scenes
                 }
                 _bindSkeletonBuffer.UpdateCustom(vertices, indices);
             }
-
             _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
@@ -368,6 +502,41 @@ namespace SiegeEngine.Scenes
                 {
                     _currentNormalTransforms[i] = Matrix3x3.Identity;
                 }
+            }
+        }
+
+        public void SetBlendPreview(AnimationBlendStack stack, Vector3 currentParams)
+        {
+            _blendPreviewStack = stack;
+            _blendPreviewParams = currentParams;
+            _isPlaying = false;
+            _currentTime = 0f;
+            if (stack != null)
+            {
+                foreach (var clip in stack.Clips)
+                {
+                    clip.LocalTime = 0f;
+                }
+                if (stack.Clips.Count > 0)
+                {
+                    var currentPaths = stack.Clips.Select(c => c.AnimationPath).Where(p => !string.IsNullOrEmpty(p)).ToList();
+                    bool pathsChanged = !_lastAttachedPaths.SequenceEqual(currentPaths);
+                    if (pathsChanged)
+                    {
+                        AttachBlendAnimations(stack);
+                        _lastAttachedPaths = new List<string>(currentPaths);
+                    }
+                    ComputeBlendedTransforms(0f);
+                }
+            }
+        }
+
+        public void UpdateBlendPreviewParams(Vector3 currentParams)
+        {
+            _blendPreviewParams = currentParams;
+            if (_blendPreviewStack != null && _blendPreviewStack.Clips.Count > 0)
+            {
+                ComputeBlendedTransforms(0f);
             }
         }
 
@@ -435,8 +604,11 @@ namespace SiegeEngine.Scenes
             {
                 _cameraPosition = _cameraTarget + front * _cameraDistance;
             }
-
-            if (_model.Skeleton != null && _model.Animations.Count > 0)
+            if (_blendPreviewStack != null && _blendPreviewStack.Clips.Count > 0)
+            {
+                ComputeBlendedTransforms(deltaTime);
+            }
+            else if (_model.Skeleton != null && _model.Animations.Count > 0)
             {
                 var animation = _model.Animations.Last();
                 if (animation.Keyframes.Count > 0)
@@ -487,41 +659,36 @@ namespace SiegeEngine.Scenes
             _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
             _renderContext.CullFace(_renderContext.Enums.Back);
             _renderContext.Disable(_renderContext.Enums.Blend);
-
             Matrix4x4 modelMatrix = Matrix4x4.Identity;
             Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
             float currentDist = Vector3.Distance(_cameraPosition, _cameraTarget);
             float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
             float far = currentDist + _maxExtent * 2f;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, near, far);
-
             _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, modelMatrix, _boneMatrices, _currentNormalTransforms);
-
             _pointShader.Use();
             _pointShader.SetMatrix4("uModel", modelMatrix);
             _pointShader.SetMatrix4("uView", view);
             _pointShader.SetMatrix4("uProjection", projection);
-
             if (_showSkeleton)
             {
                 _renderContext.BindVertexArray(_skeletonBuffer.Vao);
                 _renderContext.DrawElements(_renderContext.Enums.Lines, _skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
                 _renderContext.BindVertexArray(0);
             }
-
             if (_bindSkeletonBuffer != null && _showBindPoseSkeleton)
             {
                 _renderContext.BindVertexArray(_bindSkeletonBuffer.Vao);
                 _renderContext.DrawElements(_renderContext.Enums.Lines, _bindSkeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
                 _renderContext.BindVertexArray(0);
             }
-
             _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
+
         public override void Dispose()
         {
             _pointShader?.Dispose();

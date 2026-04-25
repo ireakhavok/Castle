@@ -83,6 +83,7 @@ Found: Jumping_Landing.fbx
 Found: Jumping_v2.fbx
 Found: Jumping_v2.fbx._metadata.json
 Found: LeftRunning.fbx
+Found: LeftRunning_v2.fbx
 Found: Man_Body_Albedo.tga
 Found: Man_Body_Ao.tga
 Found: Man_Body_Metallic.tga
@@ -105,6 +106,14 @@ Found: player.fbx
 Found: running.fbx
 Found: running.fbx._metadata.json
 Found: runningRight.fbx
+Found: runningRight_v2.fbx
+Found: running_v2.fbm
+Listing folder: C:\repos\RealmFoundry\Castle\Assets\Characters\Man_Mesh.fbm\running_v2.fbm
+Found: .
+Found: ..
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Normals.tga
+Found: running_v2.fbx
 Found: Standing.anim
 Found: standing.fbx
 Found: StandingMan.fbx
@@ -116,6 +125,7 @@ Found: walkingBackwards.fbx
 Found: walkingLeft.fbx
 Found: walkingRight.fbx
 Found: walking_backwards.fbx
+Found: walking_v2.fbx
 Found: man_mesh.fbx
 Found: man_mesh_arrow.fbx
 Found: mesh5Files
@@ -374,7 +384,7 @@ Found: IDE_UI.html
 Found: MenuCommands.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
-Read 5683 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
+Read 6343 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\MenuCommands.cs
 Namespace: CastleBuilder
 Found 10 dependencies
 Found: NewProjectPanel.cs
@@ -414,7 +424,7 @@ Found: ..
 Found: NetworkManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
-Read 1919 chars from: C:\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
+Read 2185 chars from: C:\repos\RealmFoundry\Castle\Citadel\Network\NetworkManager.cs
 Namespace: Citadel.Network
 Found 3 dependencies
 Found: obj
@@ -456,7 +466,7 @@ Found 8 dependencies
 Found: ServerProgram.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
 Reading file: C:\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
-Read 3222 chars from: C:\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
+Read 4454 chars from: C:\repos\RealmFoundry\Castle\Citadel\ServerProgram.cs
 Namespace: Citadel
 Found 8 dependencies
 Found: Systems
@@ -482,7 +492,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\Foundation\obj
 Found: Program.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Foundation\Program.cs
 Reading file: C:\repos\RealmFoundry\Castle\Foundation\Program.cs
-Read 5372 chars from: C:\repos\RealmFoundry\Castle\Foundation\Program.cs
+Read 7068 chars from: C:\repos\RealmFoundry\Castle\Foundation\Program.cs
 Namespace: Foundation
 Found 8 dependencies
 Found: Properties
@@ -771,6 +781,18 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\A
 Read 424 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Animation.cs
 Namespace: SiegeEngine.Core.AssetParsing.Model
 Found 3 dependencies
+Found: AnimationBlendStack.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
+Read 3386 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
+Namespace: SiegeEngine.Core.AssetParsing.Model
+Found 4 dependencies
+Found: AnimationClipEntry.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationClipEntry.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationClipEntry.cs
+Read 521 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationClipEntry.cs
+Namespace: SiegeEngine.Core.AssetParsing.Model
+Found 2 dependencies
 Found: Bone.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Bone.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Bone.cs
@@ -917,6 +939,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Animatio
 Read 307 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\AnimationComponent.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 0 dependencies
+Found: BlendedAnimationComponent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
+Read 477 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\BlendedAnimationComponent.cs
+Namespace: SiegeEngine.Core.Definitions
+Found 3 dependencies
 Found: CameraType.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\CameraType.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\CameraType.cs
@@ -1346,7 +1374,7 @@ Found 1 dependencies
 Found: SteamEngine.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
-Read 31900 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
+Read 33119 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\SteamEngine.cs
 Namespace: SiegeEngine.Core.Networking
 Found 6 dependencies
 Found: Rendering
@@ -1580,7 +1608,7 @@ Found 7 dependencies
 Found: CssParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
-Read 28215 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
+Read 28162 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\CssParser.cs
 Namespace: SiegeEngine.Core.UI
 Found 5 dependencies
 Found: CssStyle.cs
@@ -1792,9 +1820,9 @@ Found 4 dependencies
 Found: Render.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
-Read 12584 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
+Read 16353 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Namespace: SiegeEngine.Core.UI
-Found 7 dependencies
+Found 8 dependencies
 Found: UIInteractionLayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
@@ -1887,7 +1915,7 @@ Found 3 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 23091 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 31144 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
@@ -1941,9 +1969,9 @@ Found: ..
 Found: AnimationSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
-Read 2355 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Read 6606 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
 Namespace: SiegeEngine.Systems
-Found 5 dependencies
+Found 7 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
@@ -2001,6 +2029,20 @@ Found: ToolChest
 Listing folder: C:\repos\RealmFoundry\Castle\ToolChest
 Found: .
 Found: ..
+Found: AnimationBlendPanel.cs
+Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
+Reading file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
+Read 19745 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
+Namespace: ToolChest
+Found 20 dependencies
+Found: AnimationBlendUI.html
+Found: AnimationTimelinePanel.cs
+Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationTimelinePanel.cs
+Reading file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationTimelinePanel.cs
+Read 5650 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationTimelinePanel.cs
+Namespace: ToolChest
+Found 11 dependencies
+Found: AnimationTimelineUI.html
 Found: AssetBrowserPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\AssetBrowserPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\AssetBrowserPanel.cs
@@ -2075,7 +2117,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\Trebuchet\bin
 Found: Launcher.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Reading file: C:\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
-Read 7607 chars from: C:\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
+Read 8304 chars from: C:\repos\RealmFoundry\Castle\Trebuchet\Launcher.cs
 Namespace: Trebuchet
 Found 17 dependencies
 Found: obj

@@ -18,6 +18,12 @@ Folder: AssetParsing
 - File: Animation.cs
   - Class: Animation (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic
+- File: AnimationBlendStack.cs
+  - Class: MovementBlendConfig (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+- File: AnimationClipEntry.cs
+  - Class: AnimationClipEntry (Namespace: SiegeEngine.Core.AssetParsing.Model)
+    - Dependencies: System, System.Numerics
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
@@ -335,6 +341,11 @@ Folder: Definitions
   - Class: AnimationComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
     
+- File: BlendedAnimationComponent.cs
+  - Class: BlendedAnimationComponent (Namespace: SiegeEngine.Core.Definitions)
+    - Inherits: IComponent
+    
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Numerics
 - File: CameraType.cs
   - Class: CameraType (Namespace: SiegeEngine.Core.Definitions)
 - File: DockingMode.cs
@@ -1864,12 +1875,12 @@ Folder: UI
         - Calls: HtmlLayoutUtils.GetNdcQuad, quadRenderer.DrawNdcQuad
 - File: Render.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.RegularExpressions
     - Methods:
       - void RenderBackgroundOnly( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, _bgRenderer.Render, quadRenderer.DrawNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, _bgRenderer.Render, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, quadRenderer.DrawNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
 - File: SelectElement.cs
   - Class: SelectElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -2052,6 +2063,7 @@ SiegeEngine.Core.AssetParsing.FBXParserUtils
 SiegeEngine.Core.AssetParsing.FBXSettings
 SiegeEngine.Core.AssetParsing.FBXSkeletonParser
 SiegeEngine.Core.AssetParsing.Model.Animation
+SiegeEngine.Core.AssetParsing.Model.AnimationClipEntry
 SiegeEngine.Core.AssetParsing.Model.Bone
 SiegeEngine.Core.AssetParsing.Model.FBXMesh
 SiegeEngine.Core.AssetParsing.Model.FBXModel
@@ -2059,6 +2071,7 @@ SiegeEngine.Core.AssetParsing.Model.FBXVertex
 SiegeEngine.Core.AssetParsing.Model.Keyframe
 SiegeEngine.Core.AssetParsing.Model.Material
 SiegeEngine.Core.AssetParsing.Model.MeshData
+SiegeEngine.Core.AssetParsing.Model.MovementBlendConfig
 SiegeEngine.Core.AssetParsing.Model.Skeleton
 SiegeEngine.Core.AssetParsing.Model.TextureInfo
 SiegeEngine.Core.AssetParsing.ModelMeshRender
@@ -2075,6 +2088,7 @@ SiegeEngine.Core.ContextManagement.OpenGLRenderContext
 SiegeEngine.Core.ContextManagement.Viewport
 SiegeEngine.Core.ContextManagement.VkDeviceCreateInfo
 SiegeEngine.Core.Definitions.AnimationComponent
+SiegeEngine.Core.Definitions.BlendedAnimationComponent
 SiegeEngine.Core.Definitions.CameraType
 SiegeEngine.Core.Definitions.DockingMode
 SiegeEngine.Core.Definitions.Entity

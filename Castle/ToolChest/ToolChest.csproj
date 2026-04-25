@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="AnimationBlendUI.html" />
+    <None Remove="AnimationTimelineUI.html" />
     <None Remove="AssetBrowserPanelUI.html" />
     <None Remove="BrushPanelUI.html" />
     <None Remove="ConsolePanelUI.html" />
@@ -16,6 +18,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="AnimationBlendUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="AnimationTimelineUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="AssetBrowserPanelUI.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
