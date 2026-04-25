@@ -579,7 +579,7 @@ Folder: SiegeEngine
   - Class: AnimationSystem (Namespace: SiegeEngine.Systems)
     - Inherits: GameSystem
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - void Update(float deltaTime)
         - Calls: UpdateBlendedAnimation, UpdateSingleAnimation, _server.GetEntities
@@ -1928,6 +1928,7 @@ Folder: SiegeEngine
       - bool _showBindPoseSkeleton
       - AnimationBlendStack _blendPreviewStack
       - Vector3 _blendPreviewParams
+      - List<string> _lastAttachedPaths
     - Methods:
       - void Initialize( int width, int height)
         - Calls: DiscoverAnimationFiles, LoadMesh, ShaderProgram, VertexBuffer
@@ -1954,6 +1955,8 @@ Folder: SiegeEngine
         - Calls: Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, Vertex, _bindSkeletonBuffer.UpdateCustom, _model.Skeleton.ComputeGlobalTransforms
       - void SetBlendPreview( Vector3 currentParams, AnimationBlendStack stack)
         - Calls: AttachBlendAnimations, ComputeBlendedTransforms
+      - void UpdateBlendPreviewParams(Vector3 currentParams)
+        - Calls: ComputeBlendedTransforms
       - List<string> GetAnimationFiles()
       - string GetFrameInfo()
       - void TogglePlay()

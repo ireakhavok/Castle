@@ -83,6 +83,7 @@ Found: Jumping_Landing.fbx
 Found: Jumping_v2.fbx
 Found: Jumping_v2.fbx._metadata.json
 Found: LeftRunning.fbx
+Found: LeftRunning_v2.fbx
 Found: Man_Body_Albedo.tga
 Found: Man_Body_Ao.tga
 Found: Man_Body_Metallic.tga
@@ -105,6 +106,14 @@ Found: player.fbx
 Found: running.fbx
 Found: running.fbx._metadata.json
 Found: runningRight.fbx
+Found: runningRight_v2.fbx
+Found: running_v2.fbm
+Listing folder: C:\repos\RealmFoundry\Castle\Assets\Characters\Man_Mesh.fbm\running_v2.fbm
+Found: .
+Found: ..
+Found: Man_Body_Albedo.tga
+Found: Man_Body_Normals.tga
+Found: running_v2.fbx
 Found: Standing.anim
 Found: standing.fbx
 Found: StandingMan.fbx
@@ -116,6 +125,7 @@ Found: walkingBackwards.fbx
 Found: walkingLeft.fbx
 Found: walkingRight.fbx
 Found: walking_backwards.fbx
+Found: walking_v2.fbx
 Found: man_mesh.fbx
 Found: man_mesh_arrow.fbx
 Found: mesh5Files
@@ -1905,7 +1915,7 @@ Found 3 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 29365 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 31144 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
@@ -1959,9 +1969,9 @@ Found: ..
 Found: AnimationSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
-Read 6000 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
+Read 6606 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AnimationSystem.cs
 Namespace: SiegeEngine.Systems
-Found 6 dependencies
+Found 7 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
@@ -2022,7 +2032,7 @@ Found: ..
 Found: AnimationBlendPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
-Read 19904 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
+Read 19745 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Namespace: ToolChest
 Found 20 dependencies
 Found: AnimationBlendUI.html
