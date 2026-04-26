@@ -198,7 +198,7 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             get { return elem is RangeElement r ? r.Max : 100f; }
         }
-        // === LIVE STYLE PROXY (guaranteed visual update for absolute trim handles - public API only) ===
+        // === LIVE STYLE PROXY (guaranteed visual update for absolute trim handles) ===
         public class StyleProxy
         {
             private readonly HtmlElement _elem;
@@ -270,7 +270,7 @@ namespace SiegeEngine.Core.UI.JSParser
                         }
                         _overlay.RefreshUI();
 
-                        // Direct position update for absolute trim handles (public API only - guarantees visual movement)
+                        // Direct position update for absolute trim handles (guarantees visual movement)
                         if ((key == "left" || key == "top") &&
                             (_elem.Style.Position == "absolute" || _elem.Style.Position == "fixed"))
                         {
@@ -432,6 +432,12 @@ namespace SiegeEngine.Core.UI.JSParser
                 elem.EventListeners[eventName].Remove(callback);
                 if (elem.EventListeners[eventName].Count == 0) elem.EventListeners.Remove(eventName);
             }
+        }
+        // === NEW: Call this from JS mouseup handler to guarantee release/commit ===
+        public void releaseDrag()
+        {
+            overlay.RefreshUI();
+            Console.WriteLine("[JSElement] Drag released - final position committed to timeline");
         }
         // === MISSING SetMember (routes style.left = ... to proxy) ===
         public void SetMember(object objValue, object propValue, object value)

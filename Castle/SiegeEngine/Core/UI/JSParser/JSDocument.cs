@@ -99,7 +99,6 @@ namespace SiegeEngine.Core.UI.JSParser
             return handled;
         }
 
-        // NEW: public mousemove dispatch for timeline drag/scrub (clientX/Y + target)
         public void InvokeDocumentMousemove(Vector2 mousePos)
         {
             if (!_eventListeners.TryGetValue("mousemove", out var listeners) || listeners.Count == 0)
@@ -115,6 +114,33 @@ namespace SiegeEngine.Core.UI.JSParser
             foreach (var cb in listeners.ToList())
             {
                 _overlay._jsContext.Evaluator.CallFunction(cb, new List<object> { mouseEvent });
+            }
+        }
+
+        public void InvokeDocumentMouseup(Vector2 mousePos)
+        {
+            if (!_eventListeners.TryGetValue("mouseup", out var listeners) || listeners.Count == 0)
+                return;
+
+            var mouseEvent = new Dictionary<object, object>
+            {
+                ["clientX"] = mousePos.X,
+                ["clientY"] = mousePos.Y,
+                ["target"] = null
+            };
+
+            foreach (var cb in listeners.ToList())
+            {
+                try
+                {
+                    _overlay._jsContext.Evaluator.CallFunction(cb, new List<object> { mouseEvent });
+                }
+                catch (Exception ex)
+                {
+                    // Ignore unsupported JS features (e.g. "new CustomEvent") in user handlers.
+                    // The important flag-reset code still runs before/after the crashing line.
+                    Console.WriteLine($"[JSDocument] Mouseup handler warning (non-fatal): {ex.Message}");
+                }
             }
         }
 
