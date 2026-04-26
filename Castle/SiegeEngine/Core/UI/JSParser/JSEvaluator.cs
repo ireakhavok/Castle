@@ -54,6 +54,7 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     return funcDecl;
                 case ArrowExpressionNode arrow:
+                    Console.WriteLine($"[JSEvaluator] Creating JSArrowClosure - Params.Count={arrow.Params?.Count ?? 0}, BodyType={(arrow.Body?.GetType().Name ?? "null")}");
                     var captured = new Dictionary<string, object>(CurrentScope());
                     return new JSArrowClosure(arrow.Params, arrow.Body, captured, this);
                 case ReturnStatementNode ret:
@@ -397,7 +398,6 @@ namespace SiegeEngine.Core.UI.JSParser
                                 opt.Attributes.Remove("selected");
                             }
                         }
-                        // REMOVED TriggerChange — this was causing the infinite loop with the HTML change listeners
                     }
                     else if (tag == "option")
                     {
@@ -410,7 +410,6 @@ namespace SiegeEngine.Core.UI.JSParser
                             inp.Value = value.ToString();
                         }
                         jsElem.elem.Attributes["value"] = value.ToString();
-                        // REMOVED TriggerChange — root cause of the Evaluate → SetMember → TriggerChange loop
                     }
                 }
                 else if (prop == "innerHTML")
@@ -454,12 +453,19 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         public object CallFunction(object callee, List<object> args)
         {
+            Console.WriteLine($"[JSEvaluator] CallFunction ENTER - calleeType={(callee?.GetType().Name ?? "null")}, args.Count={args?.Count ?? 0}");
+            if (callee == null)
+            {
+                Console.WriteLine("[JSEvaluator] CallFunction - callee is NULL, returning null to prevent crash");
+                return null;
+            }
             if (callee is object[] arr && arr.Length == 1)
             {
                 callee = arr[0];
             }
             if (callee is JSArrowClosure closure)
             {
+                Console.WriteLine($"[JSEvaluator] CallFunction - JSArrowClosure branch - Params.Count={closure.Params?.Count ?? 0}, BodyType={(closure.Body?.GetType().Name ?? "null")}");
                 List<object> callArgs = args;
                 if (closure.Params.Count == 0)
                 {
@@ -603,8 +609,20 @@ namespace SiegeEngine.Core.UI.JSParser
                 case "+": return dLeft + dRight;
                 case "-": return dLeft - dRight;
                 case "*": return dLeft * dRight;
-                case "/": return dLeft / dRight;
-                case "%": return dLeft % dRight;
+                case "/":
+                    if (dRight == 0)
+                    {
+                        Console.WriteLine("[JSEvaluator] ApplyBinaryOp - Division by zero prevented, returning 0");
+                        return 0;
+                    }
+                    return dLeft / dRight;
+                case "%":
+                    if (dRight == 0)
+                    {
+                        Console.WriteLine("[JSEvaluator] ApplyBinaryOp - Modulo by zero prevented, returning 0");
+                        return 0;
+                    }
+                    return dLeft % dRight;
                 case "==": return dLeft == dRight;
                 case "!=": return dLeft != dRight;
                 case "<": return dLeft < dRight;

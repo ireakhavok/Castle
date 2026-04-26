@@ -595,11 +595,13 @@ namespace SiegeEngine.Core.UI
         }
         public bool InvokeListeners(HtmlElement elem, string eventName, JSElement jsElem = null)
         {
+            Console.WriteLine($"[UIOverlay] InvokeListeners ENTER - eventName={eventName}, hasListeners={elem.EventListeners.ContainsKey(eventName)}");
             if (elem.EventListeners.ContainsKey(eventName))
             {
                 if (jsElem == null) jsElem = new JSElement(elem, this);
                 foreach (var cb in elem.EventListeners[eventName])
                 {
+                    Console.WriteLine($"[UIOverlay] InvokeListeners - calling cb type={(cb?.GetType().Name ?? "null")}");
                     _jsContext.Evaluator.CallFunction(cb, new List<object> { jsElem });
                 }
                 return true;
