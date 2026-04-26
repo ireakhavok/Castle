@@ -197,7 +197,7 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             get { return elem is RangeElement r ? r.Max : 100f; }
         }
-        // === LIVE STYLE PROXY (with log) ===
+        // === LIVE STYLE PROXY (with log + parent dirty for absolute positioned children like trim handles) ===
         public class StyleProxy
         {
             private readonly HtmlElement _elem;
@@ -261,6 +261,7 @@ namespace SiegeEngine.Core.UI.JSParser
                     if (changed)
                     {
                         _elem.MarkIntrinsicDirty();
+                        if (_elem.Parent != null) _elem.Parent.MarkIntrinsicDirty(); // ensures absolute-positioned children (trim handles) re-layout with new % left
                         _overlay.RefreshUI();
                     }
                 }
@@ -407,7 +408,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (elem.EventListeners[eventName].Count == 0) elem.EventListeners.Remove(eventName);
             }
         }
-
         // === MISSING SetMember (routes style.left = ... to proxy) ===
         public void SetMember(object objValue, object propValue, object value)
         {
