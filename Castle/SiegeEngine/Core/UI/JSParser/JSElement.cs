@@ -429,11 +429,10 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (elem.EventListeners[eventName].Count == 0) elem.EventListeners.Remove(eventName);
             }
         }
-        // === PROPER releaseDrag: searches for the ACTUAL registered mouseup handler ===
+        // === releaseDrag: calls the REAL registered mouseup handler (no try-catch — errors visible) ===
         public void releaseDrag()
         {
             overlay.RefreshUI();
-            // Search the document for the real mouseup handler(s) that were registered by the IIFE
             if (overlay._document != null && overlay._document._eventListeners.TryGetValue("mouseup", out var mouseupListeners))
             {
                 var mouseEvent = new Dictionary<object, object>
@@ -444,16 +443,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 };
                 foreach (var handler in mouseupListeners.ToList())
                 {
-                    try
-                    {
-                        overlay._jsContext.Evaluator.CallFunction(handler, new List<object> { mouseEvent });
-                    }
-                    catch (Exception ex)
-                    {
-                        // Non-fatal: the unsupported "new CustomEvent" line is skipped,
-                        // but the critical isDragging* = false lines (which run before it) have already executed.
-                        Console.WriteLine($"[JSElement] releaseDrag handler warning (non-fatal): {ex.Message}");
-                    }
+                    overlay._jsContext.Evaluator.CallFunction(handler, new List<object> { mouseEvent });
                 }
             }
             Console.WriteLine("[JSElement] Drag released via real mouseup handler");

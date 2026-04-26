@@ -294,35 +294,14 @@ namespace SiegeEngine.Core.UI
             {
                 _overlay.RefreshUI();
             }
-
-            // Continuous mousemove dispatch (unchanged)
             if (_overlay._document != null)
             {
                 _overlay._document.InvokeDocumentMousemove(relMousePos);
-            }
-
-            // ==================== DEFINITIVE CLEAN FIX ====================
-            // On mouse release, directly call releaseDrag() on the trim handles.
-            // This commits the final position and resets state without ever executing
-            // the JS mouseup handler (which contains unsupported "new CustomEvent").
-            if (mouseRelease)
-            {
-                var startH = _overlay.FindElementById("startHandle");
-                var endH = _overlay.FindElementById("endHandle");
-
-                if (startH != null)
+                if (mouseRelease)
                 {
-                    var jsStart = new JSElement(startH, _overlay);
-                    jsStart.releaseDrag();
-                }
-                if (endH != null)
-                {
-                    var jsEnd = new JSElement(endH, _overlay);
-                    jsEnd.releaseDrag();
+                    _overlay._document.InvokeDocumentMouseup(relMousePos);
                 }
             }
-            // ============================================================
-
             _prevMouseDown = currentMouseDown;
         }
         private bool IsDropdownElement(HtmlElement elem)

@@ -206,7 +206,6 @@
             let currentScrub = 0.0;
 
             function updateUI() {
-                // Update handles
                 const startPercent = (startTime / duration) * 100;
                 const endPercent = (endTime / duration) * 100;
                 const scrubPercent = (currentScrub / duration) * 100;
@@ -215,14 +214,11 @@
                 endHandle.style.left = endPercent + '%';
                 playhead.style.left = scrubPercent + '%';
 
-                // Update inputs
                 startInput.value = startTime.toFixed(1);
                 endInput.value = endTime.toFixed(1);
 
-                // Update frame info
                 frameInfo.textContent = `${startTime.toFixed(1)}s / ${endTime.toFixed(1)}s | ${Math.round((endTime - startTime) * 10)} frames`;
 
-                // Update speed display
                 speedValue.textContent = parseFloat(speedSlider.value).toFixed(1) + 'x';
             }
 
@@ -279,13 +275,8 @@
                 }
             });
 
-            // Global mouse up
+            // Global mouse up — CLEAN (no dispatchEvent, no data-hook bullshit)
             document.addEventListener('mouseup', () => {
-                if (isDraggingStart || isDraggingEnd) {
-                    // Fire cut event so C# gets the new values
-                    const cutEvent = new CustomEvent('click', { bubbles: true });
-                    document.querySelector('[data-hook="TimelineCut"]').dispatchEvent(cutEvent);
-                }
                 isDraggingStart = false;
                 isDraggingEnd = false;
             });

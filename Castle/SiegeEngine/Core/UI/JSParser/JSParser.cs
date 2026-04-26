@@ -421,7 +421,24 @@ namespace SiegeEngine.Core.UI.JSParser
                 ASTNode argument = ParseUnaryExpression();
                 return new UnaryExpressionNode(op, argument);
             }
+            if (PeekKeyword("new"))
+            {
+                return ParseNewExpression();
+            }
             return ParsePostfixExpression();
+        }
+        private ASTNode ParseNewExpression()
+        {
+            ConsumeKeyword("new");
+            SkipWhitespaceAndComments();
+            ASTNode callee = ParsePrimaryExpression();
+            SkipWhitespaceAndComments();
+            List<ASTNode> args = new List<ASTNode>();
+            if (_currentChar == '(')
+            {
+                args = ParseArguments();
+            }
+            return new NewExpressionNode(callee, args);
         }
         private ASTNode ParsePostfixExpression()
         {
@@ -1048,7 +1065,6 @@ namespace SiegeEngine.Core.UI.JSParser
             Value = value;
         }
     }
-    // NEW: TemplateLiteralNode class (definitive fix)
     public class TemplateLiteralNode : ASTNode
     {
         public List<string> Quasis { get; }
@@ -1057,6 +1073,17 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             Quasis = quasis;
             Expressions = expressions;
+        }
+    }
+    // NEW: Support for "new CustomEvent(...)"
+    public class NewExpressionNode : ASTNode
+    {
+        public ASTNode Callee { get; }
+        public List<ASTNode> Arguments { get; }
+        public NewExpressionNode(ASTNode callee, List<ASTNode> arguments)
+        {
+            Callee = callee;
+            Arguments = arguments;
         }
     }
 }

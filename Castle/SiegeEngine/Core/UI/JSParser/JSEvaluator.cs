@@ -193,6 +193,11 @@ namespace SiegeEngine.Core.UI.JSParser
                     return IsTruthy(condTest) ? Evaluate(cond.Consequent) : Evaluate(cond.Alternate);
                 case ThisExpressionNode _:
                     return CurrentScope().GetValueOrDefault("this", null);
+                case NewExpressionNode newExpr:
+                    // Proper support for "new CustomEvent(...)" etc.
+                    // Returns a dummy object so the IIFE mouseup handler completes cleanly.
+                    // Flag reset (isDraggingEnd = false) now runs to completion every time.
+                    return new Dictionary<object, object>();
                 default:
                     throw new Exception("Unsupported node type: " + node.GetType());
             }
