@@ -1,9 +1,10 @@
 ﻿// File: SiegeEngine/Core/UI/JSParser/JSElement.cs
+using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Globalization;
-using SiegeEngine.Core.UI.Elements;
+using System.Linq;
+using System.Numerics;
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSElement
@@ -197,7 +198,7 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             get { return elem is RangeElement r ? r.Max : 100f; }
         }
-        // === LIVE STYLE PROXY (with log + parent dirty for absolute positioned children like trim handles) ===
+        // === LIVE STYLE PROXY (guaranteed visual update for absolute trim handles - public API only) ===
         public class StyleProxy
         {
             private readonly HtmlElement _elem;
@@ -261,8 +262,32 @@ namespace SiegeEngine.Core.UI.JSParser
                     if (changed)
                     {
                         _elem.MarkIntrinsicDirty();
-                        if (_elem.Parent != null) _elem.Parent.MarkIntrinsicDirty(); // ensures absolute-positioned children (trim handles) re-layout with new % left
+                        var p = _elem.Parent;
+                        while (p != null)
+                        {
+                            p.MarkIntrinsicDirty();
+                            p = p.Parent;
+                        }
                         _overlay.RefreshUI();
+
+                        // Direct position update for absolute trim handles (public API only - guarantees visual movement)
+                        if ((key == "left" || key == "top") &&
+                            (_elem.Style.Position == "absolute" || _elem.Style.Position == "fixed"))
+                        {
+                            HtmlElement cb = _elem.Parent; // direct parent is the timeline bar (relative)
+                            float refW = cb != null ? cb.ComputedContentWidth : _overlay.PanelWidth;
+                            float refH = cb != null ? cb.ComputedContentHeight : _overlay.PanelHeight;
+                            float newLeft = key == "left" ? HtmlLayoutUtils.ParseSize(val, refW, _overlay.PanelWidth, _overlay.PanelHeight) : float.NaN;
+                            float newTop = key == "top" ? HtmlLayoutUtils.ParseSize(val, refH, _overlay.PanelWidth, _overlay.PanelHeight) : float.NaN;
+
+                            float newX = _elem.ComputedPosition.X;
+                            float newY = _elem.ComputedPosition.Y;
+                            if (!float.IsNaN(newLeft)) newX = (cb != null ? cb.ComputedContentX : 0) + newLeft;
+                            if (!float.IsNaN(newTop)) newY = (cb != null ? cb.ComputedContentY : 0) + newTop;
+
+                            _elem.ComputedPosition = new Vector2(newX, newY);
+                            _elem.UpdateFullTransforms(Matrix4x4.Identity);
+                        }
                     }
                 }
             }
