@@ -1,4 +1,5 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// File: ToolChest/AnimationTimelinePanel.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -130,6 +131,27 @@ namespace ToolChest
 
                     _previewScene.LoadAnimation(path);
                     _previewScene.TogglePlay();
+
+                    // DEFINITIVE architectural push: C# directly sets DOM state (bypasses JS scope/closure issues)
+                    var startHandle = _uiOverlay.FindElementById("startHandle");
+                    var endHandle = _uiOverlay.FindElementById("endHandle");
+                    var startInput = _uiOverlay.FindElementById("startFrame") as InputElement;
+                    var endInput = _uiOverlay.FindElementById("endFrame") as InputElement;
+                    var frameInfo = _uiOverlay.FindElementById("frameInfo") as TextElement;
+
+                    if (startHandle != null)
+                        startHandle.Attributes["style"] = "left: 0%;";
+                    if (endHandle != null)
+                        endHandle.Attributes["style"] = "left: 100%;";
+                    if (startInput != null)
+                        startInput.Value = "0.0";
+                    if (endInput != null)
+                        endInput.Value = _animDuration.ToString("F1");
+                    if (frameInfo != null)
+                        frameInfo.Content = $"0.0s / {_animDuration:F1}s | {Math.Round(_animDuration * 10)} frames";
+
+                    _uiOverlay.RefreshUI();
+                    Console.WriteLine($"[AnimationTimelinePanel] Duration {_animDuration:F2}s pushed directly to DOM (correct start/end/total frames)");
                 }
             }
             catch (Exception ex)
@@ -149,9 +171,6 @@ namespace ToolChest
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _previewScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
-
-            // NOTE: Timeline drag/scrub is now 100% handled by the JS in AnimationTimelineUI.html
-            // (C# no longer interferes with start/end handles or scrub — this fixes sliders not moving/updating)
         }
 
         protected override void RenderInnerContent()

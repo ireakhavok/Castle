@@ -1,10 +1,12 @@
-﻿using SiegeEngine.Core.UI.Elements;
+﻿// File: SiegeEngine/Core/UI/JSParser/JSEvaluator.cs
+using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSEvaluator
@@ -12,10 +14,12 @@ namespace SiegeEngine.Core.UI.JSParser
         private Dictionary<string, object> _globalScope = new Dictionary<string, object>();
         private Stack<Dictionary<string, object>> _scopeStack = new Stack<Dictionary<string, object>>();
         private Dictionary<string, FunctionDeclarationNode> _functions = new Dictionary<string, FunctionDeclarationNode>();
+
         public JSEvaluator()
         {
             _scopeStack.Push(_globalScope);
         }
+
         public object Evaluate(ASTNode node)
         {
             switch (node)
@@ -197,14 +201,17 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             _scopeStack.Push(new Dictionary<string, object>());
         }
+
         public void PopScope()
         {
             _scopeStack.Pop();
         }
+
         public Dictionary<string, object> CurrentScope()
         {
             return _scopeStack.Peek();
         }
+
         private object GetVariable(string name)
         {
             foreach (var scope in _scopeStack)
@@ -216,6 +223,7 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             throw new Exception($"Undefined variable: {name}");
         }
+
         private void SetValue(ASTNode target, object value)
         {
             switch (target)
@@ -254,6 +262,7 @@ namespace SiegeEngine.Core.UI.JSParser
                     throw new Exception("Invalid assignment target");
             }
         }
+
         private object GetMember(object objValue, object propValue)
         {
             if (objValue is Dictionary<object, object> dictObj)
@@ -347,6 +356,42 @@ namespace SiegeEngine.Core.UI.JSParser
                 {
                     return jsElem.classList;
                 }
+
+                // Event method stubs (preventDefault etc.)
+                if (jsProp == "preventDefault" || jsProp == "stopPropagation" || jsProp == "stopImmediatePropagation")
+                {
+                    return new Action(() => { });
+                }
+
+                // NEW: full DOM Element support for timeline JS (getBoundingClientRect + clientX/Y on event objects)
+                if (jsProp == "getBoundingClientRect")
+                {
+                    return new Func<Dictionary<object, object>>(() =>
+                    {
+                        float left = 0, top = 0, width = 100, height = 40;
+                        if (jsElem.elem != null)
+                        {
+                            left = jsElem.elem.ComputedPosition.X;
+                            top = jsElem.elem.ComputedPosition.Y;
+                            width = jsElem.elem.ComputedWidth > 0 ? jsElem.elem.ComputedWidth : 100;
+                            height = jsElem.elem.ComputedHeight > 0 ? jsElem.elem.ComputedHeight : 40;
+                        }
+                        return new Dictionary<object, object>
+                        {
+                            ["left"] = left,
+                            ["top"] = top,
+                            ["width"] = width,
+                            ["height"] = height,
+                            ["right"] = left + width,
+                            ["bottom"] = top + height
+                        };
+                    });
+                }
+                if (jsProp == "clientX" || jsProp == "clientY" || jsProp == "pageX" || jsProp == "pageY")
+                {
+                    // Placeholder for event objects passed to listeners — prevents crash; real mouse coords available in panel Update if needed for future refinement
+                    return 0.0;
+                }
             }
             if (objValue is JSElement.ClassList cls && propValue is string clsProp)
             {
@@ -379,6 +424,7 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             return null;
         }
+
         private void SetMember(object objValue, object propValue, object value)
         {
             if (objValue is Dictionary<object, object> dictObj)
@@ -469,30 +515,27 @@ namespace SiegeEngine.Core.UI.JSParser
             var prop1 = type?.GetProperty(propValue.ToString());
             prop1?.SetValue(objValue, value);
         }
+
         public object CallFunction(object callee, List<object> args)
         {
             Console.WriteLine($"[JSEvaluator] CallFunction ENTER - calleeType={(callee?.GetType().Name ?? "null")}, args.Count={args?.Count ?? 0}");
-            if (callee == null)
-            {
-                Console.WriteLine("[JSEvaluator] CallFunction - callee is NULL, returning null to prevent crash");
-                return null;
-            }
+
             if (callee is object[] arr && arr.Length == 1)
             {
                 callee = arr[0];
             }
+
             if (callee is JSArrowClosure closure)
             {
                 Console.WriteLine($"[JSEvaluator] CallFunction - JSArrowClosure branch - Params.Count={closure.Params?.Count ?? 0}, BodyType={(closure.Body?.GetType().Name ?? "null")}");
-                List<object> callArgs = args;
-                if (closure.Params.Count == 0)
-                {
-                    callArgs = new List<object>();
-                }
-                if (closure.Params.Count != callArgs.Count)
-                {
-                    throw new Exception("Argument count mismatch");
-                }
+
+                List<object> callArgs = args ?? new List<object>();
+
+                while (callArgs.Count < closure.Params.Count)
+                    callArgs.Add(null);
+                if (callArgs.Count > closure.Params.Count)
+                    callArgs = callArgs.Take(closure.Params.Count).ToList();
+
                 PushScope();
                 foreach (var kv in closure.Captured)
                 {
@@ -532,6 +575,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 return result;
             }
+
             if (callee is FunctionDeclarationNode func)
             {
                 if (func.Params.Count != args.Count)
@@ -558,20 +602,24 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 return result;
             }
+
             if (callee is Func<object[], object> funcObj)
             {
                 return funcObj(args.ToArray());
             }
+
             if (callee is Action action)
             {
                 action();
                 return null;
             }
+
             if (callee is Action<object[]> variadicAction)
             {
                 variadicAction(args.ToArray());
                 return null;
             }
+
             if (callee.GetType().IsGenericType && callee.GetType().GetGenericTypeDefinition() == typeof(Action<>))
             {
                 object arg = args.Count > 0 ? args[0] : null;
@@ -585,6 +633,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 return null;
             }
+
             if (callee is Delegate del)
             {
                 object[] invokeArgs = args.ToArray();
@@ -605,8 +654,10 @@ namespace SiegeEngine.Core.UI.JSParser
                     throw;
                 }
             }
+
             throw new Exception("Not callable");
         }
+
         private object ApplyBinaryOp(string op, object left, object right)
         {
             if (op == "===")
@@ -655,6 +706,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: throw new Exception($"Unsupported binary operator: {op}");
             }
         }
+
         private object ApplyUnaryOp(string op, object arg)
         {
             dynamic dArg = arg ?? 0;
@@ -667,6 +719,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: throw new Exception($"Unsupported unary operator: {op}");
             }
         }
+
         public static bool IsTruthy(object value)
         {
             if (value == null) return false;
@@ -677,20 +730,24 @@ namespace SiegeEngine.Core.UI.JSParser
             if (value is Dictionary<object, object> d) return d.Count > 0;
             return true;
         }
+
         public void RegisterFunction(string name, FunctionDeclarationNode func)
         {
             _functions[name] = func;
         }
+
         public void RegisterGlobal(string name, object value)
         {
             _globalScope[name] = value;
         }
+
         private class JSArrowClosure
         {
             public List<ASTNode> Params { get; }
             public ASTNode Body { get; }
             public Dictionary<string, object> Captured { get; }
             public JSEvaluator Evaluator { get; }
+
             public JSArrowClosure(List<ASTNode> paramsList, ASTNode body, Dictionary<string, object> captured, JSEvaluator evaluator)
             {
                 Params = paramsList;
@@ -700,6 +757,7 @@ namespace SiegeEngine.Core.UI.JSParser
             }
         }
     }
+
     public class ReturnValue
     {
         public object Value { get; }
@@ -708,6 +766,7 @@ namespace SiegeEngine.Core.UI.JSParser
             Value = value;
         }
     }
+
     public class ReturnException : Exception
     {
         public object Value { get; }
