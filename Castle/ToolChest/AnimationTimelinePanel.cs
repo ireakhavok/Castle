@@ -48,7 +48,6 @@ namespace ToolChest
         private FBXModel _loadedAnimModel;
         private int _keyframeCount = 0;
         private float _animDuration = 10f;
-
         private ModelViewerScene _previewScene;
 
         public AnimationTimelinePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -76,7 +75,8 @@ namespace ToolChest
         private void LoadUIFromFile(string filename)
         {
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, filename);
-            if (File.Exists(path)) _uiOverlay.LoadUI(File.ReadAllText(path));
+            if (File.Exists(path))
+                _uiOverlay.LoadUI(File.ReadAllText(path));
         }
 
         private void OnGenericEvent(GenericEvent e)
@@ -95,11 +95,9 @@ namespace ToolChest
                 var startEl = _uiOverlay.FindElementById("startFrame") as InputElement;
                 var endEl = _uiOverlay.FindElementById("endFrame") as InputElement;
                 var speedEl = _uiOverlay.FindElementById("speed") as RangeElement;
-
                 if (startEl != null && float.TryParse(startEl.Value, out float s)) _startFrame = s;
                 if (endEl != null && float.TryParse(endEl.Value, out float en)) _endFrame = en;
                 if (speedEl != null) _speed = speedEl.Value;
-
                 _eventBus.Publish(new GenericEvent
                 {
                     Hook = "TimelineMetadataUpdated",
@@ -128,27 +126,21 @@ namespace ToolChest
                     _endFrame = _animDuration;
                     _startFrame = 0f;
                     _scrubTime = 0f;
-
                     _previewScene.LoadAnimation(path);
                     _previewScene.TogglePlay();
 
-                    // DEFINITIVE architectural push: C# directly sets DOM state (bypasses JS scope/closure issues)
+                    // DEFINITIVE architectural push: use the SAME path the JS drag uses (Style.LeftStr via proxy)
                     var startHandle = _uiOverlay.FindElementById("startHandle");
                     var endHandle = _uiOverlay.FindElementById("endHandle");
                     var startInput = _uiOverlay.FindElementById("startFrame") as InputElement;
                     var endInput = _uiOverlay.FindElementById("endFrame") as InputElement;
                     var frameInfo = _uiOverlay.FindElementById("frameInfo") as TextElement;
 
-                    if (startHandle != null)
-                        startHandle.Attributes["style"] = "left: 0%;";
-                    if (endHandle != null)
-                        endHandle.Attributes["style"] = "left: 100%;";
-                    if (startInput != null)
-                        startInput.Value = "0.0";
-                    if (endInput != null)
-                        endInput.Value = _animDuration.ToString("F1");
-                    if (frameInfo != null)
-                        frameInfo.Content = $"0.0s / {_animDuration:F1}s | {Math.Round(_animDuration * 10)} frames";
+                    if (startHandle != null) startHandle.Style.LeftStr = "0%";
+                    if (endHandle != null) endHandle.Style.LeftStr = "100%";
+                    if (startInput != null) startInput.Value = "0.0";
+                    if (endInput != null) endInput.Value = _animDuration.ToString("F1");
+                    if (frameInfo != null) frameInfo.Content = $"0.0s / {_animDuration:F1}s | {Math.Round(_animDuration * 10)} frames";
 
                     _uiOverlay.RefreshUI();
                     Console.WriteLine($"[AnimationTimelinePanel] Duration {_animDuration:F2}s pushed directly to DOM (correct start/end/total frames)");
@@ -167,16 +159,12 @@ namespace ToolChest
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _previewScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
         }
 
-        protected override void RenderInnerContent()
-        {
-            _previewScene.Render(null);
-        }
+        protected override void RenderInnerContent() { _previewScene.Render(null); }
 
         public override void OnLiveResize(float w, float h)
         {
@@ -185,7 +173,17 @@ namespace ToolChest
         }
 
         public string DataKey => "AnimationTimelinePanel";
-        public JsonElement SavePanelState() => JsonSerializer.SerializeToElement(new { Path = _currentClipPath, Start = _startFrame, End = _endFrame, Speed = _speed, Loop = _loop, Keyframes = _keyframeCount });
+
+        public JsonElement SavePanelState() => JsonSerializer.SerializeToElement(new
+        {
+            Path = _currentClipPath,
+            Start = _startFrame,
+            End = _endFrame,
+            Speed = _speed,
+            Loop = _loop,
+            Keyframes = _keyframeCount
+        });
+
         public void LoadPanelState(JsonElement state)
         {
             if (!state.ValueKind.HasFlag(JsonValueKind.Undefined))

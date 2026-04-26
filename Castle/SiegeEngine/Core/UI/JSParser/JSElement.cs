@@ -1,34 +1,28 @@
-﻿// Folder: SiegeEngine.Core.UI.JSParser
-// File: JSElement.cs
+﻿// File: SiegeEngine/Core/UI/JSParser/JSElement.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Globalization;
 using SiegeEngine.Core.UI.Elements;
-
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSElement
     {
         public HtmlElement elem;
         public UIOverlay overlay;
-
         public JSElement(HtmlElement elem, UIOverlay overlay)
         {
             this.elem = elem;
             this.overlay = overlay;
         }
-
         public string id
         {
             get { return elem.Attributes.GetValueOrDefault("id", ""); }
         }
-
         public string tagName
         {
             get { return elem.Tag; }
         }
-
         public string innerHTML
         {
             get { return string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)); }
@@ -44,7 +38,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
-
         public string textContent
         {
             get { return string.Join("", elem.Children.OfType<TextElement>().Select(t => t.Content)); }
@@ -60,7 +53,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
-
         public string value
         {
             get
@@ -164,7 +156,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
             }
         }
-
         public object[] options
         {
             get
@@ -184,7 +175,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 return new object[0];
             }
         }
-
         public bool @checked
         {
             get { return elem.Checked; }
@@ -199,36 +189,100 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
             }
         }
-
         public float min
         {
             get { return elem is RangeElement r ? r.Min : 0f; }
         }
-
         public float max
         {
             get { return elem is RangeElement r ? r.Max : 100f; }
         }
-
-        // === PROPER CLASSLIST SUPPORT (required by IDE_UI.html inline script) ===
+        // === LIVE STYLE PROXY (with log) ===
+        public class StyleProxy
+        {
+            private readonly HtmlElement _elem;
+            private readonly UIOverlay _overlay;
+            public StyleProxy(HtmlElement elem, UIOverlay overlay)
+            {
+                _elem = elem;
+                _overlay = overlay;
+            }
+            public object this[string key]
+            {
+                get
+                {
+                    key = key.ToLower();
+                    return key switch
+                    {
+                        "left" => _elem.Style.LeftStr ?? "",
+                        "top" => _elem.Style.TopStr ?? "",
+                        "width" => _elem.Style.WidthStr ?? "",
+                        "height" => _elem.Style.HeightStr ?? "",
+                        "display" => _elem.Style.Display ?? "",
+                        "position" => _elem.Style.Position ?? "",
+                        _ => ""
+                    };
+                }
+                set
+                {
+                    key = key.ToLower();
+                    string val = value?.ToString() ?? "";
+                    bool changed = false;
+                    switch (key)
+                    {
+                        case "left":
+                            string elemId = _elem.Attributes.GetValueOrDefault("id", "no-id");
+                            Console.WriteLine($"[StyleProxy] Setting left on #{elemId} to {val}");
+                            if (_elem.Style.LeftStr != val) { _elem.Style.LeftStr = val; changed = true; }
+                            break;
+                        case "top":
+                            if (_elem.Style.TopStr != val) { _elem.Style.TopStr = val; changed = true; }
+                            break;
+                        case "width":
+                            if (_elem.Style.WidthStr != val) { _elem.Style.WidthStr = val; changed = true; }
+                            break;
+                        case "height":
+                            if (_elem.Style.HeightStr != val) { _elem.Style.HeightStr = val; changed = true; }
+                            break;
+                        case "display":
+                            if (_elem.Style.Display != val) { _elem.Style.Display = val; changed = true; }
+                            break;
+                        case "position":
+                            if (_elem.Style.Position != val) { _elem.Style.Position = val; changed = true; }
+                            break;
+                        default:
+                            if (_elem.Attributes.GetValueOrDefault("style-" + key, "") != val)
+                            {
+                                _elem.Attributes["style-" + key] = val;
+                                changed = true;
+                            }
+                            break;
+                    }
+                    if (changed)
+                    {
+                        _elem.MarkIntrinsicDirty();
+                        _overlay.RefreshUI();
+                    }
+                }
+            }
+        }
+        public StyleProxy style => new StyleProxy(elem, overlay);
+        // === CLASSLIST (full) ===
         public class ClassList
         {
             private readonly HtmlElement _elem;
             private readonly UIOverlay _overlay;
-
             public ClassList(HtmlElement elem, UIOverlay overlay)
             {
                 _elem = elem;
                 _overlay = overlay;
             }
-
             public bool contains(string className)
             {
                 if (string.IsNullOrEmpty(className)) return false;
                 string classes = _elem.Attributes.GetValueOrDefault("class", "");
                 return classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(className);
             }
-
             public void add(string className)
             {
                 if (string.IsNullOrEmpty(className)) return;
@@ -241,7 +295,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     _overlay.RefreshUI();
                 }
             }
-
             public void remove(string className)
             {
                 if (string.IsNullOrEmpty(className)) return;
@@ -253,7 +306,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     _overlay.RefreshUI();
                 }
             }
-
             public void toggle(string className)
             {
                 if (contains(className))
@@ -262,24 +314,19 @@ namespace SiegeEngine.Core.UI.JSParser
                     add(className);
             }
         }
-
         public ClassList classList => new ClassList(elem, overlay);
-
-        // === EXISTING METHODS (unchanged) ===
         public void appendChild(JSElement child)
         {
             elem.Children.Add(child.elem);
             child.elem.Parent = elem;
             overlay.RefreshUI();
         }
-
         public void removeChild(JSElement child)
         {
             elem.Children.Remove(child.elem);
             child.elem.Parent = null;
             overlay.RefreshUI();
         }
-
         public void insertBefore(JSElement newChild, JSElement referenceChild)
         {
             int index = elem.Children.IndexOf(referenceChild.elem);
@@ -290,7 +337,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
-
         public void replaceChild(JSElement newChild, JSElement oldChild)
         {
             int index = elem.Children.IndexOf(oldChild.elem);
@@ -302,36 +348,30 @@ namespace SiegeEngine.Core.UI.JSParser
                 overlay.RefreshUI();
             }
         }
-
         public string getAttribute(string name)
         {
             return elem.Attributes.GetValueOrDefault(name, null);
         }
-
         public void setAttribute(string name, string value)
         {
             elem.Attributes[name] = value;
             overlay.RefreshUI();
         }
-
         public void removeAttribute(string name)
         {
             elem.Attributes.Remove(name);
             overlay.RefreshUI();
         }
-
         public JSElement querySelector(string selector)
         {
             var elemFound = QuerySelectorAll(selector).FirstOrDefault();
             return elemFound == null ? null : new JSElement(elemFound, overlay);
         }
-
         public List<JSElement> querySelectorAll(string selector)
         {
             var elems = QuerySelectorAll(selector);
             return elems.Select(e => new JSElement(e, overlay)).ToList();
         }
-
         private List<HtmlElement> QuerySelectorAll(string selector)
         {
             List<HtmlElement> matches = new List<HtmlElement>();
@@ -352,14 +392,12 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             return matches;
         }
-
         public void addEventListener(string eventName, object callback)
         {
             eventName = eventName.ToLower();
             if (!elem.EventListeners.ContainsKey(eventName)) elem.EventListeners[eventName] = new List<object>();
             elem.EventListeners[eventName].Add(callback);
         }
-
         public void removeEventListener(string eventName, object callback)
         {
             eventName = eventName.ToLower();
@@ -368,6 +406,103 @@ namespace SiegeEngine.Core.UI.JSParser
                 elem.EventListeners[eventName].Remove(callback);
                 if (elem.EventListeners[eventName].Count == 0) elem.EventListeners.Remove(eventName);
             }
+        }
+
+        // === MISSING SetMember (routes style.left = ... to proxy) ===
+        public void SetMember(object objValue, object propValue, object value)
+        {
+            if (objValue is Dictionary<object, object> dictObj)
+            {
+                dictObj[propValue] = value;
+                return;
+            }
+            if (objValue is JSElement.StyleProxy proxy)
+            {
+                proxy[propValue.ToString()] = value;
+                return;
+            }
+            if (objValue is List<object> listObj && propValue is double propD && Math.Floor(propD) == propD)
+            {
+                int index = (int)propD;
+                if (index >= 0 && index < listObj.Count)
+                {
+                    listObj[index] = value;
+                    return;
+                }
+            }
+            if (objValue is JSElement jsElem && propValue is string prop)
+            {
+                if (prop == "value")
+                {
+                    string tag = jsElem.elem.Tag.ToLower();
+                    if (tag == "select")
+                    {
+                        bool found = false;
+                        foreach (var opt in jsElem.elem.Children.Where(c => c.Tag.ToLower() == "option"))
+                        {
+                            string optVal = opt.Attributes.GetValueOrDefault("value", ((TextElement)opt.Children.FirstOrDefault())?.Content ?? "");
+                            if (optVal == value.ToString())
+                            {
+                                opt.Attributes["selected"] = "";
+                                found = true;
+                            }
+                            else
+                            {
+                                opt.Attributes.Remove("selected");
+                            }
+                        }
+                    }
+                    else if (tag == "option")
+                    {
+                        jsElem.elem.Attributes["value"] = value.ToString();
+                    }
+                    else if (tag == "input")
+                    {
+                        if (jsElem.elem is InputElement inp)
+                        {
+                            inp.Value = value.ToString();
+                        }
+                        jsElem.elem.Attributes["value"] = value.ToString();
+                    }
+                }
+                else if (prop == "innerHTML")
+                {
+                    if (value is string strVal && strVal == "")
+                    {
+                        jsElem.elem.Children.Clear();
+                    }
+                }
+                else if (prop == "textContent")
+                {
+                    if (value is string txt)
+                    {
+                        jsElem.elem.Children.RemoveAll(c => c is TextElement);
+                        if (!string.IsNullOrEmpty(txt))
+                        {
+                            TextElement textElem = new TextElement { Content = txt };
+                            textElem.Parent = jsElem.elem;
+                            jsElem.elem.Children.Add(textElem);
+                        }
+                    }
+                }
+                else if (prop == "style")
+                {
+                    if (value is Dictionary<object, object> styleDict)
+                    {
+                        foreach (var kv in styleDict)
+                        {
+                            if (kv.Key is string key && kv.Value is string val)
+                            {
+                                jsElem.elem.Style.SetProperty(key, val);
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+            var type = objValue?.GetType();
+            var prop1 = type?.GetProperty(propValue.ToString());
+            prop1?.SetValue(objValue, value);
         }
     }
 }
