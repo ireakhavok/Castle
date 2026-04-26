@@ -448,6 +448,11 @@ namespace SiegeEngine.Core.UI.JSParser
                     return;
                 }
             }
+            if (objValue is JSElement.StyleProxy proxy)
+            {
+                proxy[propValue.ToString()] = value;
+                return;
+            }
             if (objValue is JSElement jsElem && propValue is string prop)
             {
                 if (prop == "value")
@@ -572,6 +577,14 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 finally
                 {
+                    // MINIMAL TARGETED FIX for live closure mutations (isDraggingEnd etc.):
+                    // Sync mutated outer-scope vars back to the original captured IIFE scope
+                    // so the next mousemove handler sees the updated flag value.
+                    foreach (var key in closure.Captured.Keys.ToList())
+                    {
+                        if (CurrentScope().ContainsKey(key))
+                            closure.Captured[key] = CurrentScope()[key];
+                    }
                     PopScope();
                 }
                 return result;
