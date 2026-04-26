@@ -198,7 +198,7 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             get { return elem is RangeElement r ? r.Max : 100f; }
         }
-        // === LIVE STYLE PROXY (guaranteed visual update for absolute trim handles) ===
+        // === LIVE STYLE PROXY (unchanged) ===
         public class StyleProxy
         {
             private readonly HtmlElement _elem;
@@ -269,22 +269,18 @@ namespace SiegeEngine.Core.UI.JSParser
                             p = p.Parent;
                         }
                         _overlay.RefreshUI();
-
-                        // Direct position update for absolute trim handles (guarantees visual movement)
                         if ((key == "left" || key == "top") &&
                             (_elem.Style.Position == "absolute" || _elem.Style.Position == "fixed"))
                         {
-                            HtmlElement cb = _elem.Parent; // direct parent is the timeline bar (relative)
+                            HtmlElement cb = _elem.Parent;
                             float refW = cb != null ? cb.ComputedContentWidth : _overlay.PanelWidth;
                             float refH = cb != null ? cb.ComputedContentHeight : _overlay.PanelHeight;
                             float newLeft = key == "left" ? HtmlLayoutUtils.ParseSize(val, refW, _overlay.PanelWidth, _overlay.PanelHeight) : float.NaN;
                             float newTop = key == "top" ? HtmlLayoutUtils.ParseSize(val, refH, _overlay.PanelWidth, _overlay.PanelHeight) : float.NaN;
-
                             float newX = _elem.ComputedPosition.X;
                             float newY = _elem.ComputedPosition.Y;
                             if (!float.IsNaN(newLeft)) newX = (cb != null ? cb.ComputedContentX : 0) + newLeft;
                             if (!float.IsNaN(newTop)) newY = (cb != null ? cb.ComputedContentY : 0) + newTop;
-
                             _elem.ComputedPosition = new Vector2(newX, newY);
                             _elem.UpdateFullTransforms(Matrix4x4.Identity);
                         }
@@ -433,13 +429,35 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (elem.EventListeners[eventName].Count == 0) elem.EventListeners.Remove(eventName);
             }
         }
-        // === NEW: Call this from JS mouseup handler to guarantee release/commit ===
+        // === PROPER releaseDrag: searches for the ACTUAL registered mouseup handler ===
         public void releaseDrag()
         {
             overlay.RefreshUI();
-            Console.WriteLine("[JSElement] Drag released - final position committed to timeline");
+            // Search the document for the real mouseup handler(s) that were registered by the IIFE
+            if (overlay._document != null && overlay._document._eventListeners.TryGetValue("mouseup", out var mouseupListeners))
+            {
+                var mouseEvent = new Dictionary<object, object>
+                {
+                    ["clientX"] = 0.0,
+                    ["clientY"] = 0.0,
+                    ["target"] = this
+                };
+                foreach (var handler in mouseupListeners.ToList())
+                {
+                    try
+                    {
+                        overlay._jsContext.Evaluator.CallFunction(handler, new List<object> { mouseEvent });
+                    }
+                    catch (Exception ex)
+                    {
+                        // Non-fatal: the unsupported "new CustomEvent" line is skipped,
+                        // but the critical isDragging* = false lines (which run before it) have already executed.
+                        Console.WriteLine($"[JSElement] releaseDrag handler warning (non-fatal): {ex.Message}");
+                    }
+                }
+            }
+            Console.WriteLine("[JSElement] Drag released via real mouseup handler");
         }
-        // === MISSING SetMember (routes style.left = ... to proxy) ===
         public void SetMember(object objValue, object propValue, object value)
         {
             if (objValue is Dictionary<object, object> dictObj)

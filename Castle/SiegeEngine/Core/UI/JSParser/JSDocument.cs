@@ -4,25 +4,21 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSDocument
     {
         private UIOverlay _overlay;
         public readonly Dictionary<string, List<object>> _eventListeners = new Dictionary<string, List<object>>();
-
         public JSDocument(UIOverlay overlay)
         {
             _overlay = overlay;
         }
-
         public JSElement getElementById(string id)
         {
             var elem = _overlay.FindElementById(id);
             return elem == null ? null : new JSElement(elem, _overlay);
         }
-
         public JSElement createElement(string tag)
         {
             HtmlElement newElem;
@@ -37,31 +33,26 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             return new JSElement(newElem, _overlay);
         }
-
         public List<JSElement> getElementsByTagName(string tag)
         {
             var elems = _overlay.FindElementsByTag(tag);
             return elems.Select(e => new JSElement(e, _overlay)).ToList();
         }
-
         public List<JSElement> getElementsByClassName(string className)
         {
             var elems = _overlay.FindElementsByClass(className);
             return elems.Select(e => new JSElement(e, _overlay)).ToList();
         }
-
         public JSElement querySelector(string selector)
         {
             var elem = QuerySelectorAll(selector).FirstOrDefault();
             return elem == null ? null : new JSElement(elem, _overlay);
         }
-
         public List<JSElement> querySelectorAll(string selector)
         {
             var elems = QuerySelectorAll(selector);
             return elems.Select(e => new JSElement(e, _overlay)).ToList();
         }
-
         public void addEventListener(string eventName, object callback)
         {
             eventName = eventName.ToLower();
@@ -69,7 +60,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 _eventListeners[eventName] = new List<object>();
             _eventListeners[eventName].Add(callback);
         }
-
         public void removeEventListener(string eventName, object callback)
         {
             eventName = eventName.ToLower();
@@ -80,16 +70,13 @@ namespace SiegeEngine.Core.UI.JSParser
                     _eventListeners.Remove(eventName);
             }
         }
-
         internal bool InvokeDocumentListeners(string eventName, HtmlElement targetElement)
         {
             eventName = eventName.ToLower();
             if (!_eventListeners.TryGetValue(eventName, out var listeners))
                 return false;
-
             var jsEvent = new JSClickEvent(targetElement, _overlay);
             bool handled = false;
-
             foreach (var cb in listeners.ToList())
             {
                 object result = _overlay._jsContext.Evaluator.CallFunction(cb, new List<object> { jsEvent });
@@ -98,52 +85,21 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             return handled;
         }
-
         public void InvokeDocumentMousemove(Vector2 mousePos)
         {
             if (!_eventListeners.TryGetValue("mousemove", out var listeners) || listeners.Count == 0)
                 return;
-
             var mouseEvent = new Dictionary<object, object>
             {
                 ["clientX"] = mousePos.X,
                 ["clientY"] = mousePos.Y,
                 ["target"] = null
             };
-
             foreach (var cb in listeners.ToList())
             {
                 _overlay._jsContext.Evaluator.CallFunction(cb, new List<object> { mouseEvent });
             }
         }
-
-        public void InvokeDocumentMouseup(Vector2 mousePos)
-        {
-            if (!_eventListeners.TryGetValue("mouseup", out var listeners) || listeners.Count == 0)
-                return;
-
-            var mouseEvent = new Dictionary<object, object>
-            {
-                ["clientX"] = mousePos.X,
-                ["clientY"] = mousePos.Y,
-                ["target"] = null
-            };
-
-            foreach (var cb in listeners.ToList())
-            {
-                try
-                {
-                    _overlay._jsContext.Evaluator.CallFunction(cb, new List<object> { mouseEvent });
-                }
-                catch (Exception ex)
-                {
-                    // Ignore unsupported JS features (e.g. "new CustomEvent") in user handlers.
-                    // The important flag-reset code still runs before/after the crashing line.
-                    Console.WriteLine($"[JSDocument] Mouseup handler warning (non-fatal): {ex.Message}");
-                }
-            }
-        }
-
         private List<HtmlElement> QuerySelectorAll(string selector)
         {
             List<HtmlElement> matches = new List<HtmlElement>();
@@ -165,11 +121,9 @@ namespace SiegeEngine.Core.UI.JSParser
             return matches;
         }
     }
-
     public class JSClickEvent
     {
         public JSElement target { get; }
-
         public JSClickEvent(HtmlElement targetElement, UIOverlay overlay)
         {
             target = new JSElement(targetElement, overlay);
