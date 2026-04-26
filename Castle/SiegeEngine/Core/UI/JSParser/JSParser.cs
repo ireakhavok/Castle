@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI.JSParser
-// File: JSParser.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -96,6 +94,11 @@ namespace SiegeEngine.Core.UI.JSParser
                 {
                     Token token = new Token(TokenType.String, ParseString());
                     return token;
+                }
+                if (_currentChar == '`')
+                {
+                    string content = ParseBacktickString();
+                    return new Token(TokenType.String, content);
                 }
                 if (_currentChar == '/')
                 {
@@ -265,10 +268,49 @@ namespace SiegeEngine.Core.UI.JSParser
             StringBuilder sb = new StringBuilder();
             while (_currentChar != '\0' && _currentChar != quote)
             {
-                sb.Append(_currentChar);
-                Advance();
+                if (_currentChar == '\\')
+                {
+                    sb.Append('\\');
+                    Advance();
+                    if (_currentChar != '\0')
+                    {
+                        sb.Append(_currentChar);
+                        Advance();
+                    }
+                }
+                else
+                {
+                    sb.Append(_currentChar);
+                    Advance();
+                }
             }
             if (_currentChar == quote) Advance();
+            return sb.ToString();
+        }
+
+        private string ParseBacktickString()
+        {
+            Advance(); // consume opening `
+            StringBuilder sb = new StringBuilder();
+            while (_currentChar != '\0' && _currentChar != '`')
+            {
+                if (_currentChar == '\\')
+                {
+                    sb.Append('\\');
+                    Advance();
+                    if (_currentChar != '\0')
+                    {
+                        sb.Append(_currentChar);
+                        Advance();
+                    }
+                }
+                else
+                {
+                    sb.Append(_currentChar);
+                    Advance();
+                }
+            }
+            if (_currentChar == '`') Advance();
             return sb.ToString();
         }
 
@@ -391,12 +433,26 @@ namespace SiegeEngine.Core.UI.JSParser
             {
                 paramsList.Add(ParseIdentifier());
                 SkipWhitespaceAndComments();
+                if (_currentChar == '=')
+                {
+                    Advance();
+                    SkipWhitespaceAndComments();
+                    ParseExpression(); // consume default value (e.g. = 10.0) but ignore for now
+                    SkipWhitespaceAndComments();
+                }
                 while (_currentChar == ',')
                 {
                     Advance();
                     SkipWhitespaceAndComments();
                     paramsList.Add(ParseIdentifier());
                     SkipWhitespaceAndComments();
+                    if (_currentChar == '=')
+                    {
+                        Advance();
+                        SkipWhitespaceAndComments();
+                        ParseExpression();
+                        SkipWhitespaceAndComments();
+                    }
                 }
             }
             Consume(TokenType.RightParen);
@@ -778,12 +834,26 @@ namespace SiegeEngine.Core.UI.JSParser
                     {
                         paramsList.Add(ParseIdentifier());
                         SkipWhitespaceAndComments();
+                        if (_currentChar == '=')
+                        {
+                            Advance();
+                            SkipWhitespaceAndComments();
+                            ParseExpression();
+                            SkipWhitespaceAndComments();
+                        }
                         while (_currentChar == ',')
                         {
                             Advance();
                             SkipWhitespaceAndComments();
                             paramsList.Add(ParseIdentifier());
                             SkipWhitespaceAndComments();
+                            if (_currentChar == '=')
+                            {
+                                Advance();
+                                SkipWhitespaceAndComments();
+                                ParseExpression();
+                                SkipWhitespaceAndComments();
+                            }
                         }
                     }
                     Consume(TokenType.RightParen);
@@ -813,7 +883,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     return new IdentifierNode(idName);
 
                 case TokenType.LeftParen:
-                    // FULL GROUPED EXPRESSION SUPPORT
                     SkipWhitespaceAndComments();
                     List<ASTNode> paramList = new List<ASTNode>();
                     if (_currentChar != ')')
@@ -831,7 +900,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     Consume(TokenType.RightParen);
                     SkipWhitespaceAndComments();
 
-                    // Arrow function detection
                     if (_currentChar == '=' && PeekNext() == '>')
                     {
                         Advance(); // =
@@ -850,13 +918,10 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     else
                     {
-                        // Normal grouped expression (the case that was throwing before)
-                        // Return the single expression inside (or the comma expression if multiple)
                         if (paramList.Count == 1)
                         {
                             return paramList[0];
                         }
-                        // Multiple expressions inside parentheses = comma operator (valid JS)
                         return new BinaryExpressionNode(paramList[0], ",", paramList.Count > 1 ? paramList[1] : null);
                     }
 
@@ -990,7 +1055,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 sb.Append(_currentChar);
                 Advance();
             }
-            _position--; // back up for next token
+            _position--;
             return sb.ToString();
         }
     }
