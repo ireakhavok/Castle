@@ -534,14 +534,14 @@ namespace SiegeEngine.Core.UI.JSParser
         }
         public object CallFunction(object callee, List<object> args)
         {
-            Console.WriteLine($"[JSEvaluator] CallFunction ENTER - calleeType={(callee?.GetType().Name ?? "null")}, args.Count={args?.Count ?? 0}");
+            //Console.WriteLine($"[JSEvaluator] CallFunction ENTER - calleeType={(callee?.GetType().Name ?? "null")}, args.Count={args?.Count ?? 0}");
             if (callee is object[] arr && arr.Length == 1)
             {
                 callee = arr[0];
             }
             if (callee is JSArrowClosure closure)
             {
-                Console.WriteLine($"[JSEvaluator] CallFunction - JSArrowClosure branch - Params.Count={closure.Params?.Count ?? 0}, BodyType={(closure.Body?.GetType().Name ?? "null")}");
+                //Console.WriteLine($"[JSEvaluator] CallFunction - JSArrowClosure branch - Params.Count={closure.Params?.Count ?? 0}, BodyType={(closure.Body?.GetType().Name ?? "null")}");
                 List<object> callArgs = args ?? new List<object>();
                 while (callArgs.Count < closure.Params.Count)
                     callArgs.Add(null);

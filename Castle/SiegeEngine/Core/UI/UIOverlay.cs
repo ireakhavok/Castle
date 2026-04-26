@@ -443,7 +443,7 @@ namespace SiegeEngine.Core.UI
             {
                 TriggerChange(elem);
             }
-            RefreshUI();
+            //RefreshUI();
             return handled;
         }
         private void CloseAllOpenNavDropdowns()

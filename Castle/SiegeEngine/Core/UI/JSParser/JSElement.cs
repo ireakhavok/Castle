@@ -1,5 +1,4 @@
-﻿// File: SiegeEngine/Core/UI/JSParser/JSElement.cs
-using SiegeEngine.Core.UI.Elements;
+﻿using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -198,7 +197,7 @@ namespace SiegeEngine.Core.UI.JSParser
         {
             get { return elem is RangeElement r ? r.Max : 100f; }
         }
-        // === LIVE STYLE PROXY (unchanged) ===
+        // === LIVE STYLE PROXY (FIXED - no RefreshUI on every style change during drag) ===
         public class StyleProxy
         {
             private readonly HtmlElement _elem;
@@ -206,7 +205,7 @@ namespace SiegeEngine.Core.UI.JSParser
             public StyleProxy(HtmlElement elem, UIOverlay overlay)
             {
                 _elem = elem;
-                _overlay = overlay;
+                this._overlay = overlay;
             }
             public object this[string key]
             {
@@ -268,7 +267,7 @@ namespace SiegeEngine.Core.UI.JSParser
                             p.MarkIntrinsicDirty();
                             p = p.Parent;
                         }
-                        _overlay.RefreshUI();
+                        // REMOVED: _overlay.RefreshUI();   ← this was causing the jump on every drag
                         if ((key == "left" || key == "top") &&
                             (_elem.Style.Position == "absolute" || _elem.Style.Position == "fixed"))
                         {
@@ -297,7 +296,7 @@ namespace SiegeEngine.Core.UI.JSParser
             public ClassList(HtmlElement elem, UIOverlay overlay)
             {
                 _elem = elem;
-                _overlay = overlay;
+                this._overlay = overlay;
             }
             public bool contains(string className)
             {
@@ -429,7 +428,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (elem.EventListeners[eventName].Count == 0) elem.EventListeners.Remove(eventName);
             }
         }
-        // === releaseDrag: calls the REAL registered mouseup handler (no try-catch — errors visible) ===
         public void releaseDrag()
         {
             overlay.RefreshUI();

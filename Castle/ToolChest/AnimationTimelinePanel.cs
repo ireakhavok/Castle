@@ -128,11 +128,11 @@ namespace ToolChest
                     _previewScene.LoadAnimation(path);
                     _previewScene.TogglePlay();
 
-                    // Push real duration + start/end to the JS (this is the only change)
+                    // Only correct way — push to JS, nothing else
                     _uiOverlay._jsContext.Run($"window.AnimationTimeline.setDuration({_animDuration});");
                     _uiOverlay._jsContext.Run($"window.AnimationTimeline.setStartEnd(0, {_animDuration});");
 
-                    Console.WriteLine($"[AnimationTimelinePanel] Real duration {_animDuration:F2}s pushed to JS from stack/animation");
+                    Console.WriteLine($"[AnimationTimelinePanel] Real duration {_animDuration:F2}s pushed to JS");
                 }
             }
             catch (Exception ex)
