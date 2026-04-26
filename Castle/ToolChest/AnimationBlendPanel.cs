@@ -48,6 +48,7 @@ namespace ToolChest
         private int _draggingClipIndex = -1;
         private bool _draggingCurrentPoint = false;
         private bool _greenLocked = false;
+        private bool _rightWasDownLastFrame = false;
         public AnimationBlendPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -219,7 +220,6 @@ namespace ToolChest
             var pack = new AnimationPack("blend_pack_" + DateTime.Now.Ticks, _currentStack.Name ?? "Blend Pack");
             pack.Clips = _currentStack.Clips;
             pack.Animations = _previewScene._model?.Animations ?? new List<Animation>();
-
             var entity = new Entity { Type = "BlendedAnimation" };
             entity.AddComponent(new ModelComponent { Model = _previewScene._model, Key = _currentStack.Name ?? "blend_model" });
             entity.AddComponent(new BlendedAnimationComponent
@@ -238,6 +238,12 @@ namespace ToolChest
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+
+            bool rightDown = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
+            bool rightPressed = rightDown && !_rightWasDownLastFrame;
+            bool rightReleased = !rightDown && _rightWasDownLastFrame;
+            _rightWasDownLastFrame = rightDown;
+
             bool spaceDown = _controlContext.GetKey(_window, Key.Space) == InputAction.Press;
             if (!spaceDown && _spaceWasDown)
             {
@@ -264,12 +270,12 @@ namespace ToolChest
                 float gw = gridElem.ComputedWidth;
                 float gh = gridElem.ComputedHeight;
                 bool overGrid = relMouse.X >= gx && relMouse.X <= gx + gw && relMouse.Y >= gy && relMouse.Y <= gy + gh;
-                if (overGrid && mousePressed)
+                if (overGrid && (mousePressed || rightPressed))
                 {
                     float cx = gx + ((_currentBlendPoint.X + 1f) / 2f * gw);
                     float cy = gy + ((_currentBlendPoint.Y + 1f) / 2f * gh);
                     bool hitGreen = Math.Abs(relMouse.X - cx) < 14 && Math.Abs(relMouse.Y - cy) < 14;
-                    if (hitGreen)
+                    if (hitGreen && !rightPressed && !rightReleased)   // prevent green dot moving on right-click
                     {
                         if (mouseDown)
                         {
@@ -294,16 +300,19 @@ namespace ToolChest
                         if (hitIndex >= 0)
                         {
                             if (mouseDown) _draggingClipIndex = hitIndex;
-                            else if (mouseReleased)
+                            else if (rightReleased)
                             {
-                                if (_draggingClipIndex == hitIndex)
+                                if (_draggingClipIndex == hitIndex || _draggingClipIndex == -1)
                                 {
+                                    var clip = _currentStack.Clips[hitIndex];
                                     AnimationTimelinePanel.Open(_renderContext, _controlContext, _window, _eventBus);
                                     _eventBus.Publish(new GenericEvent
                                     {
                                         Hook = "OpenTimelineForClip",
-                                        Data = new Dictionary<string, string> { { "path", _currentStack.Clips[hitIndex].AnimationPath }, { "index", hitIndex.ToString() } }
+                                        Data = new Dictionary<string, string> { { "path", clip.AnimationPath }, { "index", hitIndex.ToString() } }
                                     });
+                                    _currentBlendPoint = clip.BlendCoordinate;
+                                    _previewScene.SetBlendPreview(_currentStack, _currentBlendPoint);
                                 }
                                 _draggingClipIndex = -1;
                             }
@@ -345,6 +354,34 @@ namespace ToolChest
                 {
                     _draggingCurrentPoint = false;
                     _draggingClipIndex = -1;
+                }
+
+                if (rightReleased)
+                {
+                    int hitIndex = -1;
+                    for (int i = 0; i < _currentStack.Clips.Count; i++)
+                    {
+                        var clip = _currentStack.Clips[i];
+                        float px = gx + ((clip.BlendCoordinate.X + 1f) / 2f * gw);
+                        float py = gy + ((clip.BlendCoordinate.Y + 1f) / 2f * gh);
+                        if (Math.Abs(relMouse.X - px) < 14 && Math.Abs(relMouse.Y - py) < 14)
+                        {
+                            hitIndex = i;
+                            break;
+                        }
+                    }
+                    if (hitIndex >= 0)
+                    {
+                        var clip = _currentStack.Clips[hitIndex];
+                        AnimationTimelinePanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                        _eventBus.Publish(new GenericEvent
+                        {
+                            Hook = "OpenTimelineForClip",
+                            Data = new Dictionary<string, string> { { "path", clip.AnimationPath }, { "index", hitIndex.ToString() } }
+                        });
+                        _currentBlendPoint = clip.BlendCoordinate;
+                        _previewScene.SetBlendPreview(_currentStack, _currentBlendPoint);
+                    }
                 }
             }
         }
