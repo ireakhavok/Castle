@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
 namespace SiegeEngine.Core.UI.JSParser
 {
@@ -54,7 +55,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     return funcDecl;
                 case ArrowExpressionNode arrow:
-                    Console.WriteLine($"[JSEvaluator] Creating JSArrowClosure - Params.Count={arrow.Params?.Count ?? 0}, BodyType={(arrow.Body?.GetType().Name ?? "null")}");
                     var captured = new Dictionary<string, object>(CurrentScope());
                     return new JSArrowClosure(arrow.Params, arrow.Body, captured, this);
                 case ReturnStatementNode ret:
@@ -139,6 +139,8 @@ namespace SiegeEngine.Core.UI.JSParser
                     return GetVariable(id.Name);
                 case LiteralNode lit:
                     return lit.Value;
+                case TemplateLiteralNode template:
+                    return EvaluateTemplateLiteral(template);
                 case ArrayExpressionNode arr:
                     List<object> arrElements = new List<object>();
                     foreach (var el in arr.Elements)
@@ -175,6 +177,22 @@ namespace SiegeEngine.Core.UI.JSParser
                     throw new Exception("Unsupported node type: " + node.GetType());
             }
         }
+
+        private string EvaluateTemplateLiteral(TemplateLiteralNode template)
+        {
+            StringBuilder result = new StringBuilder();
+            for (int i = 0; i < template.Quasis.Count; i++)
+            {
+                result.Append(template.Quasis[i]);
+                if (i < template.Expressions.Count)
+                {
+                    object exprValue = Evaluate(template.Expressions[i]);
+                    result.Append(exprValue?.ToString() ?? "");
+                }
+            }
+            return result.ToString();
+        }
+
         public void PushScope()
         {
             _scopeStack.Push(new Dictionary<string, object>());
