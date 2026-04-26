@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/UI
-// File: UIOverlay.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Rendering;
@@ -12,7 +10,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public class UIOverlay
@@ -38,12 +35,10 @@ namespace SiegeEngine.Core.UI
         private bool _needsVerticalScrollbar = false;
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
-
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
             : this(renderContext, controlContext, window, null)
         {
         }
-
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -51,7 +46,6 @@ namespace SiegeEngine.Core.UI
             _window = window;
             _eventBus = eventBus;
         }
-
         public virtual void Init()
         {
             _uiShader = new ShaderProgram(_renderContext, UiShader.VertexSource, UiShader.FragmentSource);
@@ -61,7 +55,6 @@ namespace SiegeEngine.Core.UI
             _cssParser = new CssParser();
             _interactionLayer = new UIInteractionLayer(this, _controlContext, _window);
         }
-
         public void LoadUI(string html, string baseDir = "")
         {
             _currentBaseDir = baseDir;
@@ -113,7 +106,6 @@ namespace SiegeEngine.Core.UI
             }
             RefreshUI();
         }
-
         private void InitializeElementProperties(HtmlElement root)
         {
             Queue<HtmlElement> queue = new Queue<HtmlElement>();
@@ -144,7 +136,6 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
-
         private void InheritProperties(HtmlElement elem, HtmlElement parent)
         {
             if (parent != null)
@@ -164,11 +155,9 @@ namespace SiegeEngine.Core.UI
             foreach (var child in elem.Children)
                 InheritProperties(child, elem);
         }
-
         private void CollectClickables(HtmlElement elem)
         {
             if (elem.GetEffectiveDisplay() == "none") return;
-
             bool isOptionInsideClosedSelect = false;
             if (elem.Tag.ToLower() == "option")
             {
@@ -177,12 +166,10 @@ namespace SiegeEngine.Core.UI
                     isOptionInsideClosedSelect = true;
                 }
             }
-
             string classes = elem.Attributes.GetValueOrDefault("class", "");
             string tagLower = elem.Tag.ToLower();
-
             bool isTreeNode = tagLower == "li" && classes.Contains("node");
-
+            bool hasId = elem.Attributes.ContainsKey("id");
             if (!isOptionInsideClosedSelect &&
                 (isTreeNode ||
                  classes.Contains("button") || classes.Contains("toggle") || tagLower == "select" || tagLower == "label" || tagLower == "a" ||
@@ -191,20 +178,18 @@ namespace SiegeEngine.Core.UI
                  elem.Attributes.ContainsKey("onmouseleave") || elem.Attributes.ContainsKey("onmouseover") || elem.Attributes.ContainsKey("onmouseout") ||
                  elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") ||
                  elem.Attributes.ContainsKey("onblur") || tagLower == "input" ||
-                 (tagLower == "li" && (classes.Contains("nav-dropdown") || elem.Children.Any(c => c.Tag.ToLower() == "ul")))))
+                 (tagLower == "li" && (classes.Contains("nav-dropdown") || elem.Children.Any(c => c.Tag.ToLower() == "ul"))) ||
+                 hasId))
             {
                 _uiClickables.Add(elem);
             }
-
             foreach (var child in elem.Children)
                 CollectClickables(child);
         }
-
         protected virtual void HandleDataHook(string hook)
         {
             DataHookProcessor.Process(hook, _renderContext, _controlContext, _window, _eventBus, this);
         }
-
         protected virtual void HandleLink(string href)
         {
             if (string.IsNullOrEmpty(href)) return;
@@ -218,7 +203,6 @@ namespace SiegeEngine.Core.UI
                 Console.WriteLine($"UIOverlay: Failed to load relative path: {resolvedPath}");
             }
         }
-
         public void RefreshUI()
         {
             if (_uiRoot == null) return;
@@ -229,12 +213,10 @@ namespace SiegeEngine.Core.UI
             _uiClickables.Clear();
             CollectClickables(_uiRoot);
         }
-
         public HtmlElement FindElementById(string id)
         {
             return FindElementById(_uiRoot, id);
         }
-
         protected HtmlElement FindElementById(HtmlElement root, string id)
         {
             if (root == null) return null;
@@ -246,12 +228,10 @@ namespace SiegeEngine.Core.UI
             }
             return null;
         }
-
         public List<HtmlElement> FindElementsByClass(string className)
         {
             return FindElementsByClass(_uiRoot, className);
         }
-
         protected List<HtmlElement> FindElementsByClass(HtmlElement root, string className)
         {
             if (root == null) return new List<HtmlElement>();
@@ -267,12 +247,10 @@ namespace SiegeEngine.Core.UI
             }
             return list;
         }
-
         public List<HtmlElement> FindElementsByTag(string tag)
         {
             return FindElementsByTag(_uiRoot, tag);
         }
-
         protected List<HtmlElement> FindElementsByTag(HtmlElement root, string tag)
         {
             if (root == null) return new List<HtmlElement>();
@@ -287,7 +265,6 @@ namespace SiegeEngine.Core.UI
             }
             return list;
         }
-
         public virtual bool HandleUIClick(HtmlElement elem)
         {
             if (elem == null) return false;
@@ -469,20 +446,17 @@ namespace SiegeEngine.Core.UI
             RefreshUI();
             return handled;
         }
-
         private void CloseAllOpenNavDropdowns()
         {
             var navLis = FindElementsByTag("li")
                 .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
                 .Cast<NavLiElement>()
                 .ToList();
-
             foreach (var nav in navLis)
             {
                 nav.CloseDropdown();
             }
         }
-
         public void CloseAllOpenSelects()
         {
             var selects = FindElementsByTag("select");
@@ -494,12 +468,10 @@ namespace SiegeEngine.Core.UI
                 }
             }
         }
-
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
             _interactionLayer.Update(deltaTime, relMousePos, currentMouseDown, panelW, panelH);
         }
-
         protected virtual void RenderUI(float w, float h)
         {
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -527,7 +499,6 @@ namespace SiegeEngine.Core.UI
             }
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         public virtual void Render()
         {
             if (_uiRoot != null)
@@ -535,7 +506,6 @@ namespace SiegeEngine.Core.UI
                 RenderUI(PanelWidth, PanelHeight);
             }
         }
-
         public virtual void RenderBackgrounds(float w, float h)
         {
             if (_uiRoot != null)
@@ -543,7 +513,6 @@ namespace SiegeEngine.Core.UI
                 _uiRoot.RenderBackgroundOnly(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
             }
         }
-
         public void RecomputeLayout(float w, float h)
         {
             if (_uiRoot == null) return;
@@ -560,7 +529,6 @@ namespace SiegeEngine.Core.UI
             _uiRoot.UpdateFullTransforms(Matrix4x4.Identity);
             UpdateContentHeight();
         }
-
         private void UpdateContentHeight()
         {
             if (_uiRoot == null) return;
@@ -592,7 +560,6 @@ namespace SiegeEngine.Core.UI
                 ScrollOffsetY = 0f;
             }
         }
-
         public void Scroll(float deltaY)
         {
             if (!_needsVerticalScrollbar)
@@ -605,7 +572,6 @@ namespace SiegeEngine.Core.UI
             float effectiveContentHeight = Math.Max(0f, ContentFullHeight - ReservedHeaderHeight);
             ScrollOffsetY = Math.Clamp(ScrollOffsetY, 0f, effectiveContentHeight - usableHeight);
         }
-
         public virtual void Dispose()
         {
             _uiShader.Dispose();
@@ -613,35 +579,33 @@ namespace SiegeEngine.Core.UI
             _uiRoot = null;
             _uiClickables.Clear();
         }
-
         public virtual void TriggerChange(HtmlElement elem)
         {
             var current = elem;
+            var jsElem = new JSElement(elem, this);
             while (current != null)
             {
                 if (!string.IsNullOrEmpty(current.OnChangeJS))
                 {
-                    _jsContext.RunWithThis(current.OnChangeJS, new JSElement(current, this));
+                    _jsContext.RunWithThis(current.OnChangeJS, jsElem);
                 }
-                InvokeListeners(current, "change");
+                InvokeListeners(current, "change", jsElem);
                 current = current.Parent;
             }
         }
-
-        public bool InvokeListeners(HtmlElement elem, string eventName)
+        public bool InvokeListeners(HtmlElement elem, string eventName, JSElement jsElem = null)
         {
             if (elem.EventListeners.ContainsKey(eventName))
             {
-                var jsElem = new JSElement(elem, this);
+                if (jsElem == null) jsElem = new JSElement(elem, this);
                 foreach (var cb in elem.EventListeners[eventName])
                 {
-                    _jsContext.Evaluator.CallFunction(cb, new List<object>());
+                    _jsContext.Evaluator.CallFunction(cb, new List<object> { jsElem });
                 }
                 return true;
             }
             return false;
         }
-
         /// <summary>
         /// Public accessor for TextRenderer so IDEBasePanel can pre-compute dropdown layouts during Update().
         /// </summary>

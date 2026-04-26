@@ -1,12 +1,9 @@
-﻿// Folder: SiegeEngine.Core.UI.JSParser
-// File: JSEvaluator.cs
-using SiegeEngine.Core.UI.Elements;
+﻿using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSEvaluator
@@ -14,12 +11,10 @@ namespace SiegeEngine.Core.UI.JSParser
         private Dictionary<string, object> _globalScope = new Dictionary<string, object>();
         private Stack<Dictionary<string, object>> _scopeStack = new Stack<Dictionary<string, object>>();
         private Dictionary<string, FunctionDeclarationNode> _functions = new Dictionary<string, FunctionDeclarationNode>();
-
         public JSEvaluator()
         {
             _scopeStack.Push(_globalScope);
         }
-
         public object Evaluate(ASTNode node)
         {
             switch (node)
@@ -59,7 +54,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     }
                     return funcDecl;
                 case ArrowExpressionNode arrow:
-                    //console.WriteLine("[JSEval] Arrow literal evaluated - capturing " + CurrentScope().Count + " vars");
                     var captured = new Dictionary<string, object>(CurrentScope());
                     return new JSArrowClosure(arrow.Params, arrow.Body, captured, this);
                 case ReturnStatementNode ret:
@@ -177,26 +171,21 @@ namespace SiegeEngine.Core.UI.JSParser
                 case ThisExpressionNode _:
                     return CurrentScope().GetValueOrDefault("this", null);
                 default:
-                    //console.WriteLine("Unsupported node type: " + node.GetType());
                     throw new Exception("Unsupported node type: " + node.GetType());
             }
         }
-
         public void PushScope()
         {
             _scopeStack.Push(new Dictionary<string, object>());
         }
-
         public void PopScope()
         {
             _scopeStack.Pop();
         }
-
         public Dictionary<string, object> CurrentScope()
         {
             return _scopeStack.Peek();
         }
-
         private object GetVariable(string name)
         {
             foreach (var scope in _scopeStack)
@@ -208,7 +197,6 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             throw new Exception($"Undefined variable: {name}");
         }
-
         private void SetValue(ASTNode target, object value)
         {
             switch (target)
@@ -247,7 +235,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     throw new Exception("Invalid assignment target");
             }
         }
-
         private object GetMember(object objValue, object propValue)
         {
             if (objValue is Dictionary<object, object> dictObj)
@@ -256,8 +243,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     return val;
                 return JSStandardLibrary.GetObjectMember(this, dictObj, propValue.ToString());
             }
-
-            // === CORE FIX: support both List<object> and List<JSElement> from querySelectorAll ===
             if (objValue is List<object> listObj)
             {
                 if (propValue is double propD && Math.Floor(propD) == propD)
@@ -283,7 +268,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 return JSStandardLibrary.GetArrayMember(this, boxed, propValue.ToString());
             }
-
             if (objValue is string str)
             {
                 return JSStandardLibrary.GetStringMember(this, str, propValue.ToString());
@@ -300,20 +284,15 @@ namespace SiegeEngine.Core.UI.JSParser
             {
                 return JSStandardLibrary.GetDateMember(this, date, propValue.ToString());
             }
-
             if (objValue is JSElement jsElem && propValue is string jsProp)
             {
-                //console.WriteLine("[GetMember Debug] JSElement property: " + jsProp);
                 if (jsProp == "appendChild")
                 {
-                    //console.WriteLine("[GetMember Debug] Found appendChild on JSElement - returning callable Func");
                     return new Action<JSElement>(child => jsElem.appendChild(child));
                 }
                 if (jsProp == "value")
                 {
                     string tag = jsElem.elem.Tag.ToLower();
-                    string id = jsElem.elem.Attributes.GetValueOrDefault("id", "(no-id)");
-                    //console.WriteLine("[JSElement.value getter] Getting " + tag + "#" + id);
                     if (tag == "select")
                     {
                         var selected = jsElem.elem.Children.FirstOrDefault(c => c.Attributes.ContainsKey("selected"));
@@ -350,10 +329,8 @@ namespace SiegeEngine.Core.UI.JSParser
                     return jsElem.classList;
                 }
             }
-
             if (objValue is JSElement.ClassList cls && propValue is string clsProp)
             {
-                //console.WriteLine("[GetMember Debug] ClassList method: " + clsProp);
                 if (clsProp == "contains")
                     return new Func<string, bool>(cls.contains);
                 if (clsProp == "add")
@@ -363,34 +340,26 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (clsProp == "toggle")
                     return new Action<string>(cls.toggle);
             }
-
             if (objValue is JSDocument jsDoc && propValue is string docProp && docProp == "createElement")
             {
-                //console.WriteLine("[GetMember Debug] Found createElement on JSDocument - returning callable Func");
                 return new Func<string, JSElement>(tag => jsDoc.createElement(tag));
             }
-
             if (propValue is string reflectionProp)
             {
-                //console.WriteLine("[GetMember Debug] Reflection lookup for '" + reflectionProp + "' on type " + (objValue?.GetType().FullName ?? "null"));
                 var type = objValue?.GetType();
                 var prop = type?.GetProperty(reflectionProp);
                 if (prop != null)
                 {
-                    //console.WriteLine("[GetMember Debug] Found property '" + reflectionProp + "'");
                     return prop.GetValue(objValue);
                 }
                 var meth = type?.GetMethod(reflectionProp, BindingFlags.Instance | BindingFlags.Public);
                 if (meth != null)
                 {
-                    //console.WriteLine("[GetMember Debug] Found method '" + reflectionProp + "' - returning callable Func");
                     return new Func<object[], object>(args => meth.Invoke(objValue, args));
                 }
-                //console.WriteLine("[GetMember Debug] No property or method found for '" + reflectionProp + "'");
             }
             return null;
         }
-
         private void SetMember(object objValue, object propValue, object value)
         {
             if (objValue is Dictionary<object, object> dictObj)
@@ -412,9 +381,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 if (prop == "value")
                 {
                     string tag = jsElem.elem.Tag.ToLower();
-                    string id = jsElem.elem.Attributes.GetValueOrDefault("id", "(no-id)");
-                    //console.WriteLine("[JSElement.value setter] Setting " + tag + "#" + id + " value = " + value);
-                    string oldValue = "";
                     if (tag == "select")
                     {
                         bool found = false;
@@ -431,11 +397,7 @@ namespace SiegeEngine.Core.UI.JSParser
                                 opt.Attributes.Remove("selected");
                             }
                         }
-                        if (found)
-                        {
-                            jsElem.overlay.RefreshUI();
-                            jsElem.overlay.TriggerChange(jsElem.elem);
-                        }
+                        // REMOVED TriggerChange — this was causing the infinite loop with the HTML change listeners
                     }
                     else if (tag == "option")
                     {
@@ -445,25 +407,17 @@ namespace SiegeEngine.Core.UI.JSParser
                     {
                         if (jsElem.elem is InputElement inp)
                         {
-                            oldValue = inp.Value;
                             inp.Value = value.ToString();
                         }
                         jsElem.elem.Attributes["value"] = value.ToString();
-                        if (oldValue != value.ToString())
-                        {
-                            //console.WriteLine("[JSElement] Triggering input listeners after C# value set on " + tag + "#" + id);
-                            jsElem.overlay.RefreshUI();
-                            jsElem.overlay.TriggerChange(jsElem.elem);
-                        }
+                        // REMOVED TriggerChange — root cause of the Evaluate → SetMember → TriggerChange loop
                     }
                 }
                 else if (prop == "innerHTML")
                 {
-                    //console.WriteLine("Debug: Setting innerHTML");
                     if (value is string strVal && strVal == "")
                     {
                         jsElem.elem.Children.Clear();
-                        jsElem.overlay.RefreshUI();
                     }
                 }
                 else if (prop == "textContent")
@@ -477,7 +431,6 @@ namespace SiegeEngine.Core.UI.JSParser
                             textElem.Parent = jsElem.elem;
                             jsElem.elem.Children.Add(textElem);
                         }
-                        jsElem.overlay.RefreshUI();
                     }
                 }
                 else if (prop == "style")
@@ -491,7 +444,6 @@ namespace SiegeEngine.Core.UI.JSParser
                                 jsElem.elem.Style.SetProperty(key, val);
                             }
                         }
-                        jsElem.overlay.RefreshUI();
                     }
                 }
                 return;
@@ -500,25 +452,20 @@ namespace SiegeEngine.Core.UI.JSParser
             var prop1 = type?.GetProperty(propValue.ToString());
             prop1?.SetValue(objValue, value);
         }
-
         public object CallFunction(object callee, List<object> args)
         {
-            //console.WriteLine("[CallFunction Debug] Callee type: " + (callee?.GetType().FullName ?? "NULL") + " | Is null: " + (callee == null) + " | Arg count: " + args.Count);
-            if (callee != null)
-            {
-                //console.WriteLine("[CallFunction Debug] Callee value preview: " + callee.ToString().Substring(0, Math.Min(100, callee.ToString().Length)));
-            }
-
             if (callee is object[] arr && arr.Length == 1)
             {
-                //console.WriteLine("[CallFunction Debug] Unwrapping Object[1] wrapper -> type " + (arr[0]?.GetType().FullName ?? "null"));
                 callee = arr[0];
             }
-
             if (callee is JSArrowClosure closure)
             {
-                //console.WriteLine("[ArrowCall] Invoking closure with " + args.Count + " args");
-                if (closure.Params.Count != args.Count)
+                List<object> callArgs = args;
+                if (closure.Params.Count == 0)
+                {
+                    callArgs = new List<object>();
+                }
+                if (closure.Params.Count != callArgs.Count)
                 {
                     throw new Exception("Argument count mismatch");
                 }
@@ -530,10 +477,10 @@ namespace SiegeEngine.Core.UI.JSParser
                         CurrentScope()[kv.Key] = kv.Value;
                     }
                 }
-                for (int i = 0; i < args.Count; i++)
+                for (int i = 0; i < callArgs.Count; i++)
                 {
                     string paramName = ((IdentifierNode)closure.Params[i]).Name;
-                    CurrentScope()[paramName] = args[i];
+                    CurrentScope()[paramName] = callArgs[i];
                 }
                 object result = null;
                 try
@@ -563,7 +510,6 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             if (callee is FunctionDeclarationNode func)
             {
-                //console.WriteLine("Debug: Calling function " + (func.Name ?? "anonymous"));
                 if (func.Params.Count != args.Count)
                 {
                     throw new Exception("Argument count mismatch");
@@ -611,7 +557,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 catch (Exception ex)
                 {
-                    //console.WriteLine("[CallFunction Error] Action<> DynamicInvoke failed: " + ex.Message);
                     throw;
                 }
                 return null;
@@ -633,13 +578,11 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 catch (Exception ex)
                 {
-                    //console.WriteLine("[CallFunction Error] DynamicInvoke failed: " + ex.Message);
                     throw;
                 }
             }
             throw new Exception("Not callable");
         }
-
         private object ApplyBinaryOp(string op, object left, object right)
         {
             if (op == "===")
@@ -676,7 +619,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: throw new Exception($"Unsupported binary operator: {op}");
             }
         }
-
         private object ApplyUnaryOp(string op, object arg)
         {
             dynamic dArg = arg ?? 0;
@@ -689,7 +631,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 default: throw new Exception($"Unsupported unary operator: {op}");
             }
         }
-
         public static bool IsTruthy(object value)
         {
             if (value == null) return false;
@@ -700,17 +641,14 @@ namespace SiegeEngine.Core.UI.JSParser
             if (value is Dictionary<object, object> d) return d.Count > 0;
             return true;
         }
-
         public void RegisterFunction(string name, FunctionDeclarationNode func)
         {
             _functions[name] = func;
         }
-
         public void RegisterGlobal(string name, object value)
         {
             _globalScope[name] = value;
         }
-
         private class JSArrowClosure
         {
             public List<ASTNode> Params { get; }
@@ -726,7 +664,6 @@ namespace SiegeEngine.Core.UI.JSParser
             }
         }
     }
-
     public class ReturnValue
     {
         public object Value { get; }
@@ -735,7 +672,6 @@ namespace SiegeEngine.Core.UI.JSParser
             Value = value;
         }
     }
-
     public class ReturnException : Exception
     {
         public object Value { get; }

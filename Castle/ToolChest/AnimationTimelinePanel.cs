@@ -47,8 +47,6 @@ namespace ToolChest
         private FBXModel _loadedAnimModel;
         private int _keyframeCount = 0;
         private float _animDuration = 10f;
-        private bool _draggingStart = false;
-        private bool _draggingEnd = false;
 
         private ModelViewerScene _previewScene;
 
@@ -68,7 +66,7 @@ namespace ToolChest
         public override void Init()
         {
             base.Init();
-            _previewScene.Initialize((int)Size.Y, (int)Size.X);   // MATCH AnimationBlendPanel: full panel size for correct aspect ratio/viewport (0.55f hack was causing fucked up preview when floating/docked)
+            _previewScene.Initialize((int)Size.Y, (int)Size.X);
             LoadUIFromFile("AnimationTimelineUI.html");
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _uiOverlay.RefreshUI();
@@ -152,42 +150,8 @@ namespace ToolChest
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _previewScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
 
-            float timelineLeft = Position.X + 30f;
-            float timelineRight = Position.X + Size.X - 30f;
-
-            if (mousePressed)
-            {
-                float relX = (absMousePos.X - timelineLeft) / (timelineRight - timelineLeft);
-                if (Math.Abs(relX - (_startFrame / _animDuration)) < 0.04f)
-                    _draggingStart = true;
-                else if (Math.Abs(relX - (_endFrame / _animDuration)) < 0.04f)
-                    _draggingEnd = true;
-                else if (absMousePos.X > timelineLeft && absMousePos.X < timelineRight)
-                {
-                    float t = Math.Clamp((absMousePos.X - timelineLeft) / (timelineRight - timelineLeft), 0f, 1f);
-                    _scrubTime = t * _animDuration;
-                }
-            }
-
-            if (_draggingStart && mouseDown)
-            {
-                float t = Math.Clamp((absMousePos.X - timelineLeft) / (timelineRight - timelineLeft), 0f, 1f);
-                _startFrame = t * _animDuration;
-                if (_startFrame > _endFrame) _startFrame = _endFrame;
-            }
-
-            if (_draggingEnd && mouseDown)
-            {
-                float t = Math.Clamp((absMousePos.X - timelineLeft) / (timelineRight - timelineLeft), 0f, 1f);
-                _endFrame = t * _animDuration;
-                if (_endFrame < _startFrame) _endFrame = _startFrame;
-            }
-
-            if (mouseReleased)
-            {
-                _draggingStart = false;
-                _draggingEnd = false;
-            }
+            // NOTE: Timeline drag/scrub is now 100% handled by the JS in AnimationTimelineUI.html
+            // (C# no longer interferes with start/end handles or scrub — this fixes sliders not moving/updating)
         }
 
         protected override void RenderInnerContent()
@@ -197,7 +161,7 @@ namespace ToolChest
 
         public override void OnLiveResize(float w, float h)
         {
-            _previewScene.Resize((int)w, (int)h);   // MATCH AnimationBlendPanel: full dimensions for correct aspect ratio/viewport in floating + docked states
+            _previewScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
 
