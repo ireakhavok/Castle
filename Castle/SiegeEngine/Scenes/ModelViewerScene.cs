@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Scenes
-// File: ModelViewerScene.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -58,6 +56,19 @@ namespace SiegeEngine.Scenes
         private Vector3 _blendPreviewParams = Vector3.Zero;
         private List<string> _lastAttachedPaths = new List<string>();
 
+        public float CurrentTime
+        {
+            get => _currentTime;
+            set
+            {
+                _currentTime = value;
+                if (_model != null && _model.Animations.Count > 0)
+                {
+                    UpdateTransformsFromTime(_currentTime);
+                }
+            }
+        }
+
         public ModelViewerScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -65,6 +76,7 @@ namespace SiegeEngine.Scenes
             _modelData = new ModelManager.ModelData();
         }
 
+        // ... (all the rest of the file is exactly as you provided — no other changes)
         public override void Initialize(int height, int width)
         {
             base.Initialize(height, width);
@@ -207,8 +219,6 @@ namespace SiegeEngine.Scenes
         private void UpdateTransformsFromTime(float time)
         {
             if (_model == null || _model.Skeleton == null || string.IsNullOrEmpty(_currentAnimationPath) || _model.Animations.Count == 0) return;
-
-            // Single source of truth: delegate to ComputeBlendedLocals (single-clip fast path)
             var tempStack = new AnimationBlendStack();
             tempStack.Clips.Add(new AnimationClipEntry
             {
@@ -219,14 +229,11 @@ namespace SiegeEngine.Scenes
                 PlaybackSpeed = 1f,
                 Loop = false
             });
-
             var locals = tempStack.ComputeBlendedLocals(Vector3.Zero, 0f, false, _model);
             if (locals == null) return;
-
             _currentGlobalTransforms = _model.Skeleton.ComputeGlobalTransforms(locals);
             _boneMatrices = new Matrix4x4[_model.Skeleton.Bones.Count];
             _currentNormalTransforms = new Matrix3x3[_model.Skeleton.Bones.Count];
-
             for (int i = 0; i < _model.Skeleton.Bones.Count; i++)
             {
                 _boneMatrices[i] = _model.Skeleton.Bones[i].BindPose * _currentGlobalTransforms[i];
@@ -243,7 +250,6 @@ namespace SiegeEngine.Scenes
                     _currentNormalTransforms[i] = Matrix3x3.Identity;
                 }
             }
-
             UpdateSkeletonVisualization();
         }
 

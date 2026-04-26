@@ -239,28 +239,24 @@
                 updateUI();
             }
 
-            // Make start handle draggable
             let isDraggingStart = false;
             startHandle.addEventListener('mousedown', (e) => {
                 isDraggingStart = true;
                 e.preventDefault();
             });
 
-            // Make end handle draggable
             let isDraggingEnd = false;
             endHandle.addEventListener('mousedown', (e) => {
                 isDraggingEnd = true;
                 e.preventDefault();
             });
 
-            // Timeline bar click / scrub
             timelineBar.addEventListener('mousedown', (e) => {
                 const rect = timelineBar.getBoundingClientRect();
                 const percent = ((e.clientX - rect.left) / rect.width) * 100;
                 setScrubTime(percent);
             });
 
-            // Global mouse move
             document.addEventListener('mousemove', (e) => {
                 if (!isDraggingStart && !isDraggingEnd) return;
 
@@ -275,13 +271,11 @@
                 }
             });
 
-            // Global mouse up — CLEAN (no dispatchEvent, no data-hook bullshit)
             document.addEventListener('mouseup', () => {
                 isDraggingStart = false;
                 isDraggingEnd = false;
             });
 
-            // Input field changes
             startInput.addEventListener('change', () => {
                 startTime = parseFloat(startInput.value) || 0;
                 if (startTime > endTime) startTime = endTime;
@@ -298,7 +292,6 @@
                 speedValue.textContent = parseFloat(speedSlider.value).toFixed(1) + 'x';
             });
 
-            // Initialize with default values
             function initialize(durationSeconds = 10.0) {
                 duration = durationSeconds;
                 startTime = 0;
@@ -307,7 +300,6 @@
                 updateUI();
             }
 
-            // Expose functions so C# can call them if needed
             window.AnimationTimeline = {
                 initialize: initialize,
                 setDuration: (d) => { duration = d; updateUI(); },
@@ -315,9 +307,9 @@
                 setScrub: (s) => { currentScrub = s; updateUI(); }
             };
 
-            // Auto-initialize
-            initialize(10.0);
-            console.log("[AnimationTimelineUI] JavaScript timeline fully loaded and ready");
+            // NOTE: initialize is NO LONGER called with hard-coded 10.0
+            // The C# side will call setDuration + setStartEnd with real values from the stack
+            console.log("[AnimationTimelineUI] JavaScript timeline ready (duration will be pushed from C#)");
         })();
     </script>
 </body>

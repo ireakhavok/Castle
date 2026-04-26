@@ -1,5 +1,4 @@
-﻿// File: ToolChest/AnimationTimelinePanel.cs
-using SiegeEngine.Core.AssetObjects;
+﻿using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -31,6 +30,7 @@ namespace ToolChest
             private readonly AnimationTimelinePanel _parent;
             public TimelineUIOverlay(AnimationTimelinePanel parent, IRenderContext rc, IControlContext cc, nint w, EventBus eb)
                 : base(rc, cc, w, eb) { _parent = parent; }
+
             public override bool HandleUIClick(HtmlElement elem)
             {
                 bool h = base.HandleUIClick(elem);
@@ -87,7 +87,6 @@ namespace ToolChest
                 {
                     _currentClipPath = path;
                     LoadAnimationForTimeline(path);
-                    _uiOverlay.RefreshUI();
                 }
             }
             else if (e.Hook == "TimelineCut")
@@ -129,21 +128,11 @@ namespace ToolChest
                     _previewScene.LoadAnimation(path);
                     _previewScene.TogglePlay();
 
-                    // DEFINITIVE architectural push: use the SAME path the JS drag uses (Style.LeftStr via proxy)
-                    var startHandle = _uiOverlay.FindElementById("startHandle");
-                    var endHandle = _uiOverlay.FindElementById("endHandle");
-                    var startInput = _uiOverlay.FindElementById("startFrame") as InputElement;
-                    var endInput = _uiOverlay.FindElementById("endFrame") as InputElement;
-                    var frameInfo = _uiOverlay.FindElementById("frameInfo") as TextElement;
+                    // Push real duration + start/end to the JS (this is the only change)
+                    _uiOverlay._jsContext.Run($"window.AnimationTimeline.setDuration({_animDuration});");
+                    _uiOverlay._jsContext.Run($"window.AnimationTimeline.setStartEnd(0, {_animDuration});");
 
-                    if (startHandle != null) startHandle.Style.LeftStr = "0%";
-                    if (endHandle != null) endHandle.Style.LeftStr = "100%";
-                    if (startInput != null) startInput.Value = "0.0";
-                    if (endInput != null) endInput.Value = _animDuration.ToString("F1");
-                    if (frameInfo != null) frameInfo.Content = $"0.0s / {_animDuration:F1}s | {Math.Round(_animDuration * 10)} frames";
-
-                    _uiOverlay.RefreshUI();
-                    Console.WriteLine($"[AnimationTimelinePanel] Duration {_animDuration:F2}s pushed directly to DOM (correct start/end/total frames)");
+                    Console.WriteLine($"[AnimationTimelinePanel] Real duration {_animDuration:F2}s pushed to JS from stack/animation");
                 }
             }
             catch (Exception ex)
