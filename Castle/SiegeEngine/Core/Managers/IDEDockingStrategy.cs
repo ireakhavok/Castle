@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
-// File: IDEDockingStrategy.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -53,6 +51,7 @@ namespace SiegeEngine.Core.Managers
             _quadRenderer = new UIQuadRenderer(renderContext);
             _root = new DockTabbedNode();
         }
+        public bool ContainsFloatingPanel(IPanel panel) => _floatingPanels.Contains(panel); // public accessor for PanelManager double-update guard
         public void ClearAll()
         {
             var pm = PanelManager.Current;

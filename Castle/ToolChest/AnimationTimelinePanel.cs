@@ -68,7 +68,7 @@ namespace ToolChest
         public override void Init()
         {
             base.Init();
-            _previewScene.Initialize((int)(Size.Y * 0.55f), (int)Size.X);
+            _previewScene.Initialize((int)Size.Y, (int)Size.X);   // MATCH AnimationBlendPanel: full panel size for correct aspect ratio/viewport (0.55f hack was causing fucked up preview when floating/docked)
             LoadUIFromFile("AnimationTimelineUI.html");
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _uiOverlay.RefreshUI();
@@ -197,7 +197,7 @@ namespace ToolChest
 
         public override void OnLiveResize(float w, float h)
         {
-            _previewScene.Resize((int)w, (int)(h * 0.55f));
+            _previewScene.Resize((int)w, (int)h);   // MATCH AnimationBlendPanel: full dimensions for correct aspect ratio/viewport in floating + docked states
             base.OnLiveResize(w, h);
         }
 

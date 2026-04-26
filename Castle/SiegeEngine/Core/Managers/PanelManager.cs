@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
-// File: PanelManager.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -65,7 +63,7 @@ namespace SiegeEngine.Core.Managers
         public void AddPanel(IPanel panel)
         {
             if (panel == null) return;
-            if (_panels.Contains(panel)) return;   // CENTRALIZED GUARD: prevents double-registration / double-Init from deserialize path
+            if (_panels.Contains(panel)) return; // CENTRALIZED GUARD: prevents double-registration / double-Init from deserialize path
             _panels.Add(panel);
             _router.AddPanel(panel);
             panel.Init();
@@ -124,7 +122,17 @@ namespace SiegeEngine.Core.Managers
             {
                 IPanel topmost = GetTopmostPanelAt(mousePos);
                 // === AUTHORITATIVE TOPMOST UPDATE (full mouse events + focus) ===
-                if (topmost != null)
+                bool handledByIDEStrategy = false;
+                if (_ideStrategy != null && topmost != null)
+                {
+                    // FIX: IDE floating panels are updated exclusively by IDEDockingStrategy to prevent double Update per frame
+                    // (AnimationTimelinePanel and other continuous-update panels were being called from both paths when floating)
+                    if (_ideStrategy.ContainsFloatingPanel(topmost))
+                    {
+                        handledByIDEStrategy = true;
+                    }
+                }
+                if (!handledByIDEStrategy && topmost != null)
                 {
                     topmost.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta);
                     if (BasePanel.MouseReleasedConsumedThisFrame && mouseReleased)
