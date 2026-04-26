@@ -1,5 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: UIInteractionLayer.cs
+﻿// File: SiegeEngine/Core/UI/UIInteractionLayer.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.UI.Elements;
@@ -41,17 +40,15 @@ namespace SiegeEngine.Core.UI
             _overlay.DidHandleClick = false;
             _overlay.PanelWidth = panelW;
             _overlay.PanelHeight = panelH;
-
             Vector2 scrolledMousePos = new Vector2(relMousePos.X, relMousePos.Y + _overlay.ScrollOffsetY);
             bool mousePress = !_prevMouseDown && currentMouseDown;
             bool mouseRelease = _prevMouseDown && !currentMouseDown;
-
             float vw = panelW;
             float vh = panelH;
 
             _openSelects = _overlay.FindElementsByTag("select").Where(s => (s as SelectElement)?.IsOpen ?? false).Cast<SelectElement>().ToList();
-
             var clickablesSnapshot = _overlay._uiClickables.ToList();
+
             foreach (var clickable in clickablesSnapshot)
             {
                 bool isDropdownElement = IsDropdownElement(clickable);
@@ -212,18 +209,17 @@ namespace SiegeEngine.Core.UI
                 _draggingSlider = null;
             }
 
-            // === IMPROVED: Only close open selects when releasing outside AND the flag is not set (prevents multiple-click requirement on dynamic selects) ===
             if (mouseRelease && _openSelects.Any() && !_justOpenedSelect && !dropdownReleaseHandled)
             {
                 _overlay.CloseAllOpenSelects();
                 _overlay.RefreshUI();
             }
 
-            // Reset flag only when mouse is released (keeps it alive during the entire press -> release cycle for quick clicks)
             if (!currentMouseDown)
             {
                 _justOpenedSelect = false;
             }
+
             _prevMouseDown = currentMouseDown;
 
             bool needsRefresh = false;
@@ -309,9 +305,17 @@ namespace SiegeEngine.Core.UI
                 }
                 needsRefresh = input.Update(deltaTime, _controlContext, _window);
             }
+
             if (needsRefresh)
             {
                 _overlay.RefreshUI();
+            }
+
+            // DEFINITIVE FIX: continuous mousemove dispatch to document listeners
+            // (enables timeline trim-handle drag + scrub without relying on element hover)
+            if (_overlay._document != null)
+            {
+                _overlay._document.InvokeDocumentMousemove(relMousePos);
             }
         }
 

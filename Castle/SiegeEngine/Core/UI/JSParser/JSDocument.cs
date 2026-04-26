@@ -1,16 +1,16 @@
-﻿// Folder: SiegeEngine.Core.UI.JSParser
-// File: JSDocument.cs
+﻿// File: SiegeEngine/Core/UI/JSParser/JSDocument.cs
+using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using SiegeEngine.Core.UI.Elements;
+using System.Numerics;
 
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSDocument
     {
         private UIOverlay _overlay;
-        private readonly Dictionary<string, List<object>> _eventListeners = new Dictionary<string, List<object>>();
+        public readonly Dictionary<string, List<object>> _eventListeners = new Dictionary<string, List<object>>();
 
         public JSDocument(UIOverlay overlay)
         {
@@ -97,6 +97,25 @@ namespace SiegeEngine.Core.UI.JSParser
                     handled = true;
             }
             return handled;
+        }
+
+        // NEW: public mousemove dispatch for timeline drag/scrub (clientX/Y + target)
+        public void InvokeDocumentMousemove(Vector2 mousePos)
+        {
+            if (!_eventListeners.TryGetValue("mousemove", out var listeners) || listeners.Count == 0)
+                return;
+
+            var mouseEvent = new Dictionary<object, object>
+            {
+                ["clientX"] = mousePos.X,
+                ["clientY"] = mousePos.Y,
+                ["target"] = null
+            };
+
+            foreach (var cb in listeners.ToList())
+            {
+                _overlay._jsContext.Evaluator.CallFunction(cb, new List<object> { mouseEvent });
+            }
         }
 
         private List<HtmlElement> QuerySelectorAll(string selector)

@@ -18,10 +18,32 @@ namespace SiegeEngine.Core.UI.JSParser
         public JSEvaluator()
         {
             _scopeStack.Push(_globalScope);
+
+            // DEFINITIVE: register Math (and common globals) so timeline JS (Math.max/min) and future scripts work
+            RegisterGlobal("Math", new Dictionary<object, object>
+            {
+                ["max"] = new Func<double, double, double>(Math.Max),
+                ["min"] = new Func<double, double, double>(Math.Min),
+                ["abs"] = new Func<double, double>(Math.Abs),
+                ["floor"] = new Func<double, double>(Math.Floor),
+                ["ceil"] = new Func<double, double>(Math.Ceiling),
+                ["round"] = new Func<double, double>(Math.Round),
+                ["random"] = new Func<double>(() => new Random().NextDouble())
+            });
+            RegisterGlobal("console", new Dictionary<object, object>
+            {
+                ["log"] = new Action<object>(o => Console.WriteLine("[JS] " + (o?.ToString() ?? "null")))
+            });
         }
 
         public object Evaluate(ASTNode node)
         {
+            if (node == null)
+            {
+                // Handle bare "return;" (no value) and any other null node gracefully
+                return null;
+            }
+
             switch (node)
             {
                 case ProgramNode program:
@@ -62,7 +84,7 @@ namespace SiegeEngine.Core.UI.JSParser
                     var captured = new Dictionary<string, object>(CurrentScope());
                     return new JSArrowClosure(arrow.Params, arrow.Body, captured, this);
                 case ReturnStatementNode ret:
-                    return new ReturnValue(Evaluate(ret.Argument));
+                    return new ReturnValue(ret.Argument == null ? null : Evaluate(ret.Argument));
                 case IfStatementNode ifStmt:
                     object test = Evaluate(ifStmt.Test);
                     if (IsTruthy(test))
@@ -357,13 +379,11 @@ namespace SiegeEngine.Core.UI.JSParser
                     return jsElem.classList;
                 }
 
-                // Event method stubs (preventDefault etc.)
                 if (jsProp == "preventDefault" || jsProp == "stopPropagation" || jsProp == "stopImmediatePropagation")
                 {
                     return new Action(() => { });
                 }
 
-                // NEW: full DOM Element support for timeline JS (getBoundingClientRect + clientX/Y on event objects)
                 if (jsProp == "getBoundingClientRect")
                 {
                     return new Func<Dictionary<object, object>>(() =>
@@ -389,7 +409,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 if (jsProp == "clientX" || jsProp == "clientY" || jsProp == "pageX" || jsProp == "pageY")
                 {
-                    // Placeholder for event objects passed to listeners — prevents crash; real mouse coords available in panel Update if needed for future refinement
                     return 0.0;
                 }
             }
