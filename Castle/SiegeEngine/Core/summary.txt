@@ -1745,12 +1745,14 @@ Folder: UI
   - Class: ReturnException (Namespace: SiegeEngine.Core.UI.JSParser)
     - Inherits: Exception
     
-    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Linq, System.Reflection, System.Text.RegularExpressions
+    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Linq, System.Reflection, System.Text, System.Text.RegularExpressions
 - File: JSParser.cs
-  - Class: Token (Namespace: SiegeEngine.Core.UI.JSParser)
+  - Class: TemplateLiteralNode (Namespace: SiegeEngine.Core.UI.JSParser)
+    - Inherits: ASTNode
+    
     - Dependencies: System, System.Collections.Generic, System.Text
     - Methods:
-      - constructor Token( object value, TokenType type)
+      - constructor TemplateLiteralNode( List<ASTNode> expressions, List<string> quasis)
 - File: JSStandardLibrary.cs
   - Class: JSDate (Namespace: SiegeEngine.Core.UI.JSParser)
     - Dependencies: System, System.Collections.Generic, System.Globalization, System.Linq, System.Text.Json, System.Text.RegularExpressions, YamlDotNet.Core.Tokens
@@ -2045,7 +2047,7 @@ Folder: UI
         - Calls: _uiClickables.Clear
       - void TriggerChange(HtmlElement elem)
         - Calls: InvokeListeners, JSElement, _jsContext.RunWithThis
-      - bool InvokeListeners( string eventName, HtmlElement elem)
+      - bool InvokeListeners( JSElement jsElem = null,  string eventName, HtmlElement elem)
         - Calls: JSElement, _jsContext.Evaluator.CallFunction
 - File: UlElement.cs
   - Class: UlElement (Namespace: SiegeEngine.Core.UI.Elements)
@@ -2228,7 +2230,7 @@ SiegeEngine.Core.UI.JSParser.JSClickEvent
 SiegeEngine.Core.UI.JSParser.JSContext
 SiegeEngine.Core.UI.JSParser.JSDate
 SiegeEngine.Core.UI.JSParser.ReturnException
-SiegeEngine.Core.UI.JSParser.Token
+SiegeEngine.Core.UI.JSParser.TemplateLiteralNode
 SiegeEngine.Core.UI.MenuUIOverlay
 SiegeEngine.Core.UI.PanelChrome
 SiegeEngine.Core.UI.UIInteractionLayer
