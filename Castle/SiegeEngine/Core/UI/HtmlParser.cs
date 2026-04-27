@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: HtmlParser.cs
-using SiegeEngine.Core.UI.Elements;
+﻿using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -53,6 +51,32 @@ namespace SiegeEngine.Core.UI
                         string tag = ReadUntil(c => char.IsWhiteSpace(c) || c == '>');
                         string lowerTag = tag.ToLower();
 
+                        HtmlElement elem = null;
+
+                        if (lowerTag == "script" || lowerTag == "style")
+                        {
+                            while (_index < _html.Length && _html[_index] != '>')
+                            {
+                                _index++;
+                            }
+                            if (_index < _html.Length) _index++;
+
+                            string endMarker = "</" + lowerTag + ">";
+                            int endPos = _html.IndexOf(endMarker, _index, StringComparison.OrdinalIgnoreCase);
+                            if (endPos == -1) endPos = _html.Length;
+
+                            string rawContent = _html.Substring(_index, endPos - _index);
+                            _index = endPos + endMarker.Length;
+
+                            elem = new HtmlElement { Tag = lowerTag };
+                            elem.Parent = parent;
+                            TextElement textChild = new TextElement { Content = rawContent };
+                            textChild.Parent = elem;
+                            elem.Children.Add(textChild);
+                            parent.Children.Add(elem);
+                            continue;
+                        }
+
                         bool isInsideNav = false;
                         HtmlElement p = parent;
                         while (p != null)
@@ -65,7 +89,6 @@ namespace SiegeEngine.Core.UI
                             p = p.Parent;
                         }
 
-                        HtmlElement elem;
                         switch (lowerTag)
                         {
                             case "button":

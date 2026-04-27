@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine.Core.AssetParsing
+// File: ModelManager.cs
+using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -104,13 +106,10 @@ namespace SiegeEngine.Core.AssetParsing
         {
             string key = Path.GetFileNameWithoutExtension(packPath).ToLower();
             if (_animationPacks.ContainsKey(key)) return;
-
             FBXFileForest forest = FBXParser.Load(packPath);
             FBXModel model = FBXParser.BuildModelFromForest(forest);
-
             var pack = new AnimationPack(key, key);
             pack.Animations = model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
-
             if (model.Skeleton != null)
             {
                 for (int i = 0; i < model.Skeleton.Bones.Count; i++)
@@ -118,7 +117,6 @@ namespace SiegeEngine.Core.AssetParsing
                     pack.BoneNameToIndex[model.Skeleton.Bones[i].Name] = i;
                 }
             }
-
             _animationPacks[key] = pack;
         }
 
@@ -128,19 +126,40 @@ namespace SiegeEngine.Core.AssetParsing
             {
                 throw new InvalidOperationException($"Target model {targetModelKey} not loaded");
             }
-
             string packKey = packId.ToLower();
             if (!_animationPacks.TryGetValue(packKey, out var pack))
             {
                 throw new InvalidOperationException($"AnimationPack {packKey} not loaded");
             }
-
             _models[targetModelKey].Animations.AddRange(pack.Animations);
         }
 
         public bool TryGetAnimationPack(string packId, out AnimationPack pack)
         {
             return _animationPacks.TryGetValue(packId.ToLower(), out pack);
+        }
+
+        public void AttachBlendStack(string targetModelKey, AnimationBlendStack stack)
+        {
+            if (stack == null || string.IsNullOrEmpty(targetModelKey)) return;
+            string key = targetModelKey.ToLower();
+            if (!_models.ContainsKey(key)) return;
+
+            var uniquePaths = stack.Clips
+                .Where(c => !string.IsNullOrEmpty(c.AnimationPath))
+                .Select(c => c.AnimationPath)
+                .Distinct()
+                .ToList();
+
+            foreach (var animPath in uniquePaths)
+            {
+                AttachAnimation(targetModelKey, animPath);
+            }
+
+            if (!string.IsNullOrEmpty(stack.SharedSkeletonPath))
+            {
+                AttachSkeleton(targetModelKey, stack.SharedSkeletonPath);
+            }
         }
 
         private void UpdateModelData(string key)
@@ -167,7 +186,6 @@ namespace SiegeEngine.Core.AssetParsing
                 List<uint> albedos = new List<uint>();
                 List<uint> normals = new List<uint>();
                 List<uint> metallics = new List<uint>();
-
                 foreach (var mat in mesh.Materials)
                 {
                     var albedoInfo = mat.Textures.GetValueOrDefault("albedo");
@@ -191,7 +209,6 @@ namespace SiegeEngine.Core.AssetParsing
                         }
                     }
                     albedos.Add(albedo);
-
                     uint normalTex = 0;
                     var normalInfo = mat.Textures.GetValueOrDefault("normal");
                     if (normalInfo != null)
@@ -213,7 +230,6 @@ namespace SiegeEngine.Core.AssetParsing
                         }
                     }
                     normals.Add(normalTex);
-
                     uint metallic = 0;
                     var metallicInfo = mat.Textures.GetValueOrDefault("metallic");
                     if (metallicInfo != null)
@@ -236,16 +252,13 @@ namespace SiegeEngine.Core.AssetParsing
                     }
                     metallics.Add(metallic);
                 }
-
                 if (albedos.Count > 4)
                 {
                     albedos = albedos.Take(4).ToList();
                     normals = normals.Take(4).ToList();
                     metallics = metallics.Take(4).ToList();
                 }
-
                 ComputeTangents(mesh);
-
                 float[] vertexData = new float[mesh.Vertices.Count * 20];
                 for (int i = 0; i < mesh.Vertices.Count; i++)
                 {
@@ -272,7 +285,6 @@ namespace SiegeEngine.Core.AssetParsing
                     vertexData[offset + 18] = vertex.Weights.Z;
                     vertexData[offset + 19] = vertex.Weights.W;
                 }
-
                 uint vao = _renderContext.GenVertexArray();
                 uint vbo = _renderContext.GenBuffer();
                 uint ebo = _renderContext.GenBuffer();
@@ -287,7 +299,6 @@ namespace SiegeEngine.Core.AssetParsing
                     _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, ebo);
                     _renderContext.BufferData(_renderContext.Enums.ElementArrayBuffer, (uint)(mesh.Indices.Count * sizeof(uint)), ptr, _renderContext.Enums.StaticDraw);
                 }
-
                 uint stride = 20 * sizeof(float);
                 _renderContext.EnableVertexAttribArray(0);
                 _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
@@ -304,7 +315,6 @@ namespace SiegeEngine.Core.AssetParsing
                 _renderContext.EnableVertexAttribArray(7);
                 _renderContext.VertexAttribPointer(7, 4, _renderContext.Enums.Float, false, stride, (void*)(16 * sizeof(float)));
                 _renderContext.BindVertexArray(0);
-
                 mmr.Vao = vao;
                 mmr.Vbo = vbo;
                 mmr.Ebo = ebo;

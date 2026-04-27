@@ -1,5 +1,4 @@
-﻿// Folder: SiegeEngine.Core.UI
-// File: UIInteractionLayer.cs
+﻿// File: SiegeEngine/Core/UI/UIInteractionLayer.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.UI.Elements;
@@ -9,7 +8,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.UI
 {
     public class UIInteractionLayer
@@ -27,30 +25,24 @@ namespace SiegeEngine.Core.UI
         private const double RepeatRate = 0.05;
         private RangeElement _draggingSlider = null;
         private float _sliderOldValue;
-
         public UIInteractionLayer(UIOverlay overlay, IControlContext controlContext, nint window)
         {
             _overlay = overlay;
             _controlContext = controlContext;
             _window = window;
         }
-
         public void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
             if (_overlay._uiRoot == null) return;
             _overlay.DidHandleClick = false;
             _overlay.PanelWidth = panelW;
             _overlay.PanelHeight = panelH;
-
             Vector2 scrolledMousePos = new Vector2(relMousePos.X, relMousePos.Y + _overlay.ScrollOffsetY);
             bool mousePress = !_prevMouseDown && currentMouseDown;
             bool mouseRelease = _prevMouseDown && !currentMouseDown;
-
             float vw = panelW;
             float vh = panelH;
-
             _openSelects = _overlay.FindElementsByTag("select").Where(s => (s as SelectElement)?.IsOpen ?? false).Cast<SelectElement>().ToList();
-
             var clickablesSnapshot = _overlay._uiClickables.ToList();
             foreach (var clickable in clickablesSnapshot)
             {
@@ -58,7 +50,6 @@ namespace SiegeEngine.Core.UI
                 Vector2 effectiveMouse = isDropdownElement ? relMousePos : scrolledMousePos;
                 clickable.UpdateHover(effectiveMouse, vw, vh);
             }
-
             bool dropdownPressHandled = false;
             foreach (var select in _openSelects)
             {
@@ -90,7 +81,6 @@ namespace SiegeEngine.Core.UI
                 }
                 if (dropdownPressHandled) break;
             }
-
             if (!dropdownPressHandled)
             {
                 foreach (var clickable in clickablesSnapshot.Where(c => !IsDropdownElement(c)))
@@ -112,7 +102,6 @@ namespace SiegeEngine.Core.UI
                     }
                 }
             }
-
             bool dropdownReleaseHandled = false;
             foreach (var select in _openSelects)
             {
@@ -160,7 +149,6 @@ namespace SiegeEngine.Core.UI
                 }
                 if (dropdownReleaseHandled) break;
             }
-
             if (!dropdownReleaseHandled)
             {
                 foreach (var clickable in clickablesSnapshot.Where(c => !IsDropdownElement(c)))
@@ -185,7 +173,6 @@ namespace SiegeEngine.Core.UI
                     }
                 }
             }
-
             if (currentMouseDown && _draggingSlider != null)
             {
                 float relX = Math.Clamp(relMousePos.X - _draggingSlider.ComputedContentX, 0f, _draggingSlider.ComputedContentWidth);
@@ -202,7 +189,6 @@ namespace SiegeEngine.Core.UI
                     _overlay.InvokeListeners(_draggingSlider, "input");
                 }
             }
-
             if (mouseRelease && _draggingSlider != null)
             {
                 if (Math.Abs(_sliderOldValue - _draggingSlider.Value) > 0.0001f)
@@ -211,21 +197,16 @@ namespace SiegeEngine.Core.UI
                 }
                 _draggingSlider = null;
             }
-
-            // === IMPROVED: Only close open selects when releasing outside AND the flag is not set (prevents multiple-click requirement on dynamic selects) ===
             if (mouseRelease && _openSelects.Any() && !_justOpenedSelect && !dropdownReleaseHandled)
             {
                 _overlay.CloseAllOpenSelects();
                 _overlay.RefreshUI();
             }
-
-            // Reset flag only when mouse is released (keeps it alive during the entire press -> release cycle for quick clicks)
             if (!currentMouseDown)
             {
                 _justOpenedSelect = false;
             }
             _prevMouseDown = currentMouseDown;
-
             bool needsRefresh = false;
             bool changed = false;
             if (_currentFocused is InputElement input && (input.Type == "text" || input.Type == "number"))
@@ -313,8 +294,16 @@ namespace SiegeEngine.Core.UI
             {
                 _overlay.RefreshUI();
             }
+            if (_overlay._document != null)
+            {
+                _overlay._document.InvokeDocumentMousemove(relMousePos);
+                if (mouseRelease)
+                {
+                    _overlay._document.InvokeDocumentMouseup(relMousePos);
+                }
+            }
+            _prevMouseDown = currentMouseDown;
         }
-
         private bool IsDropdownElement(HtmlElement elem)
         {
             if (elem.Tag.ToLower() == "option" && elem.Parent is SelectElement s && s.IsOpen)

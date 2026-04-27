@@ -2,50 +2,67 @@
 <html>
 <head>
     <style>
-        .timeline-container {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(30, 30, 30, 0.95);
-            padding: 12px 16px;
-            border-radius: 8px;
-            border: 1px solid #555;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        body {
+            margin: 0;
+            padding: 8px;
+            background: #1e1e1e;
+            color: #ddd;
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+        }
+
+        .main-container {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            min-width: 620px;
+            height: 100%;
+            gap: 8px;
+        }
+
+        .preview-area {
+            flex: 1 1 55%;
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timeline-section {
+            flex: 0 0 auto;
+            background: #252525;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 10px 12px;
         }
 
         .timeline-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: #aaa;
+            margin-bottom: 6px;
             font-size: 10px;
-            margin-bottom: 4px;
+            color: #aaa;
         }
 
-        .timeline-bar {
+        .timeline-bar-container {
             position: relative;
-            width: 100%;
-            height: 38px;
+            height: 42px;
             background: #1a1a1a;
-            border: 1px solid #444;
+            border: 1px solid #555;
             border-radius: 4px;
-            overflow: hidden;
             cursor: pointer;
+            user-select: none;
         }
 
         .timeline-track {
             position: absolute;
             top: 50%;
-            left: 0;
-            right: 0;
+            left: 8px;
+            right: 8px;
             height: 6px;
             background: #444;
             transform: translateY(-50%);
+            border-radius: 3px;
         }
 
         .playhead {
@@ -54,23 +71,37 @@
             bottom: 0;
             width: 3px;
             background: #4ade80;
-            box-shadow: 0 0 8px #4ade80;
-            z-index: 10;
-        }
-
-        .frame-ticks {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 100%;
+            box-shadow: 0 0 6px #4ade80;
+            z-index: 20;
             pointer-events: none;
         }
 
-        .controls-row {
+        .trim-handle {
+            position: absolute;
+            top: -2px;
+            width: 14px;
+            height: 46px;
+            background: #fff;
+            border: 2px solid #222;
+            border-radius: 3px;
+            cursor: ew-resize;
+            z-index: 30;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+            .trim-handle.start {
+                background: #22c55e;
+            }
+
+            .trim-handle.end {
+                background: #ef4444;
+            }
+
+        .controls {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 12px;
+            margin-top: 8px;
         }
 
         .control-group {
@@ -80,38 +111,28 @@
         }
 
         .control-label {
-            color: #ccc;
+            color: #aaa;
             font-size: 10px;
-            min-width: 42px;
+            min-width: 38px;
         }
 
-        input[type=range] {
-            width: 120px;
-        }
-
-        input[type=number] {
-            width: 58px;
-            background: #222;
+        input[type="number"], input[type="range"] {
+            background: #2a2a2a;
             color: #eee;
             border: 1px solid #555;
-            padding: 3px 5px;
             border-radius: 3px;
             font-size: 11px;
         }
 
         .action-btn {
-            padding: 6px 13px;
-            background: #555;
+            padding: 5px 14px;
+            background: #3b82f6;
             color: white;
             border: none;
             border-radius: 4px;
-            cursor: pointer;
             font-size: 11px;
+            cursor: pointer;
         }
-
-            .action-btn:hover {
-                background: #777;
-            }
 
         .frame-info {
             color: #888;
@@ -121,37 +142,175 @@
     </style>
 </head>
 <body>
-    <div class="timeline-container">
-        <div class="timeline-header">
-            <span>Animation Timeline</span>
-            <span class="frame-info" id="frameInfo">0.0 / 10.0s</span>
+    <div class="main-container">
+        <!-- 3D Preview Area -->
+        <div class="preview-area" id="previewArea">
+            <!-- ModelViewerScene renders here -->
         </div>
 
-        <!-- Visual Timeline Scrubber -->
-        <div id="timelineBar" class="timeline-bar" data-hook="TimelineScrub">
-            <div class="timeline-track"></div>
-            <div id="playhead" class="playhead" style="left: 0%;"></div>
-            <div class="frame-ticks"></div>
-        </div>
-
-        <div class="controls-row">
-            <div class="control-group">
-                <span class="control-label">Start</span>
-                <input type="number" id="startFrame" step="0.1" value="0" data-hook="TimelineCut" />
-            </div>
-            <div class="control-group">
-                <span class="control-label">End</span>
-                <input type="number" id="endFrame" step="0.1" value="10" data-hook="TimelineCut" />
-            </div>
-            <div class="control-group">
-                <span class="control-label">Speed</span>
-                <input type="range" id="speed" min="0.1" max="4" step="0.1" value="1" data-hook="TimelineCut" />
-                <span id="speedValue" style="color:#aaa;font-size:10px;width:26px;">1.0x</span>
+        <!-- Timeline -->
+        <div class="timeline-section">
+            <div class="timeline-header">
+                <span>Animation Timeline</span>
+                <span class="frame-info" id="frameInfo">0.0s / 10.0s | 0 keyframes</span>
             </div>
 
-            <button class="action-btn" data-hook="TimelineCut">Apply Cut &amp; Speed</button>
-            <button class="action-btn" data-hook="TogglePlay">▶ Play / Pause</button>
+            <div id="timelineBar" class="timeline-bar-container">
+                <div class="timeline-track"></div>
+                <div id="playhead" class="playhead" style="left: 0%;"></div>
+
+                <!-- Start Handle (Green) -->
+                <div id="startHandle" class="trim-handle start" style="left: 0%;"></div>
+
+                <!-- End Handle (Red) -->
+                <div id="endHandle" class="trim-handle end" style="left: 100%;"></div>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <span class="control-label">Start</span>
+                    <input type="number" id="startFrame" step="0.1" value="0" style="width: 58px;">
+                </div>
+                <div class="control-group">
+                    <span class="control-label">End</span>
+                    <input type="number" id="endFrame" step="0.1" value="10" style="width: 58px;">
+                </div>
+                <div class="control-group">
+                    <span class="control-label">Speed</span>
+                    <input type="range" id="speed" min="0.1" max="4" step="0.1" value="1" style="width: 100px;">
+                    <span id="speedValue">1.0x</span>
+                </div>
+
+                <button class="action-btn" data-hook="TimelineCut">Apply Cut</button>
+                <button class="action-btn" data-hook="TogglePlay">▶ Play</button>
+            </div>
         </div>
     </div>
+
+    <script>
+        // ==================== FULL JAVASCRIPT TIMELINE ====================
+        (function () {
+            const timelineBar = document.getElementById('timelineBar');
+            const startHandle = document.getElementById('startHandle');
+            const endHandle = document.getElementById('endHandle');
+            const playhead = document.getElementById('playhead');
+            const startInput = document.getElementById('startFrame');
+            const endInput = document.getElementById('endFrame');
+            const speedSlider = document.getElementById('speed');
+            const speedValue = document.getElementById('speedValue');
+            const frameInfo = document.getElementById('frameInfo');
+
+            let duration = 10.0;
+            let startTime = 0.0;
+            let endTime = 10.0;
+            let currentScrub = 0.0;
+
+            function updateUI() {
+                const startPercent = (startTime / duration) * 100;
+                const endPercent = (endTime / duration) * 100;
+                const scrubPercent = (currentScrub / duration) * 100;
+
+                startHandle.style.left = startPercent + '%';
+                endHandle.style.left = endPercent + '%';
+                playhead.style.left = scrubPercent + '%';
+
+                startInput.value = startTime.toFixed(1);
+                endInput.value = endTime.toFixed(1);
+
+                frameInfo.textContent = `${startTime.toFixed(1)}s / ${endTime.toFixed(1)}s | ${Math.round((endTime - startTime) * 10)} frames`;
+
+                speedValue.textContent = parseFloat(speedSlider.value).toFixed(1) + 'x';
+            }
+
+            function setStartTime(percent) {
+                startTime = Math.max(0, Math.min(duration, (percent / 100) * duration));
+                if (startTime > endTime) startTime = endTime;
+                updateUI();
+            }
+
+            function setEndTime(percent) {
+                endTime = Math.max(0, Math.min(duration, (percent / 100) * duration));
+                if (endTime < startTime) endTime = startTime;
+                updateUI();
+            }
+
+            function setScrubTime(percent) {
+                currentScrub = Math.max(startTime, Math.min(endTime, (percent / 100) * duration));
+                updateUI();
+            }
+
+            let isDraggingStart = false;
+            startHandle.addEventListener('mousedown', (e) => {
+                isDraggingStart = true;
+                e.preventDefault();
+            });
+
+            let isDraggingEnd = false;
+            endHandle.addEventListener('mousedown', (e) => {
+                isDraggingEnd = true;
+                e.preventDefault();
+            });
+
+            timelineBar.addEventListener('mousedown', (e) => {
+                const rect = timelineBar.getBoundingClientRect();
+                const percent = ((e.clientX - rect.left) / rect.width) * 100;
+                setScrubTime(percent);
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDraggingStart && !isDraggingEnd) return;
+
+                const rect = timelineBar.getBoundingClientRect();
+                let percent = ((e.clientX - rect.left) / rect.width) * 100;
+                percent = Math.max(0, Math.min(100, percent));
+
+                if (isDraggingStart) {
+                    setStartTime(percent);
+                } else if (isDraggingEnd) {
+                    setEndTime(percent);
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDraggingStart = false;
+                isDraggingEnd = false;
+            });
+
+            startInput.addEventListener('change', () => {
+                startTime = parseFloat(startInput.value) || 0;
+                if (startTime > endTime) startTime = endTime;
+                updateUI();
+            });
+
+            endInput.addEventListener('change', () => {
+                endTime = parseFloat(endInput.value) || duration;
+                if (endTime < startTime) endTime = startTime;
+                updateUI();
+            });
+
+            speedSlider.addEventListener('input', () => {
+                speedValue.textContent = parseFloat(speedSlider.value).toFixed(1) + 'x';
+            });
+
+            function initialize(durationSeconds = 10.0) {
+                duration = durationSeconds;
+                startTime = 0;
+                endTime = duration;
+                currentScrub = 0;
+                updateUI();
+            }
+
+            window.AnimationTimeline = {
+                initialize: initialize,
+                setDuration: (d) => { duration = d; updateUI(); },
+                setStartEnd: (s, e) => { startTime = s; endTime = e; updateUI(); },
+                setScrub: (s) => { currentScrub = s; updateUI(); }
+            };
+
+            // NOTE: initialize is NO LONGER called with hard-coded 10.0
+            // The C# side will call setDuration + setStartEnd with real values from the stack
+            console.log("[AnimationTimelineUI] JavaScript timeline ready (duration will be pushed from C#)");
+        })();
+    </script>
 </body>
 </html>
