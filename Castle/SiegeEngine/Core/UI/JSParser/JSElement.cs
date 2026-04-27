@@ -50,7 +50,6 @@ namespace SiegeEngine.Core.UI.JSParser
                     textElem.Parent = elem;
                     elem.Children.Add(textElem);
                 }
-                overlay.RefreshUI();
             }
         }
         public string value
