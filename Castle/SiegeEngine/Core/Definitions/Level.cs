@@ -21,6 +21,9 @@ namespace SiegeEngine.Core.Definitions
         public Level(EventBus eventBus = null)
         {
             _eventBus = eventBus;
+
+            // Auto-subscribe so every placed entity goes into this Level
+            _eventBus?.Subscribe<EntityPlacedEvent>(OnEntityPlaced);
         }
 
         public void AddEntity(Entity entity)

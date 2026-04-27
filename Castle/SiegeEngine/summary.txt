@@ -69,7 +69,7 @@ Folder: Core
   - Class: BasePanel (Namespace: SiegeEngine.Core.UI)
     - Inherits: IPanel
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -826,6 +826,9 @@ Folder: Core
 - File: IControlContext.cs
   - Class: IControlContext (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: SiegeEngine.Core.Definitions, System
+- File: ICustomOverlay.cs
+  - Class: ICustomOverlay (Namespace: SiegeEngine.Core.Interfaces)
+    - Dependencies: SiegeEngine.Core.Rendering
 - File: IDEDockingStrategy.cs
   - Class: SerializableFloatingPanel (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json, System.Text.Json.Serialization
@@ -962,6 +965,8 @@ Folder: Core
       - UIQuadRenderer _quadRenderer
     - Methods:
       - constructor LayeredUIRenderer( IControlContext controlContext,  UIQuadRenderer quadRenderer, IRenderContext renderContext)
+      - void RenderPanel(BasePanel panel)
+        - Calls: _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, overlay.Draw, panel.RenderContentLayer, panel._uiOverlay.RenderBackgrounds, panel.chrome.Render
 - File: Layout.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
@@ -2641,6 +2646,7 @@ SiegeEngine.Core.Events.SelectSpriteEvent
 SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
+SiegeEngine.Core.Interfaces.ICustomOverlay
 SiegeEngine.Core.Interfaces.IDataAwarePanel
 SiegeEngine.Core.Interfaces.IGameServer
 SiegeEngine.Core.Interfaces.IProjectionProvider

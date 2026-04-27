@@ -741,6 +741,9 @@ Folder: Events
       - void Deserialize(byte[] data)
 
 Folder: Interfaces
+- File: ICustomOverlay.cs
+  - Class: ICustomOverlay (Namespace: SiegeEngine.Core.Interfaces)
+    - Dependencies: SiegeEngine.Core.Rendering
 - File: IDockingStrategy.cs
   - Class: IDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System.Numerics
@@ -1187,6 +1190,8 @@ Folder: Rendering
       - UIQuadRenderer _quadRenderer
     - Methods:
       - constructor LayeredUIRenderer( IControlContext controlContext,  UIQuadRenderer quadRenderer, IRenderContext renderContext)
+      - void RenderPanel(BasePanel panel)
+        - Calls: _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, overlay.Draw, panel.RenderContentLayer, panel._uiOverlay.RenderBackgrounds, panel.chrome.Render
 - File: ModelRenderer.cs
   - Class: ModelRenderer (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.Shaders, System, System.Numerics
@@ -1487,7 +1492,7 @@ Folder: UI
   - Class: BasePanel (Namespace: SiegeEngine.Core.UI)
     - Inherits: IPanel
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -2143,6 +2148,7 @@ SiegeEngine.Core.Events.SelectSpriteEvent
 SiegeEngine.Core.Events.SoundRayTraceResult
 SiegeEngine.Core.Events.TimeOfDayChangedEvent
 SiegeEngine.Core.Events.WeatherChangedEvent
+SiegeEngine.Core.Interfaces.ICustomOverlay
 SiegeEngine.Core.Interfaces.IDataAwarePanel
 SiegeEngine.Core.Interfaces.IGameServer
 SiegeEngine.Core.Interfaces.IProjectionProvider
