@@ -917,7 +917,7 @@ Folder: Core
         - Calls: JSElement
 - File: JSElement.cs
   - Class: ClassList (Namespace: SiegeEngine.Core.UI.JSParser)
-    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.Linq
+    - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Globalization, System.Linq, System.Numerics
     - Fields:
       - HtmlElement _elem
       - UIOverlay _overlay
@@ -936,12 +936,12 @@ Folder: Core
     
     - Dependencies: SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Linq, System.Reflection, System.Text, System.Text.RegularExpressions
 - File: JSParser.cs
-  - Class: TemplateLiteralNode (Namespace: SiegeEngine.Core.UI.JSParser)
+  - Class: NewExpressionNode (Namespace: SiegeEngine.Core.UI.JSParser)
     - Inherits: ASTNode
     
     - Dependencies: System, System.Collections.Generic, System.Text
     - Methods:
-      - constructor TemplateLiteralNode( List<ASTNode> expressions, List<string> quasis)
+      - constructor NewExpressionNode( List<ASTNode> arguments, ASTNode callee)
 - File: JSStandardLibrary.cs
   - Class: JSDate (Namespace: SiegeEngine.Core.UI.JSParser)
     - Dependencies: System, System.Collections.Generic, System.Globalization, System.Linq, System.Text.Json, System.Text.RegularExpressions, YamlDotNet.Core.Tokens
@@ -1807,7 +1807,7 @@ Folder: Core
     - Methods:
       - constructor UIInteractionLayer( IControlContext controlContext,  nint window, UIOverlay overlay)
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._document.InvokeDocumentMousemove, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
+        - Calls: IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetTime, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._document.InvokeDocumentMousemove, _overlay._document.InvokeDocumentMouseup, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
@@ -2256,7 +2256,7 @@ Folder: Scenes
       - void ApplyRestPoseFromModel(FBXModel sourceModel)
         - Calls: tgtBone.ComputeLocal
       - void UpdateTransformsFromTime(float time)
-        - Calls: ComputeBlendedLocals, Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms, tempStack.ComputeBlendedLocals
+        - Calls: Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _model.Skeleton.ComputeGlobalTransforms, tempStack.ComputeBlendedLocals
       - void ComputeBlendedTransforms(float deltaTime)
         - Calls: Matrix3x3, Matrix4x4.Transpose, UpdateSkeletonVisualization, _blendPreviewStack.ComputeBlendedLocals, _model.Skeleton.ComputeGlobalTransforms
       - void CenterCamera()
@@ -2723,8 +2723,8 @@ SiegeEngine.Core.UI.JSParser.JSBinding
 SiegeEngine.Core.UI.JSParser.JSClickEvent
 SiegeEngine.Core.UI.JSParser.JSContext
 SiegeEngine.Core.UI.JSParser.JSDate
+SiegeEngine.Core.UI.JSParser.NewExpressionNode
 SiegeEngine.Core.UI.JSParser.ReturnException
-SiegeEngine.Core.UI.JSParser.TemplateLiteralNode
 SiegeEngine.Core.UI.MenuUIOverlay
 SiegeEngine.Core.UI.PanelChrome
 SiegeEngine.Core.UI.UIInteractionLayer
