@@ -34,24 +34,23 @@ namespace SiegeEngine.Core.Rendering
             uint fullW = (uint)panel.Size.X;
             uint fullH = (uint)panel.Size.Y;
 
-            // CRITICAL FIX FOR FILESELECTOR → ANIMATIONVIEWER DUPLICATION:
-            // Enable scissor BEFORE the background pass.
-            // This clips every panel's background to its own rectangle so higher panels
-            // (FileSelectorPanel) cannot bleed onto lower panels (AnimationViewerPanel).
             _renderContext.Enable(_renderContext.Enums.ScissorTest);
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 
-            // Background-only pass (now safely clipped to this panel)
             if (panel._uiOverlay != null)
             {
                 panel._uiOverlay.RenderBackgrounds(fullW, fullH);
             }
 
-            // FULL panel size exactly like the original AnimationViewerPanel.Render
             panel.RenderContentLayer();
 
-            // Restore full panel scissor BEFORE chrome
+            // Draw registered custom overlays while panel stencil is still active
+            foreach (var overlay in panel.CustomOverlays)
+            {
+                overlay.Draw(panel.QuadRenderer, panel.Size.X, panel.Size.Y);
+            }
+
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 

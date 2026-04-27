@@ -20,6 +20,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
+
 namespace ToolChest
 {
     public class AnimationBlendPanel : BasePanel, IDataAwarePanel
@@ -29,11 +30,13 @@ namespace ToolChest
             var panel = new AnimationBlendPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
+
         private class BlendUIOverlay : UIOverlay
         {
             private readonly AnimationBlendPanel _parent;
             public BlendUIOverlay(AnimationBlendPanel parent, IRenderContext rc, IControlContext cc, nint w, EventBus eb)
                 : base(rc, cc, w, eb) { _parent = parent; }
+
             public override bool HandleUIClick(HtmlElement elem)
             {
                 bool handled = base.HandleUIClick(elem);
@@ -41,9 +44,11 @@ namespace ToolChest
                 return handled;
             }
         }
-        private AnimationBlendStack _currentStack = new AnimationBlendStack();
+
+        internal AnimationBlendStack _currentStack = new AnimationBlendStack();
+        internal Vector3 _currentBlendPoint = Vector3.Zero;
+
         private ModelViewerScene _previewScene;
-        private Vector3 _currentBlendPoint = Vector3.Zero;
         private bool _linkToPlayer = false;
         private bool _snapEnabled = true;
         private bool _spaceWasDown = false;
@@ -51,6 +56,7 @@ namespace ToolChest
         private bool _draggingCurrentPoint = false;
         private bool _greenLocked = false;
         private bool _rightWasDownLastFrame = false;
+
         public AnimationBlendPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -61,7 +67,9 @@ namespace ToolChest
             BaseHeight = 720f;
             _previewScene = new ModelViewerScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
+
         protected override UIOverlay CreateUIOverlay() => new BlendUIOverlay(this, _renderContext, _controlContext, _window, _eventBus);
+
         public override void Init()
         {
             base.Init();
@@ -72,7 +80,10 @@ namespace ToolChest
             _uiOverlay.RefreshUI();
             _snapEnabled = _currentStack.SnapEnabled;
             UpdateGridMarkers();
+
+            CustomOverlays.Add(new BlendDotOverlay(this));
         }
+
         private void LoadUIFromFile(string filename)
         {
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, filename);
@@ -82,6 +93,7 @@ namespace ToolChest
                 _uiOverlay.LoadUI(html);
             }
         }
+
         private void OnGenericEvent(GenericEvent e)
         {
             if (e.Hook == "BlendPointChanged" || e.Hook == "GridClicked")
@@ -161,6 +173,7 @@ namespace ToolChest
                 _uiOverlay.RefreshUI();
             }
         }
+
         private void OnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData?.ToString()?.StartsWith("AddBlendClipAt:") == true && !string.IsNullOrEmpty(e.Path))
@@ -190,6 +203,7 @@ namespace ToolChest
                 _uiOverlay.RefreshUI();
             }
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -217,6 +231,7 @@ namespace ToolChest
                 UpdateGridMarkers();
             }
         }
+
         private void CreateAnimationPack()
         {
             var pack = new AnimationPack("blend_pack_" + DateTime.Now.Ticks, _currentStack.Name ?? "Blend Pack");
@@ -232,11 +247,14 @@ namespace ToolChest
             _eventBus.Publish(new EntityPlacedEvent(entity.Id, "BlendedAnimation", entity.Transform.Position, false, null));
             Console.WriteLine("[AnimationBlendPanel] 3D Animation pack entity created and placed");
         }
+
         private void UpdateGridMarkers()
         {
             _uiOverlay.RefreshUI();
         }
+
         public override bool WantsContinuousUpdate => true;
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -384,52 +402,24 @@ namespace ToolChest
                 }
             }
         }
+
         protected override void RenderInnerContent()
         {
             _previewScene.Render(null);
         }
+
         public override void Render()
         {
             base.Render();
-            // Re-apply panel scissor/viewport so custom dots draw in correct panel-relative space (on top of grid)
-            // This avoids any override of protected internal RenderContentLayer and eliminates the CS0507 error.
-            _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            int fullX = (int)Position.X;
-            int fullY = winH - (int)(Position.Y + Size.Y);
-            uint fullW = (uint)Size.X;
-            uint fullH = (uint)Size.Y;
-            _renderContext.Enable(_renderContext.Enums.ScissorTest);
-            _renderContext.Scissor(fullX, fullY, fullW, fullH);
-            _renderContext.Viewport(fullX, fullY, fullW, fullH);
-            var gridElem = _uiOverlay.FindElementById("blendGrid");
-            if (gridElem != null && gridElem.ComputedWidth > 0 && gridElem.ComputedHeight > 0)
-            {
-                float gx = gridElem.ComputedPosition.X;
-                float gy = gridElem.ComputedPosition.Y;
-                float gw = gridElem.ComputedWidth;
-                float gh = gridElem.ComputedHeight;
-                float cx = Math.Clamp(gx + ((_currentBlendPoint.X + 1f) / 2f * gw), gx, gx + gw);
-                float cy = Math.Clamp(gy + ((_currentBlendPoint.Y + 1f) / 2f * gh), gy, gy + gh);
-                _quadRenderer.DrawQuad(cx - 6, cy - 6, 12, 12, new Vector4(0.29f, 0.87f, 0.5f, 1f), Size.X, Size.Y);
-                _quadRenderer.DrawQuad(cx - 7, cy - 7, 14, 14, new Vector4(1f, 1f, 1f, 1f), Size.X, Size.Y);
-                foreach (var clip in _currentStack.Clips)
-                {
-                    float px = Math.Clamp(gx + ((clip.BlendCoordinate.X + 1f) / 2f * gw), gx, gx + gw);
-                    float py = Math.Clamp(gy + ((clip.BlendCoordinate.Y + 1f) / 2f * gh), gy, gy + gh);
-                    _quadRenderer.DrawQuad(px - 5, py - 5, 10, 10, new Vector4(0.96f, 0.62f, 0.04f, 1f), Size.X, Size.Y);
-                    _quadRenderer.DrawQuad(px - 6, py - 6, 12, 12, new Vector4(1f, 1f, 1f, 1f), Size.X, Size.Y);
-                }
-            }
-            _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
-            _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
-            _renderContext.Disable(_renderContext.Enums.ScissorTest);
         }
+
         public override void OnLiveResize(float w, float h)
         {
             _uiOverlay.RecomputeLayout(w, h);
             _previewScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
+
         public string DataKey => "AnimationBlendPanel";
         public JsonElement SavePanelState() => JsonSerializer.SerializeToElement(_currentStack);
         public void LoadPanelState(JsonElement state)
@@ -437,6 +427,7 @@ namespace ToolChest
             if (!state.ValueKind.HasFlag(JsonValueKind.Undefined))
                 _currentStack = JsonSerializer.Deserialize<AnimationBlendStack>(state.GetRawText()) ?? new AnimationBlendStack();
         }
+
         public override void Dispose()
         {
             _previewScene.Dispose();
