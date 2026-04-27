@@ -1099,7 +1099,7 @@ Found 5 dependencies
 Found: JSElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSElement.cs
-Read 22175 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSElement.cs
+Read 21993 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSElement.cs
 Namespace: SiegeEngine.Core.UI.JSParser
 Found 6 dependencies
 Found: JSEvaluator.cs

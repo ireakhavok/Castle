@@ -2241,6 +2241,9 @@ Folder: Scenes
       - AnimationBlendStack _blendPreviewStack
       - Vector3 _blendPreviewParams
       - List<string> _lastAttachedPaths
+      - float _trimStart
+      - float _trimEnd
+      - float _playbackSpeed
     - Methods:
       - void Initialize( int width, int height)
         - Calls: DiscoverAnimationFiles, LoadMesh, ShaderProgram, VertexBuffer
@@ -2269,6 +2272,7 @@ Folder: Scenes
         - Calls: AttachBlendAnimations, ComputeBlendedTransforms
       - void UpdateBlendPreviewParams(Vector3 currentParams)
         - Calls: ComputeBlendedTransforms
+      - void SetTrimParams( float end,  float speed, float start)
       - List<string> GetAnimationFiles()
       - string GetFrameInfo()
       - void TogglePlay()
