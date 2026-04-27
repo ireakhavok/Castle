@@ -56,6 +56,10 @@ namespace SiegeEngine.Scenes
         private Vector3 _blendPreviewParams = Vector3.Zero;
         private List<string> _lastAttachedPaths = new List<string>();
 
+        private float _trimStart = 0f;
+        private float _trimEnd = -1f;
+        private float _playbackSpeed = 1f;
+
         public float CurrentTime
         {
             get => _currentTime;
@@ -76,7 +80,6 @@ namespace SiegeEngine.Scenes
             _modelData = new ModelManager.ModelData();
         }
 
-        // ... (all the rest of the file is exactly as you provided — no other changes)
         public override void Initialize(int height, int width)
         {
             base.Initialize(height, width);
@@ -98,6 +101,9 @@ namespace SiegeEngine.Scenes
             _currentGlobalTransforms = null;
             _boneMatrices = null;
             _currentNormalTransforms = null;
+            _trimStart = 0f;
+            _trimEnd = -1f;
+            _playbackSpeed = 1f;
         }
 
         public void LoadMesh(string path)
@@ -224,9 +230,9 @@ namespace SiegeEngine.Scenes
             {
                 AnimationPath = _currentAnimationPath,
                 LocalTime = time,
-                StartFrame = 0f,
-                EndFrame = -1f,
-                PlaybackSpeed = 1f,
+                StartFrame = _trimStart,
+                EndFrame = _trimEnd > 0 ? _trimEnd : -1f,
+                PlaybackSpeed = _playbackSpeed,
                 Loop = false
             });
             var locals = tempStack.ComputeBlendedLocals(Vector3.Zero, 0f, false, _model);
@@ -436,6 +442,15 @@ namespace SiegeEngine.Scenes
             }
         }
 
+        public void SetTrimParams(float start, float end, float speed)
+        {
+            _trimStart = Math.Max(0, start);
+            _trimEnd = end > 0 ? end : _duration;
+            _playbackSpeed = Math.Max(0.1f, speed);
+            if (_currentTime < _trimStart || (_trimEnd > 0 && _currentTime > _trimEnd))
+                _currentTime = _trimStart;
+        }
+
         public List<string> GetAnimationFiles()
         {
             return _animationFiles;
@@ -511,8 +526,12 @@ namespace SiegeEngine.Scenes
                 {
                     if (_isPlaying)
                     {
-                        _currentTime += deltaTime;
-                        if (_currentTime > _duration) _currentTime -= _duration;
+                        float effectiveDuration = (_trimEnd > _trimStart) ? (_trimEnd - _trimStart) : _duration;
+                        _currentTime += deltaTime * _playbackSpeed;
+                        if (_currentTime > _trimEnd)
+                        {
+                            _currentTime = _trimStart;
+                        }
                     }
                     else
                     {
@@ -538,7 +557,8 @@ namespace SiegeEngine.Scenes
                             if (prev >= 0) _currentTime = animation.Keyframes[prev].Time;
                         }
                     }
-                    UpdateTransformsFromTime(_currentTime);
+                    float displayTime = Math.Max(_trimStart, Math.Min(_currentTime, _trimEnd > 0 ? _trimEnd : _duration));
+                    UpdateTransformsFromTime(displayTime);
                 }
             }
             UpdateSkeletonVisualization();

@@ -1,3 +1,35 @@
+
+Goal: Create a professional, stable Animation Timeline Panel that allows users to trim animation clips (start/end frames) with draggable green/red handles, scrub with a playhead, adjust speed, and apply cuts. The panel must show a live 3D ModelViewerScene preview above a clean timeline bar. All interaction (dragging handles, scrubbing, input changes) must feel responsive and professional. The timeline must always represent the full original animation duration (never change width or reset values). Values must come from the AnimationBlendStack (not hard-coded 10s defaults). The panel must integrate cleanly with the existing dockable IDE, persist state via IDataAwarePanel, and publish TimelineMetadataUpdated when the user clicks "Apply Cut".
+
+Current State (as of April 26, 2026): The panel is now mostly functional. The core drag logic for start/end handles works reliably after removing the RefreshUI() call inside StyleProxy.set in JSElement.cs. The timeline no longer jumps back to 0%/100% on every mousedown or during drag. Real animation duration is correctly pushed from the FBX to the JS via window.AnimationTimeline.setDuration() and setStartEnd(). The 3D preview (ModelViewerScene) renders correctly behind the HTML shelf. The panel opens from AnimationBlendPanel via GenericEvent "OpenTimelineForClip".
+
+What We Have Done So Far:
+Completely rewrote AnimationTimelinePanel.cs and AnimationTimelineUI.html multiple times based on strict "no old code" and "limited JS" rules.
+
+Removed all hard-coded 10-second defaults and direct C# Style.LeftStr forcing.
+
+Identified and fixed the root cause of handle jumping (unconditional RefreshUI() inside StyleProxy.set during every style update).
+
+Made the JS fully own the drag state (startTime, endTime, duration) while the C# side only pushes the initial real duration from the loaded FBX.
+
+Added CurrentTime accessor + UpdateTransformsFromTime exposure in ModelViewerScene.cs.
+
+Ensured IDataAwarePanel state saving/loading works.
+
+Cleaned up compile errors and accidental copy-paste bugs in JSElement.cs.
+
+Remaining Issues to Fix (in priority order):
+
+Slider text disappears when the user changes the speed slider (or any number input). The #speedValue span and frame info text vanish. This is almost certainly a JS-side issue in updateUI() or the input/change listeners.
+
+Play / Pause button is not hooked up. The "▶ Play" button has data-hook="TogglePlay" but the C# side never listens for it or calls _previewScene.TogglePlay().
+
+Animation does not update in the viewer when the user drags the start/end handles or changes the speed. The 3D preview keeps playing the full animation instead of respecting the trimmed range and speed. This is required before export can be tested.
+
+Export / Apply Cut is not yet verified end-to-end (we need the viewer to actually respect _startFrame, _endFrame, and _speed before we can confirm the metadata event is working correctly with the blend stack).
+
+Next Steps Requested: Please help track down and fix the disappearing text on slider change first (most likely a small JS bug in updateUI() or how the speed input listener updates the DOM). Then wire up the Play/Pause button. Finally, make the ModelViewerScene respect the current trim values so the preview updates live when the user drags the handles. The repository is committed, so we can safely revert if needed.
+
 Multi-Paragraph Implementation Plan for Professional 3D Animation Blending + Timeline Editing System
 We will begin by extending the existing asset and definition layer in SiegeEngine.Core to introduce two new primary data objects: AnimationBlendStack (a serializable container holding an ordered list of AnimationClipEntry objects, each storing a reference to an FBX-derived animation path, a Vector3 blend coordinate for true three-parameter blending space, per-clip metadata such as startFrame, endFrame, playbackSpeed, and loop flag, plus shared references to the underlying Skeleton and MeshData for zero-copy efficiency) and AnimationClipEntry (a lightweight, mutable struct/class that decouples raw FBX animation data from editor-time overrides so changes persist independently of the source file). These objects will live in a new SiegeEngine.Core.Definitions.Animation namespace (or extend the existing Model namespace) to maintain architectural cleanliness, implement IComponent compatibility for direct attachment to Entities, and support JSON serialization via the already-proven System.Text.Json patterns used by ProjectData, SceneData, and EntityData. A lightweight AnimationBlendManager singleton (registered on the EventBus) will own the active stack cache, handle live parameter interpolation (using barycentric or distance-weighted blending for the three axes to avoid the two-dimensional limitation of classic 2D blendspaces), and expose hooks for mods via fully-qualified names such as SiegeEngine.Core.Definitions.Animation.AnimationBlendManager.ApplyBlendWeights.
 Next we will create two new production-grade dockable panels following the exact established patterns of AnimationViewerPanel, PropertiesPanel, and BrushPanel. The AnimationBlendPanel (placed in ToolChest for thematic consistency with other editor tools, or a new lightweight AnimationRoom folder if namespace separation is preferred) will inherit UIOverlay, load a custom HTML/CSS/JS surface featuring three synchronized RangeElement sliders (X/Y/Z blend parameters with live numeric readouts and a 3D visualizer cube rendered via the existing UIQuadRenderer + custom vertex buffer for immediate-mode preview), a sortable list of animation entries with add/remove buttons and drag-to-reorder, a preview viewport that reuses ModelRenderer + AnimationSystem logic (or spawns a lightweight internal ModelViewerScene instance), and data-hook integration so that selecting any entry fires a new AnimationSelectedForTimelineEvent carrying the clip path and current metadata. The AnimationTimelinePanel (also in ToolChest) will provide a professional horizontal timeline scrubber built from VertexBuffer + custom rendering (inspired by the existing terrain wireframe and skeleton visualization code), clickable frame markers for precise cut points, draggable start/end handles, a speed multiplier RangeElement (0.1×–4.0× with snapping), loop toggle, and playback controls that mirror the ModelViewerScene's TogglePlay / UpdateTransformsFromTime flow. Both panels will register themselves with PanelManager, support live-resize and docking via the DesktopDockingStrategy/IDEDockingStrategy already in place, and persist their state through ProjectLayoutManager exactly like the TerrainCreatorPanel and SceneEditorPanel.

@@ -97,6 +97,7 @@ namespace ToolChest
                 if (startEl != null && float.TryParse(startEl.Value, out float s)) _startFrame = s;
                 if (endEl != null && float.TryParse(endEl.Value, out float en)) _endFrame = en;
                 if (speedEl != null) _speed = speedEl.Value;
+                _previewScene.SetTrimParams(_startFrame, _endFrame, _speed);
                 _eventBus.Publish(new GenericEvent
                 {
                     Hook = "TimelineMetadataUpdated",
@@ -125,10 +126,11 @@ namespace ToolChest
                     _endFrame = _animDuration;
                     _startFrame = 0f;
                     _scrubTime = 0f;
+                    _speed = 1f;
                     _previewScene.LoadAnimation(path);
+                    _previewScene.SetTrimParams(0f, _animDuration, 1f);
                     _previewScene.TogglePlay();
 
-                    // Only correct way — push to JS, nothing else
                     _uiOverlay._jsContext.Run($"window.AnimationTimeline.setDuration({_animDuration});");
                     _uiOverlay._jsContext.Run($"window.AnimationTimeline.setStartEnd(0, {_animDuration});");
 
@@ -141,7 +143,14 @@ namespace ToolChest
             }
         }
 
-        public void HandleUIClick(HtmlElement elem) { }
+        public void HandleUIClick(HtmlElement elem)
+        {
+            string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
+            if (hook == "TogglePlay")
+            {
+                _previewScene.TogglePlay();
+            }
+        }
 
         public override bool WantsContinuousUpdate => true;
 
@@ -151,6 +160,26 @@ namespace ToolChest
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _previewScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
+
+            // Live sync trim/speed from JS-managed UI to preview (responsive handle drag + slider)
+            var startEl = _uiOverlay.FindElementById("startFrame") as InputElement;
+            var endEl = _uiOverlay.FindElementById("endFrame") as InputElement;
+            var speedEl = _uiOverlay.FindElementById("speed") as RangeElement;
+            if (startEl != null && endEl != null && speedEl != null)
+            {
+                if (float.TryParse(startEl.Value, out float s) &&
+                    float.TryParse(endEl.Value, out float e) &&
+                    speedEl.Value > 0)
+                {
+                    if (s != _startFrame || e != _endFrame || speedEl.Value != _speed)
+                    {
+                        _startFrame = s;
+                        _endFrame = e;
+                        _speed = speedEl.Value;
+                        _previewScene.SetTrimParams(_startFrame, _endFrame, _speed);
+                    }
+                }
+            }
         }
 
         protected override void RenderInnerContent() { _previewScene.Render(null); }

@@ -147,7 +147,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 if (valueChanged)
                 {
-                    overlay.RefreshUI();
                     if (tag == "input")
                     {
                         overlay.InvokeListeners(elem, "input");
@@ -267,7 +266,6 @@ namespace SiegeEngine.Core.UI.JSParser
                             p.MarkIntrinsicDirty();
                             p = p.Parent;
                         }
-                        // REMOVED: _overlay.RefreshUI();   ← this was causing the jump on every drag
                         if ((key == "left" || key == "top") &&
                             (_elem.Style.Position == "absolute" || _elem.Style.Position == "fixed"))
                         {
