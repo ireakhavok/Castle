@@ -418,9 +418,9 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
-Read 8048 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
+Read 10440 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
-Found 16 dependencies
+Found 19 dependencies
 Found: SceneEditorUI.html
 Found: Citadel
 Listing folder: C:\repos\RealmFoundry\Castle\Citadel
@@ -2057,7 +2057,7 @@ Found: ..
 Found: AnimationBlendPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
-Read 21154 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
+Read 22228 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Namespace: ToolChest
 Found 20 dependencies
 Found: AnimationBlendUI.html
@@ -2117,6 +2117,12 @@ Namespace: ToolChest
 Found 4 dependencies
 Found: obj
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\ToolChest\obj
+Found: PlacementOverlay.cs
+Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\PlacementOverlay.cs
+Reading file: C:\repos\RealmFoundry\Castle\ToolChest\PlacementOverlay.cs
+Read 3475 chars from: C:\repos\RealmFoundry\Castle\ToolChest\PlacementOverlay.cs
+Namespace: ToolChest
+Found 9 dependencies
 Found: PropertiesPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\PropertiesPanel.cs
