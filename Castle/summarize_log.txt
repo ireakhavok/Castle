@@ -418,9 +418,9 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
-Read 10440 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
+Read 14963 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
-Found 19 dependencies
+Found 21 dependencies
 Found: SceneEditorUI.html
 Found: Citadel
 Listing folder: C:\repos\RealmFoundry\Castle\Citadel
