@@ -7,6 +7,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 namespace SiegeEngine.Core.UI
 {
@@ -55,9 +56,7 @@ namespace SiegeEngine.Core.UI
         public bool HasTitleBar { get; set; } = false;
         public bool IsClosable { get; set; } = false;
         public int RenderOrder { get; set; } = 0;
-
         public static bool MouseReleasedConsumedThisFrame { get; set; } = false;
-
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -86,18 +85,15 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
-
         public virtual bool IsMouseOver(Vector2 absMousePos)
         {
             if (!Visible) return false;
             return absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                    absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
         }
-
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
-
             if (HasTitleBar && chrome != null)
             {
                 if (chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
@@ -106,7 +102,6 @@ namespace SiegeEngine.Core.UI
                     return;
                 }
             }
-
             if (_isDragging)
             {
                 if (mouseDown)
@@ -119,7 +114,6 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
-
             if (_currentResizeHandle != ResizeHandle.None)
             {
                 if (mouseDown)
@@ -177,17 +171,12 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
-
             bool overPanel = IsMouseOver(absMousePos);
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
-
             if (isTopmost && overPanel && mousePressed)
             {
                 OnContentFocusGained();
             }
-
-            // UIOverlay always receives input when this panel is topmost
-            // (select dropdowns, options, etc. are handled inside _uiOverlay.Update)
             if (isTopmost)
             {
                 Vector2 relMousePos = absMousePos - Position;
@@ -197,14 +186,11 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }
-
         public virtual void OnContentFocusGained()
         {
             Console.WriteLine($"[BasePanel] OnContentFocusGained called on {GetType().Name} (default no-op)");
         }
-
         public virtual void ToggleCameraMode() { }
-
         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {
             float left = absMousePos.X - Position.X;
@@ -300,5 +286,8 @@ namespace SiegeEngine.Core.UI
         }
         public nint WindowHandle => _window;
         protected internal UIQuadRenderer QuadRenderer => _quadRenderer;
+
+        // === NEW: Generic custom overlay support (for blend dots, etc.) ===
+        public List<ICustomOverlay> CustomOverlays { get; } = new List<ICustomOverlay>();
     }
 }

@@ -1,6 +1,4 @@
-﻿// Folder: ToolChest
-// File: AnimationBlendPanel.cs
-using Keystone;
+﻿using Keystone;
 using ReadingChamber;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -41,9 +39,9 @@ namespace ToolChest
                 return handled;
             }
         }
-        private AnimationBlendStack _currentStack = new AnimationBlendStack();
+        internal AnimationBlendStack _currentStack = new AnimationBlendStack();
+        internal Vector3 _currentBlendPoint = Vector3.Zero;
         private ModelViewerScene _previewScene;
-        private Vector3 _currentBlendPoint = Vector3.Zero;
         private bool _linkToPlayer = false;
         private bool _snapEnabled = true;
         private bool _spaceWasDown = false;
@@ -72,6 +70,7 @@ namespace ToolChest
             _uiOverlay.RefreshUI();
             _snapEnabled = _currentStack.SnapEnabled;
             UpdateGridMarkers();
+            CustomOverlays.Add(new BlendDotOverlay(this));
         }
         private void LoadUIFromFile(string filename)
         {
@@ -222,15 +221,41 @@ namespace ToolChest
             var pack = new AnimationPack("blend_pack_" + DateTime.Now.Ticks, _currentStack.Name ?? "Blend Pack");
             pack.Clips = _currentStack.Clips;
             pack.Animations = _previewScene._model?.Animations ?? new List<Animation>();
-            var entity = new Entity { Type = "BlendedAnimation" };
-            entity.AddComponent(new ModelComponent { Model = _previewScene._model, Key = _currentStack.Name ?? "blend_model" });
-            entity.AddComponent(new BlendedAnimationComponent
+            string projectPath = ProjectSettings.Current.ActiveProject;
+            string packsDir;
+            if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
             {
-                Pack = pack,
-                CurrentBlendParams = _currentBlendPoint
-            });
-            _eventBus.Publish(new EntityPlacedEvent(entity.Id, "BlendedAnimation", entity.Transform.Position, false, null));
-            Console.WriteLine("[AnimationBlendPanel] 3D Animation pack entity created and placed");
+                packsDir = Path.Combine(projectPath, "Assets", "Packs");
+                Directory.CreateDirectory(packsDir);
+                CopyReferencedAssets(pack, packsDir);
+            }
+            else
+            {
+                packsDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TempPacks");
+                Directory.CreateDirectory(packsDir);
+            }
+            string packPath = Path.Combine(packsDir, pack.Id + ".json");
+            File.WriteAllText(packPath, JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true }));
+            Console.WriteLine($"[AnimationBlendPanel] Animation pack saved to {packPath} (self-contained)");
+        }
+        private void CopyReferencedAssets(AnimationPack pack, string packsDir)
+        {
+            string refDir = Path.Combine(packsDir, "References");
+            Directory.CreateDirectory(refDir);
+            for (int i = 0; i < pack.Clips.Count; i++)
+            {
+                var clip = pack.Clips[i];
+                if (!string.IsNullOrEmpty(clip.AnimationPath) && File.Exists(clip.AnimationPath))
+                {
+                    string fileName = Path.GetFileName(clip.AnimationPath);
+                    string target = Path.Combine(refDir, fileName);
+                    if (!File.Exists(target))
+                    {
+                        File.Copy(clip.AnimationPath, target, true);
+                    }
+                    clip.AnimationPath = Path.GetRelativePath(packsDir, target);
+                }
+            }
         }
         private void UpdateGridMarkers()
         {
@@ -391,38 +416,6 @@ namespace ToolChest
         public override void Render()
         {
             base.Render();
-            // Re-apply panel scissor/viewport so custom dots draw in correct panel-relative space (on top of grid)
-            // This avoids any override of protected internal RenderContentLayer and eliminates the CS0507 error.
-            _controlContext.GetWindowSize(_window, out int winW, out int winH);
-            int fullX = (int)Position.X;
-            int fullY = winH - (int)(Position.Y + Size.Y);
-            uint fullW = (uint)Size.X;
-            uint fullH = (uint)Size.Y;
-            _renderContext.Enable(_renderContext.Enums.ScissorTest);
-            _renderContext.Scissor(fullX, fullY, fullW, fullH);
-            _renderContext.Viewport(fullX, fullY, fullW, fullH);
-            var gridElem = _uiOverlay.FindElementById("blendGrid");
-            if (gridElem != null && gridElem.ComputedWidth > 0 && gridElem.ComputedHeight > 0)
-            {
-                float gx = gridElem.ComputedPosition.X;
-                float gy = gridElem.ComputedPosition.Y;
-                float gw = gridElem.ComputedWidth;
-                float gh = gridElem.ComputedHeight;
-                float cx = Math.Clamp(gx + ((_currentBlendPoint.X + 1f) / 2f * gw), gx, gx + gw);
-                float cy = Math.Clamp(gy + ((_currentBlendPoint.Y + 1f) / 2f * gh), gy, gy + gh);
-                _quadRenderer.DrawQuad(cx - 6, cy - 6, 12, 12, new Vector4(0.29f, 0.87f, 0.5f, 1f), Size.X, Size.Y);
-                _quadRenderer.DrawQuad(cx - 7, cy - 7, 14, 14, new Vector4(1f, 1f, 1f, 1f), Size.X, Size.Y);
-                foreach (var clip in _currentStack.Clips)
-                {
-                    float px = Math.Clamp(gx + ((clip.BlendCoordinate.X + 1f) / 2f * gw), gx, gx + gw);
-                    float py = Math.Clamp(gy + ((clip.BlendCoordinate.Y + 1f) / 2f * gh), gy, gy + gh);
-                    _quadRenderer.DrawQuad(px - 5, py - 5, 10, 10, new Vector4(0.96f, 0.62f, 0.04f, 1f), Size.X, Size.Y);
-                    _quadRenderer.DrawQuad(px - 6, py - 6, 12, 12, new Vector4(1f, 1f, 1f, 1f), Size.X, Size.Y);
-                }
-            }
-            _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
-            _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
-            _renderContext.Disable(_renderContext.Enums.ScissorTest);
         }
         public override void OnLiveResize(float w, float h)
         {

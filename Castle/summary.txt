@@ -158,7 +158,7 @@ Folder: CastleBuilder
   - Class: SceneEditorUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
@@ -667,7 +667,7 @@ Folder: SiegeEngine
   - Class: BasePanel (Namespace: SiegeEngine.Core.UI)
     - Inherits: IPanel
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - IControlContext _controlContext
@@ -1554,6 +1554,9 @@ Folder: SiegeEngine
 - File: IControlContext.cs
   - Class: IControlContext (Namespace: SiegeEngine.Core.ContextManagement)
     - Dependencies: SiegeEngine.Core.Definitions, System
+- File: ICustomOverlay.cs
+  - Class: ICustomOverlay (Namespace: SiegeEngine.Core.Interfaces)
+    - Dependencies: SiegeEngine.Core.Rendering
 - File: IDEDockingStrategy.cs
   - Class: SerializableFloatingPanel (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json, System.Text.Json.Serialization
@@ -1722,6 +1725,8 @@ Folder: SiegeEngine
       - UIQuadRenderer _quadRenderer
     - Methods:
       - constructor LayeredUIRenderer( IControlContext controlContext,  UIQuadRenderer quadRenderer, IRenderContext renderContext)
+      - void RenderPanel(BasePanel panel)
+        - Calls: _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, overlay.Draw, panel.RenderContentLayer, panel._uiOverlay.RenderBackgrounds, panel.chrome.Render
 - File: Layout.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
@@ -3138,6 +3143,17 @@ Folder: ToolChest
     - Methods:
       - void HandleDataHook(string hook)
       - bool HandleUIClick(HtmlElement elem)
+- File: BlendDotOverlay.cs
+  - Class: BlendDotOverlay (Namespace: ToolChest)
+    - Inherits: ICustomOverlay
+    
+    - Dependencies: SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Fields:
+      - AnimationBlendPanel _panel
+    - Methods:
+      - constructor BlendDotOverlay(AnimationBlendPanel panel)
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+        - Calls: _panel._uiOverlay.FindElementById, quadRenderer.DrawQuad
 - File: Brush.cs
   - Class: Brush (Namespace: ToolChest)
     - Dependencies: System, System.Numerics
@@ -3184,6 +3200,23 @@ Folder: ToolChest
     - Methods:
       - void TriggerSelectBrush(string brushType)
         - Calls: Console.WriteLine, SelectBrushEvent, _steamEngine.GetSteamId
+- File: PlacementOverlay.cs
+  - Class: PlacementOverlay (Namespace: ToolChest)
+    - Inherits: ICustomOverlay
+    
+    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, System, System.Numerics
+    - Fields:
+      - EventBus _eventBus
+      - Vector3 _camPos
+      - float _camYaw
+      - float _camPitch
+    - Methods:
+      - constructor PlacementOverlay(EventBus eventBus)
+      - void SetCameraState( float pitch,  float yaw, Vector3 pos)
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+        - Calls: quadRenderer.DrawQuad
+      - void PerformPlacementRaycast( float contentH,  float contentW, Vector2 relMouse)
+        - Calls: EntityPlacedEvent
 - File: PropertiesPanel.cs
   - Class: PropertiesUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
