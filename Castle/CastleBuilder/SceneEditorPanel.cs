@@ -1,4 +1,5 @@
 ﻿using Keystone;
+using MapRoom;
 using ReadingChamber;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
@@ -39,6 +40,7 @@ namespace CastleBuilder
         private EditorScene _editorScene;
         private bool _cameraMode = false;
         private ModelManager _modelManager;
+        private ModelRenderer _modelRenderer;
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -116,16 +118,33 @@ namespace CastleBuilder
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
             string placeType = Path.GetExtension(e.Path).ToLowerInvariant() == ".json" ? "AssetPack" : "FBX";
-            var level = ProjectSettings.Current.CurrentLevel;
-            var heightmap = ProjectSettings.Current.CurrentHeightmap;
             Vector3 placePos = new Vector3(100f, 100f, 10f);
-            if (heightmap != null && level != null)
+            var activeField = _editorScene.GetType().GetField("_activeGameScene", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (activeField != null)
             {
-                float scaleX = level.Terrain?.WorldScaleX ?? 1f;
-                float scaleZ = level.Terrain?.WorldScaleZ ?? 1f;
-                int w = heightmap.GetLength(0);
-                int h = heightmap.GetLength(1);
-                placePos = new Vector3(w * scaleX * 0.5f, h * scaleZ * 0.5f, 20f);
+                var active = activeField.GetValue(_editorScene) as TerrainCreatorScene;
+                if (active != null)
+                {
+                    var flyField = active.GetType().GetField("_flyCamera", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.FlattenHierarchy);
+                    if (flyField != null)
+                    {
+                        var fly = flyField.GetValue(active) as FlyCameraController;
+                        if (fly != null)
+                        {
+                            Vector3 rayOrigin = fly.Position;
+                            float yawRad = fly.Yaw * (MathF.PI / 180f);
+                            float pitchRad = fly.Pitch * (MathF.PI / 180f);
+                            Vector3 rayDir = Vector3.Normalize(new Vector3(
+                                MathF.Cos(pitchRad) * MathF.Sin(yawRad),
+                                MathF.Cos(pitchRad) * MathF.Cos(yawRad),
+                                MathF.Sin(pitchRad)));
+                            if (RayTerrainIntersect(active, rayOrigin, rayDir, out Vector3 hit))
+                            {
+                                placePos = hit + new Vector3(0, 0, 2f);
+                            }
+                        }
+                    }
+                }
             }
             var entity = new Entity { Type = placeType };
             entity.Transform.Position = placePos;
@@ -144,6 +163,55 @@ namespace CastleBuilder
             var evt = new EntityPlacedEvent(entity.Id, placeType, placePos);
             if (placeType == "FBX") evt.TexturePath = e.Path;
             _eventBus.Publish(evt);
+            var serverField = _editorScene.GetType().GetField("_server", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (serverField != null)
+            {
+                var server = serverField.GetValue(_editorScene) as IGameServer;
+                server?.AddEntity(entity);
+            }
+        }
+        private bool RayTerrainIntersect(TerrainCreatorScene scene, Vector3 origin, Vector3 dir, out Vector3 hitPoint)
+        {
+            hitPoint = Vector3.Zero;
+            var heightmapField = scene.GetType().GetField("_heightmap", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (heightmapField == null) return false;
+            var heightmap = heightmapField.GetValue(scene) as float[,];
+            if (heightmap == null) return false;
+            var worldScaleXField = scene.GetType().GetField("_worldScaleX", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var worldScaleZField = scene.GetType().GetField("_worldScaleZ", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            float worldScaleX = worldScaleXField != null ? (float)worldScaleXField.GetValue(scene) : 1f;
+            float worldScaleZ = worldScaleZField != null ? (float)worldScaleZField.GetValue(scene) : 1f;
+            const float maxDist = 10000f;
+            const float step = 1f;
+            for (float t = 0; t < maxDist; t += step)
+            {
+                Vector3 p = origin + dir * t;
+                float h = GetHeightFromMap(heightmap, p.X, p.Y, worldScaleX, worldScaleZ);
+                if (p.Z <= h)
+                {
+                    float tLow = t - step;
+                    float tHigh = t;
+                    for (int i = 0; i < 10; i++)
+                    {
+                        float tMid = (tLow + tHigh) / 2;
+                        p = origin + dir * tMid;
+                        h = GetHeightFromMap(heightmap, p.X, p.Y, worldScaleX, worldScaleZ);
+                        if (p.Z <= h) tHigh = tMid;
+                        else tLow = tMid;
+                    }
+                    hitPoint = origin + dir * tHigh;
+                    return true;
+                }
+            }
+            return false;
+        }
+        private float GetHeightFromMap(float[,] heightmap, float x, float y, float scaleX, float scaleZ)
+        {
+            int w = heightmap.GetLength(0);
+            int h = heightmap.GetLength(1);
+            int ix = (int)Math.Clamp(x / scaleX, 0, w - 1);
+            int iy = (int)Math.Clamp(y / scaleZ, 0, h - 1);
+            return heightmap[ix, iy];
         }
         public void HandleUIClick(HtmlElement elem)
         {
@@ -173,6 +241,55 @@ namespace CastleBuilder
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
+            if (_modelRenderer == null)
+            {
+                _modelRenderer = new ModelRenderer(_renderContext);
+                _modelRenderer.Initialize();
+            }
+            var entities = _editorScene.GetEntities();
+            if (entities == null || entities.Count == 0)
+            {
+                var serverField = _editorScene.GetType().GetField("_server", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (serverField != null)
+                {
+                    var server = serverField.GetValue(_editorScene) as IGameServer;
+                    entities = server?.GetEntities();
+                }
+            }
+            if (entities == null || entities.Count == 0) return;
+            var activeField = _editorScene.GetType().GetField("_activeGameScene", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
+            Matrix4x4 view = Matrix4x4.Identity;
+            Vector3 viewPos = Vector3.Zero;
+            if (active != null)
+            {
+                var flyField = active.GetType().GetField("_flyCamera", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.FlattenHierarchy);
+                var fly = flyField?.GetValue(active) as FlyCameraController;
+                if (fly != null)
+                {
+                    view = fly.ViewMatrix;
+                    viewPos = fly.Position;
+                }
+            }
+            float aspect = Size.X / Math.Max(Size.Y, 1f);
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
+            foreach (var entity in entities)
+            {
+                var modelComp = entity.GetComponent<ModelComponent>();
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (modelComp != null && physics != null)
+                {
+                    string modelKey = modelComp.Key?.ToLower() ?? "man_mesh";
+                    if (_modelManager.TryGetModelData(modelKey, out var modelData))
+                    {
+                        Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
+                        Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
+                        Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+                        Matrix4x4 modelMatrix = scaleMat * rotation * translation;
+                        _modelRenderer.RenderModel(modelComp.Model, modelData, view, projection, viewPos, modelMatrix);
+                    }
+                }
+            }
         }
         public override void OnLiveResize(float w, float h)
         {
