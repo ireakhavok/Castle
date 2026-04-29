@@ -1551,6 +1551,9 @@ Folder: UI
       - void Close()
         - Calls: ClosePanelEvent
       - bool IsOverCloseButton(Vector2 mousePos)
+      - void Hide()
+        - Calls: Detach
+      - void Show()
 - File: ButtonElement.cs
   - Class: ButtonElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement

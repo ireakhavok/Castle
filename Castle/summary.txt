@@ -727,6 +727,9 @@ Folder: SiegeEngine
       - void Close()
         - Calls: ClosePanelEvent
       - bool IsOverCloseButton(Vector2 mousePos)
+      - void Hide()
+        - Calls: Detach
+      - void Show()
 - File: BlendedAnimationComponent.cs
   - Class: BlendedAnimationComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
