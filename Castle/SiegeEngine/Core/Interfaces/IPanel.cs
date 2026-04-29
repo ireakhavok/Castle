@@ -1,35 +1,10 @@
-﻿// Folder: SiegeEngine.Core.Interfaces
-// File: IPanel.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using System.Numerics;
 using System.Text.Json;
-
 namespace SiegeEngine.Core.Interfaces
 {
-    public enum DockState
-    {
-        Floating,
-        DockedLeft,
-        DockedRight,
-        DockedTop,
-        DockedBottom,
-        Tabbed,
-        DockedHeader
-    }
-
-    public enum ResizeHandle
-    {
-        None,
-        Left,
-        Right,
-        Top,
-        Bottom,
-        TopLeft,
-        TopRight,
-        BottomLeft,
-        BottomRight
-    }
-
+    public enum DockState { Floating, DockedLeft, DockedRight, DockedTop, DockedBottom, Tabbed, DockedHeader }
+    public enum ResizeHandle { None, Left, Right, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight }
     public interface IPanel
     {
         void Init();
@@ -54,24 +29,11 @@ namespace SiegeEngine.Core.Interfaces
         bool IsOverCloseButton(Vector2 mousePos);
         void Close();
         nint WindowHandle { get; }
-
-        // Clean core abstraction: allows PanelManager to toggle camera mode on the true topmost panel only
-        // This is the ONLY way to handle Tab globally without circular dependencies or panel-specific code
         void ToggleCameraMode();
-
-        // === CENTRALIZED MOUSE-OVER LOGIC (first iterative step only) ===
-        // All "is mouse over this panel" checks are now consolidated here.
-        // BasePanel will provide the basic geometric test.
-        // IDEBasePanel will override to also include open nav dropdowns.
-        // No other files are modified in this step.
         bool IsMouseOver(Vector2 absMousePos);
+        void Hide();
+        void Show();
     }
-
-    // Lightweight opt-in interface for automatic per-project panel state persistence.
-    // Lives in core (no CastleBuilder dependency). Uses only System.Text.Json.
-    // Panels implement this to snapshot/restore their internal runtime state (selected objects,
-    // tree expansions, active brushes, SceneData references, etc.) automatically on project
-    // load, context switch, and explicit save. Memory-first until FlushAllToDisk.
     public interface IDataAwarePanel
     {
         string DataKey { get; }

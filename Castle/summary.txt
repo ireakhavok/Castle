@@ -158,7 +158,7 @@ Folder: CastleBuilder
   - Class: SceneEditorUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:

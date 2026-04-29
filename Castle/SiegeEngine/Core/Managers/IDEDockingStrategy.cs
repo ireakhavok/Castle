@@ -42,6 +42,10 @@ namespace SiegeEngine.Core.Managers
         private DockState _hoverEdge = DockState.Floating;
         private Vector2 _edgePreviewPos;
         private Vector2 _edgePreviewSize;
+        // Two caches: panel objects (reuse to prevent leak) + full layout json (exact dock state)
+        private readonly Dictionary<string, List<IPanel>> _bladePanelCache = new Dictionary<string, List<IPanel>>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, string> _bladeLayoutCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private static string _lastBlade = "Scene Editor";
         public IDEDockingStrategy(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -51,7 +55,7 @@ namespace SiegeEngine.Core.Managers
             _quadRenderer = new UIQuadRenderer(renderContext);
             _root = new DockTabbedNode();
         }
-        public bool ContainsFloatingPanel(IPanel panel) => _floatingPanels.Contains(panel); // public accessor for PanelManager double-update guard
+        public bool ContainsFloatingPanel(IPanel panel) => _floatingPanels.Contains(panel);
         public void ClearAll()
         {
             var pm = PanelManager.Current;
@@ -68,6 +72,108 @@ namespace SiegeEngine.Core.Managers
             _needsLayout = true;
             _hoverEdge = DockState.Floating;
             Console.WriteLine("[IDEDockingStrategy.ClearAll] Workspace fully cleared");
+        }
+        public void SwitchBlade(string newContext)
+        {
+            if (newContext == _lastBlade) return;
+            Console.WriteLine($"[IDEDockingStrategy] SwitchBlade '{_lastBlade}' → '{newContext}' (no leak + exact dock state)");
+            // 1. Save current panels (reuse objects) and full layout for the blade we are leaving
+            if (!_bladePanelCache.ContainsKey(_lastBlade))
+                _bladePanelCache[_lastBlade] = new List<IPanel>();
+            _bladePanelCache[_lastBlade].Clear();
+            foreach (var p in _floatingPanels) _bladePanelCache[_lastBlade].Add(p);
+            if (_root != null) CollectPanelsRecursive(_root, _bladePanelCache[_lastBlade]);
+            _bladeLayoutCache[_lastBlade] = SerializeState();
+            // 2. Clear active lists only (no Dispose)
+            _floatingPanels.Clear();
+            _root = new DockTabbedNode();
+            _draggingPanel = null;
+            _resizingPanel = null;
+            _needsLayout = true;
+            // 3. Restore panels for new blade (reuse same objects)
+            if (!_bladePanelCache.ContainsKey(newContext))
+                _bladePanelCache[newContext] = new List<IPanel>();
+            var toRestore = _bladePanelCache[newContext];
+            foreach (var p in toRestore)
+            {
+                p.Show();
+                if (p.DockState == DockState.Floating)
+                    _floatingPanels.Add(p);
+                else
+                    _root.AddPanel(p);
+            }
+            // 4. Apply exact previous dock layout (positions, splits, tabs) without creating new panels
+            if (_bladeLayoutCache.TryGetValue(newContext, out var savedLayout) && !string.IsNullOrEmpty(savedLayout))
+            {
+                ApplyLayoutToExistingPanels(savedLayout, toRestore);
+            }
+            _lastBlade = newContext;
+            Console.WriteLine($"[IDEDockingStrategy] Blade '{newContext}' restored: {toRestore.Count} panels + exact dock state");
+        }
+        private void ApplyLayoutToExistingPanels(string json, List<IPanel> existingPanels)
+        {
+            if (string.IsNullOrEmpty(json) || existingPanels.Count == 0) return;
+            try
+            {
+                var state = JsonSerializer.Deserialize<SerializableLayoutState>(json);
+                // Rebuild dock tree using the SAME panel instances
+                _root = RebuildDockTree(state.Root, existingPanels);
+                // Restore floating panel positions/sizes
+                foreach (var fp in state.FloatingPanels)
+                {
+                    var panel = existingPanels.FirstOrDefault(p => p.GetType().AssemblyQualifiedName == fp.PanelType);
+                    if (panel != null)
+                    {
+                        panel.Position = fp.Position;
+                        panel.Size = fp.Size;
+                        panel.DockState = DockState.Floating;
+                        if (!_floatingPanels.Contains(panel))
+                            _floatingPanels.Add(panel);
+                    }
+                }
+                _needsLayout = true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[IDEDockingStrategy] ApplyLayoutToExistingPanels failed: {ex.Message}");
+            }
+        }
+        private DockNode RebuildDockTree(SerializableDockNode s, List<IPanel> existingPanels)
+        {
+            if (s == null) return new DockTabbedNode();
+            if (s.NodeType == "tabbed")
+            {
+                var tab = new DockTabbedNode();
+                tab.ActiveIndex = s.ActiveTabIndex;
+                foreach (var panelType in s.Panels)
+                {
+                    var panel = existingPanels.FirstOrDefault(p => p.GetType().AssemblyQualifiedName == panelType);
+                    if (panel != null) tab.AddPanel(panel);
+                }
+                return tab;
+            }
+            if (s.NodeType == "split")
+            {
+                var split = new DockSplitNode
+                {
+                    IsVertical = s.IsVertical,
+                    SplitRatio = s.SplitRatio
+                };
+                split.Left = RebuildDockTree(s.Left, existingPanels);
+                split.Right = RebuildDockTree(s.Right, existingPanels);
+                return split;
+            }
+            return new DockTabbedNode();
+        }
+        private void CollectPanelsRecursive(DockNode node, List<IPanel> list)
+        {
+            if (node == null) return;
+            if (node is DockTabbedNode tab) list.AddRange(tab.Panels);
+            else if (node is DockSplitNode split)
+            {
+                CollectPanelsRecursive(split.Left, list);
+                CollectPanelsRecursive(split.Right, list);
+            }
         }
         public void AddPanel(IPanel panel)
         {
@@ -408,7 +514,6 @@ namespace SiegeEngine.Core.Managers
                     break;
                 case ResizeHandle.Bottom:
                     newSize.Y = Math.Max(150f, _resizeStartSize.Y + delta.Y);
-                    newPos.Y = _resizeStartPosition.Y + _resizeStartSize.Y - newSize.Y;
                     break;
                 case ResizeHandle.TopLeft:
                     newSize.X = Math.Max(200f, _resizeStartSize.X - delta.X);
@@ -436,7 +541,7 @@ namespace SiegeEngine.Core.Managers
             if (_resizingPanel is BasePanel bp)
             {
                 bp.OnLiveResize(newSize.X, newSize.Y);
-                bp._uiOverlay?.RefreshUI(); // minimal fix: forces immediate recompute of inner HTML elements (e.g. blendGrid) so dots stay perfectly aligned during live resize, drag and docking changes
+                bp._uiOverlay?.RefreshUI();
             }
         }
         private void TearOutPanel(IPanel panel, Vector2 mousePos, int winW, int winH)

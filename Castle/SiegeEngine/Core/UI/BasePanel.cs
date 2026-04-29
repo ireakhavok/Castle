@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/UI
-// File: BasePanel.cs
-using SiegeEngine.Core.ContextManagement;
+﻿using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -286,8 +284,15 @@ namespace SiegeEngine.Core.UI
         }
         public nint WindowHandle => _window;
         protected internal UIQuadRenderer QuadRenderer => _quadRenderer;
-
-        // === NEW: Generic custom overlay support (for blend dots, etc.) ===
         public List<ICustomOverlay> CustomOverlays { get; } = new List<ICustomOverlay>();
+        public virtual void Hide()
+        {
+            Visible = false;
+            Detach();
+        }
+        public virtual void Show()
+        {
+            Visible = true;
+        }
     }
 }
