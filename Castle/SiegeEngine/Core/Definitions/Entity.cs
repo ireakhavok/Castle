@@ -49,13 +49,21 @@ namespace SiegeEngine.Core.Definitions
 
         public EntityData ToData()
         {
-            return new EntityData
+            var data = new EntityData
             {
                 Type = Type,
                 Position = Transform.Position,
                 Rotation = Transform.Rotation,
                 Scale = Transform.Scale
             };
+
+            var modelComp = GetComponent<ModelComponent>();
+            if (modelComp != null)
+            {
+                data.AssetPackKey = modelComp.Key;
+            }
+
+            return data;
         }
 
         public static Entity FromData(EntityData data)
@@ -65,6 +73,13 @@ namespace SiegeEngine.Core.Definitions
             entity.Transform.Position = data.Position;
             entity.Transform.Rotation = data.Rotation;
             entity.Transform.Scale = data.Scale != default ? data.Scale : Vector3.One;
+
+            if (!string.IsNullOrEmpty(data.AssetPackKey))
+            {
+                var modelComp = new ModelComponent { Key = data.AssetPackKey };
+                entity.AddComponent(modelComp);
+            }
+
             return entity;
         }
     }

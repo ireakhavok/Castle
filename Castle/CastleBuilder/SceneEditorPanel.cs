@@ -19,6 +19,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using ToolChest;
+
 namespace CastleBuilder
 {
     public class SceneEditorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -115,10 +116,27 @@ namespace CastleBuilder
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
         }
+
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
-            string placeType = Path.GetExtension(e.Path).ToLowerInvariant() == ".json" ? "AssetPack" : "FBX";
+
+            string ext = Path.GetExtension(e.Path).ToLowerInvariant();
+            string originalKey = Path.GetFileNameWithoutExtension(e.Path).ToLower();
+            string packId = originalKey + "_pack";
+            string placeType = "FBX";
+
+            if (ext == ".json")
+            {
+                placeType = "AssetPack";
+                packId = originalKey;
+                _modelManager.LoadAnimationPack(e.Path);
+            }
+            else if (ext == ".fbx")
+            {
+                packId = _modelManager.RegisterFBXAsPackInMemory(e.Path);
+            }
+
             Vector3 placePos = new Vector3(100f, 100f, 10f);
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             if (activeField != null)
@@ -150,31 +168,41 @@ namespace CastleBuilder
                     }
                 }
             }
+
             var entity = new Entity { Type = placeType };
             entity.Transform.Position = placePos;
-            if (placeType == "FBX" && File.Exists(e.Path))
+
+            if (_modelManager.TryGetModel(packId, out var fbxModel) || _modelManager.TryGetModel(originalKey, out fbxModel))
             {
-                string key = Path.GetFileNameWithoutExtension(e.Path).ToLower();
-                _modelManager.LoadModel(e.Path);
-                if (_modelManager.TryGetModel(key, out var fbxModel))
-                {
-                    entity.AddComponent(new ModelComponent { Model = fbxModel, Key = key });
-                }
+                var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
+                entity.AddComponent(modelComp);
             }
+            else if (ext == ".json")
+            {
+                var modelComp = new ModelComponent { Key = packId };
+                entity.AddComponent(modelComp);
+            }
+
             var physics = new PhysicsComponent();
             physics.Position = placePos;
             entity.AddComponent(physics);
+
             ProjectSettings.Current.CurrentLevel?.Entities.Add(entity);
+
             var evt = new EntityPlacedEvent(entity.Id, placeType, placePos);
             if (placeType == "FBX") evt.TexturePath = e.Path;
             _eventBus.Publish(evt);
+
             var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
             if (serverField != null)
             {
                 var server = serverField.GetValue(_editorScene) as IGameServer;
                 server?.AddEntity(entity);
             }
+
+            Console.WriteLine($"[SceneEditorPanel] Placed entity with AssetPackKey: {packId} (render data loaded in memory)");
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
         }
@@ -219,6 +247,7 @@ namespace CastleBuilder
                 }
             }
             if (entities == null || entities.Count == 0) return;
+
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
             Matrix4x4 view = Matrix4x4.Identity;
@@ -237,14 +266,14 @@ namespace CastleBuilder
                 if (aspectField != null) aspect = (float)aspectField.GetValue(active);
             }
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
+
             foreach (var entity in entities)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();
                 var physics = entity.GetComponent<PhysicsComponent>();
-                if (modelComp != null && physics != null)
+                if (modelComp != null && physics != null && !string.IsNullOrEmpty(modelComp.Key))
                 {
-                    string modelKey = modelComp.Key?.ToLower() ?? "man_mesh";
-                    if (_modelManager.TryGetModelData(modelKey, out var modelData))
+                    if (_modelManager.TryGetModelData(modelComp.Key, out var modelData))
                     {
                         Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
                         Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);

@@ -20,5 +20,8 @@ namespace SiegeEngine.Core.Definitions
         public int TextureId { get; set; }
         [JsonPropertyName("height")]
         public float Height { get; set; }
+
+        [JsonPropertyName("assetPackKey")]
+        public string AssetPackKey { get; set; }
     }
 }

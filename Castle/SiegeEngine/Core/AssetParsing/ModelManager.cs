@@ -1,11 +1,10 @@
-﻿// Folder: SiegeEngine.Core.AssetParsing
-// File: ModelManager.cs
-using SiegeEngine.Core.AssetParsing.Model;
+﻿using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Rendering;
@@ -64,6 +63,106 @@ namespace SiegeEngine.Core.AssetParsing
             _modelData[key] = modelData;
         }
 
+        public string RegisterFBXAsPackInMemory(string fbxPath)
+        {
+            if (!File.Exists(fbxPath)) throw new FileNotFoundException("FBX not found", fbxPath);
+
+            string packId = Path.GetFileNameWithoutExtension(fbxPath).ToLower() + "_pack";
+            string packKey = packId.ToLower();
+
+            if (_animationPacks.ContainsKey(packKey)) return packId;
+
+            // Load under original key (original working path)
+            LoadModel(fbxPath);
+
+            string originalKey = Path.GetFileNameWithoutExtension(fbxPath).ToLower();
+
+            // Duplicate data to packKey so TryGetModelData(packKey) succeeds in RenderInnerContent
+            if (_models.TryGetValue(originalKey, out var model))
+                _models[packKey] = model;
+            if (_modelData.TryGetValue(originalKey, out var data))
+                _modelData[packKey] = data;
+            if (_forests.TryGetValue(originalKey, out var forest))
+                _forests[packKey] = forest;
+            if (_fbxDirs.TryGetValue(originalKey, out var dir))
+                _fbxDirs[packKey] = dir;
+
+            FBXModel modelForPack = _models[originalKey];
+            var pack = new AnimationPack(packId, packId)
+            {
+                SourceFBXPath = fbxPath,
+                SourceSkeletonPath = fbxPath
+            };
+
+            pack.Animations = modelForPack.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+
+            if (modelForPack.Skeleton != null)
+            {
+                for (int i = 0; i < modelForPack.Skeleton.Bones.Count; i++)
+                {
+                    pack.BoneNameToIndex[modelForPack.Skeleton.Bones[i].Name] = i;
+                }
+            }
+
+            _animationPacks[packKey] = pack;
+
+            Console.WriteLine($"[ModelManager] Registered in-memory AssetPack '{packId}' (render data duplicated to pack key)");
+            return packId;
+        }
+
+        public void LoadAnimationPack(string packPath)
+        {
+            string key = Path.GetFileNameWithoutExtension(packPath).ToLower();
+            if (_animationPacks.ContainsKey(key)) return;
+
+            string json = File.ReadAllText(packPath);
+            var pack = JsonSerializer.Deserialize<AnimationPack>(json);
+            _animationPacks[key] = pack;
+
+            if (!string.IsNullOrEmpty(pack.SourceFBXPath) && File.Exists(pack.SourceFBXPath))
+            {
+                LoadModel(pack.SourceFBXPath);
+                Console.WriteLine($"[ModelManager] Loaded render data for pack {key} from source FBX");
+            }
+        }
+
+        public void CreateAssetPackFromFBX(string fbxPath, string packsDirectory, string packId = null)
+        {
+            if (!File.Exists(fbxPath)) throw new FileNotFoundException("FBX not found", fbxPath);
+
+            Directory.CreateDirectory(packsDirectory);
+
+            if (string.IsNullOrEmpty(packId))
+                packId = Path.GetFileNameWithoutExtension(fbxPath).ToLower() + "_pack";
+
+            string finalPackPath = Path.Combine(packsDirectory, packId + ".json");
+            if (File.Exists(finalPackPath)) return;
+
+            FBXFileForest forest = FBXParser.Load(fbxPath);
+            FBXModel model = FBXParser.BuildModelFromForest(forest);
+
+            var pack = new AnimationPack(packId, packId)
+            {
+                SourceFBXPath = fbxPath,
+                SourceSkeletonPath = fbxPath
+            };
+
+            pack.Animations = model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+
+            if (model.Skeleton != null)
+            {
+                for (int i = 0; i < model.Skeleton.Bones.Count; i++)
+                {
+                    pack.BoneNameToIndex[model.Skeleton.Bones[i].Name] = i;
+                }
+            }
+
+            string json = JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(finalPackPath, json);
+
+            Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {finalPackPath} (Id: {packId})");
+        }
+
         public void AttachSkeleton(string targetKey, string skeletonPath)
         {
             if (!_models.ContainsKey(targetKey))
@@ -100,24 +199,6 @@ namespace SiegeEngine.Core.AssetParsing
                 _animations[animKey] = anims;
             }
             _models[targetKey].Animations.AddRange(anims);
-        }
-
-        public void LoadAnimationPack(string packPath)
-        {
-            string key = Path.GetFileNameWithoutExtension(packPath).ToLower();
-            if (_animationPacks.ContainsKey(key)) return;
-            FBXFileForest forest = FBXParser.Load(packPath);
-            FBXModel model = FBXParser.BuildModelFromForest(forest);
-            var pack = new AnimationPack(key, key);
-            pack.Animations = model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
-            if (model.Skeleton != null)
-            {
-                for (int i = 0; i < model.Skeleton.Bones.Count; i++)
-                {
-                    pack.BoneNameToIndex[model.Skeleton.Bones[i].Name] = i;
-                }
-            }
-            _animationPacks[key] = pack;
         }
 
         public void AttachAnimationPack(string targetModelKey, string packId)

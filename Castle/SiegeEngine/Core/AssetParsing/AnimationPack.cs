@@ -14,6 +14,9 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public Dictionary<string, int> BoneNameToIndex { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         public Vector3 DefaultBlendParams { get; set; } = Vector3.Zero;
 
+        public string SourceFBXPath { get; set; }
+        public string SourceSkeletonPath { get; set; }
+
         public AnimationPack() { }
 
         public AnimationPack(string id, string name)

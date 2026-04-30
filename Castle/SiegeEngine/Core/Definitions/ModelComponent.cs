@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Definitions
-// File: ModelComponent.cs
-using SiegeEngine.Core.AssetParsing.Model;
+﻿using SiegeEngine.Core.AssetParsing.Model;
 using Silk.NET.Maths;
 using System;
 using System.Numerics;
@@ -11,7 +9,8 @@ namespace SiegeEngine.Core.Definitions
     public class ModelComponent : IComponent
     {
         public FBXModel Model { get; set; }
-        public string Key { get; set; } // Added to store model identifier
+        public string Key { get; set; }
+
         public Matrix3x3[] NormalBoneTransforms { get; set; }
     }
 }
