@@ -104,8 +104,15 @@ namespace SiegeEngine.Core.AssetParsing
 
         public void LoadAnimationPack(string packPath)
         {
-            string key = Path.GetFileNameWithoutExtension(packPath).ToLower();
-            if (_animationPacks.ContainsKey(key)) return;
+            if (string.IsNullOrEmpty(packPath) || !File.Exists(packPath))
+                return;
+
+            // Use the folder name (which is the real packId) as the key, NOT the json filename
+            string packFolder = Path.GetDirectoryName(packPath);
+            string key = Path.GetFileName(packFolder).ToLower();   // e.g. "man_mesh_pack"
+
+            if (_animationPacks.ContainsKey(key))
+                return;
 
             string json = File.ReadAllText(packPath);
             var pack = JsonSerializer.Deserialize<AnimationPack>(json);
@@ -115,11 +122,11 @@ namespace SiegeEngine.Core.AssetParsing
             if (!string.IsNullOrEmpty(resolvedFBXPath) && File.Exists(resolvedFBXPath))
             {
                 LoadModel(resolvedFBXPath);
-                Console.WriteLine($"[ModelManager] Loaded render data for pack {key} from source FBX: {resolvedFBXPath}");
+                Console.WriteLine($"[ModelManager] Loaded render data for pack '{key}' from source FBX: {resolvedFBXPath}");
             }
             else
             {
-                Console.WriteLine($"[ModelManager] WARNING: Could not resolve or find FBX for pack {key}. SourceFBXPath='{pack.SourceFBXPath}', packPath='{packPath}', resolved='{resolvedFBXPath ?? "null"}'");
+                Console.WriteLine($"[ModelManager] WARNING: Could not resolve FBX for pack '{key}'. SourceFBXPath='{pack.SourceFBXPath}', resolved='{resolvedFBXPath ?? "null"}'");
             }
         }
 
