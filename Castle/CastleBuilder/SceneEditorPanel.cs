@@ -4,6 +4,7 @@ using Keystone;
 using MapRoom;
 using ReadingChamber;
 using SiegeEngine.Core.AssetParsing;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -56,7 +57,7 @@ namespace CastleBuilder
             DockingMode = DockingMode.IDE;
             BaseHeight = 720f;
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
-            _modelManager = new ModelManager(renderContext);
+            _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
         }
 
         public string ContentType => "SceneEditor";
@@ -182,6 +183,7 @@ namespace CastleBuilder
             var entity = new Entity { Type = placeType };
             entity.Transform.Position = placePos;
 
+            // Robust model lookup
             if (_modelManager.TryGetModel(packId, out var fbxModel) || _modelManager.TryGetModel(originalKey, out fbxModel))
             {
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
@@ -197,14 +199,12 @@ namespace CastleBuilder
             physics.Position = placePos;
             entity.AddComponent(physics);
 
-            // Persistence to Level (required for project.json)
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null)
             {
                 level.AddEntity(entity);
             }
 
-            // Networking / server sync
             var evt = new EntityPlacedEvent(entity.Id, placeType, placePos);
             if (placeType == "FBX") evt.TexturePath = e.Path;
             _eventBus.Publish(evt);
@@ -292,13 +292,25 @@ namespace CastleBuilder
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (modelComp != null && physics != null && !string.IsNullOrEmpty(modelComp.Key))
                 {
-                    if (_modelManager.TryGetModelData(modelComp.Key, out var modelData))
+                    FBXModel fbxModel = modelComp.Model;
+
+                    // Robust fallback for restored entities
+                    if (fbxModel == null)
+                    {
+                        if (ModelManager.Instance.TryGetModel(modelComp.Key, out fbxModel))
+                        {
+                            modelComp.Model = fbxModel;
+                            Console.WriteLine($"[SceneEditorPanel] Hydrated missing Model reference for restored entity '{modelComp.Key}'");
+                        }
+                    }
+
+                    if (fbxModel != null && _modelManager.TryGetModelData(modelComp.Key, out var modelData))
                     {
                         Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
                         Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
                         Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
                         Matrix4x4 modelMatrix = scaleMat * rotation * translation;
-                        _modelRenderer.RenderModel(modelComp.Model, modelData, view, projection, viewPos, modelMatrix);
+                        _modelRenderer.RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix);
                     }
                 }
             }

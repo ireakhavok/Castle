@@ -1,4 +1,6 @@
-﻿using Keystone;
+﻿// Folder: CastleBuilder
+// File: EditorScene.cs
+using Keystone;
 using MapRoom;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
@@ -16,6 +18,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using ToolChest;
+
 namespace CastleBuilder
 {
     public class EditorScene : Scene
@@ -24,15 +27,21 @@ namespace CastleBuilder
         private string _currentGameSceneName = string.Empty;
         private GameScene _activeGameScene;
         public static EditorScene Current { get; private set; }
+
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             Current = this;
             LoadProjectData();
         }
+
         public ProjectData GetProjectData() => _projectData;
+
+        public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
+
         public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -47,6 +56,7 @@ namespace CastleBuilder
             }
             if (_projectData == null) _projectData = new ProjectData();
             if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
+
             if (ProjectSettings.Current.CurrentSceneData != null && ProjectSettings.Current.CurrentHeightmap != null)
             {
                 string newSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
@@ -60,6 +70,7 @@ namespace CastleBuilder
                 ActivateCurrentGameScene();
                 return;
             }
+
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
             {
                 Console.WriteLine("[EditorScene] No active project - creating default");
@@ -71,9 +82,11 @@ namespace CastleBuilder
                 ProjectSettings.Current.SetCurrentTerrain(defaultSceneData, ((TerrainCreatorScene)_activeGameScene).GetHeightmap(), "Default");
                 return;
             }
+
             _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
             ActivateCurrentGameScene();
         }
+
         private void ActivateCurrentGameScene()
         {
             if (string.IsNullOrEmpty(_currentGameSceneName) || _projectData?.Scenes == null)
@@ -81,10 +94,13 @@ namespace CastleBuilder
                 _activeGameScene = null;
                 return;
             }
+
             if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out SceneData sceneData))
             {
                 _activeGameScene?.Dispose();
+
                 bool isTerrainScene = sceneData.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath) || _currentGameSceneName.Contains("Terrain");
+
                 if (isTerrainScene)
                 {
                     _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
@@ -93,6 +109,7 @@ namespace CastleBuilder
                 {
                     _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
                 }
+
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
 
@@ -109,30 +126,32 @@ namespace CastleBuilder
                     Console.WriteLine($"[EditorScene] Restored Level '{_currentGameSceneName}' with {level.Entities.Count} saved entities");
                 }
 
-                // === NEW: Load render data for every saved asset pack so models appear after reload ===
+                // === Load asset packs + populate Model reference on entities ===
                 if (ModelManager.Instance != null && level != null)
                 {
-                    var uniquePackKeys = level.Entities
-                        .Select(e => e.GetComponent<ModelComponent>()?.Key)
-                        .Where(k => !string.IsNullOrEmpty(k))
-                        .Distinct()
-                        .ToList();
-
-                    string projectPath = ProjectSettings.Current.ActiveProject;
-                    foreach (var packKey in uniquePackKeys)
+                    var loadedPacks = new HashSet<string>();
+                    foreach (var entity in level.Entities)
                     {
-                        string packJsonPath = Path.Combine(projectPath, "Assets", packKey, "assetpack.json");
-                        if (File.Exists(packJsonPath))
+                        var modelComp = entity.GetComponent<ModelComponent>();
+                        if (modelComp != null && !string.IsNullOrEmpty(modelComp.Key) && loadedPacks.Add(modelComp.Key))
                         {
-                            ModelManager.Instance.LoadAnimationPack(packJsonPath);
-                            Console.WriteLine($"[EditorScene] Loaded asset pack on reload: {packKey}");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[EditorScene] WARNING: assetpack.json not found for {packKey} at {packJsonPath}");
+                            string projectPath = ProjectSettings.Current.ActiveProject;
+                            string packJsonPath = Path.Combine(projectPath, "Assets", modelComp.Key, "assetpack.json");
+                            if (File.Exists(packJsonPath))
+                            {
+                                ModelManager.Instance.LoadAnimationPack(packJsonPath);
+                                if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
+                                {
+                                    modelComp.Model = fbxModel;
+                                    Console.WriteLine($"[EditorScene] Populated Model reference for restored entity pack '{modelComp.Key}'");
+                                }
+                            }
                         }
                     }
                 }
+
+                // === CRITICAL: Synchronize persistent Level entities into runtime IGameServer ===
+                SyncLevelToRuntimeServer(level);
 
                 if (_activeGameScene is TerrainCreatorScene tcs)
                 {
@@ -145,9 +164,29 @@ namespace CastleBuilder
                         Console.WriteLine($"[EditorScene] Loaded terrain for '{_currentGameSceneName}' from path");
                     }
                 }
+
                 Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (Level has {ProjectSettings.Current.CurrentLevel?.Entities.Count ?? 0} entities)");
             }
         }
+
+        private void SyncLevelToRuntimeServer(Level level)
+        {
+            if (level == null || _server == null) return;
+
+            var clientProxy = _server as ClientGameServerProxy;
+            if (clientProxy != null)
+            {
+                clientProxy.ClearEntities();
+
+                foreach (var entity in level.Entities)
+                {
+                    clientProxy.AddEntity(entity);   // uses public API (publishes EntityAddedEvent)
+                }
+
+                Console.WriteLine($"[EditorScene] Synced {level.Entities.Count} restored entities from Level → ClientGameServerProxy runtime (models will now render immediately)");
+            }
+        }
+
         public void FlushActiveSceneData()
         {
             if (_activeGameScene is TerrainCreatorScene tcs && _projectData?.Scenes != null)
@@ -177,6 +216,7 @@ namespace CastleBuilder
                 Console.WriteLine($"[EditorScene] WARNING: Could not flush entities - Level or SceneData missing for scene '{_currentGameSceneName}'");
             }
         }
+
         public void SwitchGameScene(string sceneName)
         {
             if (_projectData?.Scenes?.ContainsKey(sceneName) == true)
@@ -187,11 +227,13 @@ namespace CastleBuilder
                 Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName}");
             }
         }
+
         public override void Resize(int width, int height)
         {
             base.Resize(width, height);
             _activeGameScene?.Resize(width, height);
         }
+
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
         {
             if (_activeGameScene is TerrainCreatorScene terrainScene)
@@ -203,10 +245,12 @@ namespace CastleBuilder
                 _activeGameScene.Update(deltaTime);
             }
         }
+
         public override void Update(float deltaTime)
         {
             _activeGameScene?.Update(deltaTime);
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             if (!(_activeGameScene is TerrainCreatorScene))
@@ -216,6 +260,7 @@ namespace CastleBuilder
             }
             _activeGameScene?.Render(entities ?? GetEntities());
         }
+
         public List<string> GetAvailableScenes()
         {
             var keys = _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
@@ -223,17 +268,21 @@ namespace CastleBuilder
             foreach (var key in ProjectSettings.Current.GetUnsavedHeightmapKeys()) scenes.Add(key);
             return scenes.ToList();
         }
+
         public string CurrentGameScene => _currentGameSceneName;
+
         public override void Dispose()
         {
             Current = null;
             _activeGameScene?.Dispose();
             base.Dispose();
         }
+
         private class BasicGameScene : GameScene
         {
             public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)
                 : base(rc, cc, w, s, eb, data) { }
+
             public override void Render(IReadOnlyList<Entity> entities) { }
         }
     }

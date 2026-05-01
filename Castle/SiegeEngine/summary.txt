@@ -471,7 +471,7 @@ Folder: Core
       - void AddChild(Entity child)
       - EntityData ToData()
       - Entity FromData(EntityData data)
-        - Calls: Entity
+        - Calls: Entity, PhysicsComponent
       - constructor Entity()
 - File: EntityAddedEvent.cs
   - Class: EntityAddedEvent (Namespace: SiegeEngine.Core.Events)
@@ -486,7 +486,7 @@ Folder: Core
       - void Deserialize(byte[] data)
 - File: EntityData.cs
   - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Dependencies: System.Numerics, System.Text.Json.Serialization
 - File: EntityMovedEvent.cs
   - Class: EntityMovedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -1105,8 +1105,8 @@ Folder: Core
     
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Numerics
 - File: ModelManager.cs
-  - Class: ModelMeshRender (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+  - Class: unchanged (Namespace: SiegeEngine.Core.AssetParsing)
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
 - File: ModelRenderer.cs
   - Class: ModelRenderer (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.Shaders, System, System.Numerics
@@ -2591,8 +2591,8 @@ SiegeEngine.Core.AssetParsing.Model.MeshData
 SiegeEngine.Core.AssetParsing.Model.MovementBlendConfig
 SiegeEngine.Core.AssetParsing.Model.Skeleton
 SiegeEngine.Core.AssetParsing.Model.TextureInfo
-SiegeEngine.Core.AssetParsing.ModelMeshRender
 SiegeEngine.Core.AssetParsing.NodeParser
+SiegeEngine.Core.AssetParsing.unchanged
 SiegeEngine.Core.ContextManagement.AbstractRenderEnums
 SiegeEngine.Core.ContextManagement.ContextManager
 SiegeEngine.Core.ContextManagement.D3D12_COMMAND_SIGNATURE_DESC

@@ -8,7 +8,6 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
 
@@ -122,6 +121,17 @@ namespace SiegeEngine.Core.AssetParsing
             if (!string.IsNullOrEmpty(resolvedFBXPath) && File.Exists(resolvedFBXPath))
             {
                 LoadModel(resolvedFBXPath);
+                // === CRITICAL: ensure the model is also registered under the pack key (same as RegisterFBXAsPackInMemory) ===
+                string originalKey = Path.GetFileNameWithoutExtension(resolvedFBXPath).ToLower();
+                if (_models.TryGetValue(originalKey, out var model))
+                    _models[key] = model;
+                if (_modelData.TryGetValue(originalKey, out var data))
+                    _modelData[key] = data;
+                if (_forests.TryGetValue(originalKey, out var forest))
+                    _forests[key] = forest;
+                if (_fbxDirs.TryGetValue(originalKey, out var dir))
+                    _fbxDirs[key] = dir;
+
                 Console.WriteLine($"[ModelManager] Loaded render data for pack '{key}' from source FBX: {resolvedFBXPath}");
             }
             else
@@ -213,7 +223,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
         }
 
-        // ... (rest of the class unchanged - AttachSkeleton, AttachAnimation, etc.)
         public void AttachSkeleton(string targetKey, string skeletonPath)
         {
             if (!_models.ContainsKey(targetKey))

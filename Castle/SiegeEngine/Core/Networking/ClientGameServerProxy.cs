@@ -35,6 +35,15 @@ namespace SiegeEngine.Core.Networking
             }
         }
 
+        /// <summary>
+        /// Editor-only helper (safe to call in editor context). Used during project reload
+        /// to reset runtime entities before re-adding restored ones from Level.
+        /// </summary>
+        public void ClearEntities()
+        {
+            _entities.Clear();
+        }
+
         public IReadOnlyList<Entity> GetEntities()
         {
             return _entities.AsReadOnly();
