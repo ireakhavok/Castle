@@ -1,4 +1,6 @@
-﻿using MapRoom;
+﻿using Keystone;
+using MapRoom;
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -11,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Keystone;
 using System.Numerics;
 using System.Text.Json;
 using ToolChest;
@@ -94,6 +95,7 @@ namespace CastleBuilder
                 }
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
+
                 var level = ProjectSettings.Current.CurrentLevel;
                 if (level == null || level.Name != _currentGameSceneName)
                 {
@@ -106,6 +108,32 @@ namespace CastleBuilder
                     ProjectSettings.Current.SetCurrentLevel(level);
                     Console.WriteLine($"[EditorScene] Restored Level '{_currentGameSceneName}' with {level.Entities.Count} saved entities");
                 }
+
+                // === NEW: Load render data for every saved asset pack so models appear after reload ===
+                if (ModelManager.Instance != null && level != null)
+                {
+                    var uniquePackKeys = level.Entities
+                        .Select(e => e.GetComponent<ModelComponent>()?.Key)
+                        .Where(k => !string.IsNullOrEmpty(k))
+                        .Distinct()
+                        .ToList();
+
+                    string projectPath = ProjectSettings.Current.ActiveProject;
+                    foreach (var packKey in uniquePackKeys)
+                    {
+                        string packJsonPath = Path.Combine(projectPath, "Assets", packKey, "assetpack.json");
+                        if (File.Exists(packJsonPath))
+                        {
+                            ModelManager.Instance.LoadAnimationPack(packJsonPath);
+                            Console.WriteLine($"[EditorScene] Loaded asset pack on reload: {packKey}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[EditorScene] WARNING: assetpack.json not found for {packKey} at {packJsonPath}");
+                        }
+                    }
+                }
+
                 if (_activeGameScene is TerrainCreatorScene tcs)
                 {
                     float[,] cached = ProjectSettings.Current.GetUnsavedHeightmap(_currentGameSceneName);
