@@ -289,7 +289,6 @@ namespace Citadel.Server
         private void OnEntityPlaced(EntityPlacedEvent e)
         {
             var entity = new Entity { Id = e.EntityId, Type = e.EntityType };
-
             var transform = entity.GetComponent<TransformComponent>();
             transform.Position = e.Position with { Z = 0f };
             transform.Rotation = e.Rotation;
