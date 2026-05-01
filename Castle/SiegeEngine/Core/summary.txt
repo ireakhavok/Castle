@@ -178,7 +178,7 @@ Folder: AssetParsing
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
 - File: ModelManager.cs
-  - Class: unchanged (Namespace: SiegeEngine.Core.AssetParsing)
+  - Class: ModelMeshRender (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
 - File: NodeParser.cs
   - Class: NodeParser (Namespace: SiegeEngine.Core.AssetParsing)
@@ -1065,6 +1065,8 @@ Folder: Networking
         - Calls: EntityAddedEvent
       - void RemoveEntity(int id)
         - Calls: EntityRemovedEvent
+      - void ClearEntities()
+        - Calls: _entities.Clear
       - IReadOnlyList<Entity> GetEntities()
       - Entity GetEntityById(int id)
       - void AddSystem(GameSystem system)
@@ -2093,8 +2095,8 @@ SiegeEngine.Core.AssetParsing.Model.MeshData
 SiegeEngine.Core.AssetParsing.Model.MovementBlendConfig
 SiegeEngine.Core.AssetParsing.Model.Skeleton
 SiegeEngine.Core.AssetParsing.Model.TextureInfo
+SiegeEngine.Core.AssetParsing.ModelMeshRender
 SiegeEngine.Core.AssetParsing.NodeParser
-SiegeEngine.Core.AssetParsing.unchanged
 SiegeEngine.Core.ContextManagement.AbstractRenderEnums
 SiegeEngine.Core.ContextManagement.ContextManager
 SiegeEngine.Core.ContextManagement.D3D12_COMMAND_SIGNATURE_DESC
