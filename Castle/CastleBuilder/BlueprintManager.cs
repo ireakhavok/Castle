@@ -1,4 +1,6 @@
-﻿using CastleBuilder.Events;
+﻿// Folder: CastleBuilder
+// File: BlueprintManager.cs
+using CastleBuilder.Events;
 using Keystone;
 using MapRoom;
 using SiegeEngine.Core.AssetParsing;
@@ -17,6 +19,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using ToolChest;
+
 namespace CastleBuilder
 {
     public class BlueprintManager
@@ -25,6 +28,7 @@ namespace CastleBuilder
         private readonly string _configPath;
         private static BlueprintManager _instance;
         private static string _previousContext = "Scene Editor";
+
         private static void EnsureInitialized(EventBus eventBus)
         {
             if (_instance == null && eventBus != null)
@@ -33,6 +37,7 @@ namespace CastleBuilder
                 Console.WriteLine("[BlueprintManager] Lazy-initialized");
             }
         }
+
         public BlueprintManager(EventBus eventBus)
         {
             _eventBus = eventBus;
@@ -46,12 +51,14 @@ namespace CastleBuilder
             _configPath = GetDefaultIDEPath();
             Console.WriteLine("[BlueprintManager] Constructor finished - all events subscribed");
         }
+
         public static void Load(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
             var idePanel = new IDEBasePanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(idePanel) { Mode = OpenMode.Replace });
         }
+
         public static void CreateNewProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, UIOverlay overlay)
         {
             EnsureInitialized(eventBus);
@@ -86,6 +93,7 @@ namespace CastleBuilder
             Console.WriteLine($"[BlueprintManager] New project created: {dir}");
             Load(renderContext, controlContext, window, eventBus);
         }
+
         private void OnCreateTerrain(CreateTerrainEvent evt)
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -117,6 +125,7 @@ namespace CastleBuilder
                 }
             }
         }
+
         public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
@@ -134,6 +143,7 @@ namespace CastleBuilder
             }
             NewTerrainPanel.Open(renderContext, controlContext, window, eventBus);
         }
+
         public static void EnsureDefaultSceneIfNeeded()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -145,28 +155,29 @@ namespace CastleBuilder
             if (data.Scenes == null || data.Scenes.Count == 0)
             {
                 data.Scenes = new Dictionary<string, SceneData>();
+                var level = new Level() { Name = "Main" };
                 var sceneData = new SceneData { Name = "Main", SceneType = "TerrainTest" };
-                sceneData.Terrain = new TerrainData
-                {
-                    WorldScaleX = 1.0f,
-                    WorldScaleZ = 1.0f,
-                    VerticalExaggeration = 1.0f
-                };
+                sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
+                sceneData.Terrain = level.Terrain ?? new TerrainData();
+                sceneData.Environment = level.Environment ?? new EnvironmentSettings();
                 data.Scenes["Main"] = sceneData;
                 data.LastOpenedScene = "Main";
                 File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
-                Console.WriteLine("[BlueprintManager] Auto-created default scene 'Main' with 200×200 terrain");
+                ProjectSettings.Current.SetCurrentLevel(level);
+                Console.WriteLine("[BlueprintManager] Auto-created default scene 'Main' with Level as single source of truth");
             }
         }
+
         public static void SaveCurrentProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
-            Console.WriteLine("[BlueprintManager] SaveCurrentProject called - direct save");
+            Console.WriteLine("[BlueprintManager] SaveCurrentProject called - Level is now single source of truth");
             DoProjectSave();
         }
+
         private static void DoProjectSave()
         {
-            Console.WriteLine("[BlueprintManager.DoProjectSave] === DIRECT SAVE START ===");
+            Console.WriteLine("[BlueprintManager.DoProjectSave] === STAGE 1: Level-Centric Save Started ===");
             string projectPath = ProjectSettings.Current.ActiveProject;
             Console.WriteLine($"[BlueprintManager.DoProjectSave] ActiveProject from settings: '{projectPath}'");
             if (string.IsNullOrEmpty(projectPath))
@@ -188,18 +199,28 @@ namespace CastleBuilder
                 data = new ProjectData { Name = Path.GetFileName(projectPath) };
                 Console.WriteLine("[BlueprintManager.DoProjectSave] Creating new project data");
             }
+            if (data.Scenes == null) data.Scenes = new Dictionary<string, SceneData>();
+
             EditorScene.Current?.FlushActiveSceneData();
-            if (EditorScene.Current != null)
-            {
-                data = EditorScene.Current.GetProjectData() ?? data;
-            }
+
             string currentSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
             var level = ProjectSettings.Current.CurrentLevel;
-            if (level != null && data.Scenes != null && data.Scenes.TryGetValue(currentSceneName, out var sceneData))
+
+            if (level != null)
             {
+                if (!data.Scenes.TryGetValue(currentSceneName, out var sceneData))
+                {
+                    sceneData = new SceneData { Name = currentSceneName, SceneType = "TerrainTest" };
+                    data.Scenes[currentSceneName] = sceneData;
+                }
+                // Level is the single source of truth - sync everything to SceneData for disk
                 sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
-                Console.WriteLine($"[BlueprintManager.DoProjectSave] Clean entity flush: {level.Entities.Count} entities (position/rotation/scale + AssetPackKey preserved)");
+                sceneData.Terrain = level.Terrain ?? new TerrainData();
+                sceneData.Environment = level.Environment ?? new EnvironmentSettings();
+                if (level.CustomData != null) sceneData.CustomData = level.CustomData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+                Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment from Level (authoritative) → SceneData");
             }
+
             if (data.Scenes != null && data.Scenes.TryGetValue(currentSceneName, out var currentScene) && currentScene.Entities != null)
             {
                 var uniquePackKeys = currentScene.Entities
@@ -218,6 +239,7 @@ namespace CastleBuilder
                     Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder");
                 }
             }
+
             string originalPath = ProjectSettings.Current.CurrentHeightmapPath;
             bool isRealGeoTiff = false;
             if (!string.IsNullOrEmpty(originalPath))
@@ -245,10 +267,11 @@ namespace CastleBuilder
                 }
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Auto-saved heightmap for scene '{sceneName}' → {tifPath} (scale {scaleX:F2}x{scaleZ:F2})");
             }
+
             SaveAllPanelStates(data);
             var options = new JsonSerializerOptions { WriteIndented = true, IncludeFields = true };
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, options));
-            Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with terrain reference + clean entities + materialized asset packs");
+            Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with Level as single source of truth + terrain reference + clean entities + materialized asset packs");
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Forcing CURRENT blade '{_previousContext}' into memory");
@@ -257,6 +280,7 @@ namespace CastleBuilder
             ProjectLayoutManager.FlushAllToDisk();
             Console.WriteLine("[BlueprintManager.DoProjectSave] All blades committed to disk");
         }
+
         public static void SaveProjectAs(string folder, string name, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
@@ -284,6 +308,7 @@ namespace CastleBuilder
             eventBus.Publish(new LoadProjectEvent { Path = dir });
             Console.WriteLine($"[BlueprintManager.SaveProjectAs] Save As complete - new project fully populated and active at {dir}");
         }
+
         private static void CopyDirectory(string sourceDir, string targetDir)
         {
             DirectoryInfo diSource = new DirectoryInfo(sourceDir);
@@ -299,6 +324,7 @@ namespace CastleBuilder
                 CopyDirectory(diSourceSubDir.FullName, Path.Combine(diTarget.FullName, diSourceSubDir.Name));
             }
         }
+
         private void OnGenericEvent(GenericEvent evt)
         {
             if (evt.Hook == "CastleBuilder.NewProject")
@@ -315,6 +341,7 @@ namespace CastleBuilder
                 _eventBus.Publish(new NewProjectEvent { Name = name, ProjectType = projectType, Mode = mode, AllowMods = allowMods, Path = path });
             }
         }
+
         private void OnNewProject(NewProjectEvent evt)
         {
             string root = ProjectSettings.Current.ProjectsRoot;
@@ -334,6 +361,7 @@ namespace CastleBuilder
             Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             _eventBus.Publish(new LoadProjectEvent { Path = dir });
         }
+
         private void OnLoadProject(LoadProjectEvent evt)
         {
             if (string.IsNullOrEmpty(evt.Path) || !Directory.Exists(evt.Path)) return;
@@ -361,18 +389,22 @@ namespace CastleBuilder
                             foreach (var ed in sd.Entities)
                                 level.Entities.Add(Entity.FromData(ed));
                         }
+                        level.Terrain = sd.Terrain ?? new TerrainData();
+                        level.Environment = sd.Environment ?? new EnvironmentSettings();
                         ProjectSettings.Current.SetCurrentLevel(level);
-                        Console.WriteLine($"[BlueprintManager] Loaded {level.Entities.Count} entities from clean Entities array");
+                        Console.WriteLine($"[BlueprintManager] Loaded Level '{currentScene}' with {level.Entities.Count} entities as single source of truth");
                     }
                 }
             }
             SaveIDEState();
         }
+
         private void OnSaveProject(SaveProjectEvent evt)
         {
-            Console.WriteLine("[BlueprintManager.OnSaveProject] SaveProjectEvent received - calling direct save");
+            Console.WriteLine("[BlueprintManager.OnSaveProject] SaveProjectEvent received - calling Level-centric save");
             DoProjectSave();
         }
+
         private void OnContextChanged(ContextChangedEvent evt)
         {
             string newContext = evt.Context ?? "Scene Editor";
@@ -407,6 +439,7 @@ namespace CastleBuilder
             _previousContext = newContext;
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory hotswap, no close/dispose)");
         }
+
         private void OnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData as string != "LoadProject") return;
@@ -427,6 +460,7 @@ namespace CastleBuilder
                 Console.WriteLine($"[BlueprintManager.OnFileSelected] Ignored selection (not a valid project folder): {e.Path}");
             }
         }
+
         private string GetTemplate(string type)
         {
             string templatesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Templates");
@@ -435,10 +469,12 @@ namespace CastleBuilder
                 return File.ReadAllText(templateFile);
             return "{\"Name\": \"{name}\", \"Type\": \"" + type + "\", \"Mode\": \"{mode}\", \"AllowMods\": {allowMods}, \"CameraType\": \"" + (type == "2D" ? "AngledOrtho" : "Perspective") + "\", \"LastContext\": \"Scene Editor\"}";
         }
+
         private string GetDefaultIDEPath()
         {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CastleBuilder", "config.json");
         }
+
         private void SaveIDEState()
         {
             if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject)) return;
@@ -447,6 +483,7 @@ namespace CastleBuilder
             Directory.CreateDirectory(Path.GetDirectoryName(_configPath));
             File.WriteAllText(_configPath, json);
         }
+
         private static void SaveAllPanelStates(ProjectData data)
         {
             if (data == null) return;
@@ -472,6 +509,7 @@ namespace CastleBuilder
                 }
             }
         }
+
         private static void LoadAllPanelStates(ProjectData data)
         {
             if (data?.PanelStates == null || data.PanelStates.Count == 0) return;
@@ -493,6 +531,7 @@ namespace CastleBuilder
             }
         }
     }
+
     public static class StringExtensions
     {
         public static string ReplaceInvalidFileChars(this string filename)
