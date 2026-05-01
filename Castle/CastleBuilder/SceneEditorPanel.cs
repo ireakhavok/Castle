@@ -187,7 +187,16 @@ namespace CastleBuilder
             physics.Position = placePos;
             entity.AddComponent(physics);
 
-            ProjectSettings.Current.CurrentLevel?.Entities.Add(entity);
+            // === FIXED: Use proper Level.AddEntity instead of direct list access ===
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level != null)
+            {
+                level.AddEntity(entity);   // this also publishes EntityAddedEvent cleanly
+            }
+            else
+            {
+                Console.WriteLine("[SceneEditorPanel] WARNING: No CurrentLevel - entity not persisted to Level");
+            }
 
             var evt = new EntityPlacedEvent(entity.Id, placeType, placePos);
             if (placeType == "FBX") evt.TexturePath = e.Path;
@@ -200,7 +209,7 @@ namespace CastleBuilder
                 server?.AddEntity(entity);
             }
 
-            Console.WriteLine($"[SceneEditorPanel] Placed entity with AssetPackKey: {packId} (render data loaded in memory)");
+            Console.WriteLine($"[SceneEditorPanel] Placed entity with AssetPackKey: {packId} (render data loaded in memory, added via Level.AddEntity)");
         }
 
         public void HandleUIClick(HtmlElement elem)

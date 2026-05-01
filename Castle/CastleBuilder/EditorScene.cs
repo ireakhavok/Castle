@@ -108,6 +108,20 @@ namespace CastleBuilder
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
 
+                // === CRITICAL: Ensure Level is always present and populated from saved data ===
+                var level = ProjectSettings.Current.CurrentLevel;
+                if (level == null || level.Name != _currentGameSceneName)
+                {
+                    level = new Level(_eventBus) { Name = _currentGameSceneName };
+                    if (sceneData.Entities != null)
+                    {
+                        foreach (var ed in sceneData.Entities)
+                            level.Entities.Add(Entity.FromData(ed));
+                    }
+                    ProjectSettings.Current.SetCurrentLevel(level);
+                    Console.WriteLine($"[EditorScene] Restored Level for '{_currentGameSceneName}' with {level.Entities.Count} saved entities");
+                }
+
                 if (_activeGameScene is TerrainCreatorScene tcs)
                 {
                     float[,] cached = ProjectSettings.Current.GetUnsavedHeightmap(_currentGameSceneName);
@@ -120,7 +134,7 @@ namespace CastleBuilder
                     }
                 }
 
-                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (all previous scenes preserved)");
+                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (Level now has {ProjectSettings.Current.CurrentLevel?.Entities.Count ?? 0} entities)");
             }
         }
 
@@ -145,12 +159,16 @@ namespace CastleBuilder
                 }
             }
 
-            // Clean entity flush only (no Base64)
+            // === RELIABLE ENTITY FLUSH (always runs, uses live Level) ===
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null && _projectData?.Scenes != null && _projectData.Scenes.TryGetValue(_currentGameSceneName, out var sd))
             {
                 sd.Entities = level.Entities.ConvertAll(e => e.ToData());
-                Console.WriteLine($"[EditorScene] Flushed {level.Entities.Count} entities into clean Entities array");
+                Console.WriteLine($"[EditorScene] Flushed {level.Entities.Count} entities into SceneData.Entities (position/rotation/scale + AssetPackKey saved)");
+            }
+            else
+            {
+                Console.WriteLine($"[EditorScene] WARNING: Could not flush entities - Level or SceneData missing for scene '{_currentGameSceneName}'");
             }
         }
 
