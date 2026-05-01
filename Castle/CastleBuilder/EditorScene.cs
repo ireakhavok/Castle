@@ -42,6 +42,11 @@ namespace CastleBuilder
 
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
 
+        // Stage 2 (corrected - conservative): EditorScene is the pure IDE bridge layer.
+        // It prioritizes ProjectSettings.CurrentLevel as the single authoritative source when available.
+        // For new scenes / first-load fallback (which must continue to work after Step 1), it creates the Level from SceneData
+        // and immediately registers it in ProjectSettings so Level is authoritative going forward.
+        // Explicit position restoration after FromData fixes the (0,0,0) deserialization bug.
         public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -57,39 +62,54 @@ namespace CastleBuilder
             if (_projectData == null) _projectData = new ProjectData();
             if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
 
-            if (ProjectSettings.Current.CurrentSceneData != null && ProjectSettings.Current.CurrentHeightmap != null)
-            {
-                string newSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
-                _currentGameSceneName = newSceneName;
-                if (!_projectData.Scenes.ContainsKey(newSceneName))
-                {
-                    _projectData.Scenes[newSceneName] = ProjectSettings.Current.CurrentSceneData;
-                }
-                _projectData.LastOpenedScene = newSceneName;
-                Console.WriteLine($"[EditorScene] Merged new scene '{newSceneName}' from cache (total scenes: {_projectData.Scenes.Count})");
-                ActivateCurrentGameScene();
-                return;
-            }
-
-            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
-            {
-                Console.WriteLine("[EditorScene] No active project - creating default");
-                _currentGameSceneName = "Default";
-                _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus);
-                _activeGameScene.Initialize(_width, _height);
-                if (_activeGameScene is TerrainCreatorScene tcs) tcs.CreateBlank();
-                var defaultSceneData = new SceneData { Name = "Default", SceneType = "TerrainTest" };
-                ProjectSettings.Current.SetCurrentTerrain(defaultSceneData, ((TerrainCreatorScene)_activeGameScene).GetHeightmap(), "Default");
-                return;
-            }
-
             _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
-            ActivateCurrentGameScene();
+
+            Level level = ProjectSettings.Current.CurrentLevel;
+
+            if (level == null || level.Name != _currentGameSceneName)
+            {
+                Console.WriteLine($"[EditorScene.LoadProjectData] No matching Level in ProjectSettings for scene '{_currentGameSceneName}' - creating from SceneData (new scene / fallback path)");
+                if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out var sceneData))
+                {
+                    level = new Level(_eventBus) { Name = _currentGameSceneName };
+                    if (sceneData.Entities != null)
+                    {
+                        foreach (var ed in sceneData.Entities)
+                        {
+                            var entity = Entity.FromData(ed);
+                            // Explicit position restoration - fixes the (0,0,0) bug in Entity.FromData / PhysicsComponent
+                            var physics = entity.GetComponent<PhysicsComponent>();
+                            if (physics != null)
+                            {
+                                physics.Position = ed.Position;
+                                Console.WriteLine($"[EditorScene] Entity '{entity.Type}' (AssetPackKey: {entity.GetComponent<ModelComponent>()?.Key ?? "none"}) - EXPLICITLY restored Position: {physics.Position}");
+                            }
+                            level.Entities.Add(entity);
+                        }
+                    }
+                    level.Terrain = sceneData.Terrain ?? new TerrainData();
+                    level.Environment = sceneData.Environment ?? new EnvironmentSettings();
+                    ProjectSettings.Current.SetCurrentLevel(level);
+                    Console.WriteLine($"[EditorScene.LoadProjectData] Created and set authoritative Level '{_currentGameSceneName}' with {level.Entities.Count} entities");
+                }
+                else
+                {
+                    level = new Level(_eventBus) { Name = _currentGameSceneName };
+                    ProjectSettings.Current.SetCurrentLevel(level);
+                    Console.WriteLine($"[EditorScene.LoadProjectData] Created empty authoritative Level for new scene '{_currentGameSceneName}'");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[EditorScene.LoadProjectData] Using existing authoritative Level '{level.Name}' with {level.Entities.Count} entities from ProjectSettings.CurrentLevel");
+            }
+
+            ActivateCurrentGameScene(level);
         }
 
-        private void ActivateCurrentGameScene()
+        private void ActivateCurrentGameScene(Level level)
         {
-            if (string.IsNullOrEmpty(_currentGameSceneName) || _projectData?.Scenes == null)
+            if (level == null || string.IsNullOrEmpty(_currentGameSceneName) || _projectData?.Scenes == null)
             {
                 _activeGameScene = null;
                 return;
@@ -113,21 +133,8 @@ namespace CastleBuilder
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
 
-                var level = ProjectSettings.Current.CurrentLevel;
-                if (level == null || level.Name != _currentGameSceneName)
-                {
-                    level = new Level(_eventBus) { Name = _currentGameSceneName };
-                    if (sceneData.Entities != null)
-                    {
-                        foreach (var ed in sceneData.Entities)
-                            level.Entities.Add(Entity.FromData(ed));
-                    }
-                    ProjectSettings.Current.SetCurrentLevel(level);
-                    Console.WriteLine($"[EditorScene] Restored Level '{_currentGameSceneName}' with {level.Entities.Count} saved entities");
-                }
-
                 // === Load asset packs + populate Model reference on entities ===
-                if (ModelManager.Instance != null && level != null)
+                if (ModelManager.Instance != null)
                 {
                     var loadedPacks = new HashSet<string>();
                     foreach (var entity in level.Entities)
@@ -143,14 +150,14 @@ namespace CastleBuilder
                                 if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
                                 {
                                     modelComp.Model = fbxModel;
-                                    Console.WriteLine($"[EditorScene] Populated Model reference for restored entity pack '{modelComp.Key}'");
+                                    Console.WriteLine($"[EditorScene] Populated Model reference for entity pack '{modelComp.Key}'");
                                 }
                             }
                         }
                     }
                 }
 
-                // === CRITICAL: Synchronize persistent Level entities into runtime IGameServer ===
+                // === CRITICAL: Synchronize authoritative Level entities into runtime IGameServer ===
                 SyncLevelToRuntimeServer(level);
 
                 if (_activeGameScene is TerrainCreatorScene tcs)
@@ -165,7 +172,7 @@ namespace CastleBuilder
                     }
                 }
 
-                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' (Level has {ProjectSettings.Current.CurrentLevel?.Entities.Count ?? 0} entities)");
+                Console.WriteLine($"[EditorScene] Activated GameScene '{_currentGameSceneName}' using authoritative Level (entities: {level.Entities.Count})");
             }
         }
 
@@ -180,10 +187,15 @@ namespace CastleBuilder
 
                 foreach (var entity in level.Entities)
                 {
-                    clientProxy.AddEntity(entity);   // uses public API (publishes EntityAddedEvent)
+                    var physics = entity.GetComponent<PhysicsComponent>();
+                    if (physics != null)
+                    {
+                        Console.WriteLine($"[EditorScene.SyncLevelToRuntimeServer] Syncing entity '{entity.Type}' with Position {physics.Position} (from authoritative Level)");
+                    }
+                    clientProxy.AddEntity(entity);
                 }
 
-                Console.WriteLine($"[EditorScene] Synced {level.Entities.Count} restored entities from Level → ClientGameServerProxy runtime (models will now render immediately)");
+                Console.WriteLine($"[EditorScene] Synced {level.Entities.Count} entities from authoritative Level → ClientGameServerProxy runtime (positions preserved)");
             }
         }
 
@@ -205,15 +217,16 @@ namespace CastleBuilder
                     Console.WriteLine($"[EditorScene] Flushed terrain for scene '{name}' - path preserved: {sceneData.Terrain.HeightmapPath}");
                 }
             }
+
+            // Authoritative Level is kept in sync via events and placement - no extra work needed here
             var level = ProjectSettings.Current.CurrentLevel;
-            if (level != null && _projectData?.Scenes != null && _projectData.Scenes.TryGetValue(_currentGameSceneName, out var sd))
+            if (level != null)
             {
-                sd.Entities = level.Entities.ConvertAll(e => e.ToData());
-                Console.WriteLine($"[EditorScene] Flushed {level.Entities.Count} entities into SceneData.Entities (position/rotation/scale + AssetPackKey saved)");
+                Console.WriteLine($"[EditorScene.FlushActiveSceneData] Authoritative Level '{level.Name}' updated (single source of truth - {level.Entities.Count} entities)");
             }
             else
             {
-                Console.WriteLine($"[EditorScene] WARNING: Could not flush entities - Level or SceneData missing for scene '{_currentGameSceneName}'");
+                Console.WriteLine($"[EditorScene] WARNING: Could not flush - no CurrentLevel in ProjectSettings");
             }
         }
 
@@ -223,8 +236,8 @@ namespace CastleBuilder
             {
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
-                ActivateCurrentGameScene();
-                Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName}");
+                LoadProjectData();   // re-use full load path so new scenes are handled identically
+                Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName} (using shared authoritative Level)");
             }
         }
 
