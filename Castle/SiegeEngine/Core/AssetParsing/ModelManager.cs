@@ -111,20 +111,37 @@ namespace SiegeEngine.Core.AssetParsing
             string key = packKey.ToLower();
             if (!_animationPacks.TryGetValue(key, out var pack) || string.IsNullOrEmpty(pack.SourceFBXPath) || !File.Exists(pack.SourceFBXPath))
                 return;
+
             CreateAssetPackFromFBX(pack.SourceFBXPath, projectAssetsDir, pack.Id);
-            Console.WriteLine($"[ModelManager] Materialized asset pack '{pack.Id}' to Assets/{pack.Id}/");
+            Console.WriteLine($"[ModelManager] Materialized asset pack '{pack.Id}' to Assets/{pack.Id}/ (including textures)");
         }
+
         public void CreateAssetPackFromFBX(string fbxPath, string packsDirectory, string packId = null)
         {
             if (!File.Exists(fbxPath)) throw new FileNotFoundException("FBX not found", fbxPath);
+
             if (string.IsNullOrEmpty(packId))
                 packId = Path.GetFileNameWithoutExtension(fbxPath).ToLower() + "_pack";
+
             string packFolder = Path.Combine(packsDirectory, packId);
             Directory.CreateDirectory(packFolder);
+
+            // Copy FBX
             string fbxName = Path.GetFileName(fbxPath);
             string destFBX = Path.Combine(packFolder, fbxName);
             if (!File.Exists(destFBX))
                 File.Copy(fbxPath, destFBX, true);
+
+            // Copy entire texture folder (.fbm) if it exists
+            string fbmSource = Path.Combine(Path.GetDirectoryName(fbxPath), Path.GetFileNameWithoutExtension(fbxPath) + ".fbm");
+            if (Directory.Exists(fbmSource))
+            {
+                string fbmDest = Path.Combine(packFolder, Path.GetFileName(fbmSource));
+                CopyDirectory(fbmSource, fbmDest);
+                Console.WriteLine($"[ModelManager] Copied texture folder: {fbmSource} → {fbmDest}");
+            }
+
+            // Build lightweight manifest
             FBXFileForest forest = FBXParser.Load(fbxPath);
             FBXModel model = FBXParser.BuildModelFromForest(forest);
             var pack = new AnimationPack(packId, packId)
@@ -140,10 +157,26 @@ namespace SiegeEngine.Core.AssetParsing
                     pack.BoneNameToIndex[model.Skeleton.Bones[i].Name] = i;
                 }
             }
+
             string json = JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true });
             string jsonPath = Path.Combine(packFolder, "assetpack.json");
             File.WriteAllText(jsonPath, json);
-            Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {packFolder} (Id: {packId}) with original FBX + assetpack.json");
+
+            Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {packFolder} (Id: {packId}) with FBX + textures + manifest");
+        }
+
+        private static void CopyDirectory(string sourceDir, string targetDir)
+        {
+            Directory.CreateDirectory(targetDir);
+            foreach (FileInfo fi in new DirectoryInfo(sourceDir).GetFiles())
+            {
+                string targetFile = Path.Combine(targetDir, fi.Name);
+                fi.CopyTo(targetFile, true);
+            }
+            foreach (DirectoryInfo diSourceSubDir in new DirectoryInfo(sourceDir).GetDirectories())
+            {
+                CopyDirectory(diSourceSubDir.FullName, Path.Combine(targetDir, diSourceSubDir.Name));
+            }
         }
         public void AttachSkeleton(string targetKey, string skeletonPath)
         {

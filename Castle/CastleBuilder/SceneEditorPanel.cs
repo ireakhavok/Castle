@@ -19,7 +19,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using ToolChest;
-
 namespace CastleBuilder
 {
     public class SceneEditorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -116,16 +115,13 @@ namespace CastleBuilder
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
         }
-
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
-
             string ext = Path.GetExtension(e.Path).ToLowerInvariant();
             string originalKey = Path.GetFileNameWithoutExtension(e.Path).ToLower();
             string packId = originalKey + "_pack";
             string placeType = "FBX";
-
             if (ext == ".json")
             {
                 placeType = "AssetPack";
@@ -136,7 +132,6 @@ namespace CastleBuilder
             {
                 packId = _modelManager.RegisterFBXAsPackInMemory(e.Path);
             }
-
             Vector3 placePos = new Vector3(100f, 100f, 10f);
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             if (activeField != null)
@@ -168,10 +163,8 @@ namespace CastleBuilder
                     }
                 }
             }
-
             var entity = new Entity { Type = placeType };
             entity.Transform.Position = placePos;
-
             if (_modelManager.TryGetModel(packId, out var fbxModel) || _modelManager.TryGetModel(originalKey, out fbxModel))
             {
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
@@ -182,36 +175,29 @@ namespace CastleBuilder
                 var modelComp = new ModelComponent { Key = packId };
                 entity.AddComponent(modelComp);
             }
-
             var physics = new PhysicsComponent();
             physics.Position = placePos;
             entity.AddComponent(physics);
-
-            // === FIXED: Use proper Level.AddEntity instead of direct list access ===
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null)
             {
-                level.AddEntity(entity);   // this also publishes EntityAddedEvent cleanly
+                level.AddEntity(entity);
             }
             else
             {
                 Console.WriteLine("[SceneEditorPanel] WARNING: No CurrentLevel - entity not persisted to Level");
             }
-
             var evt = new EntityPlacedEvent(entity.Id, placeType, placePos);
             if (placeType == "FBX") evt.TexturePath = e.Path;
             _eventBus.Publish(evt);
-
             var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
             if (serverField != null)
             {
                 var server = serverField.GetValue(_editorScene) as IGameServer;
                 server?.AddEntity(entity);
             }
-
-            Console.WriteLine($"[SceneEditorPanel] Placed entity with AssetPackKey: {packId} (render data loaded in memory, added via Level.AddEntity)");
+            Console.WriteLine($"[SceneEditorPanel] Placed entity with AssetPackKey: {packId} (render data loaded in memory)");
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
         }
@@ -256,7 +242,6 @@ namespace CastleBuilder
                 }
             }
             if (entities == null || entities.Count == 0) return;
-
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
             Matrix4x4 view = Matrix4x4.Identity;
@@ -275,7 +260,6 @@ namespace CastleBuilder
                 if (aspectField != null) aspect = (float)aspectField.GetValue(active);
             }
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
-
             foreach (var entity in entities)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();

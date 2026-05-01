@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Definitions
-// File: Level.cs
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json;
@@ -21,9 +19,7 @@ namespace SiegeEngine.Core.Definitions
         public Level(EventBus eventBus = null)
         {
             _eventBus = eventBus;
-
-            // Auto-subscribe so every placed entity goes into this Level
-            _eventBus?.Subscribe<EntityPlacedEvent>(OnEntityPlaced);
+            // DO NOT subscribe to EntityPlacedEvent here - it creates duplicate entities
         }
 
         public void AddEntity(Entity entity)
@@ -51,15 +47,6 @@ namespace SiegeEngine.Core.Definitions
             if (scale != default) entity.Transform.Scale = scale;
             AddEntity(entity);
             return entity;
-        }
-
-        // Called automatically when anything places an entity in the editor
-        public void OnEntityPlaced(EntityPlacedEvent e)
-        {
-            var entity = new Entity { Id = e.EntityId, Type = e.Type ?? "Default" };
-            entity.Transform.Position = e.Position;
-            if (e.Rotation != default) entity.Transform.Rotation = e.Rotation;
-            AddEntity(entity);
         }
 
         public byte[] Serialize()

@@ -30,7 +30,7 @@ namespace CastleBuilder
             if (_instance == null && eventBus != null)
             {
                 _instance = new BlueprintManager(eventBus);
-                Console.WriteLine("[BlueprintManager] Lazy-initialized (event subscriptions now active)");
+                Console.WriteLine("[BlueprintManager] Lazy-initialized");
             }
         }
         public BlueprintManager(EventBus eventBus)
@@ -193,15 +193,13 @@ namespace CastleBuilder
             {
                 data = EditorScene.Current.GetProjectData() ?? data;
             }
-            // Reliable entity flush - always sync from live Level (transforms + AssetPackKey now correctly saved)
+            string currentSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
             var level = ProjectSettings.Current.CurrentLevel;
-            string currentSceneName = ProjectSettings.Current.CurrentSceneName ?? "Main";
-            if (level != null && data.Scenes != null && data.Scenes.TryGetValue(currentSceneName, out var sceneDataForEntities))
+            if (level != null && data.Scenes != null && data.Scenes.TryGetValue(currentSceneName, out var sceneData))
             {
-                sceneDataForEntities.Entities = level.Entities.ConvertAll(e => e.ToData());
-                Console.WriteLine($"[BlueprintManager.DoProjectSave] Clean entity flush: {level.Entities.Count} entities (transforms + AssetPackKey preserved)");
+                sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
+                Console.WriteLine($"[BlueprintManager.DoProjectSave] Clean entity flush: {level.Entities.Count} entities (position/rotation/scale + AssetPackKey preserved)");
             }
-            // === ASSET PACK MATERIALIZATION ON SAVE ONLY (Assets/<packId>/ folder + original FBX + assetpack.json) ===
             if (data.Scenes != null && data.Scenes.TryGetValue(currentSceneName, out var currentScene) && currentScene.Entities != null)
             {
                 var uniquePackKeys = currentScene.Entities
@@ -209,7 +207,6 @@ namespace CastleBuilder
                     .Select(e => e.AssetPackKey)
                     .Distinct()
                     .ToList();
-
                 if (uniquePackKeys.Count > 0 && ModelManager.Instance != null)
                 {
                     string assetsDir = Path.Combine(projectPath, "Assets");
@@ -221,7 +218,6 @@ namespace CastleBuilder
                     Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder");
                 }
             }
-            // Terrain handling (GeoTIFF verbatim copy + custom save) — untouched
             string originalPath = ProjectSettings.Current.CurrentHeightmapPath;
             bool isRealGeoTiff = false;
             if (!string.IsNullOrEmpty(originalPath))
@@ -242,10 +238,10 @@ namespace CastleBuilder
                 float scaleX = level?.Terrain?.WorldScaleX ?? 1.0f;
                 float scaleZ = level?.Terrain?.WorldScaleZ ?? 1.0f;
                 CustomTerrainParser.SaveFloatTiff(tifPath, ProjectSettings.Current.CurrentHeightmap, scaleX, scaleZ);
-                if (data.Scenes != null && data.Scenes.TryGetValue(sceneName, out var sceneDataForTerrain) && sceneDataForTerrain.Terrain != null)
+                if (data.Scenes != null && data.Scenes.TryGetValue(sceneName, out var sd) && sd.Terrain != null)
                 {
-                    sceneDataForTerrain.Terrain.HeightmapPath = Path.GetRelativePath(projectPath, tifPath);
-                    if (level != null) level.Terrain.HeightmapPath = sceneDataForTerrain.Terrain.HeightmapPath;
+                    sd.Terrain.HeightmapPath = Path.GetRelativePath(projectPath, tifPath);
+                    if (level != null) level.Terrain.HeightmapPath = sd.Terrain.HeightmapPath;
                 }
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Auto-saved heightmap for scene '{sceneName}' → {tifPath} (scale {scaleX:F2}x{scaleZ:F2})");
             }
