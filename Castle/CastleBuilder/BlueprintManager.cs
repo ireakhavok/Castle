@@ -246,7 +246,8 @@ namespace CastleBuilder
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Auto-saved heightmap for scene '{sceneName}' → {tifPath} (scale {scaleX:F2}x{scaleZ:F2})");
             }
             SaveAllPanelStates(data);
-            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+            var options = new JsonSerializerOptions { WriteIndented = true, IncludeFields = true };
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, options));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with terrain reference + clean entities + materialized asset packs");
             if (!string.IsNullOrEmpty(_previousContext))
             {
