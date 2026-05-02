@@ -17,19 +17,17 @@ namespace SiegeEngine.Core.Definitions
         public Dictionary<string, object> CustomData { get; } = new Dictionary<string, object>();
 
         private readonly EventBus _eventBus;
-        private int _nextEntityId = 1; // Stable incremental IDs for editor + runtime consistency
+        private int _nextEntityId = 1;
 
         public Level(EventBus eventBus = null)
         {
             _eventBus = eventBus;
-            // DO NOT subscribe to EntityPlacedEvent here - it creates duplicate entities
         }
 
         public void AddEntity(Entity entity)
         {
             if (entity == null) return;
 
-            // Assign stable ID if not already set (ensures uniqueness across scenes/saves)
             if (entity.Id <= 0)
             {
                 entity.Id = _nextEntityId++;
@@ -53,12 +51,7 @@ namespace SiegeEngine.Core.Definitions
 
         public Entity PlaceEntity(Vector3 position, string type = "Default", Quaternion rotation = default, Vector3 scale = default)
         {
-            var entity = new Entity { Id = 0, Type = type }; // ID will be assigned in AddEntity
-            entity.Transform.Position = position;
-            entity.Transform.Rotation = rotation;
-            if (scale != default) entity.Transform.Scale = scale;
-
-            // Ensure PhysicsComponent is always present with correct position (source of truth)
+            var entity = new Entity { Id = 0, Type = type };
             var physics = new PhysicsComponent();
             physics.Position = position;
             physics.Rotation = rotation;
@@ -80,10 +73,13 @@ namespace SiegeEngine.Core.Definitions
             if (data == null || data.Length == 0) return new Level(eventBus);
             var dto = JsonSerializer.Deserialize<LevelDto>(data);
             var level = new Level(eventBus) { Name = dto?.Name ?? "Untitled", Terrain = dto?.Terrain ?? new TerrainData(), Environment = dto?.Environment ?? new EnvironmentSettings() };
+
             if (dto?.Entities != null)
             {
                 foreach (var ed in dto.Entities)
-                    level.Entities.Add(Entity.FromData(ed));
+                {
+                    level.AddEntity(Entity.FromData(ed)); // Use AddEntity for consistent ID assignment and logging
+                }
             }
             if (dto?.CustomData != null)
             {

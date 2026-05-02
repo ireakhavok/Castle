@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetParsing;
+﻿// Folder: SiegeEngine/Core/Definitions
+// File: Entity.cs
+using SiegeEngine.Core.AssetParsing;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -53,7 +55,7 @@ namespace SiegeEngine.Core.Definitions
         {
             var data = new EntityData { Type = Type };
 
-            // Always prefer PhysicsComponent for runtime consistency
+            // PhysicsComponent is the definitive runtime/editor source of truth
             var physics = GetComponent<PhysicsComponent>();
             if (physics != null)
             {
@@ -87,7 +89,7 @@ namespace SiegeEngine.Core.Definitions
             entity.Transform.Rotation = data.Rotation;
             entity.Transform.Scale = data.Scale != default ? data.Scale : Vector3.One;
 
-            // Always add PhysicsComponent for consistent runtime behaviour
+            // Always add PhysicsComponent for consistent runtime behaviour (this is the source of truth)
             var physics = new PhysicsComponent();
             physics.Position = data.Position;
             physics.Rotation = data.Rotation;
@@ -100,6 +102,7 @@ namespace SiegeEngine.Core.Definitions
                 entity.AddComponent(modelComp);
             }
 
+            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position}");
             return entity;
         }
     }
