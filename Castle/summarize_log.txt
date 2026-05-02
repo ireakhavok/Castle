@@ -349,14 +349,14 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\CastleBuilder\bin
 Found: BlueprintManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
-Read 26724 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
+Read 27776 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\BlueprintManager.cs
 Namespace: CastleBuilder
 Found 19 dependencies
 Found: CastleBuilder.csproj
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
-Read 13209 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
+Read 14225 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
 Found 18 dependencies
 Found: Events
@@ -564,7 +564,7 @@ Found 1 dependencies
 Found: ProjectData.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Keystone\ProjectData.cs
 Reading file: C:\repos\RealmFoundry\Castle\Keystone\ProjectData.cs
-Read 1231 chars from: C:\repos\RealmFoundry\Castle\Keystone\ProjectData.cs
+Read 1227 chars from: C:\repos\RealmFoundry\Castle\Keystone\ProjectData.cs
 Namespace: Keystone
 Found 3 dependencies
 Found: ProjectLayoutManager.cs
@@ -576,7 +576,7 @@ Found 5 dependencies
 Found: ProjectSettings.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Keystone\ProjectSettings.cs
 Reading file: C:\repos\RealmFoundry\Castle\Keystone\ProjectSettings.cs
-Read 3040 chars from: C:\repos\RealmFoundry\Castle\Keystone\ProjectSettings.cs
+Read 3314 chars from: C:\repos\RealmFoundry\Castle\Keystone\ProjectSettings.cs
 Namespace: Keystone
 Found 5 dependencies
 Found: Libraries
