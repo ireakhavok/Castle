@@ -27,6 +27,12 @@ namespace CastleBuilder
         private string _currentGameSceneName = string.Empty;
         private GameScene _activeGameScene;
 
+        // IDE-only cache for fast scene switching
+        private readonly ProjectSceneCache _sceneCache = new ProjectSceneCache();
+
+        // Deferred disposal to prevent "disposed object" crashes during the same frame
+        private GameScene _pendingDisposeScene;
+
         public static EditorScene Current { get; private set; }
 
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -59,6 +65,10 @@ namespace CastleBuilder
 
             _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
 
+            _sceneCache.Clear();
+            _pendingDisposeScene?.Dispose();
+            _pendingDisposeScene = null;
+
             Console.WriteLine($"[EditorScene.LoadProjectData] Active scene: '{_currentGameSceneName}'");
 
             ActivateScene(_currentGameSceneName);
@@ -66,6 +76,24 @@ namespace CastleBuilder
 
         private void ActivateScene(string sceneName)
         {
+            // Fast cached path
+            if (_sceneCache.TryGet(sceneName, out var cachedScene, out var cachedLevel))
+            {
+                // Destructive: queue old active scene for disposal at end of frame
+                if (_activeGameScene != null && _activeGameScene != cachedScene)
+                    _pendingDisposeScene = _activeGameScene;
+
+                _activeGameScene = cachedScene;
+                _currentGameSceneName = sceneName;
+                if (_projectData != null) _projectData.LastOpenedScene = sceneName;
+
+                ProjectSettings.Current.SetCurrentLevel(cachedLevel);
+
+                Console.WriteLine($"[EditorScene] Activated CACHED scene '{sceneName}' (instant switch)");
+                return;
+            }
+
+            // First-time load
             _currentGameSceneName = sceneName;
             if (_projectData != null) _projectData.LastOpenedScene = sceneName;
 
@@ -77,7 +105,9 @@ namespace CastleBuilder
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
 
-            _activeGameScene?.Dispose();
+            // Destructive: queue old scene for disposal
+            if (_activeGameScene != null)
+                _pendingDisposeScene = _activeGameScene;
 
             if (_projectData.Scenes.TryGetValue(sceneName, out SceneData sceneData))
             {
@@ -85,15 +115,14 @@ namespace CastleBuilder
                                     !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath) ||
                                     sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase);
 
-                if (isTerrainScene)
-                    _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
-                else
-                    _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
+                _activeGameScene = isTerrainScene
+                    ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData)
+                    : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
 
                 _activeGameScene.Initialize(_width, _height);
                 _activeGameScene.LoadSceneData(sceneData);
 
-                // Load models for entities
+                // Model loading (unchanged)
                 if (ModelManager.Instance != null)
                 {
                     var loadedPacks = new HashSet<string>();
@@ -126,7 +155,10 @@ namespace CastleBuilder
                         tcs.LoadTerrain(sceneData.Terrain.HeightmapPath);
                 }
 
-                Console.WriteLine($"[EditorScene] Activated '{sceneName}' (entities: {level.Entities.Count})");
+                // Cache it for next time
+                _sceneCache.Store(sceneName, _activeGameScene, level);
+
+                Console.WriteLine($"[EditorScene] Activated NEW scene '{sceneName}' (entities: {level.Entities.Count}) - cached for future switches");
             }
         }
 
@@ -142,7 +174,6 @@ namespace CastleBuilder
                 level.Environment = sceneData.Environment ?? new EnvironmentSettings();
                 return level;
             }
-
             return new Level(_eventBus) { Name = sceneName };
         }
 
@@ -159,29 +190,33 @@ namespace CastleBuilder
             }
         }
 
-        // Keep this for explicit project saves only (never called on scene switch)
         public void FlushActiveSceneData()
         {
             Console.WriteLine($"[EditorScene] FlushActiveSceneData called for '{_currentGameSceneName}' (manual save only)");
-            // original flush logic can be re-enabled here later if you want manual save
+            // Re-enable original flush logic here when you call it from BlueprintManager
         }
 
         public void SwitchGameScene(string sceneName)
         {
             if (sceneName == _currentGameSceneName) return;
 
-            Console.WriteLine($"[EditorScene.SwitchGameScene] Switching from '{_currentGameSceneName}' → '{sceneName}' (in-memory, no disk flush)");
+            Console.WriteLine($"[EditorScene.SwitchGameScene] Switching from '{_currentGameSceneName}' → '{sceneName}' (destructive + cached activation)");
 
-            // NO FlushActiveSceneData() — scenes stay in memory/cache as you requested
             ActivateScene(sceneName);
 
             Console.WriteLine($"[EditorScene] Successfully switched to scene '{sceneName}'");
         }
 
-        public override void Resize(int width, int height)
+        public override void Update(float deltaTime)
         {
-            base.Resize(width, height);
-            _activeGameScene?.Resize(width, height);
+            // Safe disposal at the start of the next frame (prevents disposed-object crash during render)
+            if (_pendingDisposeScene != null)
+            {
+                _pendingDisposeScene.Dispose();
+                _pendingDisposeScene = null;
+            }
+
+            _activeGameScene?.Update(deltaTime);
         }
 
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
@@ -192,11 +227,6 @@ namespace CastleBuilder
                 _activeGameScene.Update(deltaTime);
         }
 
-        public override void Update(float deltaTime)
-        {
-            _activeGameScene?.Update(deltaTime);
-        }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             if (!(_activeGameScene is TerrainCreatorScene))
@@ -205,6 +235,12 @@ namespace CastleBuilder
                 _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             }
             _activeGameScene?.Render(entities ?? GetEntities());
+        }
+
+        public override void Resize(int width, int height)
+        {
+            base.Resize(width, height);
+            _activeGameScene?.Resize(width, height);
         }
 
         public List<string> GetAvailableScenes()
@@ -220,7 +256,9 @@ namespace CastleBuilder
         public override void Dispose()
         {
             Current = null;
+            _pendingDisposeScene?.Dispose();
             _activeGameScene?.Dispose();
+            _sceneCache.Clear();
             base.Dispose();
         }
 
