@@ -132,6 +132,8 @@ namespace CastleBuilder
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
 
+            Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placing asset: {e.Path}");
+
             string ext = Path.GetExtension(e.Path).ToLowerInvariant();
             string originalKey = Path.GetFileNameWithoutExtension(e.Path).ToLower();
             string packId = originalKey + "_pack";
@@ -148,6 +150,7 @@ namespace CastleBuilder
                 packId = _modelManager.RegisterFBXAsPackInMemory(e.Path);
             }
 
+            // === Get raycast position from active terrain scene (or fallback) ===
             Vector3 placePos = new Vector3(100f, 100f, 10f);
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             if (activeField != null)
@@ -174,14 +177,23 @@ namespace CastleBuilder
                             if (hit && args[2] is Vector3 hitPoint)
                             {
                                 placePos = hitPoint + new Vector3(0, 0, 0.1f);
+                                Console.WriteLine($"[SceneEditorPanel] Raycast hit at {placePos} - using as placement position");
                             }
                         }
                     }
                 }
             }
 
-            var entity = new Entity { Type = placeType };
-            entity.Transform.Position = placePos;
+            // === Create entity using Level.PlaceEntity (authoritative path) ===
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level == null)
+            {
+                Console.WriteLine("[SceneEditorPanel] ERROR: No CurrentLevel - cannot place entity");
+                return;
+            }
+
+            var entity = level.PlaceEntity(placePos, placeType);
+            entity.Type = placeType;
 
             // Robust model lookup
             if (_modelManager.TryGetModel(packId, out var fbxModel) || _modelManager.TryGetModel(originalKey, out fbxModel))
@@ -195,28 +207,16 @@ namespace CastleBuilder
                 entity.AddComponent(modelComp);
             }
 
-            var physics = new PhysicsComponent();
-            physics.Position = placePos;
-            entity.AddComponent(physics);
-
-            var level = ProjectSettings.Current.CurrentLevel;
-            if (level != null)
-            {
-                level.AddEntity(entity);
-            }
-
+            // Publish event (required for FBX/model to appear in rendering)
             var evt = new EntityPlacedEvent(entity.Id, placeType, placePos);
             if (placeType == "FBX") evt.TexturePath = e.Path;
             _eventBus.Publish(evt);
 
-            var serverField = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (serverField != null)
-            {
-                var server = serverField.GetValue(_editorScene) as IGameServer;
-                server?.AddEntity(entity);
-            }
+            // Final sync to runtime proxy (guarantees immediate render + position correctness)
+            _editorScene.GetType().GetMethod("SyncLevelToRuntimeServer", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?.Invoke(_editorScene, new object[] { level });
 
-            Console.WriteLine($"[SceneEditorPanel] Placed entity with AssetPackKey: {packId}");
+            Console.WriteLine($"[SceneEditorPanel] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos} (via Level.AddEntity + Event + Sync)");
         }
 
         public void HandleUIClick(HtmlElement elem)
@@ -293,8 +293,6 @@ namespace CastleBuilder
                 if (modelComp != null && physics != null && !string.IsNullOrEmpty(modelComp.Key))
                 {
                     FBXModel fbxModel = modelComp.Model;
-
-                    // Robust fallback for restored entities
                     if (fbxModel == null)
                     {
                         if (ModelManager.Instance.TryGetModel(modelComp.Key, out fbxModel))
@@ -303,7 +301,6 @@ namespace CastleBuilder
                             Console.WriteLine($"[SceneEditorPanel] Hydrated missing Model reference for restored entity '{modelComp.Key}'");
                         }
                     }
-
                     if (fbxModel != null && _modelManager.TryGetModelData(modelComp.Key, out var modelData))
                     {
                         Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);

@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine/Core/Definitions
+// File: Level.cs
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json;
@@ -15,6 +17,7 @@ namespace SiegeEngine.Core.Definitions
         public Dictionary<string, object> CustomData { get; } = new Dictionary<string, object>();
 
         private readonly EventBus _eventBus;
+        private int _nextEntityId = 1; // Stable incremental IDs for editor + runtime consistency
 
         public Level(EventBus eventBus = null)
         {
@@ -25,8 +28,17 @@ namespace SiegeEngine.Core.Definitions
         public void AddEntity(Entity entity)
         {
             if (entity == null) return;
+
+            // Assign stable ID if not already set (ensures uniqueness across scenes/saves)
+            if (entity.Id <= 0)
+            {
+                entity.Id = _nextEntityId++;
+            }
+
             Entities.Add(entity);
             _eventBus?.Publish(new EntityAddedEvent(entity));
+
+            Console.WriteLine($"[Level.AddEntity] Added entity ID={entity.Id} Type='{entity.Type}' Position={entity.GetComponent<PhysicsComponent>()?.Position}");
         }
 
         public void RemoveEntity(int id)
@@ -41,51 +53,42 @@ namespace SiegeEngine.Core.Definitions
 
         public Entity PlaceEntity(Vector3 position, string type = "Default", Quaternion rotation = default, Vector3 scale = default)
         {
-            var entity = new Entity { Id = Entities.Count + 1, Type = type };
+            var entity = new Entity { Id = 0, Type = type }; // ID will be assigned in AddEntity
             entity.Transform.Position = position;
             entity.Transform.Rotation = rotation;
             if (scale != default) entity.Transform.Scale = scale;
+
+            // Ensure PhysicsComponent is always present with correct position (source of truth)
+            var physics = new PhysicsComponent();
+            physics.Position = position;
+            physics.Rotation = rotation;
+            if (scale != default) physics.Scale = scale;
+            entity.AddComponent(physics);
+
             AddEntity(entity);
             return entity;
         }
 
         public byte[] Serialize()
         {
-            var dto = new LevelDto
-            {
-                Name = Name,
-                Terrain = Terrain,
-                Environment = Environment,
-                Entities = Entities.ConvertAll(e => e.ToData()),
-                CustomData = CustomData
-            };
+            var dto = new LevelDto { Name = Name, Terrain = Terrain, Environment = Environment, Entities = Entities.ConvertAll(e => e.ToData()), CustomData = CustomData };
             return JsonSerializer.SerializeToUtf8Bytes(dto, new JsonSerializerOptions { WriteIndented = true });
         }
 
         public static Level Deserialize(byte[] data, EventBus eventBus = null)
         {
             if (data == null || data.Length == 0) return new Level(eventBus);
-
             var dto = JsonSerializer.Deserialize<LevelDto>(data);
-            var level = new Level(eventBus)
-            {
-                Name = dto?.Name ?? "Untitled",
-                Terrain = dto?.Terrain ?? new TerrainData(),
-                Environment = dto?.Environment ?? new EnvironmentSettings()
-            };
-
+            var level = new Level(eventBus) { Name = dto?.Name ?? "Untitled", Terrain = dto?.Terrain ?? new TerrainData(), Environment = dto?.Environment ?? new EnvironmentSettings() };
             if (dto?.Entities != null)
             {
                 foreach (var ed in dto.Entities)
                     level.Entities.Add(Entity.FromData(ed));
             }
-
             if (dto?.CustomData != null)
             {
-                foreach (var kv in dto.CustomData)
-                    level.CustomData[kv.Key] = kv.Value;
+                foreach (var kv in dto.CustomData) level.CustomData[kv.Key] = kv.Value;
             }
-
             return level;
         }
 

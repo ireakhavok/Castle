@@ -39,14 +39,8 @@ namespace CastleBuilder
         }
 
         public ProjectData GetProjectData() => _projectData;
-
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
 
-        // Stage 2 (corrected - conservative): EditorScene is the pure IDE bridge layer.
-        // It prioritizes ProjectSettings.CurrentLevel as the single authoritative source when available.
-        // For new scenes / first-load fallback (which must continue to work after Step 1), it creates the Level from SceneData
-        // and immediately registers it in ProjectSettings so Level is authoritative going forward.
-        // Explicit position restoration after FromData fixes the (0,0,0) deserialization bug.
         public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -65,10 +59,9 @@ namespace CastleBuilder
             _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
 
             Level level = ProjectSettings.Current.CurrentLevel;
-
             if (level == null || level.Name != _currentGameSceneName)
             {
-                Console.WriteLine($"[EditorScene.LoadProjectData] No matching Level in ProjectSettings for scene '{_currentGameSceneName}' - creating from SceneData (new scene / fallback path)");
+                Console.WriteLine($"[EditorScene.LoadProjectData] No matching Level in ProjectSettings for scene '{_currentGameSceneName}' - creating from SceneData");
                 if (_projectData.Scenes.TryGetValue(_currentGameSceneName, out var sceneData))
                 {
                     level = new Level(_eventBus) { Name = _currentGameSceneName };
@@ -77,7 +70,6 @@ namespace CastleBuilder
                         foreach (var ed in sceneData.Entities)
                         {
                             var entity = Entity.FromData(ed);
-                            // Explicit position restoration - fixes the (0,0,0) bug in Entity.FromData / PhysicsComponent
                             var physics = entity.GetComponent<PhysicsComponent>();
                             if (physics != null)
                             {
@@ -120,7 +112,6 @@ namespace CastleBuilder
                 _activeGameScene?.Dispose();
 
                 bool isTerrainScene = sceneData.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath) || _currentGameSceneName.Contains("Terrain");
-
                 if (isTerrainScene)
                 {
                     _activeGameScene = new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sceneData);
@@ -184,14 +175,12 @@ namespace CastleBuilder
             if (clientProxy != null)
             {
                 clientProxy.ClearEntities();
+                Console.WriteLine($"[EditorScene.SyncLevelToRuntimeServer] Cleared runtime proxy for scene '{level.Name}'");
 
                 foreach (var entity in level.Entities)
                 {
                     var physics = entity.GetComponent<PhysicsComponent>();
-                    if (physics != null)
-                    {
-                        Console.WriteLine($"[EditorScene.SyncLevelToRuntimeServer] Syncing entity '{entity.Type}' with Position {physics.Position} (from authoritative Level)");
-                    }
+                    Console.WriteLine($"[EditorScene.SyncLevelToRuntimeServer] Syncing entity ID={entity.Id} Type='{entity.Type}' Position={physics?.Position}");
                     clientProxy.AddEntity(entity);
                 }
 
@@ -218,7 +207,6 @@ namespace CastleBuilder
                 }
             }
 
-            // Authoritative Level is kept in sync via events and placement - no extra work needed here
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null)
             {
@@ -234,10 +222,14 @@ namespace CastleBuilder
         {
             if (_projectData?.Scenes?.ContainsKey(sceneName) == true)
             {
+                Console.WriteLine($"[EditorScene.SwitchGameScene] Switching from '{_currentGameSceneName}' to '{sceneName}' - flushing previous scene first");
+                FlushActiveSceneData(); // Ensure previous Level is saved to ProjectData.Scenes
+
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
-                LoadProjectData();   // re-use full load path so new scenes are handled identically
-                Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName} (using shared authoritative Level)");
+
+                LoadProjectData(); // re-use full load path (flush → clear proxy → re-sync)
+                Console.WriteLine($"[EditorScene] Switched GAME scene → {sceneName} (full isolation via Level + runtime proxy clear/sync)");
             }
         }
 
@@ -295,7 +287,6 @@ namespace CastleBuilder
         {
             public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)
                 : base(rc, cc, w, s, eb, data) { }
-
             public override void Render(IReadOnlyList<Entity> entities) { }
         }
     }
