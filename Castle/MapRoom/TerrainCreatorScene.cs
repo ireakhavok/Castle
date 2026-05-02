@@ -1,4 +1,6 @@
-﻿using Keystone;
+﻿// Folder: MapRoom
+// File: TerrainCreatorScene.cs
+using Keystone;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -131,6 +133,7 @@ namespace MapRoom
         }
         public override void LoadSceneData(SceneData data)
         {
+            _sceneData = data;  // CRITICAL: always bind the current active SceneData on every switch/load
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
             if (data?.Terrain != null && !string.IsNullOrEmpty(data.Terrain.HeightmapPath))
             {
