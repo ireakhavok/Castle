@@ -85,16 +85,17 @@ namespace SiegeEngine.Core.Definitions
 
             var entity = new Entity { Id = 0, Type = data.Type ?? "Default" };
 
-            entity.Transform.Position = data.Position;
-            entity.Transform.Rotation = data.Rotation;
-            entity.Transform.Scale = data.Scale != default ? data.Scale : Vector3.One;
-
-            // Always add PhysicsComponent for consistent runtime behaviour (this is the source of truth)
+            // === PHYSICS COMPONENT IS THE SINGLE SOURCE OF TRUTH ON LOAD ===
             var physics = new PhysicsComponent();
             physics.Position = data.Position;
             physics.Rotation = data.Rotation;
             physics.Scale = data.Scale != default ? data.Scale : Vector3.One;
             entity.AddComponent(physics);
+
+            // Defensive sync so Entity.Transform always matches (prevents any legacy code paths from seeing origin)
+            entity.Transform.Position = physics.Position;
+            entity.Transform.Rotation = physics.Rotation;
+            entity.Transform.Scale = physics.Scale;
 
             if (!string.IsNullOrEmpty(data.AssetPackKey))
             {
@@ -102,7 +103,7 @@ namespace SiegeEngine.Core.Definitions
                 entity.AddComponent(modelComp);
             }
 
-            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position}");
+            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} (PhysicsComponent authoritative)");
             return entity;
         }
     }

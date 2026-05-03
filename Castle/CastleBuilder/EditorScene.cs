@@ -49,7 +49,7 @@ namespace CastleBuilder
                 if (File.Exists(jsonPath))
                 {
                     string json = File.ReadAllText(jsonPath);
-                    _projectData = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+                    _projectData = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions) ?? new ProjectData();
                 }
             }
             if (_projectData == null) _projectData = new ProjectData();
@@ -63,20 +63,49 @@ namespace CastleBuilder
         }
         private void ActivateScene(string sceneName)
         {
-            // Fast cached path
-            if (_sceneCache.TryGet(sceneName, out var cachedScene, out var cachedLevel))
+            // === LEVEL-CENTRIC DESIGN: reuse Level already populated by BlueprintManager.OnLoadProject ===
+            var currentLevel = ProjectSettings.Current.CurrentLevel;
+            if (currentLevel != null && currentLevel.Name == sceneName)
             {
-                // Destructive: queue old active scene for disposal at end of frame
-                if (_activeGameScene != null && _activeGameScene != cachedScene)
-                    _pendingDisposeScene = _activeGameScene;
-                _activeGameScene = cachedScene;
+                // Fast path - Level is already the single source of truth with correct entity positions
+                if (_sceneCache.TryGet(sceneName, out var cachedScene, out var cachedLevel))
+                {
+                    if (_activeGameScene != null && _activeGameScene != cachedScene)
+                        _pendingDisposeScene = _activeGameScene;
+                    _activeGameScene = cachedScene;
+                    _currentGameSceneName = sceneName;
+                    if (_projectData != null) _projectData.LastOpenedScene = sceneName;
+                    SyncLevelToRuntimeServer(currentLevel);
+                    Console.WriteLine($"[EditorScene] Activated CACHED scene '{sceneName}' (Level already authoritative - positions preserved)");
+                    return;
+                }
+                // First activation for this Level - use the existing one
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
-                ProjectSettings.Current.SetCurrentLevel(cachedLevel);
-                Console.WriteLine($"[EditorScene] Activated CACHED scene '{sceneName}' (instant switch)");
+                if (_activeGameScene != null)
+                    _pendingDisposeScene = _activeGameScene;
+                bool isTerrainScene = _projectData.Scenes.TryGetValue(sceneName, out var sd) &&
+                                      (sd.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sd.Terrain?.HeightmapPath) || sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase));
+                _activeGameScene = isTerrainScene
+                    ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sd)
+                    : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd);
+                _activeGameScene.Initialize(_width, _height);
+                _activeGameScene.LoadSceneData(sd);
+                SyncLevelToRuntimeServer(currentLevel);
+                if (_activeGameScene is TerrainCreatorScene tcs)
+                {
+                    float[,] cached = ProjectSettings.Current.GetUnsavedHeightmap(sceneName);
+                    float[,] heightmapToUse = cached ?? tcs.GetHeightmap();
+                    ProjectSettings.Current.SetCurrentTerrain(sd, heightmapToUse, sceneName, sd.Terrain?.HeightmapPath);
+                    if (!string.IsNullOrEmpty(sd.Terrain?.HeightmapPath))
+                        tcs.LoadTerrain(sd.Terrain.HeightmapPath);
+                }
+                _sceneCache.Store(sceneName, _activeGameScene, currentLevel);
+                Console.WriteLine($"[EditorScene] Activated scene '{sceneName}' using authoritative Level (entities: {currentLevel.Entities.Count} - positions preserved)");
                 return;
             }
-            // First-time load
+
+            // Fallback (first-time or no Level yet) - legacy path
             _currentGameSceneName = sceneName;
             if (_projectData != null) _projectData.LastOpenedScene = sceneName;
             Level level = ProjectSettings.Current.CurrentLevel;
@@ -162,14 +191,12 @@ namespace CastleBuilder
         public void FlushActiveSceneData()
         {
             Console.WriteLine($"[EditorScene.FlushActiveSceneData] Called for scene '{_currentGameSceneName}'");
-
             // Use the live cached TerrainCreatorScene (this is the key to correct save after switch)
             if (_sceneCache.TryGet(_currentGameSceneName, out var cachedScene, out var cachedLevel) &&
                 cachedScene is TerrainCreatorScene tcs)
             {
                 string terrainName = _currentGameSceneName ?? "UntitledTerrain";
                 tcs.SaveTerrain(terrainName);
-
                 // Sync the final HeightmapPath back into Level and ProjectData
                 if (cachedLevel != null)
                 {
@@ -178,21 +205,18 @@ namespace CastleBuilder
                         ? $"Assets/Terrain/{terrainName}.tif"
                         : "";
                 }
-
                 if (_projectData?.Scenes != null && _projectData.Scenes.TryGetValue(_currentGameSceneName, out var sceneData))
                 {
                     if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
                     sceneData.Terrain.HeightmapPath = cachedLevel?.Terrain?.HeightmapPath ?? "";
                     ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain.HeightmapPath);
                 }
-
                 Console.WriteLine($"[EditorScene] Flushed terrain for scene '{terrainName}' → {cachedLevel?.Terrain?.HeightmapPath ?? "null"}");
             }
             else
             {
                 Console.WriteLine($"[EditorScene] FlushActiveSceneData - no TerrainCreatorScene in cache for '{_currentGameSceneName}'");
             }
-
             // Clean entity flush (unchanged)
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null && _projectData?.Scenes != null && _projectData.Scenes.TryGetValue(_currentGameSceneName, out var sd))

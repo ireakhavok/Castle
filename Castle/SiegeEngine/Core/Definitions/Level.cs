@@ -65,13 +65,13 @@ namespace SiegeEngine.Core.Definitions
         public byte[] Serialize()
         {
             var dto = new LevelDto { Name = Name, Terrain = Terrain, Environment = Environment, Entities = Entities.ConvertAll(e => e.ToData()), CustomData = CustomData };
-            return JsonSerializer.SerializeToUtf8Bytes(dto, new JsonSerializerOptions { WriteIndented = true });
+            return JsonSerializer.SerializeToUtf8Bytes(dto, EntityData.SerializerOptions);
         }
 
         public static Level Deserialize(byte[] data, EventBus eventBus = null)
         {
             if (data == null || data.Length == 0) return new Level(eventBus);
-            var dto = JsonSerializer.Deserialize<LevelDto>(data);
+            var dto = JsonSerializer.Deserialize<LevelDto>(data, EntityData.SerializerOptions);
             var level = new Level(eventBus) { Name = dto?.Name ?? "Untitled", Terrain = dto?.Terrain ?? new TerrainData(), Environment = dto?.Environment ?? new EnvironmentSettings() };
 
             if (dto?.Entities != null)

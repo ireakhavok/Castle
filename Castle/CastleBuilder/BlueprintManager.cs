@@ -80,7 +80,7 @@ namespace CastleBuilder
                 LastContext = "Scene Editor"
             };
             string jsonPath = Path.Combine(dir, "project.json");
-            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
             Directory.CreateDirectory(Path.Combine(dir, "Scenes"));
             Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             Directory.CreateDirectory(Path.Combine(dir, "Mods"));
@@ -100,14 +100,14 @@ namespace CastleBuilder
             if (sceneData == null) return;
             string jsonPath = Path.Combine(projectPath, "project.json");
             ProjectData data = File.Exists(jsonPath)
-                ? JsonSerializer.Deserialize<ProjectData>(File.ReadAllText(jsonPath)) ?? new ProjectData()
+                ? JsonSerializer.Deserialize<ProjectData>(File.ReadAllText(jsonPath), EntityData.SerializerOptions) ?? new ProjectData()
                 : new ProjectData();
             if (data.Scenes == null) data.Scenes = new Dictionary<string, SceneData>();
             if (!data.Scenes.ContainsKey(sceneData.Name))
             {
                 data.Scenes[sceneData.Name] = sceneData;
                 data.LastOpenedScene = sceneData.Name;
-                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
                 Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' added to project.json (in-memory until next full save)");
             }
             var panelManager = PanelManager.Current;
@@ -143,7 +143,7 @@ namespace CastleBuilder
             string jsonPath = Path.Combine(projectPath, "project.json");
             if (!File.Exists(jsonPath)) return;
             string json = File.ReadAllText(jsonPath);
-            var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+            var data = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions) ?? new ProjectData();
             if (data.Scenes == null || data.Scenes.Count == 0)
             {
                 data.Scenes = new Dictionary<string, SceneData>();
@@ -154,7 +154,7 @@ namespace CastleBuilder
                 sceneData.Environment = level.Environment ?? new EnvironmentSettings();
                 data.Scenes["Main"] = sceneData;
                 data.LastOpenedScene = "Main";
-                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
                 ProjectSettings.Current.SetCurrentLevel(level);
                 Console.WriteLine("[BlueprintManager] Auto-created default scene 'Main' with Level as single source of truth");
             }
@@ -181,7 +181,7 @@ namespace CastleBuilder
             if (File.Exists(jsonPath))
             {
                 string json = File.ReadAllText(jsonPath);
-                data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+                data = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions) ?? new ProjectData();
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Loaded existing project.json - Name: {data.Name}");
             }
             else
@@ -226,8 +226,7 @@ namespace CastleBuilder
                 }
             }
             SaveAllPanelStates(data);
-            var options = new JsonSerializerOptions { WriteIndented = true, IncludeFields = true };
-            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, options));
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with Level as single source of truth + terrain reference + clean entities + materialized asset packs");
             if (!string.IsNullOrEmpty(_previousContext))
             {
@@ -255,7 +254,7 @@ namespace CastleBuilder
             {
                 var data = new ProjectData { Name = name, LastContext = "Scene Editor" };
                 string jsonPath = Path.Combine(dir, "project.json");
-                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
                 Directory.CreateDirectory(Path.Combine(dir, "Scenes"));
                 Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             }
@@ -309,7 +308,7 @@ namespace CastleBuilder
                 LastContext = "Scene Editor"
             };
             string jsonPath = Path.Combine(dir, "project.json");
-            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
             Directory.CreateDirectory(Path.Combine(dir, "Scenes"));
             Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             _eventBus.Publish(new LoadProjectEvent { Path = dir });
@@ -323,7 +322,7 @@ namespace CastleBuilder
             if (File.Exists(jsonPath))
             {
                 string json = File.ReadAllText(jsonPath);
-                var data = JsonSerializer.Deserialize<ProjectData>(json);
+                var data = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions);
                 if (data != null)
                 {
                     ProjectSettings.Current.CameraType = data.CameraType;
@@ -380,10 +379,10 @@ namespace CastleBuilder
                 if (File.Exists(jsonPath))
                 {
                     string json = File.ReadAllText(jsonPath);
-                    var data = JsonSerializer.Deserialize<ProjectData>(json) ?? new ProjectData();
+                    var data = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions) ?? new ProjectData();
                     data.LastContext = newContext;
                     SaveAllPanelStates(data);
-                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
                 }
             }
             _previousContext = newContext;

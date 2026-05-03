@@ -1,4 +1,7 @@
-﻿using System.Numerics;
+﻿// Folder: SiegeEngine/Core/Definitions
+// File: EntityData.cs
+using System.Numerics;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace SiegeEngine.Core.Definitions
@@ -25,5 +28,18 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("height")]
         public float Height { get; set; }
+
+        /// <summary>
+        /// Shared, engine-neutral JsonSerializerOptions used for ALL project.json / SceneData / EntityData serialization.
+        /// Guarantees correct deserialization of System.Numerics.Vector3 and Quaternion (PascalCase inner fields).
+        /// PropertyNameCaseInsensitive = true is required for robust binding of the saved JSON format.
+        /// Placed here in core so Level.cs and other engine code never reference Keystone.
+        /// </summary>
+        public static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            WriteIndented = true,
+            IncludeFields = true
+        };
     }
 }

@@ -23,5 +23,17 @@ namespace Keystone
         // Keyed by IDataAwarePanel.DataKey. Stored in project.json automatically on Save.
         // Memory-first until explicit FlushAllToDisk. Existing projects ignore the field gracefully.
         public Dictionary<string, JsonElement> PanelStates { get; set; } = new Dictionary<string, JsonElement>();
+
+        /// <summary>
+        /// Centralized, consistent JsonSerializerOptions used for ALL project.json read/write operations.
+        /// Guarantees Vector3/Quaternion deserialization works (PascalCase inner fields + camelCase outer keys via JsonPropertyName).
+        /// PropertyNameCaseInsensitive = true is required for robust System.Numerics struct binding.
+        /// </summary>
+        public static readonly JsonSerializerOptions ProjectJsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            IncludeFields = true,
+            PropertyNameCaseInsensitive = true
+        };
     }
 }
