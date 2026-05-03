@@ -31,28 +31,22 @@ namespace CastleBuilder
         {
             private readonly SceneEditorPanel _parent;
             public SceneEditorUIOverlay(SceneEditorPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window) { _parent = parent; }
-
             public override bool HandleUIClick(HtmlElement elem)
             {
                 base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);
                 return true;
             }
-
             protected override void HandleDataHook(string hook)
             {
                 _parent.HandleDataHook(hook);
             }
         }
-
         private EditorScene _editorScene;
         private bool _cameraMode = false;
         private ModelManager _modelManager;
         private ModelRenderer _modelRenderer;
-
-        // DEFERRED REFRESH - gives SwitchGameScene a full frame to update internal state (_activeGameScene / CurrentGameScene)
         private bool _pendingSceneSelectorUpdate = false;
-
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -64,14 +58,11 @@ namespace CastleBuilder
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
             _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
         }
-
         public string ContentType => "SceneEditor";
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new SceneEditorUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
@@ -81,15 +72,12 @@ namespace CastleBuilder
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
-
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
         }
-
         public void RefreshSceneList()
         {
             UpdateSceneSelectorUI();
         }
-
         private void UpdateSceneSelectorUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SceneEditorUI.html");
@@ -98,35 +86,27 @@ namespace CastleBuilder
                 Console.WriteLine("[SceneEditorPanel] WARNING: SceneEditorUI.html not found");
                 return;
             }
-
             string baseHtml = File.ReadAllText(htmlPath);
             var scenes = _editorScene.GetAvailableScenes();
             string current = _editorScene.CurrentGameScene ?? "Main";
-
             Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] === REFRESHING SELECTOR ===");
             Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] CurrentGameScene = '{current}'");
             Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] Available scenes ({scenes.Count}): {string.Join(", ", scenes)}");
-
             StringBuilder options = new StringBuilder();
             foreach (var sceneName in scenes)
             {
                 string selected = (sceneName == current) ? " selected" : "";
                 options.Append($"<option value=\"{sceneName}\"{selected}>{sceneName}</option>");
             }
-
             if (scenes.Count == 0)
             {
                 options.Append("<option value=\"Main\" selected>Main</option>");
             }
-
             string finalHtml = baseHtml.Replace("<!-- Populated dynamically -->", options.ToString());
-
             _uiOverlay.LoadUI(finalHtml);
-
             Console.WriteLine($"[SceneEditorPanel] Scene selector refreshed - {scenes.Count} scenes, current='{current}'");
             Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] === REFRESH COMPLETE ===");
         }
-
         private void HandleDataHook(string hook)
         {
             if (hook == "SceneSelected")
@@ -136,23 +116,19 @@ namespace CastleBuilder
                 {
                     string newScene = select.Value.Trim();
                     string oldScene = _editorScene.CurrentGameScene ?? "Main";
-
                     Console.WriteLine($"[SceneEditorPanel] === SceneSelected HOOK FIRED ===");
-                    Console.WriteLine($"[SceneEditorPanel]   select.Value = '{newScene}'");
-                    Console.WriteLine($"[SceneEditorPanel]   _editorScene.CurrentGameScene = '{oldScene}'");
-
+                    Console.WriteLine($"[SceneEditorPanel] select.Value = '{newScene}'");
+                    Console.WriteLine($"[SceneEditorPanel] _editorScene.CurrentGameScene = '{oldScene}'");
                     if (newScene != oldScene)
                     {
                         Console.WriteLine($"[SceneEditorPanel] → Calling _editorScene.SwitchGameScene('{newScene}')");
                         _editorScene.SwitchGameScene(newScene);
-
-                        // Do NOT refresh here - it destroys the select mid-change event
                         _pendingSceneSelectorUpdate = true;
-                        Console.WriteLine($"[SceneEditorPanel]   Deferred refresh flagged for next Update() frame");
+                        Console.WriteLine($"[SceneEditorPanel] Deferred refresh flagged for next Update() frame");
                     }
                     else
                     {
-                        Console.WriteLine("[SceneEditorPanel]   Same scene - ignoring");
+                        Console.WriteLine("[SceneEditorPanel] Same scene - ignoring");
                     }
                     Console.WriteLine($"[SceneEditorPanel] === SceneSelected HOOK END ===");
                 }
@@ -174,7 +150,6 @@ namespace CastleBuilder
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
         }
-
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
@@ -193,7 +168,6 @@ namespace CastleBuilder
             {
                 packId = _modelManager.RegisterFBXAsPackInMemory(e.Path);
             }
-
             Vector3 placePos = new Vector3(100f, 100f, 10f);
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             if (activeField != null)
@@ -226,8 +200,13 @@ namespace CastleBuilder
                     }
                 }
             }
-
             var level = ProjectSettings.Current.CurrentLevel;
+            if (level == null || level.Name != _editorScene.CurrentGameScene)
+            {
+                Console.WriteLine($"[SceneEditorPanel] WARNING: Level mismatch - forcing fresh Level for scene '{_editorScene.CurrentGameScene}'");
+                level = new Level(_eventBus) { Name = _editorScene.CurrentGameScene };
+                ProjectSettings.Current.SetCurrentLevel(level);
+            }
             if (level == null)
             {
                 Console.WriteLine("[SceneEditorPanel] ERROR: No CurrentLevel - cannot place entity");
@@ -235,7 +214,6 @@ namespace CastleBuilder
             }
             var entity = level.PlaceEntity(placePos, placeType);
             entity.Type = placeType;
-
             if (_modelManager.TryGetModel(packId, out var fbxModel) || _modelManager.TryGetModel(originalKey, out fbxModel))
             {
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
@@ -246,31 +224,24 @@ namespace CastleBuilder
                 var modelComp = new ModelComponent { Key = packId };
                 entity.AddComponent(modelComp);
             }
-
             var evt = new EntityPlacedEvent(entity.Id, placeType, placePos);
             if (placeType == "FBX") evt.TexturePath = e.Path;
             _eventBus.Publish(evt);
-
             _editorScene.GetType().GetMethod("SyncLevelToRuntimeServer", BindingFlags.NonPublic | BindingFlags.Instance)
                 ?.Invoke(_editorScene, new object[] { level });
-
-            Console.WriteLine($"[SceneEditorPanel] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos}");
+            Console.WriteLine($"[SceneEditorPanel] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos} into scene '{level.Name}'");
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
         }
-
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
             if (_cameraMode) PanelManager.Current.CapturePanel(this);
             else PanelManager.Current.ReleasePanelCapture();
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
-            // DEFERRED UPDATE - runs AFTER SwitchGameScene has had time to mutate internal state
             if (_pendingSceneSelectorUpdate)
             {
                 _pendingSceneSelectorUpdate = false;
@@ -279,26 +250,20 @@ namespace CastleBuilder
                 UpdateSceneSelectorUI();
                 Console.WriteLine($"[SceneEditorPanel.Update] === DEFERRED REFRESH COMPLETE ===");
             }
-
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             if (isTopmost && mousePressed) OnContentFocusGained();
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-
             float header = HasTitleBar ? HeaderHeight : 0f;
             float contentX = Position.X;
             float contentY = Position.Y + header;
             float contentW = Size.X;
             float contentH = Size.Y - header;
-
             if (_cameraMode) _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
-
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
             _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
-
             if (_cameraMode) _controlContext.PopViewport();
         }
-
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
@@ -318,10 +283,8 @@ namespace CastleBuilder
                 }
             }
             if (entities == null || entities.Count == 0) return;
-
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
-
             Matrix4x4 view = Matrix4x4.Identity;
             Vector3 viewPos = Vector3.Zero;
             float aspect = 16f / 9f;
@@ -338,7 +301,6 @@ namespace CastleBuilder
                 if (aspectField != null) aspect = (float)aspectField.GetValue(active);
             }
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
-
             foreach (var entity in entities)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();
@@ -365,44 +327,36 @@ namespace CastleBuilder
                 }
             }
         }
-
         public override void OnLiveResize(float w, float h)
         {
             _editorScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
-
         public override void Dispose()
         {
             PanelManager.Current.ReleasePanelCapture();
             _editorScene?.Dispose();
             base.Dispose();
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new SceneEditorPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
-
         public string DataKey => "SceneEditorPanel";
-
         public JsonElement SavePanelState()
         {
             var state = new Dictionary<string, string> { ["currentSceneName"] = _editorScene?.CurrentGameScene ?? "Main" };
             return JsonSerializer.SerializeToElement(state);
         }
-
         public void LoadPanelState(JsonElement state)
         {
         }
-
         public override void OnContentFocusGained()
         {
             Console.WriteLine("[SceneEditorPanel] OnContentFocusGained → notifying OutlinerCoordinator");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
         }
-
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
@@ -412,12 +366,10 @@ namespace CastleBuilder
             nodes.Add(new OutlinerNode { Id = "cameras", Label = "Cameras", Icon = "📹", ParentId = "scene-root" });
             return nodes;
         }
-
         public object GetObjectForNode(string nodeId)
         {
             return null;
         }
-
         public void NotifyHierarchyChanged()
         {
             OutlinerCoordinator.Instance.NotifyHierarchyChanged();
