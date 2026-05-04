@@ -91,13 +91,13 @@ namespace CastleBuilder
         private void OnCreateTerrain(CreateTerrainEvent evt)
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
-            {
-                Console.WriteLine("[BlueprintManager.OnCreateTerrain] No active project - new scene stays in central memory only");
-                return;
-            }
             SceneData sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+            {
+                Console.WriteLine("[BlueprintManager.OnCreateTerrain] No active project - new scene stays in central memory only (Level + cache populated by NewTerrainPanel + EditorScene)");
+                return;
+            }
             string jsonPath = Path.Combine(projectPath, "project.json");
             ProjectData data = File.Exists(jsonPath)
                 ? JsonSerializer.Deserialize<ProjectData>(File.ReadAllText(jsonPath), EntityData.SerializerOptions) ?? new ProjectData()
@@ -122,47 +122,48 @@ namespace CastleBuilder
         public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
-            string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
-            {
-                Console.WriteLine("[BlueprintManager.CreateNewScene] ERROR: No active project");
-                return;
-            }
-            if (ProjectSettings.Current.CurrentLevel == null)
-            {
-                var level = new Level(eventBus) { Name = "Main" };
-                ProjectSettings.Current.SetCurrentLevel(level);
-                Console.WriteLine("[BlueprintManager] Auto-created Level for new scene");
-            }
+            // Minimal change: always allow creation (NewTerrainPanel already creates fresh Level + publishes event)
+            // No early return - let NewTerrainPanel + EditorScene handle in-memory case
             NewTerrainPanel.Open(renderContext, controlContext, window, eventBus);
         }
         public static void EnsureDefaultSceneIfNeeded()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
-            string jsonPath = Path.Combine(projectPath, "project.json");
-            if (!File.Exists(jsonPath)) return;
-            string json = File.ReadAllText(jsonPath);
-            var data = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions) ?? new ProjectData();
-            if (data.Scenes == null || data.Scenes.Count == 0)
+            if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
             {
-                data.Scenes = new Dictionary<string, SceneData>();
-                var level = new Level() { Name = "Main" };
-                var sceneData = new SceneData { Name = "Main", SceneType = "TerrainTest" };
-                sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
-                sceneData.Terrain = level.Terrain ?? new TerrainData();
-                sceneData.Environment = level.Environment ?? new EnvironmentSettings();
-                data.Scenes["Main"] = sceneData;
-                data.LastOpenedScene = "Main";
-                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
-                ProjectSettings.Current.SetCurrentLevel(level);
-                Console.WriteLine("[BlueprintManager] Auto-created default scene 'Main' with Level as single source of truth");
+                string jsonPath = Path.Combine(projectPath, "project.json");
+                if (!File.Exists(jsonPath)) return;
+                string json = File.ReadAllText(jsonPath);
+                var data = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions) ?? new ProjectData();
+                if (data.Scenes == null || data.Scenes.Count == 0)
+                {
+                    data.Scenes = new Dictionary<string, SceneData>();
+                    var level = new Level() { Name = "Main" };
+                    var sceneData = new SceneData { Name = "Main", SceneType = "TerrainTest" };
+                    sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
+                    sceneData.Terrain = level.Terrain ?? new TerrainData();
+                    sceneData.Environment = level.Environment ?? new EnvironmentSettings();
+                    data.Scenes["Main"] = sceneData;
+                    data.LastOpenedScene = "Main";
+                    File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
+                    ProjectSettings.Current.SetCurrentLevel(level);
+                    Console.WriteLine("[BlueprintManager] Auto-created default scene 'Main' with Level as single source of truth");
+                }
+                return;
             }
+            // No-project case: do nothing (NewTerrainPanel + EditorScene will create on first use)
+            Console.WriteLine("[BlueprintManager.EnsureDefaultSceneIfNeeded] No active project - skipping default scene creation");
         }
         public static void SaveCurrentProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
             Console.WriteLine("[BlueprintManager] SaveCurrentProject called - Level is now single source of truth");
+            if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
+            {
+                Console.WriteLine("[BlueprintManager] No active project on Save - opening New Project dialog");
+                NewProjectPanel.Open(renderContext, controlContext, window, eventBus);
+                return;
+            }
             DoProjectSave();
         }
         private static void DoProjectSave()
@@ -352,6 +353,12 @@ namespace CastleBuilder
         private void OnSaveProject(SaveProjectEvent evt)
         {
             Console.WriteLine("[BlueprintManager.OnSaveProject] SaveProjectEvent received - calling Level-centric save");
+            if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
+            {
+                Console.WriteLine("[BlueprintManager.OnSaveProject] No active project on Save - opening New Project dialog");
+                // "Save" with no project opens New Project dialog (per user requirement)
+                return;
+            }
             DoProjectSave();
         }
         private void OnContextChanged(ContextChangedEvent evt)

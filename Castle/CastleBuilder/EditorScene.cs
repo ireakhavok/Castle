@@ -18,7 +18,6 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using ToolChest;
-
 namespace CastleBuilder
 {
     public class EditorScene : Scene
@@ -29,20 +28,16 @@ namespace CastleBuilder
         private readonly ProjectSceneCache _sceneCache = new ProjectSceneCache();
         private GameScene _pendingDisposeScene;
         public static EditorScene Current { get; private set; }
-
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             Current = this;
             LoadProjectData();
         }
-
         public ProjectData GetProjectData() => _projectData;
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
-
         // NEW PUBLIC API - used by SceneEditorPanel for placement (no reflection)
         public bool TryGetPlacementPosition(out Vector3 position)
         {
@@ -53,7 +48,6 @@ namespace CastleBuilder
             }
             return false;
         }
-
         // NEW PUBLIC API - replaces reflection call
         public void SyncCurrentLevelToRuntimeServer()
         {
@@ -68,7 +62,6 @@ namespace CastleBuilder
                 Console.WriteLine($"[EditorScene] Synced {level.Entities.Count} entities to runtime proxy");
             }
         }
-
         public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -83,14 +76,33 @@ namespace CastleBuilder
             }
             if (_projectData == null) _projectData = new ProjectData();
             if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
-            _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
+
+            // === NO-PROJECT FIX ===
+            string levelName = ProjectSettings.Current.CurrentLevel?.Name;
+            if (!string.IsNullOrEmpty(levelName) && levelName != "Main")
+            {
+                _currentGameSceneName = levelName;
+                Console.WriteLine($"[EditorScene.LoadProjectData] No-project - using Level name from NewTerrainPanel: '{_currentGameSceneName}'");
+
+                // Ensure SceneData exists in no-project mode so isTerrainScene = true
+                if (!_projectData.Scenes.ContainsKey(_currentGameSceneName))
+                {
+                    var sd = new SceneData { Name = _currentGameSceneName, SceneType = "TerrainTest" };
+                    sd.Terrain = new TerrainData();
+                    _projectData.Scenes[_currentGameSceneName] = sd;
+                }
+            }
+            else
+            {
+                _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
+            }
+
             _sceneCache.Clear();
             _pendingDisposeScene?.Dispose();
             _pendingDisposeScene = null;
             Console.WriteLine($"[EditorScene.LoadProjectData] Active scene: '{_currentGameSceneName}'");
             ActivateScene(_currentGameSceneName);
         }
-
         private void ActivateScene(string sceneName)
         {
             Level level = ProjectSettings.Current.CurrentLevel;
@@ -127,15 +139,19 @@ namespace CastleBuilder
             if (_activeGameScene is TerrainCreatorScene tcs)
             {
                 float[,] cached = ProjectSettings.Current.GetUnsavedHeightmap(sceneName);
-                float[,] heightmapToUse = cached ?? tcs.GetHeightmap();
+                float[,] heightmapToUse = cached ?? ProjectSettings.Current.CurrentHeightmap ?? tcs.GetHeightmap();
                 ProjectSettings.Current.SetCurrentTerrain(sd, heightmapToUse, sceneName, sd.Terrain?.HeightmapPath);
                 if (!string.IsNullOrEmpty(sd.Terrain?.HeightmapPath))
                     tcs.LoadTerrain(sd.Terrain.HeightmapPath);
+                else if (heightmapToUse != null)
+                {
+                    // Force heightmap into the newly-created TerrainCreatorScene
+                    tcs.LoadSceneData(new SceneData { Name = sceneName, Terrain = new TerrainData() });
+                }
             }
             _sceneCache.Store(sceneName, _activeGameScene, level);
             Console.WriteLine($"[EditorScene] Activated scene '{sceneName}' using authoritative Level (entities: {level.Entities.Count} - models hydrated)");
         }
-
         private void RegisterAllAssetPacks(Level level)
         {
             if (level == null || ModelManager.Instance == null) return;
@@ -165,7 +181,6 @@ namespace CastleBuilder
                 }
             }
         }
-
         private Level CreateOrLoadLevel(string sceneName)
         {
             if (_projectData.Scenes.TryGetValue(sceneName, out var sceneData))
@@ -185,7 +200,6 @@ namespace CastleBuilder
             }
             return new Level(_eventBus) { Name = sceneName };
         }
-
         public void FlushActiveSceneData()
         {
             Console.WriteLine($"[EditorScene.FlushActiveSceneData] Called for scene '{_currentGameSceneName}'");
@@ -220,7 +234,6 @@ namespace CastleBuilder
                 Console.WriteLine($"[EditorScene] Flushed {level.Entities.Count} entities into clean Entities array");
             }
         }
-
         public void SwitchGameScene(string sceneName)
         {
             if (sceneName == _currentGameSceneName) return;
@@ -228,7 +241,6 @@ namespace CastleBuilder
             ActivateScene(sceneName);
             Console.WriteLine($"[EditorScene] Successfully switched to scene '{sceneName}'");
         }
-
         public override void Update(float deltaTime)
         {
             if (_pendingDisposeScene != null)
@@ -238,7 +250,6 @@ namespace CastleBuilder
             }
             _activeGameScene?.Update(deltaTime);
         }
-
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
         {
             if (_activeGameScene is TerrainCreatorScene terrainScene)
@@ -246,7 +257,6 @@ namespace CastleBuilder
             else if (_activeGameScene != null)
                 _activeGameScene.Update(deltaTime);
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             if (!(_activeGameScene is TerrainCreatorScene))
@@ -256,13 +266,11 @@ namespace CastleBuilder
             }
             _activeGameScene?.Render(entities ?? GetEntities());
         }
-
         public override void Resize(int width, int height)
         {
             base.Resize(width, height);
             _activeGameScene?.Resize(width, height);
         }
-
         public List<string> GetAvailableScenes()
         {
             var keys = _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
@@ -270,9 +278,7 @@ namespace CastleBuilder
             foreach (var key in ProjectSettings.Current.GetUnsavedHeightmapKeys()) scenes.Add(key);
             return scenes.ToList();
         }
-
         public string CurrentGameScene => _currentGameSceneName;
-
         public override void Dispose()
         {
             Current = null;
@@ -281,7 +287,6 @@ namespace CastleBuilder
             _sceneCache.Clear();
             base.Dispose();
         }
-
         private class BasicGameScene : GameScene
         {
             public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)
