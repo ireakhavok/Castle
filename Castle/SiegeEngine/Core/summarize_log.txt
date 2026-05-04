@@ -281,15 +281,15 @@ Found 0 dependencies
 Found: Entity.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
-Read 3542 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
+Read 3636 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 5 dependencies
 Found: EntityData.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\EntityData.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\EntityData.cs
-Read 735 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\EntityData.cs
+Read 1538 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\EntityData.cs
 Namespace: SiegeEngine.Core.Definitions
-Found 2 dependencies
+Found 3 dependencies
 Found: GameMode.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\GameMode.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\GameMode.cs
@@ -311,7 +311,7 @@ Found 2 dependencies
 Found: Level.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Level.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Level.cs
-Read 3711 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Level.cs
+Read 3719 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Level.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 5 dependencies
 Found: LevelData.cs

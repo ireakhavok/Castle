@@ -26,21 +26,49 @@ namespace CastleBuilder
         private ProjectData _projectData;
         private string _currentGameSceneName = string.Empty;
         private GameScene _activeGameScene;
-        // IDE-only cache for fast scene switching
         private readonly ProjectSceneCache _sceneCache = new ProjectSceneCache();
-        // Deferred disposal to prevent "disposed object" crashes during the same frame
         private GameScene _pendingDisposeScene;
         public static EditorScene Current { get; private set; }
+
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             Current = this;
             LoadProjectData();
         }
+
         public ProjectData GetProjectData() => _projectData;
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
+
+        // NEW PUBLIC API - used by SceneEditorPanel for placement (no reflection)
+        public bool TryGetPlacementPosition(out Vector3 position)
+        {
+            position = Vector3.Zero;
+            if (_activeGameScene is TerrainCreatorScene tcs)
+            {
+                return tcs.TryPerformPlacementRaycast(out position);
+            }
+            return false;
+        }
+
+        // NEW PUBLIC API - replaces reflection call
+        public void SyncCurrentLevelToRuntimeServer()
+        {
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level == null || _server == null) return;
+            var clientProxy = _server as ClientGameServerProxy;
+            if (clientProxy != null)
+            {
+                clientProxy.ClearEntities();
+                foreach (var entity in level.Entities)
+                    clientProxy.AddEntity(entity);
+                Console.WriteLine($"[EditorScene] Synced {level.Entities.Count} entities to runtime proxy");
+            }
+        }
+
         public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -62,6 +90,7 @@ namespace CastleBuilder
             Console.WriteLine($"[EditorScene.LoadProjectData] Active scene: '{_currentGameSceneName}'");
             ActivateScene(_currentGameSceneName);
         }
+
         private void ActivateScene(string sceneName)
         {
             Level level = ProjectSettings.Current.CurrentLevel;
@@ -71,7 +100,6 @@ namespace CastleBuilder
                 level = CreateOrLoadLevel(sceneName);
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
-            // CRITICAL: Always hydrate models for saved entities so FBX appears on load/switch
             RegisterAllAssetPacks(level);
             if (_sceneCache.TryGet(sceneName, out var cachedScene, out var cachedLevel))
             {
@@ -80,7 +108,7 @@ namespace CastleBuilder
                 _activeGameScene = cachedScene;
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
-                SyncLevelToRuntimeServer(level);
+                SyncCurrentLevelToRuntimeServer();
                 Console.WriteLine($"[EditorScene] Activated CACHED scene '{sceneName}' (Level authoritative - models hydrated - entities: {level.Entities.Count})");
                 return;
             }
@@ -95,7 +123,7 @@ namespace CastleBuilder
                 : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd);
             _activeGameScene.Initialize(_width, _height);
             _activeGameScene.LoadSceneData(sd);
-            SyncLevelToRuntimeServer(level);
+            SyncCurrentLevelToRuntimeServer();
             if (_activeGameScene is TerrainCreatorScene tcs)
             {
                 float[,] cached = ProjectSettings.Current.GetUnsavedHeightmap(sceneName);
@@ -107,6 +135,7 @@ namespace CastleBuilder
             _sceneCache.Store(sceneName, _activeGameScene, level);
             Console.WriteLine($"[EditorScene] Activated scene '{sceneName}' using authoritative Level (entities: {level.Entities.Count} - models hydrated)");
         }
+
         private void RegisterAllAssetPacks(Level level)
         {
             if (level == null || ModelManager.Instance == null) return;
@@ -127,9 +156,8 @@ namespace CastleBuilder
                     }
                     else
                     {
-                        // Fallback for packs created in-memory during placement
                         string packId = modelComp.Key;
-                        ModelManager.Instance.RegisterFBXAsPackInMemory(packId); // assumes this method exists (used in placement)
+                        ModelManager.Instance.RegisterFBXAsPackInMemory(packId);
                         if (ModelManager.Instance.TryGetModel(packId, out var fbxModel))
                             modelComp.Model = fbxModel;
                         Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Registered in-memory pack '{packId}' for saved entity");
@@ -137,6 +165,7 @@ namespace CastleBuilder
                 }
             }
         }
+
         private Level CreateOrLoadLevel(string sceneName)
         {
             if (_projectData.Scenes.TryGetValue(sceneName, out var sceneData))
@@ -147,7 +176,7 @@ namespace CastleBuilder
                     foreach (var ed in sceneData.Entities)
                     {
                         var entity = Entity.FromData(ed);
-                        level.AddEntity(entity); // Use AddEntity for consistent ID / logging
+                        level.AddEntity(entity);
                     }
                 }
                 level.Terrain = sceneData.Terrain ?? new TerrainData();
@@ -156,18 +185,7 @@ namespace CastleBuilder
             }
             return new Level(_eventBus) { Name = sceneName };
         }
-        private void SyncLevelToRuntimeServer(Level level)
-        {
-            if (level == null || _server == null) return;
-            var clientProxy = _server as ClientGameServerProxy;
-            if (clientProxy != null)
-            {
-                clientProxy.ClearEntities();
-                foreach (var entity in level.Entities)
-                    clientProxy.AddEntity(entity);
-                Console.WriteLine($"[EditorScene] Synced {level.Entities.Count} entities to runtime proxy");
-            }
-        }
+
         public void FlushActiveSceneData()
         {
             Console.WriteLine($"[EditorScene.FlushActiveSceneData] Called for scene '{_currentGameSceneName}'");
@@ -202,6 +220,7 @@ namespace CastleBuilder
                 Console.WriteLine($"[EditorScene] Flushed {level.Entities.Count} entities into clean Entities array");
             }
         }
+
         public void SwitchGameScene(string sceneName)
         {
             if (sceneName == _currentGameSceneName) return;
@@ -209,6 +228,7 @@ namespace CastleBuilder
             ActivateScene(sceneName);
             Console.WriteLine($"[EditorScene] Successfully switched to scene '{sceneName}'");
         }
+
         public override void Update(float deltaTime)
         {
             if (_pendingDisposeScene != null)
@@ -218,6 +238,7 @@ namespace CastleBuilder
             }
             _activeGameScene?.Update(deltaTime);
         }
+
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
         {
             if (_activeGameScene is TerrainCreatorScene terrainScene)
@@ -225,6 +246,7 @@ namespace CastleBuilder
             else if (_activeGameScene != null)
                 _activeGameScene.Update(deltaTime);
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             if (!(_activeGameScene is TerrainCreatorScene))
@@ -234,11 +256,13 @@ namespace CastleBuilder
             }
             _activeGameScene?.Render(entities ?? GetEntities());
         }
+
         public override void Resize(int width, int height)
         {
             base.Resize(width, height);
             _activeGameScene?.Resize(width, height);
         }
+
         public List<string> GetAvailableScenes()
         {
             var keys = _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
@@ -246,7 +270,9 @@ namespace CastleBuilder
             foreach (var key in ProjectSettings.Current.GetUnsavedHeightmapKeys()) scenes.Add(key);
             return scenes.ToList();
         }
+
         public string CurrentGameScene => _currentGameSceneName;
+
         public override void Dispose()
         {
             Current = null;
@@ -255,6 +281,7 @@ namespace CastleBuilder
             _sceneCache.Clear();
             base.Dispose();
         }
+
         private class BasicGameScene : GameScene
         {
             public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)

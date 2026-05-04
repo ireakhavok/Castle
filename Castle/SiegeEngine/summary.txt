@@ -488,7 +488,9 @@ Folder: Core
       - void Deserialize(byte[] data)
 - File: EntityData.cs
   - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: System.Numerics, System.Text.Json.Serialization
+    - Dependencies: System.Numerics, System.Text.Json, System.Text.Json.Serialization
+    - Fields:
+      - JsonSerializerOptions SerializerOptions
 - File: EntityMovedEvent.cs
   - Class: EntityMovedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent

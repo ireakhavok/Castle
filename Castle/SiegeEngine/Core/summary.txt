@@ -371,7 +371,9 @@ Folder: Definitions
       - constructor Entity()
 - File: EntityData.cs
   - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: System.Numerics, System.Text.Json.Serialization
+    - Dependencies: System.Numerics, System.Text.Json, System.Text.Json.Serialization
+    - Fields:
+      - JsonSerializerOptions SerializerOptions
 - File: GameMode.cs
   - Class: GameMode (Namespace: SiegeEngine.Core.Definitions)
 - File: InputEnums.cs
