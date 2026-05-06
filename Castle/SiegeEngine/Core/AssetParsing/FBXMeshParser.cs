@@ -1,12 +1,11 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing/FBXMeshParser.cs
+﻿// Folder: SiegeEngine.Core.AssetParsing
+// File: FBXMeshParser.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     // This static class parses mesh data from FBX Geometry nodes, including vertices, indices, normals, UVs, materials, skins.
@@ -35,12 +34,13 @@ namespace SiegeEngine.Core.AssetParsing
                 }
                 var (norms, normIdx, normMapping, normRef) = ParseNormals(geom);
                 var (uvs, uvIdx, uvMapping, uvRef) = ParseUVs(geom);
+                var (tans, tanIdx, tanMapping, tanRef) = ParseTangents(geom);
                 var (matIndices, matMapping) = ParseMaterials(geom);
                 var geoMat = ParseGeometricTransform(geomId, conns, objectsById, sourceToTarget, signs, modelScale);
                 int numVerts = vertsD.Length / 3;
                 var perVertBones = ParseSkin(geomId, conns, objectsById, boneIndexById, model, rootIndices, P4, invP4, modelScale, numVerts, geoMat);
                 NormalizeWeights(perVertBones);
-                var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, matIndices, matMapping, perVertBones, numVerts);
+                var (expandedVertices, newIndices) = BuildExpandedVerticesAndIndices(pviArray, vertsD, sourceToTarget, signs, modelScale, norms, normIdx, normMapping, normRef, uvs, uvIdx, uvMapping, uvRef, tans, tanIdx, tanMapping, tanRef, matIndices, matMapping, perVertBones, numVerts);
                 MeshData mesh = new MeshData
                 {
                     Vertices = expandedVertices,
@@ -51,6 +51,7 @@ namespace SiegeEngine.Core.AssetParsing
                 model.Meshes.Add(mesh);
             }
         }
+
         // Parses the Vertices array from Geometry node as doubles.
         private static double[] ParseVertices(BaseNode geom)
         {
@@ -72,6 +73,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return vertsD;
         }
+
         // Parses PolygonVertexIndex array, which defines polygons with negative indices marking end.
         private static int[] ParsePolygonVertexIndices(BaseNode geom)
         {
@@ -83,6 +85,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return pviArray;
         }
+
         // Parses normals, their indices, mapping type (ByPolygonVertex/ByVertice), reference type (IndexToDirect/Direct).
         private static (double[] norms, int[] normIdx, string normMapping, string normRef) ParseNormals(BaseNode geom)
         {
@@ -120,6 +123,45 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (norms, normIdx, normMapping, normRef);
         }
+
+        // Parses tangents (LayerElementTangent) - exactly parallel to normals for full compatibility with Unreal FBX.
+        private static (double[] tans, int[] tanIdx, string tanMapping, string tanRef) ParseTangents(BaseNode geom)
+        {
+            var layerTan = geom.children.FirstOrDefault(c => c.Name == "LayerElementTangent");
+            double[] tans = null;
+            int[] tanIdx = null;
+            string tanMapping = "";
+            string tanRef = "";
+            if (layerTan != null)
+            {
+                var mappingNode = layerTan.children.FirstOrDefault(c => c.Name == "MappingInformationType");
+                tanMapping = mappingNode != null ? (string)mappingNode.properties[0].Value : "";
+                var refNode = layerTan.children.FirstOrDefault(c => c.Name == "ReferenceInformationType");
+                tanRef = refNode != null ? (string)refNode.properties[0].Value : "";
+                var tangentsNode = layerTan.children.FirstOrDefault(c => c.Name == "Tangents");
+                if (tangentsNode != null)
+                {
+                    var prop = tangentsNode.properties[0];
+                    if (prop.TypeCode == 'd')
+                    {
+                        tans = (double[])prop.Value;
+                    }
+                    else if (prop.TypeCode == 'f')
+                    {
+                        float[] fvals = (float[])prop.Value;
+                        tans = new double[fvals.Length];
+                        for (int ti = 0; ti < fvals.Length; ti++) tans[ti] = fvals[ti];
+                    }
+                }
+                var tangentsIndexNode = layerTan.children.FirstOrDefault(c => c.Name == "TangentsIndex");
+                if (tangentsIndexNode != null && tangentsIndexNode.properties[0].TypeCode == 'i')
+                {
+                    tanIdx = (int[])tangentsIndexNode.properties[0].Value;
+                }
+            }
+            return (tans, tanIdx, tanMapping, tanRef);
+        }
+
         // Parses UVs similar to normals.
         private static (double[] uvs, int[] uvIdx, string uvMapping, string uvRef) ParseUVs(BaseNode geom)
         {
@@ -157,6 +199,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (uvs, uvIdx, uvMapping, uvRef);
         }
+
         // Parses material indices and mapping type (AllSame/ByPolygon).
         private static (int[] matIndices, string matMapping) ParseMaterials(BaseNode geom)
         {
@@ -175,6 +218,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (matIndices, matMapping);
         }
+
         // Parses geometric transform (translation, rotation, scale) for the mesh, applied after bind poses.
         private static Matrix4x4 ParseGeometricTransform(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, int[] sourceToTarget, int[] signs, float modelScale)
         {
@@ -229,6 +273,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return geoMat;
         }
+
         // Parses skin deformers, clusters, weights, indices, and computes inverse bind poses including remapping.
         private static List<List<(int boneIdx, float weight)>> ParseSkin(long geomId, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, Dictionary<long, int> boneIndexById, FBXModel model, List<int> rootIndices, Matrix4x4 P4, Matrix4x4 invP4, float modelScale, int numVerts, Matrix4x4 geoMat)
         {
@@ -370,6 +415,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return perVertBones;
         }
+
         // Normalizes per-vertex weights to sum to 1, limits to top 8 bones per vertex.
         private static void NormalizeWeights(List<List<(int boneIdx, float weight)>> perVertBones)
         {
@@ -391,14 +437,16 @@ namespace SiegeEngine.Core.AssetParsing
                 perVertBones[v] = bw.OrderByDescending(b => b.weight).ToList(); // Sort descending weight
             }
         }
+
         // Expands polygon-based data to per-vertex format, triangulates polygons, applies remapping to positions/normals, flips V in UV.
-        private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, int numVerts)
+        private static (List<FBXVertex> expandedVertices, List<uint> newIndices) BuildExpandedVerticesAndIndices(int[] pviArray, double[] vertsD, int[] sourceToTarget, int[] signs, float modelScale, double[] norms, int[] normIdx, string normMapping, string normRef, double[] uvs, int[] uvIdx, string uvMapping, string uvRef, double[] tans, int[] tanIdx, string tanMapping, string tanRef, int[] matIndices, string matMapping, List<List<(int boneIdx, float weight)>> perVertBones, int numVerts)
         {
             List<FBXVertex> expandedVertices = new List<FBXVertex>();
             List<uint> newIndices = new List<uint>();
             int currentIndex = 0;
             List<int> tempPoly = new List<int>();
             int polyIndex = 0;
+            bool loggedTangent = false;
             for (int i = 0; i < pviArray.Length; i++)
             {
                 int pv = pviArray[i];
@@ -441,7 +489,6 @@ namespace SiegeEngine.Core.AssetParsing
                                     int polyVertIdx = i - tempPoly.Count + 1 + k;
                                     if (polyVertIdx < 0 || polyVertIdx >= normIdx.Length)
                                     {
-                                        Console.WriteLine($"BuildModelFromForest: Invalid normIdx access at polyVertIdx={polyVertIdx}, normIdx.Length={normIdx.Length}, using default normal");
                                         nIdx = 0;
                                     }
                                     else
@@ -458,11 +505,7 @@ namespace SiegeEngine.Core.AssetParsing
                             {
                                 nIdx = vertIdx;
                             }
-                            if (nIdx < 0 || nIdx * 3 >= norms.Length)
-                            {
-                                Console.WriteLine($"BuildModelFromForest: Invalid nIdx {nIdx}, norms.Length={norms.Length / 3}, using default normal");
-                            }
-                            else
+                            if (nIdx >= 0 && nIdx * 3 < norms.Length)
                             {
                                 float nx = (float)norms[nIdx * 3];
                                 float ny = (float)norms[nIdx * 3 + 1];
@@ -473,6 +516,50 @@ namespace SiegeEngine.Core.AssetParsing
                         Vector3 normal = FBXCoordinateUtils.RemapVector(normal_source, sourceToTarget, signs);
                         if (normal.LengthSquared() > 0)
                             normal = Vector3.Normalize(normal);
+                        // Tangent - fully defensive, identical index logic to normals
+                        Vector3 tangent_source = new Vector3(0f, 0f, 0f);
+                        if (tans != null)
+                        {
+                            int tIdx;
+                            if (tanMapping == "ByPolygonVertex")
+                            {
+                                if (tanRef == "IndexToDirect" && tanIdx != null)
+                                {
+                                    int polyVertIdx = i - tempPoly.Count + 1 + k;
+                                    if (polyVertIdx < 0 || polyVertIdx >= tanIdx.Length)
+                                    {
+                                        tIdx = 0;
+                                    }
+                                    else
+                                    {
+                                        tIdx = tanIdx[polyVertIdx];
+                                    }
+                                }
+                                else // Direct
+                                {
+                                    tIdx = i - tempPoly.Count + 1 + k;
+                                }
+                            }
+                            else // ByVertice
+                            {
+                                tIdx = vertIdx;
+                            }
+                            if (tIdx >= 0 && tIdx * 3 < tans.Length)
+                            {
+                                float tx = (float)tans[tIdx * 3];
+                                float ty = (float)tans[tIdx * 3 + 1];
+                                float tz = (float)tans[tIdx * 3 + 2];
+                                tangent_source = new Vector3(tx, ty, tz);
+                                if (!loggedTangent)
+                                {
+                                    Console.WriteLine($"FBXMeshParser: Tangents detected (tanRef={tanRef}, tanMapping={tanMapping}) - first valid tangent: {tangent_source}");
+                                    loggedTangent = true;
+                                }
+                            }
+                        }
+                        Vector3 tangent = FBXCoordinateUtils.RemapVector(tangent_source, sourceToTarget, signs);
+                        if (tangent.LengthSquared() > 0)
+                            tangent = Vector3.Normalize(tangent);
                         // UV
                         float u = 0f, v = 0f;
                         if (uvs != null)
@@ -485,7 +572,6 @@ namespace SiegeEngine.Core.AssetParsing
                                     int polyVertIdx = i - tempPoly.Count + 1 + k;
                                     if (polyVertIdx < 0 || polyVertIdx >= uvIdx.Length)
                                     {
-                                        Console.WriteLine($"BuildModelFromForest: Invalid uvIdx access at polyVertIdx={polyVertIdx}, uvIdx.Length={uvIdx.Length}, using default UV");
                                         uIdx = 0;
                                     }
                                     else
@@ -502,11 +588,7 @@ namespace SiegeEngine.Core.AssetParsing
                             {
                                 uIdx = vertIdx;
                             }
-                            if (uIdx < 0 || uIdx * 2 >= uvs.Length)
-                            {
-                                Console.WriteLine($"BuildModelFromForest: Invalid uIdx {uIdx}, uvs.Length={uvs.Length / 2}, using default UV");
-                            }
-                            else
+                            if (uIdx >= 0 && uIdx * 2 < uvs.Length)
                             {
                                 u = (float)uvs[uIdx * 2];
                                 v = 1f - (float)uvs[uIdx * 2 + 1]; // Flip V
@@ -522,11 +604,7 @@ namespace SiegeEngine.Core.AssetParsing
                             }
                             else if (matMapping == "ByPolygon")
                             {
-                                if (polyIndex < 0 || polyIndex >= matIndices.Length)
-                                {
-                                    Console.WriteLine($"BuildModelFromForest: Invalid polyIndex {polyIndex}, matIndices.Length={matIndices.Length}, using matId 0");
-                                }
-                                else
+                                if (polyIndex >= 0 && polyIndex < matIndices.Length)
                                 {
                                     matId = matIndices[polyIndex];
                                 }
@@ -542,7 +620,7 @@ namespace SiegeEngine.Core.AssetParsing
                         float w2 = bw.Count > 2 ? bw[2].weight : 0f;
                         int b3 = bw.Count > 3 ? bw[3].boneIdx : -1;
                         float w3 = bw.Count > 3 ? bw[3].weight : 0f;
-                        expandedVertices.Add(new FBXVertex(pos.X, pos.Y, pos.Z, normal.X, normal.Y, normal.Z, u, v, matId, 0, 0, 0, b0, b1, b2, b3, w0, w1, w2, w3));
+                        expandedVertices.Add(new FBXVertex(pos.X, pos.Y, pos.Z, normal.X, normal.Y, normal.Z, u, v, matId, tangent.X, tangent.Y, tangent.Z, b0, b1, b2, b3, w0, w1, w2, w3));
                     }
                     currentIndex += tempPoly.Count;
                     tempPoly.Clear();
@@ -551,6 +629,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return (expandedVertices, newIndices);
         }
+
         // Extracts material properties and textures (albedo, normal, metallic), handles embedded textures.
         private static List<Material> ExtractMaterials(long geomId, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, FBXFileForest forest)
         {
@@ -669,6 +748,7 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return materials;
         }
+
         // Computes axis-aligned bounding box size from vertex positions.
         private static Vector3 CalculateBounds(List<FBXVertex> vertices)
         {

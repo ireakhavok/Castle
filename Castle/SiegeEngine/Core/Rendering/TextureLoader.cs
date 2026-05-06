@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering
+﻿// Folder: SiegeEngine.Core.Rendering
 // File: TextureLoader.cs
 using SiegeEngine.Core.ContextManagement;
 using Silk.NET.OpenGL;
@@ -14,39 +14,43 @@ namespace SiegeEngine.Core.Rendering
     {
         private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
         private static readonly HashSet<byte> ValidTgaTypes = new HashSet<byte> { 1, 2, 3, 9, 10, 11, 32, 33 };
+
         public static (uint, byte) LoadTexture(IRenderContext renderContext, string path, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
+            Console.WriteLine($"[TextureLoader] LoadTexture START: {path}");
             try
             {
                 string extension = Path.GetExtension(path).ToLower();
                 if (extension == ".tga")
                 {
-                    Console.WriteLine("TextureLoader: Loading as TGA file");
+                    Console.WriteLine($"[TextureLoader] Loading as TGA: {path}");
                     (uint textureId, byte pixelDepth2) = LoadTgaTexture(renderContext, path, wrapS, wrapT);
                     if (textureId != 0)
                     {
-                        Console.WriteLine($"TextureLoader: TGA load result for {path}: Texture ID {textureId}");
+                        Console.WriteLine($"[TextureLoader] TGA SUCCESS for {path}: ID={textureId}");
                         return (textureId, pixelDepth2);
                     }
-                    Console.WriteLine("TextureLoader: TGA loading failed, attempting PNG");
+                    Console.WriteLine($"[TextureLoader] TGA failed, falling back to PNG: {path}");
                 }
-                Console.WriteLine("TextureLoader: Loading as PNG file");
+                Console.WriteLine($"[TextureLoader] Loading as PNG: {path}");
                 using (var bitmap = new Bitmap(path))
                 {
-                    Console.WriteLine($"Bitmap dimensions: {bitmap.Width}x{bitmap.Height}, PixelFormat: {bitmap.PixelFormat}");
+                    Console.WriteLine($"[TextureLoader] Bitmap loaded: {bitmap.Width}x{bitmap.Height} {bitmap.PixelFormat}");
                     (uint textureId, byte pixelDepth) = LoadTextureFromBitmap(renderContext, bitmap, wrapS, wrapT);
-                    Console.WriteLine($"TextureLoader: PNG load result for {path}: Texture ID {textureId}");
+                    Console.WriteLine($"[TextureLoader] PNG load result for {path}: ID={textureId}");
                     return (textureId, pixelDepth);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"TextureLoader: Failed to load texture {path}: {ex.Message}, StackTrace: {ex.StackTrace}");
+                Console.WriteLine($"[TextureLoader] CRITICAL FAIL {path}: {ex.Message}\n{ex.StackTrace}");
                 return (0, 0);
             }
         }
+
         public static (uint texId, Vector2 nativeSize) LoadTextureWithSize(IRenderContext renderContext, string path)
         {
+            Console.WriteLine($"[TextureLoader] LoadTextureWithSize: {path}");
             try
             {
                 using (var bitmap = new Bitmap(path))
@@ -55,20 +59,23 @@ namespace SiegeEngine.Core.Rendering
                     return (texId, new Vector2(bitmap.Width, bitmap.Height));
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"[TextureLoader] LoadTextureWithSize FAIL {path}: {ex.Message}");
                 return (0, Vector2.One);
             }
         }
+
         public static (uint, byte) LoadEmbeddedTexture(IRenderContext renderContext, byte[] textureData, string textureName, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
+            Console.WriteLine($"[TextureLoader] LoadEmbeddedTexture START: {textureName}");
             try
             {
                 byte imageType = textureData[2];
                 ushort widthTga = BitConverter.ToUInt16(textureData, 12);
                 ushort heightTga = BitConverter.ToUInt16(textureData, 14);
                 byte pixelDepth = textureData[16];
-                Console.WriteLine($"TextureLoader: TGA Header for {textureName}: Type={imageType}, Width={widthTga}, Height={heightTga}, PixelDepth={pixelDepth}");
+                Console.WriteLine($"[TextureLoader] TGA Header for {textureName}: Type={imageType}, {widthTga}x{heightTga}, Depth={pixelDepth}");
                 if (ValidTgaTypes.Contains(imageType) && pixelDepth is 8 or 16 or 24 or 32 && widthTga > 0 && heightTga > 0 && widthTga <= 16384 && heightTga <= 16384)
                 {
                     string tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.tga");
@@ -78,41 +85,39 @@ namespace SiegeEngine.Core.Rendering
                         (uint textureId, byte pixelDepth2) = LoadTgaTexture(renderContext, tempPath, wrapS, wrapT);
                         if (textureId != 0)
                         {
-                            Console.WriteLine($"TextureLoader: TGA load result for {textureName}: Texture ID {textureId}");
+                            Console.WriteLine($"[TextureLoader] Embedded TGA SUCCESS for {textureName}: ID={textureId}");
                             return (textureId, pixelDepth);
                         }
                     }
                     finally
                     {
-                        try { File.Delete(tempPath); }
-                        catch (IOException) { Console.WriteLine($"TextureLoader: Warning: Failed to delete temp file '{tempPath}'"); }
+                        try { File.Delete(tempPath); } catch { }
                     }
-                }
-                else
-                {
-                    Console.WriteLine($"TextureLoader: Invalid TGA type {imageType} or dimensions for {textureName}, attempting PNG");
                 }
                 using (var stream = new MemoryStream(textureData))
                 using (var bitmap = new Bitmap(stream))
                 {
                     (uint textureId, pixelDepth) = LoadTextureFromBitmap(renderContext, bitmap, wrapS, wrapT);
-                    Console.WriteLine($"TextureLoader: PNG fallback load result for {textureName}: Texture ID {textureId}");
+                    Console.WriteLine($"[TextureLoader] Embedded PNG fallback result for {textureName}: ID={textureId}");
                     return (textureId, pixelDepth);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"TextureLoader: Failed to load embedded texture {textureName}: {ex.Message}, StackTrace: {ex.StackTrace}");
+                Console.WriteLine($"[TextureLoader] Embedded CRITICAL FAIL {textureName}: {ex.Message}");
                 return (0, 0);
             }
         }
+
         public static (uint, byte) LoadTgaTexture(IRenderContext renderContext, string path, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
+            Console.WriteLine($"[TextureLoader] LoadTgaTexture: {path}");
             try
             {
                 using (var stream = File.OpenRead(path))
                 using (var reader = new BinaryReader(stream))
                 {
+                    // ... (header read unchanged) ...
                     byte idLength = reader.ReadByte();
                     byte colorMapType = reader.ReadByte();
                     byte imageType = reader.ReadByte();
@@ -123,46 +128,32 @@ namespace SiegeEngine.Core.Rendering
                     ushort height = reader.ReadUInt16();
                     byte pixelDepth = reader.ReadByte();
                     byte imageDescriptor = reader.ReadByte();
+                    Console.WriteLine($"[TextureLoader] TGA header: {width}x{height} depth={pixelDepth} type={imageType}");
                     if (width == 0 || height == 0 || width > 16384 || height > 16384)
                     {
-                        Console.WriteLine("TextureLoader: Invalid TGA dimensions or exceeds max size (16384)");
+                        Console.WriteLine("[TextureLoader] Invalid TGA dimensions");
                         return (0, pixelDepth);
                     }
                     if (!ValidTgaTypes.Contains(imageType))
                     {
-                        Console.WriteLine($"TextureLoader: Unsupported TGA image type: {imageType}");
+                        Console.WriteLine($"[TextureLoader] Unsupported TGA type {imageType}");
                         return (0, pixelDepth);
                     }
                     if (idLength > 0)
                         reader.ReadBytes(idLength);
-                    int internalFormat;
-                    int pixelFormat;
-                    int bytesPerPixel;
-                    if (pixelDepth == 24)
-                    {
-                        internalFormat = renderContext.Enums.InternalRgb;
-                        pixelFormat = renderContext.Enums.PixelBgr;
-                        bytesPerPixel = 3;
-                    }
-                    else if (pixelDepth == 32)
-                    {
-                        internalFormat = renderContext.Enums.InternalRgba;
-                        pixelFormat = renderContext.Enums.PixelBgra;
-                        bytesPerPixel = 4;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"TextureLoader: Unsupported TGA pixel depth: {pixelDepth}");
-                        return (0, pixelDepth);
-                    }
+                    int internalFormat = pixelDepth == 24 ? renderContext.Enums.InternalRgb : renderContext.Enums.InternalRgba;
+                    int pixelFormat = pixelDepth == 24 ? renderContext.Enums.PixelBgr : renderContext.Enums.PixelBgra;
+                    int bytesPerPixel = pixelDepth / 8;
                     byte[] pixelData = new byte[width * height * bytesPerPixel];
-                    int pixelIndex = 0;
+                    // ... (pixel read code unchanged) ...
                     if (imageType == 2 || imageType == 1 || imageType == 3)
                     {
                         pixelData = reader.ReadBytes(width * height * bytesPerPixel);
                     }
                     else if (imageType == 9 || imageType == 10 || imageType == 11)
                     {
+                        // RLE handling unchanged
+                        int pixelIndex = 0;
                         while (pixelIndex < pixelData.Length)
                         {
                             byte packetHeader = reader.ReadByte();
@@ -186,11 +177,6 @@ namespace SiegeEngine.Core.Rendering
                             }
                         }
                     }
-                    else if (imageType == 32 || imageType == 33)
-                    {
-                        Console.WriteLine($"TextureLoader: Limited support for TGA type {imageType}, treating as uncompressed");
-                        pixelData = reader.ReadBytes(width * height * bytesPerPixel);
-                    }
                     int rowSize = width * bytesPerPixel;
                     if ((imageDescriptor & 0x20) == 0)
                     {
@@ -205,6 +191,7 @@ namespace SiegeEngine.Core.Rendering
                     renderContext.GenTextures(1, out texture);
                     renderContext.BindTexture(renderContext.Enums.Texture2D, texture);
                     renderContext.PixelStore(renderContext.Enums.UnpackAlignment, 1);
+                    Console.WriteLine($"[TextureLoader] Uploading TGA {width}x{height} to texture {texture}");
                     unsafe
                     {
                         fixed (byte* ptr = pixelData)
@@ -212,11 +199,84 @@ namespace SiegeEngine.Core.Rendering
                             renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, width, height, 0, pixelFormat, renderContext.Enums.UnsignedByte, ptr);
                         }
                     }
+                    int error = renderContext.GetError();
+                    if (error != renderContext.Enums.NoError)
+                    {
+                        Console.WriteLine($"[TextureLoader] TexImage2D ERROR after TGA upload: {error}");
+                    }
                     renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMinFilter, renderContext.Enums.LinearMipmapLinear);
                     renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMagFilter, renderContext.Enums.Linear);
                     renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapS, renderContext.Enums.ClampToEdge);
                     renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapT, renderContext.Enums.ClampToEdge);
-                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureLodBias, 0);
+                    renderContext.GenerateMipmap(renderContext.Enums.Texture2D);
+                    if (renderContext.IsExtensionPresent("EXT_texture_filter_anisotropic"))
+                    {
+                        renderContext.GetFloat(renderContext.Enums.MaxTextureMaxAnisotropyExt, out float maxAniso);
+                        renderContext.TexParameterf(renderContext.Enums.Texture2D, renderContext.Enums.TextureMaxAnisotropyExt, Math.Min(16.0f, maxAniso));
+                    }
+                    renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
+                    Console.WriteLine($"[TextureLoader] TGA load complete: ID={texture}");
+                    return (texture, pixelDepth);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[TextureLoader] TGA CRITICAL FAIL {path}: {ex.Message}");
+                return (0, 0);
+            }
+        }
+
+        private static (uint, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
+        {
+            Console.WriteLine($"[TextureLoader] LoadTextureFromBitmap START: {bitmap.Width}x{bitmap.Height} {bitmap.PixelFormat}");
+            try
+            {
+                if (bitmap.PixelFormat != System.Drawing.Imaging.PixelFormat.Format32bppArgb)
+                {
+                    Console.WriteLine($"[TextureLoader] Converting bitmap to 32bppArgb");
+                    using (var converted = new Bitmap(bitmap.Width, bitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+                    {
+                        using (var g = Graphics.FromImage(converted))
+                        {
+                            g.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
+                        }
+                        return LoadTextureFromBitmap(renderContext, converted, wrapS, wrapT);
+                    }
+                }
+                int internalFormat = renderContext.Enums.InternalRgba;
+                int pixelFormat = renderContext.Enums.PixelBgra;
+                byte pixelDepth = 32;
+                var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
+                try
+                {
+                    uint texture;
+                    renderContext.GenTextures(1, out texture);
+                    Console.WriteLine($"[TextureLoader] Generated texture ID {texture}");
+                    renderContext.BindTexture(renderContext.Enums.Texture2D, texture);
+                    int error = renderContext.GetError();
+                    if (error != renderContext.Enums.NoError)
+                    {
+                        Console.WriteLine($"[TextureLoader] ERROR before TexImage2D: {error}");
+                    }
+                    int bytesPerPixel = 4;
+                    int dataSize = bitmap.Width * bitmap.Height * bytesPerPixel;
+                    byte[] pixelData = new byte[dataSize];
+                    System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
+                    Console.WriteLine($"[TextureLoader] Copied {dataSize} bytes, Stride={data.Stride}");
+                    unsafe
+                    {
+                        fixed (byte* ptr = pixelData)
+                        {
+                            renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)bitmap.Width, (uint)bitmap.Height, 0, pixelFormat, renderContext.Enums.UnsignedByte, ptr);
+                        }
+                    }
+                    error = renderContext.GetError();
+                    Console.WriteLine($"[TextureLoader] TexImage2D completed - error code: {error}");
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMinFilter, renderContext.Enums.LinearMipmapLinear);
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMagFilter, renderContext.Enums.Linear);
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapS, renderContext.Enums.ClampToEdge);
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapT, renderContext.Enums.ClampToEdge);
+                    renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureLodBias, -1);
                     renderContext.GenerateMipmap(renderContext.Enums.Texture2D);
                     if (renderContext.IsExtensionPresent("EXT_texture_filter_anisotropic"))
                     {
@@ -226,98 +286,6 @@ namespace SiegeEngine.Core.Rendering
                     renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
                     return (texture, pixelDepth);
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"TextureLoader: Failed to load TGA texture {path}: {ex.Message}, StackTrace: {ex.StackTrace}");
-                return (0, 0);
-            }
-        }
-        private static (uint, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
-        {
-            try
-            {
-                if (bitmap.PixelFormat != System.Drawing.Imaging.PixelFormat.Format32bppArgb)
-                {
-                    Console.WriteLine($"TextureLoader: Converting {bitmap.PixelFormat} to 32bppArgb for OpenGL compatibility");
-                    using (var convertedBitmap = new Bitmap(bitmap.Width, bitmap.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
-                    {
-                        using (var g = Graphics.FromImage(convertedBitmap))
-                        {
-                            g.DrawImage(bitmap, 0, 0, bitmap.Width, bitmap.Height);
-                        }
-                        return LoadTextureFromBitmap(renderContext, convertedBitmap, wrapS, wrapT);
-                    }
-                }
-                int internalFormat = renderContext.Enums.InternalRgba;
-                int pixelFormat = renderContext.Enums.PixelBgra;
-                byte pixelDepth = 32;
-                var data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
-                try
-                {
-                    if (data.Scan0 == nint.Zero)
-                    {
-                        Console.WriteLine($"TextureLoader: Invalid bitmap pixel data for {bitmap.Width}x{bitmap.Height}, PixelFormat: {bitmap.PixelFormat}");
-                        return (0, 0);
-                    }
-                    uint texture;
-                    renderContext.GenTextures(1, out texture);
-                    if (texture == 0)
-                    {
-                        Console.WriteLine("TextureLoader: Failed to generate OpenGL texture");
-                        return (0, 0);
-                    }
-                    try
-                    {
-                        renderContext.BindTexture(renderContext.Enums.Texture2D, texture);
-                        int error = renderContext.GetError();
-                        if (error != renderContext.Enums.NoError)
-                        {
-                            Console.WriteLine($"TextureLoader: OpenGL error before TexImage2D: {error}");
-                            renderContext.DeleteTexture(texture);
-                            return (0, 0);
-                        }
-                        int bytesPerPixel = 4;
-                        int dataSize = bitmap.Width * bitmap.Height * bytesPerPixel;
-                        byte[] pixelData = new byte[dataSize];
-                        System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
-                        Console.WriteLine($"TextureLoader: Copied {dataSize} bytes of pixel data, Stride: {data.Stride}");
-                        unsafe
-                        {
-                            fixed (byte* ptr = pixelData)
-                            {
-                                renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)bitmap.Width, (uint)bitmap.Height, 0, pixelFormat, renderContext.Enums.UnsignedByte, ptr);
-                            }
-                        }
-                        Console.WriteLine("TexImage2D called successfully");
-                        error = renderContext.GetError();
-                        if (error != renderContext.Enums.NoError)
-                        {
-                            Console.WriteLine($"TextureLoader: OpenGL error after TexImage2D: {error}");
-                            renderContext.DeleteTexture(texture);
-                            return (0, 0);
-                        }
-                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMinFilter, renderContext.Enums.LinearMipmapLinear);
-                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMagFilter, renderContext.Enums.Linear);
-                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapS, renderContext.Enums.ClampToEdge);
-                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureWrapT, renderContext.Enums.ClampToEdge);
-                        renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureLodBias, -1);
-                        renderContext.GenerateMipmap(renderContext.Enums.Texture2D);
-                        if (renderContext.IsExtensionPresent("EXT_texture_filter_anisotropic"))
-                        {
-                            renderContext.GetFloat(renderContext.Enums.MaxTextureMaxAnisotropyExt, out float maxAniso);
-                            renderContext.TexParameterf(renderContext.Enums.Texture2D, renderContext.Enums.TextureMaxAnisotropyExt, Math.Min(16.0f, maxAniso));
-                        }
-                        renderContext.BindTexture(renderContext.Enums.Texture2D, 0);
-                        return (texture, pixelDepth);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"TextureLoader: Failed to upload texture to OpenGL: {ex.Message}, StackTrace: {ex.StackTrace}");
-                        renderContext.DeleteTexture(texture);
-                        return (0, 0);
-                    }
-                }
                 finally
                 {
                     bitmap.UnlockBits(data);
@@ -325,7 +293,7 @@ namespace SiegeEngine.Core.Rendering
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"TextureLoader: Failed to process bitmap: {ex.Message}, StackTrace: {ex.StackTrace}");
+                Console.WriteLine($"[TextureLoader] Bitmap CRITICAL FAIL: {ex.Message}\n{ex.StackTrace}");
                 return (0, 0);
             }
         }
