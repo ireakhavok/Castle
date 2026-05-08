@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetParsing.Model;
+﻿// Folder: SiegeEngine/Core/Definitions
+// File: ModelComponent.cs
+using SiegeEngine.Core.AssetParsing.Model;
 using Silk.NET.Maths;
 using System;
 using System.Numerics;
@@ -12,5 +14,9 @@ namespace SiegeEngine.Core.Definitions
         public string Key { get; set; }
 
         public Matrix3x3[] NormalBoneTransforms { get; set; }
+
+        // Material (with full world-aligned TextureSlot support)
+        // This is the per-entity override. Base material from FBX is in FBXModel.
+        public Material Material { get; set; }
     }
 }

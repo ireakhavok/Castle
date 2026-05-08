@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core
+// File: ContextManagement/IRenderContext.cs
+using System;
+
 namespace SiegeEngine.Core.ContextManagement
 {
     public unsafe interface IRenderContext
@@ -62,6 +65,7 @@ namespace SiegeEngine.Core.ContextManagement
         int GetUniformLocation(uint program, string name);
         void Uniform1(int location, float value);
         void Uniform1(int location, int value);
+        void Uniform2(int location, float x, float y);  // NEW for vec2 (Tiling / Offset)
         void Uniform3(int location, float x, float y, float z);
         void Uniform4(int location, float x, float y, float z, float w);
         void UniformMatrix4(int location, uint count, bool transpose, float* value);

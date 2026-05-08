@@ -1,6 +1,9 @@
-﻿using Silk.NET.GLFW;
+﻿// Folder: SiegeEngine.Core
+// File: ContextManagement/OpenGLRenderContext.cs
+using Silk.NET.GLFW;
 using Silk.NET.OpenGL;
 using System;
+
 namespace SiegeEngine.Core.ContextManagement
 {
     public unsafe class OpenGLRenderContext : IRenderContext
@@ -89,6 +92,7 @@ namespace SiegeEngine.Core.ContextManagement
         public int GetUniformLocation(uint program, string name) => _gl.GetUniformLocation(program, name);
         public void Uniform1(int location, float value) => _gl.Uniform1(location, value);
         public void Uniform1(int location, int value) => _gl.Uniform1(location, value);
+        public void Uniform2(int location, float x, float y) => _gl.Uniform2(location, x, y);  // NEW implementation
         public void Uniform3(int location, float x, float y, float z) => _gl.Uniform3(location, x, y, z);
         public void Uniform4(int location, float x, float y, float z, float w) => _gl.Uniform4(location, x, y, z, w);
         public void UniformMatrix4(int location, uint count, bool transpose, float* value) => _gl.UniformMatrix4(location, count, transpose, value);

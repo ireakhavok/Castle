@@ -7,6 +7,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.Shaders;
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class ModelRenderer // marked unsafe to satisfy any potential fixed blocks in future or from copy-paste
@@ -44,6 +45,20 @@ namespace SiegeEngine.Core.Rendering
             shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
+
+            // New world-aligned material support
+            var mat = modelComp.Material ?? new Material();
+            shader.SetUniform("uHasWorldAligned", mat.TextureSlots.Count > 0 ? 1 : 0);
+            for (int i = 0; i < Math.Min(mat.TextureSlots.Count, 4); i++)
+            {
+                var slot = mat.TextureSlots[i];
+                shader.SetUniform($"uMappingMode[{i}]", (int)slot.MappingMode);
+                shader.SetUniform($"uTiling[{i}]", slot.Tiling.X, slot.Tiling.Y);   // now supported
+                shader.SetUniform($"uOffset[{i}]", slot.Offset.X, slot.Offset.Y);   // now supported
+                shader.SetUniform($"uRotation[{i}]", slot.Rotation);
+                shader.SetUniform($"uBlendSharpness[{i}]", slot.BlendSharpness);
+            }
+
             if (hasBones)
             {
                 var globals = modelComp.Model.Skeleton.ComputeGlobalTransforms();
@@ -111,8 +126,6 @@ namespace SiegeEngine.Core.Rendering
         }
 
         // New minimal overload for AnimationViewerPanel / ModelViewerScene (viewer context)
-        // Uses identity transform by default, accepts pre-computed bone matrices from the viewer,
-        // and re-uses the exact same shader setup + texture binding + draw logic.
         public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix = default, Matrix4x4[] boneMatrices = null, Matrix3x3[] normalMatrices = null)
         {
             if (modelData == null) return;
@@ -132,6 +145,9 @@ namespace SiegeEngine.Core.Rendering
             shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
+
+            // World-aligned support (default material for viewer)
+            shader.SetUniform("uHasWorldAligned", 0);
 
             if (hasBones)
             {

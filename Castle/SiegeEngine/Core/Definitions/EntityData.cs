@@ -1,8 +1,10 @@
 ﻿// Folder: SiegeEngine/Core/Definitions
 // File: EntityData.cs
+using System.Collections.Generic;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using SiegeEngine.Core.AssetParsing.Model;
 
 namespace SiegeEngine.Core.Definitions
 {
@@ -29,6 +31,10 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("height")]
         public float Height { get; set; }
 
+        // NEW: full material data (world-aligned textures + slots) for save/load
+        [JsonPropertyName("material")]
+        public MaterialData MaterialData { get; set; }
+
         /// <summary>
         /// Shared, engine-neutral JsonSerializerOptions used for ALL project.json / SceneData / EntityData serialization.
         /// Guarantees correct deserialization of System.Numerics.Vector3 and Quaternion (PascalCase inner fields).
@@ -41,5 +47,15 @@ namespace SiegeEngine.Core.Definitions
             WriteIndented = true,
             IncludeFields = true
         };
+    }
+
+    // NEW helper for serializing Material + TextureSlots cleanly
+    public class MaterialData
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [JsonPropertyName("textureSlots")]
+        public List<TextureSlot> TextureSlots { get; set; } = new List<TextureSlot>();
     }
 }

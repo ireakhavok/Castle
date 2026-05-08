@@ -17,6 +17,7 @@ out vec2 vTexCoord;
 out vec3 vNormal;
 out vec3 vTangent;
 out vec3 vPosition;
+out vec3 vWorldPos;
 out float vMaterialIndex;
 
 uniform mat4 uModel;
@@ -54,6 +55,7 @@ void main() {
     vNormal = normalize(normalMatrix * totalNormal);
     vTangent = normalize(normalMatrix * totalTangent);
     vPosition = vec3(uModel * totalPosition);
+    vWorldPos = vPosition; // world space for triplanar / planar
     vMaterialIndex = aMaterialIndex;
     gl_Position = uProjection * uView * uModel * totalPosition;
 }";
@@ -62,6 +64,7 @@ in vec2 vTexCoord;
 in vec3 vNormal;
 in vec3 vTangent;
 in vec3 vPosition;
+in vec3 vWorldPos;
 in float vMaterialIndex;
 
 out vec4 FragColor;
@@ -80,6 +83,39 @@ uniform sampler2D uMetallicMap[4];
 
 uniform int uDebugTextureOnly;
 uniform int uDebugMaterialIndex;
+
+// New world-aligned uniforms
+uniform int uHasWorldAligned;
+uniform int uMappingMode[4];
+uniform vec2 uTiling[4];
+uniform vec2 uOffset[4];
+uniform float uRotation[4];
+uniform float uBlendSharpness[4];
+
+vec2 WorldPlanarUV(vec3 worldPos, vec3 normal, int axis, vec2 tiling, vec2 offset) {
+    vec2 uv;
+    if (axis == 0) uv = worldPos.yz;      // X axis projection
+    else if (axis == 1) uv = worldPos.xz;  // Y axis
+    else uv = worldPos.xy;                 // Z axis
+    return uv * tiling + offset;
+}
+
+vec3 TriplanarSample(sampler2D tex, vec3 worldPos, vec3 normal, vec2 tiling, vec2 offset, float sharpness) {
+    vec3 blend = abs(normal);
+    blend /= blend.x + blend.y + blend.z + 0.0001;
+    blend = pow(blend, vec3(sharpness));
+    blend /= blend.x + blend.y + blend.z;
+
+    vec2 uvX = worldPos.yz * tiling + offset;
+    vec2 uvY = worldPos.xz * tiling + offset;
+    vec2 uvZ = worldPos.xy * tiling + offset;
+
+    vec3 colX = texture(tex, uvX).rgb;
+    vec3 colY = texture(tex, uvY).rgb;
+    vec3 colZ = texture(tex, uvZ).rgb;
+
+    return colX * blend.x + colY * blend.y + colZ * blend.z;
+}
 
 void main() {
     int matIdx = int(vMaterialIndex);
@@ -100,13 +136,27 @@ void main() {
     }
 
     vec3 materialDiffuse = vec3(1.0, 1.0, 1.0);
-    if (textureSize(uAlbedoMap[matIdx], 0).x > 0) {
-        materialDiffuse = texture(uAlbedoMap[matIdx], vTexCoord).rgb;
+    vec3 N = normalize(vNormal);
+
+    // World-aligned texturing
+    if (uHasWorldAligned == 1 && uMappingMode[matIdx] != 0) {  // 0 = UV
+        if (uMappingMode[matIdx] == 2) { // Triplanar
+            materialDiffuse = TriplanarSample(uAlbedoMap[matIdx], vWorldPos, N, uTiling[matIdx], uOffset[matIdx], uBlendSharpness[matIdx]);
+        } else { // WorldPlanar (dominant axis or fixed)
+            int axis = abs(N.x) > abs(N.y) && abs(N.x) > abs(N.z) ? 0 : (abs(N.y) > abs(N.z) ? 1 : 2);
+            vec2 worldUV = WorldPlanarUV(vWorldPos, N, axis, uTiling[matIdx], uOffset[matIdx]);
+            if (textureSize(uAlbedoMap[matIdx], 0).x > 0) {
+                materialDiffuse = texture(uAlbedoMap[matIdx], worldUV).rgb;
+            }
+        }
+    } else {
+        // Original UV path
+        if (textureSize(uAlbedoMap[matIdx], 0).x > 0) {
+            materialDiffuse = texture(uAlbedoMap[matIdx], vTexCoord).rgb;
+        }
     }
 
-    vec3 N = normalize(vNormal);
     vec3 norm = N;
-
     if (length(vTangent) > 0.001f && textureSize(uNormalMap[matIdx], 0).x > 0) {
         vec3 T = normalize(vTangent);
         T = normalize(T - dot(T, N) * N);

@@ -1,6 +1,7 @@
 ﻿// Folder: SiegeEngine/Core/Definitions
 // File: Entity.cs
 using SiegeEngine.Core.AssetParsing;
+using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -71,9 +72,22 @@ namespace SiegeEngine.Core.Definitions
             }
 
             var modelComp = GetComponent<ModelComponent>();
-            if (modelComp != null && !string.IsNullOrEmpty(modelComp.Key))
+            if (modelComp != null)
             {
-                data.AssetPackKey = modelComp.Key;
+                if (!string.IsNullOrEmpty(modelComp.Key))
+                {
+                    data.AssetPackKey = modelComp.Key;
+                }
+
+                // NEW: serialize Material (world-aligned textures + all slots)
+                if (modelComp.Material != null)
+                {
+                    data.MaterialData = new MaterialData
+                    {
+                        Name = modelComp.Material.Name,
+                        TextureSlots = modelComp.Material.TextureSlots
+                    };
+                }
             }
 
             return data;
@@ -100,10 +114,21 @@ namespace SiegeEngine.Core.Definitions
             if (!string.IsNullOrEmpty(data.AssetPackKey))
             {
                 var modelComp = new ModelComponent { Key = data.AssetPackKey };
+
+                // NEW: restore Material from saved data
+                if (data.MaterialData != null)
+                {
+                    modelComp.Material = new Material
+                    {
+                        Name = data.MaterialData.Name ?? "DefaultMaterial",
+                        TextureSlots = data.MaterialData.TextureSlots ?? new List<TextureSlot>()
+                    };
+                }
+
                 entity.AddComponent(modelComp);
             }
 
-            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} (PhysicsComponent authoritative)");
+            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} (PhysicsComponent authoritative) MaterialSlots={entity.GetComponent<ModelComponent>()?.Material?.TextureSlots?.Count ?? 0}");
             return entity;
         }
     }
