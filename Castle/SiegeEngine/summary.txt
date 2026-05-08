@@ -466,7 +466,7 @@ Folder: Core
         - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteTexture, _renderContext.DeleteVertexArray
 - File: Entity.cs
   - Class: Entity (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
     - Methods:
       - constructor Entity()
       - void SetParent(Entity parent)
@@ -487,10 +487,8 @@ Folder: Core
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: EntityData.cs
-  - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: System.Numerics, System.Text.Json, System.Text.Json.Serialization
-    - Fields:
-      - JsonSerializerOptions SerializerOptions
+  - Class: MaterialData (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics, System.Text.Json, System.Text.Json.Serialization
 - File: EntityMovedEvent.cs
   - Class: EntityMovedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -687,9 +685,7 @@ Folder: Core
       - Vector4 Weights
       - float MatIdx
     - Methods:
-      - constructor FBXVertex(
-        float weight0 = 0, 
-        int boneID0 = -1,  float matIdx,  float nx,  float ny,  float nz,  float tx = 0,  float ty = 0,  float tz = 0,  float u,  float v,  float weight1 = 0,  float weight2 = 0,  float weight3 = 0,  float y,  float z,  int boneID1 = -1,  int boneID2 = -1,  int boneID3 = -1, float x)
+      - constructor FBXVertex( float matIdx,  float nx,  float ny,  float nz,  float tx = 0,  float ty = 0,  float tz = 0,  float u,  float v,  float weight0 = 0,  float weight1 = 0,  float weight2 = 0,  float weight3 = 0,  float y,  float z,  int boneID0 = -1,  int boneID1 = -1,  int boneID2 = -1,  int boneID3 = -1, float x)
 - File: FileSelectedEvent.cs
   - Class: FileSelectedEvent (Namespace: None)
     - Inherits: IEvent
@@ -1040,7 +1036,7 @@ Folder: Core
       - bool IsLobbyJoined()
 - File: Material.cs
   - Class: Material (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: System, System.Collections.Generic
+    - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: MaterialProperties.cs
   - Class: MaterialProperties (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System
@@ -1134,7 +1130,10 @@ Folder: Core
       - string FragmentShaderSource
     - Methods:
       - void main()
+      - vec2 WorldPlanarUV( int axis,  vec2 offset,  vec2 tiling,  vec3 normal, vec3 worldPos)
+      - vec3 TriplanarSample( float sharpness,  vec2 offset,  vec2 tiling,  vec3 normal,  vec3 worldPos, sampler2D tex)
       - void main()
+        - Calls: TriplanarSample, WorldPlanarUV
 - File: MovementRequest.cs
   - Class: MovementRequest (Namespace: SiegeEngine.Core.Networking)
     - Dependencies: System.Numerics
@@ -1580,6 +1579,8 @@ Folder: Core
         - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform3
       - void SetUniform( float w,  float x,  float y,  float z, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform4
+      - void SetUniform( float x,  float y, string name)
+        - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform2
       - void SetMatrix4( Matrix4x4 matrix, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
       - void SetMatrix4Array( Matrix4x4[] matrices, string name)
@@ -1733,7 +1734,7 @@ Folder: Core
       - HashSet<byte> ValidTgaTypes
     - Methods:
       - return LoadTextureFromBitmap()
-        - Calls: renderContext.BindTexture, renderContext.DeleteTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
+        - Calls: renderContext.BindTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
 - File: ThElement.cs
   - Class: ThElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -2613,13 +2614,13 @@ SiegeEngine.Core.Definitions.BlendedAnimationComponent
 SiegeEngine.Core.Definitions.CameraType
 SiegeEngine.Core.Definitions.DockingMode
 SiegeEngine.Core.Definitions.Entity
-SiegeEngine.Core.Definitions.EntityData
 SiegeEngine.Core.Definitions.EnvironmentSettings
 SiegeEngine.Core.Definitions.GameMode
 SiegeEngine.Core.Definitions.LevelData
 SiegeEngine.Core.Definitions.LevelDto
 SiegeEngine.Core.Definitions.LightComponent
 SiegeEngine.Core.Definitions.LightType
+SiegeEngine.Core.Definitions.MaterialData
 SiegeEngine.Core.Definitions.MaterialProperties
 SiegeEngine.Core.Definitions.Matrix3x3
 SiegeEngine.Core.Definitions.ModInfo
