@@ -90,6 +90,11 @@ namespace SiegeEngine.Core.AssetParsing
                     pack.BoneNameToIndex[modelForPack.Skeleton.Bones[i].Name] = i;
                 }
             }
+            // Material is now part of the pack (populated by FBXMeshParser)
+            if (modelForPack.Meshes.Count > 0 && modelForPack.Meshes[0].Materials.Count > 0)
+            {
+                pack.Material = modelForPack.Meshes[0].Materials[0];
+            }
             _animationPacks[packKey] = pack;
             Console.WriteLine($"[ModelManager] Registered in-memory AssetPack '{packId}' (render data duplicated to pack key)");
             return packId;
@@ -170,16 +175,14 @@ namespace SiegeEngine.Core.AssetParsing
                 CopyDirectory(fbmSource, fbmDest);
                 Console.WriteLine($"[ModelManager] Copied texture folder: {fbmSource} → {fbmDest}");
             }
-            // === NEW: Collect and copy ALL external textures referenced in parsed FBX materials ===
-            // This is the complete, architecture-driven solution that fixes loose co-located textures, subdirs, etc.
-            // We reuse the exact same parsing path used by LoadModel/SetupModelData.
+            // === Collect and copy ALL external textures referenced in parsed FBX materials ===
             FBXFileForest forest = FBXParser.Load(fbxPath);
             FBXModel model = FBXParser.BuildModelFromForest(forest);
             string originalFbxDir = Path.GetDirectoryName(fbxPath);
             int copiedTextureCount = CollectAndCopyReferencedTextures(model, originalFbxDir, packFolder);
             Console.WriteLine($"[ModelManager] Collected and copied {copiedTextureCount} external texture files referenced by materials (from parsed FBXModel)");
 
-            // Build lightweight manifest (unchanged)
+            // Build lightweight manifest
             var pack = new AnimationPack(packId, packId)
             {
                 SourceFBXPath = "./" + fbxName,
@@ -193,16 +196,20 @@ namespace SiegeEngine.Core.AssetParsing
                     pack.BoneNameToIndex[model.Skeleton.Bones[i].Name] = i;
                 }
             }
+            // Material (with TextureSlots) is now part of the pack manifest
+            if (model.Meshes.Count > 0 && model.Meshes[0].Materials.Count > 0)
+            {
+                pack.Material = model.Meshes[0].Materials[0];
+            }
             string json = JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true });
             string jsonPath = Path.Combine(packFolder, "assetpack.json");
             File.WriteAllText(jsonPath, json);
-            Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {packFolder} (Id: {packId}) with FBX + textures + manifest");
+            Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {packFolder} (Id: {packId}) with FBX + textures + manifest + Material (world-aligned slots)");
         }
         /// <summary>
         /// Traverses the fully-parsed FBXModel and copies every external texture referenced by any material.
-        /// Preserves the exact relative directory structure from the original FBX folder (handles loose files, subdirs, .fbm already handled separately).
+        /// Preserves the exact relative directory structure from the original FBX folder.
         /// Returns the number of textures copied.
-        /// Embedded textures are ignored here (they are already handled in FBXFileForest and runtime loading).
         /// </summary>
         private int CollectAndCopyReferencedTextures(FBXModel model, string originalFbxDir, string packFolder)
         {
@@ -216,11 +223,9 @@ namespace SiegeEngine.Core.AssetParsing
                     foreach (var texEntry in mat.Textures)
                     {
                         string texPath = texEntry.Value?.Path;
-                        if (string.IsNullOrEmpty(texPath) || texPath.StartsWith("embedded")) continue; // embedded textures are already in forest
-                        // Resolve full original path (same logic as LoadExternalTexture)
+                        if (string.IsNullOrEmpty(texPath) || texPath.StartsWith("embedded")) continue;
                         string fullOriginalPath = Path.Combine(originalFbxDir, texPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
                         if (!File.Exists(fullOriginalPath) || copiedPaths.Contains(fullOriginalPath)) continue;
-                        // Compute relative path from original FBX dir (preserves structure)
                         string relativeInPack = Path.GetRelativePath(originalFbxDir, fullOriginalPath);
                         string destPath = Path.Combine(packFolder, relativeInPack);
                         Directory.CreateDirectory(Path.GetDirectoryName(destPath));

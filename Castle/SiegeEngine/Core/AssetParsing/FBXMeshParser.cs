@@ -631,6 +631,7 @@ namespace SiegeEngine.Core.AssetParsing
         }
 
         // Extracts material properties and textures (albedo, normal, metallic), handles embedded textures.
+        // UPDATED: also populates TextureSlots with proper TextureMappingMode.UV default for world-aligned support.
         private static List<Material> ExtractMaterials(long geomId, BaseNode objectsNode, List<(string type, long child, long parent, string prop)> conns, Dictionary<long, BaseNode> objectsById, FBXFileForest forest)
         {
             List<Material> materials = new List<Material>();
@@ -660,7 +661,7 @@ namespace SiegeEngine.Core.AssetParsing
                             }
                         }
                     }
-                    // Find textures
+                    // Find textures and populate BOTH legacy Textures dict AND new TextureSlots (for world-aligned support)
                     var texConns = conns.Where(c => c.type == "OP" && c.parent == matConn.child).ToList();
                     foreach (var texConn in texConns)
                     {
@@ -742,6 +743,12 @@ namespace SiegeEngine.Core.AssetParsing
                             texInfo.Path = relFile != "" ? relFile : fileName;
                         }
                         mat.Textures[texKey] = texInfo;
+
+                        // NEW: also populate TextureSlots for world-aligned support
+                        var slot = new TextureSlot(texKey, texInfo.Path);
+                        // Default to UV (world-aligned is an editor override)
+                        slot.MappingMode = TextureMappingMode.UV;
+                        mat.TextureSlots.Add(slot);
                     }
                     materials.Add(mat);
                 }
