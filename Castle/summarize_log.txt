@@ -356,7 +356,7 @@ Found: CastleBuilder.csproj
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
-Read 14962 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
+Read 15973 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
 Found 18 dependencies
 Found: Events
@@ -424,7 +424,7 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
-Read 17969 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
+Read 20373 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
 Found 22 dependencies
 Found: SceneEditorUI.html
@@ -1155,6 +1155,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntityRemoved
 Read 749 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntityRemovedEvent.cs
 Namespace: SiegeEngine.Core.Events
 Found 2 dependencies
+Found: EntitySelectedEvent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntitySelectedEvent.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntitySelectedEvent.cs
+Read 1425 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntitySelectedEvent.cs
+Namespace: SiegeEngine.Core.Events
+Found 4 dependencies
 Found: EventBus.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EventBus.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EventBus.cs
@@ -2147,7 +2153,7 @@ Found: ToolChest.csproj
 Found: TreeViewPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
-Read 9871 chars from: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
+Read 10184 chars from: C:\repos\RealmFoundry\Castle\ToolChest\TreeViewPanel.cs
 Namespace: ToolChest
 Found 14 dependencies
 Found: TreeViewPanelUI.html

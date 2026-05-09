@@ -523,6 +523,18 @@ Folder: Core
       - constructor EntityRemovedEvent(int id)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+- File: EntitySelectedEvent.cs
+  - Class: EntitySelectedEvent (Namespace: SiegeEngine.Core.Events)
+    - Inherits: IEvent
+    
+    - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json
+    - Fields:
+      - string Type
+    - Methods:
+      - constructor EntitySelectedEvent()
+      - constructor EntitySelectedEvent( bool additive = false, int entityId)
+      - byte[] Serialize()
+      - void Deserialize(byte[] data)
 - File: EventBus.cs
   - Class: GenericEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -2641,6 +2653,7 @@ SiegeEngine.Core.Events.EntityAddedEvent
 SiegeEngine.Core.Events.EntityMovedEvent
 SiegeEngine.Core.Events.EntityPlacedEvent
 SiegeEngine.Core.Events.EntityRemovedEvent
+SiegeEngine.Core.Events.EntitySelectedEvent
 SiegeEngine.Core.Events.ExitEditorEvent
 SiegeEngine.Core.Events.GenericEvent
 SiegeEngine.Core.Events.ItemPickedUpEvent

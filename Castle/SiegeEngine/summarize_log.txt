@@ -457,6 +457,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntityRemoved
 Read 749 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntityRemovedEvent.cs
 Namespace: SiegeEngine.Core.Events
 Found 2 dependencies
+Found: EntitySelectedEvent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntitySelectedEvent.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntitySelectedEvent.cs
+Read 1425 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EntitySelectedEvent.cs
+Namespace: SiegeEngine.Core.Events
+Found 4 dependencies
 Found: EventBus.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EventBus.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\EventBus.cs
