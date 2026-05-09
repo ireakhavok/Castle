@@ -22,7 +22,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using ToolChest;
-
 namespace CastleBuilder
 {
     public class SceneEditorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -42,13 +41,13 @@ namespace CastleBuilder
                 _parent.HandleDataHook(hook);
             }
         }
-
         private EditorScene _editorScene;
         private bool _cameraMode = false;
         private ModelManager _modelManager;
         private ModelRenderer _modelRenderer;
         private bool _pendingSceneSelectorUpdate = false;
-
+        private List<int> _selectedEntityIds = new List<int>();
+        private bool _wasRightPressedLastFrame = false;
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -60,14 +59,11 @@ namespace CastleBuilder
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
             _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
         }
-
         public string ContentType => "SceneEditor";
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new SceneEditorUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
@@ -78,13 +74,18 @@ namespace CastleBuilder
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
+            _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
         }
-
+        private void OnEntitySelected(EntitySelectedEvent e)
+        {
+            _selectedEntityIds = e.SelectedEntityIds;
+            NotifyHierarchyChanged();
+            Console.WriteLine($"[SceneEditorPanel] Entity selection updated: {string.Join(", ", _selectedEntityIds)}");
+        }
         public void RefreshSceneList()
         {
             UpdateSceneSelectorUI();
         }
-
         private void UpdateSceneSelectorUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SceneEditorUI.html");
@@ -114,7 +115,6 @@ namespace CastleBuilder
             Console.WriteLine($"[SceneEditorPanel] Scene selector refreshed - {scenes.Count} scenes, current='{current}'");
             Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] === REFRESH COMPLETE ===");
         }
-
         private void HandleDataHook(string hook)
         {
             if (hook == "SceneSelected")
@@ -158,17 +158,14 @@ namespace CastleBuilder
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
         }
-
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
             Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placing asset: {e.Path}");
-
             string ext = Path.GetExtension(e.Path).ToLowerInvariant();
             string originalKey = Path.GetFileNameWithoutExtension(e.Path).ToLower();
             string packId = originalKey + "_pack";
             string placeType = "FBX";
-
             if (ext == ".json")
             {
                 placeType = "AssetPack";
@@ -179,16 +176,12 @@ namespace CastleBuilder
             {
                 packId = _modelManager.RegisterFBXAsPackInMemory(e.Path);
             }
-
             Vector3 placePos = new Vector3(100f, 100f, 10f);
-
-            // CLEAN API - no reflection
             if (_editorScene.TryGetPlacementPosition(out var hitPoint))
             {
                 placePos = hitPoint + new Vector3(0, 0, 0.1f);
                 Console.WriteLine($"[SceneEditorPanel] Raycast hit at {placePos} - using as placement position");
             }
-
             var level = ProjectSettings.Current.CurrentLevel;
             if (level == null || level.Name != _editorScene.CurrentGameScene)
             {
@@ -201,10 +194,8 @@ namespace CastleBuilder
                 Console.WriteLine("[SceneEditorPanel] ERROR: No CurrentLevel - cannot place entity");
                 return;
             }
-
             var entity = level.PlaceEntity(placePos, placeType);
             entity.Type = placeType;
-
             if (_modelManager.TryGetModel(packId, out var fbxModel) || _modelManager.TryGetModel(originalKey, out fbxModel))
             {
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
@@ -215,28 +206,21 @@ namespace CastleBuilder
                 var modelComp = new ModelComponent { Key = packId };
                 entity.AddComponent(modelComp);
             }
-
             var evt = new EntityPlacedEvent(entity.Id, placeType, placePos);
             if (placeType == "FBX") evt.TexturePath = e.Path;
             _eventBus.Publish(evt);
-
-            // CLEAN API - no reflection
             _editorScene.SyncCurrentLevelToRuntimeServer();
-
             Console.WriteLine($"[SceneEditorPanel] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos} into scene '{level.Name}'");
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
         }
-
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
             if (_cameraMode) PanelManager.Current.CapturePanel(this);
             else PanelManager.Current.ReleasePanelCapture();
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (_pendingSceneSelectorUpdate)
@@ -248,7 +232,7 @@ namespace CastleBuilder
                 Console.WriteLine($"[SceneEditorPanel.Update] === DEFERRED REFRESH COMPLETE ===");
             }
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
-            if (isTopmost && mousePressed) OnContentFocusGained();
+            if (isTopmost && (mousePressed || mouseReleased)) OnContentFocusGained(); // <--- FIXED: any mouse interaction activates provider
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
             float header = HasTitleBar ? HeaderHeight : 0f;
             float contentX = Position.X;
@@ -259,9 +243,27 @@ namespace CastleBuilder
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
             _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
+
+            // Viewport right-click entity selection
+            bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
+            if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)
+            {
+                Console.WriteLine("[SceneEditorPanel] Right mouse press detected in viewport - attempting entity selection raycast");
+                if (_editorScene.TryPerformEntitySelectionRaycast(out int entityId, out Vector3 hitPoint))
+                {
+                    var evt = new EntitySelectedEvent(entityId, hitPoint);
+                    _eventBus.Publish(evt);
+                    Console.WriteLine($"[SceneEditorPanel] Right-click selected entity {entityId} at {hitPoint}");
+                }
+                else
+                {
+                    Console.WriteLine("[SceneEditorPanel] Right-click raycast found no entity hit");
+                }
+            }
+            _wasRightPressedLastFrame = rightPressedThisFrame;
+
             if (_cameraMode) _controlContext.PopViewport();
         }
-
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
@@ -281,9 +283,6 @@ namespace CastleBuilder
                 }
             }
             if (entities == null || entities.Count == 0) return;
-
-            // NOTE: RenderInnerContent still uses some reflection for camera data because it's internal rendering logic.
-            // We can clean this later if needed, but for now the critical placement reflection is gone.
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
             Matrix4x4 view = Matrix4x4.Identity;
@@ -302,7 +301,6 @@ namespace CastleBuilder
                 if (aspectField != null) aspect = (float)aspectField.GetValue(active);
             }
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
-
             foreach (var entity in entities)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();
@@ -329,59 +327,79 @@ namespace CastleBuilder
                 }
             }
         }
-
         public override void OnLiveResize(float w, float h)
         {
             _editorScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
-
         public override void Dispose()
         {
             PanelManager.Current.ReleasePanelCapture();
             _editorScene?.Dispose();
             base.Dispose();
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new SceneEditorPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
-
         public string DataKey => "SceneEditorPanel";
-
         public JsonElement SavePanelState()
         {
             var state = new Dictionary<string, string> { ["currentSceneName"] = _editorScene?.CurrentGameScene ?? "Main" };
             return JsonSerializer.SerializeToElement(state);
         }
-
         public void LoadPanelState(JsonElement state)
         {
         }
-
         public override void OnContentFocusGained()
         {
-            Console.WriteLine("[SceneEditorPanel] OnContentFocusGained → notifying OutlinerCoordinator");
+            Console.WriteLine("[SceneEditorPanel] OnContentFocusGained → notifying OutlinerCoordinator (SceneEditor is now active provider)");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
         }
-
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
-            nodes.Add(new OutlinerNode { Id = "scene-root", Label = "Scene Editor", Icon = "📐", Children = { "entities", "lights", "cameras" } });
-            nodes.Add(new OutlinerNode { Id = "entities", Label = "Entities", Icon = "🧱", ParentId = "scene-root" });
-            nodes.Add(new OutlinerNode { Id = "lights", Label = "Lights", Icon = "💡", ParentId = "scene-root" });
-            nodes.Add(new OutlinerNode { Id = "cameras", Label = "Cameras", Icon = "📹", ParentId = "scene-root" });
+            var level = ProjectSettings.Current.CurrentLevel;
+            var root = new OutlinerNode
+            {
+                Id = "root",
+                Label = $"Scene: {level?.Name ?? _editorScene.CurrentGameScene ?? "Untitled"}",
+                Icon = "📐",
+                Children = { "level-info", "entities" }
+            };
+            nodes.Add(root);
+            var levelInfo = new OutlinerNode
+            {
+                Id = "level-info",
+                Label = $"Level '{level?.Name ?? "NewTerrain"}' - Entities: {level?.Entities.Count ?? 0} | Heightmap: {level?.Terrain?.HeightmapPath ?? "flat"}",
+                Icon = "🌍",
+                ParentId = "root"
+            };
+            nodes.Add(levelInfo);
+            var entitiesParent = new OutlinerNode { Id = "entities", Label = "Entities", Icon = "🧱", ParentId = "root" };
+            nodes.Add(entitiesParent);
+            var entities = _editorScene.GetEntities();
+            foreach (var entity in entities)
+            {
+                bool selected = _selectedEntityIds.Contains(entity.Id);
+                var node = new OutlinerNode
+                {
+                    Id = $"entity-{entity.Id}",
+                    Label = $"Entity {entity.Id} ({entity.Type ?? "Unknown"})",
+                    Icon = selected ? "✅🧱" : "🧱",
+                    ParentId = "entities"
+                };
+                nodes.Add(node);
+                entitiesParent.Children.Add(node.Id);
+            }
+            Console.WriteLine($"[SceneEditorPanel.GetCurrentHierarchy] Returned {nodes.Count} nodes (root + {entities.Count} entities)");
             return nodes;
         }
-
         public object GetObjectForNode(string nodeId)
         {
             return null;
         }
-
         public void NotifyHierarchyChanged()
         {
             OutlinerCoordinator.Instance.NotifyHierarchyChanged();

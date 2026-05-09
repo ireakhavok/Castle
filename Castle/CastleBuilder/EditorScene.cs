@@ -38,7 +38,6 @@ namespace CastleBuilder
         }
         public ProjectData GetProjectData() => _projectData;
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
-        // NEW PUBLIC API - used by SceneEditorPanel for placement (no reflection)
         public bool TryGetPlacementPosition(out Vector3 position)
         {
             position = Vector3.Zero;
@@ -48,7 +47,38 @@ namespace CastleBuilder
             }
             return false;
         }
-        // NEW PUBLIC API - replaces reflection call
+        public bool TryPerformEntitySelectionRaycast(out int entityId, out Vector3 hitPoint)
+        {
+            entityId = -1;
+            hitPoint = Vector3.Zero;
+            if (_activeGameScene is TerrainCreatorScene tcs)
+            {
+                if (tcs.TryPerformPlacementRaycast(out hitPoint))
+                {
+                    var entities = GetEntities();
+                    float minDist = float.MaxValue;
+                    foreach (var e in entities)
+                    {
+                        var physics = e.GetComponent<PhysicsComponent>();
+                        if (physics != null)
+                        {
+                            float dist = Vector3.Distance(physics.Position, hitPoint);
+                            if (dist < minDist)
+                            {
+                                minDist = dist;
+                                entityId = e.Id;
+                            }
+                        }
+                    }
+                    if (entityId != -1 && minDist < 50f) // relaxed threshold for terrain editor
+                    {
+                        Console.WriteLine($"[EditorScene] Entity selection raycast hit entity {entityId} (dist {minDist:F2})");
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
         public void SyncCurrentLevelToRuntimeServer()
         {
             var level = ProjectSettings.Current.CurrentLevel;
@@ -76,15 +106,11 @@ namespace CastleBuilder
             }
             if (_projectData == null) _projectData = new ProjectData();
             if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
-
-            // === NO-PROJECT FIX ===
             string levelName = ProjectSettings.Current.CurrentLevel?.Name;
             if (!string.IsNullOrEmpty(levelName) && levelName != "Main")
             {
                 _currentGameSceneName = levelName;
                 Console.WriteLine($"[EditorScene.LoadProjectData] No-project - using Level name from NewTerrainPanel: '{_currentGameSceneName}'");
-
-                // Ensure SceneData exists in no-project mode so isTerrainScene = true
                 if (!_projectData.Scenes.ContainsKey(_currentGameSceneName))
                 {
                     var sd = new SceneData { Name = _currentGameSceneName, SceneType = "TerrainTest" };
@@ -96,7 +122,6 @@ namespace CastleBuilder
             {
                 _currentGameSceneName = _projectData.LastOpenedScene ?? (_projectData.Scenes.Keys.FirstOrDefault() ?? "Main");
             }
-
             _sceneCache.Clear();
             _pendingDisposeScene?.Dispose();
             _pendingDisposeScene = null;
@@ -145,7 +170,6 @@ namespace CastleBuilder
                     tcs.LoadTerrain(sd.Terrain.HeightmapPath);
                 else if (heightmapToUse != null)
                 {
-                    // Force heightmap into the newly-created TerrainCreatorScene
                     tcs.LoadSceneData(new SceneData { Name = sceneName, Terrain = new TerrainData() });
                 }
             }
