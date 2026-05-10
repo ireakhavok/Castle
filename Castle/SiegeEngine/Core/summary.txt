@@ -443,6 +443,7 @@ Folder: Definitions
     - Methods:
       - constructor PhysicsComponent()
       - void Break()
+      - bool RayIntersects( Vector3 rayDir,  out Vector3,  out float, Vector3 rayOrigin)
 - File: PreviewComponent.cs
   - Class: PreviewComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent

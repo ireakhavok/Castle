@@ -1403,6 +1403,7 @@ Folder: Core
     - Methods:
       - constructor PhysicsComponent()
       - void Break()
+      - bool RayIntersects( Vector3 rayDir,  out Vector3,  out float, Vector3 rayOrigin)
 - File: PlayerExitedEditorEvent.cs
   - Class: PlayerExitedEditorEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent

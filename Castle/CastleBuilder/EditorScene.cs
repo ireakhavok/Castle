@@ -57,16 +57,13 @@ namespace CastleBuilder
             // No assumption about scene aspect ratio or full-screen panel. The ray now goes exactly through the mouse cursor.
             if (!tcs.GetMouseRay(normalizedMouse, contentW, contentH, out Vector3 rayOrigin, out Vector3 rayDir))
                 return false;
-
             // === DEBUG PRINTS (future-proof, can be compiled out later) ===
             Console.WriteLine($"[DEBUG Raycast] normalizedMouse=({normalizedMouse.X:F3},{normalizedMouse.Y:F3}) viewport=({contentW:F0}x{contentH:F0})");
             Console.WriteLine($"[DEBUG Raycast] rayOrigin=({rayOrigin.X:F2},{rayOrigin.Y:F2},{rayOrigin.Z:F2}) rayDir=({rayDir.X:F3},{rayDir.Y:F3},{rayDir.Z:F3})");
-
             // Terrain hit for fallback
             bool terrainHit = tcs.TryTerrainRaycast(rayOrigin, rayDir, out Vector3 terrainHitPoint);
             float terrainDistance = terrainHit ? Vector3.Distance(rayOrigin, terrainHitPoint) : float.MaxValue;
             Console.WriteLine($"[DEBUG Raycast] terrainHit={terrainHit} terrainDist={terrainDistance:F2} terrainPoint=({terrainHitPoint.X:F2},{terrainHitPoint.Y:F2},{terrainHitPoint.Z:F2})");
-
             // Entity OBB test along ray (ordered by t) - rotation-aware via PhysicsComponent.RayIntersects
             float closestEntityDistance = float.MaxValue;
             Entity closestEntity = null;
@@ -76,7 +73,6 @@ namespace CastleBuilder
                 if (physics == null) continue;
                 Vector3 dummyHitPoint;
                 Console.WriteLine($"[DEBUG Raycast] Entity {e.Id} AABB min=({physics.Position.X - physics.Size.X / 2:F2},{physics.Position.Y - physics.Size.Y / 2:F2},{physics.Position.Z - physics.Size.Z / 2:F2}) max=({physics.Position.X + physics.Size.X / 2:F2},{physics.Position.Y + physics.Size.Y / 2:F2},{physics.Position.Z + physics.Size.Z / 2:F2}) Size={physics.Size}");
-
                 if (physics.RayIntersects(rayOrigin, rayDir, out float dist, out dummyHitPoint) && dist < closestEntityDistance && dist < 10000f)
                 {
                     closestEntityDistance = dist;

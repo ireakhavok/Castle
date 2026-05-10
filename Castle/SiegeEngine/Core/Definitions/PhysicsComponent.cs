@@ -85,7 +85,8 @@ namespace SiegeEngine.Core.Definitions
 
         /// <summary>
         /// Professional-grade OBB ray intersection test.
-        /// Transforms the ray into the entity's local space using LocalToWorld inverse, then performs a robust slab AABB test on [-Size/2, +Size/2].
+        /// Transforms the ray into the entity's local space using EXACT render model matrix (scale 0.01f * rot * trans)
+        /// then performs a robust slab AABB test in FBX cm space.
         /// This is the canonical, reusable hit detection for rotated entities (walls, FBX models, etc.).
         /// Used by EditorScene (right-click selection) and GameServer.RequestRayTrace (authoritative multiplayer).
         /// Strict travel-order first-hit semantics are handled by callers.
@@ -96,15 +97,23 @@ namespace SiegeEngine.Core.Definitions
             hitPoint = Vector3.Zero;
             if (rayDir.LengthSquared() < 1e-8f) return false;
 
-            // Transform ray to local space (exact match to render transform)
-            if (!Matrix4x4.Invert(LocalToWorld, out Matrix4x4 worldToLocal)) return false;
+            // EXACT render model matrix as in SceneEditorPanel.RenderInnerContent
+            // (scaleMat 0.01f * rotation * translation) to match FBX cm vertices exactly
+            Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+            Matrix4x4 rotMat = Matrix4x4.CreateFromQuaternion(Rotation);
+            Matrix4x4 transMat = Matrix4x4.CreateTranslation(Position);
+            Matrix4x4 modelMat = scaleMat * rotMat * transMat;
+
+            if (!Matrix4x4.Invert(modelMat, out Matrix4x4 worldToLocal)) return false;
+
             Vector3 localOrigin = Vector3.Transform(rayOrigin, worldToLocal);
             Vector3 localDir = Vector3.TransformNormal(rayDir, worldToLocal);
-            localDir = Vector3.Normalize(localDir);
+            localDir = Vector3.Normalize(localDir);  // normalized for slab t-parameter consistency
 
-            Vector3 halfSize = Size / 2f;
-            Vector3 boxMin = -halfSize;
-            Vector3 boxMax = halfSize;
+            // FBX local space is in CENTIMETERS. Size is already meters (cm*0.01f), so local half-extents = Size * 50f
+            Vector3 localHalfExtents = Size * 50f;
+            Vector3 boxMin = -localHalfExtents;
+            Vector3 boxMax = localHalfExtents;
 
             // Robust slab method for ray (tmin starts at 0, no negative t allowed)
             float tmin = 0.0f;
@@ -128,7 +137,8 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            distance = tmin;
+            // Convert local-space tmin (cm scale) back to world distance (meters)
+            distance = tmin * 0.01f;
             hitPoint = rayOrigin + rayDir * distance;
             return true;
         }
