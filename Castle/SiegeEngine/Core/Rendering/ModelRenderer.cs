@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Rendering
+﻿// Folder: SiegeEngine/Core/Rendering
 // File: ModelRenderer.cs
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -31,7 +31,8 @@ namespace SiegeEngine.Core.Rendering
             if (!modelManager.TryGetModelData(modelKey, out var modelData)) return;
             Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
             Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
-            Matrix4x4 modelMatrix = rotation * translation;
+            Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+            Matrix4x4 modelMatrix = scaleMat * rotation * translation;
             bool hasBones = modelComp.Model.Skeleton != null && modelComp.Model.Skeleton.Bones.Count > 0;
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
             shader.Use();

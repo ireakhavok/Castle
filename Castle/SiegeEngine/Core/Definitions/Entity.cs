@@ -128,15 +128,17 @@ namespace SiegeEngine.Core.Definitions
 
                 entity.AddComponent(modelComp);
 
-                // RIGHT-WAY FIX: set real model bounding size (computed from FBX vertices, cm→m)
-                // This guarantees the AABB exactly matches the visual geometry for raycast selection.
+                // RIGHT-WAY FIX: set real model bounding size + exact local AABB (cm) from FBXModel
+                // This guarantees OBB exactly matches visual geometry for raycast selection on rotated/non-centered models.
                 if (modelComp.Model != null)
                 {
                     physics.Size = modelComp.Model.GetBoundingSize();
+                    physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
+                    physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
                 }
             }
 
-            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} (PhysicsComponent authoritative) MaterialSlots={entity.GetComponent<ModelComponent>()?.Material?.TextureSlots?.Count ?? 0}");
+            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) (PhysicsComponent authoritative) MaterialSlots={entity.GetComponent<ModelComponent>()?.Material?.TextureSlots?.Count ?? 0}");
             return entity;
         }
     }

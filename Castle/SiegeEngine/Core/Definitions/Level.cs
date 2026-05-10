@@ -59,6 +59,15 @@ namespace SiegeEngine.Core.Definitions
 
             entity.AddComponent(physics);
 
+            // NEW: if model is already attached (e.g. in future extensions), set local AABB
+            var modelComp = entity.GetComponent<ModelComponent>();
+            if (modelComp?.Model != null)
+            {
+                physics.Size = modelComp.Model.GetBoundingSize();
+                physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
+                physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
+            }
+
             AddEntity(entity);
             return entity;
         }

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.AssetParsing
+﻿// Folder: SiegeEngine/Core/AssetParsing
 // File: FBXMeshParser.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -47,7 +47,7 @@ namespace SiegeEngine.Core.AssetParsing
                     Indices = newIndices,
                     Materials = ExtractMaterials(geomId, objectsNode, conns, objectsById, forest)
                 };
-                mesh.Bounds = CalculateBounds(expandedVertices);
+                mesh.Bounds = CalculateBounds(expandedVertices, model);
                 model.Meshes.Add(mesh);
             }
         }
@@ -757,20 +757,22 @@ namespace SiegeEngine.Core.AssetParsing
         }
 
         // Computes axis-aligned bounding box size from vertex positions.
-        private static Vector3 CalculateBounds(List<FBXVertex> vertices)
+        // UPDATED: also populates FBXModel.LocalBoundsMinCm / MaxCm for raycast OBB.
+        private static Vector3 CalculateBounds(List<FBXVertex> vertices, FBXModel model)
         {
-            float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;
-            float maxX = float.MinValue, maxY = float.MinValue, maxZ = float.MinValue;
+            Vector3 min = new Vector3(float.MaxValue);
+            Vector3 max = new Vector3(float.MinValue);
             foreach (var v in vertices)
             {
-                minX = Math.Min(minX, v.Position.X);
-                minY = Math.Min(minY, v.Position.Y);
-                minZ = Math.Min(minZ, v.Position.Z);
-                maxX = Math.Max(maxX, v.Position.X);
-                maxY = Math.Max(maxY, v.Position.Y);
-                maxZ = Math.Max(maxZ, v.Position.Z);
+                min = Vector3.Min(min, v.Position);
+                max = Vector3.Max(max, v.Position);
             }
-            return new Vector3(maxX - minX, maxY - minY, maxZ - minZ);
+            if (model != null)
+            {
+                model.LocalBoundsMinCm = min;
+                model.LocalBoundsMaxCm = max;
+            }
+            return new Vector3(max.X - min.X, max.Y - min.Y, max.Z - min.Z);
         }
     }
 }

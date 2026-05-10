@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing.V2/Model/FBXModel.cs
+﻿// Folder: SiegeEngine/Core/AssetParsing/Model
+// File: FBXModel.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,6 +7,7 @@ using System.Numerics;
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
+
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class FBXModel
@@ -17,6 +18,11 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public bool HasSkin { get; set; } = false;
         public bool HasRestPose { get; set; }
         public bool AutoCorrected { get; set; } = false;
+
+        // NEW: exact local-space AABB in FBX cm units (computed once from vertices)
+        // Used by PhysicsComponent.RayIntersects to eliminate centering assumption for walls/prefabs
+        public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
+        public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
 
         /// <summary>
         /// Computes the world-space bounding size in METERS from all vertex positions.
@@ -43,8 +49,13 @@ namespace SiegeEngine.Core.AssetParsing.Model
 
             if (!hasVertices)
             {
+                LocalBoundsMinCm = Vector3.Zero;
+                LocalBoundsMaxCm = Vector3.Zero;
                 return new Vector3(1f); // safe fallback if model has no geometry
             }
+
+            LocalBoundsMinCm = min;
+            LocalBoundsMaxCm = max;
 
             Vector3 localSizeCm = max - min;
             return localSizeCm * 0.01f; // convert cm → meters

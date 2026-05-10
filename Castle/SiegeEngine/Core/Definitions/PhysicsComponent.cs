@@ -75,6 +75,12 @@ namespace SiegeEngine.Core.Definitions
             }
         }
 
+        // NEW: exact local AABB in FBX cm units (populated from FBXModel at entity creation)
+        // Eliminates centering assumption for walls/prefabs with non-zero pivot.
+        // Falls back to symmetric box for legacy/centered models.
+        public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
+        public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
+
         public void Break()
         {
             if (IsBreakable && _health <= 0)
@@ -110,10 +116,22 @@ namespace SiegeEngine.Core.Definitions
             Vector3 localDir = Vector3.TransformNormal(rayDir, worldToLocal);
             localDir = Vector3.Normalize(localDir);  // normalized for slab t-parameter consistency
 
-            // FBX local space is in CENTIMETERS. Size is already meters (cm*0.01f), so local half-extents = Size * 50f
-            Vector3 localHalfExtents = Size * 50f;
-            Vector3 boxMin = -localHalfExtents;
-            Vector3 boxMax = localHalfExtents;
+            // FBX local space is in CENTIMETERS.
+            // Use actual stored local AABB (handles non-centered models like walls) or fallback to symmetric
+            Vector3 boxMin;
+            Vector3 boxMax;
+            if (LocalBoundsMinCm.X < float.MaxValue / 2)
+            {
+                boxMin = LocalBoundsMinCm;
+                boxMax = LocalBoundsMaxCm;
+            }
+            else
+            {
+                // Legacy centered fallback (Size already in meters)
+                Vector3 localHalfExtents = Size * 50f;
+                boxMin = -localHalfExtents;
+                boxMax = localHalfExtents;
+            }
 
             // Robust slab method for ray (tmin starts at 0, no negative t allowed)
             float tmin = 0.0f;

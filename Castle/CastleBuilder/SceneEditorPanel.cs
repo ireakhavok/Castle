@@ -201,13 +201,15 @@ namespace CastleBuilder
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
                 entity.AddComponent(modelComp);
 
-                // RIGHT-WAY FIX: set real model bounding size (computed from FBX vertices, cm→m)
-                // This guarantees the AABB exactly matches the visual geometry for raycast selection.
+                // RIGHT-WAY FIX: set real model bounding size + exact local AABB (cm) from FBXModel
+                // This guarantees OBB exactly matches visual geometry for raycast selection on rotated/non-centered models.
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (physics != null && modelComp.Model != null)
                 {
                     physics.Size = modelComp.Model.GetBoundingSize();
-                    Console.WriteLine($"[SceneEditorPanel] Set model bounds Size={physics.Size} for new placed entity {entity.Id}");
+                    physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
+                    physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
+                    Console.WriteLine($"[SceneEditorPanel] Set model bounds Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) for new placed entity {entity.Id}");
                 }
             }
             else if (ext == ".json")
@@ -330,12 +332,14 @@ namespace CastleBuilder
                             modelComp.Model = fbxModel;
                             Console.WriteLine($"[SceneEditorPanel] Hydrated missing Model reference for restored entity '{modelComp.Key}'");
 
-                            // RIGHT-WAY FIX: set real model bounding size (computed from FBX vertices, cm→m)
-                            // This guarantees the AABB exactly matches the visual geometry for raycast selection.
+                            // RIGHT-WAY FIX: set real model bounding size + exact local AABB (cm) from FBXModel
+                            // This guarantees OBB exactly matches visual geometry for raycast selection on rotated/non-centered models.
                             if (physics != null && modelComp.Model != null)
                             {
                                 physics.Size = modelComp.Model.GetBoundingSize();
-                                Console.WriteLine($"[SceneEditorPanel] Updated physics.Size from model bounds for restored entity '{modelComp.Key}' : {physics.Size}");
+                                physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
+                                physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
+                                Console.WriteLine($"[SceneEditorPanel] Updated physics.Size/LocalAABB from model bounds for restored entity '{modelComp.Key}' : Size={physics.Size} AABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
                             }
                         }
                     }
