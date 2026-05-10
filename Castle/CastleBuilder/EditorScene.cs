@@ -47,56 +47,41 @@ namespace CastleBuilder
             }
             return false;
         }
-        private bool RayAABBIntersect(Vector3 rayOrigin, Vector3 rayDirection, Vector3 boxMin, Vector3 boxMax, out float distance)
-        {
-            distance = 0f;
-            float tmin = float.MinValue;
-            float tmax = float.MaxValue;
-            for (int i = 0; i < 3; i++)
-            {
-                if (Math.Abs(rayDirection[i]) < 1e-6)
-                {
-                    if (rayOrigin[i] < boxMin[i] || rayOrigin[i] > boxMax[i])
-                        return false;
-                }
-                else
-                {
-                    float ood = 1.0f / rayDirection[i];
-                    float t1 = (boxMin[i] - rayOrigin[i]) * ood;
-                    float t2 = (boxMax[i] - rayOrigin[i]) * ood;
-                    if (t1 > t2) (t1, t2) = (t2, t1);
-                    tmin = Math.Max(tmin, t1);
-                    tmax = Math.Min(tmax, t2);
-                    if (tmin > tmax) return false;
-                }
-            }
-            distance = tmin >= 0 ? tmin : 0;
-            return true;
-        }
-        public bool TryPerformEntitySelectionRaycast(out int entityId, out Vector3 hitPoint)
+        public bool TryPerformEntitySelectionRaycast(Vector2 normalizedMouse, float contentW, float contentH, out int entityId, out Vector3 hitPoint)
         {
             entityId = -1;
             hitPoint = Vector3.Zero;
             if (!(_activeGameScene is TerrainCreatorScene tcs))
                 return false;
-            Vector3 rayOrigin = tcs.GetCameraPosition();
-            Vector3 rayDir = tcs.GetLookDirection();
+            // PROPERLY ORGANIZED BASE-CONTEXT RAYCAST: use the panel's exact viewport (contentW/contentH)
+            // No assumption about scene aspect ratio or full-screen panel. The ray now goes exactly through the mouse cursor.
+            if (!tcs.GetMouseRay(normalizedMouse, contentW, contentH, out Vector3 rayOrigin, out Vector3 rayDir))
+                return false;
+
+            // === DEBUG PRINTS (future-proof, can be compiled out later) ===
+            Console.WriteLine($"[DEBUG Raycast] normalizedMouse=({normalizedMouse.X:F3},{normalizedMouse.Y:F3}) viewport=({contentW:F0}x{contentH:F0})");
+            Console.WriteLine($"[DEBUG Raycast] rayOrigin=({rayOrigin.X:F2},{rayOrigin.Y:F2},{rayOrigin.Z:F2}) rayDir=({rayDir.X:F3},{rayDir.Y:F3},{rayDir.Z:F3})");
+
             // Terrain hit for fallback
             bool terrainHit = tcs.TryTerrainRaycast(rayOrigin, rayDir, out Vector3 terrainHitPoint);
             float terrainDistance = terrainHit ? Vector3.Distance(rayOrigin, terrainHitPoint) : float.MaxValue;
-            // Entity AABB test along ray (ordered by travel distance)
+            Console.WriteLine($"[DEBUG Raycast] terrainHit={terrainHit} terrainDist={terrainDistance:F2} terrainPoint=({terrainHitPoint.X:F2},{terrainHitPoint.Y:F2},{terrainHitPoint.Z:F2})");
+
+            // Entity OBB test along ray (ordered by t) - rotation-aware via PhysicsComponent.RayIntersects
             float closestEntityDistance = float.MaxValue;
             Entity closestEntity = null;
             foreach (var e in GetEntities())
             {
                 var physics = e.GetComponent<PhysicsComponent>();
                 if (physics == null) continue;
-                Vector3 min = physics.Position - physics.Size / 2f;
-                Vector3 max = physics.Position + physics.Size / 2f;
-                if (RayAABBIntersect(rayOrigin, rayDir, min, max, out float dist) && dist < closestEntityDistance && dist < 10000f)
+                Vector3 dummyHitPoint;
+                Console.WriteLine($"[DEBUG Raycast] Entity {e.Id} AABB min=({physics.Position.X - physics.Size.X / 2:F2},{physics.Position.Y - physics.Size.Y / 2:F2},{physics.Position.Z - physics.Size.Z / 2:F2}) max=({physics.Position.X + physics.Size.X / 2:F2},{physics.Position.Y + physics.Size.Y / 2:F2},{physics.Position.Z + physics.Size.Z / 2:F2}) Size={physics.Size}");
+
+                if (physics.RayIntersects(rayOrigin, rayDir, out float dist, out dummyHitPoint) && dist < closestEntityDistance && dist < 10000f)
                 {
                     closestEntityDistance = dist;
                     closestEntity = e;
+                    Console.WriteLine($"[DEBUG Raycast] → Entity {e.Id} HIT! dist={dist:F2}");
                 }
             }
             if (closestEntity != null && closestEntityDistance < terrainDistance)

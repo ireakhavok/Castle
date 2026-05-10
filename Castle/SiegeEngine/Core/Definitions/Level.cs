@@ -56,6 +56,7 @@ namespace SiegeEngine.Core.Definitions
             physics.Position = position;
             physics.Rotation = rotation;
             if (scale != default) physics.Scale = scale;
+
             entity.AddComponent(physics);
 
             AddEntity(entity);

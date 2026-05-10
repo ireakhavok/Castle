@@ -104,6 +104,7 @@ namespace SiegeEngine.Core.Definitions
             physics.Position = data.Position;
             physics.Rotation = data.Rotation;
             physics.Scale = data.Scale != default ? data.Scale : Vector3.One;
+
             entity.AddComponent(physics);
 
             // Defensive sync so Entity.Transform always matches (prevents any legacy code paths from seeing origin)
@@ -126,9 +127,16 @@ namespace SiegeEngine.Core.Definitions
                 }
 
                 entity.AddComponent(modelComp);
+
+                // RIGHT-WAY FIX: set real model bounding size (computed from FBX vertices, cm→m)
+                // This guarantees the AABB exactly matches the visual geometry for raycast selection.
+                if (modelComp.Model != null)
+                {
+                    physics.Size = modelComp.Model.GetBoundingSize();
+                }
             }
 
-            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} (PhysicsComponent authoritative) MaterialSlots={entity.GetComponent<ModelComponent>()?.Material?.TextureSlots?.Count ?? 0}");
+            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} (PhysicsComponent authoritative) MaterialSlots={entity.GetComponent<ModelComponent>()?.Material?.TextureSlots?.Count ?? 0}");
             return entity;
         }
     }

@@ -60,6 +60,37 @@ namespace MapRoom
         {
             return RayTerrainIntersect(origin, dir, out hitPoint);
         }
+        public bool GetMouseRay(Vector2 normalizedMouse, out Vector3 rayOrigin, out Vector3 rayDir)
+        {
+            rayOrigin = Vector3.Zero;
+            rayDir = Vector3.Zero;
+            if (_flyCamera == null) return false;
+            float ndcX = normalizedMouse.X * 2f - 1f;
+            float ndcY = 1f - normalizedMouse.Y * 2f;
+            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, AspectRatio, 0.1f, 50000f);
+            Matrix4x4 view = _flyCamera.ViewMatrix;
+            if (!Matrix4x4.Invert(proj, out Matrix4x4 invProj)) return false;
+            if (!Matrix4x4.Invert(view, out Matrix4x4 invView)) return false;
+            Vector4 ndcNear = new Vector4(ndcX, ndcY, -1f, 1f);
+            Vector4 ndcFar = new Vector4(ndcX, ndcY, 1f, 1f);
+            Vector4 eyeNearH = Vector4.Transform(ndcNear, invProj);
+            Vector4 eyeFarH = Vector4.Transform(ndcFar, invProj);
+            Vector3 eyeNear = new Vector3(eyeNearH.X / eyeNearH.W, eyeNearH.Y / eyeNearH.W, eyeNearH.Z / eyeNearH.W);
+            Vector3 eyeFar = new Vector3(eyeFarH.X / eyeFarH.W, eyeFarH.Y / eyeFarH.W, eyeFarH.Z / eyeFarH.W);
+            rayOrigin = Vector3.Transform(eyeNear, invView);
+            rayDir = Vector3.Normalize(Vector3.Transform(eyeFar, invView) - rayOrigin);
+            return true;
+        }
+        /// <summary>
+        /// Panel-aware overload for correct NDC unprojection using the EXACT viewport dimensions
+        /// passed from SceneEditorPanel (or any future dockable/resizable panel). This is the
+        /// canonical reusable ray generator living in the base scene context.
+        /// Delegates directly to TerrainScene base implementation to avoid any aspect-ratio skew.
+        /// </summary>
+        public bool GetMouseRay(Vector2 normalizedMouse, float viewportWidth, float viewportHeight, out Vector3 rayOrigin, out Vector3 rayDir)
+        {
+            return base.GetMouseRay(normalizedMouse, viewportWidth, viewportHeight, out rayOrigin, out rayDir);
+        }
         private string ResolveFullPath(string inputPath)
         {
             if (string.IsNullOrEmpty(inputPath)) return inputPath;

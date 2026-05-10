@@ -89,6 +89,8 @@ Folder: AssetParsing
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - Vector3 GetBoundingSize()
 - File: FBXParser.cs
   - Class: FBXParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
@@ -365,7 +367,7 @@ Folder: Definitions
       - void AddChild(Entity child)
       - EntityData ToData()
       - Entity FromData(EntityData data)
-        - Calls: Entity, PhysicsComponent
+        - Calls: Entity, PhysicsComponent, modelComp.Model.GetBoundingSize
       - constructor Entity()
 - File: EntityData.cs
   - Class: MaterialData (Namespace: SiegeEngine.Core.Definitions)

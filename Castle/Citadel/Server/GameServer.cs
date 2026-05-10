@@ -209,18 +209,14 @@ namespace Citadel.Server
             Entity hitEntity = null;
             foreach (var entity in GetNearbyEntities(start))
             {
-                if (entity.GetComponent<PhysicsComponent>() != null)
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null)
                 {
-                    var physics = entity.GetComponent<PhysicsComponent>();
-                    Vector3 min = physics.Position - physics.Size / 2;
-                    Vector3 max = physics.Position + physics.Size / 2;
-                    if (RayAABBIntersect(start, direction, min, max, out float distance))
+                    Vector3 dummyHitPoint;
+                    if (physics.RayIntersects(start, direction, out float distance, out dummyHitPoint) && distance < closestDistance && distance <= maxDistance)
                     {
-                        if (distance < closestDistance && distance <= maxDistance)
-                        {
-                            closestDistance = distance;
-                            hitEntity = entity;
-                        }
+                        closestDistance = distance;
+                        hitEntity = entity;
                     }
                 }
             }
@@ -236,33 +232,6 @@ namespace Citadel.Server
                 Console.WriteLine($"GameServer: Raycast hit entity {hitEntity.Id} at {result.HitPoint}, Distance: {result.Distance}, Density: {result.Material.Density}");
             }
             return result;
-        }
-
-        private bool RayAABBIntersect(Vector3 rayOrigin, Vector3 rayDirection, Vector3 boxMin, Vector3 boxMax, out float distance)
-        {
-            distance = 0f;
-            float tmin = float.MinValue;
-            float tmax = float.MaxValue;
-            for (int i = 0; i < 3; i++)
-            {
-                if (Math.Abs(rayDirection[i]) < 1e-6)
-                {
-                    if (rayOrigin[i] < boxMin[i] || rayOrigin[i] > boxMax[i])
-                        return false;
-                }
-                else
-                {
-                    float ood = 1.0f / rayDirection[i];
-                    float t1 = (boxMin[i] - rayOrigin[i]) * ood;
-                    float t2 = (boxMax[i] - rayOrigin[i]) * ood;
-                    if (t1 > t2) (t1, t2) = (t2, t1);
-                    tmin = Math.Max(tmin, t1);
-                    tmax = Math.Min(tmax, t2);
-                    if (tmin > tmax) return false;
-                }
-            }
-            distance = tmin >= 0 ? tmin : 0;
-            return true;
         }
 
         private Vector3 ApproximateNormal(Vector3 hitPoint, PhysicsComponent physics)

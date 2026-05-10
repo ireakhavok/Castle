@@ -200,6 +200,15 @@ namespace CastleBuilder
             {
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
                 entity.AddComponent(modelComp);
+
+                // RIGHT-WAY FIX: set real model bounding size (computed from FBX vertices, cm→m)
+                // This guarantees the AABB exactly matches the visual geometry for raycast selection.
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null && modelComp.Model != null)
+                {
+                    physics.Size = modelComp.Model.GetBoundingSize();
+                    Console.WriteLine($"[SceneEditorPanel] Set model bounds Size={physics.Size} for new placed entity {entity.Id}");
+                }
             }
             else if (ext == ".json")
             {
@@ -248,7 +257,13 @@ namespace CastleBuilder
             if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)
             {
                 Console.WriteLine("[SceneEditorPanel] Right mouse press detected in viewport - attempting entity selection raycast");
-                if (_editorScene.TryPerformEntitySelectionRaycast(out int entityId, out Vector3 hitPoint))
+                float headerHeight = HasTitleBar ? HeaderHeight : 0f;
+                Vector2 contentMouse = new Vector2(relMouse.X, relMouse.Y - headerHeight);
+                Vector2 normalizedMouse = new Vector2(
+                    Math.Clamp(contentMouse.X / contentW, 0f, 1f),
+                    Math.Clamp(contentMouse.Y / contentH, 0f, 1f)
+                );
+                if (_editorScene.TryPerformEntitySelectionRaycast(normalizedMouse, contentW, contentH, out int entityId, out Vector3 hitPoint))
                 {
                     var evt = new EntitySelectedEvent(entityId, hitPoint);
                     _eventBus.Publish(evt);
@@ -314,6 +329,14 @@ namespace CastleBuilder
                         {
                             modelComp.Model = fbxModel;
                             Console.WriteLine($"[SceneEditorPanel] Hydrated missing Model reference for restored entity '{modelComp.Key}'");
+
+                            // RIGHT-WAY FIX: set real model bounding size (computed from FBX vertices, cm→m)
+                            // This guarantees the AABB exactly matches the visual geometry for raycast selection.
+                            if (physics != null && modelComp.Model != null)
+                            {
+                                physics.Size = modelComp.Model.GetBoundingSize();
+                                Console.WriteLine($"[SceneEditorPanel] Updated physics.Size from model bounds for restored entity '{modelComp.Key}' : {physics.Size}");
+                            }
                         }
                     }
                     if (fbxModel != null && _modelManager.TryGetModelData(modelComp.Key, out var modelData))
@@ -393,6 +416,14 @@ namespace CastleBuilder
         }
         public object GetObjectForNode(string nodeId)
         {
+            if (nodeId.StartsWith("entity-"))
+            {
+                if (int.TryParse(nodeId.Substring(7), out int id))
+                {
+                    var entities = _editorScene.GetEntities();
+                    return entities.FirstOrDefault(e => e.Id == id);
+                }
+            }
             return null;
         }
         public void NotifyHierarchyChanged()

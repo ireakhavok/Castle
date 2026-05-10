@@ -103,7 +103,7 @@ Folder: CastleBuilder
       - void Open2DCreator( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: TwoDCreatorPanel.Open
       - void OpenEditorScene( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: OpenPanelEvent, SceneEditorPanel
+        - Calls: OpenPanelEvent
       - void CreateNewScene( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: Console.WriteLine, NewTerrainPanel.Open
       - void NewProject( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
@@ -426,6 +426,11 @@ Folder: MapRoom
       - bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         - Calls: GetLookDirection, RayTerrainIntersect
       - return RayTerrainIntersect( out hitPoint)
+      - Vector3 GetLookDirection()
+      - bool TryTerrainRaycast( Vector3 dir,  out Vector3, Vector3 origin)
+        - Calls: RayTerrainIntersect
+      - return RayTerrainIntersect( out hitPoint)
+      - bool GetMouseRay( out Vector3, Vector2 normalizedMouse)
       - string ResolveFullPath(string inputPath)
       - void CreateBlank()
         - Calls: Console.WriteLine, RebuildTerrainMesh
@@ -451,7 +456,6 @@ Folder: MapRoom
         - Calls: GetLookDirection, ProjectSettings.Current.StoreUnsavedHeightmap, RayTerrainIntersect, TerrainModifiedEvent, UpdateGhostMesh, _activeBrush.Falloff.ToString, _activeBrush.Mode.ToString, _activeBrush.Shape.ToString, _controlContext.GetTime
       - bool RayTerrainIntersect( Vector3 dir,  out Vector3, Vector3 origin)
         - Calls: GetHeight
-      - Vector3 GetLookDirection()
       - void Render(IReadOnlyList<Entity> entities)
         - Calls: _ghostBuffer.Bind, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BlendFunc, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _terrainBuffer.Bind, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use
       - void Dispose()
@@ -1151,7 +1155,7 @@ Folder: SiegeEngine
       - void AddChild(Entity child)
       - EntityData ToData()
       - Entity FromData(EntityData data)
-        - Calls: Console.WriteLine, Entity, PhysicsComponent
+        - Calls: Console.WriteLine, Entity, PhysicsComponent, modelComp.Model.GetBoundingSize
       - constructor Entity()
 - File: EntityAddedEvent.cs
   - Class: EntityAddedEvent (Namespace: SiegeEngine.Core.Events)
@@ -1318,6 +1322,8 @@ Folder: SiegeEngine
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - Vector3 GetBoundingSize()
 - File: FBXNode.cs
   - Class: FBXNode (Namespace: SiegeEngine.Core.AssetObjects)
     - Inherits: BaseNode
@@ -2758,6 +2764,7 @@ Folder: SiegeEngine
         - Calls: BuildTexturedMesh, GeoTiffParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
       - void Update(float deltaTime)
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
+      - bool GetMouseRay( float viewportHeight,  float viewportWidth,  out Vector3, Vector2 normalizedMouse)
       - void Render(IReadOnlyList<Entity> entities)
         - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Clear, _renderContext.ClearColor, _renderContext.DrawElements, _renderContext.Enable, _terrainBuffer.Bind, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use
       - void Dispose()
