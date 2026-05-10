@@ -54,7 +54,11 @@ namespace SiegeEngine.Core.Definitions
 
         public EntityData ToData()
         {
-            var data = new EntityData { Type = Type };
+            var data = new EntityData
+            {
+                Type = Type,
+                Id = Id   // FIXED: persist unique ID across save/load so spawn never duplicates
+            };
 
             // PhysicsComponent is the definitive runtime/editor source of truth
             var physics = GetComponent<PhysicsComponent>();
@@ -97,7 +101,11 @@ namespace SiegeEngine.Core.Definitions
         {
             if (data == null) return new Entity();
 
-            var entity = new Entity { Id = 0, Type = data.Type ?? "Default" };
+            var entity = new Entity
+            {
+                Id = data.Id,   // FIXED: respect saved ID (prevents reset/duplicates on load)
+                Type = data.Type ?? "Default"
+            };
 
             // === PHYSICS COMPONENT IS THE SINGLE SOURCE OF TRUTH ON LOAD ===
             var physics = new PhysicsComponent();

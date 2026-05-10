@@ -30,6 +30,7 @@ namespace Citadel.Server
         private const float GridCellSize = 10f;
         private readonly Queue<IEvent> _networkEventQueue = new Queue<IEvent>();
         private readonly bool _isEditor;
+        private int _nextEntityId = 1;  // FIXED: track next ID server-side for authoritative placement
 
         public GameServer(EventBus eventBus, NetworkManager networkManager = null, bool isEditor = false)
         {
@@ -64,6 +65,19 @@ namespace Citadel.Server
 
         public void AddEntity(Entity entity)
         {
+            if (entity == null) return;
+
+            // FIXED: robust ID assignment (prevents duplicates after placement or any sync)
+            bool isDuplicate = _entities.Any(e => e.Id == entity.Id && entity.Id > 0);
+            if (entity.Id <= 0 || isDuplicate)
+            {
+                entity.Id = _nextEntityId++;
+            }
+            else
+            {
+                _nextEntityId = Math.Max(_nextEntityId, entity.Id + 1);
+            }
+
             _entities.Add(entity);
             UpdateSpatialGrid(entity);
             Console.WriteLine($"GameServer: Added entity {entity.Id} of type {entity.Type}");

@@ -35,6 +35,10 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("material")]
         public MaterialData MaterialData { get; set; }
 
+        // FIXED: persistent unique ID for load/spawn stability (prevents duplicates after reload or PlaceEntity)
+        [JsonPropertyName("id")]
+        public int Id { get; set; }
+
         /// <summary>
         /// Shared, engine-neutral JsonSerializerOptions used for ALL project.json / SceneData / EntityData serialization.
         /// Guarantees correct deserialization of System.Numerics.Vector3 and Quaternion (PascalCase inner fields).

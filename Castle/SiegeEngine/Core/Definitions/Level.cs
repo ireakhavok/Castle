@@ -1,10 +1,11 @@
 ﻿// Folder: SiegeEngine/Core/Definitions
 // File: Level.cs
+using SiegeEngine.Core.Events;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Text.Json;
-using SiegeEngine.Core.Events;
 
 namespace SiegeEngine.Core.Definitions
 {
@@ -28,9 +29,18 @@ namespace SiegeEngine.Core.Definitions
         {
             if (entity == null) return;
 
-            if (entity.Id <= 0)
+            // FIXED: robust ID logic prevents duplicates on spawn OR after load
+            // - If ID > 0 and unique → keep it (loaded entities)
+            // - If ID <= 0 or duplicate → assign fresh sequential ID
+            bool isDuplicate = Entities.Any(e => e.Id == entity.Id && entity.Id > 0);
+            if (entity.Id <= 0 || isDuplicate)
             {
                 entity.Id = _nextEntityId++;
+            }
+            else
+            {
+                // Loaded entity with valid ID → update next counter
+                _nextEntityId = Math.Max(_nextEntityId, entity.Id + 1);
             }
 
             Entities.Add(entity);
