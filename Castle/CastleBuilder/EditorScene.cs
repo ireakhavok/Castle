@@ -80,8 +80,10 @@ namespace CastleBuilder
                     Console.WriteLine($"[DEBUG Raycast] → Entity {e.Id} HIT! dist={dist:F2}");
                 }
             }
-            if (closestEntity != null && closestEntityDistance < terrainDistance)
+            if (closestEntity != null)
             {
+                // STRICT ENTITY-FIRST ORDERING: entity always wins for selection (fixes under-terrain case where terrainDistance==0)
+                // Terrain is fallback only when no entity is hit on the ray (preserves first-hit semantics for entities above ground)
                 entityId = closestEntity.Id;
                 hitPoint = rayOrigin + rayDir * closestEntityDistance;
                 Console.WriteLine($"[EditorScene] Entity selection raycast hit entity {entityId} (dist {closestEntityDistance:F2})");

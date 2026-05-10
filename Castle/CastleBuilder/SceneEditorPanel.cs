@@ -17,6 +17,7 @@ using SiegeEngine.Scenes;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Text;
@@ -79,6 +80,14 @@ namespace CastleBuilder
         private void OnEntitySelected(EntitySelectedEvent e)
         {
             _selectedEntityIds = e.SelectedEntityIds;
+            // SYNC TO OUTLINER COORDINATOR CACHE: this guarantees TreeViewPanel rebuild applies identical .node.selected CSS class
+            // and JS state as direct hierarchy left-click (data-hook="Select:entity-xxx"). Fixes highlighting sync.
+            var nodeIds = _selectedEntityIds.Select(id => $"entity-{id}").ToList();
+            OutlinerCoordinator.Instance.SaveSelectedState(ContentType, nodeIds);
+            if (nodeIds.Count > 0)
+                OutlinerCoordinator.Instance.NotifySelectionChanged(nodeIds[0]);
+            else
+                OutlinerCoordinator.Instance.NotifySelectionChanged("");
             NotifyHierarchyChanged();
             Console.WriteLine($"[SceneEditorPanel] Entity selection updated: {string.Join(", ", _selectedEntityIds)}");
         }
@@ -200,7 +209,6 @@ namespace CastleBuilder
             {
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
                 entity.AddComponent(modelComp);
-
                 // RIGHT-WAY FIX: set real model bounding size + exact local AABB (cm) from FBXModel
                 // This guarantees OBB exactly matches visual geometry for raycast selection on rotated/non-centered models.
                 var physics = entity.GetComponent<PhysicsComponent>();
@@ -331,7 +339,6 @@ namespace CastleBuilder
                         {
                             modelComp.Model = fbxModel;
                             Console.WriteLine($"[SceneEditorPanel] Hydrated missing Model reference for restored entity '{modelComp.Key}'");
-
                             // RIGHT-WAY FIX: set real model bounding size + exact local AABB (cm) from FBXModel
                             // This guarantees OBB exactly matches visual geometry for raycast selection on rotated/non-centered models.
                             if (physics != null && modelComp.Model != null)
