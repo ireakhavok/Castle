@@ -243,7 +243,6 @@ namespace CastleBuilder
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
             _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
-
             // Viewport right-click entity selection
             bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
             if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)
@@ -257,11 +256,12 @@ namespace CastleBuilder
                 }
                 else
                 {
-                    Console.WriteLine("[SceneEditorPanel] Right-click raycast found no entity hit");
+                    Console.WriteLine("[SceneEditorPanel] Raycast found no entity hit - clearing selection");
+                    _selectedEntityIds.Clear();
+                    NotifyHierarchyChanged();
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-
             if (_cameraMode) _controlContext.PopViewport();
         }
         protected override void RenderInnerContent()
@@ -337,11 +337,6 @@ namespace CastleBuilder
             PanelManager.Current.ReleasePanelCapture();
             _editorScene?.Dispose();
             base.Dispose();
-        }
-        public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
-        {
-            var panel = new SceneEditorPanel(renderContext, controlContext, window, eventBus);
-            eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
         public string DataKey => "SceneEditorPanel";
         public JsonElement SavePanelState()

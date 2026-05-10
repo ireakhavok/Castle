@@ -47,35 +47,69 @@ namespace CastleBuilder
             }
             return false;
         }
+        private bool RayAABBIntersect(Vector3 rayOrigin, Vector3 rayDirection, Vector3 boxMin, Vector3 boxMax, out float distance)
+        {
+            distance = 0f;
+            float tmin = float.MinValue;
+            float tmax = float.MaxValue;
+            for (int i = 0; i < 3; i++)
+            {
+                if (Math.Abs(rayDirection[i]) < 1e-6)
+                {
+                    if (rayOrigin[i] < boxMin[i] || rayOrigin[i] > boxMax[i])
+                        return false;
+                }
+                else
+                {
+                    float ood = 1.0f / rayDirection[i];
+                    float t1 = (boxMin[i] - rayOrigin[i]) * ood;
+                    float t2 = (boxMax[i] - rayOrigin[i]) * ood;
+                    if (t1 > t2) (t1, t2) = (t2, t1);
+                    tmin = Math.Max(tmin, t1);
+                    tmax = Math.Min(tmax, t2);
+                    if (tmin > tmax) return false;
+                }
+            }
+            distance = tmin >= 0 ? tmin : 0;
+            return true;
+        }
         public bool TryPerformEntitySelectionRaycast(out int entityId, out Vector3 hitPoint)
         {
             entityId = -1;
             hitPoint = Vector3.Zero;
-            if (_activeGameScene is TerrainCreatorScene tcs)
+            if (!(_activeGameScene is TerrainCreatorScene tcs))
+                return false;
+            Vector3 rayOrigin = tcs.GetCameraPosition();
+            Vector3 rayDir = tcs.GetLookDirection();
+            // Terrain hit for fallback
+            bool terrainHit = tcs.TryTerrainRaycast(rayOrigin, rayDir, out Vector3 terrainHitPoint);
+            float terrainDistance = terrainHit ? Vector3.Distance(rayOrigin, terrainHitPoint) : float.MaxValue;
+            // Entity AABB test along ray (ordered by travel distance)
+            float closestEntityDistance = float.MaxValue;
+            Entity closestEntity = null;
+            foreach (var e in GetEntities())
             {
-                if (tcs.TryPerformPlacementRaycast(out hitPoint))
+                var physics = e.GetComponent<PhysicsComponent>();
+                if (physics == null) continue;
+                Vector3 min = physics.Position - physics.Size / 2f;
+                Vector3 max = physics.Position + physics.Size / 2f;
+                if (RayAABBIntersect(rayOrigin, rayDir, min, max, out float dist) && dist < closestEntityDistance && dist < 10000f)
                 {
-                    var entities = GetEntities();
-                    float minDist = float.MaxValue;
-                    foreach (var e in entities)
-                    {
-                        var physics = e.GetComponent<PhysicsComponent>();
-                        if (physics != null)
-                        {
-                            float dist = Vector3.Distance(physics.Position, hitPoint);
-                            if (dist < minDist)
-                            {
-                                minDist = dist;
-                                entityId = e.Id;
-                            }
-                        }
-                    }
-                    if (entityId != -1 && minDist < 50f) // relaxed threshold for terrain editor
-                    {
-                        Console.WriteLine($"[EditorScene] Entity selection raycast hit entity {entityId} (dist {minDist:F2})");
-                        return true;
-                    }
+                    closestEntityDistance = dist;
+                    closestEntity = e;
                 }
+            }
+            if (closestEntity != null && closestEntityDistance < terrainDistance)
+            {
+                entityId = closestEntity.Id;
+                hitPoint = rayOrigin + rayDir * closestEntityDistance;
+                Console.WriteLine($"[EditorScene] Entity selection raycast hit entity {entityId} (dist {closestEntityDistance:F2})");
+                return true;
+            }
+            if (terrainHit)
+            {
+                hitPoint = terrainHitPoint;
+                Console.WriteLine($"[EditorScene] Raycast hit terrain only at {terrainHitPoint} - clearing selection");
             }
             return false;
         }
