@@ -120,10 +120,16 @@ namespace SiegeEngine.Core.Definitions
             // Use actual stored local AABB (handles non-centered models like walls) or fallback to symmetric
             Vector3 boxMin;
             Vector3 boxMax;
-            if (LocalBoundsMinCm.X < float.MaxValue / 2)
+            // FIXED: detect valid bounds (Min <= Max on all axes) instead of fragile MaxValue/2 check
+            // This ensures loaded/rotated FBX models (sm_wall_pack etc.) use real AABB and RayIntersects succeeds
+            // from any camera height (including below terrain)
+            if (LocalBoundsMinCm.X <= LocalBoundsMaxCm.X &&
+                LocalBoundsMinCm.Y <= LocalBoundsMaxCm.Y &&
+                LocalBoundsMinCm.Z <= LocalBoundsMaxCm.Z)
             {
                 boxMin = LocalBoundsMinCm;
                 boxMax = LocalBoundsMaxCm;
+                Console.WriteLine($"[DEBUG RayIntersects] Entity using REAL FBX AABB min=({boxMin}) max=({boxMax})");
             }
             else
             {
@@ -131,6 +137,7 @@ namespace SiegeEngine.Core.Definitions
                 Vector3 localHalfExtents = Size * 50f;
                 boxMin = -localHalfExtents;
                 boxMax = localHalfExtents;
+                Console.WriteLine($"[DEBUG RayIntersects] Entity using FALLBACK centered AABB min=({boxMin}) max=({boxMax}) Size={Size}");
             }
 
             // Robust slab method for ray (tmin starts at 0, no negative t allowed)

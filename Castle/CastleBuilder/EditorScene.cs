@@ -208,7 +208,20 @@ namespace CastleBuilder
                     {
                         ModelManager.Instance.LoadAnimationPack(packJsonPath);
                         if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
+                        {
                             modelComp.Model = fbxModel;
+                            // FIXED: propagate exact FBX local bounds + size to physics immediately after model load
+                            // This guarantees accurate OBB ray tests for ALL entities (loaded scenes, rotated walls, under-terrain camera)
+                            // (previously only happened lazily in RenderInnerContent)
+                            var physics = entity.GetComponent<PhysicsComponent>();
+                            if (physics != null && modelComp.Model != null)
+                            {
+                                physics.Size = modelComp.Model.GetBoundingSize();
+                                physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
+                                physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
+                                Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Synced model bounds for loaded entity {entity.Id} (Key='{modelComp.Key}') Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
+                            }
+                        }
                         Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Loaded animation pack '{modelComp.Key}' from disk");
                     }
                     else
@@ -216,7 +229,18 @@ namespace CastleBuilder
                         string packId = modelComp.Key;
                         ModelManager.Instance.RegisterFBXAsPackInMemory(packId);
                         if (ModelManager.Instance.TryGetModel(packId, out var fbxModel))
+                        {
                             modelComp.Model = fbxModel;
+                            // FIXED: propagate exact FBX local bounds + size to physics immediately after model load
+                            var physics = entity.GetComponent<PhysicsComponent>();
+                            if (physics != null && modelComp.Model != null)
+                            {
+                                physics.Size = modelComp.Model.GetBoundingSize();
+                                physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
+                                physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
+                                Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Synced model bounds for loaded entity {entity.Id} (Key='{packId}') Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
+                            }
+                        }
                         Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Registered in-memory pack '{packId}' for saved entity");
                     }
                 }
