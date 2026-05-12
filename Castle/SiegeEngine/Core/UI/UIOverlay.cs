@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine/Core/UI
+// File: UIOverlay.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Rendering;
@@ -35,6 +37,10 @@ namespace SiegeEngine.Core.UI
         private bool _needsVerticalScrollbar = false;
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
+
+        // NEW PUBLIC ACCESSOR FOR OVERLAY DRAWING (used by SceneEditorPanel box select visual)
+        public UIQuadRenderer QuadRenderer => _quadRenderer;
+
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
             : this(renderContext, controlContext, window, null)
         {

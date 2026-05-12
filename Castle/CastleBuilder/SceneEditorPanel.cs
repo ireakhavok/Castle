@@ -49,6 +49,13 @@ namespace CastleBuilder
         private bool _pendingSceneSelectorUpdate = false;
         private List<int> _selectedEntityIds = new List<int>();
         private bool _wasRightPressedLastFrame = false;
+
+        // === BOX SELECT SUPPORT (RIGHT-CLICK + DRAG = box, RIGHT-CLICK alone = single select) ===
+        private bool _isBoxSelecting = false;
+        private Vector2 _boxStart = Vector2.Zero;
+        private Vector2 _boxEnd = Vector2.Zero;
+        private const float MinDragDistance = 5f;
+
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -79,9 +86,18 @@ namespace CastleBuilder
         }
         private void OnEntitySelected(EntitySelectedEvent e)
         {
-            _selectedEntityIds = e.SelectedEntityIds;
-            // SYNC TO OUTLINER COORDINATOR CACHE: this guarantees TreeViewPanel rebuild applies identical .node.selected CSS class
-            // and JS state as direct hierarchy left-click (data-hook="Select:entity-xxx"). Fixes highlighting sync.
+            if (e.Additive)
+            {
+                foreach (var id in e.SelectedEntityIds)
+                {
+                    if (!_selectedEntityIds.Contains(id))
+                        _selectedEntityIds.Add(id);
+                }
+            }
+            else
+            {
+                _selectedEntityIds = new List<int>(e.SelectedEntityIds);
+            }
             var nodeIds = _selectedEntityIds.Select(id => $"entity-{id}").ToList();
             OutlinerCoordinator.Instance.SaveSelectedState(ContentType, nodeIds);
             if (nodeIds.Count > 0)
@@ -209,8 +225,6 @@ namespace CastleBuilder
             {
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
                 entity.AddComponent(modelComp);
-                // RIGHT-WAY FIX: set real model bounding size + exact local AABB (cm) from FBXModel
-                // This guarantees OBB exactly matches visual geometry for raycast selection on rotated/non-centered models.
                 var physics = entity.GetComponent<PhysicsComponent>();
                 if (physics != null && modelComp.Model != null)
                 {
@@ -250,45 +264,97 @@ namespace CastleBuilder
                 UpdateSceneSelectorUI();
                 Console.WriteLine($"[SceneEditorPanel.Update] === DEFERRED REFRESH COMPLETE ===");
             }
+
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
-            if (isTopmost && (mousePressed || mouseReleased)) OnContentFocusGained(); // <--- FIXED: any mouse interaction activates provider
-            base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-            float header = HasTitleBar ? HeaderHeight : 0f;
-            float contentX = Position.X;
-            float contentY = Position.Y + header;
-            float contentW = Size.X;
-            float contentH = Size.Y - header;
-            if (_cameraMode) _controlContext.PushViewport(new Viewport((int)contentX, (int)contentY, (int)contentW, (int)contentH));
-            Vector2 relMouse = absMousePos - Position;
-            Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - TitleHeight);
-            _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
-            // Viewport right-click entity selection
+            bool ctrlPressed = _controlContext.GetKey(_window, Key.LeftControl) == InputAction.Press ||
+                               _controlContext.GetKey(_window, Key.RightControl) == InputAction.Press;
+
+            // === RIGHT-CLICK + DRAG = BOX SELECT ===
+            // Right-click alone (no drag) = single entity selection
             bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
             if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)
             {
-                Console.WriteLine("[SceneEditorPanel] Right mouse press detected in viewport - attempting entity selection raycast");
-                float headerHeight = HasTitleBar ? HeaderHeight : 0f;
-                Vector2 contentMouse = new Vector2(relMouse.X, relMouse.Y - headerHeight);
-                Vector2 normalizedMouse = new Vector2(
-                    Math.Clamp(contentMouse.X / contentW, 0f, 1f),
-                    Math.Clamp(contentMouse.Y / contentH, 0f, 1f)
-                );
-                if (_editorScene.TryPerformEntitySelectionRaycast(normalizedMouse, contentW, contentH, out int entityId, out Vector3 hitPoint))
+                float header = HasTitleBar ? HeaderHeight : 0f;
+                _isBoxSelecting = true;
+                _boxStart = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - header);
+                _boxEnd = _boxStart;
+                Console.WriteLine($"[SceneEditorPanel] Right mouse press - potential box drag started at {_boxStart}");
+            }
+            if (_isBoxSelecting && _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press)
+            {
+                float header = HasTitleBar ? HeaderHeight : 0f;
+                _boxEnd = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - header);
+            }
+            if (_isBoxSelecting && _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Release)
+            {
+                _isBoxSelecting = false;
+                float dragDist = Vector2.Distance(_boxStart, _boxEnd);
+                Console.WriteLine($"[SceneEditorPanel] Right mouse release - drag distance = {dragDist:F2} px");
+
+                if (dragDist >= MinDragDistance)
                 {
-                    var evt = new EntitySelectedEvent(entityId, hitPoint);
-                    _eventBus.Publish(evt);
-                    Console.WriteLine($"[SceneEditorPanel] Right-click selected entity {entityId} at {hitPoint}");
+                    PerformBoxSelection(ctrlPressed);
                 }
                 else
                 {
-                    Console.WriteLine("[SceneEditorPanel] Raycast found no entity hit - clearing selection");
-                    _selectedEntityIds.Clear();
-                    NotifyHierarchyChanged();
+                    // Right-click alone = single entity selection
+                    Console.WriteLine("[SceneEditorPanel] Right-click (no drag) → single entity selection");
+                    float headerHeight = HasTitleBar ? HeaderHeight : 0f;
+                    Vector2 contentMouse = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - headerHeight);
+                    float contentW = Size.X;
+                    float contentH = Size.Y - headerHeight;
+                    Vector2 normalizedMouse = new Vector2(
+                        Math.Clamp(contentMouse.X / contentW, 0f, 1f),
+                        Math.Clamp(contentMouse.Y / contentH, 0f, 1f)
+                    );
+                    if (_editorScene.TryPerformEntitySelectionRaycast(normalizedMouse, contentW, contentH, out int entityId, out Vector3 hitPoint, ctrlPressed))
+                    {
+                        var evt = new EntitySelectedEvent(entityId, hitPoint, ctrlPressed);
+                        _eventBus.Publish(evt);
+                        Console.WriteLine($"[SceneEditorPanel] Right-click selected entity {entityId} at {hitPoint} (additive: {ctrlPressed})");
+                    }
+                    else
+                    {
+                        Console.WriteLine("[SceneEditorPanel] Raycast found no entity hit - clearing selection");
+                        _selectedEntityIds.Clear();
+                        NotifyHierarchyChanged();
+                    }
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-            if (_cameraMode) _controlContext.PopViewport();
+
+            // === LEFT-CLICK = only panel focus (BasePanel already handles this) ===
+            // Do nothing extra here for entity selection
+
+            // === CALL BASE (title-bar drag, resize, UI overlay, etc.) ===
+            base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
+
+            if (_cameraMode)
+            {
+                Vector2 sceneMouse = absMousePos - Position - new Vector2(0, TitleHeight);
+                _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
+            }
         }
+
+        private void PerformBoxSelection(bool additive)
+        {
+            float header = HasTitleBar ? HeaderHeight : 0f;
+            float contentW = Size.X;
+            float contentH = Size.Y - header;
+            Vector2 startNdc = new Vector2(
+                Math.Clamp(_boxStart.X / contentW, 0f, 1f),
+                Math.Clamp(_boxStart.Y / contentH, 0f, 1f)
+            );
+            Vector2 endNdc = new Vector2(
+                Math.Clamp(_boxEnd.X / contentW, 0f, 1f),
+                Math.Clamp(_boxEnd.Y / contentH, 0f, 1f)
+            );
+            var selected = _editorScene.PerformBoxSelection(startNdc, endNdc, contentW, contentH);
+            var evt = new EntitySelectedEvent { SelectedEntityIds = selected, Additive = additive };
+            _eventBus.Publish(evt);
+            Console.WriteLine($"[SceneEditorPanel] Box selection completed - {selected.Count} entities (additive: {additive})");
+        }
+
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
@@ -339,8 +405,6 @@ namespace CastleBuilder
                         {
                             modelComp.Model = fbxModel;
                             Console.WriteLine($"[SceneEditorPanel] Hydrated missing Model reference for restored entity '{modelComp.Key}'");
-                            // RIGHT-WAY FIX: set real model bounding size + exact local AABB (cm) from FBXModel
-                            // This guarantees OBB exactly matches visual geometry for raycast selection on rotated/non-centered models.
                             if (physics != null && modelComp.Model != null)
                             {
                                 physics.Size = modelComp.Model.GetBoundingSize();
@@ -358,6 +422,25 @@ namespace CastleBuilder
                         Matrix4x4 modelMatrix = scaleMat * rotation * translation;
                         _modelRenderer.RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix);
                     }
+                }
+            }
+
+            // === VISUAL BOX SELECT OVERLAY (only during right-drag) ===
+            if (_isBoxSelecting && _uiOverlay?.QuadRenderer != null)
+            {
+                float dragDist = Vector2.Distance(_boxStart, _boxEnd);
+                if (dragDist >= MinDragDistance)
+                {
+                    float headerHeight = HasTitleBar ? HeaderHeight : 0f;
+                    float x = Math.Min(_boxStart.X, _boxEnd.X);
+                    float y = Math.Min(_boxStart.Y, _boxEnd.Y);
+                    float w = Math.Abs(_boxEnd.X - _boxStart.X);
+                    float h = Math.Abs(_boxEnd.Y - _boxStart.Y);
+                    _uiOverlay.QuadRenderer.DrawQuad(x, y + headerHeight, w, h, new Vector4(0.2f, 0.6f, 1f, 0.3f), Size.X, Size.Y);
+                    _uiOverlay.QuadRenderer.DrawLine(x, y + headerHeight, x + w, y + headerHeight, 2f, new Vector4(0.2f, 0.6f, 1f, 1f), Size.X, Size.Y);
+                    _uiOverlay.QuadRenderer.DrawLine(x, y + headerHeight + h, x + w, y + headerHeight + h, 2f, new Vector4(0.2f, 0.6f, 1f, 1f), Size.X, Size.Y);
+                    _uiOverlay.QuadRenderer.DrawLine(x, y + headerHeight, x, y + headerHeight + h, 2f, new Vector4(0.2f, 0.6f, 1f, 1f), Size.X, Size.Y);
+                    _uiOverlay.QuadRenderer.DrawLine(x + w, y + headerHeight, x + w, y + headerHeight + h, 2f, new Vector4(0.2f, 0.6f, 1f, 1f), Size.X, Size.Y);
                 }
             }
         }

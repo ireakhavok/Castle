@@ -47,54 +47,119 @@ namespace CastleBuilder
             }
             return false;
         }
-        public bool TryPerformEntitySelectionRaycast(Vector2 normalizedMouse, float contentW, float contentH, out int entityId, out Vector3 hitPoint)
+        public bool TryPerformEntitySelectionRaycast(Vector2 normalizedMouse, float contentW, float contentH, out int entityId, out Vector3 hitPoint, bool cycle = false)
         {
             entityId = -1;
             hitPoint = Vector3.Zero;
-            if (!(_activeGameScene is TerrainCreatorScene tcs))
-                return false;
-            // PROPERLY ORGANIZED BASE-CONTEXT RAYCAST: use the panel's exact viewport (contentW/contentH)
-            // No assumption about scene aspect ratio or full-screen panel. The ray now goes exactly through the mouse cursor.
+            if (!(_activeGameScene is TerrainCreatorScene tcs)) return false;
             if (!tcs.GetMouseRay(normalizedMouse, contentW, contentH, out Vector3 rayOrigin, out Vector3 rayDir))
                 return false;
-            // === DEBUG PRINTS (future-proof, can be compiled out later) ===
-            Console.WriteLine($"[DEBUG Raycast] normalizedMouse=({normalizedMouse.X:F3},{normalizedMouse.Y:F3}) viewport=({contentW:F0}x{contentH:F0})");
-            Console.WriteLine($"[DEBUG Raycast] rayOrigin=({rayOrigin.X:F2},{rayOrigin.Y:F2},{rayOrigin.Z:F2}) rayDir=({rayDir.X:F3},{rayDir.Y:F3},{rayDir.Z:F3})");
-            // Terrain hit for fallback
-            bool terrainHit = tcs.TryTerrainRaycast(rayOrigin, rayDir, out Vector3 terrainHitPoint);
-            float terrainDistance = terrainHit ? Vector3.Distance(rayOrigin, terrainHitPoint) : float.MaxValue;
-            Console.WriteLine($"[DEBUG Raycast] terrainHit={terrainHit} terrainDist={terrainDistance:F2} terrainPoint=({terrainHitPoint.X:F2},{terrainHitPoint.Y:F2},{terrainHitPoint.Z:F2})");
-            // Entity OBB test along ray (ordered by t) - rotation-aware via PhysicsComponent.RayIntersects
-            float closestEntityDistance = float.MaxValue;
-            Entity closestEntity = null;
+            var hits = new List<(int id, float dist, Vector3 point)>();
             foreach (var e in GetEntities())
             {
                 var physics = e.GetComponent<PhysicsComponent>();
                 if (physics == null) continue;
-                Vector3 dummyHitPoint;
-                Console.WriteLine($"[DEBUG Raycast] Entity {e.Id} AABB min=({physics.Position.X - physics.Size.X / 2:F2},{physics.Position.Y - physics.Size.Y / 2:F2},{physics.Position.Z - physics.Size.Z / 2:F2}) max=({physics.Position.X + physics.Size.X / 2:F2},{physics.Position.Y + physics.Size.Y / 2:F2},{physics.Position.Z + physics.Size.Z / 2:F2}) Size={physics.Size}");
-                if (physics.RayIntersects(rayOrigin, rayDir, out float dist, out dummyHitPoint) && dist < closestEntityDistance && dist < 10000f)
+                if (physics.RayIntersects(rayOrigin, rayDir, out float dist, out Vector3 p))
                 {
-                    closestEntityDistance = dist;
-                    closestEntity = e;
-                    Console.WriteLine($"[DEBUG Raycast] → Entity {e.Id} HIT! dist={dist:F2}");
+                    hits.Add((e.Id, dist, p));
                 }
             }
-            if (closestEntity != null)
+            hits.Sort((a, b) => a.dist.CompareTo(b.dist));
+            if (hits.Count == 0) return false;
+            if (cycle && hits.Count > 1)
             {
-                // STRICT ENTITY-FIRST ORDERING: entity always wins for selection (fixes under-terrain case where terrainDistance==0)
-                // Terrain is fallback only when no entity is hit on the ray (preserves first-hit semantics for entities above ground)
-                entityId = closestEntity.Id;
-                hitPoint = rayOrigin + rayDir * closestEntityDistance;
-                Console.WriteLine($"[EditorScene] Entity selection raycast hit entity {entityId} (dist {closestEntityDistance:F2})");
+                int nextIndex = 1 % hits.Count;
+                var nextHit = hits[nextIndex];
+                entityId = nextHit.id;
+                hitPoint = nextHit.point;
                 return true;
             }
-            if (terrainHit)
+            var best = hits[0];
+            entityId = best.id;
+            hitPoint = best.point;
+            return true;
+        }
+        public List<int> PerformBoxSelection(Vector2 ndcStart, Vector2 ndcEnd, float contentW, float contentH)
+        {
+            var selected = new List<int>();
+            if (!(_activeGameScene is TerrainCreatorScene tcs)) return selected;
+
+            // Convert NDC box to pixel box (this was the bug)
+            float minX = Math.Min(ndcStart.X, ndcEnd.X) * contentW;
+            float maxX = Math.Max(ndcStart.X, ndcEnd.X) * contentW;
+            float minY = Math.Min(ndcStart.Y, ndcEnd.Y) * contentH;
+            float maxY = Math.Max(ndcStart.Y, ndcEnd.Y) * contentH;
+
+            Console.WriteLine($"[EditorScene] Box select PIXEL rect: X({minX:F1}-{maxX:F1}) Y({minY:F1}-{maxY:F1})");
+
+            foreach (var e in GetEntities())
             {
-                hitPoint = terrainHitPoint;
-                Console.WriteLine($"[EditorScene] Raycast hit terrain only at {terrainHitPoint} - clearing selection");
+                var physics = e.GetComponent<PhysicsComponent>();
+                if (physics == null) continue;
+
+                if (IsBoxInFrustum(tcs, minX, maxX, minY, maxY, contentW, contentH, physics))
+                {
+                    selected.Add(e.Id);
+                    Console.WriteLine($"[EditorScene] Box selected entity {e.Id}");
+                }
+            }
+            return selected;
+        }
+
+        private bool IsBoxInFrustum(TerrainCreatorScene tcs, float minX, float maxX, float minY, float maxY, float contentW, float contentH, PhysicsComponent physics)
+        {
+            // Fast center test (pixel space)
+            Vector3 center = physics.Position;
+            if (!ProjectWorldToScreen(center, contentW, contentH, out Vector2 screenCenter))
+                return false;
+            if (screenCenter.X >= minX && screenCenter.X <= maxX && screenCenter.Y >= minY && screenCenter.Y <= maxY)
+                return true;
+
+            // 8 OBB corners test (pixel space)
+            Vector3[] localCorners =
+            {
+                physics.LocalBoundsMinCm * 0.01f,
+                new Vector3(physics.LocalBoundsMinCm.X, physics.LocalBoundsMinCm.Y, physics.LocalBoundsMaxCm.Z) * 0.01f,
+                new Vector3(physics.LocalBoundsMinCm.X, physics.LocalBoundsMaxCm.Y, physics.LocalBoundsMinCm.Z) * 0.01f,
+                new Vector3(physics.LocalBoundsMaxCm.X, physics.LocalBoundsMinCm.Y, physics.LocalBoundsMinCm.Z) * 0.01f,
+                new Vector3(physics.LocalBoundsMaxCm.X, physics.LocalBoundsMaxCm.Y, physics.LocalBoundsMinCm.Z) * 0.01f,
+                new Vector3(physics.LocalBoundsMinCm.X, physics.LocalBoundsMaxCm.Y, physics.LocalBoundsMaxCm.Z) * 0.01f,
+                new Vector3(physics.LocalBoundsMaxCm.X, physics.LocalBoundsMinCm.Y, physics.LocalBoundsMaxCm.Z) * 0.01f,
+                physics.LocalBoundsMaxCm * 0.01f
+            };
+
+            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(physics.Rotation);
+            Matrix4x4 trans = Matrix4x4.CreateTranslation(physics.Position);
+
+            foreach (var local in localCorners)
+            {
+                Vector3 world = Vector3.Transform(local, rot * trans);
+                if (ProjectWorldToScreen(world, contentW, contentH, out Vector2 p))
+                {
+                    if (p.X >= minX && p.X <= maxX && p.Y >= minY && p.Y <= maxY)
+                        return true;
+                }
             }
             return false;
+        }
+
+        private bool ProjectWorldToScreen(Vector3 worldPos, float contentW, float contentH, out Vector2 screenPos)
+        {
+            screenPos = Vector2.Zero;
+            if (!(_activeGameScene is TerrainCreatorScene tcs)) return false;
+
+            Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, contentW / contentH, 0.1f, 50000f);
+            Matrix4x4 view = tcs.GetViewMatrix();
+
+            Vector4 clip = Vector4.Transform(new Vector4(worldPos, 1f), view * proj);
+            if (Math.Abs(clip.W) < 1e-6f) return false;
+            clip /= clip.W;
+
+            screenPos = new Vector2(
+                (clip.X * 0.5f + 0.5f) * contentW,
+                (1f - (clip.Y * 0.5f + 0.5f)) * contentH
+            );
+            return true;
         }
         public void SyncCurrentLevelToRuntimeServer()
         {
@@ -210,9 +275,6 @@ namespace CastleBuilder
                         if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
                         {
                             modelComp.Model = fbxModel;
-                            // FIXED: propagate exact FBX local bounds + size to physics immediately after model load
-                            // This guarantees accurate OBB ray tests for ALL entities (loaded scenes, rotated walls, under-terrain camera)
-                            // (previously only happened lazily in RenderInnerContent)
                             var physics = entity.GetComponent<PhysicsComponent>();
                             if (physics != null && modelComp.Model != null)
                             {
@@ -231,7 +293,6 @@ namespace CastleBuilder
                         if (ModelManager.Instance.TryGetModel(packId, out var fbxModel))
                         {
                             modelComp.Model = fbxModel;
-                            // FIXED: propagate exact FBX local bounds + size to physics immediately after model load
                             var physics = entity.GetComponent<PhysicsComponent>();
                             if (physics != null && modelComp.Model != null)
                             {
