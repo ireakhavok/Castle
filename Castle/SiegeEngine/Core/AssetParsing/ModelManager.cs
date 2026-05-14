@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.AssetParsing
+﻿// Folder: SiegeEngine/Core/AssetParsing
 // File: ModelManager.cs
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
@@ -6,11 +6,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.AssetObjects;
-
 namespace SiegeEngine.Core.AssetParsing
 {
     public class ModelManager
@@ -24,12 +23,11 @@ namespace SiegeEngine.Core.AssetParsing
         private readonly Dictionary<string, (uint, byte)> _textureCache = new Dictionary<string, (uint, byte)>();
         private readonly Dictionary<string, AnimationPack> _animationPacks = new Dictionary<string, AnimationPack>();
         private readonly IRenderContext _renderContext;
-
+        public static ModelManager Instance { get; private set; }
         public class ModelData
         {
             public List<ModelMeshRender> MeshRenders { get; set; } = new List<ModelMeshRender>();
         }
-
         public class ModelMeshRender
         {
             public uint Vao { get; set; }
@@ -40,12 +38,11 @@ namespace SiegeEngine.Core.AssetParsing
             public uint[] MetallicTextures { get; set; }
             public uint IndexCount { get; set; }
         }
-
         public ModelManager(IRenderContext renderContext = null)
         {
             _renderContext = renderContext;
+            Instance = this;
         }
-
         public void LoadModel(string filePath)
         {
             string key = Path.GetFileNameWithoutExtension(filePath).ToLower();
@@ -63,7 +60,197 @@ namespace SiegeEngine.Core.AssetParsing
             _models[key] = model;
             _modelData[key] = modelData;
         }
+        public string RegisterFBXAsPackInMemory(string fbxPath)
+        {
+            if (!File.Exists(fbxPath)) throw new FileNotFoundException("FBX not found", fbxPath);
+            string packId = Path.GetFileNameWithoutExtension(fbxPath).ToLower() + "_pack";
+            string packKey = packId.ToLower();
+            if (_animationPacks.ContainsKey(packKey)) return packId;
+            LoadModel(fbxPath);
+            string originalKey = Path.GetFileNameWithoutExtension(fbxPath).ToLower();
+            if (_models.TryGetValue(originalKey, out var model))
+                _models[packKey] = model;
+            if (_modelData.TryGetValue(originalKey, out var data))
+                _modelData[packKey] = data;
+            if (_forests.TryGetValue(originalKey, out var forest))
+                _forests[packKey] = forest;
+            if (_fbxDirs.TryGetValue(originalKey, out var dir))
+                _fbxDirs[packKey] = dir;
+            FBXModel modelForPack = _models[originalKey];
+            var pack = new AnimationPack(packId, packId)
+            {
+                SourceFBXPath = fbxPath,
+                SourceSkeletonPath = fbxPath
+            };
+            pack.Animations = modelForPack.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+            if (modelForPack.Skeleton != null)
+            {
+                for (int i = 0; i < modelForPack.Skeleton.Bones.Count; i++)
+                {
+                    pack.BoneNameToIndex[modelForPack.Skeleton.Bones[i].Name] = i;
+                }
+            }
+            // Material is now part of the pack (populated by FBXMeshParser)
+            if (modelForPack.Meshes.Count > 0 && modelForPack.Meshes[0].Materials.Count > 0)
+            {
+                pack.Material = modelForPack.Meshes[0].Materials[0];
+            }
+            _animationPacks[packKey] = pack;
+            Console.WriteLine($"[ModelManager] Registered in-memory AssetPack '{packId}' (render data duplicated to pack key)");
+            return packId;
+        }
+        public void LoadAnimationPack(string packPath)
+        {
+            if (string.IsNullOrEmpty(packPath) || !File.Exists(packPath))
+                return;
+            // Use the folder name (which is the real packId) as the key, NOT the json filename
+            string packFolder = Path.GetDirectoryName(packPath);
+            string key = Path.GetFileName(packFolder).ToLower(); // e.g. "man_mesh_pack"
+            if (_animationPacks.ContainsKey(key))
+                return;
+            string json = File.ReadAllText(packPath);
+            var pack = JsonSerializer.Deserialize<AnimationPack>(json);
+            _animationPacks[key] = pack;
+            string resolvedFBXPath = ResolveSourceFBXPath(pack.SourceFBXPath, packPath);
+            if (!string.IsNullOrEmpty(resolvedFBXPath) && File.Exists(resolvedFBXPath))
+            {
+                LoadModel(resolvedFBXPath);
+                // === CRITICAL: ensure the model is also registered under the pack key (same as RegisterFBXAsPackInMemory) ===
+                string originalKey = Path.GetFileNameWithoutExtension(resolvedFBXPath).ToLower();
+                if (_models.TryGetValue(originalKey, out var model))
+                    _models[key] = model;
+                if (_modelData.TryGetValue(originalKey, out var data))
+                    _modelData[key] = data;
+                if (_forests.TryGetValue(originalKey, out var forest))
+                    _forests[key] = forest;
+                if (_fbxDirs.TryGetValue(originalKey, out var dir))
+                    _fbxDirs[key] = dir;
+                Console.WriteLine($"[ModelManager] Loaded render data for pack '{key}' from source FBX: {resolvedFBXPath}");
+            }
+            else
+            {
+                Console.WriteLine($"[ModelManager] WARNING: Could not resolve FBX for pack '{key}'. SourceFBXPath='{pack.SourceFBXPath}', resolved='{resolvedFBXPath ?? "null"}'");
+            }
+        }
+        /// <summary>
+        /// Resolves SourceFBXPath (which may be "./filename.fbx") relative to the directory containing assetpack.json.
+        /// This is the correct, portable design for asset packs.
+        /// </summary>
+        private string ResolveSourceFBXPath(string sourcePath, string packJsonPath)
+        {
+            if (string.IsNullOrEmpty(sourcePath)) return null;
+            if (Path.IsPathRooted(sourcePath)) return Path.GetFullPath(sourcePath);
+            string packDir = Path.GetDirectoryName(packJsonPath);
+            if (string.IsNullOrEmpty(packDir)) return sourcePath;
+            // Strip leading "./", "/", "\"
+            string clean = sourcePath.TrimStart('.', '/', '\\').TrimStart('/', '\\');
+            string candidate = Path.Combine(packDir, clean);
+            return Path.GetFullPath(candidate);
+        }
+        public void MaterializeAssetPack(string packKey, string projectAssetsDir)
+        {
+            string key = packKey.ToLower();
+            if (!_animationPacks.TryGetValue(key, out var pack) || string.IsNullOrEmpty(pack.SourceFBXPath) || !File.Exists(pack.SourceFBXPath))
+                return;
+            CreateAssetPackFromFBX(pack.SourceFBXPath, projectAssetsDir, pack.Id);
+            Console.WriteLine($"[ModelManager] Materialized asset pack '{pack.Id}' to Assets/{pack.Id}/ (including textures)");
+        }
+        public void CreateAssetPackFromFBX(string fbxPath, string packsDirectory, string packId = null)
+        {
+            if (!File.Exists(fbxPath)) throw new FileNotFoundException("FBX not found", fbxPath);
+            if (string.IsNullOrEmpty(packId))
+                packId = Path.GetFileNameWithoutExtension(fbxPath).ToLower() + "_pack";
+            string packFolder = Path.Combine(packsDirectory, packId);
+            Directory.CreateDirectory(packFolder);
+            // Copy FBX
+            string fbxName = Path.GetFileName(fbxPath);
+            string destFBX = Path.Combine(packFolder, fbxName);
+            if (!File.Exists(destFBX))
+                File.Copy(fbxPath, destFBX, true);
+            // Copy entire texture folder (.fbm) if it exists (existing behavior preserved)
+            string fbmSource = Path.Combine(Path.GetDirectoryName(fbxPath), Path.GetFileNameWithoutExtension(fbxPath) + ".fbm");
+            if (Directory.Exists(fbmSource))
+            {
+                string fbmDest = Path.Combine(packFolder, Path.GetFileName(fbmSource));
+                CopyDirectory(fbmSource, fbmDest);
+                Console.WriteLine($"[ModelManager] Copied texture folder: {fbmSource} → {fbmDest}");
+            }
+            // === Collect and copy ALL external textures referenced in parsed FBX materials ===
+            FBXFileForest forest = FBXParser.Load(fbxPath);
+            FBXModel model = FBXParser.BuildModelFromForest(forest);
+            string originalFbxDir = Path.GetDirectoryName(fbxPath);
+            int copiedTextureCount = CollectAndCopyReferencedTextures(model, originalFbxDir, packFolder);
+            Console.WriteLine($"[ModelManager] Collected and copied {copiedTextureCount} external texture files referenced by materials (from parsed FBXModel)");
 
+            // Build lightweight manifest
+            var pack = new AnimationPack(packId, packId)
+            {
+                SourceFBXPath = "./" + fbxName,
+                SourceSkeletonPath = "./" + fbxName
+            };
+            pack.Animations = model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
+            if (model.Skeleton != null)
+            {
+                for (int i = 0; i < model.Skeleton.Bones.Count; i++)
+                {
+                    pack.BoneNameToIndex[model.Skeleton.Bones[i].Name] = i;
+                }
+            }
+            // Material (with TextureSlots) is now part of the pack manifest
+            if (model.Meshes.Count > 0 && model.Meshes[0].Materials.Count > 0)
+            {
+                pack.Material = model.Meshes[0].Materials[0];
+            }
+            string json = JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true });
+            string jsonPath = Path.Combine(packFolder, "assetpack.json");
+            File.WriteAllText(jsonPath, json);
+            Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {packFolder} (Id: {packId}) with FBX + textures + manifest + Material (world-aligned slots)");
+        }
+        /// <summary>
+        /// Traverses the fully-parsed FBXModel and copies every external texture referenced by any material.
+        /// Preserves the exact relative directory structure from the original FBX folder.
+        /// Returns the number of textures copied.
+        /// </summary>
+        private int CollectAndCopyReferencedTextures(FBXModel model, string originalFbxDir, string packFolder)
+        {
+            if (model == null || string.IsNullOrEmpty(originalFbxDir)) return 0;
+            HashSet<string> copiedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            int copiedCount = 0;
+            foreach (var mesh in model.Meshes)
+            {
+                foreach (var mat in mesh.Materials)
+                {
+                    foreach (var texEntry in mat.Textures)
+                    {
+                        string texPath = texEntry.Value?.Path;
+                        if (string.IsNullOrEmpty(texPath) || texPath.StartsWith("embedded")) continue;
+                        string fullOriginalPath = Path.Combine(originalFbxDir, texPath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                        if (!File.Exists(fullOriginalPath) || copiedPaths.Contains(fullOriginalPath)) continue;
+                        string relativeInPack = Path.GetRelativePath(originalFbxDir, fullOriginalPath);
+                        string destPath = Path.Combine(packFolder, relativeInPack);
+                        Directory.CreateDirectory(Path.GetDirectoryName(destPath));
+                        File.Copy(fullOriginalPath, destPath, true);
+                        copiedPaths.Add(fullOriginalPath);
+                        copiedCount++;
+                        Console.WriteLine($"[ModelManager] Copied texture: {texPath} → {relativeInPack}");
+                    }
+                }
+            }
+            return copiedCount;
+        }
+        private static void CopyDirectory(string sourceDir, string targetDir)
+        {
+            Directory.CreateDirectory(targetDir);
+            foreach (FileInfo fi in new DirectoryInfo(sourceDir).GetFiles())
+            {
+                string targetFile = Path.Combine(targetDir, fi.Name);
+                fi.CopyTo(targetFile, true);
+            }
+            foreach (DirectoryInfo diSourceSubDir in new DirectoryInfo(sourceDir).GetDirectories())
+            {
+                CopyDirectory(diSourceSubDir.FullName, Path.Combine(targetDir, diSourceSubDir.Name));
+            }
+        }
         public void AttachSkeleton(string targetKey, string skeletonPath)
         {
             if (!_models.ContainsKey(targetKey))
@@ -83,7 +270,6 @@ namespace SiegeEngine.Core.AssetParsing
             _models[targetKey].HasSkin = true;
             UpdateModelData(targetKey);
         }
-
         public void AttachAnimation(string targetKey, string animPath)
         {
             if (!_models.ContainsKey(targetKey))
@@ -101,25 +287,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             _models[targetKey].Animations.AddRange(anims);
         }
-
-        public void LoadAnimationPack(string packPath)
-        {
-            string key = Path.GetFileNameWithoutExtension(packPath).ToLower();
-            if (_animationPacks.ContainsKey(key)) return;
-            FBXFileForest forest = FBXParser.Load(packPath);
-            FBXModel model = FBXParser.BuildModelFromForest(forest);
-            var pack = new AnimationPack(key, key);
-            pack.Animations = model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
-            if (model.Skeleton != null)
-            {
-                for (int i = 0; i < model.Skeleton.Bones.Count; i++)
-                {
-                    pack.BoneNameToIndex[model.Skeleton.Bones[i].Name] = i;
-                }
-            }
-            _animationPacks[key] = pack;
-        }
-
         public void AttachAnimationPack(string targetModelKey, string packId)
         {
             if (!_models.ContainsKey(targetModelKey))
@@ -133,35 +300,29 @@ namespace SiegeEngine.Core.AssetParsing
             }
             _models[targetModelKey].Animations.AddRange(pack.Animations);
         }
-
         public bool TryGetAnimationPack(string packId, out AnimationPack pack)
         {
             return _animationPacks.TryGetValue(packId.ToLower(), out pack);
         }
-
         public void AttachBlendStack(string targetModelKey, AnimationBlendStack stack)
         {
             if (stack == null || string.IsNullOrEmpty(targetModelKey)) return;
             string key = targetModelKey.ToLower();
             if (!_models.ContainsKey(key)) return;
-
             var uniquePaths = stack.Clips
                 .Where(c => !string.IsNullOrEmpty(c.AnimationPath))
                 .Select(c => c.AnimationPath)
                 .Distinct()
                 .ToList();
-
             foreach (var animPath in uniquePaths)
             {
                 AttachAnimation(targetModelKey, animPath);
             }
-
             if (!string.IsNullOrEmpty(stack.SharedSkeletonPath))
             {
                 AttachSkeleton(targetModelKey, stack.SharedSkeletonPath);
             }
         }
-
         private void UpdateModelData(string key)
         {
             if (!_models.ContainsKey(key) || !_fbxDirs.ContainsKey(key) || !_forests.ContainsKey(key))
@@ -175,7 +336,6 @@ namespace SiegeEngine.Core.AssetParsing
             ModelData modelData = SetupModelData(model, fbxDir, forest);
             _modelData[key] = modelData;
         }
-
         private unsafe ModelData SetupModelData(FBXModel model, string fbxDir, FBXFileForest forest)
         {
             var modelData = new ModelData();
@@ -327,7 +487,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return modelData;
         }
-
         private (uint, byte) LoadEmbeddedTexture(byte[] textureData, string textureName, int wrapS, int wrapT)
         {
             string cacheKey = "embedded:" + textureName.ToLowerInvariant();
@@ -342,7 +501,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return res;
         }
-
         private (uint, byte) LoadExternalTexture(string texturePath, string fbxDir, int wrapS, int wrapT)
         {
             if (string.IsNullOrEmpty(texturePath)) return (0, 0);
@@ -364,7 +522,6 @@ namespace SiegeEngine.Core.AssetParsing
             }
             return res;
         }
-
         private static void SmoothNormals(FBXModel model)
         {
             foreach (var mesh in model.Meshes)
@@ -409,7 +566,6 @@ namespace SiegeEngine.Core.AssetParsing
                 }
             }
         }
-
         private static void ComputeTangents(MeshData mesh)
         {
             Vector3[] tangents = new Vector3[mesh.Vertices.Count];
@@ -473,13 +629,11 @@ namespace SiegeEngine.Core.AssetParsing
                 mesh.Vertices[i] = newVertex;
             }
         }
-
         public bool TryGetModel(string key, out FBXModel model)
         {
             key = key.ToLower();
             return _models.TryGetValue(key, out model);
         }
-
         public bool TryGetModelData(string key, out ModelData modelData)
         {
             key = key.ToLower();

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Rendering
+﻿// Folder: SiegeEngine/Core/Rendering
 // File: ModelRenderer.cs
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -7,6 +7,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.Shaders;
 using System;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class ModelRenderer // marked unsafe to satisfy any potential fixed blocks in future or from copy-paste
@@ -30,7 +31,8 @@ namespace SiegeEngine.Core.Rendering
             if (!modelManager.TryGetModelData(modelKey, out var modelData)) return;
             Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
             Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
-            Matrix4x4 modelMatrix = rotation * translation;
+            Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+            Matrix4x4 modelMatrix = scaleMat * rotation * translation;
             bool hasBones = modelComp.Model.Skeleton != null && modelComp.Model.Skeleton.Bones.Count > 0;
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
             shader.Use();
@@ -44,6 +46,20 @@ namespace SiegeEngine.Core.Rendering
             shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
+
+            // New world-aligned material support
+            var mat = modelComp.Material ?? new Material();
+            shader.SetUniform("uHasWorldAligned", mat.TextureSlots.Count > 0 ? 1 : 0);
+            for (int i = 0; i < Math.Min(mat.TextureSlots.Count, 4); i++)
+            {
+                var slot = mat.TextureSlots[i];
+                shader.SetUniform($"uMappingMode[{i}]", (int)slot.MappingMode);
+                shader.SetUniform($"uTiling[{i}]", slot.Tiling.X, slot.Tiling.Y);   // now supported
+                shader.SetUniform($"uOffset[{i}]", slot.Offset.X, slot.Offset.Y);   // now supported
+                shader.SetUniform($"uRotation[{i}]", slot.Rotation);
+                shader.SetUniform($"uBlendSharpness[{i}]", slot.BlendSharpness);
+            }
+
             if (hasBones)
             {
                 var globals = modelComp.Model.Skeleton.ComputeGlobalTransforms();
@@ -111,8 +127,6 @@ namespace SiegeEngine.Core.Rendering
         }
 
         // New minimal overload for AnimationViewerPanel / ModelViewerScene (viewer context)
-        // Uses identity transform by default, accepts pre-computed bone matrices from the viewer,
-        // and re-uses the exact same shader setup + texture binding + draw logic.
         public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix = default, Matrix4x4[] boneMatrices = null, Matrix3x3[] normalMatrices = null)
         {
             if (modelData == null) return;
@@ -132,6 +146,9 @@ namespace SiegeEngine.Core.Rendering
             shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
+
+            // World-aligned support (default material for viewer)
+            shader.SetUniform("uHasWorldAligned", 0);
 
             if (hasBones)
             {

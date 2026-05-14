@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.Rendering
+// File: ShaderProgram.cs
+using SiegeEngine.Core.ContextManagement;
 using System;
 using System.Numerics;
 using SiegeEngine.Core.Definitions;
@@ -108,6 +110,20 @@ namespace SiegeEngine.Core.Rendering
                 throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
             _renderContext.Uniform4(location, x, y, z, w);
         }
+
+        // NEW overload for vec2 (used by Tiling / Offset)
+        public void SetUniform(string name, float x, float y)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name))
+                throw new ArgumentNullException(nameof(name));
+            int location = _renderContext.GetUniformLocation(_program, name);
+            if (location == -1)
+                throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
+            _renderContext.Uniform2(location, x, y);
+        }
+
         public unsafe void SetMatrix4(string name, Matrix4x4 matrix)
         {
             if (_disposed)

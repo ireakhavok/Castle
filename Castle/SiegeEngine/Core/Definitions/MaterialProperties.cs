@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core
+// File: Definitions/MaterialProperties.cs
+using System;
 
 namespace SiegeEngine.Core.Definitions
 {

@@ -30,6 +30,7 @@ namespace Citadel.Server
         private const float GridCellSize = 10f;
         private readonly Queue<IEvent> _networkEventQueue = new Queue<IEvent>();
         private readonly bool _isEditor;
+        private int _nextEntityId = 1;  // FIXED: track next ID server-side for authoritative placement
 
         public GameServer(EventBus eventBus, NetworkManager networkManager = null, bool isEditor = false)
         {
@@ -64,6 +65,19 @@ namespace Citadel.Server
 
         public void AddEntity(Entity entity)
         {
+            if (entity == null) return;
+
+            // FIXED: robust ID assignment (prevents duplicates after placement or any sync)
+            bool isDuplicate = _entities.Any(e => e.Id == entity.Id && entity.Id > 0);
+            if (entity.Id <= 0 || isDuplicate)
+            {
+                entity.Id = _nextEntityId++;
+            }
+            else
+            {
+                _nextEntityId = Math.Max(_nextEntityId, entity.Id + 1);
+            }
+
             _entities.Add(entity);
             UpdateSpatialGrid(entity);
             Console.WriteLine($"GameServer: Added entity {entity.Id} of type {entity.Type}");
@@ -209,18 +223,14 @@ namespace Citadel.Server
             Entity hitEntity = null;
             foreach (var entity in GetNearbyEntities(start))
             {
-                if (entity.GetComponent<PhysicsComponent>() != null)
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null)
                 {
-                    var physics = entity.GetComponent<PhysicsComponent>();
-                    Vector3 min = physics.Position - physics.Size / 2;
-                    Vector3 max = physics.Position + physics.Size / 2;
-                    if (RayAABBIntersect(start, direction, min, max, out float distance))
+                    Vector3 dummyHitPoint;
+                    if (physics.RayIntersects(start, direction, out float distance, out dummyHitPoint) && distance < closestDistance && distance <= maxDistance)
                     {
-                        if (distance < closestDistance && distance <= maxDistance)
-                        {
-                            closestDistance = distance;
-                            hitEntity = entity;
-                        }
+                        closestDistance = distance;
+                        hitEntity = entity;
                     }
                 }
             }
@@ -236,33 +246,6 @@ namespace Citadel.Server
                 Console.WriteLine($"GameServer: Raycast hit entity {hitEntity.Id} at {result.HitPoint}, Distance: {result.Distance}, Density: {result.Material.Density}");
             }
             return result;
-        }
-
-        private bool RayAABBIntersect(Vector3 rayOrigin, Vector3 rayDirection, Vector3 boxMin, Vector3 boxMax, out float distance)
-        {
-            distance = 0f;
-            float tmin = float.MinValue;
-            float tmax = float.MaxValue;
-            for (int i = 0; i < 3; i++)
-            {
-                if (Math.Abs(rayDirection[i]) < 1e-6)
-                {
-                    if (rayOrigin[i] < boxMin[i] || rayOrigin[i] > boxMax[i])
-                        return false;
-                }
-                else
-                {
-                    float ood = 1.0f / rayDirection[i];
-                    float t1 = (boxMin[i] - rayOrigin[i]) * ood;
-                    float t2 = (boxMax[i] - rayOrigin[i]) * ood;
-                    if (t1 > t2) (t1, t2) = (t2, t1);
-                    tmin = Math.Max(tmin, t1);
-                    tmax = Math.Min(tmax, t2);
-                    if (tmin > tmax) return false;
-                }
-            }
-            distance = tmin >= 0 ? tmin : 0;
-            return true;
         }
 
         private Vector3 ApproximateNormal(Vector3 hitPoint, PhysicsComponent physics)
@@ -289,7 +272,6 @@ namespace Citadel.Server
         private void OnEntityPlaced(EntityPlacedEvent e)
         {
             var entity = new Entity { Id = e.EntityId, Type = e.EntityType };
-
             var transform = entity.GetComponent<TransformComponent>();
             transform.Position = e.Position with { Z = 0f };
             transform.Rotation = e.Rotation;

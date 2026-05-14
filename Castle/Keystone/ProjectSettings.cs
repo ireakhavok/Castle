@@ -1,8 +1,11 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: Keystone
+// File: ProjectSettings.cs
+using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection.Emit;
+
 namespace Keystone
 {
     public class ProjectSettings
@@ -30,6 +33,9 @@ namespace Keystone
         public string CurrentSceneName { get; private set; }
         public string CurrentHeightmapPath { get; private set; }
         public Level CurrentLevel { get; private set; }
+
+        // Stage 1: Level is now the single authoritative in-memory container for the active scene.
+        // All editor save/load flows route through this reference. ProjectSettings remains a thin coordination layer.
         public void SetCurrentTerrain(SceneData sceneData, float[,] heightmap, string sceneName = null, string heightmapPath = null)
         {
             CurrentSceneData = sceneData;
@@ -42,15 +48,18 @@ namespace Keystone
             }
             Console.WriteLine($"[ProjectSettings] SetCurrentTerrain - shared heightmap reference set ({heightmap?.GetLength(0)}x{heightmap?.GetLength(1)}) for scene '{sceneName ?? "null"}'");
         }
+
         public void SetCurrentLevel(Level level)
         {
             CurrentLevel = level;
             Console.WriteLine($"[ProjectSettings] SetCurrentLevel - Level '{level?.Name ?? "null"}' is now the active persistent container");
         }
+
         public float[,] GetUnsavedHeightmap(string sceneName)
         {
             return _unsavedHeightmaps.TryGetValue(sceneName, out var map) ? map : null;
         }
+
         public void StoreUnsavedHeightmap(string sceneName, float[,] heightmap)
         {
             if (sceneName != null && heightmap != null)
@@ -58,7 +67,9 @@ namespace Keystone
                 _unsavedHeightmaps[sceneName] = heightmap;
             }
         }
+
         public List<string> GetUnsavedHeightmapKeys() => new List<string>(_unsavedHeightmaps.Keys);
+
         public string GetLayoutTempPath(string projectPath)
         {
             if (string.IsNullOrEmpty(projectPath)) return null;

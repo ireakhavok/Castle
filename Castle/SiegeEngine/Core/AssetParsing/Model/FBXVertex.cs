@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine.Core
-// File: AssetParsing.V2/Model/FBXVertex.cs
+﻿// Folder: SiegeEngine.Core.AssetParsing.Model
+// File: FBXVertex.cs
 using System;
 using System.Numerics;
 namespace SiegeEngine.Core.AssetParsing.Model
@@ -17,9 +17,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public int BoneID3;
         public Vector4 Weights;
         public float MatIdx;
-        public FBXVertex(float x, float y, float z, float nx, float ny, float nz, float u, float v, float matIdx, float tx = 0, float ty = 0, float tz = 0,
-        int boneID0 = -1, int boneID1 = -1, int boneID2 = -1, int boneID3 = -1,
-        float weight0 = 0, float weight1 = 0, float weight2 = 0, float weight3 = 0)
+
+        public FBXVertex(float x, float y, float z, float nx, float ny, float nz, float u, float v, float matIdx, float tx = 0, float ty = 0, float tz = 0, int boneID0 = -1, int boneID1 = -1, int boneID2 = -1, int boneID3 = -1, float weight0 = 0, float weight1 = 0, float weight2 = 0, float weight3 = 0)
         {
             Position = new Vector3(x, y, z);
             Normal = new Vector3(nx, ny, nz);

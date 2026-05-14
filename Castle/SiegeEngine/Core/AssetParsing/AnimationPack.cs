@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core.AssetParsing.Model
+// File: AnimationPack.cs
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -13,6 +15,13 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public List<AnimationClipEntry> Clips { get; set; } = new List<AnimationClipEntry>();
         public Dictionary<string, int> BoneNameToIndex { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         public Vector3 DefaultBlendParams { get; set; } = Vector3.Zero;
+
+        public string SourceFBXPath { get; set; }
+        public string SourceSkeletonPath { get; set; }
+
+        // Material data (including world-aligned TextureSlots) is now part of the pack manifest
+        // This allows full save/load of material configuration exactly like animation data
+        public Material Material { get; set; }
 
         public AnimationPack() { }
 

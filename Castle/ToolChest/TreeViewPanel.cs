@@ -65,22 +65,33 @@ namespace ToolChest
         {
             if (e.Hook == "OutlinerHierarchyUpdate")
             {
-                var provider = OutlinerCoordinator.Instance.GetLastActiveProvider();
-                if (provider != null)
-                {
-                    _currentRootObject = provider.GetObjectForNode("root");
-                    if (_currentRootObject == null)
-                        _currentRootObject = provider.GetObjectForNode("anim-root");
-                }
                 RefreshHierarchy();
             }
         }
         private void RefreshHierarchy()
         {
             _nodes.Clear();
-            _expandedNodeIds.Clear();
-            if (_currentRootObject != null)
+            var provider = OutlinerCoordinator.Instance.GetLastActiveProvider();
+            if (provider != null)
             {
+                // Use live hierarchy from provider (SceneEditorPanel now returns real entities)
+                string[] expandedIds;
+                string[] selectedIds;
+                var liveNodes = OutlinerCoordinator.Instance.GetCurrentHierarchy(out expandedIds, out selectedIds);
+
+                // Build internal dictionary from provider nodes
+                foreach (var node in liveNodes)
+                {
+                    _nodes[node.Id] = node;
+                    if (expandedIds.Contains(node.Id))
+                        node.IsExpanded = true;
+                    if (selectedIds.Contains(node.Id))
+                        _selectedNodeId = node.Id;
+                }
+            }
+            else if (_currentRootObject != null)
+            {
+                // Fallback to reflection for other panels
                 var rootNode = BuildReflectionNode(_currentRootObject, "root", _currentRootObject.GetType().Name);
                 _nodes["root"] = rootNode;
             }
@@ -166,8 +177,6 @@ namespace ToolChest
             string selectedClass = node.Id == _selectedNodeId ? " selected" : "";
             var sb = new StringBuilder();
             sb.Append($"<li class=\"node{selectedClass}\">");
-            // data-hook and data-node-id now live on the interactive .node-row div
-            // so clicks anywhere in the header row are correctly detected by the UI system
             sb.Append($"<div class=\"node-row\" data-node-id=\"{node.Id}\" data-hook=\"Select:{node.Id}\">");
             sb.Append($"<span class=\"toggle\" data-hook=\"Toggle:{node.Id}\">{toggle}</span>");
             sb.Append($"<span class=\"label\">{node.Icon} {node.Label}</span>");

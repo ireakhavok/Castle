@@ -85,10 +85,12 @@ Folder: AssetParsing
     - Methods:
       - double[] ParseVertices(BaseNode geom)
       - int[] ParsePolygonVertexIndices(BaseNode geom)
-      - Vector3 CalculateBounds(List<FBXVertex> vertices)
+      - Vector3 CalculateBounds( FBXModel model, List<FBXVertex> vertices)
 - File: FBXModel.cs
   - Class: FBXModel (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Methods:
+      - Vector3 GetBoundingSize()
 - File: FBXParser.cs
   - Class: FBXParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text
@@ -165,21 +167,19 @@ Folder: AssetParsing
       - Vector4 Weights
       - float MatIdx
     - Methods:
-      - constructor FBXVertex(
-        float weight0 = 0, 
-        int boneID0 = -1,  float matIdx,  float nx,  float ny,  float nz,  float tx = 0,  float ty = 0,  float tz = 0,  float u,  float v,  float weight1 = 0,  float weight2 = 0,  float weight3 = 0,  float y,  float z,  int boneID1 = -1,  int boneID2 = -1,  int boneID3 = -1, float x)
+      - constructor FBXVertex( float matIdx,  float nx,  float ny,  float nz,  float tx = 0,  float ty = 0,  float tz = 0,  float u,  float v,  float weight0 = 0,  float weight1 = 0,  float weight2 = 0,  float weight3 = 0,  float y,  float z,  int boneID0 = -1,  int boneID1 = -1,  int boneID2 = -1,  int boneID3 = -1, float x)
 - File: Keyframe.cs
   - Class: Keyframe (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
 - File: Material.cs
   - Class: Material (Namespace: SiegeEngine.Core.AssetParsing.Model)
-    - Dependencies: System, System.Collections.Generic
+    - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: MeshData.cs
   - Class: MeshData (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Collections.Generic, System.Numerics
 - File: ModelManager.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.AssetParsing)
-    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
 - File: NodeParser.cs
   - Class: NodeParser (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.IO, System.IO.Compression, System.Text
@@ -360,18 +360,18 @@ Folder: Definitions
   - Class: DockingMode (Namespace: SiegeEngine.Core.Definitions)
 - File: Entity.cs
   - Class: Entity (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
     - Methods:
       - constructor Entity()
       - void SetParent(Entity parent)
       - void AddChild(Entity child)
       - EntityData ToData()
       - Entity FromData(EntityData data)
-        - Calls: Entity
+        - Calls: Entity, PhysicsComponent, modelComp.Model.GetBoundingSize
       - constructor Entity()
 - File: EntityData.cs
-  - Class: EntityData (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.AssetParsing, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
+  - Class: MaterialData (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, System.Collections.Generic, System.Numerics, System.Text.Json, System.Text.Json.Serialization
 - File: GameMode.cs
   - Class: GameMode (Namespace: SiegeEngine.Core.Definitions)
 - File: InputEnums.cs
@@ -382,7 +382,7 @@ Folder: Definitions
     - Dependencies: System, System.Collections.Generic
 - File: Level.cs
   - Class: LevelDto (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.Events, System, System.Collections.Generic, System.Numerics, System.Text.Json
+    - Dependencies: SiegeEngine.Core.Events, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
 - File: LevelData.cs
   - Class: LevelData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
@@ -443,6 +443,7 @@ Folder: Definitions
     - Methods:
       - constructor PhysicsComponent()
       - void Break()
+      - bool RayIntersects( Vector3 rayDir,  out Vector3,  out float, Vector3 rayOrigin)
 - File: PreviewComponent.cs
   - Class: PreviewComponent (Namespace: SiegeEngine.Core.Definitions)
     - Inherits: IComponent
@@ -582,6 +583,18 @@ Folder: Events
       - string Type
     - Methods:
       - constructor EntityRemovedEvent(int id)
+      - byte[] Serialize()
+      - void Deserialize(byte[] data)
+- File: EntitySelectedEvent.cs
+  - Class: EntitySelectedEvent (Namespace: SiegeEngine.Core.Events)
+    - Inherits: IEvent
+    
+    - Dependencies: System, System.Collections.Generic, System.Numerics, System.Text.Json
+    - Fields:
+      - string Type
+    - Methods:
+      - constructor EntitySelectedEvent()
+      - constructor EntitySelectedEvent( bool additive = false, int entityId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: EventBus.cs
@@ -1055,16 +1068,19 @@ Folder: Networking
   - Class: ClientGameServerProxy (Namespace: SiegeEngine.Core.Networking)
     - Inherits: IGameServer
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - EventBus _eventBus
       - List<Entity> _entities
+      - int _nextEntityId
     - Methods:
       - constructor ClientGameServerProxy(EventBus eventBus)
       - void AddEntity(Entity entity)
         - Calls: EntityAddedEvent
       - void RemoveEntity(int id)
         - Calls: EntityRemovedEvent
+      - void ClearEntities()
+        - Calls: _entities.Clear
       - IReadOnlyList<Entity> GetEntities()
       - Entity GetEntityById(int id)
       - void AddSystem(GameSystem system)
@@ -1215,7 +1231,10 @@ Folder: Rendering
       - string FragmentShaderSource
     - Methods:
       - void main()
+      - vec2 WorldPlanarUV( int axis,  vec2 offset,  vec2 tiling,  vec3 normal, vec3 worldPos)
+      - vec3 TriplanarSample( float sharpness,  vec2 offset,  vec2 tiling,  vec3 normal,  vec3 worldPos, sampler2D tex)
       - void main()
+        - Calls: TriplanarSample, WorldPlanarUV
 - File: OrthoProjection.cs
   - Class: OrthoProjection (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IProjectionProvider
@@ -1315,6 +1334,8 @@ Folder: Rendering
         - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform3
       - void SetUniform( float w,  float x,  float y,  float z, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform4
+      - void SetUniform( float x,  float y, string name)
+        - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform2
       - void SetMatrix4( Matrix4x4 matrix, string name)
         - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
       - void SetMatrix4Array( Matrix4x4[] matrices, string name)
@@ -1360,7 +1381,7 @@ Folder: Rendering
       - HashSet<byte> ValidTgaTypes
     - Methods:
       - return LoadTextureFromBitmap()
-        - Calls: renderContext.BindTexture, renderContext.DeleteTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
+        - Calls: renderContext.BindTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
 - File: UIQuadRenderer.cs
   - Class: UIQuadRenderer (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
@@ -2007,6 +2028,7 @@ Folder: UI
       - JSDocument _document
       - bool _needsVerticalScrollbar
       - UIInteractionLayer _interactionLayer
+      - UIQuadRenderer QuadRenderer
       - TextRenderer TextRenderer
     - Methods:
       - constructor UIOverlay( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
@@ -2111,13 +2133,13 @@ SiegeEngine.Core.Definitions.BlendedAnimationComponent
 SiegeEngine.Core.Definitions.CameraType
 SiegeEngine.Core.Definitions.DockingMode
 SiegeEngine.Core.Definitions.Entity
-SiegeEngine.Core.Definitions.EntityData
 SiegeEngine.Core.Definitions.EnvironmentSettings
 SiegeEngine.Core.Definitions.GameMode
 SiegeEngine.Core.Definitions.LevelData
 SiegeEngine.Core.Definitions.LevelDto
 SiegeEngine.Core.Definitions.LightComponent
 SiegeEngine.Core.Definitions.LightType
+SiegeEngine.Core.Definitions.MaterialData
 SiegeEngine.Core.Definitions.MaterialProperties
 SiegeEngine.Core.Definitions.Matrix3x3
 SiegeEngine.Core.Definitions.ModInfo
@@ -2138,6 +2160,7 @@ SiegeEngine.Core.Events.EntityAddedEvent
 SiegeEngine.Core.Events.EntityMovedEvent
 SiegeEngine.Core.Events.EntityPlacedEvent
 SiegeEngine.Core.Events.EntityRemovedEvent
+SiegeEngine.Core.Events.EntitySelectedEvent
 SiegeEngine.Core.Events.ExitEditorEvent
 SiegeEngine.Core.Events.GenericEvent
 SiegeEngine.Core.Events.ItemPickedUpEvent
