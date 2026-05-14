@@ -42,6 +42,37 @@ namespace CastleBuilder
                 _parent.HandleDataHook(hook);
             }
         }
+
+        // === CLEAN BOX SELECT VISUAL OVERLAY (drawn AFTER 3D content in LayeredUIRenderer) ===
+        private class SelectionBoxOverlay : ICustomOverlay
+        {
+            private readonly SceneEditorPanel _parent;
+            public SelectionBoxOverlay(SceneEditorPanel parent) { _parent = parent; }
+
+            public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight)
+            {
+                if (!_parent._isBoxSelecting) return;
+
+                float dragDist = Vector2.Distance(_parent._boxStart, _parent._boxEnd);
+                if (dragDist < SceneEditorPanel.MinDragDistance) return;
+
+                float headerHeight = _parent.HasTitleBar ? _parent.HeaderHeight : 0f;
+                float x = Math.Min(_parent._boxStart.X, _parent._boxEnd.X);
+                float y = Math.Min(_parent._boxStart.Y, _parent._boxEnd.Y);
+                float w = Math.Abs(_parent._boxEnd.X - _parent._boxStart.X);
+                float h = Math.Abs(_parent._boxEnd.Y - _parent._boxStart.Y);
+
+                // Semi-transparent fill
+                quadRenderer.DrawQuad(x, y + headerHeight, w, h, new Vector4(0.2f, 0.6f, 1f, 0.3f), panelWidth, panelHeight);
+                // Crisp border lines
+                Vector4 borderColor = new Vector4(0.2f, 0.6f, 1f, 1f);
+                quadRenderer.DrawLine(x, y + headerHeight, x + w, y + headerHeight, 2f, borderColor, panelWidth, panelHeight);
+                quadRenderer.DrawLine(x, y + headerHeight + h, x + w, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
+                quadRenderer.DrawLine(x, y + headerHeight, x, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
+                quadRenderer.DrawLine(x + w, y + headerHeight, x + w, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
+            }
+        }
+
         private EditorScene _editorScene;
         private bool _cameraMode = false;
         private ModelManager _modelManager;
@@ -49,13 +80,11 @@ namespace CastleBuilder
         private bool _pendingSceneSelectorUpdate = false;
         private List<int> _selectedEntityIds = new List<int>();
         private bool _wasRightPressedLastFrame = false;
-
         // === BOX SELECT SUPPORT (RIGHT-CLICK + DRAG = box, RIGHT-CLICK alone = single select) ===
         private bool _isBoxSelecting = false;
         private Vector2 _boxStart = Vector2.Zero;
         private Vector2 _boxEnd = Vector2.Zero;
         private const float MinDragDistance = 5f;
-
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -66,6 +95,9 @@ namespace CastleBuilder
             BaseHeight = 720f;
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
             _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
+
+            // Register the clean overlay that draws AFTER 3D content
+            CustomOverlays.Add(new SelectionBoxOverlay(this));
         }
         public string ContentType => "SceneEditor";
         protected override UIOverlay CreateUIOverlay()
@@ -264,11 +296,9 @@ namespace CastleBuilder
                 UpdateSceneSelectorUI();
                 Console.WriteLine($"[SceneEditorPanel.Update] === DEFERRED REFRESH COMPLETE ===");
             }
-
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             bool ctrlPressed = _controlContext.GetKey(_window, Key.LeftControl) == InputAction.Press ||
                                _controlContext.GetKey(_window, Key.RightControl) == InputAction.Press;
-
             // === RIGHT-CLICK + DRAG = BOX SELECT ===
             // Right-click alone (no drag) = single entity selection
             bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
@@ -290,7 +320,6 @@ namespace CastleBuilder
                 _isBoxSelecting = false;
                 float dragDist = Vector2.Distance(_boxStart, _boxEnd);
                 Console.WriteLine($"[SceneEditorPanel] Right mouse release - drag distance = {dragDist:F2} px");
-
                 if (dragDist >= MinDragDistance)
                 {
                     PerformBoxSelection(ctrlPressed);
@@ -322,20 +351,16 @@ namespace CastleBuilder
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-
             // === LEFT-CLICK = only panel focus (BasePanel already handles this) ===
             // Do nothing extra here for entity selection
-
             // === CALL BASE (title-bar drag, resize, UI overlay, etc.) ===
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-
             if (_cameraMode)
             {
                 Vector2 sceneMouse = absMousePos - Position - new Vector2(0, TitleHeight);
                 _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
             }
         }
-
         private void PerformBoxSelection(bool additive)
         {
             float header = HasTitleBar ? HeaderHeight : 0f;
@@ -354,7 +379,6 @@ namespace CastleBuilder
             _eventBus.Publish(evt);
             Console.WriteLine($"[SceneEditorPanel] Box selection completed - {selected.Count} entities (additive: {additive})");
         }
-
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
@@ -424,25 +448,7 @@ namespace CastleBuilder
                     }
                 }
             }
-
-            // === VISUAL BOX SELECT OVERLAY (only during right-drag) ===
-            if (_isBoxSelecting && _uiOverlay?.QuadRenderer != null)
-            {
-                float dragDist = Vector2.Distance(_boxStart, _boxEnd);
-                if (dragDist >= MinDragDistance)
-                {
-                    float headerHeight = HasTitleBar ? HeaderHeight : 0f;
-                    float x = Math.Min(_boxStart.X, _boxEnd.X);
-                    float y = Math.Min(_boxStart.Y, _boxEnd.Y);
-                    float w = Math.Abs(_boxEnd.X - _boxStart.X);
-                    float h = Math.Abs(_boxEnd.Y - _boxStart.Y);
-                    _uiOverlay.QuadRenderer.DrawQuad(x, y + headerHeight, w, h, new Vector4(0.2f, 0.6f, 1f, 0.3f), Size.X, Size.Y);
-                    _uiOverlay.QuadRenderer.DrawLine(x, y + headerHeight, x + w, y + headerHeight, 2f, new Vector4(0.2f, 0.6f, 1f, 1f), Size.X, Size.Y);
-                    _uiOverlay.QuadRenderer.DrawLine(x, y + headerHeight + h, x + w, y + headerHeight + h, 2f, new Vector4(0.2f, 0.6f, 1f, 1f), Size.X, Size.Y);
-                    _uiOverlay.QuadRenderer.DrawLine(x, y + headerHeight, x, y + headerHeight + h, 2f, new Vector4(0.2f, 0.6f, 1f, 1f), Size.X, Size.Y);
-                    _uiOverlay.QuadRenderer.DrawLine(x + w, y + headerHeight, x + w, y + headerHeight + h, 2f, new Vector4(0.2f, 0.6f, 1f, 1f), Size.X, Size.Y);
-                }
-            }
+            // Box visual is now handled cleanly by SelectionBoxOverlay (drawn after 3D in LayeredUIRenderer)
         }
         public override void OnLiveResize(float w, float h)
         {
