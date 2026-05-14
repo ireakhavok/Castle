@@ -1857,6 +1857,7 @@ Folder: Core
       - JSDocument _document
       - bool _needsVerticalScrollbar
       - UIInteractionLayer _interactionLayer
+      - UIQuadRenderer QuadRenderer
       - TextRenderer TextRenderer
     - Methods:
       - constructor UIOverlay( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)

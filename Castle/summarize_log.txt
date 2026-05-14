@@ -356,7 +356,7 @@ Found: CastleBuilder.csproj
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
-Read 17975 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
+Read 21634 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
 Found 18 dependencies
 Found: Events
@@ -424,9 +424,9 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
-Read 22592 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
+Read 26978 chars from: C:\repos\RealmFoundry\Castle\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
-Found 22 dependencies
+Found 23 dependencies
 Found: SceneEditorUI.html
 Found: Citadel
 Listing folder: C:\repos\RealmFoundry\Castle\Citadel
@@ -624,7 +624,7 @@ Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
-Read 24295 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Read 24452 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 15 dependencies
 Found: TerrainCreatorUI.html
@@ -1063,7 +1063,7 @@ Found 6 dependencies
 Found: PhysicsComponent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
-Read 6178 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
+Read 6838 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 2 dependencies
 Found: PreviewComponent.cs
@@ -1869,7 +1869,7 @@ Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 27378 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 27590 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 12 dependencies
 Found: HeirarchySummary.exe

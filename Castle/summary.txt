@@ -169,7 +169,7 @@ Folder: CastleBuilder
   - Class: SceneEditorUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
+    - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
@@ -2285,6 +2285,7 @@ Folder: SiegeEngine
       - constructor PhysicsComponent()
       - void Break()
       - bool RayIntersects( Vector3 rayDir,  out Vector3,  out float, Vector3 rayOrigin)
+        - Calls: Console.WriteLine
 - File: Player.cs
   - Class: Player (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: IComponent
@@ -2950,6 +2951,7 @@ Folder: SiegeEngine
       - JSDocument _document
       - bool _needsVerticalScrollbar
       - UIInteractionLayer _interactionLayer
+      - UIQuadRenderer QuadRenderer
       - TextRenderer TextRenderer
     - Methods:
       - constructor UIOverlay( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
