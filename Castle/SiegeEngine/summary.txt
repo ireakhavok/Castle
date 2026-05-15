@@ -123,7 +123,7 @@ Folder: Core
         - Calls: _uiOverlay.RefreshUI
       - void OnLiveResize( float h, float w)
       - void StartTitleBarDrag(Vector2 mousePos)
-        - Calls: _controlContext.GetTime
+        - Calls: BringToFront, _controlContext.GetTime
       - void ResetDragState()
       - void Close()
         - Calls: ClosePanelEvent
@@ -331,7 +331,7 @@ Folder: Core
   - Class: DesktopDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Inherits: IDockingStrategy
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
     - Fields:
       - DockNode _root
       - List<IPanel> _floatingPanels
@@ -376,6 +376,7 @@ Folder: Core
       - void Render( int winH,  int winW, IRenderContext renderContext)
         - Calls: _ghostRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
       - void ComputeLayout( int winH, int winW)
+      - void BringFloatingPanelToFront(BasePanel panel)
 - File: DivElement.cs
   - Class: DivElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -424,6 +425,7 @@ Folder: Core
       - void AddPanel(IPanel panel)
       - void RemovePanel(IPanel panel)
       - bool HasActiveContent()
+      - void BringFloatingPanelToFront(BasePanel panel)
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
         - Calls: ClampToViewport, ComputeSnapPreview, GetTopmostPanelAt, HandleSinglePanel, PerformLiveResize, _draggingPanel.OnPanelResize, _resizingPanel.OnPanelResize, bp.ResetDragState
@@ -1357,6 +1359,8 @@ Folder: Core
         - Calls: AutoCenterModal, panel.Init
       - void AutoCenterModal(IPanel panel)
         - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
+      - void BringToFront(IPanel panel)
+        - Calls: _router.AddPanel, _router.RemovePanel, desktop.BringFloatingPanelToFront, dynamic.BringFloatingPanelToFront, ide.BringFloatingPanelToFront
       - void Update(float deltaTime)
         - Calls: GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _router.ClearForcedOverdraw
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
