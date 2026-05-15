@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Rendering
+﻿// Folder: SiegeEngine/Core/Rendering
 // File: LayeredUIRenderer.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.UI;
@@ -38,6 +38,7 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 
+            // Backgrounds now receive scroll matrix from UIOverlay.RenderBackgrounds
             if (panel._uiOverlay != null)
             {
                 panel._uiOverlay.RenderBackgrounds(fullW, fullH);
@@ -68,6 +69,7 @@ namespace SiegeEngine.Core.Rendering
             _quadRenderer.DrawQuad(0, panel.Size.Y - bw, panel.Size.X, bw, bc, panel.Size.X, panel.Size.Y);
             _quadRenderer.DrawQuad(0, 0, panel.Size.X, 1.5f, bc, panel.Size.X, panel.Size.Y);
 
+            // Restore full window
             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);

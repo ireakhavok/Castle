@@ -37,10 +37,8 @@ namespace SiegeEngine.Core.UI
         private bool _needsVerticalScrollbar = false;
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
-
         // NEW PUBLIC ACCESSOR FOR OVERLAY DRAWING (used by SceneEditorPanel box select visual)
         public UIQuadRenderer QuadRenderer => _quadRenderer;
-
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
             : this(renderContext, controlContext, window, null)
         {
@@ -512,11 +510,13 @@ namespace SiegeEngine.Core.UI
                 RenderUI(PanelWidth, PanelHeight);
             }
         }
+        // FIXED: Backgrounds now receive the exact same scroll matrix as content
         public virtual void RenderBackgrounds(float w, float h)
         {
             if (_uiRoot != null)
             {
-                _uiRoot.RenderBackgroundOnly(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
+                Matrix4x4 scrollMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
+                _uiRoot.RenderBackgroundOnly(_renderContext, _textRenderer, _quadRenderer, w, h, scrollMatrix);
             }
         }
         public void RecomputeLayout(float w, float h)
