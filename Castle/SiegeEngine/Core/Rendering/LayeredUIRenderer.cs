@@ -38,7 +38,24 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 
-            // Backgrounds now receive scroll matrix from UIOverlay.RenderBackgrounds
+            // BROWSER-LIKE PANEL BACKGROUND FILL (architectural guarantee)
+            // Always fills the exact panel rect BEFORE any scrolled HTML content.
+            // Uses root element's effective background-color (or sensible default).
+            // This eliminates transparent content in floating panels,
+            // ghost/clear areas on scroll, and resize artifacts.
+            // Matches browser root/box background behavior exactly.
+            Vector4 panelBgColor = new Vector4(0.12f, 0.12f, 0.12f, 1f);
+            if (panel._uiOverlay?._uiRoot != null)
+            {
+                var rootStyle = panel._uiOverlay._uiRoot.Style;
+                if (rootStyle.BackgroundColor != Vector4.Zero)
+                {
+                    panelBgColor = rootStyle.BackgroundColor;
+                }
+            }
+            _quadRenderer.DrawQuad(0, 0, panel.Size.X, panel.Size.Y, panelBgColor, panel.Size.X, panel.Size.Y);
+
+            // Backgrounds (CSS-driven HTML root + children) now render on top of the solid fill
             if (panel._uiOverlay != null)
             {
                 panel._uiOverlay.RenderBackgrounds(fullW, fullH);
@@ -54,7 +71,6 @@ namespace SiegeEngine.Core.Rendering
 
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
-
             _renderContext.Disable(_renderContext.Enums.DepthTest);
 
             if (panel.HasTitleBar && panel.chrome != null)

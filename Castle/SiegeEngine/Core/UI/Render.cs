@@ -16,7 +16,6 @@ namespace SiegeEngine.Core.UI
         public virtual void RenderBackgroundOnly(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
-            // ONLY permanent pseudo-states (checked, focus, target). NO hover/active.
             if (Checked && PseudoStyles.TryGetValue("checked", out CssStyle checkedStyle))
                 effectiveStyle = checkedStyle;
             if (IsFocused && PseudoStyles.TryGetValue("focus", out CssStyle focusStyle))
@@ -26,12 +25,11 @@ namespace SiegeEngine.Core.UI
 
             if (effectiveStyle.Display == "none") return;
 
-            // Apply scroll offset to background matrix (same as content)
-            Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
-            if (_needsVerticalScrollbar)
-            {
-                localMatrix *= Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
-            }
+            // ROOT BACKGROUND IS STATIC (full client rect, no scroll offset)
+            Matrix4x4 rootBgMatrix = parentMatrix;
+            Matrix4x4 contentMatrix = _needsVerticalScrollbar
+                ? parentMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0)
+                : parentMatrix;
 
             float backgroundHeight = (_needsVerticalScrollbar && _contentFullHeight > ComputedBackgroundHeight + 0.1f)
                 ? _contentFullHeight
