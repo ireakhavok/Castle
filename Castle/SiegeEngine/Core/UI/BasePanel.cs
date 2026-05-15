@@ -7,6 +7,7 @@ using SiegeEngine.Core.Rendering;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
@@ -55,6 +56,7 @@ namespace SiegeEngine.Core.UI
         public bool IsClosable { get; set; } = false;
         public int RenderOrder { get; set; } = 0;
         public static bool MouseReleasedConsumedThisFrame { get; set; } = false;
+
         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -63,10 +65,12 @@ namespace SiegeEngine.Core.UI
             _eventBus = eventBus;
             _uiOverlay = CreateUIOverlay();
         }
+
         protected virtual UIOverlay CreateUIOverlay()
         {
             return new UIOverlay(_renderContext, _controlContext, _window);
         }
+
         public virtual void Init()
         {
             _uiOverlay.Init();
@@ -83,12 +87,14 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
+
         public virtual bool IsMouseOver(Vector2 absMousePos)
         {
             if (!Visible) return false;
             return absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
                    absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
         }
+
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
@@ -184,11 +190,14 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
             }
         }
+
         public virtual void OnContentFocusGained()
         {
             Console.WriteLine($"[BasePanel] OnContentFocusGained called on {GetType().Name} (default no-op)");
         }
+
         public virtual void ToggleCameraMode() { }
+
         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
         {
             float left = absMousePos.X - Position.X;
@@ -207,6 +216,7 @@ namespace SiegeEngine.Core.UI
             if (bottom < grip) return ResizeHandle.Bottom;
             return ResizeHandle.None;
         }
+
         public void StartResize(Vector2 mousePos, ResizeHandle handle)
         {
             _currentResizeHandle = handle;
@@ -214,6 +224,7 @@ namespace SiegeEngine.Core.UI
             _resizeStartPosition = Position;
             _resizeStartSize = Size;
         }
+
         public virtual void Render()
         {
             if (!Visible) return;
@@ -228,6 +239,7 @@ namespace SiegeEngine.Core.UI
             }
             _layeredRenderer.RenderPanel(this);
         }
+
         protected internal virtual void RenderContentLayer()
         {
             RenderInnerContent();
@@ -236,15 +248,19 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.Render();
             }
         }
+
         protected virtual void RenderInnerContent()
         {
         }
+
         public virtual void Dispose()
         {
             _uiOverlay.Dispose();
             if (chrome != null) chrome.Dispose();
         }
+
         public virtual void Detach() { }
+
         public virtual void OnPanelResize(float w, float h)
         {
             Size = new Vector2(w, h);
@@ -257,24 +273,32 @@ namespace SiegeEngine.Core.UI
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
+
         public virtual void OnLiveResize(float w, float h)
         {
         }
+
         public void StartTitleBarDrag(Vector2 mousePos)
         {
             _isDragging = true;
             _dragOffset = mousePos - Position;
             _dragStartMousePos = mousePos;
             _lastClickTime = _controlContext.GetTime();
+
+            // PROFESSIONAL Z-ORDER GUARANTEE: bring this floating panel to absolute top
+            PanelManager.Current?.BringToFront(this);
         }
+
         public void ResetDragState()
         {
             _isDragging = false;
         }
+
         public void Close()
         {
             _eventBus.Publish(new ClosePanelEvent(this));
         }
+
         public bool IsOverCloseButton(Vector2 mousePos)
         {
             if (!IsClosable || !HasTitleBar) return false;
@@ -282,14 +306,19 @@ namespace SiegeEngine.Core.UI
             return mousePos.X >= closeX && mousePos.X <= Position.X + Size.X &&
                    mousePos.Y >= Position.Y && mousePos.Y <= Position.Y + TitleHeight;
         }
+
         public nint WindowHandle => _window;
+
         protected internal UIQuadRenderer QuadRenderer => _quadRenderer;
+
         public List<ICustomOverlay> CustomOverlays { get; } = new List<ICustomOverlay>();
+
         public virtual void Hide()
         {
             Visible = false;
             Detach();
         }
+
         public virtual void Show()
         {
             Visible = true;

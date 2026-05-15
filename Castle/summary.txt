@@ -166,15 +166,16 @@ Folder: CastleBuilder
       - void HandleDataHook(string hook)
         - Calls: BlueprintManager.SaveProjectAs, ClosePanelEvent, FindElementById
 - File: SceneEditorPanel.cs
-  - Class: SceneEditorUIOverlay (Namespace: CastleBuilder)
-    - Inherits: UIOverlay
+  - Class: SelectionBoxOverlay (Namespace: CastleBuilder)
+    - Inherits: ICustomOverlay
         
     - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
-      - bool HandleUIClick(HtmlElement elem)
-      - void HandleDataHook(string hook)
+      - constructor SelectionBoxOverlay(SceneEditorPanel parent)
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+        - Calls: quadRenderer.DrawLine, quadRenderer.DrawQuad
 
 Folder: Citadel
 - File: EntityDeltaTracker.cs
@@ -742,7 +743,7 @@ Folder: SiegeEngine
         - Calls: _uiOverlay.RefreshUI
       - void OnLiveResize( float h, float w)
       - void StartTitleBarDrag(Vector2 mousePos)
-        - Calls: _controlContext.GetTime
+        - Calls: BringToFront, _controlContext.GetTime
       - void ResetDragState()
       - void Close()
         - Calls: ClosePanelEvent
@@ -1012,7 +1013,7 @@ Folder: SiegeEngine
   - Class: DesktopDockingStrategy (Namespace: SiegeEngine.Core.Managers)
     - Inherits: IDockingStrategy
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
     - Fields:
       - DockNode _root
       - List<IPanel> _floatingPanels
@@ -1058,6 +1059,8 @@ Folder: SiegeEngine
       - void Render( int winH,  int winW, IRenderContext renderContext)
         - Calls: _ghostRenderer.DrawQuad, renderContext.Scissor, renderContext.Viewport
       - void ComputeLayout( int winH, int winW)
+      - void BringFloatingPanelToFront(BasePanel panel)
+        - Calls: _floatingPanels.Remove
 - File: DivElement.cs
   - Class: DivElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement
@@ -1107,6 +1110,8 @@ Folder: SiegeEngine
       - void RemovePanel(IPanel panel)
         - Calls: _panels.Remove
       - bool HasActiveContent()
+      - void BringFloatingPanelToFront(BasePanel panel)
+        - Calls: _panels.Remove
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
       - void Update( EventBus eventBus,  Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta,  int winH,  int winW, float deltaTime)
         - Calls: ClampToViewport, ComputeSnapPreview, GetTopmostPanelAt, HandleSinglePanel, PerformLiveResize, _draggingPanel.OnPanelResize, _resizingPanel.OnPanelResize, bp.ResetDragState
@@ -2237,6 +2242,8 @@ Folder: SiegeEngine
         - Calls: AutoCenterModal, panel.Init
       - void AutoCenterModal(IPanel panel)
         - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
+      - void BringToFront(IPanel panel)
+        - Calls: _panels.Remove, _router.AddPanel, _router.RemovePanel, desktop.BringFloatingPanelToFront, dynamic.BringFloatingPanelToFront, ide.BringFloatingPanelToFront
       - void Update(float deltaTime)
         - Calls: GetTopmostPanelAt, ToggleCameraMode, _controlContext.GetCursorPos, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetWindowSize, _desktopStrategy.HasActiveContent, _dynamicStrategy.HasActiveContent, _ideStrategy.HasActiveContent, _router.ClearForcedOverdraw
       - IPanel GetTopmostPanelAt(Vector2 mousePos)
@@ -3013,11 +3020,13 @@ Folder: SiegeEngine
         - Calls: Initialize
       - void Initialize()
         - Calls: ShaderProgram, _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.GenBuffers, _renderContext.GenVertexArrays
+      - void EnsureUIState()
+        - Calls: _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable
       - void DrawQuad( Vector4 color,  float posY,  float sizeX,  float sizeY,  float viewportHeight,  float viewportWidth, float posX)
-        - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.Enable, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
+        - Calls: EnsureUIState, _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
       - void DrawNdcQuad( Vector4 color, float[] ndc)
       - void DrawLine( Vector4 color,  float thickness,  float viewportHeight,  float viewportWidth,  float x2,  float y1,  float y2, float x1)
-        - Calls: _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.Enable, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
+        - Calls: EnsureUIState, _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
 - File: UISettingsManager.cs
   - Class: UISettingsManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: System, System.Collections.Generic, System.IO, System.Text.Json
@@ -3272,7 +3281,7 @@ Folder: ToolChest
   - Class: PropertiesUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
     - Fields:
       - PropertiesPanel _parent
     - Methods:

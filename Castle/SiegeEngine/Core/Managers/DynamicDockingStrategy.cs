@@ -9,6 +9,7 @@ using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Managers
 {
     public class DynamicDockingStrategy : IDockingStrategy
@@ -30,6 +31,7 @@ namespace SiegeEngine.Core.Managers
         private bool _showSnapPreview;
         private const float SnapDistance = 25f;
         private const float NeighborSnapMargin = 25f;
+
         public DynamicDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -37,6 +39,7 @@ namespace SiegeEngine.Core.Managers
             _eventBus = eventBus;
             _ghostRenderer = new UIQuadRenderer(renderContext);
         }
+
         public void AddPanel(IPanel panel)
         {
             if (panel.DockingMode != DockingMode.Dynamic) return;
@@ -49,16 +52,27 @@ namespace SiegeEngine.Core.Managers
                 panel.IsClosable = true;
             }
         }
+
         public void RemovePanel(IPanel panel)
         {
             _panels.Remove(panel);
             if (_draggingPanel == panel) _draggingPanel = null;
             if (_resizingPanel == panel) _resizingPanel = null;
         }
+
         public bool HasActiveContent()
         {
             return _panels.Count > 0;
         }
+
+        // FIXED: uses the correct field name for this strategy (_panels)
+        public void BringFloatingPanelToFront(BasePanel panel)
+        {
+            if (panel == null) return;
+            _panels.Remove(panel);
+            _panels.Add(panel); // last = topmost in z-order
+        }
+
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
             IPanel topModal = null;
@@ -71,6 +85,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
             if (topModal != null) return topModal;
+
             for (int i = _panels.Count - 1; i >= 0; i--)
             {
                 var panel = _panels[i];
@@ -81,6 +96,7 @@ namespace SiegeEngine.Core.Managers
             }
             return null;
         }
+
         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
         {
             IPanel topModal = null;
@@ -94,7 +110,6 @@ namespace SiegeEngine.Core.Managers
             }
             if (topModal != null)
             {
-                // ONLY the true topmost panel ever receives content/chrome Update
                 if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == topModal)
                 {
                     topModal.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -108,13 +123,10 @@ namespace SiegeEngine.Core.Managers
             {
                 var panel = _panels[i];
                 if (!panel.Visible) continue;
-
                 bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
                                  mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
-
                 if (overPanel)
                 {
-                    // ONLY the true topmost panel ever receives content/chrome Update
                     if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == panel)
                     {
                         hoveredPanel = panel;
@@ -133,7 +145,6 @@ namespace SiegeEngine.Core.Managers
                 ClampToViewport(_draggingPanel, winW, winH);
                 _showSnapPreview = ComputeSnapPreview(mousePos, winW, winH, out _snapPreviewPosition, out _snapPreviewSize);
             }
-
             if (_resizingPanel != null && mouseDown)
             {
                 PerformLiveResize(mousePos, winW, winH);
@@ -166,11 +177,13 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
+
         private bool HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
         {
             bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
                              mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
             if (!overPanel) return false;
+
             if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
             {
                 bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + BasePanel.TitleHeight;
@@ -191,6 +204,7 @@ namespace SiegeEngine.Core.Managers
                     return true;
                 }
             }
+
             if (mousePressed && _resizingPanel == null)
             {
                 ResizeHandle handle = panel.GetResizeHandle(mousePos);
@@ -207,6 +221,7 @@ namespace SiegeEngine.Core.Managers
             }
             return false;
         }
+
         private bool ComputeSnapPreview(Vector2 mousePos, int winW, int winH, out Vector2 previewPos, out Vector2 previewSize)
         {
             previewPos = _draggingPanel.Position;
@@ -215,6 +230,7 @@ namespace SiegeEngine.Core.Managers
             if (previewPos.X + previewSize.X > winW - SnapDistance) previewPos.X = winW - previewSize.X;
             if (previewPos.Y < SnapDistance) previewPos.Y = 0;
             if (previewPos.Y + previewSize.Y > winH - SnapDistance) previewPos.Y = winH - previewSize.Y;
+
             foreach (var other in _panels)
             {
                 if (other == _draggingPanel || !other.Visible) continue;
@@ -229,6 +245,7 @@ namespace SiegeEngine.Core.Managers
             }
             return true;
         }
+
         private void ClampToViewport(IPanel panel, int winW, int winH)
         {
             if (panel == null) return;
@@ -236,6 +253,7 @@ namespace SiegeEngine.Core.Managers
             float y = Math.Clamp(panel.Position.Y, 0f, winH - panel.Size.Y);
             panel.Position = new Vector2(x, y);
         }
+
         private void PerformLiveResize(Vector2 mousePos, int winW, int winH)
         {
             if (_resizingPanel == null) return;
@@ -287,6 +305,7 @@ namespace SiegeEngine.Core.Managers
             }
             ClampToViewport(_resizingPanel, winW, winH);
         }
+
         public void Render(IRenderContext renderContext, int winW, int winH)
         {
             foreach (var panel in _panels)
@@ -302,13 +321,13 @@ namespace SiegeEngine.Core.Managers
             }
             renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
-
             if (_showSnapPreview && _draggingPanel != null)
             {
                 _ghostRenderer.DrawQuad(_snapPreviewPosition.X, _snapPreviewPosition.Y, _snapPreviewSize.X, _snapPreviewSize.Y,
                     new Vector4(0.2f, 0.75f, 1.0f, 0.35f), winW, winH);
             }
         }
+
         public void ComputeLayout(int winW, int winH)
         {
         }

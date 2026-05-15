@@ -1002,5 +1002,11 @@ namespace SiegeEngine.Core.Managers
             }
             return null;
         }
+        public void BringFloatingPanelToFront(BasePanel panel)
+        {
+            if (panel == null) return;
+            _floatingPanels.Remove(panel);
+            _floatingPanels.Add(panel); // last = topmost in z-order
+        }
     }
 }
