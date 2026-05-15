@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+
 namespace SiegeEngine.Core.Managers
 {
     public class PanelManager
@@ -29,6 +30,7 @@ namespace SiegeEngine.Core.Managers
         private readonly PanelInputRouter _router;
         public static PanelManager Current { get; private set; }
         public IDEDockingStrategy IDEStrategy => _ideStrategy;
+
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -48,22 +50,26 @@ namespace SiegeEngine.Core.Managers
             });
             Current = this;
         }
+
         public void SetSceneDefaultDockingMode(DockingMode mode)
         {
             _sceneDefaultMode = mode;
         }
+
         private void OnOpenPanel(OpenPanelEvent e)
         {
             AddPanel(e.Panel);
         }
+
         private void OnClosePanel(ClosePanelEvent e)
         {
             RemovePanel(e.Panel);
         }
+
         public void AddPanel(IPanel panel)
         {
             if (panel == null) return;
-            if (_panels.Contains(panel)) return; // CENTRALIZED GUARD: prevents double-registration / double-Init from deserialize path
+            if (_panels.Contains(panel)) return;
             _panels.Add(panel);
             _router.AddPanel(panel);
             panel.Init();
@@ -89,6 +95,7 @@ namespace SiegeEngine.Core.Managers
                 _desktopStrategy.AddPanel(panel);
             }
         }
+
         private void AutoCenterModal(IPanel panel)
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
@@ -97,6 +104,30 @@ namespace SiegeEngine.Core.Managers
             panel.Position = new Vector2(Math.Max(40f, x), Math.Max(40f, y));
             panel.OnPanelResize(panel.Size.X, panel.Size.Y);
         }
+
+        // NEW: Professional bring-to-front (called on title bar drag start)
+        public void BringToFront(IPanel panel)
+        {
+            if (panel == null || !_panels.Contains(panel)) return;
+
+            _panels.Remove(panel);
+            _panels.Add(panel); // last in list = highest z-order
+
+            _router.RemovePanel(panel);
+            _router.AddPanel(panel);
+
+            // Also bring to front in the correct floating list
+            if (panel is BasePanel bp && bp.DockState == DockState.Floating)
+            {
+                if (_desktopStrategy is DesktopDockingStrategy desktop)
+                    desktop.BringFloatingPanelToFront(bp);
+                else if (_dynamicStrategy is DynamicDockingStrategy dynamic)
+                    dynamic.BringFloatingPanelToFront(bp);
+                else if (_ideStrategy is IDEDockingStrategy ide)
+                    ide.BringFloatingPanelToFront(bp);
+            }
+        }
+
         public void Update(float deltaTime)
         {
             _controlContext.GetCursorPos(_window, out double mx, out double my);
@@ -121,12 +152,9 @@ namespace SiegeEngine.Core.Managers
             if (!_captureManager.IsCapturing)
             {
                 IPanel topmost = GetTopmostPanelAt(mousePos);
-                // === AUTHORITATIVE TOPMOST UPDATE (full mouse events + focus) ===
                 bool handledByIDEStrategy = false;
                 if (_ideStrategy != null && topmost != null)
                 {
-                    // FIX: IDE floating panels are updated exclusively by IDEDockingStrategy to prevent double Update per frame
-                    // (AnimationTimelinePanel and other continuous-update panels were being called from both paths when floating)
                     if (_ideStrategy.ContainsFloatingPanel(topmost))
                     {
                         handledByIDEStrategy = true;
@@ -141,23 +169,18 @@ namespace SiegeEngine.Core.Managers
                         BasePanel.MouseReleasedConsumedThisFrame = false;
                     }
                 }
-                // === CONTINUOUS UPDATE PASS ===
-                // Panels that want continuous updates (AnimationViewerPanel, etc.) must run every frame.
-                // - If they are topmost → they already got the full call above (skip to avoid double)
-                // - If they are NOT topmost → call with mouse events zeroed so they never steal clicks
                 foreach (var panel in _panels)
                 {
                     if (panel is BasePanel bp && bp.WantsContinuousUpdate)
                     {
                         bool isTopmost = (topmost == panel);
-                        if (isTopmost) continue; // <--- SKIP - already updated in topmost path
+                        if (isTopmost) continue;
                         bool passMouseDown = false;
                         bool passMousePressed = false;
                         bool passMouseReleased = false;
                         panel.Update(deltaTime, mousePos, passMouseDown, passMousePressed, passMouseReleased, _scrollDelta);
                     }
                 }
-                // Strategy updates (layout, dragging, splitter, etc.)
                 if (_desktopStrategy.HasActiveContent())
                     _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
                 if (_dynamicStrategy.HasActiveContent())
@@ -169,18 +192,22 @@ namespace SiegeEngine.Core.Managers
             _scrollDelta = 0f;
             BasePanel.MouseReleasedConsumedThisFrame = false;
         }
+
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
             return _router.GetTopmostPanelAt(mousePos);
         }
+
         public void ForceDrawOverThisFrame(IPanel panel)
         {
             _router.ForceDrawOverThisFrame(panel);
         }
+
         public IEnumerable<IPanel> GetAllPanels()
         {
             return _panels;
         }
+
         public void Render()
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
@@ -212,6 +239,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
+
         public void RemovePanel(IPanel panel)
         {
             if (_captureManager.CurrentOwner == panel)
@@ -225,10 +253,12 @@ namespace SiegeEngine.Core.Managers
             _panels.Remove(panel);
             panel.Dispose();
         }
+
         public void CapturePanel(IPanel panel)
         {
             _captureManager.RequestCapture(panel);
         }
+
         public void ReleasePanelCapture()
         {
             _captureManager.ReleaseCapture();

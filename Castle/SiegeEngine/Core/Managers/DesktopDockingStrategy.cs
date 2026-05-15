@@ -4,6 +4,7 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -429,6 +430,12 @@ namespace SiegeEngine.Core.Managers
         public void ComputeLayout(int winW, int winH)
         {
             _root.ComputeLayout(0, 0, winW, winH);
+        }
+        public void BringFloatingPanelToFront(BasePanel panel)
+        {
+            if (panel == null) return;
+            _floatingPanels.Remove(panel);
+            _floatingPanels.Add(panel); // last = topmost in z-order
         }
     }
 }
