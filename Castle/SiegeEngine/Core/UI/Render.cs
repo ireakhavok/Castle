@@ -13,13 +13,6 @@ namespace SiegeEngine.Core.UI
 {
     public partial class HtmlElement
     {
-        /// <summary>
-        /// Background-only rendering pass.
-        /// FIXED (generic, architectural): Root element (Parent == null) always gets a solid dark background fill (#1e1e1e)
-        /// if no explicit background-color is set. This guarantees every panel (floating or docked) has a solid body background
-        /// without any class/tag checks or assumptions. ScrollOffsetY is applied consistently for content.
-        /// This resolves transparent floating panels and clear areas below scissor for all panels.
-        /// </summary>
         public virtual void RenderBackgroundOnly(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             CssStyle effectiveStyle = Style;
@@ -49,6 +42,7 @@ namespace SiegeEngine.Core.UI
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
             Vector4 borderLeftC = effectiveStyle.BorderLeftColor != Vector4.Zero ? effectiveStyle.BorderLeftColor : effectiveStyle.BorderColor;
             Vector4 borderW = BorderWidth;
+
             bool uniformBorder = borderW.X == borderW.Y && borderW.Y == borderW.Z && borderW.Z == borderW.W;
             bool uniformColor = borderTopC == borderRightC && borderRightC == borderBottomC && borderBottomC == borderLeftC;
             bool hasUniformBorder = uniformBorder && uniformColor && borderW.X > 0;
@@ -72,15 +66,6 @@ namespace SiegeEngine.Core.UI
             Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
             Vector4 fillColor = effectiveStyle.BackgroundColor;
 
-            // GENERIC ROOT BACKGROUND FALLBACK (no class/tag checks)
-            // Root element (Parent == null) always gets a solid panel background if none is set.
-            // This fixes transparent floating panels and clear areas below scissor for ALL panels.
-            if (Parent == null && fillColor == Vector4.Zero)
-            {
-                fillColor = new Vector4(0.1176f, 0.1176f, 0.1176f, 1.0f); // #1e1e1e
-                hasBg = true;
-            }
-
             if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
             {
                 fillColor = Vector4.Zero;
@@ -88,7 +73,7 @@ namespace SiegeEngine.Core.UI
 
             if (hasBg || useShaderForBorder)
             {
-                float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
+                float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, rootBgMatrix, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(bgNdc, fillColor, br, new Vector2(drawW, drawH), bw, borderC);
             }
 
@@ -126,10 +111,9 @@ namespace SiegeEngine.Core.UI
                 _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, backgroundHeight, viewportWidth, viewportHeight);
             }
 
-            // Children backgrounds also receive the scroll matrix
             foreach (var child in Children)
             {
-                child.RenderBackgroundOnly(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, localMatrix);
+                child.RenderBackgroundOnly(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, contentMatrix);
             }
         }
 
