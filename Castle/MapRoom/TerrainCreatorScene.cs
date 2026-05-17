@@ -15,6 +15,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using ToolChest;
+
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -366,27 +367,65 @@ namespace MapRoom
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
 
+        /// <summary>
+        /// Updated ghost mesh that now respects the actual Brush.Shape (Circle or Square)
+        /// and provides dynamic visual feedback based on current Size + Intensity.
+        /// </summary>
         private void UpdateGhostMesh()
         {
-            if (_ghostBuffer == null) return;
+            if (_ghostBuffer == null || _activeBrush == null) return;
+
             var vertices = new List<float>();
             var indices = new List<uint>();
-            int segments = 48;
-            float r = Math.Max(_activeBrush?.Size ?? 1f, 1f);
-            for (int i = 0; i <= segments; i++)
+
+            float r = Math.Max(_activeBrush.Size, 1f);
+            float alpha = Math.Clamp(_activeBrush.Intensity * 0.8f, 0.3f, 1.0f); // subtle intensity feedback
+
+            if (_activeBrush.Shape == BrushShape.Circle)
             {
-                float angle = i * MathF.PI * 2f / segments;
-                float x = MathF.Cos(angle) * r;
-                float y = MathF.Sin(angle) * r;
-                vertices.Add(x); vertices.Add(y); vertices.Add(0f);
-                vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(1f);
+                int segments = 64;
+                for (int i = 0; i <= segments; i++)
+                {
+                    float angle = i * MathF.PI * 2f / segments;
+                    float x = MathF.Cos(angle) * r;
+                    float y = MathF.Sin(angle) * r;
+                    vertices.Add(x); vertices.Add(y); vertices.Add(0f);
+                    vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha); // RGBA
+                    vertices.Add(0f); vertices.Add(0f);
+                }
+                for (int i = 0; i < segments; i++)
+                {
+                    indices.Add((uint)i);
+                    indices.Add((uint)((i + 1) % segments));
+                }
+            }
+            else // Square
+            {
+                // Square outline (line loop)
+                float half = r;
+                // Top-left
+                vertices.Add(-half); vertices.Add(-half); vertices.Add(0f);
+                vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
                 vertices.Add(0f); vertices.Add(0f);
+                // Top-right
+                vertices.Add(half); vertices.Add(-half); vertices.Add(0f);
+                vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
+                vertices.Add(0f); vertices.Add(0f);
+                // Bottom-right
+                vertices.Add(half); vertices.Add(half); vertices.Add(0f);
+                vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
+                vertices.Add(0f); vertices.Add(0f);
+                // Bottom-left
+                vertices.Add(-half); vertices.Add(half); vertices.Add(0f);
+                vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
+                vertices.Add(0f); vertices.Add(0f);
+
+                indices.Add(0); indices.Add(1);
+                indices.Add(1); indices.Add(2);
+                indices.Add(2); indices.Add(3);
+                indices.Add(3); indices.Add(0);
             }
-            for (int i = 0; i < segments; i++)
-            {
-                indices.Add((uint)i);
-                indices.Add((uint)((i + 1) % segments));
-            }
+
             _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
 
