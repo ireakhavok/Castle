@@ -100,26 +100,6 @@
             border-radius: 3px;
             font-size: 11.5px;
         }
-
-        button {
-            margin-top: 6px;
-            padding: 6px 10px;
-            width: 100%;
-            background: #4fc3f7;
-            color: #111;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 11px;
-            letter-spacing: 0.2px;
-            transition: all 0.1s ease;
-        }
-
-            button:hover {
-                background: #29b6f6;
-                transform: translateY(-1px);
-            }
     </style>
 </head>
 <body>
@@ -153,6 +133,18 @@
             <option value="Flatten">Flatten</option>
             <option value="Noise">Noise</option>
             <option value="Sharpen">Sharpen</option>
+            <option value="Paint">Paint</option>
+        </select>
+    </div>
+
+    <!-- Paint Layer (always visible for now) -->
+    <div class="control-row">
+        <label>Layer</label>
+        <select data-hook="BrushPaintLayerChanged">
+            <option value="0" selected>0 - Base</option>
+            <option value="1">1 - Layer 1</option>
+            <option value="2">2 - Layer 2</option>
+            <option value="3">3 - Layer 3</option>
         </select>
     </div>
 
@@ -178,8 +170,6 @@
             <input type="number" id="intensityInput" value="1" step="0.1" class="value-input">
         </div>
     </div>
-
-    <button data-hook="ClosePanel">Close</button>
 
     <script>
         function syncSliderToInput(sliderId, inputId) {

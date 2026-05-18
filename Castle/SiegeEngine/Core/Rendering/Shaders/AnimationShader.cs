@@ -22,7 +22,7 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 uniform int uHasBones;
-uniform mat4 uBoneMatrices[100]; // Adjust max bones as needed
+uniform mat4 uBoneMatrices[100];
 uniform mat3 uNormalMatrices[100];
 void main()
 {
@@ -79,9 +79,11 @@ in vec3 FragPos;
 in float MaterialIndex;
 in mat3 TBN;
 out vec4 FragColor;
+
 uniform sampler2D uAlbedoMap[4];
 uniform sampler2D uNormalMap[4];
 uniform sampler2D uMetallicMap[4];
+
 uniform vec3 uLightDir;
 uniform vec3 uLightColor;
 uniform float uLightIntensity;
@@ -89,21 +91,76 @@ uniform vec3 uViewPos;
 uniform float uAmbientStrength;
 uniform float uSpecularStrength;
 uniform float uShininess;
+
+// NEW world-aligned uniforms (required by ModelRenderer)
+uniform int uHasWorldAligned;
+uniform int uMappingMode[4];
+uniform vec2 uTiling[4];
+uniform vec2 uOffset[4];
+uniform float uRotation[4];
+uniform float uBlendSharpness[4];
+
+vec2 WorldPlanarUV(vec3 worldPos, vec3 normal, int axis, vec2 tiling, vec2 offset)
+{
+    vec2 uv;
+    if (axis == 0) uv = worldPos.yz;
+    else if (axis == 1) uv = worldPos.xz;
+    else uv = worldPos.xy;
+    return uv * tiling + offset;
+}
+
+vec3 TriplanarSample(sampler2D tex, vec3 worldPos, vec3 normal, vec2 tiling, vec2 offset, float sharpness)
+{
+    vec3 blend = abs(normal);
+    blend /= blend.x + blend.y + blend.z + 0.0001;
+    blend = pow(blend, vec3(sharpness));
+    blend /= blend.x + blend.y + blend.z;
+
+    vec2 uvX = worldPos.yz * tiling + offset;
+    vec2 uvY = worldPos.xz * tiling + offset;
+    vec2 uvZ = worldPos.xy * tiling + offset;
+
+    vec3 colX = texture(tex, uvX).rgb;
+    vec3 colY = texture(tex, uvY).rgb;
+    vec3 colZ = texture(tex, uvZ).rgb;
+    return colX * blend.x + colY * blend.y + colZ * blend.z;
+}
+
 void main()
 {
     int matIdx = int(MaterialIndex);
     vec3 albedo = texture(uAlbedoMap[matIdx], TexCoord).rgb;
     vec3 normalMap = texture(uNormalMap[matIdx], TexCoord).rgb * 2.0 - 1.0;
     float metallic = texture(uMetallicMap[matIdx], TexCoord).r;
+
     vec3 normal = normalize(TBN * normalMap);
+
+    // World-aligned texturing (if enabled)
+    if (uHasWorldAligned == 1 && uMappingMode[matIdx] != 0)
+    {
+        if (uMappingMode[matIdx] == 2) // Triplanar
+        {
+            albedo = TriplanarSample(uAlbedoMap[matIdx], FragPos, normal, uTiling[matIdx], uOffset[matIdx], uBlendSharpness[matIdx]);
+        }
+        else // WorldPlanar
+        {
+            int axis = abs(normal.x) > abs(normal.y) && abs(normal.x) > abs(normal.z) ? 0 : (abs(normal.y) > abs(normal.z) ? 1 : 2);
+            vec2 worldUV = WorldPlanarUV(FragPos, normal, axis, uTiling[matIdx], uOffset[matIdx]);
+            albedo = texture(uAlbedoMap[matIdx], worldUV).rgb;
+        }
+    }
+
     vec3 ambient = uAmbientStrength * albedo;
+
     vec3 lightDir = normalize(-uLightDir);
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = diff * albedo * uLightColor * uLightIntensity;
+
     vec3 viewDir = normalize(uViewPos - FragPos);
     vec3 halfwayDir = normalize(lightDir + viewDir);
     float spec = pow(max(dot(normal, halfwayDir), 0.0), uShininess);
     vec3 specular = uSpecularStrength * spec * uLightColor * uLightIntensity * metallic;
+
     FragColor = vec4(ambient + diffuse + specular, 1.0);
 }";
     }

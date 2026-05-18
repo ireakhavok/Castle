@@ -2,6 +2,7 @@
 // File: Brush.cs
 using System;
 using System.Numerics;
+
 namespace ToolChest
 {
     public enum BrushShape
@@ -21,15 +22,22 @@ namespace ToolChest
         Smooth,
         Flatten,
         Noise,
-        Sharpen
+        Sharpen,
+        Paint   // NEW for Step 2: paints into splat map layer
     }
+
     public class Brush
     {
         public BrushShape Shape { get; set; } = BrushShape.Circle;
         public BrushFalloff Falloff { get; set; } = BrushFalloff.Gaussian;
         public BrushMode Mode { get; set; } = BrushMode.Raise;
+
+        // NEW for Step 2: which material layer to paint (0-3 = RGBA channels of splat map)
+        public int PaintLayer { get; set; } = 0;
+
         public float Size { get; set; } = 10f;
         public float Intensity { get; set; } = 1f;
+
         public void Apply(ref float[,] heightmap, Vector2 gridPos, float worldScaleX, float worldScaleZ)
         {
             int width = heightmap.GetLength(0);
@@ -41,7 +49,16 @@ namespace ToolChest
             int maxX = Math.Min(width, centerX + (int)radiusInCells + 1);
             int minZ = Math.Max(0, centerZ - (int)radiusInCells - 1);
             int maxZ = Math.Min(height, centerZ + (int)radiusInCells + 1);
+
             Random rand = new Random();
+
+            if (Mode == BrushMode.Paint)
+            {
+                // TODO: splat map painting will be wired in TerrainScene / TerrainCreatorScene
+                // For now the brush just knows which layer to target
+                return;
+            }
+
             if (Mode == BrushMode.Flatten || Mode == BrushMode.Smooth || Mode == BrushMode.Sharpen)
             {
                 float avgHeight = 0f;
@@ -104,6 +121,7 @@ namespace ToolChest
                 }
             }
         }
+
         private bool IsInShape(float dx, float dz, float radius)
         {
             switch (Shape)
@@ -116,6 +134,7 @@ namespace ToolChest
                     return false;
             }
         }
+
         private float GetFalloff(float dx, float dz, float radius)
         {
             float dist = 0f;
@@ -135,11 +154,12 @@ namespace ToolChest
                 case BrushFalloff.Linear:
                     return 1f - normDist;
                 case BrushFalloff.Gaussian:
-                    return (float)Math.Exp(-(normDist * normDist) / (2 * 0.25f)); // sigma=0.5 for sharper gaussian
+                    return (float)Math.Exp(-(normDist * normDist) / (2 * 0.25f));
                 default:
                     return 1f;
             }
         }
+
         private float GetNeighborAverage(float[,] heightmap, int x, int z, int width, int height)
         {
             float sum = 0f;

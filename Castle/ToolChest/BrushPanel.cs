@@ -8,6 +8,7 @@ using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 
 namespace ToolChest
@@ -50,7 +51,7 @@ namespace ToolChest
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadBrushUI();
-            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString(), _currentBrush.Falloff.ToString()), true);
+            PublishCurrentBrush();
         }
 
         private void LoadBrushUI()
@@ -66,6 +67,7 @@ namespace ToolChest
         private void HandleBrushDataHook(string hook)
         {
             bool changed = false;
+
             if (hook == "BrushSizeChanged")
             {
                 var slider = _uiOverlay.FindElementById("sizeSlider") as InputElement;
@@ -116,19 +118,37 @@ namespace ToolChest
                     changed = true;
                 }
             }
-            else if (hook == "ClosePanel")
+            else if (hook == "BrushPaintLayerChanged")
             {
-                _eventBus.Publish(new ClosePanelEvent(this));
+                var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushPaintLayerChanged") as SelectElement;
+                if (select != null)
+                {
+                    _currentBrush.PaintLayer = int.Parse(select.Value ?? "0");
+                    changed = true;
+                }
             }
+
             if (changed)
             {
-                _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString(), _currentBrush.Falloff.ToString()), true);
+                PublishCurrentBrush();
             }
+        }
+
+        private void PublishCurrentBrush()
+        {
+            _eventBus.Publish(new SelectBrushEvent(
+                0,
+                _currentBrush.Mode.ToString(),
+                _currentBrush.Size,
+                _currentBrush.Intensity,
+                _currentBrush.Shape.ToString(),
+                _currentBrush.Falloff.ToString(),
+                _currentBrush.PaintLayer), true);
         }
 
         public override void Detach()
         {
-            _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, "", ""), true);
+            _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, "", "", 0), true);
             base.Detach();
         }
 

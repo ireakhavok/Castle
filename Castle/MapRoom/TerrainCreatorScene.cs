@@ -32,6 +32,9 @@ namespace MapRoom
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData;
 
+        // NEW for Step 2: unsaved splat data (mirrors heightmap pattern)
+        private float[,,] _unsavedSplatWeights;
+
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -40,7 +43,6 @@ namespace MapRoom
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
         }
 
-        // NEW PUBLIC API - used by SceneEditorPanel for placement (no reflection)
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -62,7 +64,6 @@ namespace MapRoom
             ));
         }
 
-        // NEW: exposed for EditorScene box-select projection
         public Matrix4x4 GetViewMatrix() => _flyCamera.ViewMatrix;
 
         public bool TryTerrainRaycast(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
@@ -92,12 +93,6 @@ namespace MapRoom
             return true;
         }
 
-        /// <summary>
-        /// Panel-aware overload for correct NDC unprojection using the EXACT viewport dimensions
-        /// passed from SceneEditorPanel (or any future dockable/resizable panel). This is the
-        /// canonical reusable ray generator living in the base scene context.
-        /// Delegates directly to TerrainScene base implementation to avoid any aspect-ratio skew.
-        /// </summary>
         public bool GetMouseRay(Vector2 normalizedMouse, float viewportWidth, float viewportHeight, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             return base.GetMouseRay(normalizedMouse, viewportWidth, viewportHeight, out rayOrigin, out rayDir);
@@ -118,6 +113,7 @@ namespace MapRoom
             _terrainWidth = 200;
             _terrainHeight = 200;
             _heightmap = new float[_terrainWidth, _terrainHeight];
+            _unsavedSplatWeights = new float[_terrainWidth, _terrainHeight, 4];
             _minHeight = float.MaxValue;
             _maxHeight = float.MinValue;
             for (int x = 0; x < _terrainWidth; x++)
@@ -126,6 +122,7 @@ namespace MapRoom
                 {
                     float h = 0f;
                     _heightmap[x, y] = h;
+                    _unsavedSplatWeights[x, y, 0] = 1f; // default to first material
                     if (h < _minHeight) _minHeight = h;
                     if (h > _maxHeight) _maxHeight = h;
                 }
@@ -180,6 +177,7 @@ namespace MapRoom
             else
             {
                 _heightmap = new float[_terrainWidth, _terrainHeight];
+                _unsavedSplatWeights = new float[_terrainWidth, _terrainHeight, 4];
                 _minHeight = parameters.InitialHeight;
                 _maxHeight = parameters.InitialHeight;
                 for (int x = 0; x < _terrainWidth; x++)
@@ -187,6 +185,7 @@ namespace MapRoom
                     for (int y = 0; y < _terrainHeight; y++)
                     {
                         _heightmap[x, y] = parameters.InitialHeight * parameters.VerticalExaggeration;
+                        _unsavedSplatWeights[x, y, 0] = 1f;
                     }
                 }
                 Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain");
@@ -282,6 +281,12 @@ namespace MapRoom
             base.SetColorTexture(path);
         }
 
+        // NEW for Step 2: splat map handling
+        public void SetSplatMap(string path)
+        {
+            base.SetSplatMap(path); // call base when added
+        }
+
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -367,20 +372,13 @@ namespace MapRoom
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
 
-        /// <summary>
-        /// Updated ghost mesh that now respects the actual Brush.Shape (Circle or Square)
-        /// and provides dynamic visual feedback based on current Size + Intensity.
-        /// </summary>
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null || _activeBrush == null) return;
-
             var vertices = new List<float>();
             var indices = new List<uint>();
-
             float r = Math.Max(_activeBrush.Size, 1f);
-            float alpha = Math.Clamp(_activeBrush.Intensity * 0.8f, 0.3f, 1.0f); // subtle intensity feedback
-
+            float alpha = Math.Clamp(_activeBrush.Intensity * 0.8f, 0.3f, 1.0f);
             if (_activeBrush.Shape == BrushShape.Circle)
             {
                 int segments = 64;
@@ -390,7 +388,7 @@ namespace MapRoom
                     float x = MathF.Cos(angle) * r;
                     float y = MathF.Sin(angle) * r;
                     vertices.Add(x); vertices.Add(y); vertices.Add(0f);
-                    vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha); // RGBA
+                    vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
                     vertices.Add(0f); vertices.Add(0f);
                 }
                 for (int i = 0; i < segments; i++)
@@ -399,33 +397,26 @@ namespace MapRoom
                     indices.Add((uint)((i + 1) % segments));
                 }
             }
-            else // Square
+            else
             {
-                // Square outline (line loop)
                 float half = r;
-                // Top-left
                 vertices.Add(-half); vertices.Add(-half); vertices.Add(0f);
                 vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
                 vertices.Add(0f); vertices.Add(0f);
-                // Top-right
                 vertices.Add(half); vertices.Add(-half); vertices.Add(0f);
                 vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
                 vertices.Add(0f); vertices.Add(0f);
-                // Bottom-right
                 vertices.Add(half); vertices.Add(half); vertices.Add(0f);
                 vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
                 vertices.Add(0f); vertices.Add(0f);
-                // Bottom-left
                 vertices.Add(-half); vertices.Add(half); vertices.Add(0f);
                 vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
                 vertices.Add(0f); vertices.Add(0f);
-
                 indices.Add(0); indices.Add(1);
                 indices.Add(1); indices.Add(2);
                 indices.Add(2); indices.Add(3);
                 indices.Add(3); indices.Add(0);
             }
-
             _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
 
@@ -525,12 +516,21 @@ namespace MapRoom
             _terrainBuffer.Bind();
             _terrainShader.SetUniform("uHasTexture", 0);
             _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            if (_hasColorTexture && _terrainTextureId != 0)
+            if ((_hasColorTexture && _terrainTextureId != 0) || _hasSplatMap)
             {
                 _terrainShader.SetUniform("uHasTexture", 1);
-                _renderContext.ActiveTexture(0);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
-                _terrainShader.SetUniform("uTexture", 0);
+                if (_hasSplatMap && _splatTextureId != 0)
+                {
+                    _renderContext.ActiveTexture(0);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, _splatTextureId);
+                    _terrainShader.SetUniform("uSplatTexture", 0);
+                }
+                else if (_hasColorTexture && _terrainTextureId != 0)
+                {
+                    _renderContext.ActiveTexture(0);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
+                    _terrainShader.SetUniform("uTexture", 0);
+                }
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
             if (_ghostVisible && _ghostBuffer != null)
@@ -554,6 +554,11 @@ namespace MapRoom
             {
                 _renderContext.DeleteTexture(_terrainTextureId);
                 _terrainTextureId = 0;
+            }
+            if (_splatTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_splatTextureId);
+                _splatTextureId = 0;
             }
             _terrainBuffer?.Dispose();
             _terrainShader?.Dispose();
