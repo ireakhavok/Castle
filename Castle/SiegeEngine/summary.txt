@@ -30,7 +30,10 @@ Folder: Core
       - string FragmentShaderSource
     - Methods:
       - void main()
+      - vec2 WorldPlanarUV( int axis,  vec2 offset,  vec2 tiling,  vec3 normal, vec3 worldPos)
+      - vec3 TriplanarSample( float sharpness,  vec2 offset,  vec2 tiling,  vec3 normal,  vec3 worldPos, sampler2D tex)
       - void main()
+        - Calls: TriplanarSample, WorldPlanarUV
 - File: AssetShader.cs
   - Class: AssetShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1545,7 +1548,7 @@ Folder: Core
     - Fields:
       - string Type
     - Methods:
-      - constructor SelectBrushEvent( float intensity,  float size,  string brushFalloff,  string brushMode,  string brushShape, ulong playerId)
+      - constructor SelectBrushEvent( float intensity,  float size,  int paintLayer = 0,  string brushFalloff,  string brushMode,  string brushShape, ulong playerId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: SelectElement.cs
@@ -2411,6 +2414,8 @@ Folder: Scenes
       - ShaderProgram _terrainShader
       - uint _terrainTextureId
       - bool _hasColorTexture
+      - uint _splatTextureId
+      - bool _hasSplatMap
       - float _worldScaleX
       - float _worldScaleZ
       - bool _useCustomScale
@@ -2422,11 +2427,13 @@ Folder: Scenes
       - bool _isEditorContext
     - Methods:
       - void LoadSceneData(SceneData data)
-        - Calls: InitializeBlankTerrain, LoadTerrain, SetColorTexture
+        - Calls: InitializeBlankTerrain, LoadSplatMap, LoadTerrain, SetColorTexture
       - void InitializeBlankTerrain()
         - Calls: BuildWireframeMesh
       - void Initialize( int height, int width)
         - Calls: ShaderProgram, VertexBuffer
+      - void LoadSplatMap(string path)
+        - Calls: BuildTexturedMesh
       - void BuildWireframeMesh(float step)
         - Calls: ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV, _terrainIndices.Clear, _terrainVertices.Clear
       - void RebuildTerrainMesh()
@@ -2441,6 +2448,8 @@ Folder: Scenes
         - Calls: BuildWireframeMesh, ComputeWorldScale, GeoTiffParser.ParseGeoReference
       - void SetColorTexture(string path)
         - Calls: BuildTexturedMesh, GeoTiffParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture
+      - void SetSplatMap(string path)
+        - Calls: BuildTexturedMesh, TerrainTextureParser.LoadColorTexture
       - void Update(float deltaTime)
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)
       - bool GetMouseRay( float viewportHeight,  float viewportWidth,  out Vector3, Vector2 normalizedMouse)

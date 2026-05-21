@@ -624,7 +624,7 @@ Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
-Read 24452 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
+Read 26495 chars from: C:\repos\RealmFoundry\Castle\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 15 dependencies
 Found: TerrainCreatorUI.html
@@ -1075,7 +1075,7 @@ Found 1 dependencies
 Found: SceneData.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
-Read 2482 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
+Read 2874 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 3 dependencies
 Found: SoundSource.cs
@@ -1218,7 +1218,7 @@ Found 1 dependencies
 Found: SelectBrushEvent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
-Read 1551 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
+Read 1915 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SelectBrushEvent.cs
 Namespace: SiegeEngine.Core.Events
 Found 2 dependencies
 Found: SelectSpriteEvent.cs
@@ -1317,7 +1317,7 @@ Found 4 dependencies
 Found: DesktopDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
-Read 18800 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
+Read 18453 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\DesktopDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 8 dependencies
 Found: DockManager.cs
@@ -1485,7 +1485,7 @@ Found: ..
 Found: AnimationShader.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\AnimationShader.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\AnimationShader.cs
-Read 3896 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\AnimationShader.cs
+Read 5604 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\AnimationShader.cs
 Namespace: SiegeEngine.Core.Rendering.Shaders
 Found 0 dependencies
 Found: AssetShader.cs
@@ -1952,7 +1952,7 @@ Found 3 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 27335 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 27601 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
@@ -1992,7 +1992,7 @@ Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 20528 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 18671 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: SiegeEngine.csproj
@@ -2098,15 +2098,15 @@ Found 4 dependencies
 Found: Brush.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\Brush.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\Brush.cs
-Read 6291 chars from: C:\repos\RealmFoundry\Castle\ToolChest\Brush.cs
+Read 6732 chars from: C:\repos\RealmFoundry\Castle\ToolChest\Brush.cs
 Namespace: ToolChest
 Found 2 dependencies
 Found: BrushPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
-Read 5616 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
+Read 6031 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Namespace: ToolChest
-Found 9 dependencies
+Found 10 dependencies
 Found: BrushPanelUI.html
 Found: ConsoleLogEvent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\ConsoleLogEvent.cs
