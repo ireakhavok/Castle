@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: Castle/SiegeEngine/Core/Managers
+// File: PanelManager.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -8,7 +10,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Managers
 {
     public class PanelManager
@@ -30,7 +31,6 @@ namespace SiegeEngine.Core.Managers
         private readonly PanelInputRouter _router;
         public static PanelManager Current { get; private set; }
         public IDEDockingStrategy IDEStrategy => _ideStrategy;
-
         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _renderContext = renderContext;
@@ -50,22 +50,18 @@ namespace SiegeEngine.Core.Managers
             });
             Current = this;
         }
-
         public void SetSceneDefaultDockingMode(DockingMode mode)
         {
             _sceneDefaultMode = mode;
         }
-
         private void OnOpenPanel(OpenPanelEvent e)
         {
             AddPanel(e.Panel);
         }
-
         private void OnClosePanel(ClosePanelEvent e)
         {
             RemovePanel(e.Panel);
         }
-
         public void AddPanel(IPanel panel)
         {
             if (panel == null) return;
@@ -95,7 +91,6 @@ namespace SiegeEngine.Core.Managers
                 _desktopStrategy.AddPanel(panel);
             }
         }
-
         private void AutoCenterModal(IPanel panel)
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
@@ -104,7 +99,6 @@ namespace SiegeEngine.Core.Managers
             panel.Position = new Vector2(Math.Max(40f, x), Math.Max(40f, y));
             panel.OnPanelResize(panel.Size.X, panel.Size.Y);
         }
-
         // NEW: Professional bring-to-front (called on title bar drag start)
         public void BringToFront(IPanel panel)
         {
@@ -116,18 +110,26 @@ namespace SiegeEngine.Core.Managers
             _router.RemovePanel(panel);
             _router.AddPanel(panel);
 
-            // Also bring to front in the correct floating list
+            // Also bring to front in the correct floating list - FIXED for blade/workspace switching
             if (panel is BasePanel bp && bp.DockState == DockState.Floating)
             {
-                if (_desktopStrategy is DesktopDockingStrategy desktop)
-                    desktop.BringFloatingPanelToFront(bp);
-                else if (_dynamicStrategy is DynamicDockingStrategy dynamic)
-                    dynamic.BringFloatingPanelToFront(bp);
-                else if (_ideStrategy is IDEDockingStrategy ide)
-                    ide.BringFloatingPanelToFront(bp);
+                switch (bp.DockingMode)
+                {
+                    case DockingMode.Desktop:
+                        if (_desktopStrategy is DesktopDockingStrategy desktop)
+                            desktop.BringFloatingPanelToFront(bp);
+                        break;
+                    case DockingMode.Dynamic:
+                        if (_dynamicStrategy is DynamicDockingStrategy dynamic)
+                            dynamic.BringFloatingPanelToFront(bp);
+                        break;
+                    case DockingMode.IDE:
+                        if (_ideStrategy is IDEDockingStrategy ide)
+                            ide.BringFloatingPanelToFront(bp);
+                        break;
+                }
             }
         }
-
         public void Update(float deltaTime)
         {
             _controlContext.GetCursorPos(_window, out double mx, out double my);
@@ -192,22 +194,18 @@ namespace SiegeEngine.Core.Managers
             _scrollDelta = 0f;
             BasePanel.MouseReleasedConsumedThisFrame = false;
         }
-
         public IPanel GetTopmostPanelAt(Vector2 mousePos)
         {
             return _router.GetTopmostPanelAt(mousePos);
         }
-
         public void ForceDrawOverThisFrame(IPanel panel)
         {
             _router.ForceDrawOverThisFrame(panel);
         }
-
         public IEnumerable<IPanel> GetAllPanels()
         {
             return _panels;
         }
-
         public void Render()
         {
             _controlContext.GetWindowSize(_window, out int winW, out int winH);
@@ -239,7 +237,6 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
-
         public void RemovePanel(IPanel panel)
         {
             if (_captureManager.CurrentOwner == panel)
@@ -253,12 +250,10 @@ namespace SiegeEngine.Core.Managers
             _panels.Remove(panel);
             panel.Dispose();
         }
-
         public void CapturePanel(IPanel panel)
         {
             _captureManager.RequestCapture(panel);
         }
-
         public void ReleasePanelCapture()
         {
             _captureManager.ReleaseCapture();

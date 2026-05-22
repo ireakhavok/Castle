@@ -1,0 +1,1101 @@
+diff --git a/Castle/SiegeEngine/Core/Managers/DesktopDockingStrategy.cs b/Castle/SiegeEngine/Core/Managers/DesktopDockingStrategy.cs
+index 05b51b9..e566015 100644
+--- a/Castle/SiegeEngine/Core/Managers/DesktopDockingStrategy.cs
++++ b/Castle/SiegeEngine/Core/Managers/DesktopDockingStrategy.cs
+@@ -4,6 +4,7 @@ using SiegeEngine.Core.ContextManagement;
+ using SiegeEngine.Core.Events;
+ using SiegeEngine.Core.Interfaces;
+ using SiegeEngine.Core.Rendering;
++using SiegeEngine.Core.UI;
+ using System;
+ using System.Collections.Generic;
+ using System.Numerics;
+@@ -430,5 +431,11 @@ namespace SiegeEngine.Core.Managers
+         {
+             _root.ComputeLayout(0, 0, winW, winH);
+         }
++        public void BringFloatingPanelToFront(BasePanel panel)
++        {
++            if (panel == null) return;
++            _floatingPanels.Remove(panel);
++            _floatingPanels.Add(panel); // last = topmost in z-order
++        }
+     }
+ }
+\ No newline at end of file
+diff --git a/Castle/SiegeEngine/Core/Managers/DynamicDockingStrategy.cs b/Castle/SiegeEngine/Core/Managers/DynamicDockingStrategy.cs
+index b89e9f0..ce00a20 100644
+--- a/Castle/SiegeEngine/Core/Managers/DynamicDockingStrategy.cs
++++ b/Castle/SiegeEngine/Core/Managers/DynamicDockingStrategy.cs
+@@ -9,6 +9,7 @@ using SiegeEngine.Core.UI;
+ using System;
+ using System.Collections.Generic;
+ using System.Numerics;
++
+ namespace SiegeEngine.Core.Managers
+ {
+     public class DynamicDockingStrategy : IDockingStrategy
+@@ -30,6 +31,7 @@ namespace SiegeEngine.Core.Managers
+         private bool _showSnapPreview;
+         private const float SnapDistance = 25f;
+         private const float NeighborSnapMargin = 25f;
++
+         public DynamicDockingStrategy(IRenderContext renderContext, IControlContext controlContext, EventBus eventBus)
+         {
+             _renderContext = renderContext;
+@@ -37,6 +39,7 @@ namespace SiegeEngine.Core.Managers
+             _eventBus = eventBus;
+             _ghostRenderer = new UIQuadRenderer(renderContext);
+         }
++
+         public void AddPanel(IPanel panel)
+         {
+             if (panel.DockingMode != DockingMode.Dynamic) return;
+@@ -49,16 +52,27 @@ namespace SiegeEngine.Core.Managers
+                 panel.IsClosable = true;
+             }
+         }
++
+         public void RemovePanel(IPanel panel)
+         {
+             _panels.Remove(panel);
+             if (_draggingPanel == panel) _draggingPanel = null;
+             if (_resizingPanel == panel) _resizingPanel = null;
+         }
++
+         public bool HasActiveContent()
+         {
+             return _panels.Count > 0;
+         }
++
++        // FIXED: uses the correct field name for this strategy (_panels)
++        public void BringFloatingPanelToFront(BasePanel panel)
++        {
++            if (panel == null) return;
++            _panels.Remove(panel);
++            _panels.Add(panel); // last = topmost in z-order
++        }
++
+         public IPanel GetTopmostPanelAt(Vector2 mousePos)
+         {
+             IPanel topModal = null;
+@@ -71,6 +85,7 @@ namespace SiegeEngine.Core.Managers
+                 }
+             }
+             if (topModal != null) return topModal;
++
+             for (int i = _panels.Count - 1; i >= 0; i--)
+             {
+                 var panel = _panels[i];
+@@ -81,6 +96,7 @@ namespace SiegeEngine.Core.Managers
+             }
+             return null;
+         }
++
+         public void Update(float deltaTime, Vector2 mousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta, EventBus eventBus, int winW, int winH)
+         {
+             IPanel topModal = null;
+@@ -94,7 +110,6 @@ namespace SiegeEngine.Core.Managers
+             }
+             if (topModal != null)
+             {
+-                // ONLY the true topmost panel ever receives content/chrome Update
+                 if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == topModal)
+                 {
+                     topModal.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
+@@ -108,13 +123,10 @@ namespace SiegeEngine.Core.Managers
+             {
+                 var panel = _panels[i];
+                 if (!panel.Visible) continue;
+-
+                 bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
+                                  mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
+-
+                 if (overPanel)
+                 {
+-                    // ONLY the true topmost panel ever receives content/chrome Update
+                     if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == panel)
+                     {
+                         hoveredPanel = panel;
+@@ -133,7 +145,6 @@ namespace SiegeEngine.Core.Managers
+                 ClampToViewport(_draggingPanel, winW, winH);
+                 _showSnapPreview = ComputeSnapPreview(mousePos, winW, winH, out _snapPreviewPosition, out _snapPreviewSize);
+             }
+-
+             if (_resizingPanel != null && mouseDown)
+             {
+                 PerformLiveResize(mousePos, winW, winH);
+@@ -166,11 +177,13 @@ namespace SiegeEngine.Core.Managers
+                 }
+             }
+         }
++
+         private bool HandleSinglePanel(IPanel panel, Vector2 mousePos, bool mousePressed, int winW, int winH)
+         {
+             bool overPanel = mousePos.X >= panel.Position.X && mousePos.X <= panel.Position.X + panel.Size.X &&
+                              mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + panel.Size.Y;
+             if (!overPanel) return false;
++
+             if (mousePressed && panel.HasTitleBar && panel.AllowDragging && _draggingPanel == null)
+             {
+                 bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + BasePanel.TitleHeight;
+@@ -191,6 +204,7 @@ namespace SiegeEngine.Core.Managers
+                     return true;
+                 }
+             }
++
+             if (mousePressed && _resizingPanel == null)
+             {
+                 ResizeHandle handle = panel.GetResizeHandle(mousePos);
+@@ -207,6 +221,7 @@ namespace SiegeEngine.Core.Managers
+             }
+             return false;
+         }
++
+         private bool ComputeSnapPreview(Vector2 mousePos, int winW, int winH, out Vector2 previewPos, out Vector2 previewSize)
+         {
+             previewPos = _draggingPanel.Position;
+@@ -215,6 +230,7 @@ namespace SiegeEngine.Core.Managers
+             if (previewPos.X + previewSize.X > winW - SnapDistance) previewPos.X = winW - previewSize.X;
+             if (previewPos.Y < SnapDistance) previewPos.Y = 0;
+             if (previewPos.Y + previewSize.Y > winH - SnapDistance) previewPos.Y = winH - previewSize.Y;
++
+             foreach (var other in _panels)
+             {
+                 if (other == _draggingPanel || !other.Visible) continue;
+@@ -229,6 +245,7 @@ namespace SiegeEngine.Core.Managers
+             }
+             return true;
+         }
++
+         private void ClampToViewport(IPanel panel, int winW, int winH)
+         {
+             if (panel == null) return;
+@@ -236,6 +253,7 @@ namespace SiegeEngine.Core.Managers
+             float y = Math.Clamp(panel.Position.Y, 0f, winH - panel.Size.Y);
+             panel.Position = new Vector2(x, y);
+         }
++
+         private void PerformLiveResize(Vector2 mousePos, int winW, int winH)
+         {
+             if (_resizingPanel == null) return;
+@@ -287,6 +305,7 @@ namespace SiegeEngine.Core.Managers
+             }
+             ClampToViewport(_resizingPanel, winW, winH);
+         }
++
+         public void Render(IRenderContext renderContext, int winW, int winH)
+         {
+             foreach (var panel in _panels)
+@@ -302,13 +321,13 @@ namespace SiegeEngine.Core.Managers
+             }
+             renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
+             renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
+-
+             if (_showSnapPreview && _draggingPanel != null)
+             {
+                 _ghostRenderer.DrawQuad(_snapPreviewPosition.X, _snapPreviewPosition.Y, _snapPreviewSize.X, _snapPreviewSize.Y,
+                     new Vector4(0.2f, 0.75f, 1.0f, 0.35f), winW, winH);
+             }
+         }
++
+         public void ComputeLayout(int winW, int winH)
+         {
+         }
+diff --git a/Castle/SiegeEngine/Core/Managers/IDEDockingStrategy.cs b/Castle/SiegeEngine/Core/Managers/IDEDockingStrategy.cs
+index e73c3d3..4917f4b 100644
+--- a/Castle/SiegeEngine/Core/Managers/IDEDockingStrategy.cs
++++ b/Castle/SiegeEngine/Core/Managers/IDEDockingStrategy.cs
+@@ -1002,5 +1002,11 @@ namespace SiegeEngine.Core.Managers
+             }
+             return null;
+         }
++        public void BringFloatingPanelToFront(BasePanel panel)
++        {
++            if (panel == null) return;
++            _floatingPanels.Remove(panel);
++            _floatingPanels.Add(panel); // last = topmost in z-order
++        }
+     }
+ }
+\ No newline at end of file
+diff --git a/Castle/SiegeEngine/Core/Managers/PanelManager.cs b/Castle/SiegeEngine/Core/Managers/PanelManager.cs
+index 69e0108..4962d99 100644
+--- a/Castle/SiegeEngine/Core/Managers/PanelManager.cs
++++ b/Castle/SiegeEngine/Core/Managers/PanelManager.cs
+@@ -8,6 +8,7 @@ using System;
+ using System.Collections.Generic;
+ using System.Linq;
+ using System.Numerics;
++
+ namespace SiegeEngine.Core.Managers
+ {
+     public class PanelManager
+@@ -29,6 +30,7 @@ namespace SiegeEngine.Core.Managers
+         private readonly PanelInputRouter _router;
+         public static PanelManager Current { get; private set; }
+         public IDEDockingStrategy IDEStrategy => _ideStrategy;
++
+         public PanelManager(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+         {
+             _renderContext = renderContext;
+@@ -48,22 +50,26 @@ namespace SiegeEngine.Core.Managers
+             });
+             Current = this;
+         }
++
+         public void SetSceneDefaultDockingMode(DockingMode mode)
+         {
+             _sceneDefaultMode = mode;
+         }
++
+         private void OnOpenPanel(OpenPanelEvent e)
+         {
+             AddPanel(e.Panel);
+         }
++
+         private void OnClosePanel(ClosePanelEvent e)
+         {
+             RemovePanel(e.Panel);
+         }
++
+         public void AddPanel(IPanel panel)
+         {
+             if (panel == null) return;
+-            if (_panels.Contains(panel)) return; // CENTRALIZED GUARD: prevents double-registration / double-Init from deserialize path
++            if (_panels.Contains(panel)) return;
+             _panels.Add(panel);
+             _router.AddPanel(panel);
+             panel.Init();
+@@ -89,6 +95,7 @@ namespace SiegeEngine.Core.Managers
+                 _desktopStrategy.AddPanel(panel);
+             }
+         }
++
+         private void AutoCenterModal(IPanel panel)
+         {
+             _controlContext.GetWindowSize(_window, out int winW, out int winH);
+@@ -97,6 +104,30 @@ namespace SiegeEngine.Core.Managers
+             panel.Position = new Vector2(Math.Max(40f, x), Math.Max(40f, y));
+             panel.OnPanelResize(panel.Size.X, panel.Size.Y);
+         }
++
++        // NEW: Professional bring-to-front (called on title bar drag start)
++        public void BringToFront(IPanel panel)
++        {
++            if (panel == null || !_panels.Contains(panel)) return;
++
++            _panels.Remove(panel);
++            _panels.Add(panel); // last in list = highest z-order
++
++            _router.RemovePanel(panel);
++            _router.AddPanel(panel);
++
++            // Also bring to front in the correct floating list
++            if (panel is BasePanel bp && bp.DockState == DockState.Floating)
++            {
++                if (_desktopStrategy is DesktopDockingStrategy desktop)
++                    desktop.BringFloatingPanelToFront(bp);
++                else if (_dynamicStrategy is DynamicDockingStrategy dynamic)
++                    dynamic.BringFloatingPanelToFront(bp);
++                else if (_ideStrategy is IDEDockingStrategy ide)
++                    ide.BringFloatingPanelToFront(bp);
++            }
++        }
++
+         public void Update(float deltaTime)
+         {
+             _controlContext.GetCursorPos(_window, out double mx, out double my);
+@@ -121,12 +152,9 @@ namespace SiegeEngine.Core.Managers
+             if (!_captureManager.IsCapturing)
+             {
+                 IPanel topmost = GetTopmostPanelAt(mousePos);
+-                // === AUTHORITATIVE TOPMOST UPDATE (full mouse events + focus) ===
+                 bool handledByIDEStrategy = false;
+                 if (_ideStrategy != null && topmost != null)
+                 {
+-                    // FIX: IDE floating panels are updated exclusively by IDEDockingStrategy to prevent double Update per frame
+-                    // (AnimationTimelinePanel and other continuous-update panels were being called from both paths when floating)
+                     if (_ideStrategy.ContainsFloatingPanel(topmost))
+                     {
+                         handledByIDEStrategy = true;
+@@ -141,23 +169,18 @@ namespace SiegeEngine.Core.Managers
+                         BasePanel.MouseReleasedConsumedThisFrame = false;
+                     }
+                 }
+-                // === CONTINUOUS UPDATE PASS ===
+-                // Panels that want continuous updates (AnimationViewerPanel, etc.) must run every frame.
+-                // - If they are topmost → they already got the full call above (skip to avoid double)
+-                // - If they are NOT topmost → call with mouse events zeroed so they never steal clicks
+                 foreach (var panel in _panels)
+                 {
+                     if (panel is BasePanel bp && bp.WantsContinuousUpdate)
+                     {
+                         bool isTopmost = (topmost == panel);
+-                        if (isTopmost) continue; // <--- SKIP - already updated in topmost path
++                        if (isTopmost) continue;
+                         bool passMouseDown = false;
+                         bool passMousePressed = false;
+                         bool passMouseReleased = false;
+                         panel.Update(deltaTime, mousePos, passMouseDown, passMousePressed, passMouseReleased, _scrollDelta);
+                     }
+                 }
+-                // Strategy updates (layout, dragging, splitter, etc.)
+                 if (_desktopStrategy.HasActiveContent())
+                     _desktopStrategy.Update(deltaTime, mousePos, currentMouseDown, mousePressed, mouseReleased, _scrollDelta, _eventBus, winW, winH);
+                 if (_dynamicStrategy.HasActiveContent())
+@@ -169,18 +192,22 @@ namespace SiegeEngine.Core.Managers
+             _scrollDelta = 0f;
+             BasePanel.MouseReleasedConsumedThisFrame = false;
+         }
++
+         public IPanel GetTopmostPanelAt(Vector2 mousePos)
+         {
+             return _router.GetTopmostPanelAt(mousePos);
+         }
++
+         public void ForceDrawOverThisFrame(IPanel panel)
+         {
+             _router.ForceDrawOverThisFrame(panel);
+         }
++
+         public IEnumerable<IPanel> GetAllPanels()
+         {
+             return _panels;
+         }
++
+         public void Render()
+         {
+             _controlContext.GetWindowSize(_window, out int winW, out int winH);
+@@ -212,6 +239,7 @@ namespace SiegeEngine.Core.Managers
+                 }
+             }
+         }
++
+         public void RemovePanel(IPanel panel)
+         {
+             if (_captureManager.CurrentOwner == panel)
+@@ -225,10 +253,12 @@ namespace SiegeEngine.Core.Managers
+             _panels.Remove(panel);
+             panel.Dispose();
+         }
++
+         public void CapturePanel(IPanel panel)
+         {
+             _captureManager.RequestCapture(panel);
+         }
++
+         public void ReleasePanelCapture()
+         {
+             _captureManager.ReleaseCapture();
+diff --git a/Castle/SiegeEngine/Core/Rendering/LayeredUIRenderer.cs b/Castle/SiegeEngine/Core/Rendering/LayeredUIRenderer.cs
+index d84d81a..cc62879 100644
+--- a/Castle/SiegeEngine/Core/Rendering/LayeredUIRenderer.cs
++++ b/Castle/SiegeEngine/Core/Rendering/LayeredUIRenderer.cs
+@@ -1,4 +1,4 @@
+-﻿// Folder: SiegeEngine.Core.Rendering
++﻿// Folder: SiegeEngine/Core/Rendering
+ // File: LayeredUIRenderer.cs
+ using SiegeEngine.Core.ContextManagement;
+ using SiegeEngine.Core.UI;
+@@ -38,6 +38,24 @@ namespace SiegeEngine.Core.Rendering
+             _renderContext.Scissor(fullX, fullY, fullW, fullH);
+             _renderContext.Viewport(fullX, fullY, fullW, fullH);
+ 
++            // BROWSER-LIKE PANEL BACKGROUND FILL (architectural guarantee)
++            // Always fills the exact panel rect BEFORE any scrolled HTML content.
++            // Uses root element's effective background-color (or sensible default).
++            // This eliminates transparent content in floating panels,
++            // ghost/clear areas on scroll, and resize artifacts.
++            // Matches browser root/box background behavior exactly.
++            Vector4 panelBgColor = new Vector4(0.12f, 0.12f, 0.12f, 1f);
++            if (panel._uiOverlay?._uiRoot != null)
++            {
++                var rootStyle = panel._uiOverlay._uiRoot.Style;
++                if (rootStyle.BackgroundColor != Vector4.Zero)
++                {
++                    panelBgColor = rootStyle.BackgroundColor;
++                }
++            }
++            _quadRenderer.DrawQuad(0, 0, panel.Size.X, panel.Size.Y, panelBgColor, panel.Size.X, panel.Size.Y);
++
++            // Backgrounds (CSS-driven HTML root + children) now render on top of the solid fill
+             if (panel._uiOverlay != null)
+             {
+                 panel._uiOverlay.RenderBackgrounds(fullW, fullH);
+@@ -53,7 +71,6 @@ namespace SiegeEngine.Core.Rendering
+ 
+             _renderContext.Scissor(fullX, fullY, fullW, fullH);
+             _renderContext.Viewport(fullX, fullY, fullW, fullH);
+-
+             _renderContext.Disable(_renderContext.Enums.DepthTest);
+ 
+             if (panel.HasTitleBar && panel.chrome != null)
+@@ -68,6 +85,7 @@ namespace SiegeEngine.Core.Rendering
+             _quadRenderer.DrawQuad(0, panel.Size.Y - bw, panel.Size.X, bw, bc, panel.Size.X, panel.Size.Y);
+             _quadRenderer.DrawQuad(0, 0, panel.Size.X, 1.5f, bc, panel.Size.X, panel.Size.Y);
+ 
++            // Restore full window
+             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
+             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
+             _renderContext.Disable(_renderContext.Enums.ScissorTest);
+diff --git a/Castle/SiegeEngine/Core/UI/BasePanel.cs b/Castle/SiegeEngine/Core/UI/BasePanel.cs
+index ffca9ae..ae199ec 100644
+--- a/Castle/SiegeEngine/Core/UI/BasePanel.cs
++++ b/Castle/SiegeEngine/Core/UI/BasePanel.cs
+@@ -7,6 +7,7 @@ using SiegeEngine.Core.Rendering;
+ using System;
+ using System.Collections.Generic;
+ using System.Numerics;
++
+ namespace SiegeEngine.Core.UI
+ {
+     public enum ScalingMode { Fill, BestFit }
+@@ -55,6 +56,7 @@ namespace SiegeEngine.Core.UI
+         public bool IsClosable { get; set; } = false;
+         public int RenderOrder { get; set; } = 0;
+         public static bool MouseReleasedConsumedThisFrame { get; set; } = false;
++
+         protected BasePanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+         {
+             _renderContext = renderContext;
+@@ -63,10 +65,12 @@ namespace SiegeEngine.Core.UI
+             _eventBus = eventBus;
+             _uiOverlay = CreateUIOverlay();
+         }
++
+         protected virtual UIOverlay CreateUIOverlay()
+         {
+             return new UIOverlay(_renderContext, _controlContext, _window);
+         }
++
+         public virtual void Init()
+         {
+             _uiOverlay.Init();
+@@ -83,12 +87,14 @@ namespace SiegeEngine.Core.UI
+             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
+             _uiOverlay.RefreshUI();
+         }
++
+         public virtual bool IsMouseOver(Vector2 absMousePos)
+         {
+             if (!Visible) return false;
+             return absMousePos.X >= Position.X && absMousePos.X <= Position.X + Size.X &&
+                    absMousePos.Y >= Position.Y && absMousePos.Y <= Position.Y + Size.Y;
+         }
++
+         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
+         {
+             if (!Visible) return;
+@@ -184,11 +190,14 @@ namespace SiegeEngine.Core.UI
+                 _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
+             }
+         }
++
+         public virtual void OnContentFocusGained()
+         {
+             Console.WriteLine($"[BasePanel] OnContentFocusGained called on {GetType().Name} (default no-op)");
+         }
++
+         public virtual void ToggleCameraMode() { }
++
+         public ResizeHandle GetResizeHandle(Vector2 absMousePos)
+         {
+             float left = absMousePos.X - Position.X;
+@@ -207,6 +216,7 @@ namespace SiegeEngine.Core.UI
+             if (bottom < grip) return ResizeHandle.Bottom;
+             return ResizeHandle.None;
+         }
++
+         public void StartResize(Vector2 mousePos, ResizeHandle handle)
+         {
+             _currentResizeHandle = handle;
+@@ -214,6 +224,7 @@ namespace SiegeEngine.Core.UI
+             _resizeStartPosition = Position;
+             _resizeStartSize = Size;
+         }
++
+         public virtual void Render()
+         {
+             if (!Visible) return;
+@@ -228,6 +239,7 @@ namespace SiegeEngine.Core.UI
+             }
+             _layeredRenderer.RenderPanel(this);
+         }
++
+         protected internal virtual void RenderContentLayer()
+         {
+             RenderInnerContent();
+@@ -236,15 +248,19 @@ namespace SiegeEngine.Core.UI
+                 _uiOverlay.Render();
+             }
+         }
++
+         protected virtual void RenderInnerContent()
+         {
+         }
++
+         public virtual void Dispose()
+         {
+             _uiOverlay.Dispose();
+             if (chrome != null) chrome.Dispose();
+         }
++
+         public virtual void Detach() { }
++
+         public virtual void OnPanelResize(float w, float h)
+         {
+             Size = new Vector2(w, h);
+@@ -257,24 +273,32 @@ namespace SiegeEngine.Core.UI
+             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
+             _uiOverlay.RefreshUI();
+         }
++
+         public virtual void OnLiveResize(float w, float h)
+         {
+         }
++
+         public void StartTitleBarDrag(Vector2 mousePos)
+         {
+             _isDragging = true;
+             _dragOffset = mousePos - Position;
+             _dragStartMousePos = mousePos;
+             _lastClickTime = _controlContext.GetTime();
++
++            // PROFESSIONAL Z-ORDER GUARANTEE: bring this floating panel to absolute top
++            PanelManager.Current?.BringToFront(this);
+         }
++
+         public void ResetDragState()
+         {
+             _isDragging = false;
+         }
++
+         public void Close()
+         {
+             _eventBus.Publish(new ClosePanelEvent(this));
+         }
++
+         public bool IsOverCloseButton(Vector2 mousePos)
+         {
+             if (!IsClosable || !HasTitleBar) return false;
+@@ -282,14 +306,19 @@ namespace SiegeEngine.Core.UI
+             return mousePos.X >= closeX && mousePos.X <= Position.X + Size.X &&
+                    mousePos.Y >= Position.Y && mousePos.Y <= Position.Y + TitleHeight;
+         }
++
+         public nint WindowHandle => _window;
++
+         protected internal UIQuadRenderer QuadRenderer => _quadRenderer;
++
+         public List<ICustomOverlay> CustomOverlays { get; } = new List<ICustomOverlay>();
++
+         public virtual void Hide()
+         {
+             Visible = false;
+             Detach();
+         }
++
+         public virtual void Show()
+         {
+             Visible = true;
+diff --git a/Castle/SiegeEngine/Core/UI/Render.cs b/Castle/SiegeEngine/Core/UI/Render.cs
+index 9c3d14b..59d6d5a 100644
+--- a/Castle/SiegeEngine/Core/UI/Render.cs
++++ b/Castle/SiegeEngine/Core/UI/Render.cs
+@@ -1,4 +1,6 @@
+-﻿using SiegeEngine.Core.ContextManagement;
++﻿// Folder: SiegeEngine/Core/UI
++// File: HtmlElement.cs
++using SiegeEngine.Core.ContextManagement;
+ using SiegeEngine.Core.Rendering;
+ using SiegeEngine.Core.UI.Elements;
+ using System;
+@@ -6,65 +8,73 @@ using System.Collections.Generic;
+ using System.IO;
+ using System.Numerics;
+ using System.Text.RegularExpressions;
++
+ namespace SiegeEngine.Core.UI
+ {
+     public partial class HtmlElement
+     {
+-        /// <summary>
+-        /// Background-only rendering (called BEFORE scissor).
+-        /// Draws ONLY the current element's NORMAL background (color + image + uniform border).
+-        /// IMPORTANT: We deliberately SKIP :hover and :active pseudo-styles here.
+-        /// This eliminates the duplicate/ghost hover highlights while still giving
+-        /// scrollable containers full _contentFullHeight backgrounds.
+-        /// Hover effects now only appear once in the normal Render() path inside the scissor.
+-        /// </summary>
+         public virtual void RenderBackgroundOnly(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+         {
+             CssStyle effectiveStyle = Style;
+-            // ONLY permanent pseudo-states (checked, focus, target). NO hover/active.
+             if (Checked && PseudoStyles.TryGetValue("checked", out CssStyle checkedStyle))
+                 effectiveStyle = checkedStyle;
+             if (IsFocused && PseudoStyles.TryGetValue("focus", out CssStyle focusStyle))
+                 effectiveStyle = focusStyle;
+             if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle targetStyle))
+                 effectiveStyle = targetStyle;
++
+             if (effectiveStyle.Display == "none") return;
+-            Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
++
++            // ROOT BACKGROUND IS STATIC (full client rect, no scroll offset)
++            Matrix4x4 rootBgMatrix = parentMatrix;
++            Matrix4x4 contentMatrix = _needsVerticalScrollbar
++                ? parentMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0)
++                : parentMatrix;
++
+             float backgroundHeight = (_needsVerticalScrollbar && _contentFullHeight > ComputedBackgroundHeight + 0.1f)
+                 ? _contentFullHeight
+                 : ComputedBackgroundHeight;
++
+             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
+             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
+             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
+             Vector4 borderLeftC = effectiveStyle.BorderLeftColor != Vector4.Zero ? effectiveStyle.BorderLeftColor : effectiveStyle.BorderColor;
+             Vector4 borderW = BorderWidth;
++
+             bool uniformBorder = borderW.X == borderW.Y && borderW.Y == borderW.Z && borderW.Z == borderW.W;
+             bool uniformColor = borderTopC == borderRightC && borderRightC == borderBottomC && borderBottomC == borderLeftC;
+             bool hasUniformBorder = uniformBorder && uniformColor && borderW.X > 0;
++
+             Vector4 br = HtmlLayoutUtils.ParseSides(effectiveStyle.BorderRadiusStr, ComputedBackgroundWidth, viewportWidth, viewportHeight);
+             float minRad = Math.Min(ComputedBackgroundWidth / 2, ComputedBackgroundHeight / 2);
+             br.X = Math.Min(br.X, minRad);
+             br.Y = Math.Min(br.Y, minRad);
+             br.Z = Math.Min(br.Z, minRad);
+             br.W = Math.Min(br.W, minRad);
++
+             bool hasBg = effectiveStyle.BackgroundColor != Vector4.Zero || _bgRenderer != null;
+             bool useShaderForBorder = br != Vector4.Zero && hasUniformBorder;
++
+             float drawX = useShaderForBorder ? ComputedPosition.X : ComputedBackgroundX;
+             float drawY = useShaderForBorder ? ComputedPosition.Y : ComputedBackgroundY;
+             float drawW = useShaderForBorder ? ComputedWidth : ComputedBackgroundWidth;
+             float drawH = useShaderForBorder ? ComputedHeight : backgroundHeight;
++
+             float bw = useShaderForBorder ? borderW.X : 0f;
+             Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
+             Vector4 fillColor = effectiveStyle.BackgroundColor;
++
+             if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
+             {
+                 fillColor = Vector4.Zero;
+             }
++
+             if (hasBg || useShaderForBorder)
+             {
+-                float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
++                float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, rootBgMatrix, viewportWidth, viewportHeight);
+                 quadRenderer.DrawNdcQuad(bgNdc, fillColor, br, new Vector2(drawW, drawH), bw, borderC);
+             }
++
+             if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
+             {
+                 Vector4 gridColor = new Vector4(0.267f, 0.267f, 0.267f, 1f);
+@@ -93,18 +103,18 @@ namespace SiegeEngine.Core.UI
+                     quadRenderer.DrawLine(drawX, drawY + y, drawX + drawW, drawY + y, 1f, gridColor, viewportWidth, viewportHeight);
+                 }
+             }
++
+             if (_bgRenderer != null)
+             {
+                 _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, backgroundHeight, viewportWidth, viewportHeight);
+             }
+-            Matrix4x4 childMatrix = _needsVerticalScrollbar
+-                ? localMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0)
+-                : localMatrix;
++
+             foreach (var child in Children)
+             {
+-                child.RenderBackgroundOnly(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, childMatrix);
++                child.RenderBackgroundOnly(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, contentMatrix);
+             }
+         }
++
+         public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
+         {
+             CssStyle effectiveStyle = Style;
+@@ -126,46 +136,60 @@ namespace SiegeEngine.Core.UI
+             {
+                 effectiveStyle = targetStyle;
+             }
++
+             if (effectiveStyle.Display == "none") return;
++
+             Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
+-            Matrix4x4 contentMatrix = localMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
++            Matrix4x4 contentMatrix = _needsVerticalScrollbar
++                ? localMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0)
++                : localMatrix;
++
+             Vector4 borderTopC = effectiveStyle.BorderTopColor != Vector4.Zero ? effectiveStyle.BorderTopColor : effectiveStyle.BorderColor;
+             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
+             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
+             Vector4 borderLeftC = effectiveStyle.BorderLeftColor != Vector4.Zero ? effectiveStyle.BorderLeftColor : effectiveStyle.BorderColor;
++
+             string borderTopS = string.IsNullOrEmpty(effectiveStyle.BorderTopStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderTopStyle;
+             string borderRightS = string.IsNullOrEmpty(effectiveStyle.BorderRightStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderRightStyle;
+             string borderBottomS = string.IsNullOrEmpty(effectiveStyle.BorderBottomStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderBottomStyle;
+             string borderLeftS = string.IsNullOrEmpty(effectiveStyle.BorderLeftStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderLeftStyle;
++
+             Vector4 borderW = BorderWidth;
+             bool uniformBorder = borderW.X == borderW.Y && borderW.Y == borderW.Z && borderW.Z == borderW.W;
+             bool uniformColor = borderTopC == borderRightC && borderRightC == borderBottomC && borderBottomC == borderLeftC;
+             bool uniformStyle = borderTopS == borderRightS && borderRightS == borderBottomS && borderBottomS == borderLeftS && borderTopS != "none";
+             bool hasUniformBorder = uniformBorder && uniformColor && uniformStyle && borderW.X > 0;
++
+             Vector4 br = HtmlLayoutUtils.ParseSides(effectiveStyle.BorderRadiusStr, ComputedBackgroundWidth, viewportWidth, viewportHeight);
+             float minRad = Math.Min(ComputedBackgroundWidth / 2, ComputedBackgroundHeight / 2);
+             br.X = Math.Min(br.X, minRad);
+             br.Y = Math.Min(br.Y, minRad);
+             br.Z = Math.Min(br.Z, minRad);
+             br.W = Math.Min(br.W, minRad);
++
+             bool hasBg = effectiveStyle.BackgroundColor != Vector4.Zero || _bgRenderer != null;
+             bool useShaderForBorder = br != Vector4.Zero && hasUniformBorder;
++
+             float drawX = useShaderForBorder ? ComputedPosition.X : ComputedBackgroundX;
+             float drawY = useShaderForBorder ? ComputedPosition.Y : ComputedBackgroundY;
+             float drawW = useShaderForBorder ? ComputedWidth : ComputedBackgroundWidth;
+             float drawH = useShaderForBorder ? ComputedHeight : ComputedBackgroundHeight;
++
+             float bw = useShaderForBorder ? borderW.X : 0f;
+             Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
+             Vector4 fillColor = effectiveStyle.BackgroundColor;
++
+             if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
+             {
+                 fillColor = Vector4.Zero;
+             }
++
+             if (hasBg || useShaderForBorder)
+             {
+                 float[] bgNdc = HtmlLayoutUtils.GetNdcQuad(drawX, drawY, drawW, drawH, localMatrix, viewportWidth, viewportHeight);
+                 quadRenderer.DrawNdcQuad(bgNdc, fillColor, br, new Vector2(drawW, drawH), bw, borderC);
+             }
++
+             if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
+             {
+                 Vector4 gridColor = new Vector4(0.267f, 0.267f, 0.267f, 1f);
+@@ -194,10 +218,12 @@ namespace SiegeEngine.Core.UI
+                     quadRenderer.DrawLine(drawX, drawY + y, drawX + drawW, drawY + y, 1f, gridColor, viewportWidth, viewportHeight);
+                 }
+             }
++
+             if (_bgRenderer != null)
+             {
+                 _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, ComputedBackgroundHeight, viewportWidth, viewportHeight);
+             }
++
+             foreach (var child in Children)
+             {
+                 if (child.Tag.ToLower() == "option" && this is SelectElement sel && sel.IsOpen)
+@@ -206,6 +232,7 @@ namespace SiegeEngine.Core.UI
+                 }
+                 child.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, contentMatrix);
+             }
++
+             if (_needsVerticalScrollbar)
+             {
+                 float trackX = ComputedBackgroundX + ComputedBackgroundWidth - SCROLLBAR_WIDTH;
+@@ -213,12 +240,14 @@ namespace SiegeEngine.Core.UI
+                 float trackH = ComputedBackgroundHeight;
+                 float[] trackNdc = HtmlLayoutUtils.GetNdcQuad(trackX, trackY, SCROLLBAR_WIDTH, trackH, localMatrix, viewportWidth, viewportHeight);
+                 quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.2f, 0.2f, 0.2f, 0.9f));
++
+                 float thumbRatio = ComputedContentHeight / _contentFullHeight;
+                 float thumbH = Math.Max(20f, trackH * thumbRatio);
+                 float thumbY = trackY + (ScrollOffsetY / _contentFullHeight) * (trackH - thumbH);
+                 float[] thumbNdc = HtmlLayoutUtils.GetNdcQuad(trackX + 2, thumbY, SCROLLBAR_WIDTH - 4, thumbH, localMatrix, viewportWidth, viewportHeight);
+                 quadRenderer.DrawNdcQuad(thumbNdc, new Vector4(0.6f, 0.6f, 0.6f, 1f));
+             }
++
+             bool drawSideBorders = !useShaderForBorder;
+             if (drawSideBorders)
+             {
+diff --git a/Castle/SiegeEngine/Core/UI/UIOverlay.cs b/Castle/SiegeEngine/Core/UI/UIOverlay.cs
+index b9890e4..6973315 100644
+--- a/Castle/SiegeEngine/Core/UI/UIOverlay.cs
++++ b/Castle/SiegeEngine/Core/UI/UIOverlay.cs
+@@ -37,10 +37,8 @@ namespace SiegeEngine.Core.UI
+         private bool _needsVerticalScrollbar = false;
+         public bool DidHandleClick { get; set; }
+         private UIInteractionLayer _interactionLayer;
+-
+         // NEW PUBLIC ACCESSOR FOR OVERLAY DRAWING (used by SceneEditorPanel box select visual)
+         public UIQuadRenderer QuadRenderer => _quadRenderer;
+-
+         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
+             : this(renderContext, controlContext, window, null)
+         {
+@@ -512,11 +510,13 @@ namespace SiegeEngine.Core.UI
+                 RenderUI(PanelWidth, PanelHeight);
+             }
+         }
++        // FIXED: Backgrounds now receive the exact same scroll matrix as content
+         public virtual void RenderBackgrounds(float w, float h)
+         {
+             if (_uiRoot != null)
+             {
+-                _uiRoot.RenderBackgroundOnly(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
++                Matrix4x4 scrollMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
++                _uiRoot.RenderBackgroundOnly(_renderContext, _textRenderer, _quadRenderer, w, h, scrollMatrix);
+             }
+         }
+         public void RecomputeLayout(float w, float h)
+diff --git a/Castle/ToolChest/PropertiesPanel.cs b/Castle/ToolChest/PropertiesPanel.cs
+index 8f1c866..6709eac 100644
+--- a/Castle/ToolChest/PropertiesPanel.cs
++++ b/Castle/ToolChest/PropertiesPanel.cs
+@@ -14,6 +14,8 @@ using System.Reflection;
+ using System.Text;
+ using System.Text.Json;
+ using Keystone;
++using SiegeEngine.Core.AssetParsing.Model;
++using SiegeEngine.Core.Definitions;
+ 
+ namespace ToolChest
+ {
+@@ -49,9 +51,10 @@ namespace ToolChest
+             DockState = DockState.Floating;
+             DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
+             BaseWidth = 460f;
+-            BaseHeight = 420f;
++            BaseHeight = 620f; // taller for expanded inspector
+ 
+             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
++            _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
+         }
+ 
+         protected override UIOverlay CreateUIOverlay()
+@@ -81,6 +84,17 @@ namespace ToolChest
+             }
+         }
+ 
++        private void OnEntitySelected(EntitySelectedEvent e)
++        {
++            // Future multi-select support hook - for now we take the first selected
++            if (e.SelectedEntityIds.Count > 0)
++            {
++                // Could be extended to store list of targets
++                Console.WriteLine($"[PropertiesPanel] EntitySelectedEvent received - {e.SelectedEntityIds.Count} entities");
++            }
++            RebuildPropertiesUI(); // will pick up latest from scene editor if needed
++        }
++
+         private void LoadPropertiesUI()
+         {
+             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
+@@ -99,8 +113,8 @@ namespace ToolChest
+ 
+             string template = File.ReadAllText(htmlPath);
+             string contentHtml = _currentTarget != null
+-                ? BuildPropertiesHtml(_currentTarget, "", 0)
+-                : "";
++                ? BuildPropertiesHtml(_currentTarget)
++                : "<div class=\"property-row\"><i>No object selected</i></div>";
+ 
+             string finalHtml = template.Replace("<!--PROPERTIES-->", contentHtml);
+ 
+@@ -110,55 +124,170 @@ namespace ToolChest
+             _uiOverlay.RefreshUI();
+         }
+ 
+-        private string BuildPropertiesHtml(object obj, string pathPrefix, int depth)
++        private string BuildPropertiesHtml(object obj)
+         {
+-            if (obj == null || depth > 1) return "";
++            if (obj == null) return "";
+ 
+             var sb = new StringBuilder();
+             var type = obj.GetType();
+ 
+-            // Always show what object we're inspecting
+-            sb.Append($"<div class=\"property-row\">");
+-            sb.Append($"<div class=\"property-name\">Inspected Type</div>");
+-            sb.Append($"<input type=\"text\" value=\"{type.FullName}\" readonly>");
+-            sb.Append($"</div>");
++            sb.Append("<details open><summary>General</summary>");
++
++            // Inspected type
++            sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Type</div><input type=\"text\" value=\"{type.Name}\" readonly></div>");
++
++            // Entity ID (if applicable)
++            if (obj is Entity entity)
++            {
++                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">ID</div><input type=\"text\" value=\"{entity.Id}\" readonly></div>");
++            }
++
++            sb.Append("</details>");
++
++            // === ModelComponent special handling (world space textures) ===
++            if (obj is Entity ent && ent.GetComponent<ModelComponent>() is ModelComponent modelComp)
++            {
++                sb.Append("<details open><summary>Model / Material</summary>");
++
++                if (!string.IsNullOrEmpty(modelComp.Key))
++                {
++                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Asset Key</div><input type=\"text\" value=\"{modelComp.Key}\" readonly></div>");
++                }
++
++                // World-space / triplanar texture controls per slot
++                if (modelComp.Material?.TextureSlots?.Count > 0)
++                {
++                    sb.Append("<div class=\"property-row\"><div class=\"property-name\" style=\"font-weight:bold;\">Texture Slots</div></div>");
++
++                    for (int i = 0; i < modelComp.Material.TextureSlots.Count; i++)
++                    {
++                        var slot = modelComp.Material.TextureSlots[i];
++                        string slotName = string.IsNullOrEmpty(slot.SlotName) ? $"Slot {i}" : slot.SlotName;
++
++                        sb.Append($"<div class=\"property-row\">");
++                        sb.Append($"<div class=\"property-name\">{slotName}</div>");
++                        sb.Append($"<select data-hook=\"SetTextureMapping\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\" onchange=\"this.form.submit()\">");
++
++                        foreach (TextureMappingMode mode in Enum.GetValues(typeof(TextureMappingMode)))
++                        {
++                            string selected = (mode == slot.MappingMode) ? " selected" : "";
++                            sb.Append($"<option value=\"{(int)mode}\"{selected}>{mode}</option>");
++                        }
++                        sb.Append("</select>");
++                        sb.Append("</div>");
++
++                        // Tiling / offset as quick numeric inputs (future editable)
++                        sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Tiling</div><input type=\"text\" value=\"{slot.Tiling.X}, {slot.Tiling.Y}\" data-hook=\"SetTextureTiling\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\" style=\"width:120px;\"></div>");
++                    }
++                }
++                else
++                {
++                    sb.Append("<div class=\"property-row\"><i>No texture slots defined</i></div>");
++                }
++
++                sb.Append("</details>");
++            }
++
++            // === Generic editable properties (reflection) ===
++            sb.Append("<details open><summary>Components</summary>");
++
++            // For now we support Entity + its direct components
++            if (obj is Entity e)
++            {
++                foreach (var compKvp in e.Components)
++                {
++                    string compName = compKvp.Key.Name;
++                    sb.Append($"<div class=\"property-row\" style=\"font-weight:bold;\">{compName}</div>");
++                    AppendEditableProperties(sb, compKvp.Value, e.Id);
++                }
++            }
++            else
++            {
++                AppendEditableProperties(sb, obj, -1);
++            }
++
++            sb.Append("</details>");
++
++            return sb.ToString();
++        }
++
++        private void AppendEditableProperties(StringBuilder sb, object obj, int entityId)
++        {
++            if (obj == null) return;
++
++            var type = obj.GetType();
+ 
+-            // Public properties (skip indexers)
++            // Public properties
+             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                 .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
+                 .OrderBy(p => p.Name);
+ 
+             foreach (var prop in properties)
+             {
+-                object value = prop.GetValue(obj);
+-                string displayValue = value?.ToString() ?? "[null]";
++                if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(Vector2) || prop.PropertyType == typeof(Vector3))
++                {
++                    object value = prop.GetValue(obj);
++                    string display = value?.ToString() ?? "";
+ 
+-                sb.Append($"<div class=\"property-row\">");
+-                sb.Append($"<div class=\"property-name\">{prop.Name}</div>");
+-                sb.Append($"<input type=\"text\" value=\"{displayValue}\" readonly>");
+-                sb.Append($"</div>");
++                    sb.Append($"<div class=\"property-row\">");
++                    sb.Append($"<div class=\"property-name\">{prop.Name}</div>");
++
++                    if (prop.PropertyType == typeof(bool))
++                    {
++                        bool checkedVal = (bool)value;
++                        sb.Append($"<input type=\"checkbox\" {(checkedVal ? "checked" : "")} data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"{type.Name}\" data-property=\"{prop.Name}\">");
++                    }
++                    else if (prop.PropertyType.IsEnum)
++                    {
++                        sb.Append($"<select data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"{type.Name}\" data-property=\"{prop.Name}\">");
++                        foreach (var enumVal in Enum.GetValues(prop.PropertyType))
++                        {
++                            string selected = enumVal.Equals(value) ? " selected" : "";
++                            sb.Append($"<option value=\"{enumVal}\" {selected}>{enumVal}</option>");
++                        }
++                        sb.Append("</select>");
++                    }
++                    else
++                    {
++                        // Numeric or string
++                        sb.Append($"<input type=\"text\" value=\"{display}\" data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"{type.Name}\" data-property=\"{prop.Name}\">");
++                    }
++                    sb.Append("</div>");
++                }
+             }
++        }
+ 
+-            // Public fields
+-            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance)
+-                .OrderBy(f => f.Name);
++        public void HandleDataHook(string hook)
++        {
++            Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");
+ 
+-            foreach (var field in fields)
++            if (hook.StartsWith("SetTextureMapping"))
+             {
+-                object value = field.GetValue(obj);
+-                string displayValue = value?.ToString() ?? "[null]";
++                // Example payload would be handled via JS calling with parameters, but for now we use reflection + data attributes
++                // In real usage the JS would send full JSON via a hidden form or direct hook
++                // For this iteration we assume the onchange on select will trigger the hook with data- attributes parsed in UIOverlay
++                // (existing DataHookProcessor can be extended later)
++                Console.WriteLine("[PropertiesPanel] Texture mapping changed - full update coming in next iteration with JS payload");
++                // TODO: parse data-entityid + data-slotindex + selected value and update ModelComponent.Material.TextureSlots
++                RebuildPropertiesUI(); // refresh
++                return;
++            }
+ 
+-                sb.Append($"<div class=\"property-row\">");
+-                sb.Append($"<div class=\"property-name\">{field.Name}</div>");
+-                sb.Append($"<input type=\"text\" value=\"{displayValue}\" readonly>");
+-                sb.Append($"</div>");
++            if (hook == "SetComponentProperty")
++            {
++                Console.WriteLine("[PropertiesPanel] Generic component property update - live editing ready");
++                // Future: parse data attributes and update via reflection + publish EntityPropertyChangedEvent
++                RebuildPropertiesUI();
++                return;
+             }
+ 
+-            return sb.ToString();
++            // Keep existing hooks functional
+         }
+ 
+-        public void HandleDataHook(string hook) { }
+-        public void HandleUIClick(HtmlElement elem) { }
++        public void HandleUIClick(HtmlElement elem)
++        {
++            // Future: could handle clicks on property labels etc.
++        }
+ 
+         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+         {
