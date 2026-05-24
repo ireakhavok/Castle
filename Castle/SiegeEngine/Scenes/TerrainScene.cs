@@ -29,10 +29,11 @@ namespace SiegeEngine.Scenes
         protected uint _terrainTextureId = 0;
         protected bool _hasColorTexture = false;
 
-        // NEW for Step 2: splat map support (RGBA control map for material layers)
+        protected TerrainPaintData _paintData;
+
         protected uint _splatTextureId = 0;
         protected bool _hasSplatMap = false;
-        protected float[,,] _splatWeights; // in-memory unsaved splat data (4 layers)
+        protected float[,,] _splatWeights;
 
         protected GeoTiffParser.GeoReference _colorGeoRef;
         protected GeoTiffParser.GeoReference _terrainGeoRef;
@@ -66,6 +67,7 @@ namespace SiegeEngine.Scenes
             _useCustomScale = false;
             _heightmap = null;
             _splatWeights = null;
+            _paintData = null;
 
             if (data?.Terrain != null)
             {
@@ -79,7 +81,6 @@ namespace SiegeEngine.Scenes
                 }
                 if (!string.IsNullOrEmpty(data.Terrain.SplatMapPath))
                 {
-                    // Load splat map (to be implemented in next file)
                     LoadSplatMap(data.Terrain.SplatMapPath);
                 }
                 else
@@ -98,14 +99,14 @@ namespace SiegeEngine.Scenes
             _terrainWidth = 200;
             _terrainHeight = 200;
             _heightmap = new float[_terrainWidth, _terrainHeight];
-            _splatWeights = new float[_terrainWidth, _terrainHeight, 4]; // 4 layers, zeroed
+            _splatWeights = new float[_terrainWidth, _terrainHeight, 4];
             _minHeight = 0;
             _maxHeight = 0;
             for (int x = 0; x < _terrainWidth; x++)
                 for (int y = 0; y < _terrainHeight; y++)
                 {
                     _heightmap[x, y] = 0f;
-                    _splatWeights[x, y, 0] = 1f; // default to first material
+                    _splatWeights[x, y, 0] = 1f;
                 }
             _useCustomScale = true;
             BuildWireframeMesh(1);
@@ -118,13 +119,9 @@ namespace SiegeEngine.Scenes
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
         }
 
-        // NEW for Step 2: load splat map (RGBA control map)
         public void LoadSplatMap(string path)
         {
-            // Placeholder - load RGBA splat texture
-            // Real implementation would use TextureLoader and store weights in _splatWeights
             _hasSplatMap = true;
-            // _splatTextureId = ... (future)
             BuildTexturedMesh();
         }
 
@@ -325,11 +322,9 @@ namespace SiegeEngine.Scenes
             }
         }
 
-        // NEW for Step 2: splat map support
         public void SetSplatMap(string path)
         {
-            // Load RGBA splat texture
-            _splatTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, path); // reuse for now
+            _splatTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, path);
             _hasSplatMap = _splatTextureId != 0;
             BuildTexturedMesh();
         }

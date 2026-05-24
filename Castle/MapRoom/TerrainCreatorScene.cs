@@ -32,8 +32,8 @@ namespace MapRoom
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData;
 
-        // NEW for Step 2: unsaved splat data (mirrors heightmap pattern)
-        private float[,,] _unsavedSplatWeights;
+        // NEW: live persistent paint data (replaces the old _unsavedSplatWeights)
+        private TerrainPaintData _paintData;
 
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
@@ -113,7 +113,7 @@ namespace MapRoom
             _terrainWidth = 200;
             _terrainHeight = 200;
             _heightmap = new float[_terrainWidth, _terrainHeight];
-            _unsavedSplatWeights = new float[_terrainWidth, _terrainHeight, 4];
+            _paintData = ProjectSettings.Current.GetOrCreatePaintData("Untitled", _terrainWidth, _terrainHeight);
             _minHeight = float.MaxValue;
             _maxHeight = float.MinValue;
             for (int x = 0; x < _terrainWidth; x++)
@@ -122,7 +122,6 @@ namespace MapRoom
                 {
                     float h = 0f;
                     _heightmap[x, y] = h;
-                    _unsavedSplatWeights[x, y, 0] = 1f; // default to first material
                     if (h < _minHeight) _minHeight = h;
                     if (h > _maxHeight) _maxHeight = h;
                 }
@@ -177,7 +176,7 @@ namespace MapRoom
             else
             {
                 _heightmap = new float[_terrainWidth, _terrainHeight];
-                _unsavedSplatWeights = new float[_terrainWidth, _terrainHeight, 4];
+                _paintData = ProjectSettings.Current.GetOrCreatePaintData(parameters.Name ?? "Untitled", _terrainWidth, _terrainHeight);
                 _minHeight = parameters.InitialHeight;
                 _maxHeight = parameters.InitialHeight;
                 for (int x = 0; x < _terrainWidth; x++)
@@ -185,7 +184,6 @@ namespace MapRoom
                     for (int y = 0; y < _terrainHeight; y++)
                     {
                         _heightmap[x, y] = parameters.InitialHeight * parameters.VerticalExaggeration;
-                        _unsavedSplatWeights[x, y, 0] = 1f;
                     }
                 }
                 Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain");
@@ -203,6 +201,10 @@ namespace MapRoom
         {
             _sceneData = data;
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
+
+            // NEW: get the live persistent paint data
+            _paintData = ProjectSettings.Current.GetOrCreatePaintData(sceneName, _terrainWidth > 0 ? _terrainWidth : 200, _terrainHeight > 0 ? _terrainHeight : 200);
+
             if (data?.Terrain != null && !string.IsNullOrEmpty(data.Terrain.HeightmapPath))
             {
                 LoadTerrain(data.Terrain.HeightmapPath);
@@ -281,10 +283,9 @@ namespace MapRoom
             base.SetColorTexture(path);
         }
 
-        // NEW for Step 2: splat map handling
         public void SetSplatMap(string path)
         {
-            base.SetSplatMap(path); // call base when added
+            base.SetSplatMap(path);
         }
 
         public void SaveTerrain(string terrainName)
@@ -324,6 +325,10 @@ namespace MapRoom
             {
                 string relativePath = Path.GetRelativePath(projectPath, tifPath);
                 _sceneData.Terrain.HeightmapPath = relativePath;
+            }
+            if (_paintData != null)
+            {
+                _paintData.SaveToDisk(projectPath, terrainName);
             }
             Console.WriteLine($"[TerrainCreatorScene] Saved custom terrain '{terrainName}' → {tifPath}");
             RebuildTerrainMesh();
@@ -583,7 +588,23 @@ namespace MapRoom
                 Size = e.Radius,
                 Intensity = e.Strength
             };
-            brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
+
+            if (_paintData != null && _heightmap != null)
+            {
+                if (brush.Mode == BrushMode.Paint)
+                {
+                    _paintData.PaintSplat(brush.PaintLayer, new Vector2(e.WorldPos.X, e.WorldPos.Y), brush.Size, brush.Intensity, _worldScaleX, _worldScaleZ);
+                }
+                else
+                {
+                    brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
+                }
+            }
+            else
+            {
+                brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
+            }
+
             UpdateAffectedVertices(e.WorldPos, e.Radius);
         }
 

@@ -1,5 +1,4 @@
-﻿// Folder: ToolChest
-// File: Brush.cs
+﻿// UPDATED FILE: ToolChest/Brush.cs
 using System;
 using System.Numerics;
 
@@ -23,7 +22,7 @@ namespace ToolChest
         Flatten,
         Noise,
         Sharpen,
-        Paint   // NEW for Step 2: paints into splat map layer
+        Paint
     }
 
     public class Brush
@@ -31,10 +30,7 @@ namespace ToolChest
         public BrushShape Shape { get; set; } = BrushShape.Circle;
         public BrushFalloff Falloff { get; set; } = BrushFalloff.Gaussian;
         public BrushMode Mode { get; set; } = BrushMode.Raise;
-
-        // NEW for Step 2: which material layer to paint (0-3 = RGBA channels of splat map)
         public int PaintLayer { get; set; } = 0;
-
         public float Size { get; set; } = 10f;
         public float Intensity { get; set; } = 1f;
 
@@ -54,8 +50,7 @@ namespace ToolChest
 
             if (Mode == BrushMode.Paint)
             {
-                // TODO: splat map painting will be wired in TerrainScene / TerrainCreatorScene
-                // For now the brush just knows which layer to target
+                Console.WriteLine($"[Brush] Paint mode - delegating to TerrainPaintData");
                 return;
             }
 
