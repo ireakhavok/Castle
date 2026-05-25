@@ -17,6 +17,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+
 namespace SiegeEngine.Scenes
 {
     public unsafe class ModelViewerScene : Scene
@@ -59,6 +60,7 @@ namespace SiegeEngine.Scenes
         private float _trimStart = 0f;
         private float _trimEnd = -1f;
         private float _playbackSpeed = 1f;
+
         public float CurrentTime
         {
             get => _currentTime;
@@ -71,12 +73,14 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
+
         public ModelViewerScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
             : base(renderContext, controlContext, window, server, eventBus)
         {
             _ModelManager = new ModelManager(_renderContext);
             _modelData = new ModelManager.ModelData();
         }
+
         public override void Initialize(int height, int width)
         {
             base.Initialize(height, width);
@@ -88,6 +92,7 @@ namespace SiegeEngine.Scenes
             LoadMesh(_meshPath);
             DiscoverAnimationFiles();
         }
+
         private void ResetAnimationState()
         {
             _currentAnimationPath = null;
@@ -102,6 +107,7 @@ namespace SiegeEngine.Scenes
             _trimEnd = -1f;
             _playbackSpeed = 1f;
         }
+
         public void LoadMesh(string path)
         {
             _meshPath = path;
@@ -116,6 +122,7 @@ namespace SiegeEngine.Scenes
             }
             CenterCamera();
         }
+
         public void LoadArmature(string path)
         {
             _armaturePath = path;
@@ -128,6 +135,7 @@ namespace SiegeEngine.Scenes
                 SetRestPose();
             }
         }
+
         public void LoadAnimation(string animPath)
         {
             if (string.IsNullOrEmpty(animPath)) return;
@@ -143,7 +151,7 @@ namespace SiegeEngine.Scenes
             {
                 var newAnim = _model.Animations.Last();
                 _duration = newAnim.Duration;
-                _trimEnd = _duration; // ensure full-duration sentinel is resolved to actual duration for playback
+                _trimEnd = _duration;
                 Console.WriteLine($"[ModelViewerScene] Loaded animation from {Path.GetFileName(animPath)} → duration {_duration:F2}s");
             }
             _currentTime = 0f;
@@ -154,6 +162,7 @@ namespace SiegeEngine.Scenes
                 UpdateTransformsFromTime(0f);
             }
         }
+
         public void AttachBlendAnimations(AnimationBlendStack stack)
         {
             if (stack == null || _model == null || string.IsNullOrEmpty(_currentModelKey) || stack.Clips.Count == 0) return;
@@ -185,6 +194,7 @@ namespace SiegeEngine.Scenes
                 SetRestPose();
             }
         }
+
         private void ApplyRestPoseFromModel(FBXModel sourceModel)
         {
             var targetSkeleton = _model.Skeleton;
@@ -214,6 +224,7 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
+
         private void UpdateTransformsFromTime(float time)
         {
             if (_model == null || _model.Skeleton == null || string.IsNullOrEmpty(_currentAnimationPath) || _model.Animations.Count == 0) return;
@@ -250,6 +261,7 @@ namespace SiegeEngine.Scenes
             }
             UpdateSkeletonVisualization();
         }
+
         private void ComputeBlendedTransforms(float deltaTime)
         {
             if (_blendPreviewStack == null || _blendPreviewStack.Clips.Count == 0 || _model == null || _model.Skeleton == null) return;
@@ -276,6 +288,7 @@ namespace SiegeEngine.Scenes
             }
             UpdateSkeletonVisualization();
         }
+
         private void CenterCamera()
         {
             if (_model == null || _model.Meshes.Count == 0) return;
@@ -297,6 +310,7 @@ namespace SiegeEngine.Scenes
             _cameraPosition = _cameraTarget + initialFront * _cameraDistance;
             _cameraUp = Vector3.UnitZ;
         }
+
         public void DiscoverAnimationFiles()
         {
             string fbmDir = Path.Combine(Path.GetDirectoryName(_meshPath), Path.GetFileNameWithoutExtension(_meshPath) + ".fbm");
@@ -305,6 +319,7 @@ namespace SiegeEngine.Scenes
                 _animationFiles = Directory.GetFiles(fbmDir, "*.fbx").ToList();
             }
         }
+
         private void UpdateSkeletonVisualization()
         {
             if (_model == null || _model.Skeleton == null || _currentGlobalTransforms == null || _currentGlobalTransforms.Length != _model.Skeleton.Bones.Count) return;
@@ -327,6 +342,7 @@ namespace SiegeEngine.Scenes
             }
             _skeletonBuffer.UpdateCustom(vertices, indices);
         }
+
         private void SetRestPose()
         {
             Matrix4x4[] restLocals = new Matrix4x4[_model.Skeleton.Bones.Count];
@@ -397,14 +413,16 @@ namespace SiegeEngine.Scenes
         {
             _blendPreviewStack = stack;
             _blendPreviewParams = currentParams;
-            _isPlaying = false;
-            _currentTime = 0f;
+            //_isPlaying = false;
+            //_currentTime = 0f;
             if (stack != null)
             {
                 foreach (var clip in stack.Clips)
                 {
-                    clip.LocalTime = 0f;
+                    if (clip.LocalTime == 0f && _lastAttachedPaths.Count == 0)
+                        clip.LocalTime = 0f;
                 }
+
                 if (stack.Clips.Count > 0)
                 {
                     var currentPaths = stack.Clips.Select(c => c.AnimationPath).Where(p => !string.IsNullOrEmpty(p)).ToList();
@@ -418,6 +436,7 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
+
         public void UpdateBlendPreviewParams(Vector3 currentParams)
         {
             _blendPreviewParams = currentParams;
@@ -426,6 +445,7 @@ namespace SiegeEngine.Scenes
                 ComputeBlendedTransforms(0f);
             }
         }
+
         public void SetTrimParams(float start, float end, float speed)
         {
             _trimStart = Math.Max(0, start);
@@ -434,10 +454,12 @@ namespace SiegeEngine.Scenes
             if (_currentTime < _trimStart || (_trimEnd > 0 && _currentTime > _trimEnd))
                 _currentTime = _trimStart;
         }
+
         public List<string> GetAnimationFiles()
         {
             return _animationFiles;
         }
+
         public string GetFrameInfo()
         {
             string frameInfo = "Keyframe: " + _currentFrameIndex;
@@ -447,14 +469,17 @@ namespace SiegeEngine.Scenes
             }
             return frameInfo;
         }
+
         public void TogglePlay()
         {
             _isPlaying = !_isPlaying;
         }
+
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
         }
+
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
             float mouseX = relMousePos.X;
@@ -506,7 +531,6 @@ namespace SiegeEngine.Scenes
                     {
                         float effectiveDuration = (_trimEnd > _trimStart) ? (_trimEnd - _trimStart) : _duration;
                         _currentTime += deltaTime * _playbackSpeed;
-                        // Proper full-duration looping (handles _trimEnd == -1f sentinel)
                         if (_currentTime >= _trimStart + effectiveDuration)
                         {
                             _currentTime = _trimStart;
@@ -542,6 +566,7 @@ namespace SiegeEngine.Scenes
             }
             UpdateSkeletonVisualization();
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.118f, 0.118f, 0.118f, 1.0f);
@@ -582,6 +607,7 @@ namespace SiegeEngine.Scenes
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
+
         public override void Dispose()
         {
             _pointShader?.Dispose();
