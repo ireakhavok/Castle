@@ -673,7 +673,7 @@ Found 7 dependencies
 Found: PanelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
-Read 10947 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
+Read 11379 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 10 dependencies
 Found: SceneManager.cs
@@ -916,6 +916,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainManag
 Read 2068 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainManager.cs
 Namespace: SiegeEngine.Core.Terrain
 Found 2 dependencies
+Found: TerrainPaintData.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
+Read 4278 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
+Namespace: SiegeEngine.Core.Terrain
+Found 4 dependencies
 Found: TerrainTextureParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
@@ -1294,7 +1300,7 @@ Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 18671 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 18148 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: SiegeEngine.csproj

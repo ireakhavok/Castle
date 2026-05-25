@@ -1498,6 +1498,17 @@ Folder: Terrain
 - File: TerrainManager.cs
   - Class: TerrainType (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: System, System.IO
+- File: TerrainPaintData.cs
+  - Class: TerrainPaintData (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - int _width
+      - int _height
+    - Methods:
+      - constructor TerrainPaintData( int height,  int width, string sceneName)
+      - void PaintSplat( Vector2 gridPos,  float intensity,  float size,  float worldScaleX,  float worldScaleZ, int layer)
+      - void PaintColor( byte a,  byte b,  byte g,  byte r,  float intensity,  float size,  float worldScaleX,  float worldScaleZ, Vector2 gridPos)
+      - void SaveToDisk( string terrainName, string projectPath)
 - File: TerrainTextureParser.cs
   - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.IO
@@ -2236,6 +2247,7 @@ SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
 SiegeEngine.Core.Terrain.CustomTerrainParser
 SiegeEngine.Core.Terrain.GeoReference
+SiegeEngine.Core.Terrain.TerrainPaintData
 SiegeEngine.Core.Terrain.TerrainTextureParser
 SiegeEngine.Core.Terrain.TerrainType
 SiegeEngine.Core.Terrain.TilemapExporter
