@@ -127,10 +127,19 @@ namespace ToolChest
                     changed = true;
                 }
             }
+            // Material hooks (for future material editor logic)
+            else if (hook == "SelectMaterial" || hook == "NewMaterial" || hook == "SaveMaterial" ||
+                     hook == "MaterialNameChanged" || hook == "MaterialAlbedoChanged" ||
+                     hook == "MaterialNormalChanged" || hook == "MaterialRoughnessChanged" ||
+                     hook == "PickAlbedo" || hook == "PickNormal")
+            {
+                changed = true;
+            }
 
             if (changed)
             {
                 PublishCurrentBrush();
+                _uiOverlay.RefreshUI();
             }
         }
 
