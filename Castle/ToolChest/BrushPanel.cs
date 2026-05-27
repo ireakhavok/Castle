@@ -122,8 +122,9 @@ namespace ToolChest
                     {
                         string newDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
                         materialSection.Style.SetProperty("display", newDisplay);
+                        // This is the key: update the inline style attribute so ApplyInlineStyles in RefreshUI preserves it
+                        materialSection.Attributes["style"] = $"display: {newDisplay};";
 
-                        // Root fix: propagate dirty flag so ComputeLayout actually sees the change
                         materialSection.MarkIntrinsicDirty();
                         if (materialSection.Parent != null)
                             materialSection.Parent.MarkIntrinsicDirty();
@@ -151,37 +152,6 @@ namespace ToolChest
                 PublishCurrentBrush();
                 _uiOverlay.RefreshUI();
                 _uiOverlay.RecomputeLayout(_uiOverlay.PanelWidth, _uiOverlay.PanelHeight);
-
-                // Ensure the dynamic display survives _cssParser.ApplyAll() inside RefreshUI()
-                if (hook == "BrushModeChanged")
-                {
-                    var materialSection = _uiOverlay.FindElementById("material-section");
-                    if (materialSection != null)
-                    {
-                        string finalDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
-                        materialSection.Style.SetProperty("display", finalDisplay);
-                        materialSection.MarkIntrinsicDirty();
-                        if (materialSection.Parent != null)
-                            materialSection.Parent.MarkIntrinsicDirty();
-                        _uiOverlay.RecomputeLayout(_uiOverlay.PanelWidth, _uiOverlay.PanelHeight);
-                    }
-                }
-            }
-        }
-
-        public override void OnPanelResize(float h, float w)
-        {
-            base.OnPanelResize(h, w);
-            // re-enforce visibility after any resize-triggered RefreshUI
-            var materialSection = _uiOverlay.FindElementById("material-section");
-            if (materialSection != null)
-            {
-                string display = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
-                materialSection.Style.SetProperty("display", display);
-                materialSection.MarkIntrinsicDirty();
-                if (materialSection.Parent != null)
-                    materialSection.Parent.MarkIntrinsicDirty();
-                _uiOverlay.RecomputeLayout(h, w);
             }
         }
 
