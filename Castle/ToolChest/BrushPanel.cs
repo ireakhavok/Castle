@@ -122,12 +122,8 @@ namespace ToolChest
                     {
                         string newDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
                         materialSection.Style.SetProperty("display", newDisplay);
-                        // This is the key: update the inline style attribute so ApplyInlineStyles in RefreshUI preserves it
+                        // Update inline style attribute so it survives RefreshUI / ApplyAll
                         materialSection.Attributes["style"] = $"display: {newDisplay};";
-
-                        materialSection.MarkIntrinsicDirty();
-                        if (materialSection.Parent != null)
-                            materialSection.Parent.MarkIntrinsicDirty();
 
                         Console.WriteLine($"[BrushPanel] Mode changed to {modeStr} → material-section display = {newDisplay}");
                     }
