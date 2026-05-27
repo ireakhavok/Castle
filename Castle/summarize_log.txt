@@ -1827,7 +1827,7 @@ Found 6 dependencies
 Found: JSEvaluator.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
-Read 32193 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
+Read 31931 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\JSParser\JSEvaluator.cs
 Namespace: SiegeEngine.Core.UI.JSParser
 Found 7 dependencies
 Found: JSParser.cs
@@ -1958,7 +1958,7 @@ Found 3 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 27601 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 27546 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
@@ -2075,7 +2075,7 @@ Found: ..
 Found: AnimationBlendPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
-Read 22228 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
+Read 22438 chars from: C:\repos\RealmFoundry\Castle\ToolChest\AnimationBlendPanel.cs
 Namespace: ToolChest
 Found 20 dependencies
 Found: AnimationBlendUI.html
@@ -2098,7 +2098,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\ToolChest\bin
 Found: BlendDotOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\BlendDotOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\BlendDotOverlay.cs
-Read 1867 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BlendDotOverlay.cs
+Read 2040 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BlendDotOverlay.cs
 Namespace: ToolChest
 Found 4 dependencies
 Found: Brush.cs
@@ -2110,7 +2110,7 @@ Found 2 dependencies
 Found: BrushPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
-Read 6031 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
+Read 7069 chars from: C:\repos\RealmFoundry\Castle\ToolChest\BrushPanel.cs
 Namespace: ToolChest
 Found 10 dependencies
 Found: BrushPanelUI.html

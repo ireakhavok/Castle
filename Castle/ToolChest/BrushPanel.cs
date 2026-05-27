@@ -116,6 +116,20 @@ namespace ToolChest
                     string modeStr = select.Value ?? "Raise";
                     _currentBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), modeStr);
                     changed = true;
+
+                    var materialSection = _uiOverlay.FindElementById("material-section");
+                    if (materialSection != null)
+                    {
+                        string newDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
+                        materialSection.Style.SetProperty("display", newDisplay);
+
+                        // Root fix: propagate dirty flag so ComputeLayout actually sees the change
+                        materialSection.MarkIntrinsicDirty();
+                        if (materialSection.Parent != null)
+                            materialSection.Parent.MarkIntrinsicDirty();
+
+                        Console.WriteLine($"[BrushPanel] Mode changed to {modeStr} → material-section display = {newDisplay}");
+                    }
                 }
             }
             else if (hook == "BrushPaintLayerChanged")
@@ -127,11 +141,7 @@ namespace ToolChest
                     changed = true;
                 }
             }
-            // Material hooks (for future material editor logic)
-            else if (hook == "SelectMaterial" || hook == "NewMaterial" || hook == "SaveMaterial" ||
-                     hook == "MaterialNameChanged" || hook == "MaterialAlbedoChanged" ||
-                     hook == "MaterialNormalChanged" || hook == "MaterialRoughnessChanged" ||
-                     hook == "PickAlbedo" || hook == "PickNormal")
+            else if (hook.StartsWith("Material"))
             {
                 changed = true;
             }
@@ -140,6 +150,7 @@ namespace ToolChest
             {
                 PublishCurrentBrush();
                 _uiOverlay.RefreshUI();
+                _uiOverlay.RecomputeLayout(_uiOverlay.PanelWidth, _uiOverlay.PanelHeight);
             }
         }
 
