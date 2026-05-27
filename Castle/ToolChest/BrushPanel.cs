@@ -169,6 +169,22 @@ namespace ToolChest
             }
         }
 
+        public override void OnPanelResize(float h, float w)
+        {
+            base.OnPanelResize(h, w);
+            // re-enforce visibility after any resize-triggered RefreshUI
+            var materialSection = _uiOverlay.FindElementById("material-section");
+            if (materialSection != null)
+            {
+                string display = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
+                materialSection.Style.SetProperty("display", display);
+                materialSection.MarkIntrinsicDirty();
+                if (materialSection.Parent != null)
+                    materialSection.Parent.MarkIntrinsicDirty();
+                _uiOverlay.RecomputeLayout(h, w);
+            }
+        }
+
         private void PublishCurrentBrush()
         {
             _eventBus.Publish(new SelectBrushEvent(
