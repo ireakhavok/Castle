@@ -151,6 +151,21 @@ namespace ToolChest
                 PublishCurrentBrush();
                 _uiOverlay.RefreshUI();
                 _uiOverlay.RecomputeLayout(_uiOverlay.PanelWidth, _uiOverlay.PanelHeight);
+
+                // Ensure the dynamic display survives _cssParser.ApplyAll() inside RefreshUI()
+                if (hook == "BrushModeChanged")
+                {
+                    var materialSection = _uiOverlay.FindElementById("material-section");
+                    if (materialSection != null)
+                    {
+                        string finalDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
+                        materialSection.Style.SetProperty("display", finalDisplay);
+                        materialSection.MarkIntrinsicDirty();
+                        if (materialSection.Parent != null)
+                            materialSection.Parent.MarkIntrinsicDirty();
+                        _uiOverlay.RecomputeLayout(_uiOverlay.PanelWidth, _uiOverlay.PanelHeight);
+                    }
+                }
             }
         }
 
