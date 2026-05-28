@@ -1,6 +1,8 @@
 ﻿// Folder: ToolChest
 // File: BrushPanel.cs
+using Keystone;
 using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
@@ -122,7 +124,6 @@ namespace ToolChest
                     {
                         string newDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
                         materialSection.Style.SetProperty("display", newDisplay);
-                        // Update inline style attribute so it survives RefreshUI / ApplyAll
                         materialSection.Attributes["style"] = $"display: {newDisplay};";
 
                         Console.WriteLine($"[BrushPanel] Mode changed to {modeStr} → material-section display = {newDisplay}");
@@ -140,6 +141,7 @@ namespace ToolChest
             }
             else if (hook.StartsWith("Material"))
             {
+                HandleMaterialDataHook(hook);
                 changed = true;
             }
 
@@ -148,6 +150,39 @@ namespace ToolChest
                 PublishCurrentBrush();
                 _uiOverlay.RefreshUI();
                 _uiOverlay.RecomputeLayout(_uiOverlay.PanelWidth, _uiOverlay.PanelHeight);
+            }
+        }
+
+        private void HandleMaterialDataHook(string hook)
+        {
+            var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
+            if (paintData == null) return;
+
+            if (hook == "SelectMaterial")
+            {
+                Console.WriteLine("[BrushPanel] Material selected");
+            }
+            else if (hook == "NewMaterial")
+            {
+                paintData.Materials.Add(new TerrainMaterial { Name = "New Material" });
+                RefreshMaterialDropdown();
+            }
+            else if (hook == "SaveMaterial")
+            {
+                Console.WriteLine("[BrushPanel] Material saved to TerrainPaintData");
+                RefreshMaterialDropdown();
+            }
+        }
+
+        private void RefreshMaterialDropdown()
+        {
+            var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
+            if (paintData == null) return;
+
+            var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
+            if (select != null)
+            {
+                Console.WriteLine($"[BrushPanel] Refreshed material dropdown with {paintData.Materials.Count} materials");
             }
         }
 

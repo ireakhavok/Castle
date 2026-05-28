@@ -1,5 +1,4 @@
-﻿// UPDATED FILE: ToolChest/Brush.cs
-using System;
+﻿using System;
 using System.Numerics;
 
 namespace ToolChest

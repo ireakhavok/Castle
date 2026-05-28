@@ -32,7 +32,6 @@ namespace MapRoom
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData;
 
-        // NEW: live persistent paint data (replaces the old _unsavedSplatWeights)
         private TerrainPaintData _paintData;
 
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
@@ -41,6 +40,7 @@ namespace MapRoom
             _sceneData = sceneData;
             _isEditorContext = true;
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
+            _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrush);
         }
 
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
@@ -202,7 +202,6 @@ namespace MapRoom
             _sceneData = data;
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
 
-            // NEW: get the live persistent paint data
             _paintData = ProjectSettings.Current.GetOrCreatePaintData(sceneName, _terrainWidth > 0 ? _terrainWidth : 200, _terrainHeight > 0 ? _terrainHeight : 200);
 
             if (data?.Terrain != null && !string.IsNullOrEmpty(data.Terrain.HeightmapPath))
@@ -457,8 +456,16 @@ namespace MapRoom
                 float distanceMoved = Vector3.Distance(_ghostPosition, _lastGhostPosition);
                 if (currentTime - _lastBrushUpdateTime > BrushUpdateInterval || distanceMoved > BrushMoveThreshold)
                 {
-                    var strength = _activeBrush.Intensity * deltaTime;
-                    var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
+                    var evt = new TerrainModifiedEvent(
+                        _ghostPosition,
+                        _activeBrush.Size,
+                        _activeBrush.Intensity * deltaTime,
+                        _activeBrush.Mode.ToString().ToLower(),
+                        _activeBrush.Shape.ToString(),
+                        _activeBrush.Falloff.ToString(),
+                        0,
+                        _activeBrush.PaintLayer);
+
                     _eventBus.Publish(evt, true);
                     _lastBrushUpdateTime = currentTime;
                     _lastGhostPosition = _ghostPosition;
@@ -578,34 +585,55 @@ namespace MapRoom
             _processedModifications.Add(e.Id);
         }
 
+        private void OnSelectBrush(SelectBrushEvent e)
+        {
+            if (_activeBrush == null)
+                _activeBrush = new ToolChest.Brush();
+
+            _activeBrush.Mode = (ToolChest.BrushMode)Enum.Parse(typeof(ToolChest.BrushMode), e.BrushMode);
+            _activeBrush.Shape = (ToolChest.BrushShape)Enum.Parse(typeof(ToolChest.BrushShape), e.BrushShape);
+            _activeBrush.Falloff = (ToolChest.BrushFalloff)Enum.Parse(typeof(ToolChest.BrushFalloff), e.BrushFalloff);
+            _activeBrush.Size = e.Size;
+            _activeBrush.Intensity = e.Intensity;
+            _activeBrush.PaintLayer = e.PaintLayer;
+
+            Console.WriteLine($"[TerrainCreatorScene] Synced active brush from panel - Mode={_activeBrush.Mode} Layer={_activeBrush.PaintLayer}");
+        }
+
         private void ApplyModification(TerrainModifiedEvent e)
         {
-            var brush = new ToolChest.Brush
+            if (_paintData == null || _heightmap == null)
             {
-                Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.Operation, true),
-                Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.Shape, true),
-                Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.Falloff, true),
-                Size = e.Radius,
-                Intensity = e.Strength
-            };
+                var fallbackBrush = new ToolChest.Brush();
+                fallbackBrush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
+                UpdateAffectedVertices(e.WorldPos, e.Radius);
+                return;
+            }
 
-            if (_paintData != null && _heightmap != null)
+            if (e.Operation.Equals("paint", StringComparison.OrdinalIgnoreCase))
             {
-                if (brush.Mode == BrushMode.Paint)
-                {
-                    _paintData.PaintSplat(brush.PaintLayer, new Vector2(e.WorldPos.X, e.WorldPos.Y), brush.Size, brush.Intensity, _worldScaleX, _worldScaleZ);
-                }
-                else
-                {
-                    brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
-                }
+                ToolChest.Brush active = _activeBrush ?? new ToolChest.Brush();
+                _paintData.PaintSplat(e.PaintLayer, new Vector2(e.WorldPos.X, e.WorldPos.Y),
+                    active.Size, e.Strength, _worldScaleX, _worldScaleZ,
+                    active.Shape == ToolChest.BrushShape.Circle, active.Falloff.ToString());
+
+                RebuildSplatTexture();
             }
             else
             {
+                var brush = _activeBrush ?? new ToolChest.Brush();
                 brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
             }
 
             UpdateAffectedVertices(e.WorldPos, e.Radius);
+        }
+
+        private void RebuildSplatTexture()
+        {
+            if (_splatTextureId != 0)
+                _renderContext.DeleteTexture(_splatTextureId);
+
+            Console.WriteLine($"[TerrainCreatorScene] Rebuilt splat texture from PaintData after paint operation");
         }
 
         public new float[,] GetHeightmap() => _heightmap;

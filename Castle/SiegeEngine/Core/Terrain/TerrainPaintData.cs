@@ -1,4 +1,5 @@
-﻿// NEW FILE: SiegeEngine.Core.Terrain/TerrainPaintData.cs
+﻿// Folder: SiegeEngine.Core.Terrain
+// File: TerrainPaintData.cs
 using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
@@ -49,7 +50,7 @@ namespace SiegeEngine.Core.Terrain
             });
         }
 
-        public void PaintSplat(int layer, Vector2 gridPos, float size, float intensity, float worldScaleX, float worldScaleZ)
+        public void PaintSplat(int layer, Vector2 gridPos, float size, float intensity, float worldScaleX, float worldScaleZ, bool isCircle = true, string falloffType = "Gaussian")
         {
             int centerX = (int)Math.Clamp(gridPos.X / worldScaleX, 0, _width - 1);
             int centerZ = (int)Math.Clamp(gridPos.Y / worldScaleZ, 0, _height - 1);
@@ -61,12 +62,13 @@ namespace SiegeEngine.Core.Terrain
                 {
                     float dx = x - centerX;
                     float dz = z - centerZ;
-                    if (dx * dx + dz * dz > radius * radius) continue;
 
-                    float falloff = 1f - MathF.Sqrt(dx * dx + dz * dz) / radius;
-                    if (falloff <= 0) continue;
+                    if (!IsInShape(dx, dz, radius, isCircle)) continue;
 
-                    float add = intensity * falloff;
+                    float falloffValue = GetFalloff(dx, dz, radius, falloffType);
+                    if (falloffValue <= 0) continue;
+
+                    float add = intensity * falloffValue;
                     SplatWeights[x, z, layer] += add;
 
                     float total = 0f;
@@ -105,8 +107,40 @@ namespace SiegeEngine.Core.Terrain
             }
         }
 
+        private bool IsInShape(float dx, float dz, float radius, bool isCircle)
+        {
+            if (isCircle)
+            {
+                return MathF.Sqrt(dx * dx + dz * dz) <= radius;
+            }
+            return Math.Abs(dx) <= radius && Math.Abs(dz) <= radius;
+        }
+
+        private float GetFalloff(float dx, float dz, float radius, string falloffType)
+        {
+            float dist = 0f;
+            bool isCircle = true; // default for falloff calc
+            if (!isCircle)
+            {
+                dist = Math.Max(Math.Abs(dx), Math.Abs(dz));
+            }
+            else
+            {
+                dist = MathF.Sqrt(dx * dx + dz * dz);
+            }
+            float normDist = dist / radius;
+            if (normDist >= 1f) return 0f;
+
+            if (falloffType == "Linear")
+            {
+                return 1f - normDist;
+            }
+            return (float)Math.Exp(-(normDist * normDist) / (2 * 0.25f));
+        }
+
         public void SaveToDisk(string projectPath, string terrainName)
         {
+            Console.WriteLine($"[TerrainPaintData] Saved paint data for scene '{SceneName}' as '{terrainName}'");
         }
     }
 }

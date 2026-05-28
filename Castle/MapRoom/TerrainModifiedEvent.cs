@@ -4,6 +4,7 @@ using SiegeEngine.Core.Events;
 using System;
 using System.Numerics;
 using System.Text.Json;
+
 namespace MapRoom
 {
     public class TerrainModifiedEvent : IEvent
@@ -12,16 +13,19 @@ namespace MapRoom
         public Vector3 WorldPos { get; set; }
         public float Radius { get; set; }
         public float Strength { get; set; }
-        public string Operation { get; set; } // "raise" or "lower"
+        public string Operation { get; set; }
         public string Shape { get; set; }
         public string Falloff { get; set; }
         public ulong PlayerId { get; set; }
         public Guid Id { get; set; }
+        public int PaintLayer { get; set; }
+
         public TerrainModifiedEvent()
         {
             Id = Guid.NewGuid();
         }
-        public TerrainModifiedEvent(Vector3 worldPos, float radius, float strength, string operation, string shape, string falloff, ulong playerId)
+
+        public TerrainModifiedEvent(Vector3 worldPos, float radius, float strength, string operation, string shape, string falloff, ulong playerId, int paintLayer = 0)
         {
             WorldPos = worldPos;
             Radius = radius;
@@ -30,8 +34,10 @@ namespace MapRoom
             Shape = shape;
             Falloff = falloff;
             PlayerId = playerId;
+            PaintLayer = paintLayer;
             Id = Guid.NewGuid();
         }
+
         public byte[] Serialize()
         {
             var json = JsonSerializer.Serialize(new
@@ -44,10 +50,12 @@ namespace MapRoom
                 Shape,
                 Falloff,
                 PlayerId,
-                Id = Id.ToString()
+                Id = Id.ToString(),
+                PaintLayer
             });
             return System.Text.Encoding.UTF8.GetBytes(json);
         }
+
         public void Deserialize(byte[] data)
         {
             var json = System.Text.Encoding.UTF8.GetString(data);
@@ -60,6 +68,7 @@ namespace MapRoom
             Falloff = obj["Falloff"].ToString();
             PlayerId = ulong.Parse(obj["PlayerId"].ToString());
             Id = Guid.Parse(obj["Id"].ToString());
+            PaintLayer = int.Parse(obj.GetValueOrDefault("PaintLayer", "0").ToString());
         }
     }
 }
