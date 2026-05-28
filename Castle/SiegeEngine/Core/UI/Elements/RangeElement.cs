@@ -18,9 +18,16 @@ namespace SiegeEngine.Core.UI.Elements
             Tag = "input";
             Type = "range";
         }
+        public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
+        {
+            Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
+            float iw = 220f + pad.W + pad.Y + borderW.W + borderW.Y;
+            float ih = 32f + pad.X + pad.Z + borderW.X + borderW.Z;
+            return new Vector2(iw, ih);
+        }
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
-            // FIXED: Parse min/max/value/step from HTML attributes on every layout pass
             if (Attributes.TryGetValue("min", out string minStr) && float.TryParse(minStr, NumberStyles.Any, CultureInfo.InvariantCulture, out float minVal))
             {
                 Min = minVal;
@@ -37,13 +44,7 @@ namespace SiegeEngine.Core.UI.Elements
             {
                 Value = parsed;
             }
-            if (float.IsNaN(forcedWidth))
-            {
-                forcedWidth = parentWidth - HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight).W - HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight).Y;
-            }
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
-            if (float.IsNaN(ComputedWidth)) ComputedWidth = 220f;
-            if (float.IsNaN(ComputedHeight)) ComputedHeight = 32f;
         }
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
