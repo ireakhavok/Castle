@@ -652,7 +652,7 @@ namespace MapRoom
             if (_splatTextureId != 0)
                 _renderContext.DeleteTexture(_splatTextureId);
 
-            Console.WriteLine($"[TerrainCreatorScene] Rebuilt splat texture from PaintData after paint operation");
+            //Console.WriteLine($"[TerrainCreatorScene] Rebuilt splat texture from PaintData after paint operation");
         }
 
         public new float[,] GetHeightmap() => _heightmap;
