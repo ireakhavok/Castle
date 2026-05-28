@@ -424,6 +424,36 @@ namespace MapRoom
             _ghostBuffer.UpdateCustomWithUV(vertices, indices);
         }
 
+        /// <summary>
+        /// Applies the current brush locally for immediate preview feedback (called every frame during drag).
+        /// No event publishing — keeps EventBus clean.
+        /// </summary>
+        private void ApplyBrushLocally(Vector3 worldPos)
+        {
+            if (_paintData == null || _heightmap == null || _activeBrush == null)
+            {
+                var fallbackBrush = new ToolChest.Brush();
+                fallbackBrush.Apply(ref _heightmap, new Vector2(worldPos.X, worldPos.Y), _worldScaleX, _worldScaleZ);
+                UpdateAffectedVertices(worldPos, _activeBrush?.Size ?? 10f);
+                return;
+            }
+
+            if (_activeBrush.Mode == ToolChest.BrushMode.Paint)
+            {
+                _paintData.PaintSplat(_activeBrush.PaintLayer, new Vector2(worldPos.X, worldPos.Y),
+                    _activeBrush.Size, _activeBrush.Intensity, _worldScaleX, _worldScaleZ,
+                    _activeBrush.Shape == ToolChest.BrushShape.Circle, _activeBrush.Falloff.ToString());
+
+                RebuildSplatTexture();
+            }
+            else
+            {
+                _activeBrush.Apply(ref _heightmap, new Vector2(worldPos.X, worldPos.Y), _worldScaleX, _worldScaleZ);
+            }
+
+            UpdateAffectedVertices(worldPos, _activeBrush.Size);
+        }
+
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -449,6 +479,9 @@ namespace MapRoom
             {
                 _isBrushing = true;
                 _lastBrushUpdateTime = (float)_controlContext.GetTime();
+                _lastGhostPosition = _ghostPosition;
+                // Initial local apply on press
+                ApplyBrushLocally(_ghostPosition);
             }
             if (mouseDown && _isBrushing && _ghostVisible)
             {
@@ -456,23 +489,31 @@ namespace MapRoom
                 float distanceMoved = Vector3.Distance(_ghostPosition, _lastGhostPosition);
                 if (currentTime - _lastBrushUpdateTime > BrushUpdateInterval || distanceMoved > BrushMoveThreshold)
                 {
-                    var evt = new TerrainModifiedEvent(
-                        _ghostPosition,
-                        _activeBrush.Size,
-                        _activeBrush.Intensity * deltaTime,
-                        _activeBrush.Mode.ToString().ToLower(),
-                        _activeBrush.Shape.ToString(),
-                        _activeBrush.Falloff.ToString(),
-                        0,
-                        _activeBrush.PaintLayer);
-
-                    _eventBus.Publish(evt, true);
+                    // Local apply only — no event spam
+                    ApplyBrushLocally(_ghostPosition);
                     _lastBrushUpdateTime = currentTime;
                     _lastGhostPosition = _ghostPosition;
                 }
             }
-            if (mouseReleased)
+            if (mouseReleased && _isBrushing)
             {
+                // Final local apply + SINGLE clean event for the entire stroke
+                if (_ghostVisible)
+                {
+                    ApplyBrushLocally(_ghostPosition);
+                }
+
+                var evt = new TerrainModifiedEvent(
+                    _ghostPosition,
+                    _activeBrush.Size,
+                    _activeBrush.Intensity,  // full intensity (no *deltaTime)
+                    _activeBrush.Mode.ToString().ToLower(),
+                    _activeBrush.Shape.ToString(),
+                    _activeBrush.Falloff.ToString(),
+                    0,
+                    _activeBrush.PaintLayer);
+
+                _eventBus.Publish(evt, true);
                 _isBrushing = false;
             }
             if (_sceneData?.Name != null)
@@ -602,30 +643,8 @@ namespace MapRoom
 
         private void ApplyModification(TerrainModifiedEvent e)
         {
-            if (_paintData == null || _heightmap == null)
-            {
-                var fallbackBrush = new ToolChest.Brush();
-                fallbackBrush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
-                UpdateAffectedVertices(e.WorldPos, e.Radius);
-                return;
-            }
-
-            if (e.Operation.Equals("paint", StringComparison.OrdinalIgnoreCase))
-            {
-                ToolChest.Brush active = _activeBrush ?? new ToolChest.Brush();
-                _paintData.PaintSplat(e.PaintLayer, new Vector2(e.WorldPos.X, e.WorldPos.Y),
-                    active.Size, e.Strength, _worldScaleX, _worldScaleZ,
-                    active.Shape == ToolChest.BrushShape.Circle, active.Falloff.ToString());
-
-                RebuildSplatTexture();
-            }
-            else
-            {
-                var brush = _activeBrush ?? new ToolChest.Brush();
-                brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
-            }
-
-            UpdateAffectedVertices(e.WorldPos, e.Radius);
+            // For remote/networked events only — re-apply locally
+            ApplyBrushLocally(e.WorldPos);
         }
 
         private void RebuildSplatTexture()
