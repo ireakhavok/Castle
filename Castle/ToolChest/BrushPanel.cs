@@ -207,7 +207,7 @@ namespace ToolChest
 
         public override void Detach()
         {
-            _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, "", "", 0), true);
+            _eventBus.Publish(new SelectBrushEvent(0, BrushMode.Raise.ToString(), 10f, 1f, BrushShape.Circle.ToString(), BrushFalloff.Gaussian.ToString(), 0), true);
             base.Detach();
         }
 
