@@ -1890,7 +1890,7 @@ Folder: Core
       - void HandleLink(string href)
         - Calls: LoadUI
       - void RefreshUI()
-        - Calls: CollectClickables, InheritProperties, RecomputeLayout, _cssParser.ApplyAll, _uiClickables.Clear, _uiRoot.MarkIntrinsicDirty
+        - Calls: CollectClickables, InheritProperties, RecomputeLayout, SetProperty, _cssParser.ApplyAll, _cssParser.ApplyInlineStyles, _uiClickables.Clear, _uiRoot.MarkIntrinsicDirty
       - HtmlElement FindElementById(string id)
       - return FindElementById()
       - HtmlElement FindElementById( string id, HtmlElement root)
