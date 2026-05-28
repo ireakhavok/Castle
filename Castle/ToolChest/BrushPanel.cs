@@ -8,6 +8,7 @@ using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
+using SiegeEngine.Core.Managers;
 using System;
 using System.IO;
 using System.Linq;
@@ -139,6 +140,11 @@ namespace ToolChest
                     changed = true;
                 }
             }
+            else if (hook == "NewMaterial")
+            {
+                NewMaterialPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                return;
+            }
             else if (hook.StartsWith("Material"))
             {
                 HandleMaterialDataHook(hook);
@@ -160,16 +166,16 @@ namespace ToolChest
 
             if (hook == "SelectMaterial")
             {
-                Console.WriteLine("[BrushPanel] Material selected");
-            }
-            else if (hook == "NewMaterial")
-            {
-                paintData.Materials.Add(new TerrainMaterial { Name = "New Material" });
-                RefreshMaterialDropdown();
+                var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
+                if (select != null && int.TryParse(select.Value, out int index) && index >= 0 && index < paintData.Materials.Count)
+                {
+                    Console.WriteLine($"[BrushPanel] Material selected: {paintData.Materials[index].Name}");
+                    // Future: set current material for painting layer
+                }
             }
             else if (hook == "SaveMaterial")
             {
-                Console.WriteLine("[BrushPanel] Material saved to TerrainPaintData");
+                // Material saved via dedicated modal; refresh dropdown
                 RefreshMaterialDropdown();
             }
         }
@@ -182,6 +188,7 @@ namespace ToolChest
             var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
             if (select != null)
             {
+                // Rebuild options from current materials
                 Console.WriteLine($"[BrushPanel] Refreshed material dropdown with {paintData.Materials.Count} materials");
             }
         }

@@ -1,0 +1,110 @@
+﻿// Folder: ToolChest
+// File: NewMaterialPanel.cs
+using Keystone;
+using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.UI;
+using SiegeEngine.Core.UI.Elements;
+using System;
+using System.IO;
+using System.Numerics;
+
+namespace ToolChest
+{
+    public class NewMaterialPanel : BasePanel
+    {
+        private class NewMaterialUIOverlay : UIOverlay
+        {
+            private readonly NewMaterialPanel _parent;
+            private readonly EventBus _eventBus;
+
+            public NewMaterialUIOverlay(NewMaterialPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+                : base(renderContext, controlContext, window)
+            {
+                _parent = parent;
+                _eventBus = eventBus;
+            }
+
+            protected override void HandleDataHook(string hook)
+            {
+                if (hook == "CreateNewMaterialConfirm")
+                {
+                    var nameElem = FindElementById("mat-name") as InputElement;
+                    var albedoElem = FindElementById("mat-albedo") as InputElement;
+                    var normalElem = FindElementById("mat-normal") as InputElement;
+                    var roughnessElem = FindElementById("mat-roughness") as InputElement; // or RangeElement
+
+                    string name = nameElem?.Value?.Trim() ?? "New Material";
+                    if (string.IsNullOrEmpty(name)) name = "New Material";
+
+                    string albedo = albedoElem?.Value?.Trim() ?? "";
+                    string normal = normalElem?.Value?.Trim() ?? "";
+                    float roughness = 0.8f;
+                    if (roughnessElem != null && float.TryParse(roughnessElem.Value, out float r)) roughness = r;
+
+                    // Create and add to current paint data
+                    var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
+                    if (paintData != null)
+                    {
+                        paintData.Materials.Add(new TerrainMaterial
+                        {
+                            Name = name,
+                            AlbedoPath = albedo,
+                            NormalPath = normal,
+                            Roughness = roughness
+                        });
+                    }
+
+                    _eventBus.Publish(new ClosePanelEvent(_parent));
+                    return;
+                }
+
+                if (hook == "Cancel")
+                {
+                    _eventBus.Publish(new ClosePanelEvent(_parent));
+                }
+            }
+        }
+
+        public NewMaterialPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+            : base(renderContext, controlContext, window, eventBus)
+        {
+            HasTitleBar = true;
+            IsClosable = true;
+            IsModal = true;
+            RenderOrder = 1100;
+            Scaling = ScalingMode.Fill;
+            Size = new Vector2(420, 380);
+        }
+
+        protected override UIOverlay CreateUIOverlay()
+        {
+            return new NewMaterialUIOverlay(this, _renderContext, _controlContext, _window, _eventBus);
+        }
+
+        public override void Init()
+        {
+            base.Init();
+
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Configs", "NewMaterial.html");
+            if (File.Exists(htmlPath))
+            {
+                string html = File.ReadAllText(htmlPath);
+                _uiOverlay.LoadUI(html);
+            }
+
+            _uiOverlay.PanelWidth = Size.X;
+            _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();
+        }
+
+        public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            var panel = new NewMaterialPanel(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
+        }
+    }
+}

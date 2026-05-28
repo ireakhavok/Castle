@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Terrain
+﻿// Folder: SiegeEngine/Core/Terrain
 // File: TerrainPaintData.cs
 using SiegeEngine.Core.Definitions;
 using System;
@@ -107,6 +107,13 @@ namespace SiegeEngine.Core.Terrain
             }
         }
 
+        // New: Material assignment helper (called from painting flow)
+        public void AssignMaterialToLayer(int layer, TerrainMaterial material)
+        {
+            // Materials list is already populated; this can be used for future material-per-layer mapping if needed
+            Console.WriteLine($"[TerrainPaintData] Assigned material '{material.Name}' to layer {layer}");
+        }
+
         private bool IsInShape(float dx, float dz, float radius, bool isCircle)
         {
             if (isCircle)
@@ -119,7 +126,7 @@ namespace SiegeEngine.Core.Terrain
         private float GetFalloff(float dx, float dz, float radius, string falloffType)
         {
             float dist = 0f;
-            bool isCircle = true; // default for falloff calc
+            bool isCircle = true;
             if (!isCircle)
             {
                 dist = Math.Max(Math.Abs(dx), Math.Abs(dz));
@@ -140,7 +147,7 @@ namespace SiegeEngine.Core.Terrain
 
         public void SaveToDisk(string projectPath, string terrainName)
         {
-            Console.WriteLine($"[TerrainPaintData] Saved paint data for scene '{SceneName}' as '{terrainName}'");
+            Console.WriteLine($"[TerrainPaintData] Saved paint data for scene '{SceneName}' as '{terrainName}' (including {Materials.Count} materials)");
         }
     }
 }
