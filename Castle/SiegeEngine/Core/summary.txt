@@ -1506,8 +1506,12 @@ Folder: Terrain
       - int _height
     - Methods:
       - constructor TerrainPaintData( int height,  int width, string sceneName)
-      - void PaintSplat( Vector2 gridPos,  float intensity,  float size,  float worldScaleX,  float worldScaleZ, int layer)
+      - void PaintSplat( Vector2 gridPos,  bool isCircle = true,  float intensity,  float size,  float worldScaleX,  float worldScaleZ,  string falloffType = "Gaussian", int layer)
+        - Calls: GetFalloff, IsInShape
       - void PaintColor( byte a,  byte b,  byte g,  byte r,  float intensity,  float size,  float worldScaleX,  float worldScaleZ, Vector2 gridPos)
+      - void AssignMaterialToLayer( TerrainMaterial material, int layer)
+      - bool IsInShape( bool isCircle,  float dz,  float radius, float dx)
+      - float GetFalloff( float dz,  float radius,  string falloffType, float dx)
       - void SaveToDisk( string terrainName, string projectPath)
 - File: TerrainTextureParser.cs
   - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
@@ -1744,6 +1748,7 @@ Folder: UI
     - Methods:
       - constructor InputElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+        - Calls: HtmlLayoutUtils.ParseMargins
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, quadRenderer.DrawNdcQuad, textRenderer.GetTextSize, textRenderer.RenderText
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
@@ -1928,6 +1933,7 @@ Folder: UI
     - Methods:
       - constructor RangeElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+        - Calls: HtmlLayoutUtils.ParseMargins
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, quadRenderer.DrawNdcQuad
 - File: Render.cs

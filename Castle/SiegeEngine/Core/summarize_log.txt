@@ -913,7 +913,7 @@ Found 2 dependencies
 Found: TerrainPaintData.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
-Read 4278 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
+Read 5845 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
 Namespace: SiegeEngine.Core.Terrain
 Found 4 dependencies
 Found: TerrainTextureParser.cs
@@ -981,7 +981,7 @@ Found 0 dependencies
 Found: InputElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
-Read 10899 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
+Read 11007 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\InputElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 6 dependencies
 Found: LiElement.cs
@@ -1023,7 +1023,7 @@ Found 4 dependencies
 Found: RangeElement.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\RangeElement.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\RangeElement.cs
-Read 3543 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\RangeElement.cs
+Read 3788 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Elements\RangeElement.cs
 Namespace: SiegeEngine.Core.UI.Elements
 Found 5 dependencies
 Found: SelectElement.cs
@@ -1159,7 +1159,7 @@ Found 4 dependencies
 Found: Render.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
-Read 15954 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
+Read 15838 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\Render.cs
 Namespace: SiegeEngine.Core.UI
 Found 8 dependencies
 Found: UIInteractionLayer.cs
@@ -1171,7 +1171,7 @@ Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 27420 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 27339 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 12 dependencies
 Writing output for 11 folders
