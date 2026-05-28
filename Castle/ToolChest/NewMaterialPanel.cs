@@ -89,7 +89,7 @@ namespace ToolChest
         {
             base.Init();
 
-            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Configs", "NewMaterial.html");
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "NewMaterial.html");
             if (File.Exists(htmlPath))
             {
                 string html = File.ReadAllText(htmlPath);
