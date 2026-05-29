@@ -233,7 +233,6 @@ namespace CastleBuilder
                 Console.WriteLine($"[SceneEditorPanel] Raycast hit at {placePos} - using as placement position");
             }
             var level = ProjectSettings.Current.CurrentLevel;
-            // FIXED: No-project case reuses the same Level instance forever (prevents recreation/duplicates on every placement)
             if (level == null)
             {
                 string sceneName = _editorScene.CurrentGameScene ?? "Main";
@@ -294,8 +293,6 @@ namespace CastleBuilder
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             bool ctrlPressed = _controlContext.GetKey(_window, Key.LeftControl) == InputAction.Press ||
                                _controlContext.GetKey(_window, Key.RightControl) == InputAction.Press;
-            // === RIGHT-CLICK + DRAG = BOX SELECT ===
-            // Right-click alone (no drag) = single entity selection
             bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
             if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)
             {
@@ -321,7 +318,6 @@ namespace CastleBuilder
                 }
                 else
                 {
-                    // Right-click alone = single entity selection
                     Console.WriteLine("[SceneEditorPanel] Right-click (no drag) → single entity selection");
                     float headerHeight = HasTitleBar ? HeaderHeight : 0f;
                     Vector2 contentMouse = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - headerHeight);
@@ -346,9 +342,6 @@ namespace CastleBuilder
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-            // === LEFT-CLICK = only panel focus (BasePanel already handles this) ===
-            // Do nothing extra here for entity selection
-            // === CALL BASE (title-bar drag, resize, UI overlay, etc.) ===
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
             if (_cameraMode)
             {
@@ -443,7 +436,6 @@ namespace CastleBuilder
                     }
                 }
             }
-            // Box visual is now handled cleanly by SelectionBoxOverlay (drawn after 3D in LayeredUIRenderer)
         }
         public override void OnLiveResize(float w, float h)
         {
@@ -464,6 +456,17 @@ namespace CastleBuilder
         }
         public void LoadPanelState(JsonElement state)
         {
+            // EXACTLY as requested: whatever was saved in the panel state is what we restore. No heuristics.
+            if (state.TryGetProperty("currentSceneName", out JsonElement sceneNameElem))
+            {
+                string savedScene = sceneNameElem.GetString();
+                if (!string.IsNullOrEmpty(savedScene))
+                {
+                    Console.WriteLine($"[SceneEditorPanel.LoadPanelState] Restoring saved scene '{savedScene}' from panel state");
+                    _editorScene.SwitchGameScene(savedScene);
+                    _pendingSceneSelectorUpdate = true;
+                }
+            }
         }
         public override void OnContentFocusGained()
         {
