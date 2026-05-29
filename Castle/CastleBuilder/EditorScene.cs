@@ -156,18 +156,14 @@ namespace CastleBuilder
             var clientProxy = _server as ClientGameServerProxy;
             if (clientProxy != null)
             {
-                // FIXED: Do NOT ClearEntities() on every placement (that was causing duplicates and position loss)
-                // Instead, only add entities that are missing from the runtime proxy (incremental sync)
-                var existingIds = new HashSet<int>(clientProxy.GetEntities().Select(e => e.Id));
+                // FIXED: Safe full re-sync in editor/no-project mode (clears proxy first, then re-adds from Level)
+                // This guarantees Level is the single source of truth and eliminates duplicates/default positions.
+                clientProxy.ClearEntities();
                 foreach (var entity in level.Entities)
                 {
-                    if (!existingIds.Contains(entity.Id))
-                    {
-                        clientProxy.AddEntity(entity);
-                        Console.WriteLine($"[EditorScene.SyncCurrentLevelToRuntimeServer] Incremental add of entity {entity.Id} (no duplicate)");
-                    }
+                    clientProxy.AddEntity(entity);
                 }
-                Console.WriteLine($"[EditorScene] Incremental sync of {level.Entities.Count} entities to runtime proxy (no full clear)");
+                Console.WriteLine($"[EditorScene] Full sync of {level.Entities.Count} entities to runtime proxy (safe re-sync in editor mode)");
             }
         }
         public void LoadProjectData()

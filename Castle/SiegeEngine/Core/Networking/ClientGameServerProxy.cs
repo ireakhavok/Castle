@@ -22,7 +22,9 @@ namespace SiegeEngine.Core.Networking
         public void AddEntity(Entity entity)
         {
             if (entity == null) return;
-            // FIXED: robust ID assignment (same as GameServer - prevents duplicates after placement or sync in editor/no-project mode)
+
+            // FIXED: robust ID assignment + duplicate guard (matches GameServer exactly)
+            // This prevents the incremental sync from ever adding the same entity twice
             bool isDuplicate = _entities.Any(e => e.Id == entity.Id && entity.Id > 0);
             if (entity.Id <= 0 || isDuplicate)
             {
