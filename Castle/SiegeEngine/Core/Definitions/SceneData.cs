@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Definitions
+﻿// Folder: SiegeEngine/Core/Definitions
 // File: SceneData.cs
 using System.Collections.Generic;
 using System.Numerics;
@@ -12,21 +12,17 @@ namespace SiegeEngine.Core.Definitions
         public string Name { get; set; } = string.Empty;
 
         [JsonPropertyName("sceneType")]
-        public string SceneType { get; set; } = "Gameplay"; // Gameplay, Menu, TerrainTest, Cutscene, etc. — fully user-defined
+        public string SceneType { get; set; } = "Gameplay";
 
-        // Terrain with explicit multi-texture references (separate from any heightmap object)
         [JsonPropertyName("terrain")]
         public TerrainData Terrain { get; set; } = new TerrainData();
 
-        // All placed content — 3D models, 3D sprites/billboards, lights, sound emitters, etc.
         [JsonPropertyName("entities")]
         public List<EntityData> Entities { get; set; } = new List<EntityData>();
 
-        // Environment settings (lighting, weather, audio occlusion test bed)
         [JsonPropertyName("environment")]
         public EnvironmentSettings Environment { get; set; } = new EnvironmentSettings();
 
-        // Extensible storage for any future system (animation blends, custom layers, etc.)
         [JsonPropertyName("customData")]
         public Dictionary<string, object> CustomData { get; set; } = new Dictionary<string, object>();
     }
@@ -42,6 +38,14 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("normalTexturePath")]
         public string NormalTexturePath { get; set; }
 
+        // NEW for Step 2: Splat map (RGBA control texture) - kept unsaved in memory until explicit save
+        [JsonPropertyName("splatMapPath")]
+        public string SplatMapPath { get; set; }
+
+        // NEW: Configurable material layers (sand, dirt, grass, rock, etc.)
+        [JsonPropertyName("materials")]
+        public List<TerrainMaterial> Materials { get; set; } = new List<TerrainMaterial>();
+
         [JsonPropertyName("worldScaleX")]
         public float WorldScaleX { get; set; } = 1f;
 
@@ -50,6 +54,21 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("verticalExaggeration")]
         public float VerticalExaggeration { get; set; } = 1f;
+    }
+
+    public class TerrainMaterial
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "Unnamed Material";
+
+        [JsonPropertyName("albedoPath")]
+        public string AlbedoPath { get; set; }
+
+        [JsonPropertyName("normalPath")]
+        public string NormalPath { get; set; }
+
+        [JsonPropertyName("roughness")]
+        public float Roughness { get; set; } = 0.8f;
     }
 
     public class EnvironmentSettings

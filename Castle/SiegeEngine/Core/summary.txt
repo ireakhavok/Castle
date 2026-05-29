@@ -698,7 +698,7 @@ Folder: Events
     - Fields:
       - string Type
     - Methods:
-      - constructor SelectBrushEvent( float intensity,  float size,  string brushFalloff,  string brushMode,  string brushShape, ulong playerId)
+      - constructor SelectBrushEvent( float intensity,  float size,  int paintLayer = 0,  string brushFalloff,  string brushMode,  string brushShape, ulong playerId)
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: SelectSpriteEvent.cs
@@ -1120,7 +1120,10 @@ Folder: Rendering
       - string FragmentShaderSource
     - Methods:
       - void main()
+      - vec2 WorldPlanarUV( int axis,  vec2 offset,  vec2 tiling,  vec3 normal, vec3 worldPos)
+      - vec3 TriplanarSample( float sharpness,  vec2 offset,  vec2 tiling,  vec3 normal,  vec3 worldPos, sampler2D tex)
       - void main()
+        - Calls: TriplanarSample, WorldPlanarUV
 - File: AssetShader.cs
   - Class: AssetShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Fields:
@@ -1210,8 +1213,6 @@ Folder: Rendering
       - UIQuadRenderer _quadRenderer
     - Methods:
       - constructor LayeredUIRenderer( IControlContext controlContext,  UIQuadRenderer quadRenderer, IRenderContext renderContext)
-      - void RenderPanel(BasePanel panel)
-        - Calls: _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, overlay.Draw, panel.RenderContentLayer, panel._uiOverlay.RenderBackgrounds, panel.chrome.Render
 - File: ModelRenderer.cs
   - Class: ModelRenderer (Namespace: SiegeEngine.Core.Rendering)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.Shaders, System, System.Numerics
@@ -1497,6 +1498,21 @@ Folder: Terrain
 - File: TerrainManager.cs
   - Class: TerrainType (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: System, System.IO
+- File: TerrainPaintData.cs
+  - Class: TerrainPaintData (Namespace: SiegeEngine.Core.Terrain)
+    - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - int _width
+      - int _height
+    - Methods:
+      - constructor TerrainPaintData( int height,  int width, string sceneName)
+      - void PaintSplat( Vector2 gridPos,  bool isCircle = true,  float intensity,  float size,  float worldScaleX,  float worldScaleZ,  string falloffType = "Gaussian", int layer)
+        - Calls: GetFalloff, IsInShape
+      - void PaintColor( byte a,  byte b,  byte g,  byte r,  float intensity,  float size,  float worldScaleX,  float worldScaleZ, Vector2 gridPos)
+      - void AssignMaterialToLayer( TerrainMaterial material, int layer)
+      - bool IsInShape( bool isCircle,  float dz,  float radius, float dx)
+      - float GetFalloff( float dz,  float radius,  string falloffType, float dx)
+      - void SaveToDisk( string terrainName, string projectPath)
 - File: TerrainTextureParser.cs
   - Class: TerrainTextureParser (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.IO
@@ -1732,6 +1748,7 @@ Folder: UI
     - Methods:
       - constructor InputElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
+        - Calls: HtmlLayoutUtils.ParseMargins
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, quadRenderer.DrawNdcQuad, textRenderer.GetTextSize, textRenderer.RenderText
       - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
@@ -1915,6 +1932,8 @@ Folder: UI
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Globalization, System.Numerics
     - Methods:
       - constructor RangeElement()
+      - Vector2 ComputeIntrinsicSize( TextRenderer textRenderer,  float fs,  float viewportHeight, float viewportWidth)
+        - Calls: HtmlLayoutUtils.ParseBorderWidths, HtmlLayoutUtils.ParsePaddings
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, quadRenderer.DrawNdcQuad
@@ -1923,7 +1942,7 @@ Folder: UI
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.RegularExpressions
     - Methods:
       - void RenderBackgroundOnly( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, _bgRenderer.Render, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, Render, _bgRenderer.Render, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
 - File: SelectElement.cs
@@ -2051,7 +2070,7 @@ Folder: UI
       - void HandleLink(string href)
         - Calls: LoadUI
       - void RefreshUI()
-        - Calls: CollectClickables, InheritProperties, RecomputeLayout, _cssParser.ApplyAll, _uiClickables.Clear, _uiRoot.MarkIntrinsicDirty
+        - Calls: CollectClickables, InheritProperties, RecomputeLayout, SetProperty, _cssParser.ApplyAll, _cssParser.ApplyInlineStyles, _uiClickables.Clear, _uiRoot.MarkIntrinsicDirty
       - HtmlElement FindElementById(string id)
       - return FindElementById()
       - HtmlElement FindElementById( string id, HtmlElement root)
@@ -2235,6 +2254,7 @@ SiegeEngine.Core.Rendering.Vertex
 SiegeEngine.Core.Rendering.VertexBuffer
 SiegeEngine.Core.Terrain.CustomTerrainParser
 SiegeEngine.Core.Terrain.GeoReference
+SiegeEngine.Core.Terrain.TerrainPaintData
 SiegeEngine.Core.Terrain.TerrainTextureParser
 SiegeEngine.Core.Terrain.TerrainType
 SiegeEngine.Core.Terrain.TilemapExporter

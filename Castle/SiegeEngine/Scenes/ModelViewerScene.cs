@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetObjects;
+﻿// Folder: SiegeEngine/Scenes
+// File: ModelViewerScene.cs
+using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
@@ -55,7 +57,6 @@ namespace SiegeEngine.Scenes
         private AnimationBlendStack _blendPreviewStack;
         private Vector3 _blendPreviewParams = Vector3.Zero;
         private List<string> _lastAttachedPaths = new List<string>();
-
         private float _trimStart = 0f;
         private float _trimEnd = -1f;
         private float _playbackSpeed = 1f;
@@ -83,6 +84,7 @@ namespace SiegeEngine.Scenes
         public override void Initialize(int height, int width)
         {
             base.Initialize(height, width);
+            _modelRenderer.Initialize();
             _skeletonBuffer = new VertexBuffer(_renderContext);
             _bindSkeletonBuffer = new VertexBuffer(_renderContext);
             _pointShader = new ShaderProgram(_renderContext, PointShader.VertexShaderSource, PointShader.FragmentShaderSource);
@@ -149,6 +151,7 @@ namespace SiegeEngine.Scenes
             {
                 var newAnim = _model.Animations.Last();
                 _duration = newAnim.Duration;
+                _trimEnd = _duration;
                 Console.WriteLine($"[ModelViewerScene] Loaded animation from {Path.GetFileName(animPath)} → duration {_duration:F2}s");
             }
             _currentTime = 0f;
@@ -406,19 +409,20 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
-
         public void SetBlendPreview(AnimationBlendStack stack, Vector3 currentParams)
         {
             _blendPreviewStack = stack;
             _blendPreviewParams = currentParams;
-            _isPlaying = false;
-            _currentTime = 0f;
+            //_isPlaying = false;
+            //_currentTime = 0f;
             if (stack != null)
             {
                 foreach (var clip in stack.Clips)
                 {
-                    clip.LocalTime = 0f;
+                    if (clip.LocalTime == 0f && _lastAttachedPaths.Count == 0)
+                        clip.LocalTime = 0f;
                 }
+
                 if (stack.Clips.Count > 0)
                 {
                     var currentPaths = stack.Clips.Select(c => c.AnimationPath).Where(p => !string.IsNullOrEmpty(p)).ToList();
@@ -478,7 +482,6 @@ namespace SiegeEngine.Scenes
 
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
-            base.Update(deltaTime);
             float mouseX = relMousePos.X;
             float mouseY = relMousePos.Y;
             if (_firstMouse)
@@ -528,7 +531,7 @@ namespace SiegeEngine.Scenes
                     {
                         float effectiveDuration = (_trimEnd > _trimStart) ? (_trimEnd - _trimStart) : _duration;
                         _currentTime += deltaTime * _playbackSpeed;
-                        if (_currentTime > _trimEnd)
+                        if (_currentTime >= _trimStart + effectiveDuration)
                         {
                             _currentTime = _trimStart;
                         }

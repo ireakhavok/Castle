@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+
 namespace SiegeEngine.Core.UI.JSParser
 {
     public class JSEvaluator
@@ -13,6 +14,7 @@ namespace SiegeEngine.Core.UI.JSParser
         private Dictionary<string, object> _globalScope = new Dictionary<string, object>();
         private Stack<Dictionary<string, object>> _scopeStack = new Stack<Dictionary<string, object>>();
         private Dictionary<string, FunctionDeclarationNode> _functions = new Dictionary<string, FunctionDeclarationNode>();
+
         public JSEvaluator()
         {
             _scopeStack.Push(_globalScope);
@@ -32,6 +34,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 ["log"] = new Action<object>(o => Console.WriteLine("[JS] " + (o?.ToString() ?? "null")))
             });
         }
+
         public object Evaluate(ASTNode node)
         {
             if (node == null)
@@ -532,21 +535,23 @@ namespace SiegeEngine.Core.UI.JSParser
             var prop1 = type?.GetProperty(propValue.ToString());
             prop1?.SetValue(objValue, value);
         }
+
+        // FIXED: Relaxed argument count handling for UI callbacks (the exact crash you were seeing)
         public object CallFunction(object callee, List<object> args)
         {
-            //Console.WriteLine($"[JSEvaluator] CallFunction ENTER - calleeType={(callee?.GetType().Name ?? "null")}, args.Count={args?.Count ?? 0}");
             if (callee is object[] arr && arr.Length == 1)
             {
                 callee = arr[0];
             }
+
             if (callee is JSArrowClosure closure)
             {
-                //Console.WriteLine($"[JSEvaluator] CallFunction - JSArrowClosure branch - Params.Count={closure.Params?.Count ?? 0}, BodyType={(closure.Body?.GetType().Name ?? "null")}");
                 List<object> callArgs = args ?? new List<object>();
                 while (callArgs.Count < closure.Params.Count)
                     callArgs.Add(null);
                 if (callArgs.Count > closure.Params.Count)
                     callArgs = callArgs.Take(closure.Params.Count).ToList();
+
                 PushScope();
                 foreach (var kv in closure.Captured)
                 {
@@ -582,9 +587,6 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 finally
                 {
-                    // MINIMAL TARGETED FIX for live closure mutations (isDraggingEnd etc.):
-                    // Sync mutated outer-scope vars back to the original captured IIFE scope
-                    // so the next mousemove handler sees the updated flag value.
                     foreach (var key in closure.Captured.Keys.ToList())
                     {
                         if (CurrentScope().ContainsKey(key))
@@ -594,16 +596,20 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 return result;
             }
+
             if (callee is FunctionDeclarationNode func)
             {
-                if (func.Params.Count != args.Count)
-                {
-                    throw new Exception("Argument count mismatch");
-                }
+                // RELAXED: UI callbacks often receive 0 or 1 argument — do not throw
+                List<object> callArgs = args ?? new List<object>();
+                while (callArgs.Count < func.Params.Count)
+                    callArgs.Add(null);
+                if (callArgs.Count > func.Params.Count)
+                    callArgs = callArgs.Take(func.Params.Count).ToList();
+
                 PushScope();
-                for (int i = 0; i < args.Count; i++)
+                for (int i = 0; i < callArgs.Count; i++)
                 {
-                    CurrentScope()[func.Params[i]] = args[i];
+                    CurrentScope()[func.Params[i]] = callArgs[i];
                 }
                 object result = null;
                 try
@@ -620,6 +626,7 @@ namespace SiegeEngine.Core.UI.JSParser
                 }
                 return result;
             }
+
             if (callee is Func<object[], object> funcObj)
             {
                 return funcObj(args.ToArray());
@@ -669,6 +676,7 @@ namespace SiegeEngine.Core.UI.JSParser
             }
             throw new Exception("Not callable");
         }
+
         private object ApplyBinaryOp(string op, object left, object right)
         {
             if (op == "===")

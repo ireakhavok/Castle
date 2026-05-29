@@ -240,10 +240,11 @@ namespace CastleBuilder
                 Console.WriteLine($"[SceneEditorPanel] Raycast hit at {placePos} - using as placement position");
             }
             var level = ProjectSettings.Current.CurrentLevel;
-            if (level == null || level.Name != _editorScene.CurrentGameScene)
+            if (level == null)
             {
-                Console.WriteLine($"[SceneEditorPanel] WARNING: Level mismatch - forcing fresh Level for scene '{_editorScene.CurrentGameScene}'");
-                level = new Level(_eventBus) { Name = _editorScene.CurrentGameScene };
+                string sceneName = _editorScene.CurrentGameScene ?? "Main";
+                Console.WriteLine($"[SceneEditorPanel] No CurrentLevel - creating fresh Level for scene '{sceneName}'");
+                level = new Level(_eventBus) { Name = sceneName };
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
             if (level == null)
@@ -469,6 +470,17 @@ namespace CastleBuilder
         }
         public void LoadPanelState(JsonElement state)
         {
+            // EXACTLY as requested: whatever was saved in the panel state is what we restore. No heuristics.
+            if (state.TryGetProperty("currentSceneName", out JsonElement sceneNameElem))
+            {
+                string savedScene = sceneNameElem.GetString();
+                if (!string.IsNullOrEmpty(savedScene))
+                {
+                    Console.WriteLine($"[SceneEditorPanel.LoadPanelState] Restoring saved scene '{savedScene}' from panel state");
+                    _editorScene.SwitchGameScene(savedScene);
+                    _pendingSceneSelectorUpdate = true;
+                }
+            }
         }
         public override void OnContentFocusGained()
         {

@@ -1,6 +1,7 @@
 ﻿// Folder: Keystone
 // File: ProjectSettings.cs
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Terrain;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,14 +29,13 @@ namespace Keystone
             set => _projectsRoot = value;
         }
         private readonly Dictionary<string, float[,]> _unsavedHeightmaps = new Dictionary<string, float[,]>();
+        private readonly Dictionary<string, TerrainPaintData> _openPaintData = new Dictionary<string, TerrainPaintData>();
         public SceneData CurrentSceneData { get; private set; }
         public float[,] CurrentHeightmap { get; private set; }
         public string CurrentSceneName { get; private set; }
         public string CurrentHeightmapPath { get; private set; }
         public Level CurrentLevel { get; private set; }
 
-        // Stage 1: Level is now the single authoritative in-memory container for the active scene.
-        // All editor save/load flows route through this reference. ProjectSettings remains a thin coordination layer.
         public void SetCurrentTerrain(SceneData sceneData, float[,] heightmap, string sceneName = null, string heightmapPath = null)
         {
             CurrentSceneData = sceneData;
@@ -45,6 +45,10 @@ namespace Keystone
             if (sceneName != null && heightmap != null)
             {
                 _unsavedHeightmaps[sceneName] = heightmap;
+            }
+            if (!string.IsNullOrEmpty(sceneName))
+            {
+                GetOrCreatePaintData(sceneName, heightmap?.GetLength(0) ?? 200, heightmap?.GetLength(1) ?? 200);
             }
             Console.WriteLine($"[ProjectSettings] SetCurrentTerrain - shared heightmap reference set ({heightmap?.GetLength(0)}x{heightmap?.GetLength(1)}) for scene '{sceneName ?? "null"}'");
         }
@@ -69,6 +73,23 @@ namespace Keystone
         }
 
         public List<string> GetUnsavedHeightmapKeys() => new List<string>(_unsavedHeightmaps.Keys);
+
+        public TerrainPaintData GetOrCreatePaintData(string sceneName, int width = 200, int height = 200)
+        {
+            if (string.IsNullOrEmpty(sceneName)) return null;
+            if (!_openPaintData.TryGetValue(sceneName, out var paintData))
+            {
+                paintData = new TerrainPaintData(sceneName, width, height);
+                _openPaintData[sceneName] = paintData;
+            }
+            return paintData;
+        }
+
+        public TerrainPaintData GetPaintData(string sceneName)
+        {
+            _openPaintData.TryGetValue(sceneName, out var paintData);
+            return paintData;
+        }
 
         public string GetLayoutTempPath(string projectPath)
         {

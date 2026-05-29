@@ -12,6 +12,7 @@
     <None Remove="AssetBrowserPanelUI.html" />
     <None Remove="BrushPanelUI.html" />
     <None Remove="ConsolePanelUI.html" />
+    <None Remove="NewMaterial.html" />
     <None Remove="PropertiesPanelUI.html" />
     <None Remove="SpritePlacementPanelUI.html" />
     <None Remove="TreeViewPanelUI.html" />
@@ -31,6 +32,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="ConsolePanelUI.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="NewMaterial.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Content Include="PropertiesPanelUI.html">

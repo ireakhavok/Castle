@@ -170,8 +170,10 @@ namespace CastleBuilder
             {
                 clientProxy.ClearEntities();
                 foreach (var entity in level.Entities)
+                {
                     clientProxy.AddEntity(entity);
-                Console.WriteLine($"[EditorScene] Synced {level.Entities.Count} entities to runtime proxy");
+                }
+                Console.WriteLine($"[EditorScene] Full sync of {level.Entities.Count} entities to runtime proxy (safe re-sync in editor mode)");
             }
         }
         public void LoadProjectData()
@@ -288,9 +290,11 @@ namespace CastleBuilder
                     }
                     else
                     {
-                        string packId = modelComp.Key;
-                        ModelManager.Instance.RegisterFBXAsPackInMemory(packId);
-                        if (ModelManager.Instance.TryGetModel(packId, out var fbxModel))
+                        // Materialize the pack now (this is the correct place — always ensure the pack exists on disk)
+                        ModelManager.Instance.MaterializeAssetPack(modelComp.Key, Path.Combine(projectPath, "Assets"));
+                        // Then load it
+                        ModelManager.Instance.LoadAnimationPack(packJsonPath);
+                        if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
                         {
                             modelComp.Model = fbxModel;
                             var physics = entity.GetComponent<PhysicsComponent>();
@@ -299,10 +303,10 @@ namespace CastleBuilder
                                 physics.Size = modelComp.Model.GetBoundingSize();
                                 physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                                 physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
-                                Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Synced model bounds for loaded entity {entity.Id} (Key='{packId}') Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
+                                Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Synced model bounds for loaded entity {entity.Id} (Key='{modelComp.Key}') Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
                             }
                         }
-                        Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Registered in-memory pack '{packId}' for saved entity");
+                        Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Materialized and loaded pack '{modelComp.Key}'");
                     }
                 }
             }
@@ -359,6 +363,8 @@ namespace CastleBuilder
                 sd.Entities = level.Entities.ConvertAll(e => e.ToData());
                 Console.WriteLine($"[EditorScene] Flushed {level.Entities.Count} entities into clean Entities array");
             }
+            // ALWAYS materialize every pack referenced by the Level (this is the fix)
+            RegisterAllAssetPacks(level);
         }
         public void SwitchGameScene(string sceneName)
         {

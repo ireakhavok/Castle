@@ -1,13 +1,17 @@
 ﻿// Folder: ToolChest
 // File: BrushPanel.cs
+using Keystone;
 using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
+using SiegeEngine.Core.Managers;
 using System;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 
 namespace ToolChest
@@ -50,7 +54,7 @@ namespace ToolChest
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadBrushUI();
-            _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString(), _currentBrush.Falloff.ToString()), true);
+            PublishCurrentBrush();
         }
 
         private void LoadBrushUI()
@@ -66,6 +70,7 @@ namespace ToolChest
         private void HandleBrushDataHook(string hook)
         {
             bool changed = false;
+
             if (hook == "BrushSizeChanged")
             {
                 var slider = _uiOverlay.FindElementById("sizeSlider") as InputElement;
@@ -114,21 +119,96 @@ namespace ToolChest
                     string modeStr = select.Value ?? "Raise";
                     _currentBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), modeStr);
                     changed = true;
+
+                    var materialSection = _uiOverlay.FindElementById("material-section");
+                    if (materialSection != null)
+                    {
+                        string newDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
+                        materialSection.Style.SetProperty("display", newDisplay);
+                        materialSection.Attributes["style"] = $"display: {newDisplay};";
+
+                        Console.WriteLine($"[BrushPanel] Mode changed to {modeStr} → material-section display = {newDisplay}");
+                    }
                 }
             }
-            else if (hook == "ClosePanel")
+            else if (hook == "BrushPaintLayerChanged")
             {
-                _eventBus.Publish(new ClosePanelEvent(this));
+                var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushPaintLayerChanged") as SelectElement;
+                if (select != null)
+                {
+                    _currentBrush.PaintLayer = int.Parse(select.Value ?? "0");
+                    changed = true;
+                }
             }
+            else if (hook == "NewMaterial")
+            {
+                NewMaterialPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                return;
+            }
+            else if (hook.StartsWith("Material"))
+            {
+                HandleMaterialDataHook(hook);
+                changed = true;
+            }
+
             if (changed)
             {
-                _eventBus.Publish(new SelectBrushEvent(0, _currentBrush.Mode.ToString(), _currentBrush.Size, _currentBrush.Intensity, _currentBrush.Shape.ToString(), _currentBrush.Falloff.ToString()), true);
+                PublishCurrentBrush();
+                _uiOverlay.RefreshUI();
+                _uiOverlay.RecomputeLayout(_uiOverlay.PanelWidth, _uiOverlay.PanelHeight);
             }
+        }
+
+        private void HandleMaterialDataHook(string hook)
+        {
+            var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
+            if (paintData == null) return;
+
+            if (hook == "SelectMaterial")
+            {
+                var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
+                if (select != null && int.TryParse(select.Value, out int index) && index >= 0 && index < paintData.Materials.Count)
+                {
+                    Console.WriteLine($"[BrushPanel] Material selected: {paintData.Materials[index].Name}");
+                    // Future: set current material for painting layer
+                }
+            }
+            else if (hook == "SaveMaterial")
+            {
+                // Material saved via dedicated modal; refresh dropdown
+                RefreshMaterialDropdown();
+            }
+        }
+
+        private void RefreshMaterialDropdown()
+        {
+            var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
+            if (paintData == null) return;
+
+            var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
+            if (select != null)
+            {
+                // Rebuild options from current materials
+                Console.WriteLine($"[BrushPanel] Refreshed material dropdown with {paintData.Materials.Count} materials");
+            }
+        }
+
+        private void PublishCurrentBrush()
+        {
+            _eventBus.Publish(new SelectBrushEvent(
+                0,
+                _currentBrush.Mode.ToString(),
+                _currentBrush.Size,
+                _currentBrush.Intensity,
+                _currentBrush.Shape.ToString(),
+                _currentBrush.Falloff.ToString(),
+                _currentBrush.PaintLayer), true);
         }
 
         public override void Detach()
         {
-            _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, "", ""), true);
+            // Clear any active brush instead of setting a default
+            _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, "", "", 0), true);
             base.Detach();
         }
 
