@@ -628,6 +628,14 @@ namespace MapRoom
 
         private void OnSelectBrush(SelectBrushEvent e)
         {
+            if (string.IsNullOrEmpty(e.BrushMode))
+            {
+                _activeBrush = null;
+                _ghostVisible = false;
+                Console.WriteLine("[TerrainCreatorScene] Brush cleared (panel closed)");
+                return;
+            }
+
             if (_activeBrush == null)
                 _activeBrush = new ToolChest.Brush();
 
