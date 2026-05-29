@@ -42,26 +42,21 @@ namespace CastleBuilder
                 _parent.HandleDataHook(hook);
             }
         }
-
         // === CLEAN BOX SELECT VISUAL OVERLAY (drawn AFTER 3D content in LayeredUIRenderer) ===
         private class SelectionBoxOverlay : ICustomOverlay
         {
             private readonly SceneEditorPanel _parent;
             public SelectionBoxOverlay(SceneEditorPanel parent) { _parent = parent; }
-
             public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight)
             {
                 if (!_parent._isBoxSelecting) return;
-
                 float dragDist = Vector2.Distance(_parent._boxStart, _parent._boxEnd);
                 if (dragDist < SceneEditorPanel.MinDragDistance) return;
-
                 float headerHeight = _parent.HasTitleBar ? _parent.HeaderHeight : 0f;
                 float x = Math.Min(_parent._boxStart.X, _parent._boxEnd.X);
                 float y = Math.Min(_parent._boxStart.Y, _parent._boxEnd.Y);
                 float w = Math.Abs(_parent._boxEnd.X - _parent._boxStart.X);
                 float h = Math.Abs(_parent._boxEnd.Y - _parent._boxStart.Y);
-
                 // Semi-transparent fill
                 quadRenderer.DrawQuad(x, y + headerHeight, w, h, new Vector4(0.2f, 0.6f, 1f, 0.3f), panelWidth, panelHeight);
                 // Crisp border lines
@@ -72,7 +67,6 @@ namespace CastleBuilder
                 quadRenderer.DrawLine(x + w, y + headerHeight, x + w, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
             }
         }
-
         private EditorScene _editorScene;
         private bool _cameraMode = false;
         private ModelManager _modelManager;
@@ -95,7 +89,6 @@ namespace CastleBuilder
             BaseHeight = 720f;
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
             _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
-
             // Register the clean overlay that draws AFTER 3D content
             CustomOverlays.Add(new SelectionBoxOverlay(this));
         }
@@ -240,10 +233,12 @@ namespace CastleBuilder
                 Console.WriteLine($"[SceneEditorPanel] Raycast hit at {placePos} - using as placement position");
             }
             var level = ProjectSettings.Current.CurrentLevel;
-            if (level == null || level.Name != _editorScene.CurrentGameScene)
+            // FIXED: No-project case reuses the same Level instance forever (prevents recreation/duplicates on every placement)
+            if (level == null)
             {
-                Console.WriteLine($"[SceneEditorPanel] WARNING: Level mismatch - forcing fresh Level for scene '{_editorScene.CurrentGameScene}'");
-                level = new Level(_eventBus) { Name = _editorScene.CurrentGameScene };
+                string sceneName = _editorScene.CurrentGameScene ?? "Main";
+                Console.WriteLine($"[SceneEditorPanel] No CurrentLevel - creating fresh Level for scene '{sceneName}'");
+                level = new Level(_eventBus) { Name = sceneName };
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
             if (level == null)

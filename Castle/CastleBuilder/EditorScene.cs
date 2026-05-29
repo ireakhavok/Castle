@@ -83,20 +83,16 @@ namespace CastleBuilder
         {
             var selected = new List<int>();
             if (!(_activeGameScene is TerrainCreatorScene tcs)) return selected;
-
             // Convert NDC box to pixel box (this was the bug)
             float minX = Math.Min(ndcStart.X, ndcEnd.X) * contentW;
             float maxX = Math.Max(ndcStart.X, ndcEnd.X) * contentW;
             float minY = Math.Min(ndcStart.Y, ndcEnd.Y) * contentH;
             float maxY = Math.Max(ndcStart.Y, ndcEnd.Y) * contentH;
-
             Console.WriteLine($"[EditorScene] Box select PIXEL rect: X({minX:F1}-{maxX:F1}) Y({minY:F1}-{maxY:F1})");
-
             foreach (var e in GetEntities())
             {
                 var physics = e.GetComponent<PhysicsComponent>();
                 if (physics == null) continue;
-
                 if (IsBoxInFrustum(tcs, minX, maxX, minY, maxY, contentW, contentH, physics))
                 {
                     selected.Add(e.Id);
@@ -105,7 +101,6 @@ namespace CastleBuilder
             }
             return selected;
         }
-
         private bool IsBoxInFrustum(TerrainCreatorScene tcs, float minX, float maxX, float minY, float maxY, float contentW, float contentH, PhysicsComponent physics)
         {
             // Fast center test (pixel space)
@@ -114,7 +109,6 @@ namespace CastleBuilder
                 return false;
             if (screenCenter.X >= minX && screenCenter.X <= maxX && screenCenter.Y >= minY && screenCenter.Y <= maxY)
                 return true;
-
             // 8 OBB corners test (pixel space)
             Vector3[] localCorners =
             {
@@ -127,10 +121,8 @@ namespace CastleBuilder
                 new Vector3(physics.LocalBoundsMaxCm.X, physics.LocalBoundsMinCm.Y, physics.LocalBoundsMaxCm.Z) * 0.01f,
                 physics.LocalBoundsMaxCm * 0.01f
             };
-
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(physics.Rotation);
             Matrix4x4 trans = Matrix4x4.CreateTranslation(physics.Position);
-
             foreach (var local in localCorners)
             {
                 Vector3 world = Vector3.Transform(local, rot * trans);
@@ -142,19 +134,15 @@ namespace CastleBuilder
             }
             return false;
         }
-
         private bool ProjectWorldToScreen(Vector3 worldPos, float contentW, float contentH, out Vector2 screenPos)
         {
             screenPos = Vector2.Zero;
             if (!(_activeGameScene is TerrainCreatorScene tcs)) return false;
-
             Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, contentW / contentH, 0.1f, 50000f);
             Matrix4x4 view = tcs.GetViewMatrix();
-
             Vector4 clip = Vector4.Transform(new Vector4(worldPos, 1f), view * proj);
             if (Math.Abs(clip.W) < 1e-6f) return false;
             clip /= clip.W;
-
             screenPos = new Vector2(
                 (clip.X * 0.5f + 0.5f) * contentW,
                 (1f - (clip.Y * 0.5f + 0.5f)) * contentH
@@ -168,10 +156,18 @@ namespace CastleBuilder
             var clientProxy = _server as ClientGameServerProxy;
             if (clientProxy != null)
             {
-                clientProxy.ClearEntities();
+                // FIXED: Do NOT ClearEntities() on every placement (that was causing duplicates and position loss)
+                // Instead, only add entities that are missing from the runtime proxy (incremental sync)
+                var existingIds = new HashSet<int>(clientProxy.GetEntities().Select(e => e.Id));
                 foreach (var entity in level.Entities)
-                    clientProxy.AddEntity(entity);
-                Console.WriteLine($"[EditorScene] Synced {level.Entities.Count} entities to runtime proxy");
+                {
+                    if (!existingIds.Contains(entity.Id))
+                    {
+                        clientProxy.AddEntity(entity);
+                        Console.WriteLine($"[EditorScene.SyncCurrentLevelToRuntimeServer] Incremental add of entity {entity.Id} (no duplicate)");
+                    }
+                }
+                Console.WriteLine($"[EditorScene] Incremental sync of {level.Entities.Count} entities to runtime proxy (no full clear)");
             }
         }
         public void LoadProjectData()
