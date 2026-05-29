@@ -208,23 +208,22 @@ namespace CastleBuilder
                 if (level.CustomData != null) sceneData.CustomData = level.CustomData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment from Level (authoritative) → SceneData");
             }
-            if (data.Scenes != null && data.Scenes.TryGetValue(currentSceneName, out var currentScene) && currentScene.Entities != null)
+            // ALWAYS materialize EVERY asset pack referenced by ANY entity in ANY scene (portable project requirement)
+            var uniquePackKeys = data.Scenes.Values
+                .SelectMany(s => s.Entities ?? new List<EntityData>())
+                .Where(e => !string.IsNullOrEmpty(e.AssetPackKey))
+                .Select(e => e.AssetPackKey)
+                .Distinct()
+                .ToList();
+            if (uniquePackKeys.Count > 0 && ModelManager.Instance != null)
             {
-                var uniquePackKeys = currentScene.Entities
-                    .Where(e => !string.IsNullOrEmpty(e.AssetPackKey))
-                    .Select(e => e.AssetPackKey)
-                    .Distinct()
-                    .ToList();
-                if (uniquePackKeys.Count > 0 && ModelManager.Instance != null)
+                string assetsDir = Path.Combine(projectPath, "Assets");
+                Directory.CreateDirectory(assetsDir);
+                foreach (var packKey in uniquePackKeys)
                 {
-                    string assetsDir = Path.Combine(projectPath, "Assets");
-                    Directory.CreateDirectory(assetsDir);
-                    foreach (var packKey in uniquePackKeys)
-                    {
-                        ModelManager.Instance.MaterializeAssetPack(packKey, assetsDir);
-                    }
-                    Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder");
+                    ModelManager.Instance.MaterializeAssetPack(packKey, assetsDir);
                 }
+                Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder (all scenes, all entities)");
             }
             SaveAllPanelStates(data);
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
@@ -441,6 +440,7 @@ namespace CastleBuilder
             data.PanelStates.Clear();
             var panelManager = PanelManager.Current;
             if (panelManager == null) return;
+            string currentContext = _previousContext ?? "Scene Editor";
             foreach (var panel in panelManager.GetAllPanels())
             {
                 if (panel is IDataAwarePanel aware)
@@ -450,7 +450,7 @@ namespace CastleBuilder
                         var state = aware.SavePanelState();
                         if (!state.ValueKind.HasFlag(JsonValueKind.Undefined))
                         {
-                            data.PanelStates[aware.DataKey] = state;
+                            data.PanelStates[currentContext + "_" + aware.DataKey] = state;
                         }
                     }
                     catch (Exception ex)

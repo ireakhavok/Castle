@@ -1,10 +1,11 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.UI.Elements
+// File: InputElement.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
-using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Definitions; // Needed for Key enum
 using System;
 using System.Numerics;
 using System.Globalization;
-
 namespace SiegeEngine.Core.UI.Elements
 {
     public class InputElement : HtmlElement
@@ -21,31 +22,28 @@ namespace SiegeEngine.Core.UI.Elements
         }
         public override void ComputeLayout(float parentPositionX, float parentPositionY, float parentWidth, float parentHeight, float viewportWidth, float viewportHeight, TextRenderer textRenderer, float parentFs, float forcedWidth = float.NaN, float forcedHeight = float.NaN)
         {
-            if (Type == "radio")
+            if (this.Type == "radio")
             {
                 Style.Display = "none";
             }
-            // Range value sync from attribute (for JS .value = ... from number field)
-            if (Type == "range" && this is RangeElement range && Attributes.TryGetValue("value", out string valStr))
+            // FIXED: Input elements (text boxes) now take full available width when no explicit width is set
+            if (float.IsNaN(forcedWidth) && string.IsNullOrEmpty(Style.WidthStr) && (this.Type == "text" || this.Type == "number"))
             {
-                if (float.TryParse(valStr, NumberStyles.Any, CultureInfo.InvariantCulture, out float parsed))
-                {
-                    range.Value = parsed;
-                }
+                forcedWidth = parentWidth - HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight).W - HtmlLayoutUtils.ParseMargins(Style, parentWidth, viewportWidth, viewportHeight).Y;
             }
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
-            if (Type == "checkbox" || Type == "radio")
+            if (this.Type == "checkbox" || this.Type == "radio")
             {
                 float fs = Style.FontSize;
                 if (float.IsNaN(ComputedWidth)) ComputedWidth = fs * 1.5f;
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = fs;
             }
-            else if (Type == "text" || Type == "number")
+            else if (this.Type == "text" || this.Type == "number")
             {
                 float fs = Style.FontSize;
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = fs * 1.5f;
             }
-            else if (Type == "range")
+            else if (this.Type == "range")
             {
                 if (float.IsNaN(ComputedHeight)) ComputedHeight = 32f;
             }
@@ -53,7 +51,7 @@ namespace SiegeEngine.Core.UI.Elements
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
         {
             base.Render(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, parentMatrix);
-            if (Type == "text" || Type == "number")
+            if (this.Type == "text" || this.Type == "number")
             {
                 float fs = Style.FontSize;
                 string displayText = string.IsNullOrEmpty(Value) ? Placeholder : Value;
@@ -73,11 +71,11 @@ namespace SiegeEngine.Core.UI.Elements
             else
             {
                 string symbol = "";
-                if (Type == "checkbox")
+                if (this.Type == "checkbox")
                 {
                     symbol = Checked ? "✔" : "";
                 }
-                else if (Type == "radio")
+                else if (this.Type == "radio")
                 {
                     symbol = Checked ? "●" : "○";
                 }
@@ -95,7 +93,7 @@ namespace SiegeEngine.Core.UI.Elements
         }
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
-            if (Type == "checkbox" || Type == "radio")
+            if (this.Type == "checkbox" || this.Type == "radio")
             {
                 Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
                 Vector4 borderW = HtmlLayoutUtils.ParseBorderWidths(Style, 0, viewportWidth, viewportHeight);
@@ -103,7 +101,7 @@ namespace SiegeEngine.Core.UI.Elements
                 float ih = fs + pad.X + pad.Z + borderW.X + borderW.Z;
                 return new Vector2(iw, ih);
             }
-            if (Type == "text" || Type == "number")
+            if (this.Type == "text" || this.Type == "number")
             {
                 string sizeText = string.IsNullOrEmpty(Value) ? string.IsNullOrEmpty(Placeholder) ? " " : Placeholder : Value;
                 float textW = textRenderer.GetTextSize(sizeText, fs).X;
@@ -119,8 +117,7 @@ namespace SiegeEngine.Core.UI.Elements
         public override bool HandleClick(Vector2 mousePos, float viewportWidth, float viewportHeight)
         {
             bool over = base.HandleClick(mousePos, viewportWidth, viewportHeight);
-            // ALL range drag handling now lives here in InputElement class (as requested)
-            if (Type == "range" && this is RangeElement range && over && IsActive)
+            if (this.Type == "range" && this is RangeElement range && over && IsActive)
             {
                 float relX = Math.Clamp(mousePos.X - ComputedContentX, 0f, ComputedContentWidth);
                 float percent = relX / ComputedContentWidth;
@@ -130,7 +127,7 @@ namespace SiegeEngine.Core.UI.Elements
                 if (Math.Abs(range.Value - newValue) > 0.0001f)
                 {
                     range.Value = newValue;
-                    Value = newValue.ToString(CultureInfo.InvariantCulture); // sync string Value (used by JS)
+                    Value = newValue.ToString(CultureInfo.InvariantCulture);
                     Attributes["value"] = Value;
                 }
             }
@@ -139,7 +136,7 @@ namespace SiegeEngine.Core.UI.Elements
         public bool Update(float deltaTime, IControlContext controlContext, nint window)
         {
             bool valueChanged = false;
-            if ((Type == "text" || Type == "number") && IsFocused)
+            if ((this.Type == "text" || this.Type == "number") && IsFocused)
             {
                 _cursorTimer += deltaTime;
                 if (_cursorTimer >= CursorBlinkRate)

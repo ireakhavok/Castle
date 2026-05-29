@@ -2,6 +2,7 @@
 // File: SelectBrushEvent.cs
 using System;
 using System.Text.Json;
+
 namespace SiegeEngine.Core.Events
 {
     public class SelectBrushEvent : IEvent
@@ -13,7 +14,11 @@ namespace SiegeEngine.Core.Events
         public float Intensity { get; set; }
         public string BrushShape { get; set; }
         public string BrushFalloff { get; set; }
-        public SelectBrushEvent(ulong playerId, string brushMode, float size, float intensity, string brushShape, string brushFalloff)
+
+        // NEW for Step 2: texture/material painting
+        public int PaintLayer { get; set; }
+
+        public SelectBrushEvent(ulong playerId, string brushMode, float size, float intensity, string brushShape, string brushFalloff, int paintLayer = 0)
         {
             PlayerId = playerId;
             BrushMode = brushMode;
@@ -21,12 +26,25 @@ namespace SiegeEngine.Core.Events
             Intensity = intensity;
             BrushShape = brushShape;
             BrushFalloff = brushFalloff;
+            PaintLayer = paintLayer;
         }
+
         public byte[] Serialize()
         {
-            var json = JsonSerializer.Serialize(new { Type, PlayerId, BrushMode, Size, Intensity, BrushShape, BrushFalloff });
+            var json = JsonSerializer.Serialize(new
+            {
+                Type,
+                PlayerId,
+                BrushMode,
+                Size,
+                Intensity,
+                BrushShape,
+                BrushFalloff,
+                PaintLayer
+            });
             return System.Text.Encoding.UTF8.GetBytes(json);
         }
+
         public void Deserialize(byte[] data)
         {
             var json = System.Text.Encoding.UTF8.GetString(data);
@@ -37,6 +55,7 @@ namespace SiegeEngine.Core.Events
             Intensity = obj.Intensity;
             BrushShape = obj.BrushShape;
             BrushFalloff = obj.BrushFalloff;
+            PaintLayer = obj.PaintLayer;
         }
     }
 }

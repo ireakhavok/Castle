@@ -1,5 +1,5 @@
-﻿// Folder: SiegeEngine/Core/UI
-// File: HtmlElement.cs
+﻿// Folder: SiegeEngine.Core.UI
+// File: Render.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI.Elements;
@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Text.RegularExpressions;
-
 namespace SiegeEngine.Core.UI
 {
     public partial class HtmlElement
@@ -22,10 +21,8 @@ namespace SiegeEngine.Core.UI
                 effectiveStyle = focusStyle;
             if (IsTarget && PseudoStyles.TryGetValue("target", out CssStyle targetStyle))
                 effectiveStyle = targetStyle;
-
             if (effectiveStyle.Display == "none") return;
 
-            // ROOT BACKGROUND IS STATIC (full client rect, no scroll offset)
             Matrix4x4 rootBgMatrix = parentMatrix;
             Matrix4x4 contentMatrix = _needsVerticalScrollbar
                 ? parentMatrix * Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0)
@@ -40,7 +37,6 @@ namespace SiegeEngine.Core.UI
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
             Vector4 borderLeftC = effectiveStyle.BorderLeftColor != Vector4.Zero ? effectiveStyle.BorderLeftColor : effectiveStyle.BorderColor;
             Vector4 borderW = BorderWidth;
-
             bool uniformBorder = borderW.X == borderW.Y && borderW.Y == borderW.Z && borderW.Z == borderW.W;
             bool uniformColor = borderTopC == borderRightC && borderRightC == borderBottomC && borderBottomC == borderLeftC;
             bool hasUniformBorder = uniformBorder && uniformColor && borderW.X > 0;
@@ -59,11 +55,9 @@ namespace SiegeEngine.Core.UI
             float drawY = useShaderForBorder ? ComputedPosition.Y : ComputedBackgroundY;
             float drawW = useShaderForBorder ? ComputedWidth : ComputedBackgroundWidth;
             float drawH = useShaderForBorder ? ComputedHeight : backgroundHeight;
-
             float bw = useShaderForBorder ? borderW.X : 0f;
             Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
             Vector4 fillColor = effectiveStyle.BackgroundColor;
-
             if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
             {
                 fillColor = Vector4.Zero;
@@ -109,10 +103,14 @@ namespace SiegeEngine.Core.UI
                 _bgRenderer.Render(ComputedBackgroundX, ComputedBackgroundY, ComputedBackgroundWidth, backgroundHeight, viewportWidth, viewportHeight);
             }
 
-            foreach (var child in Children)
-            {
-                child.RenderBackgroundOnly(renderContext, textRenderer, quadRenderer, viewportWidth, viewportHeight, contentMatrix);
-            }
+            // FIXED: Do NOT recurse to children in the background-only pass.
+            // Child backgrounds are already rendered naturally in the full Render() pass.
+            // This eliminates the duplicate "ghost" HTML elements behind the form content.
+            // (Only the root/container background is drawn here.)
+            // foreach (var child in Children)
+            // {
+            //     child.RenderBackgroundOnly(...);
+            // }
         }
 
         public virtual void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
@@ -136,7 +134,6 @@ namespace SiegeEngine.Core.UI
             {
                 effectiveStyle = targetStyle;
             }
-
             if (effectiveStyle.Display == "none") return;
 
             Matrix4x4 localMatrix = parentMatrix * ComputedTransform;
@@ -148,12 +145,10 @@ namespace SiegeEngine.Core.UI
             Vector4 borderRightC = effectiveStyle.BorderRightColor != Vector4.Zero ? effectiveStyle.BorderRightColor : effectiveStyle.BorderColor;
             Vector4 borderBottomC = effectiveStyle.BorderBottomColor != Vector4.Zero ? effectiveStyle.BorderBottomColor : effectiveStyle.BorderColor;
             Vector4 borderLeftC = effectiveStyle.BorderLeftColor != Vector4.Zero ? effectiveStyle.BorderLeftColor : effectiveStyle.BorderColor;
-
             string borderTopS = string.IsNullOrEmpty(effectiveStyle.BorderTopStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderTopStyle;
             string borderRightS = string.IsNullOrEmpty(effectiveStyle.BorderRightStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderRightStyle;
             string borderBottomS = string.IsNullOrEmpty(effectiveStyle.BorderBottomStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderBottomStyle;
             string borderLeftS = string.IsNullOrEmpty(effectiveStyle.BorderLeftStyle) ? effectiveStyle.BorderStyle : effectiveStyle.BorderLeftStyle;
-
             Vector4 borderW = BorderWidth;
             bool uniformBorder = borderW.X == borderW.Y && borderW.Y == borderW.Z && borderW.Z == borderW.W;
             bool uniformColor = borderTopC == borderRightC && borderRightC == borderBottomC && borderBottomC == borderLeftC;
@@ -174,11 +169,9 @@ namespace SiegeEngine.Core.UI
             float drawY = useShaderForBorder ? ComputedPosition.Y : ComputedBackgroundY;
             float drawW = useShaderForBorder ? ComputedWidth : ComputedBackgroundWidth;
             float drawH = useShaderForBorder ? ComputedHeight : ComputedBackgroundHeight;
-
             float bw = useShaderForBorder ? borderW.X : 0f;
             Vector4 borderC = useShaderForBorder ? borderTopC : Vector4.Zero;
             Vector4 fillColor = effectiveStyle.BackgroundColor;
-
             if (effectiveStyle.Background != null && effectiveStyle.Background.Contains("linear-gradient"))
             {
                 fillColor = Vector4.Zero;
@@ -240,7 +233,6 @@ namespace SiegeEngine.Core.UI
                 float trackH = ComputedBackgroundHeight;
                 float[] trackNdc = HtmlLayoutUtils.GetNdcQuad(trackX, trackY, SCROLLBAR_WIDTH, trackH, localMatrix, viewportWidth, viewportHeight);
                 quadRenderer.DrawNdcQuad(trackNdc, new Vector4(0.2f, 0.2f, 0.2f, 0.9f));
-
                 float thumbRatio = ComputedContentHeight / _contentFullHeight;
                 float thumbH = Math.Max(20f, trackH * thumbRatio);
                 float thumbY = trackY + (ScrollOffsetY / _contentFullHeight) * (trackH - thumbH);

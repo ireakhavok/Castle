@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.Managers
+// File: IDEDockingStrategy.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -6,6 +8,7 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -97,10 +100,6 @@ namespace SiegeEngine.Core.Managers
             foreach (var p in toRestore)
             {
                 p.Show();
-                if (p.DockState == DockState.Floating)
-                    _floatingPanels.Add(p);
-                else
-                    _root.AddPanel(p);
             }
             // 4. Apply exact previous dock layout (positions, splits, tabs) without creating new panels
             if (_bladeLayoutCache.TryGetValue(newContext, out var savedLayout) && !string.IsNullOrEmpty(savedLayout))
@@ -115,6 +114,7 @@ namespace SiegeEngine.Core.Managers
             if (string.IsNullOrEmpty(json) || existingPanels.Count == 0) return;
             try
             {
+                _floatingPanels.Clear();
                 var state = JsonSerializer.Deserialize<SerializableLayoutState>(json);
                 // Rebuild dock tree using the SAME panel instances
                 _root = RebuildDockTree(state.Root, existingPanels);
@@ -868,9 +868,13 @@ namespace SiegeEngine.Core.Managers
         {
             var state = new SerializableLayoutState();
             state.Root = SerializeNode(_root);
+            // SURGICAL FILTER: only serialize panels that are truly floating (not present in the dock tree)
+            // This eliminates all cross-blade contamination / duplicate floating entries in layout.{context}.json
+            var dockedPanels = new HashSet<IPanel>();
+            CollectPanelsRecursive(_root, dockedPanels.ToList()); // reuse existing collector
             foreach (var panel in _floatingPanels)
             {
-                if (panel is BasePanel bp)
+                if (panel is BasePanel bp && (dockedPanels.Count == 0 || !dockedPanels.Contains(panel)))
                 {
                     state.FloatingPanels.Add(new SerializableFloatingPanel
                     {
@@ -963,6 +967,10 @@ namespace SiegeEngine.Core.Managers
                 if (t != null && typeof(IPanel).IsAssignableFrom(t))
                 {
                     var panel = (IPanel)Activator.CreateInstance(t, _renderContext, _controlContext, _window, _eventBus);
+                    if (panel is BasePanel bp)
+                    {
+                        bp.Init();  // ← This was missing — panels need Init to set up UIOverlay
+                    }
                     return panel;
                 }
             }

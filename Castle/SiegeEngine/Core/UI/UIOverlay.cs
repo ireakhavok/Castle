@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/UI
+﻿// Folder: SiegeEngine.Core.UI
 // File: UIOverlay.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -37,7 +37,6 @@ namespace SiegeEngine.Core.UI
         private bool _needsVerticalScrollbar = false;
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
-        // NEW PUBLIC ACCESSOR FOR OVERLAY DRAWING (used by SceneEditorPanel box select visual)
         public UIQuadRenderer QuadRenderer => _quadRenderer;
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
             : this(renderContext, controlContext, window, null)
@@ -166,9 +165,7 @@ namespace SiegeEngine.Core.UI
             if (elem.Tag.ToLower() == "option")
             {
                 if (elem.Parent is SelectElement parentSelect && !parentSelect.IsOpen)
-                {
                     isOptionInsideClosedSelect = true;
-                }
             }
             string classes = elem.Attributes.GetValueOrDefault("class", "");
             string tagLower = elem.Tag.ToLower();
@@ -212,6 +209,10 @@ namespace SiegeEngine.Core.UI
             if (_uiRoot == null) return;
             _uiRoot.MarkIntrinsicDirty();
             _cssParser.ApplyAll(_uiRoot);
+            // GLOBAL FIX: re-apply inline styles AFTER stylesheet rules
+            // This makes runtime SetProperty("display", ...) survive every RefreshUI/layout pass
+            // (exactly how real browsers work — inline style wins)
+            _cssParser.ApplyInlineStyles(_uiRoot);
             InheritProperties(_uiRoot, null);
             RecomputeLayout(PanelWidth, PanelHeight);
             _uiClickables.Clear();
@@ -246,7 +247,8 @@ namespace SiegeEngine.Core.UI
             {
                 var elem = queue.Dequeue();
                 string classes = elem.Attributes.GetValueOrDefault("class", "");
-                if (classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(className)) list.Add(elem);
+                if (classes.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(className))
+                    list.Add(elem);
                 foreach (var child in elem.Children) queue.Enqueue(child);
             }
             return list;
@@ -264,7 +266,8 @@ namespace SiegeEngine.Core.UI
             while (queue.Count > 0)
             {
                 var elem = queue.Dequeue();
-                if (tag == "*" || elem.Tag.ToLower() == tag.ToLower()) list.Add(elem);
+                if (tag == "*" || elem.Tag.ToLower() == tag.ToLower())
+                    list.Add(elem);
                 foreach (var child in elem.Children) queue.Enqueue(child);
             }
             return list;
@@ -337,9 +340,7 @@ namespace SiegeEngine.Core.UI
                             if (!input.IsFocused)
                             {
                                 if (!string.IsNullOrEmpty(input.OnFocusJS))
-                                {
                                     _jsContext.RunWithThis(input.OnFocusJS, new JSElement(input, this));
-                                }
                                 InvokeListeners(input, "focus");
                                 input.IsFocused = true;
                                 _interactionLayer._currentFocused = input;
@@ -377,9 +378,7 @@ namespace SiegeEngine.Core.UI
                         if (!input.IsFocused)
                         {
                             if (!string.IsNullOrEmpty(input.OnFocusJS))
-                            {
                                 _jsContext.RunWithThis(input.OnFocusJS, new JSElement(input, this));
-                            }
                             InvokeListeners(input, "focus");
                             input.IsFocused = true;
                             _interactionLayer._currentFocused = input;
@@ -408,9 +407,7 @@ namespace SiegeEngine.Core.UI
                     if (select.IsOpen)
                     {
                         foreach (var opt in select.Children.Where(c => c.Tag.ToLower() == "option"))
-                        {
                             opt.Attributes.Remove("selected");
-                        }
                         elem.Attributes["selected"] = "";
                         select.IsOpen = false;
                         valueChanged = true;
@@ -447,7 +444,6 @@ namespace SiegeEngine.Core.UI
             {
                 TriggerChange(elem);
             }
-            //RefreshUI();
             return handled;
         }
         private void CloseAllOpenNavDropdowns()
@@ -457,9 +453,7 @@ namespace SiegeEngine.Core.UI
                 .Cast<NavLiElement>()
                 .ToList();
             foreach (var nav in navLis)
-            {
                 nav.CloseDropdown();
-            }
         }
         public void CloseAllOpenSelects()
         {
@@ -467,9 +461,7 @@ namespace SiegeEngine.Core.UI
             foreach (var s in selects)
             {
                 if (s is SelectElement sel)
-                {
                     sel.IsOpen = false;
-                }
             }
         }
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
@@ -484,9 +476,7 @@ namespace SiegeEngine.Core.UI
             Matrix4x4 rootMatrix = Matrix4x4.CreateTranslation(0, -ScrollOffsetY, 0);
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, rootMatrix);
             foreach (var sel in _interactionLayer._openSelects)
-            {
                 sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
-            }
             if (_needsVerticalScrollbar)
             {
                 float trackX = w - 12f;
@@ -510,7 +500,6 @@ namespace SiegeEngine.Core.UI
                 RenderUI(PanelWidth, PanelHeight);
             }
         }
-        // FIXED: Backgrounds now receive the exact same scroll matrix as content
         public virtual void RenderBackgrounds(float w, float h)
         {
             if (_uiRoot != null)
@@ -549,9 +538,7 @@ namespace SiegeEngine.Core.UI
                     float elemBottom = elem.ComputedPosition.Y + elem.ComputedHeight;
                     ContentFullHeight = Math.Max(ContentFullHeight, elemBottom);
                     foreach (var child in elem.Children)
-                    {
                         queue.Enqueue(child);
-                    }
                 }
             }
             float usableHeight = PanelHeight - ReservedHeaderHeight;
@@ -592,9 +579,7 @@ namespace SiegeEngine.Core.UI
             while (current != null)
             {
                 if (!string.IsNullOrEmpty(current.OnChangeJS))
-                {
                     _jsContext.RunWithThis(current.OnChangeJS, jsElem);
-                }
                 InvokeListeners(current, "change", jsElem);
                 current = current.Parent;
             }
@@ -614,9 +599,6 @@ namespace SiegeEngine.Core.UI
             }
             return false;
         }
-        /// <summary>
-        /// Public accessor for TextRenderer so IDEBasePanel can pre-compute dropdown layouts during Update().
-        /// </summary>
         public TextRenderer TextRenderer => _textRenderer;
     }
 }

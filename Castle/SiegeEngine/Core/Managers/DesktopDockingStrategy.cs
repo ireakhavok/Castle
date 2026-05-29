@@ -218,11 +218,6 @@ namespace SiegeEngine.Core.Managers
                     bool over = rel.X >= 0 && rel.X <= panel.Size.X && rel.Y >= 0 && rel.Y <= panel.Size.Y;
                     if (over)
                     {
-                        // ONLY the true topmost panel ever receives content/chrome Update
-                        if (PanelManager.Current?.GetTopmostPanelAt(mousePos) == panel)
-                        {
-                            panel.Update(deltaTime, mousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-                        }
                         if (mousePressed && panel.AllowDragging && panel.DockState == DockState.Floating)
                         {
                             bool overTitle = mousePos.Y >= panel.Position.Y && mousePos.Y <= panel.Position.Y + 20f;
