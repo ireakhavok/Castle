@@ -1462,7 +1462,7 @@ Folder: Core
     - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.RegularExpressions
     - Methods:
       - void RenderBackgroundOnly( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
-        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, _bgRenderer.Render, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
+        - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, Render, _bgRenderer.Render, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
         - Calls: HtmlLayoutUtils.GetNdcQuad, HtmlLayoutUtils.ParseSides, int.Parse, quadRenderer.DrawLine, quadRenderer.DrawNdcQuad
 - File: Renderer.cs
