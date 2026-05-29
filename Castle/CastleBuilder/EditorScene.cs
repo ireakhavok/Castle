@@ -83,7 +83,6 @@ namespace CastleBuilder
         {
             var selected = new List<int>();
             if (!(_activeGameScene is TerrainCreatorScene tcs)) return selected;
-            // Convert NDC box to pixel box (this was the bug)
             float minX = Math.Min(ndcStart.X, ndcEnd.X) * contentW;
             float maxX = Math.Max(ndcStart.X, ndcEnd.X) * contentW;
             float minY = Math.Min(ndcStart.Y, ndcEnd.Y) * contentH;
@@ -103,13 +102,11 @@ namespace CastleBuilder
         }
         private bool IsBoxInFrustum(TerrainCreatorScene tcs, float minX, float maxX, float minY, float maxY, float contentW, float contentH, PhysicsComponent physics)
         {
-            // Fast center test (pixel space)
             Vector3 center = physics.Position;
             if (!ProjectWorldToScreen(center, contentW, contentH, out Vector2 screenCenter))
                 return false;
             if (screenCenter.X >= minX && screenCenter.X <= maxX && screenCenter.Y >= minY && screenCenter.Y <= maxY)
                 return true;
-            // 8 OBB corners test (pixel space)
             Vector3[] localCorners =
             {
                 physics.LocalBoundsMinCm * 0.01f,
@@ -156,8 +153,6 @@ namespace CastleBuilder
             var clientProxy = _server as ClientGameServerProxy;
             if (clientProxy != null)
             {
-                // FIXED: Safe full re-sync in editor/no-project mode (clears proxy first, then re-adds from Level)
-                // This guarantees Level is the single source of truth and eliminates duplicates/default positions.
                 clientProxy.ClearEntities();
                 foreach (var entity in level.Entities)
                 {
@@ -280,9 +275,11 @@ namespace CastleBuilder
                     }
                     else
                     {
-                        string packId = modelComp.Key;
-                        ModelManager.Instance.RegisterFBXAsPackInMemory(packId);
-                        if (ModelManager.Instance.TryGetModel(packId, out var fbxModel))
+                        // Materialize the pack now (this is the correct place — always ensure the pack exists on disk)
+                        ModelManager.Instance.MaterializeAssetPack(modelComp.Key, Path.Combine(projectPath, "Assets"));
+                        // Then load it
+                        ModelManager.Instance.LoadAnimationPack(packJsonPath);
+                        if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
                         {
                             modelComp.Model = fbxModel;
                             var physics = entity.GetComponent<PhysicsComponent>();
@@ -291,10 +288,10 @@ namespace CastleBuilder
                                 physics.Size = modelComp.Model.GetBoundingSize();
                                 physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                                 physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
-                                Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Synced model bounds for loaded entity {entity.Id} (Key='{packId}') Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
+                                Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Synced model bounds for loaded entity {entity.Id} (Key='{modelComp.Key}') Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
                             }
                         }
-                        Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Registered in-memory pack '{packId}' for saved entity");
+                        Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Materialized and loaded pack '{modelComp.Key}'");
                     }
                 }
             }
@@ -351,6 +348,8 @@ namespace CastleBuilder
                 sd.Entities = level.Entities.ConvertAll(e => e.ToData());
                 Console.WriteLine($"[EditorScene] Flushed {level.Entities.Count} entities into clean Entities array");
             }
+            // ALWAYS materialize every pack referenced by the Level (this is the fix)
+            RegisterAllAssetPacks(level);
         }
         public void SwitchGameScene(string sceneName)
         {

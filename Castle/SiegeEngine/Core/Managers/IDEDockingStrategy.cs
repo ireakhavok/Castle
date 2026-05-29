@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: SiegeEngine.Core.Managers
+// File: IDEDockingStrategy.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -6,6 +8,7 @@ using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -963,6 +966,10 @@ namespace SiegeEngine.Core.Managers
                 if (t != null && typeof(IPanel).IsAssignableFrom(t))
                 {
                     var panel = (IPanel)Activator.CreateInstance(t, _renderContext, _controlContext, _window, _eventBus);
+                    if (panel is BasePanel bp)
+                    {
+                        bp.Init();  // ← This was missing — panels need Init to set up UIOverlay
+                    }
                     return panel;
                 }
             }

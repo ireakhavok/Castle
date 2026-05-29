@@ -201,31 +201,31 @@ namespace CastleBuilder
                     sceneData = new SceneData { Name = currentSceneName, SceneType = "TerrainTest" };
                     data.Scenes[currentSceneName] = sceneData;
                 }
-                // Level is the single source of truth - sync everything to SceneData for disk
                 sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                 sceneData.Terrain = level.Terrain ?? new TerrainData();
                 sceneData.Environment = level.Environment ?? new EnvironmentSettings();
                 if (level.CustomData != null) sceneData.CustomData = level.CustomData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment from Level (authoritative) → SceneData");
             }
-            if (data.Scenes != null && data.Scenes.TryGetValue(currentSceneName, out var currentScene) && currentScene.Entities != null)
-            {
-                var uniquePackKeys = currentScene.Entities
-                    .Where(e => !string.IsNullOrEmpty(e.AssetPackKey))
-                    .Select(e => e.AssetPackKey)
-                    .Distinct()
-                    .ToList();
-                if (uniquePackKeys.Count > 0 && ModelManager.Instance != null)
-                {
-                    string assetsDir = Path.Combine(projectPath, "Assets");
-                    Directory.CreateDirectory(assetsDir);
-                    foreach (var packKey in uniquePackKeys)
-                    {
-                        ModelManager.Instance.MaterializeAssetPack(packKey, assetsDir);
-                    }
-                    Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder");
-                }
-            }
+            // Don't know why the fuck this was removed? might need to bring this back if there's some bullshit missing. 
+            //if (data.Scenes != null && data.Scenes.TryGetValue(currentSceneName, out var currentScene) && currentScene.Entities != null)
+            //{
+            //    var uniquePackKeys = currentScene.Entities
+            //        .Where(e => !string.IsNullOrEmpty(e.AssetPackKey))
+            //        .Select(e => e.AssetPackKey)
+            //        .Distinct()
+            //        .ToList();
+            //    if (uniquePackKeys.Count > 0 && ModelManager.Instance != null)
+            //    {
+            //        string assetsDir = Path.Combine(projectPath, "Assets");
+            //        Directory.CreateDirectory(assetsDir);
+            //        foreach (var packKey in uniquePackKeys)
+            //        {
+            //            ModelManager.Instance.MaterializeAssetPack(packKey, assetsDir);
+            //        }
+            //        Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder");
+            //    }
+            //}
             SaveAllPanelStates(data);
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
             Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with Level as single source of truth + terrain reference + clean entities + materialized asset packs");
@@ -441,6 +441,7 @@ namespace CastleBuilder
             data.PanelStates.Clear();
             var panelManager = PanelManager.Current;
             if (panelManager == null) return;
+            string currentContext = _previousContext ?? "Scene Editor";
             foreach (var panel in panelManager.GetAllPanels())
             {
                 if (panel is IDataAwarePanel aware)
@@ -450,7 +451,7 @@ namespace CastleBuilder
                         var state = aware.SavePanelState();
                         if (!state.ValueKind.HasFlag(JsonValueKind.Undefined))
                         {
-                            data.PanelStates[aware.DataKey] = state;
+                            data.PanelStates[currentContext + "_" + aware.DataKey] = state;
                         }
                     }
                     catch (Exception ex)
