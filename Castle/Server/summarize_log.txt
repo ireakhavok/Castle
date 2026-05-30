@@ -1,0 +1,84 @@
+Log file opened successfully
+Getting current directory
+Repo path set to: C:\repos\RealmFoundryV2\Castle\Server
+Summary file opened successfully
+Starting scan
+Listing folder: C:\repos\RealmFoundryV2\Castle\Server
+Found: .
+Found: ..
+Found: Citadel
+Listing folder: C:\repos\RealmFoundryV2\Castle\Server\Citadel
+Found: .
+Found: ..
+Found: .vs
+Found: bin
+Ignoring non-source folder: C:\repos\RealmFoundryV2\Castle\Server\Citadel\bin
+Found: Citadel.csproj
+Found: Citadel.csproj.user
+Found: Network
+Listing folder: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Network
+Found: .
+Found: ..
+Found: NetworkManager.cs
+Parsing file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Network\NetworkManager.cs
+Reading file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Network\NetworkManager.cs
+Read 2185 chars from: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Network\NetworkManager.cs
+Namespace: Citadel.Network
+Found 3 dependencies
+Found: obj
+Ignoring non-source folder: C:\repos\RealmFoundryV2\Castle\Server\Citadel\obj
+Found: Properties
+Listing folder: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Properties
+Found: .
+Found: ..
+Found: PublishProfiles
+Listing folder: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Properties\PublishProfiles
+Found: .
+Found: ..
+Found: FolderProfile.pubxml
+Found: FolderProfile.pubxml.user
+Found: FolderProfile1.pubxml
+Found: FolderProfile1.pubxml.user
+Found: Server
+Listing folder: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server
+Found: .
+Found: ..
+Found: EntityDeltaTracker.cs
+Parsing file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server\EntityDeltaTracker.cs
+Reading file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server\EntityDeltaTracker.cs
+Read 1232 chars from: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server\EntityDeltaTracker.cs
+Namespace: Citadel.Server
+Found 4 dependencies
+Found: GameServer.cs
+Parsing file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server\GameServer.cs
+Reading file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server\GameServer.cs
+Read 20020 chars from: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server\GameServer.cs
+Namespace: Citadel.Server
+Found 13 dependencies
+Found: ServerValidationSystem.cs
+Parsing file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server\ServerValidationSystem.cs
+Reading file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server\ServerValidationSystem.cs
+Read 7456 chars from: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Server\ServerValidationSystem.cs
+Namespace: Citadel.Server
+Found 8 dependencies
+Found: ServerProgram.cs
+Parsing file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\ServerProgram.cs
+Reading file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\ServerProgram.cs
+Read 4454 chars from: C:\repos\RealmFoundryV2\Castle\Server\Citadel\ServerProgram.cs
+Namespace: Citadel
+Found 8 dependencies
+Found: Systems
+Listing folder: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Systems
+Found: .
+Found: ..
+Found: PhysicsSystem.cs
+Parsing file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Systems\PhysicsSystem.cs
+Reading file: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Systems\PhysicsSystem.cs
+Read 1132 chars from: C:\repos\RealmFoundryV2\Castle\Server\Citadel\Systems\PhysicsSystem.cs
+Namespace: Citadel.Systems
+Found 6 dependencies
+Found: HeirarchySummary.exe
+Found: summarize_log.txt
+Found: summary.txt
+Writing output for 1 folders
+Scan complete

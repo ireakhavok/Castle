@@ -1,0 +1,54 @@
+Log file opened successfully
+Getting current directory
+Repo path set to: C:\repos\RealmFoundryV2\Castle\Launcher
+Summary file opened successfully
+Starting scan
+Listing folder: C:\repos\RealmFoundryV2\Castle\Launcher
+Found: .
+Found: ..
+Found: Foundation
+Listing folder: C:\repos\RealmFoundryV2\Castle\Launcher\Foundation
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\repos\RealmFoundryV2\Castle\Launcher\Foundation\bin
+Found: Foundation.csproj
+Found: Foundation.csproj.user
+Found: obj
+Ignoring non-source folder: C:\repos\RealmFoundryV2\Castle\Launcher\Foundation\obj
+Found: Program.cs
+Parsing file: C:\repos\RealmFoundryV2\Castle\Launcher\Foundation\Program.cs
+Reading file: C:\repos\RealmFoundryV2\Castle\Launcher\Foundation\Program.cs
+Read 7068 chars from: C:\repos\RealmFoundryV2\Castle\Launcher\Foundation\Program.cs
+Namespace: Foundation
+Found 8 dependencies
+Found: Properties
+Listing folder: C:\repos\RealmFoundryV2\Castle\Launcher\Foundation\Properties
+Found: .
+Found: ..
+Found: PublishProfiles
+Listing folder: C:\repos\RealmFoundryV2\Castle\Launcher\Foundation\Properties\PublishProfiles
+Found: .
+Found: ..
+Found: FolderProfile.pubxml
+Found: FolderProfile.pubxml.user
+Found: HeirarchySummary.exe
+Found: summarize_log.txt
+Found: summary.txt
+Found: Trebuchet
+Listing folder: C:\repos\RealmFoundryV2\Castle\Launcher\Trebuchet
+Found: .
+Found: ..
+Found: bin
+Ignoring non-source folder: C:\repos\RealmFoundryV2\Castle\Launcher\Trebuchet\bin
+Found: Launcher.cs
+Parsing file: C:\repos\RealmFoundryV2\Castle\Launcher\Trebuchet\Launcher.cs
+Reading file: C:\repos\RealmFoundryV2\Castle\Launcher\Trebuchet\Launcher.cs
+Read 8304 chars from: C:\repos\RealmFoundryV2\Castle\Launcher\Trebuchet\Launcher.cs
+Namespace: Trebuchet
+Found 17 dependencies
+Found: obj
+Ignoring non-source folder: C:\repos\RealmFoundryV2\Castle\Launcher\Trebuchet\obj
+Found: Trebuchet.csproj
+Writing output for 2 folders
+Scan complete
