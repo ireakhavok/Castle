@@ -202,7 +202,8 @@ namespace MapRoom
                 Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.BrushShape, true),
                 Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.BrushFalloff, true),
                 Size = e.Size,
-                Intensity = e.Intensity
+                Intensity = e.Intensity,
+                PaintLayer = e.PaintLayer
             };
             _terrainScene.SetActiveBrush(brush);
         }
