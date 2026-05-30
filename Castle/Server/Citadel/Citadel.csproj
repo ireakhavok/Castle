@@ -16,12 +16,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<None Include="..\Libraries\steam_api64.dll">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
-
-	<ItemGroup>
 	  <ProjectReference Include="..\..\SiegeEngine\SiegeEngine.csproj" />
 	</ItemGroup>
 

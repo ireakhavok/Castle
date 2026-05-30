@@ -5,6 +5,7 @@ using System.Numerics;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
+
 namespace SiegeEngine.PlayerSystem
 {
     public enum Perspective
@@ -13,6 +14,7 @@ namespace SiegeEngine.PlayerSystem
         ThirdPerson,
         OverTheShoulder
     }
+
     public class CameraController
     {
         protected readonly IControlContext _controlContext;
@@ -21,10 +23,10 @@ namespace SiegeEngine.PlayerSystem
         protected Perspective _perspective = Perspective.ThirdPerson;
         protected float _yaw = 0f;
         protected float _pitch = 0f;
-        protected float _distance = 200.0f;
-        protected readonly float _minDistance = 50.0f;
-        protected readonly float _maxDistance = 8000.0f;
-        protected readonly float _zoomSpeed = 1000.0f;
+        protected float _distance = 2.0f;
+        protected readonly float _minDistance = 0.5f;
+        protected readonly float _maxDistance = 80.0f;
+        protected readonly float _zoomSpeed = 10f;
         protected readonly float _xSpeed = 2.0f;
         protected readonly float _ySpeed = 2.0f;
         protected readonly float _pitchMinLimit = -89f;
@@ -32,27 +34,30 @@ namespace SiegeEngine.PlayerSystem
         protected Vector2 _lastMousePos = Vector2.Zero;
         protected bool _firstMouseMove = true;
         protected bool _isRightShoulder = true;
-        protected readonly float _shoulderShiftAmount = 300f;
-        protected readonly float _playerHeight = 190f;
+        protected readonly float _shoulderShiftAmount = 1.0f;
+        protected readonly float _playerHeight = 1.9f;
         protected bool _isPPressed = false;
         protected bool _wasPPressedLastFrame = false;
         protected bool _wasShiftPressedLastFrame = false;
         protected bool _wasTabPressedLastFrame = false;
         protected Vector3 _position;
+
         public Vector3 Position => _position;
         public Matrix4x4 ViewMatrix { get; set; }
         public float Yaw => _yaw;
         public Perspective CurrentPerspective => _perspective;
         public float Pitch => _pitch;
         public Vector2 MousePosition { get; private set; }
+
         public CameraController(IControlContext controlContext, IntPtr window, Player player = null)
         {
             _controlContext = controlContext ?? throw new ArgumentNullException(nameof(controlContext));
             _window = window;
             _player = player;
-            _position = _player?.Physics.Position + new Vector3(0, 0, _playerHeight) ?? new Vector3(64, 36, 5);
+            _position = _player?.Physics.Position + new Vector3(0, 0, _playerHeight) ?? new Vector3(64, 36, 0.05f);
             UpdateCamera();
         }
+
         public void Update(float deltaTime, float scrollDelta, bool isGameActive)
         {
             bool focused = _controlContext.GetWindowAttrib(_window, WindowAttribute.Focused);
@@ -69,7 +74,6 @@ namespace SiegeEngine.PlayerSystem
             if (!isGameActive)
             {
                 MousePosition = mousePos;
-                //Console.WriteLine($"Menu mouse position: {MousePosition}");
                 _firstMouseMove = true;
             }
             else
@@ -134,6 +138,7 @@ namespace SiegeEngine.PlayerSystem
                 UpdateCamera();
             }
         }
+
         private void ChangePerspective()
         {
             _perspective = _perspective switch
@@ -145,6 +150,7 @@ namespace SiegeEngine.PlayerSystem
             };
             Console.WriteLine($"Camera perspective changed to: {_perspective}");
         }
+
         protected void UpdateCamera()
         {
             if (_player != null) // Player mode only
@@ -154,6 +160,7 @@ namespace SiegeEngine.PlayerSystem
                 Vector3 otstarget = _player.Physics.Position + new Vector3(0, 0, _playerHeight);
                 float yawRad = _yaw * (float)(Math.PI / 180);
                 float pitchRad = _pitch * (float)(Math.PI / 180);
+
                 if (_perspective == Perspective.FirstPerson)
                 {
                     _position = fptarget;
@@ -176,19 +183,32 @@ namespace SiegeEngine.PlayerSystem
                 }
                 else if (_perspective == Perspective.OverTheShoulder)
                 {
-                    float shoulderShift = _isRightShoulder ? _shoulderShiftAmount : -_shoulderShiftAmount;
+                    // Slightly left shoulder (as requested last time)
+                    float shoulderShift = _isRightShoulder ? _shoulderShiftAmount * 0.6f : -_shoulderShiftAmount * 0.6f;
                     Vector3 right = Vector3.Normalize(Vector3.Cross(new Vector3(
                         (float)Math.Sin(yawRad) * (float)Math.Cos(pitchRad),
                         (float)Math.Cos(yawRad) * (float)Math.Cos(pitchRad),
                         (float)Math.Sin(pitchRad)
                     ), Vector3.UnitZ));
-                    Vector3 offset = new Vector3(
-                        (float)Math.Sin(yawRad) * (float)Math.Cos(pitchRad),
-                        (float)Math.Cos(yawRad) * (float)Math.Cos(pitchRad),
-                        (float)Math.Sin(pitchRad)
-                    ) * (_distance / 5);
+
+                    Vector3 horizontalForward = new Vector3(
+                        (float)Math.Sin(yawRad),
+                        (float)Math.Cos(yawRad),
+                        0
+                    );
+
+                    // Camera position: behind player + slight left shoulder, at correct height
+                    Vector3 offset = horizontalForward * (_distance * 0.25f);
                     _position = otstarget - offset + right * shoulderShift;
-                    ViewMatrix = Matrix4x4.CreateLookAt(_position, otstarget, Vector3.UnitZ);
+
+                    // Look direction uses full yaw + free pitch (Gears-of-War style crosshair)
+                    Vector3 lookDirection = new Vector3(
+                        (float)Math.Cos(pitchRad) * (float)Math.Sin(yawRad),
+                        (float)Math.Cos(pitchRad) * (float)Math.Cos(yawRad),
+                        (float)Math.Sin(pitchRad)
+                    );
+                    Vector3 lookTarget = otstarget + lookDirection * 1000f;
+                    ViewMatrix = Matrix4x4.CreateLookAt(_position, lookTarget, Vector3.UnitZ);
                 }
             }
             else // Editor mode: WASD updates _position, look ahead

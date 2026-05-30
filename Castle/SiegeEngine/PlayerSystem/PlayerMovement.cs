@@ -12,7 +12,7 @@ namespace SiegeEngine.PlayerSystem
 {
     public class PlayerMovement
     {
-        private readonly float _speed = 80.0f;
+        private readonly float _speed = 8.0f;   // exactly as requested (was originally 80f)
         private readonly float _gridWidth = 12500.0f;
         private readonly float _gridHeight = 7500.0f;
         private readonly ClientPredictionSystem _predictionSystem;
@@ -129,7 +129,6 @@ namespace SiegeEngine.PlayerSystem
                     player.Physics.Position.Z
                 );
 
-                // Single source of truth via TransformComponent
                 player.Physics.Position = newPosition;
 
                 Quaternion newRotation = player.Physics.Rotation;
@@ -177,7 +176,7 @@ namespace SiegeEngine.PlayerSystem
             {
                 Quaternion newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -yawRad);
                 player.Physics.Rotation = newRotation;
-                Console.WriteLine($"PlayerMovement: {camera.CurrentPerspective} rotation updated without movement: Yaw={camera.Yaw}°, Quaternion={newRotation}");
+                //Console.WriteLine($"PlayerMovement: {camera.CurrentPerspective} rotation updated without movement: Yaw={camera.Yaw}°, Quaternion={newRotation}");
             }
         }
 
