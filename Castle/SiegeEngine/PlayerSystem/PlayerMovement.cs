@@ -176,7 +176,7 @@ namespace SiegeEngine.PlayerSystem
             {
                 Quaternion newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -yawRad);
                 player.Physics.Rotation = newRotation;
-                Console.WriteLine($"PlayerMovement: {camera.CurrentPerspective} rotation updated without movement: Yaw={camera.Yaw}°, Quaternion={newRotation}");
+                //Console.WriteLine($"PlayerMovement: {camera.CurrentPerspective} rotation updated without movement: Yaw={camera.Yaw}°, Quaternion={newRotation}");
             }
         }
 

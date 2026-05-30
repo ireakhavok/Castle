@@ -23,10 +23,10 @@ namespace SiegeEngine.PlayerSystem
         protected Perspective _perspective = Perspective.ThirdPerson;
         protected float _yaw = 0f;
         protected float _pitch = 0f;
-        protected float _distance = 2.0f;           // scaled by 1/100
-        protected readonly float _minDistance = 0.5f;   // scaled by 1/100
-        protected readonly float _maxDistance = 80.0f;  // scaled by 1/100
-        protected readonly float _zoomSpeed = 100f;     // scaled down by 10 as requested
+        protected float _distance = 2.0f;
+        protected readonly float _minDistance = 0.5f;
+        protected readonly float _maxDistance = 80.0f;
+        protected readonly float _zoomSpeed = 10f;
         protected readonly float _xSpeed = 2.0f;
         protected readonly float _ySpeed = 2.0f;
         protected readonly float _pitchMinLimit = -89f;
@@ -34,8 +34,8 @@ namespace SiegeEngine.PlayerSystem
         protected Vector2 _lastMousePos = Vector2.Zero;
         protected bool _firstMouseMove = true;
         protected bool _isRightShoulder = true;
-        protected readonly float _shoulderShiftAmount = 3.0f;   // scaled by 1/100
-        protected readonly float _playerHeight = 1.9f;          // scaled by 1/100
+        protected readonly float _shoulderShiftAmount = 1.0f;
+        protected readonly float _playerHeight = 1.9f;
         protected bool _isPPressed = false;
         protected bool _wasPPressedLastFrame = false;
         protected bool _wasShiftPressedLastFrame = false;
@@ -183,19 +183,32 @@ namespace SiegeEngine.PlayerSystem
                 }
                 else if (_perspective == Perspective.OverTheShoulder)
                 {
-                    float shoulderShift = _isRightShoulder ? _shoulderShiftAmount : -_shoulderShiftAmount;
+                    // Slightly left shoulder (as requested last time)
+                    float shoulderShift = _isRightShoulder ? _shoulderShiftAmount * 0.6f : -_shoulderShiftAmount * 0.6f;
                     Vector3 right = Vector3.Normalize(Vector3.Cross(new Vector3(
                         (float)Math.Sin(yawRad) * (float)Math.Cos(pitchRad),
                         (float)Math.Cos(yawRad) * (float)Math.Cos(pitchRad),
                         (float)Math.Sin(pitchRad)
                     ), Vector3.UnitZ));
-                    Vector3 offset = new Vector3(
-                        (float)Math.Sin(yawRad) * (float)Math.Cos(pitchRad),
-                        (float)Math.Cos(yawRad) * (float)Math.Cos(pitchRad),
-                        (float)Math.Sin(pitchRad)
-                    ) * (_distance / 5);
+
+                    Vector3 horizontalForward = new Vector3(
+                        (float)Math.Sin(yawRad),
+                        (float)Math.Cos(yawRad),
+                        0
+                    );
+
+                    // Camera position: behind player + slight left shoulder, at correct height
+                    Vector3 offset = horizontalForward * (_distance * 0.25f);
                     _position = otstarget - offset + right * shoulderShift;
-                    ViewMatrix = Matrix4x4.CreateLookAt(_position, otstarget, Vector3.UnitZ);   // restored to original look-at behavior
+
+                    // Look direction uses full yaw + free pitch (Gears-of-War style crosshair)
+                    Vector3 lookDirection = new Vector3(
+                        (float)Math.Cos(pitchRad) * (float)Math.Sin(yawRad),
+                        (float)Math.Cos(pitchRad) * (float)Math.Cos(yawRad),
+                        (float)Math.Sin(pitchRad)
+                    );
+                    Vector3 lookTarget = otstarget + lookDirection * 1000f;
+                    ViewMatrix = Matrix4x4.CreateLookAt(_position, lookTarget, Vector3.UnitZ);
                 }
             }
             else // Editor mode: WASD updates _position, look ahead
