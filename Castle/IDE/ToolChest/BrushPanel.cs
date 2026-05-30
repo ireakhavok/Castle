@@ -34,6 +34,7 @@ namespace ToolChest
         }
 
         private Brush _currentBrush = new Brush();
+        private string _lastMode = "Raise"; // saved so Paint mode survives refresh
 
         public BrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -56,7 +57,7 @@ namespace ToolChest
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadBrushUI();
             PublishCurrentBrush();
-            RefreshMaterialDropdown(); // ensure dropdown is populated on open
+            RefreshMaterialDropdown();
         }
 
         private void LoadBrushUI()
@@ -118,7 +119,8 @@ namespace ToolChest
                 var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushModeChanged") as SelectElement;
                 if (select != null)
                 {
-                    string modeStr = select.Value ?? "Raise";
+                    _lastMode = select.Value ?? "Raise";
+                    string modeStr = _lastMode;
                     _currentBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), modeStr);
                     changed = true;
 
@@ -184,7 +186,6 @@ namespace ToolChest
             var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
             if (paintData == null) return;
 
-            // Rebuild the entire UI with the updated material dropdown (exact pattern from AnimationViewerPanel.cs)
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BrushPanelUI.html");
             if (!File.Exists(htmlPath)) return;
 
@@ -199,17 +200,30 @@ namespace ToolChest
             }
             dynamicSelect.Append("</select>");
 
-            // Replace the placeholder select in the HTML
             int insertIndex = baseHtml.IndexOf("<select id=\"materialSelect\" data-hook=\"SelectMaterial\">");
+            string modifiedHtml;
             if (insertIndex == -1)
             {
-                // fallback: just reload
-                _uiOverlay.LoadUI(baseHtml);
+                modifiedHtml = baseHtml;
             }
             else
             {
-                string modifiedHtml = baseHtml.Substring(0, insertIndex) + dynamicSelect.ToString() + baseHtml.Substring(baseHtml.IndexOf("</select>", insertIndex) + 9);
-                _uiOverlay.LoadUI(modifiedHtml);
+                modifiedHtml = baseHtml.Substring(0, insertIndex) + dynamicSelect.ToString() + baseHtml.Substring(baseHtml.IndexOf("</select>", insertIndex) + 9);
+            }
+
+            _uiOverlay.LoadUI(modifiedHtml);
+
+            // Restore the Paint mode (and material section visibility) after full reload
+            var modeSelect = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushModeChanged") as SelectElement;
+            if (modeSelect != null && _lastMode == "Paint")
+            {
+                modeSelect.Value = "Paint";
+                var materialSection = _uiOverlay.FindElementById("material-section");
+                if (materialSection != null)
+                {
+                    materialSection.Style.SetProperty("display", "block");
+                    materialSection.Attributes["style"] = "display: block;";
+                }
             }
 
             _uiOverlay.RefreshUI();
