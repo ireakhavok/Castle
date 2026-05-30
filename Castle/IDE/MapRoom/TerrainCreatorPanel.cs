@@ -251,7 +251,7 @@ namespace MapRoom
                 if (!string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
                 {
                     string assetsDir = Path.Combine(ProjectSettings.Current.ActiveProject, "Assets");
-                    _terrainScene.Export2D(assetsDir);
+                    ((TerrainCreatorScene)_terrainScene).Export2D(assetsDir);
                 }
             }
         }

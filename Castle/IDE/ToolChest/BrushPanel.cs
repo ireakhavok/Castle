@@ -13,6 +13,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 
 namespace ToolChest
 {
@@ -55,6 +56,7 @@ namespace ToolChest
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadBrushUI();
             PublishCurrentBrush();
+            RefreshMaterialDropdown(); // ensure dropdown is populated on open
         }
 
         private void LoadBrushUI()
@@ -126,7 +128,6 @@ namespace ToolChest
                         string newDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
                         materialSection.Style.SetProperty("display", newDisplay);
                         materialSection.Attributes["style"] = $"display: {newDisplay};";
-
                         Console.WriteLine($"[BrushPanel] Mode changed to {modeStr} → material-section display = {newDisplay}");
                     }
                 }
@@ -170,27 +171,49 @@ namespace ToolChest
                 if (select != null && int.TryParse(select.Value, out int index) && index >= 0 && index < paintData.Materials.Count)
                 {
                     Console.WriteLine($"[BrushPanel] Material selected: {paintData.Materials[index].Name}");
-                    // Future: set current material for painting layer
                 }
             }
             else if (hook == "SaveMaterial")
             {
-                // Material saved via dedicated modal; refresh dropdown
                 RefreshMaterialDropdown();
             }
         }
 
-        private void RefreshMaterialDropdown()
+        public void RefreshMaterialDropdown()
         {
             var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
             if (paintData == null) return;
 
-            var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
-            if (select != null)
+            // Rebuild the entire UI with the updated material dropdown (exact pattern from AnimationViewerPanel.cs)
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BrushPanelUI.html");
+            if (!File.Exists(htmlPath)) return;
+
+            string baseHtml = File.ReadAllText(htmlPath);
+
+            StringBuilder dynamicSelect = new StringBuilder();
+            dynamicSelect.Append("<select id=\"materialSelect\" data-hook=\"SelectMaterial\">");
+            for (int i = 0; i < paintData.Materials.Count; i++)
             {
-                // Rebuild options from current materials
-                Console.WriteLine($"[BrushPanel] Refreshed material dropdown with {paintData.Materials.Count} materials");
+                var mat = paintData.Materials[i];
+                dynamicSelect.Append($"<option value=\"{i}\">{mat.Name}</option>");
             }
+            dynamicSelect.Append("</select>");
+
+            // Replace the placeholder select in the HTML
+            int insertIndex = baseHtml.IndexOf("<select id=\"materialSelect\" data-hook=\"SelectMaterial\">");
+            if (insertIndex == -1)
+            {
+                // fallback: just reload
+                _uiOverlay.LoadUI(baseHtml);
+            }
+            else
+            {
+                string modifiedHtml = baseHtml.Substring(0, insertIndex) + dynamicSelect.ToString() + baseHtml.Substring(baseHtml.IndexOf("</select>", insertIndex) + 9);
+                _uiOverlay.LoadUI(modifiedHtml);
+            }
+
+            _uiOverlay.RefreshUI();
+            Console.WriteLine($"[BrushPanel] Refreshed material dropdown with {paintData.Materials.Count} materials");
         }
 
         private void PublishCurrentBrush()
@@ -207,7 +230,6 @@ namespace ToolChest
 
         public override void Detach()
         {
-            // Clear any active brush instead of setting a default
             _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, "", "", 0), true);
             base.Detach();
         }
