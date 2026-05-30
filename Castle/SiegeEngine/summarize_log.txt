@@ -817,7 +817,7 @@ Found 0 dependencies
 Found: SceneShader.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SceneShader.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SceneShader.cs
-Read 1462 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SceneShader.cs
+Read 2279 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders\SceneShader.cs
 Namespace: SiegeEngine.Core.Rendering.Shaders
 Found 1 dependencies
 Found: SpriteShader.cs
@@ -1180,6 +1180,7 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Read 27339 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 12 dependencies
+Found: EngineSummary.txt
 Found: HeirarchySummary.exe
 Found: obj
 Ignoring non-source folder: C:\repos\RealmFoundry\Castle\SiegeEngine\obj
@@ -1303,7 +1304,6 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Read 20728 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
-Found: SE_summary.txt
 Found: SiegeEngine.csproj
 Found: siegeengine_summary.txt
 Found: summarize_log.txt

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Rendering.Shaders
+﻿// Folder: SiegeEngine/Core/Rendering/Shaders
 // File: SceneShader.cs
 using System;
 
@@ -27,31 +27,17 @@ namespace SiegeEngine.Core.Rendering.Shaders
             in vec4 vColor;
             in vec2 vUV;
             out vec4 FragColor;
-            uniform sampler2D uTexture;        // color texture or splat
-            uniform sampler2D uMat0;           // material 0 albedo
-            uniform sampler2D uMat1;           // material 1 albedo
-            uniform sampler2D uMat2;           // material 2 albedo
-            uniform sampler2D uMat3;           // material 3 albedo
+            uniform sampler2D uTexture;
             uniform int uHasTexture;
-            uniform int uIsSplat;              // 1 = use splat weights + 4 materials
             void main() {
                 if (uHasTexture == 1) {
-                    if (uIsSplat == 1) {
-                        vec4 splat = texture(uTexture, vUV);
-                        vec4 c0 = texture(uMat0, vUV);
-                        vec4 c1 = texture(uMat1, vUV);
-                        vec4 c2 = texture(uMat2, vUV);
-                        vec4 c3 = texture(uMat3, vUV);
-                        FragColor = splat.r * c0 + splat.g * c1 + splat.b * c2 + splat.a * c3;
+                    if (vUV.x >= 0.0 && vUV.x <= 1.0 && vUV.y >= 0.0 && vUV.y <= 1.0) {
+                        FragColor = texture(uTexture, vUV);
                     } else {
-                        if (vUV.x >= 0.0 && vUV.x <= 1.0 && vUV.y >= 0.0 && vUV.y <= 1.0) {
-                            FragColor = texture(uTexture, vUV);
-                        } else {
-                            discard;
-                        }
+                        discard; // NO rusty fill, only geo subset gets skin
                     }
                 } else {
-                    FragColor = vColor;
+                    FragColor = vColor; // cyan wireframe
                 }
             }";
     }

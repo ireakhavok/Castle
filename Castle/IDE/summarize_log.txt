@@ -104,7 +104,7 @@ Namespace: CastleBuilder
 Found 23 dependencies
 Found: SceneEditorUI.html
 Found: HeirarchySummary.exe
-Found: ID_summary.txt
+Found: IDEsummary.txt
 Found: Keystone
 Listing folder: C:\repos\RealmFoundry\Castle\IDE\Keystone
 Found: .
@@ -175,7 +175,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\MapRoom\obj
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
-Read 18620 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
+Read 18663 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 17 dependencies
 Found: TerrainCreatorScene.cs
