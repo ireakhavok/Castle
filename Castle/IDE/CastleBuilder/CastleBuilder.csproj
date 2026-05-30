@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\SiegeEngine\SiegeEngine.csproj" />
     <ProjectReference Include="..\MapRoom\MapRoom.csproj" />
     <ProjectReference Include="..\ReadingChamber\ReadingChamber.csproj" />
-    <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
     <ProjectReference Include="..\ToolChest\ToolChest.csproj" />
   </ItemGroup>
 

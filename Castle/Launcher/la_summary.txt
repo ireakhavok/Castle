@@ -1,0 +1,36 @@
+Folder: Foundation
+- File: Program.cs
+  - Class: Program (Namespace: Foundation)
+    - Dependencies: SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, System, System.Diagnostics, System.IO, System.Runtime.InteropServices, Trebuchet
+    - Methods:
+      - int MessageBox( string caption,  string text,  uint type, nint hWnd)
+        - Calls: Process.Start, launcher.Start
+      - void Main(string[] args)
+        - Calls: MessageBox, Process.Start, launcher.Start
+
+Folder: Trebuchet
+- File: Launcher.cs
+  - Class: Launcher (Namespace: Trebuchet)
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Reflection, System.Runtime.InteropServices
+    - Fields:
+      - bool _isRunning
+      - IntPtr _window
+      - UISettingsManager _settingsManager
+      - ISteamEngine _steamEngine
+      - EventBus _eventBus
+      - MenuPanel _menuPanel
+      - IRenderContext _renderContext
+      - IControlContext _controlContext
+      - InputHandler _inputHandler
+      - ModManager _modManager
+      - ContextManager _contextManager
+      - Process _serverProcess
+      - SceneManager _sceneManager
+      - PanelManager _panelManager
+    - Methods:
+      - void Start( bool discoverDedicated = false,  bool discoverP2PHost = false,  ulong connectToServerSteamId = 0,  ulong joinLobbyId = 0,  ulong specificLobbyId = 0, string context)
+        - Calls: LoadLibrary
+
+Class Hierarchy:
+Foundation.Program
+Trebuchet.Launcher

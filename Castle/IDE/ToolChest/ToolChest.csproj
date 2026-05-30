@@ -49,9 +49,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\SiegeEngine\SiegeEngine.csproj" />
     <ProjectReference Include="..\Keystone\Keystone.csproj" />
     <ProjectReference Include="..\ReadingChamber\ReadingChamber.csproj" />
-    <ProjectReference Include="..\SiegeEngine\SiegeEngine.csproj" />
   </ItemGroup>
 
 </Project>
