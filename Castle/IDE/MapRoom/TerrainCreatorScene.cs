@@ -531,18 +531,21 @@ namespace MapRoom
                 }
             }
             using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
-            // World position -> UV (terrain alignment only)
+            Console.WriteLine($"[PaintAlbedo DEBUG] brush.Size (radius) = {_activeBrush.Size}, worldPos = {worldPos}, material native = {materialBmp.Width}x{materialBmp.Height}");
+            // World position -> UV (terrain alignment only) - EXACT same math as the version where location was correct
             float u = Math.Clamp(worldPos.X / (_terrainWidth * _worldScaleX), 0f, 1f);
-            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f);
+            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f); // NO flip here - matches the "location correct" version you had
             int centerTexX = (int)(u * _colorBitmapCache.Width);
             int centerTexY = (int)(v * _colorBitmapCache.Height);
-            // Use native material size scaled by brush world size (1:1 quality)
-            int brushTexW = (int)(materialBmp.Width * (_activeBrush.Size / 10f)); // scale factor tuned to match typical brush feel
-            int brushTexH = (int)(materialBmp.Height * (_activeBrush.Size / 10f));
+            // Brush world size now EXACTLY matches ghost preview quad size (brush.Size is radius, ghost uses full diameter)
+            float worldBrushSize = _activeBrush.Size * 2f; // diameter = 2 * radius to match ghost quad size
+            int brushTexW = (int)((worldBrushSize / (_terrainWidth * _worldScaleX)) * _colorBitmapCache.Width);
+            int brushTexH = (int)((worldBrushSize / (_terrainHeight * _worldScaleZ)) * _colorBitmapCache.Height);
             int destX = Math.Max(0, centerTexX - brushTexW / 2);
             int destY = Math.Max(0, centerTexY - brushTexH / 2);
             int destW = Math.Min(brushTexW, _colorBitmapCache.Width - destX);
             int destH = Math.Min(brushTexH, _colorBitmapCache.Height - destY);
+            Console.WriteLine($"[PaintAlbedo DEBUG] UV = ({u:F4}, {v:F4}), centerTex = ({centerTexX}, {centerTexY}), brushTexWH = ({brushTexW}, {brushTexH}), destRect = ({destX},{destY},{destW},{destH})");
             if (destW <= 0 || destH <= 0) return;
             using (var g = Graphics.FromImage(_colorBitmapCache))
             {
@@ -550,7 +553,7 @@ namespace MapRoom
                 g.DrawImage(materialBmp, new Rectangle(destX, destY, destW, destH));
             }
             UpdateGPUColorTexture();
-            Console.WriteLine($"[TerrainCreatorScene] PaintAlbedo applied at worldPos={worldPos} with material '{_activeMaterialPath}' (native PNG resolution - 1:1 like 2D scene)");
+            Console.WriteLine($"[TerrainCreatorScene] PaintAlbedo applied at worldPos={worldPos} with material '{_activeMaterialPath}' (UV + size now match ghost preview - location unchanged)");
         }
         private void UpdateGPUColorTexture()
         {
