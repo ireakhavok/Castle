@@ -1,0 +1,83 @@
+Vision & End Goal SiegeEngine is a custom C# game engine purpose-built for real-time multiplayer MMORPG-style experiences. It was designed from the ground up with moddability, extensibility, and security as core pillars. The engine supports hundreds of concurrent players through authoritative server validation, client-side prediction, reconciliation, entity delta compression, spatial partitioning, frustum culling of sensitive data, and ray-cast occlusion checks for anti-cheat protection.
+
+A defining philosophy is that the entire IDE/editor (Castle) is built directly on top of the game engine itself. This makes the tool self-hosting and self-moddable: every system used to run games is also used to build them. Creators — solo hobbyists, small teams, or large communities — can create, mod, share, and play custom games with minimal friction. Game development itself becomes an engaging “meta-game” where intuitive tools, seamless live previews, and instant testing keep builders fully immersed.
+
+Architecture Overview The system is cleanly layered into four major concerns that remain strongly separated yet share the same core runtime:
+
+Core Engine: Provides the foundational systems used by both gameplay and the editor. This includes an abstracted rendering pipeline (supporting OpenGL today with clear paths for DirectX/Vulkan), a mature asset pipeline for meshes, skeletons, animations, materials, and textures, a traditional Entity/Component architecture, a central EventBus with strongly-typed networked events, GameSystem classes for per-frame logic, Scene management, a production-grade HTML/CSS/JS-driven UI framework, mod loading, and Steam-based networking.
+
+Editor / IDE Layer: Runs the engine in editor mode and exposes a full-featured creative environment. It includes dockable and resizable panels with snapping and live updates, context-aware switching between different editing modes (terrain sculpting, scene editing, animation authoring, 2D sprite placement, etc.), project and scene management, asset browsing, properties inspection, brush-based tools, animation timeline and blending tools, and custom in-panel 3D overlays.
+
+Server Layer: Implements fully authoritative gameplay logic with server-side validation, spatial grids, occlusion testing, movement/inventory/combat checks, entity delta tracking, and efficient network broadcasting. The same server code can run in dedicated-server, hybrid, or editor-collaboration modes.
+
+Bootstrap / Launcher Layer: Handles the unified startup sequence, Steam initialization, mod discovery (local + Workshop), context creation, settings management, panel and scene orchestration, and the main game/editor loop.
+
+Key Design Principles
+
+Strong separation of concerns between core engine code and editor-specific logic.
+
+The EventBus + strongly-typed IEvent system (with serialization) is the single source of truth for all communication — UI ↔ code, client ↔ server, editor ↔ runtime, and mod hooks.
+
+Modding is first-class: mods can override or extend any system through JSON configuration and fully-qualified hooks without conflicts.
+
+The custom UI framework (HTML/CSS parser + JS context + data-hook system) powers both in-game UI and the entire editor and is designed to be production-grade and easily extensible.
+
+Networking supports pure P2P, hybrid authoritative, and dedicated server modes from the same codebase.
+
+All major systems (rendering, assets, events, UI, scenes) are deliberately shared between runtime and editor so the tool is inherently self-moddable.
+
+Core Engine Systems The engine provides complete rendering abstractions, a mature FBX-based asset pipeline (meshes, skeletons, animations, bones, materials, textures), Entity/Component management with parenting and delta tracking, a rich suite of GameSystems (animation, audio with ray-traced occlusion and MP3 support, lighting, physics, client prediction, player control, environment), multiple scene types (including sandbox, terrain, 2D, model viewer, and editor scenes), and a fully-featured UI system with dockable panels, custom overlays, and dynamic JavaScript behavior.
+
+Editor / IDE Systems The editor runs the same engine in a special editor mode. It offers context switching, project/scene blueprint management, dockable panel system with multiple layout strategies, live 3D canvas tools (terrain brush sculpting with ghost preview, heightmap I/O, wireframe/textured rendering, sprite placement with ortho camera, entity placement with selection overlays, animation timeline and blend-stack preview), asset browser, properties inspector, hierarchy/outliner, console, and a full suite of HTML-driven tool panels. All editor features communicate through the same EventBus and use the engine’s rendering and UI systems, making the entire IDE extensible via the same modding mechanisms used for games.
+
+Current State & Priorities Core rendering, asset pipeline, event system, mod loading, server validation, delta compression, and the terrain editor (brush sculpting, ghost preview, heightmap workflow, wireframe/textured modes) are solid and production-ready. The dockable IDE with snapping, live updates, and pop-out panels delivers a professional-grade creative experience.
+
+Ongoing focus areas include further polishing of editor/runtime separation (especially camera and player movement systems), maturing client prediction/reconciliation, enabling real-time multiplayer editor collaboration, and continued incremental improvement of entity replication and new feature development on a rock-solid foundation.
+
+You are an expert in game engine architecture, user experience design for creative tools, and modular software development.
+
+This project is a mature C# game engine and self-hosting IDE built for real-time multiplayer MMORPG-style games. The overarching goal is to empower solo hobbyists, small teams, and communities to build, mod, share, and play custom games without steep learning curves, mod conflicts, or inadequate multiplayer support. Game creation itself should feel like a rewarding meta-game, with intuitive tools, seamless live previews, and instant testing that keep creators fully engaged. The entire application functions as a professional-grade game creator tool — modular, extensible, and secure — rather than a prototype lacking proper editor features.
+
+The core rendering, asset pipeline, event system, mod loading, server validation, anti-cheat mechanisms, and terrain editor are fully implemented and production-ready. The dockable, resizable IDE with snapping, live updates, and pop-out panels is complete and highly usable. We are now primarily focused on bug fixing, incremental feature additions, and polishing the remaining systems while maintaining architectural integrity.
+
+SiegeEngine serves as the shared core that powers both gameplay and the editor. It includes abstracted rendering, a mature asset pipeline, Entity/Component system, central EventBus with networked strongly-typed events, GameSystems, multiple scene types, and a production-grade HTML/CSS/JS UI framework. The editor layer builds directly on these same systems, making the entire tool self-moddable. The server layer provides authoritative validation, spatial optimization, delta compression, and secure networking. All layers share the same bootstrap and modding infrastructure.
+
+You must maintain a complete mental model of how the subsystems integrate: the EventBus as the central communication backbone, the modding system (JSON configs + fully-qualified hooks), the shared rendering/UI/asset systems, scene management, project/blueprint workflow, and the clean separation between core engine and editor code.
+
+Collaboration Guidelines: 
+
+	My approach to collaboration is disciplined, methodical, and safety-focused. I will not make changes or proceed with implementation until you explicitly say “go” and provide all necessary files. I maintain a comprehensive repository summary, a living document outlining the project’s structure—folders, key files, dependencies, and component roles (e.g., SandboxScene.cs for gameplay, ModManager.cs for Workshop). This summary is built by synthesizing provided files, logs, and feedback, ensuring a clear understanding of the system’s state. I request specific files (e.g., VertexBuffer.cs, ShaderProgram.cs) upfront to clarify dependencies or behavior, cross-referencing them with logs to avoid assumptions. For example, logs showing GameServer.AddEntity crashes or UI toggle errors guide targeted fixes. Changes are made slowly and iteratively, analyzing logs to identify symptoms (e.g., missing preview updates, recursive entity additions), hypothesizing root causes (e.g., coordinate issues in ScreenToWorld, null references in ActionConfig), and proposing minimal but the most future-proof fixes with debug logs (e.g., Console.WriteLine("EditorScene: Preview updated...")) to verify impact. Each change includes clear verification steps (e.g., checking FBX model rendering, animation playback) to ensure alignment with the codebase. If issues persist, I refine based on new logs, maintaining stability while advancing toward goals like custom FBX integration.
+
+You need to also understand how all the subsystems tie in, how the modding system and scene system works. So right now, what I need you to do is understand the summary of the repository in its entirety and make future-proof changes that are iterative in nature to fix the issues in the game. In order for you to systematically and methodically update the repository to fix these issues, you’ll need to keep the information regarding the repo in its entirety safe. I only want you to provide code when I say go. Right now you need to provide me a list of files to look at, and iteratively add more files to your memory. As you do so you’ll need to handle a large amount of code and adopt good practices to keeping the information safe, and updated as I say we reached a checkpoint. Don’t ask me questions you’ll be able to answer after asking for the files in question, waiting for them, and then proceeding once there are no more questions.
+
+Rules:
+
+the summary file is your life line to succeed and understand the repository from a class - call perspective, so keep that information safe and silently update it accordingly when I confirm something worked. 2) Output the full and entire files you modify and only the files you modify 3) Output the files in-line and in folder/class labelled c-sharp code blocks. 4) Do not nominally log 5) do not add anything extra. do not change the name of variables 6) understand the entire scope of the changes you make 7) Make methodical and FUTURE PROOFED changes. DON'T MAKE BAND-AIDS AND FIX THINGS PROPERLY AND PREFERABLY WITH PROPER ARCHITECTURE 8) when a class or context is un-clear, stop. ask for the files. wait for them. and inspect the files before continuing with the solution 9) do not output snippets of code. 10) Know the solution definitively, but be concise in your explanations unless explicitly told to explain something. 11) Given the complexity, adopt an iterative approach, requesting files in stages to build understanding
+
+
+
+We are building the direct albedo painting system inside the self-hosting CastleBuilder editor for the SiegeEngine MMORPG framework. The core goal is a fully functional Paint mode in the TerrainCreatorScene where selecting a material (albedo PNG via NewMaterialPanel → BrushPanel dropdown) instantly loads a textured ghost brush preview that follows the mouse, conforms perfectly to the terrain surface height using bilinear interpolation, and on mouse drag/release composites the albedo texture onto the live _colorBitmapCache layer using the existing CPU Bitmap DrawImage path in texture-space coordinates. The ghost preview uses the existing _ghostBuffer + SpriteShader (UV-mapped dense grid for Paint mode) and _ghostMaterialTextureId loaded via TerrainTextureParser.LoadColorTexture (which calls TextureLoader and logs the ID). The color layer is re-uploaded to the GPU with LockBits + TexImage2D(BGRA) + GenerateMipmap exactly as before.
+
+Accomplished so far (huge breakthrough): The brush panel now auto-selects the newest material after NewMaterialPanel creation, sets _currentBrush.MaterialPath correctly, and publishes a SelectBrushEvent with the real path. TerrainCreatorScene.OnSelectBrushEvent now receives it, calls SetActiveMaterial (which triggers TerrainTextureParser logs and TextureLoader success), sets _activeMaterialPath, builds the textured quad/grid in UpdateGhostMesh, and marks _ghostVisible = true immediately via TryPerformPlacementRaycast. PaintAlbedo is now executing on drag (multiple “[TerrainCreatorScene] PaintAlbedo applied at worldPos=…” logs fire), so compositing is reaching the _colorBitmapCache and UpdateGPUColorTexture. The ghost preview is now smooth and conforms exactly to the rendered terrain surface via the new protected GetInterpolatedHeight method added to TerrainScene (bilinear lookup from the same _heightmap used by mesh vertices in BuildWireframeMesh/BuildTexturedMesh, with full clamping to prevent out-of-bounds). Panel close events are now safely handled with an early guard that clears the brush without crashing on empty enum strings.
+
+Project memory / saving concept (must stay untouched): ProjectSettings holds the active _unsavedHeightmaps dictionary and _openPaintData dictionary keyed by sceneName. TerrainPaintData stores the ColorMap byte[] and Materials list. On scene load / switch we call GetOrCreatePaintData and pull the cached heightmap if present. SaveTerrain writes the heightmap as custom .tif (preserving GeoTIFF scale), writes color as PNG from _colorBitmapCache, and calls _paintData.SaveToDisk. All GeoTIFF parsing, CustomTerrainParser flat-terrain support, geo-reference correlation (world-scale / tie-point math), and ray-cast occlusion are preserved exactly — no changes to heightmap code, no new splat maps, no shader changes. The interpolated preview values are purely runtime (for ghost only) and do not affect saved data; the final painted color lives in _colorBitmapCache which is already wired into the existing SaveAsPng / SaveTerrain flow.
+
+How the terrain painting system should work (target architecture, unchanged): • BrushPanel → publishes SelectBrushEvent (with Mode=Paint and MaterialPath) • TerrainCreatorPanel.OnBrushSelected forwards to scene.SetActiveBrush + SetActiveMaterial • TerrainCreatorScene.OnSelectBrushEvent sets _activeBrush fields + _activeMaterialPath + calls SetActiveMaterial (loads ghost texture) + immediate TryPerformPlacementRaycast + UpdateGhostMesh • In Update: raycast every frame for ghost position, conform ghost quad/grid to surface Z using GetInterpolatedHeight, on mouseDown/Drag/Release if Mode==Paint call PaintAlbedo(worldPos) which does Graphics.DrawImage onto _colorBitmapCache at the calculated texture-space rect, then UpdateGPUColorTexture.
+
+Current issues (next to fix — visibility on the actual mesh):
+
+
+
+
+
+PaintAlbedo logs fire and _colorBitmapCache is updated + re-uploaded, but the visual color change on the terrain mesh is still not visible (mesh still shows old texture or blank/cyan wireframe).
+
+
+
+All other features (ghost conformity, panel close, size slider, etc.) are now working perfectly.
+
+Features to retain forever (non-negotiable): • Full GeoTIFF heightmap + color texture loading with geo-reference correlation and world-scale math • CustomTerrainParser flat-terrain support with scaleX/scaleZ • All existing SaveTerrain / SaveAsPng flow and ProjectSettings unsaved heightmap / paint data caching • Brush system (Brush.cs enums, Apply for sculpt, IsInShape/GetFalloff) • EventBus driven SelectBrushEvent / TerrainModifiedEvent (network-aware)
+
+
+
+Now with all this, please provide me a list of files for you to inspect the current state of the terrain painting system, so that we can fix the final visibility issue on the mesh.
