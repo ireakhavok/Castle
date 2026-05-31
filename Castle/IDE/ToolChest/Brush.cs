@@ -5,26 +5,9 @@ using System.Numerics;
 
 namespace ToolChest
 {
-    public enum BrushShape
-    {
-        Circle,
-        Square
-    }
-    public enum BrushFalloff
-    {
-        Linear,
-        Gaussian
-    }
-    public enum BrushMode
-    {
-        Raise,
-        Lower,
-        Smooth,
-        Flatten,
-        Noise,
-        Sharpen,
-        Paint
-    }
+    public enum BrushShape { Circle, Square }
+    public enum BrushFalloff { Linear, Gaussian }
+    public enum BrushMode { Raise, Lower, Smooth, Flatten, Noise, Sharpen, Paint }
 
     public class Brush
     {
@@ -34,8 +17,6 @@ namespace ToolChest
         public int PaintLayer { get; set; } = 0;
         public float Size { get; set; } = 10f;
         public float Intensity { get; set; } = 1f;
-
-        // NEW: carries selected material albedo path for Paint mode stickers (event-driven)
         public string MaterialPath { get; set; } = string.Empty;
 
         public void Apply(ref float[,] heightmap, Vector2 gridPos, float worldScaleX, float worldScaleZ)
@@ -49,13 +30,11 @@ namespace ToolChest
             int maxX = Math.Min(width, centerX + (int)radiusInCells + 1);
             int minZ = Math.Max(0, centerZ - (int)radiusInCells - 1);
             int maxZ = Math.Min(height, centerZ + (int)radiusInCells + 1);
-
             Random rand = new Random();
 
             if (Mode == BrushMode.Paint)
             {
-                Console.WriteLine($"[Brush] Paint mode - delegating to TerrainPaintData");
-                return;
+                return; // painting is now handled directly in TerrainCreatorScene
             }
 
             if (Mode == BrushMode.Flatten || Mode == BrushMode.Smooth || Mode == BrushMode.Sharpen)
@@ -110,12 +89,9 @@ namespace ToolChest
                         if (!IsInShape(dx, dz, radiusInCells)) continue;
                         float falloff = GetFalloff(dx, dz, radiusInCells);
                         float delta = Intensity * falloff;
-                        if (Mode == BrushMode.Raise)
-                            heightmap[x, z] += delta;
-                        else if (Mode == BrushMode.Lower)
-                            heightmap[x, z] -= delta;
-                        else if (Mode == BrushMode.Noise)
-                            heightmap[x, z] += (float)(rand.NextDouble() * 2 - 1) * delta;
+                        if (Mode == BrushMode.Raise) heightmap[x, z] += delta;
+                        else if (Mode == BrushMode.Lower) heightmap[x, z] -= delta;
+                        else if (Mode == BrushMode.Noise) heightmap[x, z] += (float)(rand.NextDouble() * 2 - 1) * delta;
                     }
                 }
             }
@@ -125,12 +101,9 @@ namespace ToolChest
         {
             switch (Shape)
             {
-                case BrushShape.Circle:
-                    return MathF.Sqrt(dx * dx + dz * dz) <= radius;
-                case BrushShape.Square:
-                    return Math.Abs(dx) <= radius && Math.Abs(dz) <= radius;
-                default:
-                    return false;
+                case BrushShape.Circle: return MathF.Sqrt(dx * dx + dz * dz) <= radius;
+                case BrushShape.Square: return Math.Abs(dx) <= radius && Math.Abs(dz) <= radius;
+                default: return false;
             }
         }
 
@@ -139,23 +112,16 @@ namespace ToolChest
             float dist = 0f;
             switch (Shape)
             {
-                case BrushShape.Circle:
-                    dist = MathF.Sqrt(dx * dx + dz * dz);
-                    break;
-                case BrushShape.Square:
-                    dist = Math.Max(Math.Abs(dx), Math.Abs(dz));
-                    break;
+                case BrushShape.Circle: dist = MathF.Sqrt(dx * dx + dz * dz); break;
+                case BrushShape.Square: dist = Math.Max(Math.Abs(dx), Math.Abs(dz)); break;
             }
             float normDist = dist / radius;
             if (normDist >= 1f) return 0f;
             switch (Falloff)
             {
-                case BrushFalloff.Linear:
-                    return 1f - normDist;
-                case BrushFalloff.Gaussian:
-                    return (float)Math.Exp(-(normDist * normDist) / (2 * 0.25f));
-                default:
-                    return 1f;
+                case BrushFalloff.Linear: return 1f - normDist;
+                case BrushFalloff.Gaussian: return (float)Math.Exp(-(normDist * normDist) / (2 * 0.25f));
+                default: return 1f;
             }
         }
 
