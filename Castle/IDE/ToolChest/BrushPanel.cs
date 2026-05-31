@@ -160,8 +160,13 @@ namespace ToolChest
                 if (select != null && int.TryParse(select.Value, out int index) && index >= 0 && index < paintData.Materials.Count)
                 {
                     var selectedMat = paintData.Materials[index];
-                    _currentBrush.MaterialPath = selectedMat.AlbedoPath;
+                    _currentBrush.MaterialPath = selectedMat.AlbedoPath ?? string.Empty;
+                    Console.WriteLine($"[BrushPanel] SelectMaterial hook - publishing SelectBrushEvent with MaterialPath='{_currentBrush.MaterialPath}' Mode='{_currentBrush.Mode}'");
                     PublishCurrentBrush();
+                }
+                else
+                {
+                    Console.WriteLine($"[BrushPanel] SelectMaterial hook failed - select null or invalid index");
                 }
             }
             else if (hook == "SaveMaterial")
@@ -195,6 +200,19 @@ namespace ToolChest
                 modifiedHtml = baseHtml.Substring(0, insertIndex) + dynamicSelect.ToString() + baseHtml.Substring(baseHtml.IndexOf("</select>", insertIndex) + 9);
             }
             _uiOverlay.LoadUI(modifiedHtml);
+            // Auto-select the last (newest) material after refresh and publish it immediately
+            if (paintData.Materials.Count > 0)
+            {
+                var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
+                if (select != null)
+                {
+                    select.Value = (paintData.Materials.Count - 1).ToString();
+                    var selectedMat = paintData.Materials.Last();
+                    _currentBrush.MaterialPath = selectedMat.AlbedoPath ?? string.Empty;
+                    Console.WriteLine($"[BrushPanel] RefreshMaterialDropdown auto-selected newest material '{selectedMat.Name}' - publishing SelectBrushEvent with MaterialPath='{_currentBrush.MaterialPath}'");
+                    PublishCurrentBrush();
+                }
+            }
             var modeSelect = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushModeChanged") as SelectElement;
             if (modeSelect != null && _lastMode == "Paint")
             {
@@ -210,6 +228,7 @@ namespace ToolChest
         }
         private void PublishCurrentBrush()
         {
+            Console.WriteLine($"[BrushPanel] Publishing SelectBrushEvent - Mode='{_currentBrush.Mode}', MaterialPath='{_currentBrush.MaterialPath}'");
             _eventBus.Publish(new SelectBrushEvent(
                 0UL,
                 _currentBrush.Mode.ToString(),
