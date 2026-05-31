@@ -166,17 +166,7 @@ namespace MapRoom
             }
             _useCustomScale = true;
             RebuildTerrainMesh();
-            if (_colorBitmapCache == null)
-            {
-                _colorBitmapCache = new Bitmap(512, 512);
-                using (var g = Graphics.FromImage(_colorBitmapCache))
-                {
-                    g.Clear(Color.White);
-                }
-                _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, null);
-                _hasColorTexture = true;
-                UpdateGPUColorTexture();
-            }
+            // NO default white bitmap or texture - grid is the default (clear layer)
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
             float centerY = (_terrainHeight * _worldScaleZ) / 2f;
             _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
@@ -233,17 +223,7 @@ namespace MapRoom
                 }
                 _useCustomScale = true;
                 RebuildTerrainMesh();
-                if (_colorBitmapCache == null)
-                {
-                    _colorBitmapCache = new Bitmap(512, 512);
-                    using (var g = Graphics.FromImage(_colorBitmapCache))
-                    {
-                        g.Clear(Color.White);
-                    }
-                    _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, null);
-                    _hasColorTexture = true;
-                    UpdateGPUColorTexture();
-                }
+                // NO default white bitmap or texture - grid is the default (clear layer)
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerY = (_terrainHeight * _worldScaleZ) / 2f;
                 _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
@@ -308,17 +288,7 @@ namespace MapRoom
                 return;
             }
             base.LoadSceneData(data);
-            if (_colorBitmapCache == null)
-            {
-                _colorBitmapCache = new Bitmap(512, 512);
-                using (var g = Graphics.FromImage(_colorBitmapCache))
-                {
-                    g.Clear(Color.White);
-                }
-                _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, null);
-                _hasColorTexture = true;
-                UpdateGPUColorTexture();
-            }
+            // NO default white bitmap or texture - grid is the default (clear layer)
         }
         public override void LoadTerrain(string path)
         {
@@ -545,16 +515,31 @@ namespace MapRoom
         }
         private void PaintAlbedo(Vector3 worldPos)
         {
-            if (_colorBitmapCache == null || string.IsNullOrEmpty(_activeMaterialPath) || _activeBrush == null || _activeBrush.Mode != BrushMode.Paint) return;
+            if (_colorBitmapCache == null || string.IsNullOrEmpty(_activeMaterialPath) || _activeBrush == null || _activeBrush.Mode != BrushMode.Paint)
+            {
+                if (_colorBitmapCache == null)
+                {
+                    // Lazy create 1:1 resolution bitmap ONLY when first paint happens (grid remains default/clear)
+                    _colorBitmapCache = new Bitmap(_terrainWidth, _terrainHeight);
+                    using (var g = Graphics.FromImage(_colorBitmapCache))
+                    {
+                        g.Clear(Color.Transparent); // clear = no color until painted
+                    }
+                    _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, _colorBitmapCache);
+                    _hasColorTexture = _terrainTextureId != 0;
+                }
+            }
             using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
+            // Exact 1:1 world -> texture coordinate mapping that matches BuildWireframeMesh UVs (no flip)
             float u = Math.Clamp(worldPos.X / (_terrainWidth * _worldScaleX), 0f, 1f);
-            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f);
+            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f); // NO Y FLIP - matches mesh v = y/stepsY
             int centerTexX = (int)(u * _colorBitmapCache.Width);
             int centerTexY = (int)(v * _colorBitmapCache.Height);
-            float texScaleX = _colorBitmapCache.Width / (_terrainWidth * _worldScaleX);
-            float texScaleY = _colorBitmapCache.Height / (_terrainHeight * _worldScaleZ);
-            int brushTexW = (int)Math.Max(4, _activeBrush.Size * texScaleX);
-            int brushTexH = (int)Math.Max(4, _activeBrush.Size * texScaleY);
+            // 1:1 texel size based on brush world size (exact, no blur)
+            float texelSizeX = _worldScaleX;
+            float texelSizeY = _worldScaleZ;
+            int brushTexW = (int)Math.Max(1, _activeBrush.Size / texelSizeX);
+            int brushTexH = (int)Math.Max(1, _activeBrush.Size / texelSizeY);
             int destX = Math.Max(0, centerTexX - brushTexW / 2);
             int destY = Math.Max(0, centerTexY - brushTexH / 2);
             int destW = Math.Min(brushTexW, _colorBitmapCache.Width - destX);
@@ -562,10 +547,12 @@ namespace MapRoom
             if (destW <= 0 || destH <= 0) return;
             using (var g = Graphics.FromImage(_colorBitmapCache))
             {
+                // High quality but crisp for 1:1 (no blur)
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
                 g.DrawImage(materialBmp, new Rectangle(destX, destY, destW, destH));
             }
             UpdateGPUColorTexture();
-            Console.WriteLine($"[TerrainCreatorScene] PaintAlbedo applied at worldPos={worldPos} with material '{_activeMaterialPath}'");
+            Console.WriteLine($"[TerrainCreatorScene] PaintAlbedo applied at worldPos={worldPos} with material '{_activeMaterialPath}' (1:1 texel mapping - NO flip)");
         }
         private void UpdateGPUColorTexture()
         {

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Rendering
+﻿// Folder: SiegeEngine/Core/Rendering
 // File: TextureLoader.cs
 using SiegeEngine.Core.ContextManagement;
 using Silk.NET.OpenGL;
@@ -14,7 +14,6 @@ namespace SiegeEngine.Core.Rendering
     {
         private static readonly byte[] PngSignature = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
         private static readonly HashSet<byte> ValidTgaTypes = new HashSet<byte> { 1, 2, 3, 9, 10, 11, 32, 33 };
-
         public static (uint, byte) LoadTexture(IRenderContext renderContext, string path, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             Console.WriteLine($"[TextureLoader] LoadTexture START: {path}");
@@ -47,7 +46,6 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
-
         public static (uint texId, Vector2 nativeSize) LoadTextureWithSize(IRenderContext renderContext, string path)
         {
             Console.WriteLine($"[TextureLoader] LoadTextureWithSize: {path}");
@@ -65,7 +63,6 @@ namespace SiegeEngine.Core.Rendering
                 return (0, Vector2.One);
             }
         }
-
         public static (uint, byte) LoadEmbeddedTexture(IRenderContext renderContext, byte[] textureData, string textureName, int proceduralFallbackId = 1, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             Console.WriteLine($"[TextureLoader] LoadEmbeddedTexture START: {textureName}");
@@ -108,7 +105,6 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
-
         public static (uint, byte) LoadTgaTexture(IRenderContext renderContext, string path, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             Console.WriteLine($"[TextureLoader] LoadTgaTexture: {path}");
@@ -225,8 +221,8 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
-
-        private static (uint, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
+        // Made public so TerrainTextureParser.CreateColorTexture can call it directly (no file I/O)
+        public static (uint, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat)
         {
             Console.WriteLine($"[TextureLoader] LoadTextureFromBitmap START: {bitmap.Width}x{bitmap.Height} {bitmap.PixelFormat}");
             try

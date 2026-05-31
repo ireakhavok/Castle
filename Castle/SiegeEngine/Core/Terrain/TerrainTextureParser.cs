@@ -3,6 +3,7 @@
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
+using System.Drawing;
 using System.IO;
 
 namespace SiegeEngine.Core.Terrain
@@ -11,9 +12,9 @@ namespace SiegeEngine.Core.Terrain
     {
         public static uint LoadColorTexture(IRenderContext renderContext, string path)
         {
-            if (!File.Exists(path))
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
             {
-                Console.WriteLine($"[TerrainTextureParser] File not found: {path}");
+                Console.WriteLine($"[TerrainTextureParser] File not found or null path: {path}");
                 return 0;
             }
 
@@ -29,6 +30,16 @@ namespace SiegeEngine.Core.Terrain
                 Console.WriteLine($"[TerrainTextureParser] Failed to load texture");
             }
 
+            return textureId;
+        }
+
+        // Creates a GPU texture from an in-memory Bitmap (used for lazy 1:1 color layer creation during paint)
+        public static uint CreateColorTexture(IRenderContext renderContext, Bitmap bitmap)
+        {
+            if (bitmap == null) return 0;
+            Console.WriteLine($"[TerrainTextureParser] CreateColorTexture from Bitmap {bitmap.Width}x{bitmap.Height}");
+            var (textureId, _) = TextureLoader.LoadTextureFromBitmap(renderContext, bitmap);
+            Console.WriteLine($"[TerrainTextureParser] Created color texture ID: {textureId}");
             return textureId;
         }
     }

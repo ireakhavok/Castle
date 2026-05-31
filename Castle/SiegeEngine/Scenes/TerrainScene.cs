@@ -118,6 +118,7 @@ namespace SiegeEngine.Scenes
                     _terrainVertices.Add(u); _terrainVertices.Add(v);
                 }
             }
+            // FIXED: Full quad triangle indices (tl-tr-bl, tr-br-bl) so Triangles draw in Render works without holes
             for (int x = 0; x < stepsX; x++)
             {
                 for (int y = 0; y < stepsY; y++)
@@ -126,8 +127,8 @@ namespace SiegeEngine.Scenes
                     uint tr = tl + 1;
                     uint bl = tl + (uint)(stepsY + 1);
                     uint br = bl + 1;
-                    _terrainIndices.Add(tl); _terrainIndices.Add(tr);
-                    _terrainIndices.Add(tl); _terrainIndices.Add(bl);
+                    _terrainIndices.Add(tl); _terrainIndices.Add(tr); _terrainIndices.Add(bl);
+                    _terrainIndices.Add(tr); _terrainIndices.Add(br); _terrainIndices.Add(bl);
                 }
             }
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
