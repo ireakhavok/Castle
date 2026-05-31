@@ -4,7 +4,6 @@ using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Terrain
 {
     public class TerrainPaintData
@@ -14,7 +13,6 @@ namespace SiegeEngine.Core.Terrain
         public List<TerrainMaterial> Materials { get; } = new List<TerrainMaterial>();
         private readonly int _width;
         private readonly int _height;
-
         public TerrainPaintData(string sceneName, int width, int height)
         {
             SceneName = sceneName;
@@ -29,12 +27,10 @@ namespace SiegeEngine.Core.Terrain
                 ColorMap[i + 3] = 255;
             }
         }
-
         public void AssignMaterialToLayer(int layer, TerrainMaterial material)
         {
             Console.WriteLine($"[TerrainPaintData] Assigned material '{material.Name}' to layer {layer}");
         }
-
         public void SaveToDisk(string projectPath, string terrainName)
         {
             Console.WriteLine($"[TerrainPaintData] Saved paint data for scene '{SceneName}' as '{terrainName}' (including {Materials.Count} materials)");

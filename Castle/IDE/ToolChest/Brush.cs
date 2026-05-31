@@ -2,13 +2,28 @@
 // File: Brush.cs
 using System;
 using System.Numerics;
-
 namespace ToolChest
 {
-    public enum BrushShape { Circle, Square }
-    public enum BrushFalloff { Linear, Gaussian }
-    public enum BrushMode { Raise, Lower, Smooth, Flatten, Noise, Sharpen, Paint }
-
+    public enum BrushShape
+    {
+        Circle,
+        Square
+    }
+    public enum BrushFalloff
+    {
+        Linear,
+        Gaussian
+    }
+    public enum BrushMode
+    {
+        Raise,
+        Lower,
+        Smooth,
+        Flatten,
+        Noise,
+        Sharpen,
+        Paint
+    }
     public class Brush
     {
         public BrushShape Shape { get; set; } = BrushShape.Circle;
@@ -18,7 +33,6 @@ namespace ToolChest
         public float Size { get; set; } = 10f;
         public float Intensity { get; set; } = 1f;
         public string MaterialPath { get; set; } = string.Empty;
-
         public void Apply(ref float[,] heightmap, Vector2 gridPos, float worldScaleX, float worldScaleZ)
         {
             int width = heightmap.GetLength(0);
@@ -31,12 +45,10 @@ namespace ToolChest
             int minZ = Math.Max(0, centerZ - (int)radiusInCells - 1);
             int maxZ = Math.Min(height, centerZ + (int)radiusInCells + 1);
             Random rand = new Random();
-
             if (Mode == BrushMode.Paint)
             {
                 return; // painting is now handled directly in TerrainCreatorScene
             }
-
             if (Mode == BrushMode.Flatten || Mode == BrushMode.Smooth || Mode == BrushMode.Sharpen)
             {
                 float avgHeight = 0f;
@@ -96,35 +108,42 @@ namespace ToolChest
                 }
             }
         }
-
         private bool IsInShape(float dx, float dz, float radius)
         {
             switch (Shape)
             {
-                case BrushShape.Circle: return MathF.Sqrt(dx * dx + dz * dz) <= radius;
-                case BrushShape.Square: return Math.Abs(dx) <= radius && Math.Abs(dz) <= radius;
-                default: return false;
+                case BrushShape.Circle:
+                    return MathF.Sqrt(dx * dx + dz * dz) <= radius;
+                case BrushShape.Square:
+                    return Math.Abs(dx) <= radius && Math.Abs(dz) <= radius;
+                default:
+                    return false;
             }
         }
-
         private float GetFalloff(float dx, float dz, float radius)
         {
             float dist = 0f;
             switch (Shape)
             {
-                case BrushShape.Circle: dist = MathF.Sqrt(dx * dx + dz * dz); break;
-                case BrushShape.Square: dist = Math.Max(Math.Abs(dx), Math.Abs(dz)); break;
+                case BrushShape.Circle:
+                    dist = MathF.Sqrt(dx * dx + dz * dz);
+                    break;
+                case BrushShape.Square:
+                    dist = Math.Max(Math.Abs(dx), Math.Abs(dz));
+                    break;
             }
             float normDist = dist / radius;
             if (normDist >= 1f) return 0f;
             switch (Falloff)
             {
-                case BrushFalloff.Linear: return 1f - normDist;
-                case BrushFalloff.Gaussian: return (float)Math.Exp(-(normDist * normDist) / (2 * 0.25f));
-                default: return 1f;
+                case BrushFalloff.Linear:
+                    return 1f - normDist;
+                case BrushFalloff.Gaussian:
+                    return (float)Math.Exp(-(normDist * normDist) / (2 * 0.25f));
+                default:
+                    return 1f;
             }
         }
-
         private float GetNeighborAverage(float[,] heightmap, int x, int z, int width, int height)
         {
             float sum = 0f;

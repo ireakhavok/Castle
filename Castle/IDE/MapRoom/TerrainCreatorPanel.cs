@@ -17,7 +17,6 @@ using System.Text;
 using System.Text.Json;
 using Keystone;
 using ToolChest;
-
 namespace MapRoom
 {
     public class TerrainCreatorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -174,6 +173,7 @@ namespace MapRoom
         }
         private void OnBrushSelected(SelectBrushEvent e)
         {
+            // Let the scene's OnSelectBrushEvent handle everything (including immediate ghost update)
             if (string.IsNullOrEmpty(e.BrushMode) || e.Size == 0f)
             {
                 _terrainScene.SetActiveBrush(null);
@@ -186,7 +186,8 @@ namespace MapRoom
                 Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.BrushFalloff, true),
                 Size = e.Size,
                 Intensity = e.Intensity,
-                PaintLayer = e.PaintLayer
+                PaintLayer = e.PaintLayer,
+                MaterialPath = e.MaterialPath ?? string.Empty
             };
             _terrainScene.SetActiveBrush(brush);
             if (!string.IsNullOrEmpty(e.MaterialPath))

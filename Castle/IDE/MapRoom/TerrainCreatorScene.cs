@@ -16,7 +16,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using ToolChest;
-
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -33,13 +32,10 @@ namespace MapRoom
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData;
         private TerrainPaintData _paintData;
-
         private string _activeMaterialPath = null;
         private uint _ghostMaterialTextureId = 0;
         private ShaderProgram _spriteShader;
-
         private Bitmap _colorBitmapCache = null;
-
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -49,26 +45,35 @@ namespace MapRoom
             _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrushEvent);
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
         }
-
         private void OnSelectBrushEvent(SelectBrushEvent e)
         {
             if (_activeBrush == null)
             {
                 _activeBrush = new ToolChest.Brush();
             }
-            _activeBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.BrushMode);
+            _activeBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.BrushMode, true);
             _activeBrush.Size = e.Size;
             _activeBrush.Intensity = e.Intensity;
-            _activeBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.BrushShape);
-            _activeBrush.Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.BrushFalloff);
+            _activeBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.BrushShape, true);
+            _activeBrush.Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.BrushFalloff, true);
             _activeBrush.PaintLayer = e.PaintLayer;
-
+            _activeBrush.MaterialPath = e.MaterialPath ?? string.Empty;
             if (!string.IsNullOrEmpty(e.MaterialPath))
             {
                 SetActiveMaterial(e.MaterialPath);
             }
+            else if (_activeBrush.Mode == BrushMode.Paint)
+            {
+                // If switching to Paint without a material yet, keep last path if any
+            }
+            if (TryPerformPlacementRaycast(out Vector3 hitPoint))
+            {
+                _ghostPosition = hitPoint;
+                _ghostPosition.Z += 0.1f;
+                _ghostVisible = true;
+            }
+            UpdateGhostMesh(); // immediate ghost update on any brush change (fixes square)
         }
-
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -76,9 +81,7 @@ namespace MapRoom
             Vector3 rayDir = GetLookDirection();
             return RayTerrainIntersect(rayOrigin, rayDir, out hitPoint);
         }
-
         public Vector3 GetCameraPosition() => _flyCamera.Position;
-
         public Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
@@ -89,14 +92,11 @@ namespace MapRoom
                 MathF.Sin(pitchRad)
             ));
         }
-
         public Matrix4x4 GetViewMatrix() => _flyCamera.ViewMatrix;
-
         public bool TryTerrainRaycast(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             return RayTerrainIntersect(origin, dir, out hitPoint);
         }
-
         public bool GetMouseRay(Vector2 normalizedMouse, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             rayOrigin = Vector3.Zero;
@@ -118,12 +118,10 @@ namespace MapRoom
             rayDir = Vector3.Normalize(Vector3.Transform(eyeFar, invView) - rayOrigin);
             return true;
         }
-
         public bool GetMouseRay(Vector2 normalizedMouse, float viewportWidth, float viewportHeight, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             return base.GetMouseRay(normalizedMouse, viewportWidth, viewportHeight, out rayOrigin, out rayDir);
         }
-
         private string ResolveFullPath(string inputPath)
         {
             if (string.IsNullOrEmpty(inputPath)) return inputPath;
@@ -133,7 +131,6 @@ namespace MapRoom
             string fullPath = Path.Combine(projectPath, inputPath);
             return Path.GetFullPath(fullPath);
         }
-
         public void CreateBlank()
         {
             _terrainWidth = 200;
@@ -154,13 +151,22 @@ namespace MapRoom
             }
             _useCustomScale = true;
             RebuildTerrainMesh();
+            if (_colorBitmapCache == null)
+            {
+                _colorBitmapCache = new Bitmap(512, 512);
+                using (var g = Graphics.FromImage(_colorBitmapCache))
+                {
+                    g.Clear(Color.White);
+                }
+                _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, null);
+                UpdateGPUColorTexture();
+            }
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
             float centerY = (_terrainHeight * _worldScaleZ) / 2f;
             _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
-
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -211,6 +217,16 @@ namespace MapRoom
                 }
                 _useCustomScale = true;
                 RebuildTerrainMesh();
+                if (_colorBitmapCache == null)
+                {
+                    _colorBitmapCache = new Bitmap(512, 512);
+                    using (var g = Graphics.FromImage(_colorBitmapCache))
+                    {
+                        g.Clear(Color.White);
+                    }
+                    _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, null);
+                    UpdateGPUColorTexture();
+                }
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerY = (_terrainHeight * _worldScaleZ) / 2f;
                 _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
@@ -218,7 +234,6 @@ namespace MapRoom
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
-
         public override void LoadSceneData(SceneData data)
         {
             _sceneData = data;
@@ -276,8 +291,17 @@ namespace MapRoom
                 return;
             }
             base.LoadSceneData(data);
+            if (_colorBitmapCache == null)
+            {
+                _colorBitmapCache = new Bitmap(512, 512);
+                using (var g = Graphics.FromImage(_colorBitmapCache))
+                {
+                    g.Clear(Color.White);
+                }
+                _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, null);
+                UpdateGPUColorTexture();
+            }
         }
-
         public override void LoadTerrain(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -293,7 +317,6 @@ namespace MapRoom
             }
             RebuildTerrainMesh();
         }
-
         public new void SetColorTexture(string path)
         {
             base.SetColorTexture(path);
@@ -308,7 +331,6 @@ namespace MapRoom
                 }
             }
         }
-
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -352,16 +374,19 @@ namespace MapRoom
             }
             RebuildTerrainMesh();
         }
-
         public void Export2D(string projectAssetsDir)
         {
             string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
             string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
             TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
         }
-
         private void SaveAsPng(string path)
         {
+            if (_colorBitmapCache != null)
+            {
+                _colorBitmapCache.Save(path, ImageFormat.Png);
+                return;
+            }
             int w = _terrainWidth;
             int h = _terrainHeight;
             using var bmp = new Bitmap(w, h);
@@ -378,27 +403,23 @@ namespace MapRoom
             }
             bmp.Save(path, ImageFormat.Png);
         }
-
         public void SetActiveBrush(ToolChest.Brush brush)
         {
             _activeBrush = brush;
+            UpdateGhostMesh();
         }
-
         public ToolChest.Brush GetActiveBrush()
         {
             return _activeBrush;
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
-
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
-
             if (_activeBrush != null && _activeBrush.Mode == BrushMode.Paint && !string.IsNullOrEmpty(_activeMaterialPath))
             {
                 float r = _activeBrush != null ? Math.Max(_activeBrush.Size, 1f) : 1f;
@@ -416,28 +437,49 @@ namespace MapRoom
                 _ghostBuffer.UpdateCustomWithUV(vertices, indices);
                 return;
             }
-
             var verticesFallback = new List<float>();
             var indicesFallback = new List<uint>();
-            int segments = 48;
             float rFallback = _activeBrush != null ? Math.Max(_activeBrush.Size, 1f) : 1f;
-            for (int i = 0; i <= segments; i++)
+            if (_activeBrush != null && _activeBrush.Shape == BrushShape.Square)
             {
-                float angle = i * MathF.PI * 2f / segments;
-                float x = MathF.Cos(angle) * rFallback;
-                float y = MathF.Sin(angle) * rFallback;
-                verticesFallback.Add(x); verticesFallback.Add(y); verticesFallback.Add(0f);
+                float half = rFallback;
+                verticesFallback.Add(-half); verticesFallback.Add(-half); verticesFallback.Add(0f);
                 verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
                 verticesFallback.Add(0f); verticesFallback.Add(0f);
+                verticesFallback.Add(half); verticesFallback.Add(-half); verticesFallback.Add(0f);
+                verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                verticesFallback.Add(0f); verticesFallback.Add(0f);
+                verticesFallback.Add(half); verticesFallback.Add(half); verticesFallback.Add(0f);
+                verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                verticesFallback.Add(0f); verticesFallback.Add(0f);
+                verticesFallback.Add(-half); verticesFallback.Add(half); verticesFallback.Add(0f);
+                verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                verticesFallback.Add(0f); verticesFallback.Add(0f);
+                indicesFallback.Add(0); indicesFallback.Add(1);
+                indicesFallback.Add(1); indicesFallback.Add(2);
+                indicesFallback.Add(2); indicesFallback.Add(3);
+                indicesFallback.Add(3); indicesFallback.Add(0);
             }
-            for (int i = 0; i < segments; i++)
+            else
             {
-                indicesFallback.Add((uint)i);
-                indicesFallback.Add((uint)((i + 1) % segments));
+                int segments = 48;
+                for (int i = 0; i <= segments; i++)
+                {
+                    float angle = i * MathF.PI * 2f / segments;
+                    float x = MathF.Cos(angle) * rFallback;
+                    float y = MathF.Sin(angle) * rFallback;
+                    verticesFallback.Add(x); verticesFallback.Add(y); verticesFallback.Add(0f);
+                    verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                    verticesFallback.Add(0f); verticesFallback.Add(0f);
+                }
+                for (int i = 0; i < segments; i++)
+                {
+                    indicesFallback.Add((uint)i);
+                    indicesFallback.Add((uint)((i + 1) % segments));
+                }
             }
             _ghostBuffer.UpdateCustomWithUV(verticesFallback, indicesFallback);
         }
-
         public void SetActiveMaterial(string albedoPath)
         {
             _activeMaterialPath = albedoPath;
@@ -448,48 +490,36 @@ namespace MapRoom
             }
             if (!string.IsNullOrEmpty(albedoPath))
             {
-                var (texId, _) = TextureLoader.LoadTextureWithSize(_renderContext, ResolveFullPath(albedoPath));
-                _ghostMaterialTextureId = texId;
+                _ghostMaterialTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, ResolveFullPath(albedoPath));
             }
             UpdateGhostMesh();
         }
-
         private void PaintAlbedo(Vector3 worldPos)
         {
             if (_colorBitmapCache == null || string.IsNullOrEmpty(_activeMaterialPath) || _activeBrush == null || _activeBrush.Mode != BrushMode.Paint) return;
-
             using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
-
             float u = Math.Clamp(worldPos.X / (_terrainWidth * _worldScaleX), 0f, 1f);
             float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f);
-
             int centerTexX = (int)(u * _colorBitmapCache.Width);
             int centerTexY = (int)(v * _colorBitmapCache.Height);
-
             float texScaleX = _colorBitmapCache.Width / (_terrainWidth * _worldScaleX);
             float texScaleY = _colorBitmapCache.Height / (_terrainHeight * _worldScaleZ);
             int brushTexW = (int)Math.Max(4, _activeBrush.Size * texScaleX);
             int brushTexH = (int)Math.Max(4, _activeBrush.Size * texScaleY);
-
             int destX = Math.Max(0, centerTexX - brushTexW / 2);
             int destY = Math.Max(0, centerTexY - brushTexH / 2);
             int destW = Math.Min(brushTexW, _colorBitmapCache.Width - destX);
             int destH = Math.Min(brushTexH, _colorBitmapCache.Height - destY);
-
             if (destW <= 0 || destH <= 0) return;
-
             using (var g = Graphics.FromImage(_colorBitmapCache))
             {
                 g.DrawImage(materialBmp, new Rectangle(destX, destY, destW, destH));
             }
-
             UpdateGPUColorTexture();
         }
-
         private void UpdateGPUColorTexture()
         {
             if (_colorBitmapCache == null || _terrainTextureId == 0) return;
-
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
             var data = _colorBitmapCache.LockBits(new Rectangle(0, 0, _colorBitmapCache.Width, _colorBitmapCache.Height), ImageLockMode.ReadOnly, _colorBitmapCache.PixelFormat);
             try
@@ -507,7 +537,6 @@ namespace MapRoom
             _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
         }
-
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -529,14 +558,12 @@ namespace MapRoom
             {
                 _ghostVisible = false;
             }
-
             if (mousePressed && _ghostVisible)
             {
                 _isBrushing = true;
                 _lastBrushUpdateTime = (float)_controlContext.GetTime();
                 _lastGhostPosition = _ghostPosition;
             }
-
             if (mouseDown && _isBrushing && _ghostVisible)
             {
                 float currentTime = (float)_controlContext.GetTime();
@@ -557,7 +584,6 @@ namespace MapRoom
                     _lastGhostPosition = _ghostPosition;
                 }
             }
-
             if (mouseReleased)
             {
                 _isBrushing = false;
@@ -566,7 +592,6 @@ namespace MapRoom
                     PaintAlbedo(_ghostPosition);
                 }
             }
-
             if (_sceneData?.Name != null)
             {
                 ProjectSettings.Current.StoreUnsavedHeightmap(_sceneData.Name, _heightmap);
@@ -577,7 +602,6 @@ namespace MapRoom
                 level.Terrain = _sceneData.Terrain;
             }
         }
-
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -605,7 +629,6 @@ namespace MapRoom
             }
             return false;
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -628,7 +651,6 @@ namespace MapRoom
                 _terrainShader.SetUniform("uTexture", 0);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
-
             if (_ghostVisible && _ghostBuffer != null)
             {
                 _renderContext.Enable(_renderContext.Enums.Blend);
@@ -657,7 +679,6 @@ namespace MapRoom
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
-
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -677,14 +698,12 @@ namespace MapRoom
             _spriteShader?.Dispose();
             base.Dispose();
         }
-
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
-
         private void ApplyModification(TerrainModifiedEvent e)
         {
             var brush = new ToolChest.Brush
@@ -702,7 +721,6 @@ namespace MapRoom
                 UpdateAffectedVertices(e.WorldPos, e.Radius);
             }
         }
-
         public new float[,] GetHeightmap() => _heightmap;
     }
 }
