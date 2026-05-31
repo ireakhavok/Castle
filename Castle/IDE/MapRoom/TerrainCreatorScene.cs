@@ -430,9 +430,9 @@ namespace MapRoom
                 float aspect = 1f;
                 float w = r * aspect;
                 float h = r;
-                float centerZ = GetHeight(_ghostPosition.X, _ghostPosition.Y);
-                // dense grid for exact surface conformity across entire brush area
-                int gridRes = 16;
+                float centerZ = GetInterpolatedHeight(_ghostPosition.X, _ghostPosition.Y);
+                // dense grid for exact smooth surface conformity (matches viewport)
+                int gridRes = 24;
                 var vertices = new List<float>();
                 var indices = new List<uint>();
                 for (int ix = 0; ix <= gridRes; ix++)
@@ -445,10 +445,10 @@ namespace MapRoom
                         float localY = (uy * 2f - 1f) * h;
                         float worldX = _ghostPosition.X + localX;
                         float worldY = _ghostPosition.Y + localY;
-                        float sampleZ = GetHeight(worldX, worldY);
+                        float sampleZ = GetInterpolatedHeight(worldX, worldY);
                         float localZ = sampleZ - centerZ;
                         float u = ux;
-                        float v = 1f - uy; // flip V for correct texture orientation
+                        float v = 1f - uy;
                         vertices.Add(localX);
                         vertices.Add(localY);
                         vertices.Add(localZ);

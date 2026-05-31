@@ -286,6 +286,25 @@ namespace SiegeEngine.Scenes
             int iy = (int)Math.Clamp(y / _worldScaleZ, 0, _terrainHeight - 1);
             return _heightmap[ix, iy];
         }
+        protected float GetInterpolatedHeight(float worldX, float worldY)
+        {
+            if (_heightmap == null) return 0f;
+            float fx = worldX / _worldScaleX;
+            float fy = worldY / _worldScaleZ;
+            int x0 = (int)Math.Clamp(Math.Floor(fx), 0, _terrainWidth - 1);
+            int y0 = (int)Math.Clamp(Math.Floor(fy), 0, _terrainHeight - 1);
+            int x1 = Math.Min(x0 + 1, _terrainWidth - 1);
+            int y1 = Math.Min(y0 + 1, _terrainHeight - 1);
+            float tx = fx - x0;
+            float ty = fy - y0;
+            float h00 = _heightmap[x0, y0];
+            float h10 = _heightmap[x1, y0];
+            float h01 = _heightmap[x0, y1];
+            float h11 = _heightmap[x1, y1];
+            float h0 = h00 * (1 - tx) + h10 * tx;
+            float h1 = h01 * (1 - tx) + h11 * tx;
+            return h0 * (1 - ty) + h1 * ty;
+        }
         public virtual void LoadTerrain(string path)
         {
             Console.WriteLine($"[TerrainScene] Loading terrain from {path}");
