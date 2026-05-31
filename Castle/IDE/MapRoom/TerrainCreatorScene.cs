@@ -47,6 +47,20 @@ namespace MapRoom
         }
         private void OnSelectBrushEvent(SelectBrushEvent e)
         {
+            // Guard against close-panel event that sends empty/default values
+            if (string.IsNullOrWhiteSpace(e.BrushMode))
+            {
+                _activeBrush = null;
+                _ghostVisible = false;
+                _activeMaterialPath = null;
+                if (_ghostMaterialTextureId != 0)
+                {
+                    _renderContext.DeleteTexture(_ghostMaterialTextureId);
+                    _ghostMaterialTextureId = 0;
+                }
+                Console.WriteLine("[TerrainCreatorScene] Brush cleared (panel close event)");
+                return;
+            }
             if (_activeBrush == null)
             {
                 _activeBrush = new ToolChest.Brush();
