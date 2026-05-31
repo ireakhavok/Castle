@@ -434,7 +434,7 @@ Folder: IDE
       - Bitmap _colorBitmapCache
     - Methods:
       - void OnSelectBrushEvent(SelectBrushEvent e)
-        - Calls: Enum.Parse, SetActiveMaterial, UpdateGhostMesh
+        - Calls: Console.WriteLine, Enum.Parse, SetActiveMaterial, TryPerformPlacementRaycast, UpdateGhostMesh
       - bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         - Calls: GetLookDirection, RayTerrainIntersect
       - return RayTerrainIntersect( out hitPoint)
@@ -468,9 +468,9 @@ Folder: IDE
       - void UpdateGhostMesh()
         - Calls: _ghostBuffer.UpdateCustomWithUV
       - void SetActiveMaterial(string albedoPath)
-        - Calls: ResolveFullPath, UpdateGhostMesh, _renderContext.DeleteTexture
+        - Calls: ResolveFullPath, TerrainTextureParser.LoadColorTexture, UpdateGhostMesh, _renderContext.DeleteTexture
       - void PaintAlbedo(Vector3 worldPos)
-        - Calls: ResolveFullPath, UpdateGPUColorTexture
+        - Calls: Console.WriteLine, ResolveFullPath, UpdateGPUColorTexture
       - void UpdateGPUColorTexture()
         - Calls: _renderContext.BindTexture, _renderContext.GenerateMipmap, _renderContext.TexImage2D
       - void Update( Vector2 relMousePos,  bool cameraMode,  bool mouseDown,  bool mousePressed,  bool mouseReleased, float deltaTime)

@@ -73,6 +73,7 @@ namespace MapRoom
                 _ghostVisible = true;
             }
             UpdateGhostMesh(); // immediate ghost update on any brush change (fixes square)
+            Console.WriteLine($"[TerrainCreatorScene] OnSelectBrushEvent processed - Mode={_activeBrush.Mode}, MaterialPath='{_activeMaterialPath}', GhostVisible={_ghostVisible}");
         }
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         {
@@ -516,6 +517,7 @@ namespace MapRoom
                 g.DrawImage(materialBmp, new Rectangle(destX, destY, destW, destH));
             }
             UpdateGPUColorTexture();
+            Console.WriteLine($"[TerrainCreatorScene] PaintAlbedo applied at worldPos={worldPos} with material '{_activeMaterialPath}'");
         }
         private void UpdateGPUColorTexture()
         {

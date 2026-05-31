@@ -507,13 +507,13 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\MapRoom\obj
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
-Read 18467 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
+Read 18529 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
-Read 33894 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
+Read 34576 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 16 dependencies
 Found: TerrainCreatorUI.html
@@ -597,13 +597,13 @@ Found 4 dependencies
 Found: Brush.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\Brush.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\Brush.cs
-Read 6150 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\Brush.cs
+Read 6454 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\Brush.cs
 Namespace: ToolChest
 Found 2 dependencies
 Found: BrushPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BrushPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BrushPanel.cs
-Read 10160 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BrushPanel.cs
+Read 11501 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\BrushPanel.cs
 Namespace: ToolChest
 Found 14 dependencies
 Found: BrushPanelUI.html
@@ -1713,7 +1713,7 @@ Found 2 dependencies
 Found: TerrainPaintData.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
-Read 1446 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
+Read 1442 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainPaintData.cs
 Namespace: SiegeEngine.Core.Terrain
 Found 4 dependencies
 Found: TerrainTextureParser.cs
