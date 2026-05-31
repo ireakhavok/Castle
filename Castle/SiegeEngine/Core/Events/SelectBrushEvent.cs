@@ -18,7 +18,10 @@ namespace SiegeEngine.Core.Events
         // NEW for Step 2: texture/material painting
         public int PaintLayer { get; set; }
 
-        public SelectBrushEvent(ulong playerId, string brushMode, float size, float intensity, string brushShape, string brushFalloff, int paintLayer = 0)
+        // NEW: carries the selected material albedo path for Paint mode stickers (event-driven)
+        public string MaterialPath { get; set; } = string.Empty;
+
+        public SelectBrushEvent(ulong playerId, string brushMode, float size, float intensity, string brushShape, string brushFalloff, int paintLayer = 0, string materialPath = "")
         {
             PlayerId = playerId;
             BrushMode = brushMode;
@@ -27,6 +30,7 @@ namespace SiegeEngine.Core.Events
             BrushShape = brushShape;
             BrushFalloff = brushFalloff;
             PaintLayer = paintLayer;
+            MaterialPath = materialPath ?? string.Empty;
         }
 
         public byte[] Serialize()
@@ -40,7 +44,8 @@ namespace SiegeEngine.Core.Events
                 Intensity,
                 BrushShape,
                 BrushFalloff,
-                PaintLayer
+                PaintLayer,
+                MaterialPath
             });
             return System.Text.Encoding.UTF8.GetBytes(json);
         }
@@ -56,6 +61,7 @@ namespace SiegeEngine.Core.Events
             BrushShape = obj.BrushShape;
             BrushFalloff = obj.BrushFalloff;
             PaintLayer = obj.PaintLayer;
+            MaterialPath = obj.MaterialPath ?? string.Empty;
         }
     }
 }

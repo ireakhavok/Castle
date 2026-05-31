@@ -34,7 +34,7 @@ namespace ToolChest
         }
 
         private Brush _currentBrush = new Brush();
-        private string _lastMode = "Raise"; // saved so Paint mode survives refresh
+        private string _lastMode = "Raise";
 
         public BrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
@@ -130,7 +130,6 @@ namespace ToolChest
                         string newDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
                         materialSection.Style.SetProperty("display", newDisplay);
                         materialSection.Attributes["style"] = $"display: {newDisplay};";
-                        Console.WriteLine($"[BrushPanel] Mode changed to {modeStr} → material-section display = {newDisplay}");
                     }
                 }
             }
@@ -172,7 +171,9 @@ namespace ToolChest
                 var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
                 if (select != null && int.TryParse(select.Value, out int index) && index >= 0 && index < paintData.Materials.Count)
                 {
-                    Console.WriteLine($"[BrushPanel] Material selected: {paintData.Materials[index].Name}");
+                    var selectedMat = paintData.Materials[index];
+                    _currentBrush.MaterialPath = selectedMat.AlbedoPath;
+                    PublishCurrentBrush();
                 }
             }
             else if (hook == "SaveMaterial")
@@ -213,7 +214,6 @@ namespace ToolChest
 
             _uiOverlay.LoadUI(modifiedHtml);
 
-            // Restore the Paint mode (and material section visibility) after full reload
             var modeSelect = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushModeChanged") as SelectElement;
             if (modeSelect != null && _lastMode == "Paint")
             {
@@ -227,7 +227,6 @@ namespace ToolChest
             }
 
             _uiOverlay.RefreshUI();
-            Console.WriteLine($"[BrushPanel] Refreshed material dropdown with {paintData.Materials.Count} materials");
         }
 
         private void PublishCurrentBrush()
@@ -239,7 +238,8 @@ namespace ToolChest
                 _currentBrush.Intensity,
                 _currentBrush.Shape.ToString(),
                 _currentBrush.Falloff.ToString(),
-                _currentBrush.PaintLayer), true);
+                _currentBrush.PaintLayer,
+                _currentBrush.MaterialPath), true);
         }
 
         public override void Detach()

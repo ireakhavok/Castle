@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: ToolChest
+// File: Brush.cs
+using System;
 using System.Numerics;
 
 namespace ToolChest
@@ -32,6 +34,9 @@ namespace ToolChest
         public int PaintLayer { get; set; } = 0;
         public float Size { get; set; } = 10f;
         public float Intensity { get; set; } = 1f;
+
+        // NEW: carries selected material albedo path for Paint mode stickers (event-driven)
+        public string MaterialPath { get; set; } = string.Empty;
 
         public void Apply(ref float[,] heightmap, Vector2 gridPos, float worldScaleX, float worldScaleZ)
         {

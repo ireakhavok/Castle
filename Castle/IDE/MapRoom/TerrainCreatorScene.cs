@@ -6,6 +6,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.Terrain;
 using SiegeEngine.Scenes;
 using System;
@@ -32,8 +33,20 @@ namespace MapRoom
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData;
         private TerrainPaintData _paintData;
-        private uint _splatTextureId = 0;
-        private bool _hasSplatMap = false;
+
+        // === DECAL / STICKER SYSTEM (replaces all splat painting - simple, localized, permanent like TwoDCreatorScene) ===
+        private readonly List<DecalStamp> _placedDecals = new List<DecalStamp>();
+        private readonly Dictionary<string, uint> _decalTextureCache = new Dictionary<string, uint>();
+        private string _activeMaterialPath = null;
+        private uint _decalGhostTextureId = 0;
+        private ShaderProgram _spriteShader;
+
+        private struct DecalStamp
+        {
+            public Vector3 Position;
+            public Vector2 Size;
+            public string TexturePath;
+        }
 
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
@@ -41,6 +54,29 @@ namespace MapRoom
             _sceneData = sceneData;
             _isEditorContext = true;
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
+            _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrushEvent); // material selection now comes through the event system
+            _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
+        }
+
+        private void OnSelectBrushEvent(SelectBrushEvent e)
+        {
+            // update active brush (already happening via PublishCurrentBrush)
+            if (_activeBrush == null)
+            {
+                _activeBrush = new ToolChest.Brush();
+            }
+            _activeBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.BrushMode);
+            _activeBrush.Size = e.Size;
+            _activeBrush.Intensity = e.Intensity;
+            _activeBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.BrushShape);
+            _activeBrush.Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.BrushFalloff);
+            _activeBrush.PaintLayer = e.PaintLayer;
+
+            // material path for Paint mode stickers
+            if (!string.IsNullOrEmpty(e.MaterialPath))
+            {
+                SetActiveMaterial(e.MaterialPath);
+            }
         }
 
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
@@ -126,10 +162,8 @@ namespace MapRoom
                     if (h > _maxHeight) _maxHeight = h;
                 }
             }
-            Console.WriteLine($"[TerrainCreatorScene] Created blank 200×200 terrain with height range {_minHeight:F1} to {_maxHeight:F1}");
             _useCustomScale = true;
             RebuildTerrainMesh();
-            RebuildSplatTexture();
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
             float centerY = (_terrainHeight * _worldScaleZ) / 2f;
             _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
@@ -151,10 +185,8 @@ namespace MapRoom
             _terrainHeight = numCellsY + 1;
             _worldScaleX = cellSize;
             _worldScaleZ = cellSize;
-
             if (!string.IsNullOrEmpty(parameters.ImportPath))
             {
-                Console.WriteLine($"[TerrainCreatorScene] Loading GeoTIFF: {parameters.ImportPath}");
                 LoadTerrain(parameters.ImportPath);
                 if (_sceneData?.Terrain != null)
                 {
@@ -165,7 +197,6 @@ namespace MapRoom
                         {
                             string relative = Path.GetRelativePath(projectPath, parameters.ImportPath);
                             _sceneData.Terrain.HeightmapPath = relative;
-                            Console.WriteLine($"[TerrainCreatorScene] GeoTIFF path stored in SceneData: {relative}");
                         }
                         catch { _sceneData.Terrain.HeightmapPath = parameters.ImportPath; }
                     }
@@ -188,10 +219,8 @@ namespace MapRoom
                         _heightmap[x, y] = parameters.InitialHeight * parameters.VerticalExaggeration;
                     }
                 }
-                Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain");
                 _useCustomScale = true;
                 RebuildTerrainMesh();
-                RebuildSplatTexture();
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerY = (_terrainHeight * _worldScaleZ) / 2f;
                 _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
@@ -205,6 +234,8 @@ namespace MapRoom
             _sceneData = data;
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
             _paintData = ProjectSettings.Current.GetOrCreatePaintData(sceneName, _terrainWidth > 0 ? _terrainWidth : 200, _terrainHeight > 0 ? _terrainHeight : 200);
+            _placedDecals.Clear();
+            _decalTextureCache.Clear();
 
             if (data?.Terrain != null && !string.IsNullOrEmpty(data.Terrain.HeightmapPath))
             {
@@ -232,9 +263,7 @@ namespace MapRoom
                 _worldScaleX = data?.Terrain?.WorldScaleX ?? 1.0f;
                 _worldScaleZ = data?.Terrain?.WorldScaleZ ?? 1.0f;
                 _useCustomScale = true;
-                Console.WriteLine($"[TerrainCreatorScene.LoadSceneData] Using PER-SCENE unsaved heightmap for '{sceneName}' ({_terrainWidth}×{_terrainHeight})");
                 RebuildTerrainMesh();
-                RebuildSplatTexture();
                 return;
             }
 
@@ -258,14 +287,11 @@ namespace MapRoom
                 _worldScaleX = data?.Terrain?.WorldScaleX ?? 1.0f;
                 _worldScaleZ = data?.Terrain?.WorldScaleZ ?? 1.0f;
                 _useCustomScale = true;
-                Console.WriteLine($"[TerrainCreatorScene.LoadSceneData] Using CENTRAL in-memory heightmap ({_terrainWidth}×{_terrainHeight})");
                 RebuildTerrainMesh();
-                RebuildSplatTexture();
                 return;
             }
 
             base.LoadSceneData(data);
-            RebuildSplatTexture();
         }
 
         public override void LoadTerrain(string path)
@@ -276,14 +302,12 @@ namespace MapRoom
                 return;
             }
             string fullPath = ResolveFullPath(path);
-            Console.WriteLine($"[TerrainCreatorScene] Loading terrain - relative '{path}' → full '{fullPath}'");
             base.LoadTerrain(fullPath);
             if (_sceneData?.Terrain != null)
             {
                 _sceneData.Terrain.HeightmapPath = path;
             }
             RebuildTerrainMesh();
-            RebuildSplatTexture();
         }
 
         public void SetColorTexture(string path)
@@ -313,7 +337,6 @@ namespace MapRoom
                         if (!string.Equals(fullOriginal, targetPath, StringComparison.OrdinalIgnoreCase))
                         {
                             File.Copy(fullOriginal, targetPath, true);
-                            Console.WriteLine($"[TerrainCreatorScene] VERBATIM COPY of real GeoTIFF '{fullOriginal}' → '{targetPath}' (geo tags preserved)");
                         }
                         string relativePath = Path.GetRelativePath(projectPath, targetPath);
                         _sceneData.Terrain.HeightmapPath = relativePath;
@@ -338,9 +361,7 @@ namespace MapRoom
                 _paintData.SaveToDisk(projectPath, terrainName);
             }
 
-            Console.WriteLine($"[TerrainCreatorScene] Saved custom terrain '{terrainName}' → {tifPath}");
             RebuildTerrainMesh();
-            RebuildSplatTexture();
         }
 
         public void Export2D(string projectAssetsDir)
@@ -348,7 +369,6 @@ namespace MapRoom
             string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
             string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
             TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
-            Console.WriteLine($"[TerrainCreatorScene] Exported 2D tilemap to {fbxPath}");
         }
 
         private void SaveAsPng(string path)
@@ -389,25 +409,45 @@ namespace MapRoom
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
-            var vertices = new List<float>();
-            var indices = new List<uint>();
+
+            if (_activeBrush != null && _activeBrush.Mode == BrushMode.Paint && !string.IsNullOrEmpty(_activeMaterialPath))
+            {
+                float r = _activeBrush != null ? Math.Max(_activeBrush.Size, 1f) : 1f;
+                float aspect = 1f;
+                float w = r * aspect;
+                float h = r;
+
+                var vertices = new List<float>
+                {
+                    -w, -h, 0, 1f,1f,1f,0.95f, 0f, 1f,
+                     w, -h, 0, 1f,1f,1f,0.95f, 1f, 1f,
+                     w,  h, 0, 1f,1f,1f,0.95f, 1f, 0f,
+                    -w,  h, 0, 1f,1f,1f,0.95f, 0f, 0f
+                };
+                var indices = new List<uint> { 0, 1, 2, 0, 2, 3 };
+                _ghostBuffer.UpdateCustomWithUV(vertices, indices);
+                return;
+            }
+
+            var verticesFallback = new List<float>();
+            var indicesFallback = new List<uint>();
             int segments = 48;
-            float r = Math.Max(_activeBrush?.Size ?? 1f, 1f);
+            float rFallback = _activeBrush != null ? Math.Max(_activeBrush.Size, 1f) : 1f;
             for (int i = 0; i <= segments; i++)
             {
                 float angle = i * MathF.PI * 2f / segments;
-                float x = MathF.Cos(angle) * r;
-                float y = MathF.Sin(angle) * r;
-                vertices.Add(x); vertices.Add(y); vertices.Add(0f);
-                vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(1f);
-                vertices.Add(0f); vertices.Add(0f);
+                float x = MathF.Cos(angle) * rFallback;
+                float y = MathF.Sin(angle) * rFallback;
+                verticesFallback.Add(x); verticesFallback.Add(y); verticesFallback.Add(0f);
+                verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                verticesFallback.Add(0f); verticesFallback.Add(0f);
             }
             for (int i = 0; i < segments; i++)
             {
-                indices.Add((uint)i);
-                indices.Add((uint)((i + 1) % segments));
+                indicesFallback.Add((uint)i);
+                indicesFallback.Add((uint)((i + 1) % segments));
             }
-            _ghostBuffer.UpdateCustomWithUV(vertices, indices);
+            _ghostBuffer.UpdateCustomWithUV(verticesFallback, indicesFallback);
         }
 
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
@@ -434,6 +474,12 @@ namespace MapRoom
                 _ghostVisible = false;
             }
 
+            if (_activeBrush.Mode == BrushMode.Paint && !string.IsNullOrEmpty(_activeMaterialPath) && _decalGhostTextureId == 0)
+            {
+                var (texId, size) = TextureLoader.LoadTextureWithSize(_renderContext, ResolveFullPath(_activeMaterialPath));
+                _decalGhostTextureId = texId;
+            }
+
             if (mousePressed && _ghostVisible)
             {
                 _isBrushing = true;
@@ -450,7 +496,6 @@ namespace MapRoom
                     var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, _activeBrush.Intensity * deltaTime,
                         _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0, _activeBrush.PaintLayer);
                     _eventBus.Publish(evt, true);
-
                     _lastBrushUpdateTime = currentTime;
                     _lastGhostPosition = _ghostPosition;
                 }
@@ -459,17 +504,39 @@ namespace MapRoom
             if (mouseReleased)
             {
                 _isBrushing = false;
+                if (_activeBrush.Mode == BrushMode.Paint && _ghostVisible && !string.IsNullOrEmpty(_activeMaterialPath))
+                {
+                    StampDecal(_ghostPosition);
+                }
             }
 
             if (_sceneData?.Name != null)
             {
                 ProjectSettings.Current.StoreUnsavedHeightmap(_sceneData.Name, _heightmap);
             }
-
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null && _sceneData != null)
             {
                 level.Terrain = _sceneData.Terrain;
+            }
+        }
+
+        private void StampDecal(Vector3 worldPos)
+        {
+            if (string.IsNullOrEmpty(_activeMaterialPath)) return;
+
+            var decal = new DecalStamp
+            {
+                Position = worldPos,
+                Size = new Vector2(_activeBrush != null ? _activeBrush.Size : 1f, _activeBrush != null ? _activeBrush.Size : 1f),
+                TexturePath = _activeMaterialPath
+            };
+            _placedDecals.Add(decal);
+
+            if (!_decalTextureCache.ContainsKey(_activeMaterialPath))
+            {
+                var (texId, _) = TextureLoader.LoadTextureWithSize(_renderContext, ResolveFullPath(_activeMaterialPath));
+                if (texId != 0) _decalTextureCache[_activeMaterialPath] = texId;
             }
         }
 
@@ -515,7 +582,6 @@ namespace MapRoom
             _terrainShader.SetMatrix4("uProjection", projection);
             _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
             _terrainBuffer.Bind();
-
             _terrainShader.SetUniform("uHasTexture", 0);
             _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
 
@@ -528,72 +594,67 @@ namespace MapRoom
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
 
-            // Splat map (painting)
-            if (_hasSplatMap && _splatTextureId != 0)
-            {
-                _terrainShader.SetUniform("uHasTexture", 1);
-                _renderContext.ActiveTexture(0);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _splatTextureId);
-                _terrainShader.SetUniform("uTexture", 0);
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            }
+            DrawDecals(view, projection);
 
             if (_ghostVisible && _ghostBuffer != null)
             {
                 _renderContext.Enable(_renderContext.Enums.Blend);
                 _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
                 _renderContext.Disable(_renderContext.Enums.DepthTest);
+
                 Matrix4x4 model = Matrix4x4.CreateTranslation(_ghostPosition);
-                _terrainShader.SetMatrix4("uModel", model);
-                _terrainShader.SetUniform("uHasTexture", 0);
-                _ghostBuffer.Bind();
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+
+                if (_activeBrush != null && _activeBrush.Mode == BrushMode.Paint && _decalGhostTextureId != 0)
+                {
+                    _spriteShader.Use();
+                    _spriteShader.SetMatrix4("uModel", model);
+                    _spriteShader.SetMatrix4("uView", view);
+                    _spriteShader.SetMatrix4("uProjection", projection);
+                    _renderContext.ActiveTexture(0);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, _decalGhostTextureId);
+                    _ghostBuffer.Bind();
+                    _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, null);
+                }
+                else
+                {
+                    _terrainShader.SetMatrix4("uModel", model);
+                    _terrainShader.SetUniform("uHasTexture", 0);
+                    _ghostBuffer.Bind();
+                    _renderContext.DrawElements(_renderContext.Enums.Lines, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                }
+
                 _renderContext.Enable(_renderContext.Enums.DepthTest);
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
 
-        private void RebuildSplatTexture()
+        private void DrawDecals(Matrix4x4 view, Matrix4x4 projection)
         {
-            if (_paintData == null) return;
+            if (_placedDecals.Count == 0 || _spriteShader == null) return;
 
-            if (_splatTextureId != 0)
-                _renderContext.DeleteTexture(_splatTextureId);
+            _spriteShader.Use();
+            _spriteShader.SetMatrix4("uView", view);
+            _spriteShader.SetMatrix4("uProjection", projection);
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.Blend);
+            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
 
-            _renderContext.GenTextures(1, out _splatTextureId);
-            _renderContext.BindTexture(_renderContext.Enums.Texture2D, _splatTextureId);
-            _renderContext.PixelStore(_renderContext.Enums.UnpackAlignment, 1);
-
-            byte[] splatBytes = new byte[_paintData.SplatWeights.GetLength(0) * _paintData.SplatWeights.GetLength(1) * 4];
-            int idx = 0;
-            for (int z = 0; z < _paintData.SplatWeights.GetLength(1); z++)
+            foreach (var decal in _placedDecals)
             {
-                for (int x = 0; x < _paintData.SplatWeights.GetLength(0); x++)
-                {
-                    for (int l = 0; l < 4; l++)
-                    {
-                        splatBytes[idx++] = (byte)(Math.Clamp(_paintData.SplatWeights[x, z, l], 0f, 1f) * 255f);
-                    }
-                }
+                if (!_decalTextureCache.TryGetValue(decal.TexturePath, out uint texId) || texId == 0) continue;
+
+                Matrix4x4 model = Matrix4x4.CreateScale(new Vector3(decal.Size.X, decal.Size.Y, 1f)) * Matrix4x4.CreateTranslation(decal.Position);
+                _spriteShader.SetMatrix4("uModel", model);
+
+                _renderContext.ActiveTexture(0);
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, texId);
+                _ghostBuffer.Bind();
+                _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, null);
             }
 
-            unsafe
-            {
-                fixed (byte* ptr = splatBytes)
-                {
-                    _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgba,
-                        (uint)_paintData.SplatWeights.GetLength(0), (uint)_paintData.SplatWeights.GetLength(1), 0,
-                        _renderContext.Enums.PixelRgba, _renderContext.Enums.UnsignedByte, ptr);
-                }
-            }
-
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMinFilter, _renderContext.Enums.Linear);
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureMagFilter, _renderContext.Enums.Linear);
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapS, _renderContext.Enums.ClampToEdge);
-            _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
-
+            _renderContext.Disable(_renderContext.Enums.Blend);
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
-            _hasSplatMap = true;
         }
 
         public override void Dispose()
@@ -603,14 +664,20 @@ namespace MapRoom
                 _renderContext.DeleteTexture(_terrainTextureId);
                 _terrainTextureId = 0;
             }
-            if (_splatTextureId != 0)
+            if (_decalGhostTextureId != 0)
             {
-                _renderContext.DeleteTexture(_splatTextureId);
-                _splatTextureId = 0;
+                _renderContext.DeleteTexture(_decalGhostTextureId);
+                _decalGhostTextureId = 0;
             }
+            foreach (var tex in _decalTextureCache.Values)
+            {
+                if (tex != 0) _renderContext.DeleteTexture(tex);
+            }
+            _decalTextureCache.Clear();
             _terrainBuffer?.Dispose();
             _terrainShader?.Dispose();
             _ghostBuffer?.Dispose();
+            _spriteShader?.Dispose();
             base.Dispose();
         }
 
@@ -633,14 +700,7 @@ namespace MapRoom
                 PaintLayer = e.PaintLayer
             };
 
-            if (brush.Mode == BrushMode.Paint && _paintData != null)
-            {
-                _paintData.PaintSplat(brush.PaintLayer, new Vector2(e.WorldPos.X, e.WorldPos.Y),
-                    brush.Size, brush.Intensity, _worldScaleX, _worldScaleZ,
-                    brush.Shape == BrushShape.Circle, brush.Falloff.ToString());
-                RebuildSplatTexture();
-            }
-            else
+            if (brush.Mode != BrushMode.Paint)
             {
                 brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
                 UpdateAffectedVertices(e.WorldPos, e.Radius);
@@ -648,5 +708,16 @@ namespace MapRoom
         }
 
         public new float[,] GetHeightmap() => _heightmap;
+
+        // Public hook (still available for future direct calls if needed)
+        public void SetActiveMaterial(string albedoPath)
+        {
+            _activeMaterialPath = albedoPath;
+            if (_decalGhostTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_decalGhostTextureId);
+                _decalGhostTextureId = 0;
+            }
+        }
     }
 }
