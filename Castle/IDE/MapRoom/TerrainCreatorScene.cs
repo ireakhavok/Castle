@@ -160,6 +160,7 @@ namespace MapRoom
                     g.Clear(Color.White);
                 }
                 _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, null);
+                _hasColorTexture = true;
                 UpdateGPUColorTexture();
             }
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
@@ -226,6 +227,7 @@ namespace MapRoom
                         g.Clear(Color.White);
                     }
                     _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, null);
+                    _hasColorTexture = true;
                     UpdateGPUColorTexture();
                 }
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
@@ -300,6 +302,7 @@ namespace MapRoom
                     g.Clear(Color.White);
                 }
                 _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, null);
+                _hasColorTexture = true;
                 UpdateGPUColorTexture();
             }
         }
@@ -427,14 +430,45 @@ namespace MapRoom
                 float aspect = 1f;
                 float w = r * aspect;
                 float h = r;
-                var vertices = new List<float>
+                float centerZ = GetHeight(_ghostPosition.X, _ghostPosition.Y);
+                // dense grid for exact surface conformity across entire brush area
+                int gridRes = 16;
+                var vertices = new List<float>();
+                var indices = new List<uint>();
+                for (int ix = 0; ix <= gridRes; ix++)
                 {
-                    -w, -h, 0, 1f,1f,1f,0.95f, 0f, 1f,
-                     w, -h, 0, 1f,1f,1f,0.95f, 1f, 1f,
-                     w, h, 0, 1f,1f,1f,0.95f, 1f, 0f,
-                    -w, h, 0, 1f,1f,1f,0.95f, 0f, 0f
-                };
-                var indices = new List<uint> { 0, 1, 2, 0, 2, 3 };
+                    for (int iy = 0; iy <= gridRes; iy++)
+                    {
+                        float ux = (float)ix / gridRes;
+                        float uy = (float)iy / gridRes;
+                        float localX = (ux * 2f - 1f) * w;
+                        float localY = (uy * 2f - 1f) * h;
+                        float worldX = _ghostPosition.X + localX;
+                        float worldY = _ghostPosition.Y + localY;
+                        float sampleZ = GetHeight(worldX, worldY);
+                        float localZ = sampleZ - centerZ;
+                        float u = ux;
+                        float v = 1f - uy; // flip V for correct texture orientation
+                        vertices.Add(localX);
+                        vertices.Add(localY);
+                        vertices.Add(localZ);
+                        vertices.Add(1f); vertices.Add(1f); vertices.Add(1f); vertices.Add(0.95f);
+                        vertices.Add(u);
+                        vertices.Add(v);
+                    }
+                }
+                for (int ix = 0; ix < gridRes; ix++)
+                {
+                    for (int iy = 0; iy < gridRes; iy++)
+                    {
+                        uint tl = (uint)(ix * (gridRes + 1) + iy);
+                        uint tr = tl + 1;
+                        uint bl = tl + (uint)(gridRes + 1);
+                        uint br = bl + 1;
+                        indices.Add(tl); indices.Add(tr); indices.Add(bl);
+                        indices.Add(tr); indices.Add(br); indices.Add(bl);
+                    }
+                }
                 _ghostBuffer.UpdateCustomWithUV(vertices, indices);
                 return;
             }
@@ -668,7 +702,7 @@ namespace MapRoom
                     _renderContext.ActiveTexture(0);
                     _renderContext.BindTexture(_renderContext.Enums.Texture2D, _ghostMaterialTextureId);
                     _ghostBuffer.Bind();
-                    _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, null);
+                    _renderContext.DrawElements(_renderContext.Enums.Triangles, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
                 }
                 else
                 {
