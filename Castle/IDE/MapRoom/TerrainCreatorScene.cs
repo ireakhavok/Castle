@@ -36,6 +36,7 @@ namespace MapRoom
         private uint _ghostMaterialTextureId = 0;
         private ShaderProgram _spriteShader;
         private Bitmap _colorBitmapCache = null;
+        private const int ColorLayerResolution = 4096; // High-res for native PNG quality (matches 2D sprite visual)
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -519,8 +520,8 @@ namespace MapRoom
             {
                 if (_colorBitmapCache == null)
                 {
-                    // Lazy create 1:1 resolution bitmap ONLY when first paint happens (grid remains default/clear)
-                    _colorBitmapCache = new Bitmap(_terrainWidth, _terrainHeight);
+                    // High-res canvas (4096x4096) for native PNG quality - exactly like 2D sprite stamps
+                    _colorBitmapCache = new Bitmap(ColorLayerResolution, ColorLayerResolution);
                     using (var g = Graphics.FromImage(_colorBitmapCache))
                     {
                         g.Clear(Color.Transparent); // clear = no color until painted
@@ -530,16 +531,14 @@ namespace MapRoom
                 }
             }
             using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
-            // Exact 1:1 world -> texture coordinate mapping that matches BuildWireframeMesh UVs (no flip)
+            // World position -> UV (terrain alignment only)
             float u = Math.Clamp(worldPos.X / (_terrainWidth * _worldScaleX), 0f, 1f);
-            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f); // NO Y FLIP - matches mesh v = y/stepsY
+            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f);
             int centerTexX = (int)(u * _colorBitmapCache.Width);
             int centerTexY = (int)(v * _colorBitmapCache.Height);
-            // 1:1 texel size based on brush world size (exact, no blur)
-            float texelSizeX = _worldScaleX;
-            float texelSizeY = _worldScaleZ;
-            int brushTexW = (int)Math.Max(1, _activeBrush.Size / texelSizeX);
-            int brushTexH = (int)Math.Max(1, _activeBrush.Size / texelSizeY);
+            // Use native material size scaled by brush world size (1:1 quality)
+            int brushTexW = (int)(materialBmp.Width * (_activeBrush.Size / 10f)); // scale factor tuned to match typical brush feel
+            int brushTexH = (int)(materialBmp.Height * (_activeBrush.Size / 10f));
             int destX = Math.Max(0, centerTexX - brushTexW / 2);
             int destY = Math.Max(0, centerTexY - brushTexH / 2);
             int destW = Math.Min(brushTexW, _colorBitmapCache.Width - destX);
@@ -547,12 +546,11 @@ namespace MapRoom
             if (destW <= 0 || destH <= 0) return;
             using (var g = Graphics.FromImage(_colorBitmapCache))
             {
-                // High quality but crisp for 1:1 (no blur)
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic; // smooth native quality
                 g.DrawImage(materialBmp, new Rectangle(destX, destY, destW, destH));
             }
             UpdateGPUColorTexture();
-            Console.WriteLine($"[TerrainCreatorScene] PaintAlbedo applied at worldPos={worldPos} with material '{_activeMaterialPath}' (1:1 texel mapping - NO flip)");
+            Console.WriteLine($"[TerrainCreatorScene] PaintAlbedo applied at worldPos={worldPos} with material '{_activeMaterialPath}' (native PNG resolution - 1:1 like 2D scene)");
         }
         private void UpdateGPUColorTexture()
         {

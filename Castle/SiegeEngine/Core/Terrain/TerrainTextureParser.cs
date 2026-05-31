@@ -33,12 +33,14 @@ namespace SiegeEngine.Core.Terrain
             return textureId;
         }
 
-        // Creates a GPU texture from an in-memory Bitmap (used for lazy 1:1 color layer creation during paint)
+        // Creates a GPU texture from an in-memory Bitmap (used for lazy color layer creation during paint)
+        // The bitmap is now high-res (4096x4096) for native PNG quality
         public static uint CreateColorTexture(IRenderContext renderContext, Bitmap bitmap)
         {
             if (bitmap == null) return 0;
             Console.WriteLine($"[TerrainTextureParser] CreateColorTexture from Bitmap {bitmap.Width}x{bitmap.Height}");
-            var (textureId, _) = TextureLoader.LoadTextureFromBitmap(renderContext, bitmap);
+            // Use normal Linear + mipmap filtering (smooth native quality like 2D sprites)
+            var (textureId, _) = TextureLoader.LoadTextureFromBitmap(renderContext, bitmap, crispPaintMode: false);
             Console.WriteLine($"[TerrainTextureParser] Created color texture ID: {textureId}");
             return textureId;
         }
