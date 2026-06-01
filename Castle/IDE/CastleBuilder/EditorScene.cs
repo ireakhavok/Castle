@@ -90,8 +90,6 @@ namespace CastleBuilder
             float minY = Math.Min(ndcStart.Y, ndcEnd.Y) * contentH;
             float maxY = Math.Max(ndcStart.Y, ndcEnd.Y) * contentH;
 
-            Console.WriteLine($"[EditorScene] Box select PIXEL rect: X({minX:F1}-{maxX:F1}) Y({minY:F1}-{maxY:F1})");
-
             foreach (var e in GetEntities())
             {
                 var physics = e.GetComponent<PhysicsComponent>();
@@ -100,7 +98,6 @@ namespace CastleBuilder
                 if (IsBoxInFrustum(tcs, minX, maxX, minY, maxY, contentW, contentH, physics))
                 {
                     selected.Add(e.Id);
-                    Console.WriteLine($"[EditorScene] Box selected entity {e.Id}");
                 }
             }
             return selected;
@@ -173,7 +170,6 @@ namespace CastleBuilder
                 {
                     clientProxy.AddEntity(entity);
                 }
-                Console.WriteLine($"[EditorScene] Full sync of {level.Entities.Count} entities to runtime proxy (safe re-sync in editor mode)");
             }
         }
         public void LoadProjectData()
@@ -194,7 +190,6 @@ namespace CastleBuilder
             if (!string.IsNullOrEmpty(levelName) && levelName != "Main")
             {
                 _currentGameSceneName = levelName;
-                Console.WriteLine($"[EditorScene.LoadProjectData] No-project - using Level name from NewTerrainPanel: '{_currentGameSceneName}'");
                 if (!_projectData.Scenes.ContainsKey(_currentGameSceneName))
                 {
                     var sd = new SceneData { Name = _currentGameSceneName, SceneType = "TerrainTest" };
@@ -209,7 +204,6 @@ namespace CastleBuilder
             _sceneCache.Clear();
             _pendingDisposeScene?.Dispose();
             _pendingDisposeScene = null;
-            Console.WriteLine($"[EditorScene.LoadProjectData] Active scene: '{_currentGameSceneName}'");
             ActivateScene(_currentGameSceneName);
         }
         private void ActivateScene(string sceneName)
@@ -217,7 +211,6 @@ namespace CastleBuilder
             Level level = ProjectSettings.Current.CurrentLevel;
             if (level == null || level.Name != sceneName)
             {
-                Console.WriteLine($"[EditorScene.ActivateScene] Creating fresh Level for scene '{sceneName}'");
                 level = CreateOrLoadLevel(sceneName);
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
@@ -230,7 +223,6 @@ namespace CastleBuilder
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
                 SyncCurrentLevelToRuntimeServer();
-                Console.WriteLine($"[EditorScene] Activated CACHED scene '{sceneName}' (Level authoritative - models hydrated - entities: {level.Entities.Count})");
                 return;
             }
             _currentGameSceneName = sceneName;
@@ -240,7 +232,7 @@ namespace CastleBuilder
             bool isTerrainScene = _projectData.Scenes.TryGetValue(sceneName, out var sd) &&
                                   (sd.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sd.Terrain?.HeightmapPath) || sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase));
             _activeGameScene = isTerrainScene
-                ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sd)
+                ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sd, enableBrush: false) // <--- disabled brush for editor context
                 : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd);
             _activeGameScene.Initialize(_width, _height);
             _activeGameScene.LoadSceneData(sd);
@@ -256,9 +248,14 @@ namespace CastleBuilder
                 {
                     tcs.LoadSceneData(new SceneData { Name = sceneName, Terrain = new TerrainData() });
                 }
+                // Sync painted color texture (already present in TerrainData)
+                if (!string.IsNullOrEmpty(sd.Terrain?.ColorTexturePath))
+                {
+                    tcs.SetColorTexture(sd.Terrain.ColorTexturePath);
+                    Console.WriteLine($"[EditorScene] Synced color texture '{sd.Terrain.ColorTexturePath}' to TerrainCreatorScene for scene '{sceneName}'");
+                }
             }
             _sceneCache.Store(sceneName, _activeGameScene, level);
-            Console.WriteLine($"[EditorScene] Activated scene '{sceneName}' using authoritative Level (entities: {level.Entities.Count} - models hydrated)");
         }
         private void RegisterAllAssetPacks(Level level)
         {
@@ -283,16 +280,12 @@ namespace CastleBuilder
                                 physics.Size = modelComp.Model.GetBoundingSize();
                                 physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                                 physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
-                                Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Synced model bounds for loaded entity {entity.Id} (Key='{modelComp.Key}') Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
                             }
                         }
-                        Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Loaded animation pack '{modelComp.Key}' from disk");
                     }
                     else
                     {
-                        // Materialize the pack now (this is the correct place — always ensure the pack exists on disk)
                         ModelManager.Instance.MaterializeAssetPack(modelComp.Key, Path.Combine(projectPath, "Assets"));
-                        // Then load it
                         ModelManager.Instance.LoadAnimationPack(packJsonPath);
                         if (ModelManager.Instance.TryGetModel(modelComp.Key, out var fbxModel))
                         {
@@ -303,10 +296,8 @@ namespace CastleBuilder
                                 physics.Size = modelComp.Model.GetBoundingSize();
                                 physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                                 physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
-                                Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Synced model bounds for loaded entity {entity.Id} (Key='{modelComp.Key}') Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
                             }
                         }
-                        Console.WriteLine($"[EditorScene.RegisterAllAssetPacks] Materialized and loaded pack '{modelComp.Key}'");
                     }
                 }
             }
@@ -332,7 +323,6 @@ namespace CastleBuilder
         }
         public void FlushActiveSceneData()
         {
-            Console.WriteLine($"[EditorScene.FlushActiveSceneData] Called for scene '{_currentGameSceneName}'");
             if (_sceneCache.TryGet(_currentGameSceneName, out var cachedScene, out var cachedLevel) &&
                 cachedScene is TerrainCreatorScene tcs)
             {
@@ -351,27 +341,18 @@ namespace CastleBuilder
                     sceneData.Terrain.HeightmapPath = cachedLevel?.Terrain?.HeightmapPath ?? "";
                     ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain.HeightmapPath);
                 }
-                Console.WriteLine($"[EditorScene] Flushed terrain for scene '{terrainName}' → {cachedLevel?.Terrain?.HeightmapPath ?? "null"}");
-            }
-            else
-            {
-                Console.WriteLine($"[EditorScene] FlushActiveSceneData - no TerrainCreatorScene in cache for '{_currentGameSceneName}'");
             }
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null && _projectData?.Scenes != null && _projectData.Scenes.TryGetValue(_currentGameSceneName, out var sd))
             {
                 sd.Entities = level.Entities.ConvertAll(e => e.ToData());
-                Console.WriteLine($"[EditorScene] Flushed {level.Entities.Count} entities into clean Entities array");
             }
-            // ALWAYS materialize every pack referenced by the Level (this is the fix)
             RegisterAllAssetPacks(level);
         }
         public void SwitchGameScene(string sceneName)
         {
             if (sceneName == _currentGameSceneName) return;
-            Console.WriteLine($"[EditorScene.SwitchGameScene] Switching from '{_currentGameSceneName}' → '{sceneName}' (destructive + cached activation)");
             ActivateScene(sceneName);
-            Console.WriteLine($"[EditorScene] Successfully switched to scene '{sceneName}'");
         }
         public override void Update(float deltaTime)
         {

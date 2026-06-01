@@ -38,18 +38,28 @@ namespace MapRoom
         private Bitmap _colorBitmapCache = null;
         private const int ColorLayerResolution = 4096; // High-res for native PNG quality (matches 2D sprite visual)
 
-        public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
+        // NEW: only false when this instance is created by SceneEditorPanel
+        private readonly bool _enableBrush;
+
+        public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null, bool enableBrush = true)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
             _sceneData = sceneData;
             _isEditorContext = true;
+            _enableBrush = enableBrush;
+
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
-            _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrushEvent);
+            if (_enableBrush)
+            {
+                _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrushEvent);
+            }
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
         }
 
         private void OnSelectBrushEvent(SelectBrushEvent e)
         {
+            if (!_enableBrush) return;
+
             // Guard against close-panel event that sends empty/default values
             if (string.IsNullOrWhiteSpace(e.BrushMode))
             {
@@ -523,6 +533,7 @@ namespace MapRoom
 
         public void SetActiveMaterial(string albedoPath)
         {
+            if (!_enableBrush) return;
             _activeMaterialPath = albedoPath;
             if (_ghostMaterialTextureId != 0)
             {
