@@ -37,6 +37,7 @@ namespace MapRoom
         private ShaderProgram _spriteShader;
         private Bitmap _colorBitmapCache = null;
         private const int ColorLayerResolution = 4096; // High-res for native PNG quality (matches 2D sprite visual)
+
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -46,6 +47,7 @@ namespace MapRoom
             _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrushEvent);
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
         }
+
         private void OnSelectBrushEvent(SelectBrushEvent e)
         {
             // Guard against close-panel event that sends empty/default values
@@ -59,7 +61,6 @@ namespace MapRoom
                     _renderContext.DeleteTexture(_ghostMaterialTextureId);
                     _ghostMaterialTextureId = 0;
                 }
-                Console.WriteLine("[TerrainCreatorScene] Brush cleared (panel close event)");
                 return;
             }
             if (_activeBrush == null)
@@ -88,8 +89,8 @@ namespace MapRoom
                 _ghostVisible = true;
             }
             UpdateGhostMesh(); // immediate ghost update on any brush change (fixes square)
-            Console.WriteLine($"[TerrainCreatorScene] OnSelectBrushEvent processed - Mode={_activeBrush.Mode}, MaterialPath='{_activeMaterialPath}', GhostVisible={_ghostVisible}");
         }
+
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -97,7 +98,9 @@ namespace MapRoom
             Vector3 rayDir = GetLookDirection();
             return RayTerrainIntersect(rayOrigin, rayDir, out hitPoint);
         }
+
         public Vector3 GetCameraPosition() => _flyCamera.Position;
+
         public Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
@@ -108,11 +111,14 @@ namespace MapRoom
                 MathF.Sin(pitchRad)
             ));
         }
+
         public Matrix4x4 GetViewMatrix() => _flyCamera.ViewMatrix;
+
         public bool TryTerrainRaycast(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             return RayTerrainIntersect(origin, dir, out hitPoint);
         }
+
         public bool GetMouseRay(Vector2 normalizedMouse, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             rayOrigin = Vector3.Zero;
@@ -134,10 +140,12 @@ namespace MapRoom
             rayDir = Vector3.Normalize(Vector3.Transform(eyeFar, invView) - rayOrigin);
             return true;
         }
+
         public bool GetMouseRay(Vector2 normalizedMouse, float viewportWidth, float viewportHeight, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             return base.GetMouseRay(normalizedMouse, viewportWidth, viewportHeight, out rayOrigin, out rayDir);
         }
+
         private string ResolveFullPath(string inputPath)
         {
             if (string.IsNullOrEmpty(inputPath)) return inputPath;
@@ -147,6 +155,7 @@ namespace MapRoom
             string fullPath = Path.Combine(projectPath, inputPath);
             return Path.GetFullPath(fullPath);
         }
+
         public void CreateBlank()
         {
             _terrainWidth = 200;
@@ -174,6 +183,7 @@ namespace MapRoom
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
+
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -232,6 +242,7 @@ namespace MapRoom
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
+
         public override void LoadSceneData(SceneData data)
         {
             _sceneData = data;
@@ -291,6 +302,7 @@ namespace MapRoom
             base.LoadSceneData(data);
             // NO default white bitmap or texture - grid is the default (clear layer)
         }
+
         public override void LoadTerrain(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -306,6 +318,7 @@ namespace MapRoom
             }
             RebuildTerrainMesh();
         }
+
         public new void SetColorTexture(string path)
         {
             base.SetColorTexture(path);
@@ -320,6 +333,7 @@ namespace MapRoom
                 }
             }
         }
+
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -363,12 +377,14 @@ namespace MapRoom
             }
             RebuildTerrainMesh();
         }
+
         public void Export2D(string projectAssetsDir)
         {
             string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
             string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
             TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
         }
+
         private void SaveAsPng(string path)
         {
             if (_colorBitmapCache != null)
@@ -392,20 +408,24 @@ namespace MapRoom
             }
             bmp.Save(path, ImageFormat.Png);
         }
+
         public void SetActiveBrush(ToolChest.Brush brush)
         {
             _activeBrush = brush;
             UpdateGhostMesh();
         }
+
         public ToolChest.Brush GetActiveBrush()
         {
             return _activeBrush;
         }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
+
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
@@ -500,6 +520,7 @@ namespace MapRoom
             }
             _ghostBuffer.UpdateCustomWithUV(verticesFallback, indicesFallback);
         }
+
         public void SetActiveMaterial(string albedoPath)
         {
             _activeMaterialPath = albedoPath;
@@ -514,6 +535,7 @@ namespace MapRoom
             }
             UpdateGhostMesh();
         }
+
         private void PaintAlbedo(Vector3 worldPos)
         {
             if (_colorBitmapCache == null || string.IsNullOrEmpty(_activeMaterialPath) || _activeBrush == null || _activeBrush.Mode != BrushMode.Paint)
@@ -531,10 +553,9 @@ namespace MapRoom
                 }
             }
             using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
-            Console.WriteLine($"[PaintAlbedo DEBUG] brush.Size (radius) = {_activeBrush.Size}, worldPos = {worldPos}, material native = {materialBmp.Width}x{materialBmp.Height}");
             // World position -> UV (terrain alignment only) - EXACT same math as the version where location was correct
             float u = Math.Clamp(worldPos.X / (_terrainWidth * _worldScaleX), 0f, 1f);
-            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f); // NO flip here - matches the "location correct" version you had
+            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f); // NO flip here - location remains exactly correct
             int centerTexX = (int)(u * _colorBitmapCache.Width);
             int centerTexY = (int)(v * _colorBitmapCache.Height);
             // Brush world size now EXACTLY matches ghost preview quad size (brush.Size is radius, ghost uses full diameter)
@@ -545,16 +566,20 @@ namespace MapRoom
             int destY = Math.Max(0, centerTexY - brushTexH / 2);
             int destW = Math.Min(brushTexW, _colorBitmapCache.Width - destX);
             int destH = Math.Min(brushTexH, _colorBitmapCache.Height - destY);
-            Console.WriteLine($"[PaintAlbedo DEBUG] UV = ({u:F4}, {v:F4}), centerTex = ({centerTexX}, {centerTexY}), brushTexWH = ({brushTexW}, {brushTexH}), destRect = ({destX},{destY},{destW},{destH})");
             if (destW <= 0 || destH <= 0) return;
-            using (var g = Graphics.FromImage(_colorBitmapCache))
+            // Flip the material bitmap vertically so the stamped content matches the preview PNG orientation exactly (location unchanged)
+            using (var flippedMaterial = materialBmp.Clone(new Rectangle(0, 0, materialBmp.Width, materialBmp.Height), materialBmp.PixelFormat))
             {
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic; // smooth native quality
-                g.DrawImage(materialBmp, new Rectangle(destX, destY, destW, destH));
+                flippedMaterial.RotateFlip(RotateFlipType.RotateNoneFlipY);
+                using (var g = Graphics.FromImage(_colorBitmapCache))
+                {
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic; // smooth native quality
+                    g.DrawImage(flippedMaterial, new Rectangle(destX, destY, destW, destH));
+                }
             }
             UpdateGPUColorTexture();
-            Console.WriteLine($"[TerrainCreatorScene] PaintAlbedo applied at worldPos={worldPos} with material '{_activeMaterialPath}' (UV + size now match ghost preview - location unchanged)");
         }
+
         private void UpdateGPUColorTexture()
         {
             if (_colorBitmapCache == null || _terrainTextureId == 0) return;
@@ -575,6 +600,7 @@ namespace MapRoom
             _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
         }
+
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -640,6 +666,7 @@ namespace MapRoom
                 level.Terrain = _sceneData.Terrain;
             }
         }
+
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -667,6 +694,7 @@ namespace MapRoom
             }
             return false;
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -717,6 +745,7 @@ namespace MapRoom
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
+
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -736,12 +765,14 @@ namespace MapRoom
             _spriteShader?.Dispose();
             base.Dispose();
         }
+
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
+
         private void ApplyModification(TerrainModifiedEvent e)
         {
             var brush = new ToolChest.Brush
@@ -759,6 +790,7 @@ namespace MapRoom
                 UpdateAffectedVertices(e.WorldPos, e.Radius);
             }
         }
+
         public new float[,] GetHeightmap() => _heightmap;
     }
 }
