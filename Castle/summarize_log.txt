@@ -513,7 +513,7 @@ Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
-Read 36923 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
+Read 37461 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 16 dependencies
 Found: TerrainCreatorUI.html
@@ -1661,7 +1661,7 @@ Found 5 dependencies
 Found: TextureLoader.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
-Read 16839 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
+Read 17615 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextureLoader.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 8 dependencies
 Found: UIQuadRenderer.cs
@@ -1679,7 +1679,7 @@ Found 1 dependencies
 Found: VertexBuffer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\VertexBuffer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\VertexBuffer.cs
-Read 9445 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\VertexBuffer.cs
+Read 9434 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\VertexBuffer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 5 dependencies
 Found: WindowNative.cs
@@ -1719,9 +1719,9 @@ Found 4 dependencies
 Found: TerrainTextureParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
-Read 1055 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
+Read 1909 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TerrainTextureParser.cs
 Namespace: SiegeEngine.Core.Terrain
-Found 4 dependencies
+Found 5 dependencies
 Found: TilemapExporter.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TilemapExporter.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Terrain\TilemapExporter.cs
@@ -2094,7 +2094,7 @@ Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 19956 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 20124 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
 Found 11 dependencies
 Found: SiegeEngine.csproj
