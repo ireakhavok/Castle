@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="main_banner.png" alt="Project Banner" width="100%">
+</p>
+
 # RealmFoundry Project (Repository: Castle) - README.md
 
 ## Project Overview
