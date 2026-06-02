@@ -54,11 +54,10 @@ namespace MapRoom
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
         }
 
-        // NEW for Step 1: override binding hook from base
-        protected override void BindLiveState(ISceneStateProvider liveState)
+        // Step 2 fix: public override (matches public base method)
+        public override void BindLiveState(ISceneStateProvider liveState)
         {
             base.BindLiveState(liveState);
-            // Painter will use this in later steps
         }
 
         private void OnSelectBrushEvent(SelectBrushEvent e)

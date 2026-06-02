@@ -29,9 +29,6 @@ namespace SiegeEngine.Core.Definitions
         {
             if (entity == null) return;
 
-            // FIXED: robust ID logic prevents duplicates on spawn OR after load
-            // - If ID > 0 and unique → keep it (loaded entities)
-            // - If ID <= 0 or duplicate → assign fresh sequential ID
             bool isDuplicate = Entities.Any(e => e.Id == entity.Id && entity.Id > 0);
             if (entity.Id <= 0 || isDuplicate)
             {
@@ -39,7 +36,6 @@ namespace SiegeEngine.Core.Definitions
             }
             else
             {
-                // Loaded entity with valid ID → update next counter
                 _nextEntityId = Math.Max(_nextEntityId, entity.Id + 1);
             }
 
@@ -69,7 +65,6 @@ namespace SiegeEngine.Core.Definitions
 
             entity.AddComponent(physics);
 
-            // NEW: if model is already attached (e.g. in future extensions), set local AABB
             var modelComp = entity.GetComponent<ModelComponent>();
             if (modelComp?.Model != null)
             {
@@ -98,7 +93,7 @@ namespace SiegeEngine.Core.Definitions
             {
                 foreach (var ed in dto.Entities)
                 {
-                    level.AddEntity(Entity.FromData(ed)); // Use AddEntity for consistent ID assignment and logging
+                    level.AddEntity(Entity.FromData(ed));
                 }
             }
             if (dto?.CustomData != null)

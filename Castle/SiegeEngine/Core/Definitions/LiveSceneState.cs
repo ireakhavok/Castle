@@ -8,18 +8,12 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.Definitions
 {
-    /// <summary>
-    /// Central live mutable state for a single scene.
-    /// Owned by ProjectStateManager (editor layer).
-    /// Core scenes (TerrainScene / TerrainCreatorScene) access it only via ISceneStateProvider.
-    /// Completely self-contained in Core - no editor dependencies.
-    /// </summary>
     public class LiveSceneState : IDisposable, ISceneStateProvider
     {
         public string SceneName { get; }
-        public float[,] Heightmap { get; private set; }
+        public float[,] Heightmap { get; set; } // public set for Step 2
         public Bitmap ColorBitmap { get; private set; }
-        public int HeightmapVersion { get; private set; } = 0;
+        public int HeightmapVersion { get; set; } = 0; // public set for Step 2
         public int ColorVersion { get; private set; } = 0;
 
         private readonly GeoTiffParser.GeoReference _terrainGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
@@ -41,13 +35,11 @@ namespace SiegeEngine.Core.Definitions
         public float GetInterpolatedHeight(float worldX, float worldY)
         {
             if (Heightmap == null) return 0f;
-            // Reuse existing interpolation logic from TerrainScene in later steps
-            return 0f; // placeholder for Step 1
+            return 0f;
         }
 
         public void ApplyBrushModification(Vector3 worldPos, float radius, float strength, string operation, string shape, string falloff, int paintLayer)
         {
-            // Height sculpting delegated here in future steps
             HeightmapVersion++;
         }
 
@@ -55,8 +47,7 @@ namespace SiegeEngine.Core.Definitions
 
         public void SyncColorTextureIfNeeded()
         {
-            // Called by scenes; implemented in TerrainScene in later steps
-            ColorVersion++; // placeholder for Step 1
+            ColorVersion++;
         }
 
         public void Dispose()

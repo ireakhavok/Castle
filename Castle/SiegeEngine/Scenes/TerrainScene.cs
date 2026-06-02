@@ -40,7 +40,6 @@ namespace SiegeEngine.Scenes
         protected int _currentMeshStep = 1;
         protected bool _isEditorContext = false;
 
-        // NEW for Step 1: Live state binding (protected - core purity preserved)
         protected ISceneStateProvider _liveState;
 
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
@@ -51,19 +50,17 @@ namespace SiegeEngine.Scenes
             _colorGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
         }
 
-        // NEW for Step 1: Protected binding hook (called by editor only)
-        protected virtual void BindLiveState(ISceneStateProvider liveState)
+        // Step 2 fix: public (accessible from Keystone and MapRoom)
+        public virtual void BindLiveState(ISceneStateProvider liveState)
         {
             _liveState = liveState;
         }
 
-        // NEW for Step 1: Protected sync hook (called by subclasses on state change)
         protected virtual void SyncFromLiveState()
         {
             if (_liveState != null)
             {
-                // Heightmap and color sync will be implemented in later steps
-                // For Step 1 this is a no-op placeholder
+                // placeholder for later steps
             }
         }
 
@@ -382,14 +379,14 @@ namespace SiegeEngine.Scenes
         {
             base.Update(deltaTime);
             _flyCamera.Update(deltaTime, 0f, true);
-            SyncFromLiveState(); // NEW for Step 1
+            SyncFromLiveState();
         }
 
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime);
             _flyCamera.Update(deltaTime, 0f, cameraMode);
-            SyncFromLiveState(); // NEW for Step 1
+            SyncFromLiveState();
         }
 
         public bool GetMouseRay(Vector2 normalizedMouse, float viewportWidth, float viewportHeight, out Vector3 rayOrigin, out Vector3 rayDir)
