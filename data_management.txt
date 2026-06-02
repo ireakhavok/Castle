@@ -50,3 +50,19 @@ Moddability and future extensibility (multi-layer, PBR, procedural).
 
 Use this prompt as the single source of truth for any future work or retry. If paused, restart by quoting this prompt and saying “continue from here with [specific next step]”.
 Next step when ready: Output only the full modified/new files in folder/class-labelled C# blocks (starting with LiveSceneState and ProjectStateManager, then minimal integration). Do not make changes until I explicitly say “go”.
+
+Implementation Plan Broken into Iterative Steps (large-scale, methodical, safe, auditable, zero regressions until full integration)
+Step 1: Introduce Core Abstractions (pure Core addition, non-breaking, coexistence with all existing code)
+Create LiveSceneState (central live data owner with heightmap + color Bitmap skeleton) and ISceneStateProvider interface. Add SceneStateChangedEvent. Add minimal protected/virtual binding/sync hooks in TerrainScene / TerrainCreatorScene. No behavior changes, no editor code yet. GeoTIFF/parsing/save flows untouched.
+Step 2: Editor Ownership Layer
+Implement ProjectStateManager (Keystone). Migrate heightmap/paint caching from ProjectSettings to manage LiveSceneState per scene. Update ProjectSceneCache and ProjectData/Level as bridges (backward-compatible).
+Step 3: Core Scene Binding & Heightmap Migration
+Fully wire TerrainScene / TerrainCreatorScene to shared LiveSceneState for heightmap (replace scattered refs). Add versioned sync.
+Step 4: Painter Integration
+Move PaintAlbedo, _colorBitmapCache, stamping, and GPU upload in TerrainCreatorScene (painter mode) to delegate to shared LiveSceneState.
+Step 5: Preview / Editor Sync & Reactive Updates
+Update preview instances (SceneEditorPanel → EditorScene → TerrainCreatorScene with _enableBrush=false) to bind and react to state events/versions for instant GPU sync.
+Step 6: Persistence, Events, Save/Load, Cleanup & Polish
+Full save/load flows (live state → SceneData/Level/ProjectData paths + PNG/TIFF), new/extended events for network/collab, disposal patterns, GeoTIFF compatibility verification, performance (partial updates), mod hooks, testing.
+Each step is self-contained and can be verified independently (e.g., after Step 1: all existing painting/GeoTIFF/loading works exactly as before). Core purity preserved throughout.
+
