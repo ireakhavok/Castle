@@ -10,6 +10,8 @@ using SiegeEngine.Core.Terrain;
 using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.Numerics;
 
 namespace SiegeEngine.Scenes
@@ -41,6 +43,8 @@ namespace SiegeEngine.Scenes
         protected bool _isEditorContext = false;
         protected ISceneStateProvider _liveState;
 
+        protected int _lastColorVersion = -1;
+
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -54,12 +58,10 @@ namespace SiegeEngine.Scenes
             _liveState = liveState;
         }
 
-        // Step 3: Expanded sync hook (pulls from live state when available)
         protected virtual void SyncFromLiveState()
         {
             if (_liveState == null) return;
 
-            // Heightmap sync
             var liveHeight = _liveState.GetHeightmap();
             if (liveHeight != null)
             {
@@ -68,8 +70,48 @@ namespace SiegeEngine.Scenes
                 _terrainHeight = liveHeight.GetLength(1);
             }
 
-            // Color texture sync will be added in later steps (version check + GPU update)
-            // For Step 3 this is the minimal reactive hook
+            if (_liveState.GetColorVersion() > _lastColorVersion)
+            {
+                SyncColorTextureFromLiveState();
+                _lastColorVersion = _liveState.GetColorVersion();
+            }
+        }
+
+        protected virtual void SyncColorTextureFromLiveState()
+        {
+            if (_liveState == null) return;
+            var live = _liveState as LiveSceneState;
+            if (live?.ColorBitmap == null) return;
+
+            if (_terrainTextureId == 0)
+            {
+                _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, live.ColorBitmap);
+                _hasColorTexture = _terrainTextureId != 0;
+            }
+            else
+            {
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
+                var data = live.ColorBitmap.LockBits(new Rectangle(0, 0, live.ColorBitmap.Width, live.ColorBitmap.Height), ImageLockMode.ReadOnly, live.ColorBitmap.PixelFormat);
+                try
+                {
+                    unsafe
+                    {
+                        byte* ptr = (byte*)data.Scan0.ToPointer();
+                        _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgba, (uint)live.ColorBitmap.Width, (uint)live.ColorBitmap.Height, 0, _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, ptr);
+                    }
+                }
+                finally
+                {
+                    live.ColorBitmap.UnlockBits(data);
+                }
+                _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            }
+
+            if (_hasColorTexture)
+            {
+                BuildTexturedMesh();
+            }
         }
 
         public override void LoadSceneData(SceneData data)

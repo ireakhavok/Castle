@@ -540,7 +540,6 @@ namespace MapRoom
             UpdateGhostMesh();
         }
 
-        // Step 4 fix: push painted bitmap into shared LiveSceneState
         private void PaintAlbedo(Vector3 worldPos)
         {
             if (_colorBitmapCache == null || string.IsNullOrEmpty(_activeMaterialPath) || _activeBrush == null || _activeBrush.Mode != BrushMode.Paint)
@@ -579,7 +578,6 @@ namespace MapRoom
                 }
             }
 
-            // Push to shared live state
             if (_liveState is LiveSceneState live)
             {
                 live.ColorBitmap?.Dispose();
@@ -609,6 +607,17 @@ namespace MapRoom
             }
             _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+        }
+
+        protected override void SyncColorTextureFromLiveState()
+        {
+            base.SyncColorTextureFromLiveState();
+
+            if (_liveState is LiveSceneState live && live.ColorBitmap != null)
+            {
+                _colorBitmapCache?.Dispose();
+                _colorBitmapCache = (Bitmap)live.ColorBitmap.Clone();
+            }
         }
 
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)

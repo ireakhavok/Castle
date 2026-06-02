@@ -236,9 +236,9 @@ namespace CastleBuilder
                 : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd);
             _activeGameScene.Initialize(_width, _height);
             _activeGameScene.LoadSceneData(sd);
-            SyncCurrentLevelToRuntimeServer();
             if (_activeGameScene is TerrainCreatorScene tcs)
             {
+                ProjectStateManager.Current.BindSceneToLiveState(sceneName, tcs);
                 float[,] cached = ProjectSettings.Current.GetUnsavedHeightmap(sceneName);
                 float[,] heightmapToUse = cached ?? ProjectSettings.Current.CurrentHeightmap ?? tcs.GetHeightmap();
                 ProjectSettings.Current.SetCurrentTerrain(sd, heightmapToUse, sceneName, sd.Terrain?.HeightmapPath);
@@ -254,6 +254,7 @@ namespace CastleBuilder
                     Console.WriteLine($"[EditorScene] Synced color texture '{sd.Terrain.ColorTexturePath}' to TerrainCreatorScene for scene '{sceneName}'");
                 }
             }
+            SyncCurrentLevelToRuntimeServer();
             _sceneCache.Store(sceneName, _activeGameScene, level);
         }
 
