@@ -39,7 +39,6 @@ namespace SiegeEngine.Scenes
         protected int _meshVertsY = 0;
         protected int _currentMeshStep = 1;
         protected bool _isEditorContext = false;
-
         protected ISceneStateProvider _liveState;
 
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
@@ -50,18 +49,27 @@ namespace SiegeEngine.Scenes
             _colorGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
         }
 
-        // Step 2 fix: public (accessible from Keystone and MapRoom)
         public virtual void BindLiveState(ISceneStateProvider liveState)
         {
             _liveState = liveState;
         }
 
+        // Step 3: Expanded sync hook (pulls from live state when available)
         protected virtual void SyncFromLiveState()
         {
-            if (_liveState != null)
+            if (_liveState == null) return;
+
+            // Heightmap sync
+            var liveHeight = _liveState.GetHeightmap();
+            if (liveHeight != null)
             {
-                // placeholder for later steps
+                _heightmap = liveHeight;
+                _terrainWidth = liveHeight.GetLength(0);
+                _terrainHeight = liveHeight.GetLength(1);
             }
+
+            // Color texture sync will be added in later steps (version check + GPU update)
+            // For Step 3 this is the minimal reactive hook
         }
 
         public override void LoadSceneData(SceneData data)

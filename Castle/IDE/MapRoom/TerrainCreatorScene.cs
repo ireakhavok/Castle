@@ -54,7 +54,6 @@ namespace MapRoom
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
         }
 
-        // Step 2 fix: public override (matches public base method)
         public override void BindLiveState(ISceneStateProvider liveState)
         {
             base.BindLiveState(liveState);
