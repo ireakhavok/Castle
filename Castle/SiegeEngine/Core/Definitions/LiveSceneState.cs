@@ -11,9 +11,9 @@ namespace SiegeEngine.Core.Definitions
     public class LiveSceneState : IDisposable, ISceneStateProvider
     {
         public string SceneName { get; }
-        public float[,] Heightmap { get; set; } // public set for Step 2
-        public Bitmap ColorBitmap { get; private set; }
-        public int HeightmapVersion { get; set; } = 0; // public set for Step 2
+        public float[,] Heightmap { get; set; }
+        public Bitmap ColorBitmap { get; set; }          // ← public set (MapRoom must be able to assign it)
+        public int HeightmapVersion { get; set; } = 0;
         public int ColorVersion { get; private set; } = 0;
 
         private readonly GeoTiffParser.GeoReference _terrainGeoRef = new GeoTiffParser.GeoReference { IsValid = false };

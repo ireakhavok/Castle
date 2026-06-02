@@ -18,6 +18,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using ToolChest;
+
 namespace CastleBuilder
 {
     public class EditorScene : Scene
@@ -27,17 +28,23 @@ namespace CastleBuilder
         private GameScene _activeGameScene;
         private readonly ProjectSceneCache _sceneCache = new ProjectSceneCache();
         private GameScene _pendingDisposeScene;
+
         public static EditorScene Current { get; private set; }
+
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             Current = this;
             LoadProjectData();
         }
+
         public ProjectData GetProjectData() => _projectData;
+
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
+
         public bool TryGetPlacementPosition(out Vector3 position)
         {
             position = Vector3.Zero;
@@ -47,6 +54,7 @@ namespace CastleBuilder
             }
             return false;
         }
+
         public bool TryPerformEntitySelectionRaycast(Vector2 normalizedMouse, float contentW, float contentH, out int entityId, out Vector3 hitPoint, bool cycle = false)
         {
             entityId = -1;
@@ -79,22 +87,19 @@ namespace CastleBuilder
             hitPoint = best.point;
             return true;
         }
+
         public List<int> PerformBoxSelection(Vector2 ndcStart, Vector2 ndcEnd, float contentW, float contentH)
         {
             var selected = new List<int>();
             if (!(_activeGameScene is TerrainCreatorScene tcs)) return selected;
-
-            // Convert NDC box to pixel box (this was the bug)
             float minX = Math.Min(ndcStart.X, ndcEnd.X) * contentW;
             float maxX = Math.Max(ndcStart.X, ndcEnd.X) * contentW;
             float minY = Math.Min(ndcStart.Y, ndcEnd.Y) * contentH;
             float maxY = Math.Max(ndcStart.Y, ndcEnd.Y) * contentH;
-
             foreach (var e in GetEntities())
             {
                 var physics = e.GetComponent<PhysicsComponent>();
                 if (physics == null) continue;
-
                 if (IsBoxInFrustum(tcs, minX, maxX, minY, maxY, contentW, contentH, physics))
                 {
                     selected.Add(e.Id);
@@ -105,14 +110,11 @@ namespace CastleBuilder
 
         private bool IsBoxInFrustum(TerrainCreatorScene tcs, float minX, float maxX, float minY, float maxY, float contentW, float contentH, PhysicsComponent physics)
         {
-            // Fast center test (pixel space)
             Vector3 center = physics.Position;
             if (!ProjectWorldToScreen(center, contentW, contentH, out Vector2 screenCenter))
                 return false;
             if (screenCenter.X >= minX && screenCenter.X <= maxX && screenCenter.Y >= minY && screenCenter.Y <= maxY)
                 return true;
-
-            // 8 OBB corners test (pixel space)
             Vector3[] localCorners =
             {
                 physics.LocalBoundsMinCm * 0.01f,
@@ -124,10 +126,8 @@ namespace CastleBuilder
                 new Vector3(physics.LocalBoundsMaxCm.X, physics.LocalBoundsMinCm.Y, physics.LocalBoundsMaxCm.Z) * 0.01f,
                 physics.LocalBoundsMaxCm * 0.01f
             };
-
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(physics.Rotation);
             Matrix4x4 trans = Matrix4x4.CreateTranslation(physics.Position);
-
             foreach (var local in localCorners)
             {
                 Vector3 world = Vector3.Transform(local, rot * trans);
@@ -144,20 +144,18 @@ namespace CastleBuilder
         {
             screenPos = Vector2.Zero;
             if (!(_activeGameScene is TerrainCreatorScene tcs)) return false;
-
             Matrix4x4 proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, contentW / contentH, 0.1f, 50000f);
             Matrix4x4 view = tcs.GetViewMatrix();
-
             Vector4 clip = Vector4.Transform(new Vector4(worldPos, 1f), view * proj);
             if (Math.Abs(clip.W) < 1e-6f) return false;
             clip /= clip.W;
-
             screenPos = new Vector2(
                 (clip.X * 0.5f + 0.5f) * contentW,
                 (1f - (clip.Y * 0.5f + 0.5f)) * contentH
             );
             return true;
         }
+
         public void SyncCurrentLevelToRuntimeServer()
         {
             var level = ProjectSettings.Current.CurrentLevel;
@@ -172,6 +170,7 @@ namespace CastleBuilder
                 }
             }
         }
+
         public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -206,6 +205,7 @@ namespace CastleBuilder
             _pendingDisposeScene = null;
             ActivateScene(_currentGameSceneName);
         }
+
         private void ActivateScene(string sceneName)
         {
             Level level = ProjectSettings.Current.CurrentLevel;
@@ -232,7 +232,7 @@ namespace CastleBuilder
             bool isTerrainScene = _projectData.Scenes.TryGetValue(sceneName, out var sd) &&
                                   (sd.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sd.Terrain?.HeightmapPath) || sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase));
             _activeGameScene = isTerrainScene
-                ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sd, enableBrush: false) // <--- disabled brush for editor context
+                ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sd, enableBrush: false)
                 : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd);
             _activeGameScene.Initialize(_width, _height);
             _activeGameScene.LoadSceneData(sd);
@@ -248,7 +248,6 @@ namespace CastleBuilder
                 {
                     tcs.LoadSceneData(new SceneData { Name = sceneName, Terrain = new TerrainData() });
                 }
-                // Sync painted color texture (already present in TerrainData)
                 if (!string.IsNullOrEmpty(sd.Terrain?.ColorTexturePath))
                 {
                     tcs.SetColorTexture(sd.Terrain.ColorTexturePath);
@@ -257,6 +256,7 @@ namespace CastleBuilder
             }
             _sceneCache.Store(sceneName, _activeGameScene, level);
         }
+
         private void RegisterAllAssetPacks(Level level)
         {
             if (level == null || ModelManager.Instance == null) return;
@@ -302,6 +302,7 @@ namespace CastleBuilder
                 }
             }
         }
+
         private Level CreateOrLoadLevel(string sceneName)
         {
             if (_projectData.Scenes.TryGetValue(sceneName, out var sceneData))
@@ -321,6 +322,7 @@ namespace CastleBuilder
             }
             return new Level(_eventBus) { Name = sceneName };
         }
+
         public void FlushActiveSceneData()
         {
             if (_sceneCache.TryGet(_currentGameSceneName, out var cachedScene, out var cachedLevel) &&
@@ -349,11 +351,13 @@ namespace CastleBuilder
             }
             RegisterAllAssetPacks(level);
         }
+
         public void SwitchGameScene(string sceneName)
         {
             if (sceneName == _currentGameSceneName) return;
             ActivateScene(sceneName);
         }
+
         public override void Update(float deltaTime)
         {
             if (_pendingDisposeScene != null)
@@ -363,6 +367,7 @@ namespace CastleBuilder
             }
             _activeGameScene?.Update(deltaTime);
         }
+
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
         {
             if (_activeGameScene is TerrainCreatorScene terrainScene)
@@ -370,6 +375,7 @@ namespace CastleBuilder
             else if (_activeGameScene != null)
                 _activeGameScene.Update(deltaTime);
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             if (!(_activeGameScene is TerrainCreatorScene))
@@ -379,11 +385,13 @@ namespace CastleBuilder
             }
             _activeGameScene?.Render(entities ?? GetEntities());
         }
+
         public override void Resize(int width, int height)
         {
             base.Resize(width, height);
             _activeGameScene?.Resize(width, height);
         }
+
         public List<string> GetAvailableScenes()
         {
             var keys = _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
@@ -391,7 +399,9 @@ namespace CastleBuilder
             foreach (var key in ProjectSettings.Current.GetUnsavedHeightmapKeys()) scenes.Add(key);
             return scenes.ToList();
         }
+
         public string CurrentGameScene => _currentGameSceneName;
+
         public override void Dispose()
         {
             Current = null;
@@ -400,6 +410,7 @@ namespace CastleBuilder
             _sceneCache.Clear();
             base.Dispose();
         }
+
         private class BasicGameScene : GameScene
         {
             public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)

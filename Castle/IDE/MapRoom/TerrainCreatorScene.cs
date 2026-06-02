@@ -540,6 +540,7 @@ namespace MapRoom
             UpdateGhostMesh();
         }
 
+        // Step 4 fix: push painted bitmap into shared LiveSceneState
         private void PaintAlbedo(Vector3 worldPos)
         {
             if (_colorBitmapCache == null || string.IsNullOrEmpty(_activeMaterialPath) || _activeBrush == null || _activeBrush.Mode != BrushMode.Paint)
@@ -577,6 +578,15 @@ namespace MapRoom
                     g.DrawImage(flippedMaterial, new Rectangle(destX, destY, destW, destH));
                 }
             }
+
+            // Push to shared live state
+            if (_liveState is LiveSceneState live)
+            {
+                live.ColorBitmap?.Dispose();
+                live.ColorBitmap = (Bitmap)_colorBitmapCache.Clone();
+                live.SyncColorTextureIfNeeded();
+            }
+
             UpdateGPUColorTexture();
         }
 
