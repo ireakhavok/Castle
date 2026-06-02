@@ -23,6 +23,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using ToolChest;
+
 namespace CastleBuilder
 {
     public class SceneEditorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -43,28 +44,21 @@ namespace CastleBuilder
             }
         }
 
-        // === CLEAN BOX SELECT VISUAL OVERLAY (drawn AFTER 3D content in LayeredUIRenderer) ===
         private class SelectionBoxOverlay : ICustomOverlay
         {
             private readonly SceneEditorPanel _parent;
             public SelectionBoxOverlay(SceneEditorPanel parent) { _parent = parent; }
-
             public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight)
             {
                 if (!_parent._isBoxSelecting) return;
-
                 float dragDist = Vector2.Distance(_parent._boxStart, _parent._boxEnd);
                 if (dragDist < SceneEditorPanel.MinDragDistance) return;
-
                 float headerHeight = _parent.HasTitleBar ? _parent.HeaderHeight : 0f;
                 float x = Math.Min(_parent._boxStart.X, _parent._boxEnd.X);
                 float y = Math.Min(_parent._boxStart.Y, _parent._boxEnd.Y);
                 float w = Math.Abs(_parent._boxEnd.X - _parent._boxStart.X);
                 float h = Math.Abs(_parent._boxEnd.Y - _parent._boxStart.Y);
-
-                // Semi-transparent fill
                 quadRenderer.DrawQuad(x, y + headerHeight, w, h, new Vector4(0.2f, 0.6f, 1f, 0.3f), panelWidth, panelHeight);
-                // Crisp border lines
                 Vector4 borderColor = new Vector4(0.2f, 0.6f, 1f, 1f);
                 quadRenderer.DrawLine(x, y + headerHeight, x + w, y + headerHeight, 2f, borderColor, panelWidth, panelHeight);
                 quadRenderer.DrawLine(x, y + headerHeight + h, x + w, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
@@ -80,11 +74,11 @@ namespace CastleBuilder
         private bool _pendingSceneSelectorUpdate = false;
         private List<int> _selectedEntityIds = new List<int>();
         private bool _wasRightPressedLastFrame = false;
-        // === BOX SELECT SUPPORT (RIGHT-CLICK + DRAG = box, RIGHT-CLICK alone = single select) ===
         private bool _isBoxSelecting = false;
         private Vector2 _boxStart = Vector2.Zero;
         private Vector2 _boxEnd = Vector2.Zero;
         private const float MinDragDistance = 5f;
+
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -95,15 +89,16 @@ namespace CastleBuilder
             BaseHeight = 720f;
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
             _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
-
-            // Register the clean overlay that draws AFTER 3D content
             CustomOverlays.Add(new SelectionBoxOverlay(this));
         }
+
         public string ContentType => "SceneEditor";
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new SceneEditorUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
@@ -116,6 +111,7 @@ namespace CastleBuilder
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
         }
+
         private void OnEntitySelected(EntitySelectedEvent e)
         {
             if (e.Additive)
@@ -139,10 +135,12 @@ namespace CastleBuilder
             NotifyHierarchyChanged();
             Console.WriteLine($"[SceneEditorPanel] Entity selection updated: {string.Join(", ", _selectedEntityIds)}");
         }
+
         public void RefreshSceneList()
         {
             UpdateSceneSelectorUI();
         }
+
         private void UpdateSceneSelectorUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SceneEditorUI.html");
@@ -172,6 +170,7 @@ namespace CastleBuilder
             Console.WriteLine($"[SceneEditorPanel] Scene selector refreshed - {scenes.Count} scenes, current='{current}'");
             Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] === REFRESH COMPLETE ===");
         }
+
         private void HandleDataHook(string hook)
         {
             if (hook == "SceneSelected")
@@ -215,6 +214,7 @@ namespace CastleBuilder
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
         }
+
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
@@ -278,15 +278,18 @@ namespace CastleBuilder
             _editorScene.SyncCurrentLevelToRuntimeServer();
             Console.WriteLine($"[SceneEditorPanel] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos} into scene '{level.Name}'");
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
         }
+
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
             if (_cameraMode) PanelManager.Current.CapturePanel(this);
             else PanelManager.Current.ReleasePanelCapture();
         }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (_pendingSceneSelectorUpdate)
@@ -300,8 +303,6 @@ namespace CastleBuilder
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             bool ctrlPressed = _controlContext.GetKey(_window, Key.LeftControl) == InputAction.Press ||
                                _controlContext.GetKey(_window, Key.RightControl) == InputAction.Press;
-            // === RIGHT-CLICK + DRAG = BOX SELECT ===
-            // Right-click alone (no drag) = single entity selection
             bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
             if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)
             {
@@ -327,8 +328,6 @@ namespace CastleBuilder
                 }
                 else
                 {
-                    // Right-click alone = single entity selection
-                    Console.WriteLine("[SceneEditorPanel] Right-click (no drag) → single entity selection");
                     float headerHeight = HasTitleBar ? HeaderHeight : 0f;
                     Vector2 contentMouse = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - headerHeight);
                     float contentW = Size.X;
@@ -352,9 +351,6 @@ namespace CastleBuilder
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-            // === LEFT-CLICK = only panel focus (BasePanel already handles this) ===
-            // Do nothing extra here for entity selection
-            // === CALL BASE (title-bar drag, resize, UI overlay, etc.) ===
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
             if (_cameraMode)
             {
@@ -362,6 +358,7 @@ namespace CastleBuilder
                 _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
             }
         }
+
         private void PerformBoxSelection(bool additive)
         {
             float header = HasTitleBar ? HeaderHeight : 0f;
@@ -380,6 +377,7 @@ namespace CastleBuilder
             _eventBus.Publish(evt);
             Console.WriteLine($"[SceneEditorPanel] Box selection completed - {selected.Count} entities (additive: {additive})");
         }
+
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
@@ -449,28 +447,31 @@ namespace CastleBuilder
                     }
                 }
             }
-            // Box visual is now handled cleanly by SelectionBoxOverlay (drawn after 3D in LayeredUIRenderer)
         }
+
         public override void OnLiveResize(float w, float h)
         {
             _editorScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
+
         public override void Dispose()
         {
             PanelManager.Current.ReleasePanelCapture();
             _editorScene?.Dispose();
             base.Dispose();
         }
+
         public string DataKey => "SceneEditorPanel";
+
         public JsonElement SavePanelState()
         {
             var state = new Dictionary<string, string> { ["currentSceneName"] = _editorScene?.CurrentGameScene ?? "Main" };
             return JsonSerializer.SerializeToElement(state);
         }
+
         public void LoadPanelState(JsonElement state)
         {
-            // EXACTLY as requested: whatever was saved in the panel state is what we restore. No heuristics.
             if (state.TryGetProperty("currentSceneName", out JsonElement sceneNameElem))
             {
                 string savedScene = sceneNameElem.GetString();
@@ -482,11 +483,13 @@ namespace CastleBuilder
                 }
             }
         }
+
         public override void OnContentFocusGained()
         {
             Console.WriteLine("[SceneEditorPanel] OnContentFocusGained → notifying OutlinerCoordinator (SceneEditor is now active provider)");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
         }
+
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
@@ -526,6 +529,7 @@ namespace CastleBuilder
             Console.WriteLine($"[SceneEditorPanel.GetCurrentHierarchy] Returned {nodes.Count} nodes (root + {entities.Count} entities)");
             return nodes;
         }
+
         public object GetObjectForNode(string nodeId)
         {
             if (nodeId.StartsWith("entity-"))
@@ -538,6 +542,7 @@ namespace CastleBuilder
             }
             return null;
         }
+
         public void NotifyHierarchyChanged()
         {
             OutlinerCoordinator.Instance.NotifyHierarchyChanged();
