@@ -16,6 +16,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using ToolChest;
+
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -36,9 +37,7 @@ namespace MapRoom
         private uint _ghostMaterialTextureId = 0;
         private ShaderProgram _spriteShader;
         private Bitmap _colorBitmapCache = null;
-        private const int ColorLayerResolution = 4096; // High-res for native PNG quality (matches 2D sprite visual)
-
-        // NEW: only false when this instance is created by SceneEditorPanel
+        private const int ColorLayerResolution = 4096;
         private readonly bool _enableBrush;
 
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null, bool enableBrush = true)
@@ -47,7 +46,6 @@ namespace MapRoom
             _sceneData = sceneData;
             _isEditorContext = true;
             _enableBrush = enableBrush;
-
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
             if (_enableBrush)
             {
@@ -56,11 +54,16 @@ namespace MapRoom
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
         }
 
+        // NEW for Step 1: override binding hook from base
+        protected override void BindLiveState(ISceneStateProvider liveState)
+        {
+            base.BindLiveState(liveState);
+            // Painter will use this in later steps
+        }
+
         private void OnSelectBrushEvent(SelectBrushEvent e)
         {
             if (!_enableBrush) return;
-
-            // Guard against close-panel event that sends empty/default values
             if (string.IsNullOrWhiteSpace(e.BrushMode))
             {
                 _activeBrush = null;
@@ -88,17 +91,13 @@ namespace MapRoom
             {
                 SetActiveMaterial(e.MaterialPath);
             }
-            else if (_activeBrush.Mode == BrushMode.Paint)
-            {
-                // If switching to Paint without a material yet, keep last path if any
-            }
             if (TryPerformPlacementRaycast(out Vector3 hitPoint))
             {
                 _ghostPosition = hitPoint;
                 _ghostPosition.Z += 0.1f;
                 _ghostVisible = true;
             }
-            UpdateGhostMesh(); // immediate ghost update on any brush change (fixes square)
+            UpdateGhostMesh();
         }
 
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
@@ -186,7 +185,6 @@ namespace MapRoom
             }
             _useCustomScale = true;
             RebuildTerrainMesh();
-            // NO default white bitmap or texture - grid is the default (clear layer)
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
             float centerY = (_terrainHeight * _worldScaleZ) / 2f;
             _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
@@ -244,7 +242,6 @@ namespace MapRoom
                 }
                 _useCustomScale = true;
                 RebuildTerrainMesh();
-                // NO default white bitmap or texture - grid is the default (clear layer)
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerY = (_terrainHeight * _worldScaleZ) / 2f;
                 _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
@@ -310,7 +307,6 @@ namespace MapRoom
                 return;
             }
             base.LoadSceneData(data);
-            // NO default white bitmap or texture - grid is the default (clear layer)
         }
 
         public override void LoadTerrain(string path)
@@ -446,7 +442,6 @@ namespace MapRoom
                 float w = r * aspect;
                 float h = r;
                 float centerZ = GetInterpolatedHeight(_ghostPosition.X, _ghostPosition.Y);
-                // dense grid for exact smooth surface conformity (matches viewport)
                 int gridRes = 24;
                 var vertices = new List<float>();
                 var indices = new List<uint>();
@@ -553,24 +548,21 @@ namespace MapRoom
             {
                 if (_colorBitmapCache == null)
                 {
-                    // High-res canvas (4096x4096) for native PNG quality - exactly like 2D sprite stamps
                     _colorBitmapCache = new Bitmap(ColorLayerResolution, ColorLayerResolution);
                     using (var g = Graphics.FromImage(_colorBitmapCache))
                     {
-                        g.Clear(Color.Transparent); // clear = no color until painted
+                        g.Clear(Color.Transparent);
                     }
                     _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, _colorBitmapCache);
                     _hasColorTexture = _terrainTextureId != 0;
                 }
             }
             using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
-            // World position -> UV (terrain alignment only) - EXACT same math as the version where location was correct
             float u = Math.Clamp(worldPos.X / (_terrainWidth * _worldScaleX), 0f, 1f);
-            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f); // NO flip here - location remains exactly correct
+            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f);
             int centerTexX = (int)(u * _colorBitmapCache.Width);
             int centerTexY = (int)(v * _colorBitmapCache.Height);
-            // Brush world size now EXACTLY matches ghost preview quad size (brush.Size is radius, ghost uses full diameter)
-            float worldBrushSize = _activeBrush.Size * 2f; // diameter = 2 * radius to match ghost quad size
+            float worldBrushSize = _activeBrush.Size * 2f;
             int brushTexW = (int)((worldBrushSize / (_terrainWidth * _worldScaleX)) * _colorBitmapCache.Width);
             int brushTexH = (int)((worldBrushSize / (_terrainHeight * _worldScaleZ)) * _colorBitmapCache.Height);
             int destX = Math.Max(0, centerTexX - brushTexW / 2);
@@ -578,13 +570,12 @@ namespace MapRoom
             int destW = Math.Min(brushTexW, _colorBitmapCache.Width - destX);
             int destH = Math.Min(brushTexH, _colorBitmapCache.Height - destY);
             if (destW <= 0 || destH <= 0) return;
-            // Flip the material bitmap vertically so the stamped content matches the preview PNG orientation exactly (location unchanged)
             using (var flippedMaterial = materialBmp.Clone(new Rectangle(0, 0, materialBmp.Width, materialBmp.Height), materialBmp.PixelFormat))
             {
                 flippedMaterial.RotateFlip(RotateFlipType.RotateNoneFlipY);
                 using (var g = Graphics.FromImage(_colorBitmapCache))
                 {
-                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic; // smooth native quality
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
                     g.DrawImage(flippedMaterial, new Rectangle(destX, destY, destW, destH));
                 }
             }
