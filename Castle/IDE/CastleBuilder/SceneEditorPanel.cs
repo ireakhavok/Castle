@@ -10,6 +10,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
@@ -133,7 +134,6 @@ namespace CastleBuilder
             else
                 OutlinerCoordinator.Instance.NotifySelectionChanged("");
             NotifyHierarchyChanged();
-            Console.WriteLine($"[SceneEditorPanel] Entity selection updated: {string.Join(", ", _selectedEntityIds)}");
         }
 
         public void RefreshSceneList()
@@ -152,9 +152,6 @@ namespace CastleBuilder
             string baseHtml = File.ReadAllText(htmlPath);
             var scenes = _editorScene.GetAvailableScenes();
             string current = _editorScene.CurrentGameScene ?? "Main";
-            Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] === REFRESHING SELECTOR ===");
-            Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] CurrentGameScene = '{current}'");
-            Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] Available scenes ({scenes.Count}): {string.Join(", ", scenes)}");
             StringBuilder options = new StringBuilder();
             foreach (var sceneName in scenes)
             {
@@ -167,8 +164,6 @@ namespace CastleBuilder
             }
             string finalHtml = baseHtml.Replace("<!-- Populated dynamically -->", options.ToString());
             _uiOverlay.LoadUI(finalHtml);
-            Console.WriteLine($"[SceneEditorPanel] Scene selector refreshed - {scenes.Count} scenes, current='{current}'");
-            Console.WriteLine($"[SceneEditorPanel.UpdateSceneSelectorUI] === REFRESH COMPLETE ===");
         }
 
         private void HandleDataHook(string hook)
@@ -180,33 +175,21 @@ namespace CastleBuilder
                 {
                     string newScene = select.Value.Trim();
                     string oldScene = _editorScene.CurrentGameScene ?? "Main";
-                    Console.WriteLine($"[SceneEditorPanel] === SceneSelected HOOK FIRED ===");
-                    Console.WriteLine($"[SceneEditorPanel] select.Value = '{newScene}'");
-                    Console.WriteLine($"[SceneEditorPanel] _editorScene.CurrentGameScene = '{oldScene}'");
                     if (newScene != oldScene)
                     {
-                        Console.WriteLine($"[SceneEditorPanel] → Calling _editorScene.SwitchGameScene('{newScene}')");
                         _editorScene.SwitchGameScene(newScene);
                         _pendingSceneSelectorUpdate = true;
-                        Console.WriteLine($"[SceneEditorPanel] Deferred refresh flagged for next Update() frame");
                     }
-                    else
-                    {
-                        Console.WriteLine("[SceneEditorPanel] Same scene - ignoring");
-                    }
-                    Console.WriteLine($"[SceneEditorPanel] === SceneSelected HOOK END ===");
                 }
                 return;
             }
             else if (hook == "CreateNewScene")
             {
-                Console.WriteLine("[SceneEditorPanel] CreateNewScene hook - creating new scene");
                 MenuCommands.CreateNewScene(_renderContext, _controlContext, _window, _eventBus);
                 UpdateSceneSelectorUI();
             }
             else if (hook == "OpenPlaceEntityBrowser")
             {
-                Console.WriteLine("[SceneEditorPanel] OpenPlaceEntityBrowser hook");
                 string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
                 var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx", ".json");
                 fileSelector.UserData = "PlaceEntity";
@@ -218,7 +201,7 @@ namespace CastleBuilder
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
-            Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placing asset: {e.Path}");
+
             string ext = Path.GetExtension(e.Path).ToLowerInvariant();
             string originalKey = Path.GetFileNameWithoutExtension(e.Path).ToLower();
             string packId = originalKey + "_pack";
@@ -233,27 +216,24 @@ namespace CastleBuilder
             {
                 packId = _modelManager.RegisterFBXAsPackInMemory(e.Path);
             }
+
             Vector3 placePos = new Vector3(100f, 100f, 10f);
             if (_editorScene.TryGetPlacementPosition(out var hitPoint))
             {
                 placePos = hitPoint + new Vector3(0, 0, 0.1f);
-                Console.WriteLine($"[SceneEditorPanel] Raycast hit at {placePos} - using as placement position");
             }
+
             var level = ProjectSettings.Current.CurrentLevel;
             if (level == null)
             {
                 string sceneName = _editorScene.CurrentGameScene ?? "Main";
-                Console.WriteLine($"[SceneEditorPanel] No CurrentLevel - creating fresh Level for scene '{sceneName}'");
                 level = new Level(_eventBus) { Name = sceneName };
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
-            if (level == null)
-            {
-                Console.WriteLine("[SceneEditorPanel] ERROR: No CurrentLevel - cannot place entity");
-                return;
-            }
+
             var entity = level.PlaceEntity(placePos, placeType);
             entity.Type = placeType;
+
             if (_modelManager.TryGetModel(packId, out var fbxModel) || _modelManager.TryGetModel(originalKey, out fbxModel))
             {
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
@@ -264,7 +244,6 @@ namespace CastleBuilder
                     physics.Size = modelComp.Model.GetBoundingSize();
                     physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                     physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
-                    Console.WriteLine($"[SceneEditorPanel] Set model bounds Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) for new placed entity {entity.Id}");
                 }
             }
             else if (ext == ".json")
@@ -272,11 +251,12 @@ namespace CastleBuilder
                 var modelComp = new ModelComponent { Key = packId };
                 entity.AddComponent(modelComp);
             }
-            var evt = new EntityPlacedEvent(entity.Id, placeType, placePos);
-            if (placeType == "FBX") evt.TexturePath = e.Path;
-            _eventBus.Publish(evt);
-            _editorScene.SyncCurrentLevelToRuntimeServer();
-            Console.WriteLine($"[SceneEditorPanel] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos} into scene '{level.Name}'");
+
+            // FIXED: direct add to runtime proxy - prevents duplication on full sync
+            var clientProxy = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(_editorScene) as ClientGameServerProxy;
+            clientProxy?.AddEntity(entity);
+
+            Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos}");
         }
 
         public void HandleUIClick(HtmlElement elem)
@@ -295,33 +275,32 @@ namespace CastleBuilder
             if (_pendingSceneSelectorUpdate)
             {
                 _pendingSceneSelectorUpdate = false;
-                Console.WriteLine($"[SceneEditorPanel.Update] === DEFERRED SCENE SELECTOR REFRESH TRIGGERED ===");
-                Console.WriteLine($"[SceneEditorPanel.Update] CurrentGameScene right before refresh = '{_editorScene.CurrentGameScene ?? "null"}'");
                 UpdateSceneSelectorUI();
-                Console.WriteLine($"[SceneEditorPanel.Update] === DEFERRED REFRESH COMPLETE ===");
             }
+
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             bool ctrlPressed = _controlContext.GetKey(_window, Key.LeftControl) == InputAction.Press ||
                                _controlContext.GetKey(_window, Key.RightControl) == InputAction.Press;
             bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
+
             if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)
             {
                 float header = HasTitleBar ? HeaderHeight : 0f;
                 _isBoxSelecting = true;
                 _boxStart = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - header);
                 _boxEnd = _boxStart;
-                Console.WriteLine($"[SceneEditorPanel] Right mouse press - potential box drag started at {_boxStart}");
             }
+
             if (_isBoxSelecting && _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press)
             {
                 float header = HasTitleBar ? HeaderHeight : 0f;
                 _boxEnd = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - header);
             }
+
             if (_isBoxSelecting && _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Release)
             {
                 _isBoxSelecting = false;
                 float dragDist = Vector2.Distance(_boxStart, _boxEnd);
-                Console.WriteLine($"[SceneEditorPanel] Right mouse release - drag distance = {dragDist:F2} px");
                 if (dragDist >= MinDragDistance)
                 {
                     PerformBoxSelection(ctrlPressed);
@@ -340,18 +319,19 @@ namespace CastleBuilder
                     {
                         var evt = new EntitySelectedEvent(entityId, hitPoint, ctrlPressed);
                         _eventBus.Publish(evt);
-                        Console.WriteLine($"[SceneEditorPanel] Right-click selected entity {entityId} at {hitPoint} (additive: {ctrlPressed})");
                     }
                     else
                     {
-                        Console.WriteLine("[SceneEditorPanel] Raycast found no entity hit - clearing selection");
                         _selectedEntityIds.Clear();
                         NotifyHierarchyChanged();
                     }
                 }
             }
+
             _wasRightPressedLastFrame = rightPressedThisFrame;
+
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
+
             if (_cameraMode)
             {
                 Vector2 sceneMouse = absMousePos - Position - new Vector2(0, TitleHeight);
@@ -375,7 +355,6 @@ namespace CastleBuilder
             var selected = _editorScene.PerformBoxSelection(startNdc, endNdc, contentW, contentH);
             var evt = new EntitySelectedEvent { SelectedEntityIds = selected, Additive = additive };
             _eventBus.Publish(evt);
-            Console.WriteLine($"[SceneEditorPanel] Box selection completed - {selected.Count} entities (additive: {additive})");
         }
 
         protected override void RenderInnerContent()
@@ -397,6 +376,7 @@ namespace CastleBuilder
                 }
             }
             if (entities == null || entities.Count == 0) return;
+
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
             Matrix4x4 view = Matrix4x4.Identity;
@@ -415,6 +395,7 @@ namespace CastleBuilder
                 if (aspectField != null) aspect = (float)aspectField.GetValue(active);
             }
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
+
             foreach (var entity in entities)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();
@@ -427,13 +408,11 @@ namespace CastleBuilder
                         if (ModelManager.Instance.TryGetModel(modelComp.Key, out fbxModel))
                         {
                             modelComp.Model = fbxModel;
-                            Console.WriteLine($"[SceneEditorPanel] Hydrated missing Model reference for restored entity '{modelComp.Key}'");
                             if (physics != null && modelComp.Model != null)
                             {
                                 physics.Size = modelComp.Model.GetBoundingSize();
                                 physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                                 physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
-                                Console.WriteLine($"[SceneEditorPanel] Updated physics.Size/LocalAABB from model bounds for restored entity '{modelComp.Key}' : Size={physics.Size} AABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm})");
                             }
                         }
                     }
@@ -477,7 +456,6 @@ namespace CastleBuilder
                 string savedScene = sceneNameElem.GetString();
                 if (!string.IsNullOrEmpty(savedScene))
                 {
-                    Console.WriteLine($"[SceneEditorPanel.LoadPanelState] Restoring saved scene '{savedScene}' from panel state");
                     _editorScene.SwitchGameScene(savedScene);
                     _pendingSceneSelectorUpdate = true;
                 }
@@ -486,7 +464,6 @@ namespace CastleBuilder
 
         public override void OnContentFocusGained()
         {
-            Console.WriteLine("[SceneEditorPanel] OnContentFocusGained → notifying OutlinerCoordinator (SceneEditor is now active provider)");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
         }
 
@@ -502,6 +479,7 @@ namespace CastleBuilder
                 Children = { "level-info", "entities" }
             };
             nodes.Add(root);
+
             var levelInfo = new OutlinerNode
             {
                 Id = "level-info",
@@ -510,8 +488,10 @@ namespace CastleBuilder
                 ParentId = "root"
             };
             nodes.Add(levelInfo);
+
             var entitiesParent = new OutlinerNode { Id = "entities", Label = "Entities", Icon = "🧱", ParentId = "root" };
             nodes.Add(entitiesParent);
+
             var entities = _editorScene.GetEntities();
             foreach (var entity in entities)
             {
@@ -526,6 +506,7 @@ namespace CastleBuilder
                 nodes.Add(node);
                 entitiesParent.Children.Add(node.Id);
             }
+
             Console.WriteLine($"[SceneEditorPanel.GetCurrentHierarchy] Returned {nodes.Count} nodes (root + {entities.Count} entities)");
             return nodes;
         }
