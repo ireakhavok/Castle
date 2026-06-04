@@ -343,7 +343,29 @@ namespace MapRoom
                     _sceneData.Terrain.ColorTexturePath = path;
                 }
             }
-            SyncColorTextureFromLiveState(); // push to live state
+
+            // PUSH LOADED COLOR TEXTURE TO SHARED LIVE STATE (single source of truth on load for preview)
+            if (_liveState is LiveSceneState live)
+            {
+                if (_colorBitmapCache != null)
+                {
+                    live.ColorBitmap?.Dispose();
+                    live.ColorBitmap = (Bitmap)_colorBitmapCache.Clone();
+                    live.SyncColorTextureIfNeeded();
+                    Console.WriteLine($"[TerrainCreatorScene] Pushed loaded color texture from cache '{path}' to shared LiveSceneState for preview");
+                }
+                else if (!string.IsNullOrEmpty(path))
+                {
+                    string full = ResolveFullPath(path);
+                    if (File.Exists(full))
+                    {
+                        live.ColorBitmap?.Dispose();
+                        live.ColorBitmap = new Bitmap(full);
+                        live.SyncColorTextureIfNeeded();
+                        Console.WriteLine($"[TerrainCreatorScene] Pushed loaded color texture '{path}' to shared LiveSceneState for preview");
+                    }
+                }
+            }
         }
 
         public string GetColorTexturePath()

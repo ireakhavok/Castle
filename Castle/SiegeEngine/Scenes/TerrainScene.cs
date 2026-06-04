@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Numerics;
 
 namespace SiegeEngine.Scenes
@@ -430,6 +431,19 @@ namespace SiegeEngine.Scenes
                 _colorGeoRef = GeoTiffParser.ParseGeoReference(path);
                 _hasColorTexture = _colorGeoRef.IsValid;
                 BuildTexturedMesh();
+            }
+
+            // PUSH LOADED COLOR TEXTURE TO SHARED LIVE STATE (single source of truth on load)
+            if (_liveState is LiveSceneState live && !string.IsNullOrEmpty(path))
+            {
+                string full = path; // resolve handled in caller (TerrainCreatorScene)
+                if (File.Exists(full))
+                {
+                    live.ColorBitmap?.Dispose();
+                    live.ColorBitmap = new Bitmap(full);
+                    live.SyncColorTextureIfNeeded();
+                    Console.WriteLine($"[TerrainScene] Pushed loaded color texture '{path}' to shared LiveSceneState for scene '{SceneName}'");
+                }
             }
         }
 
