@@ -337,11 +337,13 @@ namespace CastleBuilder
                     cachedLevel.Terrain.HeightmapPath = tcs.GetHeightmap() != null
                         ? $"Assets/Terrain/{terrainName}.tif"
                         : "";
+                    cachedLevel.Terrain.ColorTexturePath = tcs.GetColorTexturePath();
                 }
                 if (_projectData?.Scenes != null && _projectData.Scenes.TryGetValue(_currentGameSceneName, out var sceneData))
                 {
                     if (sceneData.Terrain == null) sceneData.Terrain = new TerrainData();
                     sceneData.Terrain.HeightmapPath = cachedLevel?.Terrain?.HeightmapPath ?? "";
+                    sceneData.Terrain.ColorTexturePath = cachedLevel?.Terrain?.ColorTexturePath ?? "";
                     ProjectSettings.Current.SetCurrentTerrain(sceneData, tcs.GetHeightmap(), _currentGameSceneName, sceneData.Terrain.HeightmapPath);
                 }
             }

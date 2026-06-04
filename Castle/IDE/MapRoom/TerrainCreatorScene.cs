@@ -253,6 +253,7 @@ namespace MapRoom
             _sceneData = data;
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
             _paintData = ProjectSettings.Current.GetOrCreatePaintData(sceneName, _terrainWidth > 0 ? _terrainWidth : 200, _terrainHeight > 0 ? _terrainHeight : 200);
+            SyncFromLiveState(); // ensure shared live state is pulled on load
             if (data?.Terrain != null && !string.IsNullOrEmpty(data.Terrain.HeightmapPath))
             {
                 LoadTerrain(data.Terrain.HeightmapPath);
@@ -305,6 +306,7 @@ namespace MapRoom
                 return;
             }
             base.LoadSceneData(data);
+            SyncFromLiveState(); // final sync after base load
         }
 
         public override void LoadTerrain(string path)
@@ -321,6 +323,7 @@ namespace MapRoom
                 _sceneData.Terrain.HeightmapPath = path;
             }
             RebuildTerrainMesh();
+            SyncFromLiveState(); // ensure live state reflects loaded heightmap
         }
 
         public new void SetColorTexture(string path)
@@ -335,7 +338,17 @@ namespace MapRoom
                 {
                     _colorBitmapCache = new Bitmap(full);
                 }
+                if (_sceneData?.Terrain != null)
+                {
+                    _sceneData.Terrain.ColorTexturePath = path;
+                }
             }
+            SyncColorTextureFromLiveState(); // push to live state
+        }
+
+        public string GetColorTexturePath()
+        {
+            return _sceneData?.Terrain?.ColorTexturePath ?? string.Empty;
         }
 
         public void SaveTerrain(string terrainName)
@@ -374,12 +387,30 @@ namespace MapRoom
             {
                 string relativePath = Path.GetRelativePath(projectPath, tifPath);
                 _sceneData.Terrain.HeightmapPath = relativePath;
+                // Ensure color texture reference is persisted
+                if (_colorBitmapCache != null || !string.IsNullOrEmpty(_sceneData.Terrain.ColorTexturePath))
+                {
+                    string colorRelative = Path.GetRelativePath(projectPath, pngPath);
+                    _sceneData.Terrain.ColorTexturePath = colorRelative;
+                }
             }
             if (_paintData != null)
             {
                 _paintData.SaveToDisk(projectPath, terrainName);
             }
             RebuildTerrainMesh();
+            // Flush to shared live state
+            if (_liveState is LiveSceneState live)
+            {
+                live.Heightmap = _heightmap;
+                live.HeightmapVersion++;
+                if (_colorBitmapCache != null)
+                {
+                    live.ColorBitmap?.Dispose();
+                    live.ColorBitmap = (Bitmap)_colorBitmapCache.Clone();
+                    live.SyncColorTextureIfNeeded();
+                }
+            }
         }
 
         public void Export2D(string projectAssetsDir)
@@ -684,6 +715,7 @@ namespace MapRoom
             {
                 level.Terrain = _sceneData.Terrain;
             }
+            SyncFromLiveState(); // ensure shared state is always synced
         }
 
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)

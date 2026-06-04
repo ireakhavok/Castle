@@ -407,6 +407,14 @@ namespace SiegeEngine.Scenes
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerY = (_terrainHeight * _worldScaleZ) / 2f;
                 _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
+
+                // PUSH LOADED HEIGHTMAP TO SHARED LIVE STATE (single source of truth on load)
+                if (_liveState is LiveSceneState live && _heightmap != null)
+                {
+                    live.Heightmap = _heightmap;
+                    live.HeightmapVersion++;
+                    Console.WriteLine($"[TerrainScene] Pushed loaded heightmap ({_terrainWidth}x{_terrainHeight}) to shared LiveSceneState for scene '{SceneName}'");
+                }
             }
             catch (Exception ex)
             {

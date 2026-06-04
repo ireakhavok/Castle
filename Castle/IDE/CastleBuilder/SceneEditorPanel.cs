@@ -217,11 +217,13 @@ namespace CastleBuilder
                 packId = _modelManager.RegisterFBXAsPackInMemory(e.Path);
             }
 
-            Vector3 placePos = new Vector3(100f, 100f, 10f);
-            if (_editorScene.TryGetPlacementPosition(out var hitPoint))
+            if (!_editorScene.TryGetPlacementPosition(out var hitPoint))
             {
-                placePos = hitPoint + new Vector3(0, 0, 0.1f);
+                Console.WriteLine("[SceneEditorPanel.OnFileSelectedForPlacement] Raycast failed - no valid placement position (aborting to prevent erroneous default entity)");
+                return;
             }
+
+            Vector3 placePos = hitPoint + new Vector3(0, 0, 0.1f);
 
             var level = ProjectSettings.Current.CurrentLevel;
             if (level == null)
