@@ -53,6 +53,7 @@ namespace SiegeEngine.Scenes
         public virtual void BindLiveState(ISceneStateProvider liveState)
         {
             _liveState = liveState;
+            _lastColorVersion = -1;   // ← add this single line
         }
         protected virtual void SyncFromLiveState()
         {
