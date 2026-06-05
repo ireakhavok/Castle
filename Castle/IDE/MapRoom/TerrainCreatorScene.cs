@@ -16,7 +16,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using ToolChest;
-
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -39,7 +38,6 @@ namespace MapRoom
         private Bitmap _colorBitmapCache = null;
         private const int ColorLayerResolution = 4096;
         private readonly bool _enableBrush;
-
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null, bool enableBrush = true)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -53,12 +51,34 @@ namespace MapRoom
             }
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
         }
-
         public override void BindLiveState(ISceneStateProvider liveState)
         {
             base.BindLiveState(liveState);
         }
-
+        // NEW: idempotent refresh for cache-hit re-selects (future-proof single source of truth)
+        public void RefreshFromLiveState(SceneData sd)
+        {
+            _sceneData = sd;
+            SyncFromLiveState();
+            if (sd?.Terrain != null)
+            {
+                if (!string.IsNullOrEmpty(sd.Terrain.HeightmapPath))
+                    LoadTerrain(sd.Terrain.HeightmapPath);
+                if (!string.IsNullOrEmpty(sd.Terrain.ColorTexturePath))
+                {
+                    SetColorTexture(sd.Terrain.ColorTexturePath);
+                }
+                else
+                {
+                    SetColorTexture(null);
+                }
+            }
+            // rebuild only if heightmap actually changed
+            if (sd?.Terrain != null || _heightmap == null)
+            {
+                RebuildTerrainMesh();
+            }
+        }
         private void OnSelectBrushEvent(SelectBrushEvent e)
         {
             if (!_enableBrush) return;
@@ -97,7 +117,6 @@ namespace MapRoom
             }
             UpdateGhostMesh();
         }
-
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -105,9 +124,7 @@ namespace MapRoom
             Vector3 rayDir = GetLookDirection();
             return RayTerrainIntersect(rayOrigin, rayDir, out hitPoint);
         }
-
         public Vector3 GetCameraPosition() => _flyCamera.Position;
-
         public Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
@@ -118,14 +135,11 @@ namespace MapRoom
                 MathF.Sin(pitchRad)
             ));
         }
-
         public Matrix4x4 GetViewMatrix() => _flyCamera.ViewMatrix;
-
         public bool TryTerrainRaycast(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             return RayTerrainIntersect(origin, dir, out hitPoint);
         }
-
         public bool GetMouseRay(Vector2 normalizedMouse, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             rayOrigin = Vector3.Zero;
@@ -147,12 +161,10 @@ namespace MapRoom
             rayDir = Vector3.Normalize(Vector3.Transform(eyeFar, invView) - rayOrigin);
             return true;
         }
-
         public bool GetMouseRay(Vector2 normalizedMouse, float viewportWidth, float viewportHeight, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             return base.GetMouseRay(normalizedMouse, viewportWidth, viewportHeight, out rayOrigin, out rayDir);
         }
-
         private string ResolveFullPath(string inputPath)
         {
             if (string.IsNullOrEmpty(inputPath)) return inputPath;
@@ -162,7 +174,6 @@ namespace MapRoom
             string fullPath = Path.Combine(projectPath, inputPath);
             return Path.GetFullPath(fullPath);
         }
-
         public void CreateBlank()
         {
             _terrainWidth = 200;
@@ -189,7 +200,6 @@ namespace MapRoom
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
-
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -247,7 +257,6 @@ namespace MapRoom
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
-
         public override void LoadSceneData(SceneData data)
         {
             _sceneData = data;
@@ -308,7 +317,6 @@ namespace MapRoom
             base.LoadSceneData(data);
             SyncFromLiveState(); // final sync after base load
         }
-
         public override void LoadTerrain(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -325,25 +333,45 @@ namespace MapRoom
             RebuildTerrainMesh();
             SyncFromLiveState(); // ensure live state reflects loaded heightmap
         }
-
         public new void SetColorTexture(string path)
         {
+            // always clear previous color first
+            if (_colorBitmapCache != null)
+            {
+                _colorBitmapCache.Dispose();
+                _colorBitmapCache = null;
+            }
+            if (_terrainTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_terrainTextureId);
+                _terrainTextureId = 0;
+            }
+            _hasColorTexture = false;
+            if (string.IsNullOrEmpty(path))
+            {
+                // blank color = transparent
+                _colorBitmapCache = new Bitmap(ColorLayerResolution, ColorLayerResolution);
+                using (var g = Graphics.FromImage(_colorBitmapCache))
+                {
+                    g.Clear(System.Drawing.Color.Transparent);
+                }
+                _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, _colorBitmapCache);
+                _hasColorTexture = true;
+                BuildTexturedMesh();
+                return;
+            }
             base.SetColorTexture(path);
             _colorBitmapCache?.Dispose();
             _colorBitmapCache = null;
-            if (!string.IsNullOrEmpty(path))
+            string full = ResolveFullPath(path);
+            if (File.Exists(full))
             {
-                string full = ResolveFullPath(path);
-                if (File.Exists(full))
-                {
-                    _colorBitmapCache = new Bitmap(full);
-                }
-                if (_sceneData?.Terrain != null)
-                {
-                    _sceneData.Terrain.ColorTexturePath = path;
-                }
+                _colorBitmapCache = new Bitmap(full);
             }
-
+            if (_sceneData?.Terrain != null)
+            {
+                _sceneData.Terrain.ColorTexturePath = path;
+            }
             // PUSH LOADED COLOR TEXTURE TO SHARED LIVE STATE (single source of truth on load for preview)
             if (_liveState is LiveSceneState live)
             {
@@ -356,7 +384,6 @@ namespace MapRoom
                 }
                 else if (!string.IsNullOrEmpty(path))
                 {
-                    string full = ResolveFullPath(path);
                     if (File.Exists(full))
                     {
                         live.ColorBitmap?.Dispose();
@@ -367,12 +394,10 @@ namespace MapRoom
                 }
             }
         }
-
         public string GetColorTexturePath()
         {
             return _sceneData?.Terrain?.ColorTexturePath ?? string.Empty;
         }
-
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -434,14 +459,12 @@ namespace MapRoom
                 }
             }
         }
-
         public void Export2D(string projectAssetsDir)
         {
             string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
             string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
             TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
         }
-
         private void SaveAsPng(string path)
         {
             if (_colorBitmapCache != null)
@@ -465,24 +488,20 @@ namespace MapRoom
             }
             bmp.Save(path, ImageFormat.Png);
         }
-
         public void SetActiveBrush(ToolChest.Brush brush)
         {
             _activeBrush = brush;
             UpdateGhostMesh();
         }
-
         public ToolChest.Brush GetActiveBrush()
         {
             return _activeBrush;
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
-
         private void UpdateGhostMesh()
         {
             if (_ghostBuffer == null) return;
@@ -576,7 +595,6 @@ namespace MapRoom
             }
             _ghostBuffer.UpdateCustomWithUV(verticesFallback, indicesFallback);
         }
-
         public void SetActiveMaterial(string albedoPath)
         {
             if (!_enableBrush) return;
@@ -592,7 +610,6 @@ namespace MapRoom
             }
             UpdateGhostMesh();
         }
-
         private void PaintAlbedo(Vector3 worldPos)
         {
             if (_colorBitmapCache == null || string.IsNullOrEmpty(_activeMaterialPath) || _activeBrush == null || _activeBrush.Mode != BrushMode.Paint)
@@ -630,17 +647,14 @@ namespace MapRoom
                     g.DrawImage(flippedMaterial, new Rectangle(destX, destY, destW, destH));
                 }
             }
-
             if (_liveState is LiveSceneState live)
             {
                 live.ColorBitmap?.Dispose();
                 live.ColorBitmap = (Bitmap)_colorBitmapCache.Clone();
                 live.SyncColorTextureIfNeeded();
             }
-
             UpdateGPUColorTexture();
         }
-
         private void UpdateGPUColorTexture()
         {
             if (_colorBitmapCache == null || _terrainTextureId == 0) return;
@@ -661,18 +675,15 @@ namespace MapRoom
             _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
             _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
         }
-
         protected override void SyncColorTextureFromLiveState()
         {
             base.SyncColorTextureFromLiveState();
-
             if (_liveState is LiveSceneState live && live.ColorBitmap != null)
             {
                 _colorBitmapCache?.Dispose();
                 _colorBitmapCache = (Bitmap)live.ColorBitmap.Clone();
             }
         }
-
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -739,7 +750,6 @@ namespace MapRoom
             }
             SyncFromLiveState(); // ensure shared state is always synced
         }
-
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -767,7 +777,6 @@ namespace MapRoom
             }
             return false;
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -818,7 +827,6 @@ namespace MapRoom
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
-
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -838,14 +846,12 @@ namespace MapRoom
             _spriteShader?.Dispose();
             base.Dispose();
         }
-
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
-
         private void ApplyModification(TerrainModifiedEvent e)
         {
             var brush = new ToolChest.Brush
@@ -863,7 +869,6 @@ namespace MapRoom
                 UpdateAffectedVertices(e.WorldPos, e.Radius);
             }
         }
-
         public new float[,] GetHeightmap() => _heightmap;
     }
 }

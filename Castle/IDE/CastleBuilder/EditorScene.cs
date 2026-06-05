@@ -18,7 +18,6 @@ using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using ToolChest;
-
 namespace CastleBuilder
 {
     public class EditorScene : Scene
@@ -28,23 +27,17 @@ namespace CastleBuilder
         private GameScene _activeGameScene;
         private readonly ProjectSceneCache _sceneCache = new ProjectSceneCache();
         private GameScene _pendingDisposeScene;
-
         public static EditorScene Current { get; private set; }
-
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             Current = this;
             LoadProjectData();
         }
-
         public ProjectData GetProjectData() => _projectData;
-
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
-
         public bool TryGetPlacementPosition(out Vector3 position)
         {
             position = Vector3.Zero;
@@ -54,7 +47,6 @@ namespace CastleBuilder
             }
             return false;
         }
-
         public bool TryPerformEntitySelectionRaycast(Vector2 normalizedMouse, float contentW, float contentH, out int entityId, out Vector3 hitPoint, bool cycle = false)
         {
             entityId = -1;
@@ -87,7 +79,6 @@ namespace CastleBuilder
             hitPoint = best.point;
             return true;
         }
-
         public List<int> PerformBoxSelection(Vector2 ndcStart, Vector2 ndcEnd, float contentW, float contentH)
         {
             var selected = new List<int>();
@@ -107,7 +98,6 @@ namespace CastleBuilder
             }
             return selected;
         }
-
         private bool IsBoxInFrustum(TerrainCreatorScene tcs, float minX, float maxX, float minY, float maxY, float contentW, float contentH, PhysicsComponent physics)
         {
             Vector3 center = physics.Position;
@@ -139,7 +129,6 @@ namespace CastleBuilder
             }
             return false;
         }
-
         private bool ProjectWorldToScreen(Vector3 worldPos, float contentW, float contentH, out Vector2 screenPos)
         {
             screenPos = Vector2.Zero;
@@ -155,7 +144,6 @@ namespace CastleBuilder
             );
             return true;
         }
-
         public void SyncCurrentLevelToRuntimeServer()
         {
             var level = ProjectSettings.Current.CurrentLevel;
@@ -170,7 +158,6 @@ namespace CastleBuilder
                 }
             }
         }
-
         public void LoadProjectData()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -205,7 +192,6 @@ namespace CastleBuilder
             _pendingDisposeScene = null;
             ActivateScene(_currentGameSceneName);
         }
-
         private void ActivateScene(string sceneName)
         {
             Level level = ProjectSettings.Current.CurrentLevel;
@@ -215,6 +201,8 @@ namespace CastleBuilder
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
             RegisterAllAssetPacks(level);
+            SceneData sd = null;
+            _projectData?.Scenes?.TryGetValue(sceneName, out sd);
             if (_sceneCache.TryGet(sceneName, out var cachedScene, out var cachedLevel))
             {
                 if (_activeGameScene != null && _activeGameScene != cachedScene)
@@ -222,6 +210,22 @@ namespace CastleBuilder
                 _activeGameScene = cachedScene;
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
+                // FULL SYNC ON CACHE HIT (exact minimal fix for re-select)
+                if (_activeGameScene is TerrainCreatorScene cachedTcs)
+                {
+                    cachedTcs.LoadSceneData(sd);
+                    ProjectStateManager.Current.BindSceneToLiveState(sceneName, cachedTcs);
+                    ProjectSettings.Current.SetCurrentTerrain(sd, cachedTcs.GetHeightmap(), sceneName);
+                    if (sd?.Terrain?.ColorTexturePath != null)
+                    {
+                        cachedTcs.SetColorTexture(sd.Terrain.ColorTexturePath);
+                    }
+                    else
+                    {
+                        // clear color if none (prevents stale color from previous scene)
+                        cachedTcs.SetColorTexture(null);
+                    }
+                }
                 SyncCurrentLevelToRuntimeServer();
                 return;
             }
@@ -229,8 +233,8 @@ namespace CastleBuilder
             if (_projectData != null) _projectData.LastOpenedScene = sceneName;
             if (_activeGameScene != null)
                 _pendingDisposeScene = _activeGameScene;
-            bool isTerrainScene = _projectData.Scenes.TryGetValue(sceneName, out var sd) &&
-                                  (sd.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sd.Terrain?.HeightmapPath) || sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase));
+            bool isTerrainScene = _projectData.Scenes.TryGetValue(sceneName, out var sceneData) &&
+                                  (sceneData.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath) || sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase));
             _activeGameScene = isTerrainScene
                 ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sd, enableBrush: false)
                 : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd);
@@ -241,23 +245,26 @@ namespace CastleBuilder
                 ProjectStateManager.Current.BindSceneToLiveState(sceneName, tcs);
                 float[,] cached = ProjectSettings.Current.GetUnsavedHeightmap(sceneName);
                 float[,] heightmapToUse = cached ?? ProjectSettings.Current.CurrentHeightmap ?? tcs.GetHeightmap();
-                ProjectSettings.Current.SetCurrentTerrain(sd, heightmapToUse, sceneName, sd.Terrain?.HeightmapPath);
-                if (!string.IsNullOrEmpty(sd.Terrain?.HeightmapPath))
+                ProjectSettings.Current.SetCurrentTerrain(sd, heightmapToUse, sceneName, sd?.Terrain?.HeightmapPath);
+                if (!string.IsNullOrEmpty(sd?.Terrain?.HeightmapPath))
                     tcs.LoadTerrain(sd.Terrain.HeightmapPath);
                 else if (heightmapToUse != null)
                 {
                     tcs.LoadSceneData(new SceneData { Name = sceneName, Terrain = new TerrainData() });
                 }
-                if (!string.IsNullOrEmpty(sd.Terrain?.ColorTexturePath))
+                if (!string.IsNullOrEmpty(sd?.Terrain?.ColorTexturePath))
                 {
                     tcs.SetColorTexture(sd.Terrain.ColorTexturePath);
                     Console.WriteLine($"[EditorScene] Synced color texture '{sd.Terrain.ColorTexturePath}' to TerrainCreatorScene for scene '{sceneName}'");
+                }
+                else
+                {
+                    tcs.SetColorTexture(null);
                 }
             }
             SyncCurrentLevelToRuntimeServer();
             _sceneCache.Store(sceneName, _activeGameScene, level);
         }
-
         private void RegisterAllAssetPacks(Level level)
         {
             if (level == null || ModelManager.Instance == null) return;
@@ -303,7 +310,6 @@ namespace CastleBuilder
                 }
             }
         }
-
         private Level CreateOrLoadLevel(string sceneName)
         {
             if (_projectData.Scenes.TryGetValue(sceneName, out var sceneData))
@@ -323,7 +329,6 @@ namespace CastleBuilder
             }
             return new Level(_eventBus) { Name = sceneName };
         }
-
         public void FlushActiveSceneData()
         {
             if (_sceneCache.TryGet(_currentGameSceneName, out var cachedScene, out var cachedLevel) &&
@@ -354,13 +359,10 @@ namespace CastleBuilder
             }
             RegisterAllAssetPacks(level);
         }
-
         public void SwitchGameScene(string sceneName)
         {
-            if (sceneName == _currentGameSceneName) return;
             ActivateScene(sceneName);
         }
-
         public override void Update(float deltaTime)
         {
             if (_pendingDisposeScene != null)
@@ -370,7 +372,6 @@ namespace CastleBuilder
             }
             _activeGameScene?.Update(deltaTime);
         }
-
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
         {
             if (_activeGameScene is TerrainCreatorScene terrainScene)
@@ -378,7 +379,6 @@ namespace CastleBuilder
             else if (_activeGameScene != null)
                 _activeGameScene.Update(deltaTime);
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             if (!(_activeGameScene is TerrainCreatorScene))
@@ -388,13 +388,11 @@ namespace CastleBuilder
             }
             _activeGameScene?.Render(entities ?? GetEntities());
         }
-
         public override void Resize(int width, int height)
         {
             base.Resize(width, height);
             _activeGameScene?.Resize(width, height);
         }
-
         public List<string> GetAvailableScenes()
         {
             var keys = _projectData?.Scenes?.Keys.ToList() ?? new List<string>();
@@ -402,9 +400,7 @@ namespace CastleBuilder
             foreach (var key in ProjectSettings.Current.GetUnsavedHeightmapKeys()) scenes.Add(key);
             return scenes.ToList();
         }
-
         public string CurrentGameScene => _currentGameSceneName;
-
         public override void Dispose()
         {
             Current = null;
@@ -413,7 +409,6 @@ namespace CastleBuilder
             _sceneCache.Clear();
             base.Dispose();
         }
-
         private class BasicGameScene : GameScene
         {
             public BasicGameScene(IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb, SceneData data)

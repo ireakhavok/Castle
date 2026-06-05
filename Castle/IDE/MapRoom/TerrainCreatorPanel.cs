@@ -300,7 +300,6 @@ namespace MapRoom
             if (currentLevelName != null && currentLevelName != _lastActiveSceneName)
             {
                 _lastActiveSceneName = currentLevelName;
-                Console.WriteLine($"[TerrainCreatorPanel] Active scene changed to '{currentLevelName}' — switching terrain data");
                 SwitchToNewSceneData();
             }
             float header = HasTitleBar ? HeaderHeight : 0f;
@@ -318,17 +317,21 @@ namespace MapRoom
         {
             var sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
+            // ENSURE painter is bound to correct live state for this scene
+            ProjectStateManager.Current.BindSceneToLiveState(sceneData.Name, _terrainScene);
             _terrainScene.LoadSceneData(sceneData);
             if (!string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
             {
                 _terrainScene.LoadTerrain(sceneData.Terrain.HeightmapPath);
             }
-            // Minimal targeted fix for color texture on scene switch (painter path)
-            // This mirrors exactly what EditorScene does for preview
             if (!string.IsNullOrEmpty(sceneData.Terrain?.ColorTexturePath))
             {
                 _terrainScene.SetColorTexture(sceneData.Terrain.ColorTexturePath);
                 Console.WriteLine($"[TerrainCreatorPanel] Synced color texture '{sceneData.Terrain.ColorTexturePath}' to painter for scene '{sceneData.Name}'");
+            }
+            else
+            {
+                _terrainScene.SetColorTexture(null);
             }
             Console.WriteLine($"[TerrainCreatorPanel] Terrain data switched cleanly for scene '{sceneData.Name}'");
         }
