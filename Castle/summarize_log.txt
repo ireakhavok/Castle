@@ -416,7 +416,7 @@ Found: CastleBuilder.csproj
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
-Read 19498 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
+Read 19687 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
 Found 18 dependencies
 Found: Events
@@ -484,7 +484,7 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
-Read 23283 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
+Read 23428 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
 Found 24 dependencies
 Found: SceneEditorUI.html
@@ -565,13 +565,13 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\MapRoom\obj
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
-Read 18736 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
+Read 19203 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
-Read 36653 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
+Read 39214 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 16 dependencies
 Found: TerrainCreatorUI.html
@@ -2170,9 +2170,9 @@ Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 22587 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 23876 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
-Found 13 dependencies
+Found 14 dependencies
 Found: SiegeEngine.csproj
 Found: siegeEngineSummary.txt
 Found: summarize_log.txt
