@@ -55,7 +55,6 @@ namespace MapRoom
         {
             base.BindLiveState(liveState);
         }
-        // NEW: idempotent refresh for cache-hit re-selects (future-proof single source of truth)
         public void RefreshFromLiveState(SceneData sd)
         {
             _sceneData = sd;
@@ -73,7 +72,6 @@ namespace MapRoom
                     SetColorTexture(null);
                 }
             }
-            // rebuild only if heightmap actually changed
             if (sd?.Terrain != null || _heightmap == null)
             {
                 RebuildTerrainMesh();
@@ -262,7 +260,7 @@ namespace MapRoom
             _sceneData = data;
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
             _paintData = ProjectSettings.Current.GetOrCreatePaintData(sceneName, _terrainWidth > 0 ? _terrainWidth : 200, _terrainHeight > 0 ? _terrainHeight : 200);
-            SyncFromLiveState(); // ensure shared live state is pulled on load
+            SyncFromLiveState();
             if (data?.Terrain != null && !string.IsNullOrEmpty(data.Terrain.HeightmapPath))
             {
                 LoadTerrain(data.Terrain.HeightmapPath);
@@ -315,7 +313,7 @@ namespace MapRoom
                 return;
             }
             base.LoadSceneData(data);
-            SyncFromLiveState(); // final sync after base load
+            SyncFromLiveState();
         }
         public override void LoadTerrain(string path)
         {
@@ -331,11 +329,12 @@ namespace MapRoom
                 _sceneData.Terrain.HeightmapPath = path;
             }
             RebuildTerrainMesh();
-            SyncFromLiveState(); // ensure live state reflects loaded heightmap
+            SyncFromLiveState();
         }
         public new void SetColorTexture(string path)
         {
-            // always clear previous color first
+            string resolvedPath = ResolveFullPath(path);
+
             if (_colorBitmapCache != null)
             {
                 _colorBitmapCache.Dispose();
@@ -349,7 +348,6 @@ namespace MapRoom
             _hasColorTexture = false;
             if (string.IsNullOrEmpty(path))
             {
-                // blank color = transparent
                 _colorBitmapCache = new Bitmap(ColorLayerResolution, ColorLayerResolution);
                 using (var g = Graphics.FromImage(_colorBitmapCache))
                 {
@@ -360,19 +358,17 @@ namespace MapRoom
                 BuildTexturedMesh();
                 return;
             }
-            base.SetColorTexture(path);
+            base.SetColorTexture(resolvedPath);
             _colorBitmapCache?.Dispose();
             _colorBitmapCache = null;
-            string full = ResolveFullPath(path);
-            if (File.Exists(full))
+            if (File.Exists(resolvedPath))
             {
-                _colorBitmapCache = new Bitmap(full);
+                _colorBitmapCache = new Bitmap(resolvedPath);
             }
             if (_sceneData?.Terrain != null)
             {
                 _sceneData.Terrain.ColorTexturePath = path;
             }
-            // PUSH LOADED COLOR TEXTURE TO SHARED LIVE STATE (single source of truth on load for preview)
             if (_liveState is LiveSceneState live)
             {
                 if (_colorBitmapCache != null)
@@ -384,10 +380,10 @@ namespace MapRoom
                 }
                 else if (!string.IsNullOrEmpty(path))
                 {
-                    if (File.Exists(full))
+                    if (File.Exists(resolvedPath))
                     {
                         live.ColorBitmap?.Dispose();
-                        live.ColorBitmap = new Bitmap(full);
+                        live.ColorBitmap = new Bitmap(resolvedPath);
                         live.SyncColorTextureIfNeeded();
                         Console.WriteLine($"[TerrainCreatorScene] Pushed loaded color texture '{path}' to shared LiveSceneState for preview");
                     }
@@ -434,7 +430,6 @@ namespace MapRoom
             {
                 string relativePath = Path.GetRelativePath(projectPath, tifPath);
                 _sceneData.Terrain.HeightmapPath = relativePath;
-                // Ensure color texture reference is persisted
                 if (_colorBitmapCache != null || !string.IsNullOrEmpty(_sceneData.Terrain.ColorTexturePath))
                 {
                     string colorRelative = Path.GetRelativePath(projectPath, pngPath);
@@ -446,7 +441,6 @@ namespace MapRoom
                 _paintData.SaveToDisk(projectPath, terrainName);
             }
             RebuildTerrainMesh();
-            // Flush to shared live state
             if (_liveState is LiveSceneState live)
             {
                 live.Heightmap = _heightmap;
@@ -748,7 +742,7 @@ namespace MapRoom
             {
                 level.Terrain = _sceneData.Terrain;
             }
-            SyncFromLiveState(); // ensure shared state is always synced
+            SyncFromLiveState();
         }
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {

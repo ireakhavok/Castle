@@ -53,7 +53,7 @@ namespace SiegeEngine.Scenes
         public virtual void BindLiveState(ISceneStateProvider liveState)
         {
             _liveState = liveState;
-            _lastColorVersion = -1;   // ← add this single line
+            _lastColorVersion = -1;
         }
         protected virtual void SyncFromLiveState()
         {
@@ -116,7 +116,6 @@ namespace SiegeEngine.Scenes
             _heightmap = null;
             if (data?.Terrain != null)
             {
-                // Heightmap and color are now independent (architectural contract)
                 if (!string.IsNullOrEmpty(data.Terrain.HeightmapPath))
                 {
                     LoadTerrain(data.Terrain.HeightmapPath);
@@ -125,7 +124,6 @@ namespace SiegeEngine.Scenes
                 {
                     InitializeBlankTerrain();
                 }
-                // Always process color if present (fixes preview on project load)
                 if (!string.IsNullOrEmpty(data.Terrain.ColorTexturePath))
                 {
                     SetColorTexture(data.Terrain.ColorTexturePath);
@@ -390,7 +388,6 @@ namespace SiegeEngine.Scenes
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerY = (_terrainHeight * _worldScaleZ) / 2f;
                 _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
-                // PUSH LOADED HEIGHTMAP TO SHARED LIVE STATE (single source of truth on load)
                 if (_liveState is LiveSceneState live && _heightmap != null)
                 {
                     live.Heightmap = _heightmap;
@@ -409,13 +406,12 @@ namespace SiegeEngine.Scenes
             if (_terrainTextureId != 0)
             {
                 _colorGeoRef = GeoTiffParser.ParseGeoReference(path);
-                _hasColorTexture = _colorGeoRef.IsValid;
+                _hasColorTexture = true;   // ← ONLY CHANGE: enable color rendering for PNGs (geo ref is optional)
                 BuildTexturedMesh();
             }
-            // PUSH LOADED COLOR TEXTURE TO SHARED LIVE STATE (single source of truth on load)
             if (_liveState is LiveSceneState live && !string.IsNullOrEmpty(path))
             {
-                string full = path; // resolve handled in caller (TerrainCreatorScene)
+                string full = path;
                 if (File.Exists(full))
                 {
                     live.ColorBitmap?.Dispose();
