@@ -486,7 +486,7 @@ Folder: IDE
       - void SaveTerrain(string terrainName)
         - Calls: CustomTerrainParser.SaveFloatTiff, CustomTerrainParser.TryGetCustomScale, Dispose, RebuildTerrainMesh, ResolveFullPath, SaveAsPng, _colorBitmapCache.Clone, _paintData.SaveToDisk, live.SyncColorTextureIfNeeded
       - void SaveAsPng(string path)
-        - Calls: Console.WriteLine, _colorBitmapCache.Clone
+        - Calls: Console.WriteLine, Dispose, _colorBitmapCache.Clone, liveReload.SyncColorTextureIfNeeded, saveData.Clone
       - void Export2D(string projectAssetsDir)
         - Calls: TilemapExporter.ExportToMesh
       - void SetActiveBrush(Brush brush)
