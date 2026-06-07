@@ -458,6 +458,8 @@ Folder: IDE
       - bool _enableBrush
     - Methods:
       - void BindLiveState(ISceneStateProvider liveState)
+      - void RefreshFromLiveState(SceneData sd)
+        - Calls: LoadTerrain, RebuildTerrainMesh, SetColorTexture, SyncFromLiveState
       - void OnSelectBrushEvent(SelectBrushEvent e)
         - Calls: Enum.Parse, SetActiveMaterial, TryPerformPlacementRaycast, UpdateGhostMesh, _renderContext.DeleteTexture
       - bool TryPerformPlacementRaycast(out Vector3 hitPoint)
@@ -479,13 +481,14 @@ Folder: IDE
       - void LoadTerrain(string path)
         - Calls: RebuildTerrainMesh, ResolveFullPath, SyncFromLiveState
       - void SetColorTexture(string path)
-        - Calls: Console.WriteLine, Dispose, ResolveFullPath, _colorBitmapCache.Clone, live.SyncColorTextureIfNeeded
+        - Calls: BuildTexturedMesh, Console.WriteLine, Dispose, ResolveFullPath, TerrainTextureParser.CreateColorTexture, _colorBitmapCache.Clone, _colorBitmapCache.Dispose, _renderContext.DeleteTexture, g.Clear, live.SyncColorTextureIfNeeded
       - string GetColorTexturePath()
       - void SaveTerrain(string terrainName)
         - Calls: CustomTerrainParser.SaveFloatTiff, CustomTerrainParser.TryGetCustomScale, Dispose, RebuildTerrainMesh, ResolveFullPath, SaveAsPng, _colorBitmapCache.Clone, _paintData.SaveToDisk, live.SyncColorTextureIfNeeded
+      - void SaveAsPng(string path)
+        - Calls: Console.WriteLine, _colorBitmapCache.Clone
       - void Export2D(string projectAssetsDir)
         - Calls: TilemapExporter.ExportToMesh
-      - void SaveAsPng(string path)
       - void SetActiveBrush(Brush brush)
         - Calls: UpdateGhostMesh
       - Brush GetActiveBrush()
@@ -2721,6 +2724,17 @@ Folder: SiegeEngine
       - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
       - void AddSystem(GameSystem system)
       - void Dispose()
+- File: SceneActivatedEvent.cs
+  - Class: SceneActivatedEvent (Namespace: SiegeEngine.Core.Events)
+    - Inherits: IEvent
+    
+    - Dependencies: System.Text, System.Text.Json
+    - Fields:
+      - string Type
+    - Methods:
+      - constructor SceneActivatedEvent(string sceneName)
+      - byte[] Serialize()
+      - void Deserialize(byte[] data)
 - File: SceneContext.cs
   - Class: SceneContext (Namespace: SiegeEngine.Scenes)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.PlayerSystem

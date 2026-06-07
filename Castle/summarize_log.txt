@@ -341,7 +341,53 @@ Found: cave.zip
 Found: city.zip
 Found: desert.zip
 Found: flare_20120324.zip
+Found: ice
+Listing folder: C:\repos\RealmFoundry\Castle\Assets\textures\ice
+Found: .
+Found: ..
+Found: Tileable10b.png
+Found: Tileable1e.png
+Found: Tileable1f.png
+Found: Tileable2e.png
+Found: Tileable3d.png
+Found: Tileable3g.png
+Found: Tileable3i.png
+Found: Tileable4d.png
+Found: Tileable4e.png
+Found: Tileable4h.png
+Found: Tileable5c.png
+Found: Tileable6c.png
+Found: Tileable6f.png
+Found: Tileable7b.png
+Found: Tileable8c.png
+Found: Tileable9a.png
 Found: ice.zip
+Found: jungle_1
+Listing folder: C:\repos\RealmFoundry\Castle\Assets\textures\jungle_1
+Found: .
+Found: ..
+Found: jungle
+Listing folder: C:\repos\RealmFoundry\Castle\Assets\textures\jungle_1\jungle
+Found: .
+Found: ..
+Found: Tileable10b.png
+Found: Tileable1f.png
+Found: Tileable1g.png
+Found: Tileable2c.png
+Found: Tileable2g.png
+Found: Tileable3b.png
+Found: Tileable3e.png
+Found: Tileable3j.png
+Found: Tileable4b.png
+Found: Tileable4f.png
+Found: Tileable4g.png
+Found: Tileable5f.png
+Found: Tileable6a.png
+Found: Tileable7d.png
+Found: Tileable7h.png
+Found: Tileable8a.png
+Found: Tileable8e.png
+Found: Tileable9b.png
 Found: jungle_1.zip
 Found: normals.zip
 Found: pdtextures.zip
@@ -409,14 +455,14 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\bin
 Found: BlueprintManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
-Read 26559 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
+Read 26491 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
 Namespace: CastleBuilder
 Found 19 dependencies
 Found: CastleBuilder.csproj
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
-Read 19687 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
+Read 20659 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
 Found 18 dependencies
 Found: Events
@@ -565,13 +611,13 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\MapRoom\obj
 Found: TerrainCreatorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
-Read 19203 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
+Read 19182 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorPanel.cs
 Namespace: MapRoom
 Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
-Read 39214 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
+Read 40851 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 16 dependencies
 Found: TerrainCreatorUI.html
@@ -619,6 +665,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\obj
 Found: ReadingChamber.csproj
 Found: summarize_log.txt
 Found: summary.txt
+Found: summary_IDE.txt
 Found: ToolChest
 Listing folder: C:\repos\RealmFoundry\Castle\IDE\ToolChest
 Found: .
@@ -1384,6 +1431,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\ProtectedEven
 Read 183 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\ProtectedEventAttribute.cs
 Namespace: SiegeEngine.Core.Events
 Found 1 dependencies
+Found: SceneActivatedEvent.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SceneActivatedEvent.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SceneActivatedEvent.cs
+Read 834 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SceneActivatedEvent.cs
+Namespace: SiegeEngine.Core.Events
+Found 2 dependencies
 Found: SceneStateChangedEvent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SceneStateChangedEvent.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Events\SceneStateChangedEvent.cs
@@ -2170,7 +2223,7 @@ Found 13 dependencies
 Found: TerrainScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
-Read 23876 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
+Read 23564 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\TerrainScene.cs
 Namespace: SiegeEngine.Scenes
 Found 14 dependencies
 Found: SiegeEngine.csproj
