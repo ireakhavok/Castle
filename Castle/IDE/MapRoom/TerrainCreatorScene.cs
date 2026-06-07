@@ -334,7 +334,6 @@ namespace MapRoom
         public new void SetColorTexture(string path)
         {
             string resolvedPath = ResolveFullPath(path);
-
             if (_colorBitmapCache != null)
             {
                 _colorBitmapCache.Dispose();
@@ -363,7 +362,21 @@ namespace MapRoom
             _colorBitmapCache = null;
             if (File.Exists(resolvedPath))
             {
-                _colorBitmapCache = new Bitmap(resolvedPath);
+                // NON-LOCKING + LockBits-safe load
+                using (var fs = new FileStream(resolvedPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using (var ms = new MemoryStream())
+                {
+                    fs.CopyTo(ms);
+                    ms.Position = 0;
+                    using (var source = new Bitmap(ms))
+                    {
+                        _colorBitmapCache = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+                        using (var g = Graphics.FromImage(_colorBitmapCache))
+                        {
+                            g.DrawImage(source, 0, 0, source.Width, source.Height);
+                        }
+                    }
+                }
             }
             if (_sceneData?.Terrain != null)
             {
@@ -457,16 +470,55 @@ namespace MapRoom
         {
             if (_colorBitmapCache != null)
             {
-                // Clone + temp file to avoid "file in use" / GDI+ lock
-                string tempPath = path + ".tmp";
-                using (var clone = (Bitmap)_colorBitmapCache.Clone())
+                Bitmap saveData = _colorBitmapCache;
+                LiveSceneState liveState = _liveState as LiveSceneState;
+                if (liveState != null && liveState.ColorBitmap != null)
+                    saveData = liveState.ColorBitmap;
+
+                using (var saveClone = (Bitmap)saveData.Clone())
                 {
-                    clone.Save(tempPath, ImageFormat.Png);
+                    _colorBitmapCache?.Dispose();
+                    _colorBitmapCache = null;
+                    if (liveState != null)
+                    {
+                        liveState.ColorBitmap?.Dispose();
+                        liveState.ColorBitmap = null;
+                    }
+
+                    string tempPath = path + ".tmp";
+                    saveClone.Save(tempPath, ImageFormat.Png);
+                    if (File.Exists(path))
+                        File.Delete(path);
+                    File.Move(tempPath, path);
+                    Console.WriteLine($"[TerrainCreatorScene] Saved color texture PNG: {path}");
                 }
+
+                // FIXED reload — uses the same LockBits-safe pattern as SetColorTexture
                 if (File.Exists(path))
-                    File.Delete(path);
-                File.Move(tempPath, path);
-                Console.WriteLine($"[TerrainCreatorScene] Saved color texture PNG: {path}");
+                {
+                    using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    using (var ms = new MemoryStream())
+                    {
+                        fs.CopyTo(ms);
+                        ms.Position = 0;
+                        using (var source = new Bitmap(ms))
+                        {
+                            _colorBitmapCache = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+                            using (var g = Graphics.FromImage(_colorBitmapCache))
+                            {
+                                g.DrawImage(source, 0, 0, source.Width, source.Height);
+                            }
+                        }
+                    }
+                }
+
+                LiveSceneState liveReload = _liveState as LiveSceneState;
+                if (liveReload != null && _colorBitmapCache != null)
+                {
+                    liveReload.ColorBitmap?.Dispose();
+                    liveReload.ColorBitmap = (Bitmap)_colorBitmapCache.Clone();
+                    liveReload.SyncColorTextureIfNeeded();
+                }
                 return;
             }
             int w = _terrainWidth;
