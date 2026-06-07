@@ -453,17 +453,13 @@ namespace MapRoom
                 }
             }
         }
-        public void Export2D(string projectAssetsDir)
-        {
-            string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
-            string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
-            TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
-        }
         private void SaveAsPng(string path)
         {
             if (_colorBitmapCache != null)
             {
-                _colorBitmapCache.Save(path, ImageFormat.Png);
+                using var clone = (Bitmap)_colorBitmapCache.Clone();
+                clone.Save(path, ImageFormat.Png);
+                Console.WriteLine($"[TerrainCreatorScene] Saved color texture PNG: {path}");
                 return;
             }
             int w = _terrainWidth;
@@ -481,6 +477,13 @@ namespace MapRoom
                 }
             }
             bmp.Save(path, ImageFormat.Png);
+            Console.WriteLine($"[TerrainCreatorScene] Saved heightmap-as-PNG: {path}");
+        }
+        public void Export2D(string projectAssetsDir)
+        {
+            string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
+            string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
+            TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
         }
         public void SetActiveBrush(ToolChest.Brush brush)
         {
