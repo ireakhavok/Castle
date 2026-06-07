@@ -424,6 +424,15 @@ namespace MapRoom
             }
             string tifPath = Path.Combine(saveDir, terrainName + ".tif");
             string pngPath = Path.Combine(saveDir, terrainName + ".png");
+
+            // Unload GPU texture + dispose bitmap BEFORE saving to avoid file lock
+            if (_terrainTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_terrainTextureId);
+                _terrainTextureId = 0;
+            }
+            _hasColorTexture = false;
+
             SaveAsPng(pngPath);
             CustomTerrainParser.SaveFloatTiff(tifPath, _heightmap, _worldScaleX, _worldScaleZ);
             if (_sceneData?.Terrain != null)
@@ -457,8 +466,14 @@ namespace MapRoom
         {
             if (_colorBitmapCache != null)
             {
-                using var clone = (Bitmap)_colorBitmapCache.Clone();
-                clone.Save(path, ImageFormat.Png);
+                string tempPath = path + ".tmp";
+                using (var clone = (Bitmap)_colorBitmapCache.Clone())
+                {
+                    clone.Save(tempPath, ImageFormat.Png);
+                }
+                if (File.Exists(path))
+                    File.Delete(path);
+                File.Move(tempPath, path);
                 Console.WriteLine($"[TerrainCreatorScene] Saved color texture PNG: {path}");
                 return;
             }
