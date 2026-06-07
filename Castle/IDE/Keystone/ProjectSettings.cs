@@ -5,7 +5,6 @@ using SiegeEngine.Core.Terrain;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection.Emit;
 
 namespace Keystone
 {
@@ -30,9 +29,11 @@ namespace Keystone
         }
         private readonly Dictionary<string, float[,]> _unsavedHeightmaps = new Dictionary<string, float[,]>();
         private readonly Dictionary<string, TerrainPaintData> _openPaintData = new Dictionary<string, TerrainPaintData>();
-        public SceneData CurrentSceneData { get; private set; }
-        public float[,] CurrentHeightmap { get; private set; }
-        public string CurrentSceneName { get; private set; }
+
+        // Step 2 fix: internal set so ProjectStateManager can assign them
+        public SceneData CurrentSceneData { get; internal set; }
+        public float[,] CurrentHeightmap { get; internal set; }
+        public string CurrentSceneName { get; internal set; }
         public string CurrentHeightmapPath { get; private set; }
         public Level CurrentLevel { get; private set; }
 
@@ -42,6 +43,10 @@ namespace Keystone
             CurrentHeightmap = heightmap;
             if (!string.IsNullOrEmpty(sceneName)) CurrentSceneName = sceneName;
             if (!string.IsNullOrEmpty(heightmapPath)) CurrentHeightmapPath = heightmapPath;
+
+            // One-way delegation
+            ProjectStateManager.Current.SetCurrentTerrain(sceneData, heightmap, sceneName);
+
             if (sceneName != null && heightmap != null)
             {
                 _unsavedHeightmaps[sceneName] = heightmap;
@@ -50,7 +55,7 @@ namespace Keystone
             {
                 GetOrCreatePaintData(sceneName, heightmap?.GetLength(0) ?? 200, heightmap?.GetLength(1) ?? 200);
             }
-            Console.WriteLine($"[ProjectSettings] SetCurrentTerrain - shared heightmap reference set ({heightmap?.GetLength(0)}x{heightmap?.GetLength(1)}) for scene '{sceneName ?? "null"}'");
+            Console.WriteLine($"[ProjectSettings] SetCurrentTerrain - delegated to ProjectStateManager ({heightmap?.GetLength(0)}x{heightmap?.GetLength(1)}) for scene '{sceneName ?? "null"}'");
         }
 
         public void SetCurrentLevel(Level level)
@@ -61,6 +66,8 @@ namespace Keystone
 
         public float[,] GetUnsavedHeightmap(string sceneName)
         {
+            var fromLive = ProjectStateManager.Current.GetUnsavedHeightmap(sceneName);
+            if (fromLive != null) return fromLive;
             return _unsavedHeightmaps.TryGetValue(sceneName, out var map) ? map : null;
         }
 
@@ -69,6 +76,7 @@ namespace Keystone
             if (sceneName != null && heightmap != null)
             {
                 _unsavedHeightmaps[sceneName] = heightmap;
+                ProjectStateManager.Current.StoreUnsavedHeightmap(sceneName, heightmap);
             }
         }
 

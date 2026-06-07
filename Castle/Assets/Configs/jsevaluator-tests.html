@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JSEvaluator Regression Tests</title>
+    <style>
+        body {
+            font-family: monospace;
+            margin: 20px;
+            background: #111;
+            color: #0f0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px;
+            border: 1px solid #333;
+            text-align: left;
+        }
+
+        .pass {
+            background: #0a0;
+            color: white;
+        }
+
+        .fail {
+            background: #a00;
+            color: white;
+        }
+
+        pre {
+            background: #222;
+            padding: 10px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>JSEvaluator Test Suite</h1>
+    <button onclick="runAllTests()">Run All Tests</button>
+    <table id="results">
+        <thead>
+            <tr>
+                <th>Test Name</th>
+                <th>Expected</th>
+                <th>Actual</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        // These tests will be executed via the engine's JSContext / JSEvaluator
+        const tests = [
+            { name: "Basic variable assignment", code: "let x = 42; x;", expected: 42 },
+            { name: "Math operations", code: "let x = 10; let y = 20; x + y * 2;", expected: 50 },
+            { name: "User-defined function", code: "function add(a,b){return a+b;} add(5,7);", expected: 12 },
+            { name: "Factorial recursion", code: "function fact(n){return n<=1?1:n*fact(n-1);} fact(5);", expected: 120 },
+            { name: "Object and property access", code: "let p = {name:'test', value:99}; p.value;", expected: 99 },
+            { name: "Array operations", code: "let arr=[1,2,3]; arr.push(4); arr.reduce((a,b)=>a+b,0);", expected: 10 },
+            { name: "Closure / scope", code: "function makeCounter(){let c=0;return ()=>++c;} let counter=makeCounter(); counter(); counter();", expected: 2 },
+            { name: "This binding", code: "let obj={val:10, double:function(){return this.val*2;}}; obj.double();", expected: 20 },
+            { name: "String interpolation", code: "let name='Core'; `Hello ${name}`;", expected: "Hello Core" },
+            { name: "Error handling", code: "try{throw new Error('test');}catch(e){e.message;}", expected: "test" },
+            { name: "Control flow (if/else)", code: "let x=5; if(x>3) 'high' else 'low';", expected: "high" },
+            { name: "Loop sum", code: "let sum=0; for(let i=1;i<=10;i++) sum+=i; sum;", expected: 55 }
+        ];
+
+        function runTest(test) {
+            let actual;
+            try {
+                // This is where the engine's JSContext.Run() would be called
+                // For testing purposes we simulate it here. In real engine use, replace with:
+                // actual = window.runJS ? window.runJS(test.code) : eval(test.code);
+                actual = eval(test.code); // fallback for standalone testing
+            } catch (e) {
+                actual = "ERROR: " + e.message;
+            }
+
+            const passed = actual === test.expected ||
+                          (typeof actual === 'number' && typeof test.expected === 'number' && Math.abs(actual - test.expected) < 0.0001);
+
+            return {
+                name: test.name,
+                expected: test.expected,
+                actual: actual,
+                passed: passed
+            };
+        }
+
+        function runAllTests() {
+            const tbody = document.querySelector('#results tbody');
+            tbody.innerHTML = '';
+
+            tests.forEach(test => {
+                const result = runTest(test);
+
+                const row = document.createElement('tr');
+                row.className = result.passed ? 'pass' : 'fail';
+
+                row.innerHTML = `
+                    <td>${result.name}</td>
+                    <td>${JSON.stringify(result.expected)}</td>
+                    <td>${JSON.stringify(result.actual)}</td>
+                    <td>${result.passed ? 'PASS' : 'FAIL'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            console.log("All JS evaluator tests finished.");
+        }
+
+        // Auto-run when page loads (for convenience)
+        window.onload = runAllTests;
+    </script>
+</body>
+</html>

@@ -25,6 +25,10 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("customData")]
         public Dictionary<string, object> CustomData { get; set; } = new Dictionary<string, object>();
+
+        // NEW for Step 1: optional live state reference (editor-only, JsonIgnore for serialization)
+        [JsonIgnore]
+        public string LiveStateGuid { get; set; } // used internally by ProjectStateManager
     }
 
     public class TerrainData
@@ -38,11 +42,9 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("normalTexturePath")]
         public string NormalTexturePath { get; set; }
 
-        // NEW for Step 2: Splat map (RGBA control texture) - kept unsaved in memory until explicit save
         [JsonPropertyName("splatMapPath")]
         public string SplatMapPath { get; set; }
 
-        // NEW: Configurable material layers (sand, dirt, grass, rock, etc.)
         [JsonPropertyName("materials")]
         public List<TerrainMaterial> Materials { get; set; } = new List<TerrainMaterial>();
 

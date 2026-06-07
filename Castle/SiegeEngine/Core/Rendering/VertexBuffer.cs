@@ -5,7 +5,6 @@ using SiegeEngine.Core.Definitions;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class VertexBuffer : IDisposable
@@ -17,9 +16,7 @@ namespace SiegeEngine.Core.Rendering
         private uint _vertexCount;
         private uint _indexCount;
         private bool _disposed;
-
         public uint Vao => _vao;
-
         public VertexBuffer(IRenderContext renderContext)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
@@ -27,7 +24,6 @@ namespace SiegeEngine.Core.Rendering
             _vbo = _renderContext.GenBuffer();
             _ebo = _renderContext.GenBuffer();
         }
-
         public void Update(List<Entity> entities)
         {
             var vertices = new List<float>();
@@ -67,15 +63,12 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.EnableVertexAttribArray(1);
             _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
         }
-
         public void Bind()
         {
             _renderContext.BindVertexArray(_vao);
         }
-
         public uint GetVertexCount() => _vertexCount;
         public uint GetIndexCount() => _indexCount;
-
         public void Dispose()
         {
             if (!_disposed)
@@ -86,7 +79,6 @@ namespace SiegeEngine.Core.Rendering
                 _disposed = true;
             }
         }
-
         public void UpdateCustom(List<Vertex> vertices, List<uint> indices)
         {
             _vertexCount = (uint)vertices.Count;
@@ -119,7 +111,6 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.EnableVertexAttribArray(1);
             _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
         }
-
         public void UpdateCustomWithUV(List<float> vertices, List<uint> indices)
         {
             _vertexCount = (uint)(vertices.Count / 9);
@@ -143,7 +134,6 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.EnableVertexAttribArray(2);
             _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(7 * sizeof(float)));
         }
-
         public void UpdateWithPositionNormalUV(List<float> vertices, List<uint> indices)
         {
             _vertexCount = (uint)(vertices.Count / 9);
@@ -169,7 +159,6 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.EnableVertexAttribArray(4);
             _renderContext.VertexAttribPointer(4, 1, _renderContext.Enums.Float, false, stride, (void*)(8 * sizeof(float)));
         }
-
         public void UpdateVerticesPartial(List<float> vertices, int startVertexIndex, int vertexCount, int stride = 9)
         {
             if (vertexCount <= 0 || startVertexIndex < 0 || vertices == null) return;

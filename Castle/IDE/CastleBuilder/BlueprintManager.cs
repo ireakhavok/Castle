@@ -122,8 +122,6 @@ namespace CastleBuilder
         public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
-            // Minimal change: always allow creation (NewTerrainPanel already creates fresh Level + publishes event)
-            // No early return - let NewTerrainPanel + EditorScene handle in-memory case
             NewTerrainPanel.Open(renderContext, controlContext, window, eventBus);
         }
         public static void EnsureDefaultSceneIfNeeded()
@@ -151,17 +149,16 @@ namespace CastleBuilder
                 }
                 return;
             }
-            // No-project case: do nothing (NewTerrainPanel + EditorScene will create on first use)
             Console.WriteLine("[BlueprintManager.EnsureDefaultSceneIfNeeded] No active project - skipping default scene creation");
         }
         public static void SaveCurrentProject(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             EnsureInitialized(eventBus);
-            Console.WriteLine("[BlueprintManager] SaveCurrentProject called - Level is now single source of truth");
+            Console.WriteLine("[BlueprintManager.SaveCurrentProject] SaveCurrentProject called");
             if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
             {
-                Console.WriteLine("[BlueprintManager] No active project on Save - opening New Project dialog");
-                NewProjectPanel.Open(renderContext, controlContext, window, eventBus);
+                Console.WriteLine("[BlueprintManager] No active project → opening Save As dialog (exact same logic as Save As + flush)");
+                SaveProjectAs(renderContext, controlContext, window, eventBus);
                 return;
             }
             DoProjectSave();
@@ -201,14 +198,14 @@ namespace CastleBuilder
                     sceneData = new SceneData { Name = currentSceneName, SceneType = "TerrainTest" };
                     data.Scenes[currentSceneName] = sceneData;
                 }
-                // Level is the single source of truth - sync everything to SceneData for disk
+                // ← THIS IS THE FIX: clear before replace to stop duplication
+                sceneData.Entities.Clear();
                 sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                 sceneData.Terrain = level.Terrain ?? new TerrainData();
                 sceneData.Environment = level.Environment ?? new EnvironmentSettings();
                 if (level.CustomData != null) sceneData.CustomData = level.CustomData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment from Level (authoritative) → SceneData");
             }
-            // ALWAYS materialize EVERY asset pack referenced by ANY entity in ANY scene (portable project requirement)
             var uniquePackKeys = data.Scenes.Values
                 .SelectMany(s => s.Entities ?? new List<EntityData>())
                 .Where(e => !string.IsNullOrEmpty(e.AssetPackKey))
@@ -223,7 +220,7 @@ namespace CastleBuilder
                 {
                     ModelManager.Instance.MaterializeAssetPack(packKey, assetsDir);
                 }
-                Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder (all scenes, all entities)");
+                Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder");
             }
             SaveAllPanelStates(data);
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
@@ -235,6 +232,12 @@ namespace CastleBuilder
             }
             ProjectLayoutManager.FlushAllToDisk();
             Console.WriteLine("[BlueprintManager.DoProjectSave] All blades committed to disk");
+        }
+        public static void SaveProjectAs(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            EnsureInitialized(eventBus);
+            var savePanel = new SaveProjectPanel(renderContext, controlContext, window, eventBus);
+            eventBus.Publish(new OpenPanelEvent(savePanel) { Mode = OpenMode.Overlay });
         }
         public static void SaveProjectAs(string folder, string name, EventBus eventBus)
         {
@@ -259,6 +262,9 @@ namespace CastleBuilder
                 Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             }
             ProjectSettings.Current.ActiveProject = dir;
+
+            EditorScene.Current?.FlushActiveSceneData();
+
             DoProjectSave();
             eventBus.Publish(new LoadProjectEvent { Path = dir });
             Console.WriteLine($"[BlueprintManager.SaveProjectAs] Save As complete - new project fully populated and active at {dir}");
@@ -355,7 +361,6 @@ namespace CastleBuilder
             if (string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
             {
                 Console.WriteLine("[BlueprintManager.OnSaveProject] No active project on Save - opening New Project dialog");
-                // "Save" with no project opens New Project dialog (per user requirement)
                 return;
             }
             DoProjectSave();

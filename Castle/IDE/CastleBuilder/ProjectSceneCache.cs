@@ -8,8 +8,9 @@ using System.Collections.Generic;
 namespace CastleBuilder
 {
     /// <summary>
-    /// IDE-only in-memory cache for project-level scenes (NewTerrain, NewTerrain123, etc.).
-    /// Completely separate from the core engine's SceneManager / SceneRegistry.
+    /// IDE-only in-memory cache for project-level scenes.
+    /// Signature kept 100% unchanged (conservative Step 2).
+    /// LiveSceneState is now accessible via ProjectStateManager.
     /// </summary>
     public class ProjectSceneCache
     {

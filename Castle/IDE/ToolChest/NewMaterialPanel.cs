@@ -1,10 +1,12 @@
 ﻿// Folder: ToolChest
 // File: NewMaterialPanel.cs
 using Keystone;
+using ReadingChamber;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
@@ -35,7 +37,7 @@ namespace ToolChest
                     var nameElem = FindElementById("mat-name") as InputElement;
                     var albedoElem = FindElementById("mat-albedo") as InputElement;
                     var normalElem = FindElementById("mat-normal") as InputElement;
-                    var roughnessElem = FindElementById("mat-roughness") as InputElement; // or RangeElement
+                    var roughnessElem = FindElementById("mat-roughness-input") as InputElement;
 
                     string name = nameElem?.Value?.Trim() ?? "New Material";
                     if (string.IsNullOrEmpty(name)) name = "New Material";
@@ -45,7 +47,6 @@ namespace ToolChest
                     float roughness = 0.8f;
                     if (roughnessElem != null && float.TryParse(roughnessElem.Value, out float r)) roughness = r;
 
-                    // Create and add to current paint data
                     var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
                     if (paintData != null)
                     {
@@ -56,6 +57,13 @@ namespace ToolChest
                             NormalPath = normal,
                             Roughness = roughness
                         });
+                        Console.WriteLine($"[NewMaterialPanel] Created material '{name}' and added to PaintData");
+                    }
+
+                    var brushPanel = PanelManager.Current?.GetAllPanels().FirstOrDefault(p => p is BrushPanel) as BrushPanel;
+                    if (brushPanel != null)
+                    {
+                        brushPanel.RefreshMaterialDropdown();
                     }
 
                     _eventBus.Publish(new ClosePanelEvent(_parent));
@@ -65,6 +73,33 @@ namespace ToolChest
                 if (hook == "Cancel")
                 {
                     _eventBus.Publish(new ClosePanelEvent(_parent));
+                    return;
+                }
+
+                if (hook == "PickAlbedo")
+                {
+                    string exeDir = AppDomain.CurrentDomain.BaseDirectory;
+                    string texturesDir = Path.Combine(exeDir, "Assets", "Textures");
+                    Directory.CreateDirectory(texturesDir);
+
+                    var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, texturesDir, ".png", ".jpg", ".jpeg", ".tga");
+                    fileSelector.UserData = "AlbedoField";
+                    fileSelector.IsModal = true;
+                    _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
+                    return;
+                }
+
+                if (hook == "PickNormal")
+                {
+                    string exeDir = AppDomain.CurrentDomain.BaseDirectory;
+                    string texturesDir = Path.Combine(exeDir, "Assets", "Textures");
+                    Directory.CreateDirectory(texturesDir);
+
+                    var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, texturesDir, ".png", ".jpg", ".jpeg", ".tga");
+                    fileSelector.UserData = "NormalField";
+                    fileSelector.IsModal = true;
+                    _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
+                    return;
                 }
             }
         }
@@ -78,6 +113,37 @@ namespace ToolChest
             RenderOrder = 1100;
             Scaling = ScalingMode.Fill;
             Size = new Vector2(420, 380);
+
+            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
+        }
+
+        private void OnFileSelected(FileSelectedEvent e)
+        {
+            if (e.UserData == null) return;
+
+            string field = e.UserData.ToString();
+            string path = e.Path;
+
+            if (field == "AlbedoField")
+            {
+                var albedoInput = _uiOverlay.FindElementById("mat-albedo") as InputElement;
+                if (albedoInput != null)
+                {
+                    albedoInput.Value = path;
+                    Console.WriteLine($"[NewMaterialPanel] Albedo field updated to: {path}");
+                    _uiOverlay.RefreshUI();
+                }
+            }
+            else if (field == "NormalField")
+            {
+                var normalInput = _uiOverlay.FindElementById("mat-normal") as InputElement;
+                if (normalInput != null)
+                {
+                    normalInput.Value = path;
+                    Console.WriteLine($"[NewMaterialPanel] Normal field updated to: {path}");
+                    _uiOverlay.RefreshUI();
+                }
+            }
         }
 
         protected override UIOverlay CreateUIOverlay()
@@ -99,6 +165,12 @@ namespace ToolChest
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+        }
+
+        public override void Dispose()
+        {
+            // No Unsubscribe needed - panel is short-lived
+            base.Dispose();
         }
 
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

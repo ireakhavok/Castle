@@ -13,7 +13,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-
+using System.Text;
 namespace ToolChest
 {
     public class BrushPanel : BasePanel
@@ -31,9 +31,8 @@ namespace ToolChest
                 _parent.HandleBrushDataHook(hook);
             }
         }
-
         private Brush _currentBrush = new Brush();
-
+        private string _lastMode = "Raise";
         public BrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -43,20 +42,18 @@ namespace ToolChest
             AllowDragging = true;
             DockState = DockState.Floating;
         }
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new BrushUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadBrushUI();
             PublishCurrentBrush();
+            RefreshMaterialDropdown();
         }
-
         private void LoadBrushUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BrushPanelUI.html");
@@ -66,11 +63,9 @@ namespace ToolChest
             }
             _uiOverlay.RefreshUI();
         }
-
         private void HandleBrushDataHook(string hook)
         {
             bool changed = false;
-
             if (hook == "BrushSizeChanged")
             {
                 var slider = _uiOverlay.FindElementById("sizeSlider") as InputElement;
@@ -97,7 +92,7 @@ namespace ToolChest
                 if (select != null)
                 {
                     string shapeStr = select.Value ?? "Circle";
-                    _currentBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), shapeStr);
+                    _currentBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), shapeStr, true);
                     changed = true;
                 }
             }
@@ -107,7 +102,7 @@ namespace ToolChest
                 if (select != null)
                 {
                     string falloffStr = select.Value ?? "Gaussian";
-                    _currentBrush.Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), falloffStr);
+                    _currentBrush.Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), falloffStr, true);
                     changed = true;
                 }
             }
@@ -116,18 +111,16 @@ namespace ToolChest
                 var select = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushModeChanged") as SelectElement;
                 if (select != null)
                 {
-                    string modeStr = select.Value ?? "Raise";
-                    _currentBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), modeStr);
+                    _lastMode = select.Value ?? "Raise";
+                    string modeStr = _lastMode;
+                    _currentBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), modeStr, true);
                     changed = true;
-
                     var materialSection = _uiOverlay.FindElementById("material-section");
                     if (materialSection != null)
                     {
                         string newDisplay = (_currentBrush.Mode == BrushMode.Paint) ? "block" : "none";
                         materialSection.Style.SetProperty("display", newDisplay);
                         materialSection.Attributes["style"] = $"display: {newDisplay};";
-
-                        Console.WriteLine($"[BrushPanel] Mode changed to {modeStr} → material-section display = {newDisplay}");
                     }
                 }
             }
@@ -150,7 +143,6 @@ namespace ToolChest
                 HandleMaterialDataHook(hook);
                 changed = true;
             }
-
             if (changed)
             {
                 PublishCurrentBrush();
@@ -158,60 +150,100 @@ namespace ToolChest
                 _uiOverlay.RecomputeLayout(_uiOverlay.PanelWidth, _uiOverlay.PanelHeight);
             }
         }
-
         private void HandleMaterialDataHook(string hook)
         {
             var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
             if (paintData == null) return;
-
             if (hook == "SelectMaterial")
             {
                 var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
                 if (select != null && int.TryParse(select.Value, out int index) && index >= 0 && index < paintData.Materials.Count)
                 {
-                    Console.WriteLine($"[BrushPanel] Material selected: {paintData.Materials[index].Name}");
-                    // Future: set current material for painting layer
+                    var selectedMat = paintData.Materials[index];
+                    _currentBrush.MaterialPath = selectedMat.AlbedoPath ?? string.Empty;
+                    Console.WriteLine($"[BrushPanel] SelectMaterial hook - publishing SelectBrushEvent with MaterialPath='{_currentBrush.MaterialPath}' Mode='{_currentBrush.Mode}'");
+                    PublishCurrentBrush();
+                }
+                else
+                {
+                    Console.WriteLine($"[BrushPanel] SelectMaterial hook failed - select null or invalid index");
                 }
             }
             else if (hook == "SaveMaterial")
             {
-                // Material saved via dedicated modal; refresh dropdown
                 RefreshMaterialDropdown();
             }
         }
-
-        private void RefreshMaterialDropdown()
+        public void RefreshMaterialDropdown()
         {
             var paintData = ProjectSettings.Current.GetPaintData(ProjectSettings.Current.CurrentSceneName ?? "Untitled");
             if (paintData == null) return;
-
-            var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
-            if (select != null)
+            string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "BrushPanelUI.html");
+            if (!File.Exists(htmlPath)) return;
+            string baseHtml = File.ReadAllText(htmlPath);
+            StringBuilder dynamicSelect = new StringBuilder();
+            dynamicSelect.Append("<select id=\"materialSelect\" data-hook=\"SelectMaterial\">");
+            for (int i = 0; i < paintData.Materials.Count; i++)
             {
-                // Rebuild options from current materials
-                Console.WriteLine($"[BrushPanel] Refreshed material dropdown with {paintData.Materials.Count} materials");
+                var mat = paintData.Materials[i];
+                dynamicSelect.Append($"<option value=\"{i}\">{mat.Name}</option>");
             }
+            dynamicSelect.Append("</select>");
+            int insertIndex = baseHtml.IndexOf("<select id=\"materialSelect\" data-hook=\"SelectMaterial\">");
+            string modifiedHtml;
+            if (insertIndex == -1)
+            {
+                modifiedHtml = baseHtml;
+            }
+            else
+            {
+                modifiedHtml = baseHtml.Substring(0, insertIndex) + dynamicSelect.ToString() + baseHtml.Substring(baseHtml.IndexOf("</select>", insertIndex) + 9);
+            }
+            _uiOverlay.LoadUI(modifiedHtml);
+            // Auto-select the last (newest) material after refresh and publish it immediately
+            if (paintData.Materials.Count > 0)
+            {
+                var select = _uiOverlay.FindElementById("materialSelect") as SelectElement;
+                if (select != null)
+                {
+                    select.Value = (paintData.Materials.Count - 1).ToString();
+                    var selectedMat = paintData.Materials.Last();
+                    _currentBrush.MaterialPath = selectedMat.AlbedoPath ?? string.Empty;
+                    Console.WriteLine($"[BrushPanel] RefreshMaterialDropdown auto-selected newest material '{selectedMat.Name}' - publishing SelectBrushEvent with MaterialPath='{_currentBrush.MaterialPath}'");
+                    PublishCurrentBrush();
+                }
+            }
+            var modeSelect = _uiOverlay.FindElementsByTag("select").FirstOrDefault(el => el.Attributes.GetValueOrDefault("data-hook", "") == "BrushModeChanged") as SelectElement;
+            if (modeSelect != null && _lastMode == "Paint")
+            {
+                modeSelect.Value = "Paint";
+                var materialSection = _uiOverlay.FindElementById("material-section");
+                if (materialSection != null)
+                {
+                    materialSection.Style.SetProperty("display", "block");
+                    materialSection.Attributes["style"] = "display: block;";
+                }
+            }
+            _uiOverlay.RefreshUI();
         }
-
         private void PublishCurrentBrush()
         {
+            Console.WriteLine($"[BrushPanel] Publishing SelectBrushEvent - Mode='{_currentBrush.Mode}', MaterialPath='{_currentBrush.MaterialPath}'");
             _eventBus.Publish(new SelectBrushEvent(
-                0,
+                0UL,
                 _currentBrush.Mode.ToString(),
                 _currentBrush.Size,
                 _currentBrush.Intensity,
                 _currentBrush.Shape.ToString(),
                 _currentBrush.Falloff.ToString(),
-                _currentBrush.PaintLayer), true);
+                _currentBrush.PaintLayer,
+                _currentBrush.MaterialPath), true);
         }
-
         public override void Detach()
         {
-            // Clear any active brush instead of setting a default
-            _eventBus.Publish(new SelectBrushEvent(0, "", 0f, 0f, "", "", 0), true);
+            _eventBus.Publish(new SelectBrushEvent(0UL, "", 0f, 0f, "", "", 0), true);
             base.Detach();
         }
-
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new BrushPanel(renderContext, controlContext, window, eventBus);

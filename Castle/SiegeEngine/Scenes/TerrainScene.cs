@@ -10,8 +10,10 @@ using SiegeEngine.Core.Terrain;
 using SiegeEngine.PlayerSystem;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Numerics;
-
 namespace SiegeEngine.Scenes
 {
     public unsafe class TerrainScene : GameScene
@@ -38,22 +40,74 @@ namespace SiegeEngine.Scenes
         protected int _meshVertsX = 0;
         protected int _meshVertsY = 0;
         protected int _currentMeshStep = 1;
-        // Editor contexts always render at full resolution for identical visual density (fixes inconsistent line count between TerrainCreator and SceneEditor)
         protected bool _isEditorContext = false;
-
+        protected ISceneStateProvider _liveState;
+        protected int _lastColorVersion = -1;
         public TerrainScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
             _flyCamera = new FlyCameraController(controlContext, window);
-            // === CRITICAL INITIALIZATION - prevents null after panel close/reopen ===
             _terrainGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
             _colorGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
         }
-
+        public virtual void BindLiveState(ISceneStateProvider liveState)
+        {
+            _liveState = liveState;
+            _lastColorVersion = -1;
+        }
+        protected virtual void SyncFromLiveState()
+        {
+            if (_liveState == null) return;
+            var liveHeight = _liveState.GetHeightmap();
+            if (liveHeight != null)
+            {
+                _heightmap = liveHeight;
+                _terrainWidth = liveHeight.GetLength(0);
+                _terrainHeight = liveHeight.GetLength(1);
+            }
+            if (_liveState.GetColorVersion() > _lastColorVersion)
+            {
+                SyncColorTextureFromLiveState();
+                _lastColorVersion = _liveState.GetColorVersion();
+            }
+        }
+        protected virtual void SyncColorTextureFromLiveState()
+        {
+            if (_liveState == null) return;
+            var live = _liveState as LiveSceneState;
+            if (live?.ColorBitmap == null) return;
+            if (_terrainTextureId == 0)
+            {
+                _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, live.ColorBitmap);
+                _hasColorTexture = _terrainTextureId != 0;
+            }
+            else
+            {
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
+                var data = live.ColorBitmap.LockBits(new Rectangle(0, 0, live.ColorBitmap.Width, live.ColorBitmap.Height), ImageLockMode.ReadOnly, live.ColorBitmap.PixelFormat);
+                try
+                {
+                    unsafe
+                    {
+                        byte* ptr = (byte*)data.Scan0.ToPointer();
+                        _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgba, (uint)live.ColorBitmap.Width, (uint)live.ColorBitmap.Height, 0, _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, ptr);
+                    }
+                }
+                finally
+                {
+                    live.ColorBitmap.UnlockBits(data);
+                }
+                _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            }
+            if (_hasColorTexture)
+            {
+                BuildTexturedMesh();
+            }
+        }
         public override void LoadSceneData(SceneData data)
         {
             base.LoadSceneData(data);
-            // === ALWAYS reset geo references on scene load (fixes stale null state after panel close) ===
             _terrainGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
             _colorGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
             _hasColorTexture = false;
@@ -64,16 +118,15 @@ namespace SiegeEngine.Scenes
             {
                 if (!string.IsNullOrEmpty(data.Terrain.HeightmapPath))
                 {
-                    Console.WriteLine($"[TerrainScene] Loading terrain from SceneData: {data.Terrain.HeightmapPath}");
                     LoadTerrain(data.Terrain.HeightmapPath);
-                }
-                else if (!string.IsNullOrEmpty(data.Terrain.ColorTexturePath))
-                {
-                    SetColorTexture(data.Terrain.ColorTexturePath);
                 }
                 else
                 {
                     InitializeBlankTerrain();
+                }
+                if (!string.IsNullOrEmpty(data.Terrain.ColorTexturePath))
+                {
+                    SetColorTexture(data.Terrain.ColorTexturePath);
                 }
             }
             else
@@ -81,7 +134,6 @@ namespace SiegeEngine.Scenes
                 InitializeBlankTerrain();
             }
         }
-
         private void InitializeBlankTerrain()
         {
             _terrainWidth = 200;
@@ -95,17 +147,14 @@ namespace SiegeEngine.Scenes
             _useCustomScale = true;
             BuildWireframeMesh(1);
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _terrainBuffer = new VertexBuffer(_renderContext);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
         }
-
         protected virtual void BuildWireframeMesh(float step)
         {
-            // EDITOR CONSISTENCY FIX: always use full resolution (step=1) in editor contexts
             float effectiveStep = _isEditorContext ? 1f : step;
             ComputeWorldScale();
             _terrainVertices.Clear();
@@ -124,7 +173,9 @@ namespace SiegeEngine.Scenes
                     float z = GetHeight(wx, wy) * VerticalExaggeration;
                     _terrainVertices.Add(wx); _terrainVertices.Add(wy); _terrainVertices.Add(z);
                     _terrainVertices.Add(0.7f); _terrainVertices.Add(0.9f); _terrainVertices.Add(1.0f); _terrainVertices.Add(1.0f);
-                    _terrainVertices.Add(0.0f); _terrainVertices.Add(0.0f);
+                    float u = (float)x / stepsX;
+                    float v = (float)y / stepsY;
+                    _terrainVertices.Add(u); _terrainVertices.Add(v);
                 }
             }
             for (int x = 0; x < stepsX; x++)
@@ -135,31 +186,24 @@ namespace SiegeEngine.Scenes
                     uint tr = tl + 1;
                     uint bl = tl + (uint)(stepsY + 1);
                     uint br = bl + 1;
-                    _terrainIndices.Add(tl); _terrainIndices.Add(tr);
-                    _terrainIndices.Add(tl); _terrainIndices.Add(bl);
+                    _terrainIndices.Add(tl); _terrainIndices.Add(tr); _terrainIndices.Add(bl);
+                    _terrainIndices.Add(tr); _terrainIndices.Add(br); _terrainIndices.Add(bl);
                 }
             }
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
-            Console.WriteLine($"[TerrainScene.BuildWireframeMesh] Built {_meshVertsX}×{_meshVertsY} mesh (effective step={effectiveStep})");
         }
-
-        // Public rebuild entry point – higher-level panels call this after loading new SceneData (fixes dynamic refresh on scene switch)
         public virtual void RebuildTerrainMesh()
         {
             if (_heightmap == null) return;
             BuildWireframeMesh(1);
-            Console.WriteLine($"[TerrainScene.RebuildTerrainMesh] Mesh rebuilt from live heightmap ({_terrainWidth}×{_terrainHeight})");
         }
-
         protected virtual void BuildTexturedMesh()
         {
-            // === SAFE GUARD - never allow null geo refs or missing color texture ===
             if (!_hasColorTexture || _colorGeoRef == null || !_colorGeoRef.IsValid || _terrainGeoRef == null || !_terrainGeoRef.IsValid)
             {
                 BuildWireframeMesh(WireframeStep);
                 return;
             }
-
             ComputeWorldScale();
             _terrainVertices.Clear();
             _terrainIndices.Clear();
@@ -169,7 +213,6 @@ namespace SiegeEngine.Scenes
             int stepsY = _terrainHeight / step;
             _meshVertsX = stepsX + 1;
             _meshVertsY = stepsY + 1;
-
             double tieEastMeters, tieNorthMeters;
             int demZone = 0;
             float scaleEastMeters, scaleNorthMeters;
@@ -190,14 +233,12 @@ namespace SiegeEngine.Scenes
                 scaleEastMeters = (float)(_terrainGeoRef.PixelScale.X * 111319.9f * Math.Cos(_terrainGeoRef.TiePointModel.Y * Math.PI / 180.0));
                 scaleNorthMeters = _terrainGeoRef.PixelScale.Y * 111319.9f;
             }
-
             float colorMinEast = _colorGeoRef.MinEast;
             float colorMaxEast = _colorGeoRef.MaxEast;
             float colorMinNorth = _colorGeoRef.MinNorth;
             float colorMaxNorth = _colorGeoRef.MaxNorth;
             float colorExtentEast = colorMaxEast - colorMinEast;
             float colorExtentNorth = colorMaxNorth - colorMinNorth;
-
             for (int x = 0; x <= stepsX; x++)
             {
                 for (int y = 0; y <= stepsY; y++)
@@ -205,13 +246,10 @@ namespace SiegeEngine.Scenes
                     float wx = x * step * _worldScaleX;
                     float wy = y * step * _worldScaleZ;
                     float z = GetHeight(wx, wy) * VerticalExaggeration;
-
                     _terrainVertices.Add(wx); _terrainVertices.Add(wy); _terrainVertices.Add(z);
                     _terrainVertices.Add(0.7f); _terrainVertices.Add(0.9f); _terrainVertices.Add(1.0f); _terrainVertices.Add(1.0f);
-
                     float fracX = (float)x / stepsX;
                     float fracY = (float)y / stepsY;
-
                     float meshEastMeters, meshNorthMeters;
                     if (_terrainGeoRef.IsMeters)
                     {
@@ -226,14 +264,11 @@ namespace SiegeEngine.Scenes
                         meshEastMeters = (float)e;
                         meshNorthMeters = (float)n;
                     }
-
                     float u = (meshEastMeters - colorMinEast) / colorExtentEast;
                     float v = 1.0f - (meshNorthMeters - colorMinNorth) / colorExtentNorth;
-
                     _terrainVertices.Add(u); _terrainVertices.Add(v);
                 }
             }
-
             for (int x = 0; x < stepsX; x++)
             {
                 for (int y = 0; y < stepsY; y++)
@@ -246,11 +281,8 @@ namespace SiegeEngine.Scenes
                     _terrainIndices.Add(tr); _terrainIndices.Add(br); _terrainIndices.Add(bl);
                 }
             }
-
             _terrainBuffer.UpdateCustomWithUV(_terrainVertices, _terrainIndices);
-            Console.WriteLine($"[TerrainScene.BuildTexturedMesh] Built textured mesh with proper GeoTIFF UV alignment ({_meshVertsX}×{_meshVertsY})");
         }
-
         protected void UpdateAffectedVertices(Vector3 worldPos, float radius)
         {
             if (_terrainVertices.Count == 0 || _heightmap == null || _currentMeshStep < 1 || _meshVertsX == 0)
@@ -287,7 +319,6 @@ namespace SiegeEngine.Scenes
                 _terrainBuffer.UpdateVerticesPartial(_terrainVertices, rowStartVertex, rowVertexCount, 9);
             }
         }
-
         private void ComputeWorldScale()
         {
             if (_terrainGeoRef != null && _terrainGeoRef.IsValid)
@@ -309,14 +340,31 @@ namespace SiegeEngine.Scenes
             if (_useCustomScale) return;
             _worldScaleX = _worldScaleZ = 1.0f;
         }
-
         protected float GetHeight(float x, float y)
         {
             int ix = (int)Math.Clamp(x / _worldScaleX, 0, _terrainWidth - 1);
             int iy = (int)Math.Clamp(y / _worldScaleZ, 0, _terrainHeight - 1);
             return _heightmap[ix, iy];
         }
-
+        protected float GetInterpolatedHeight(float worldX, float worldY)
+        {
+            if (_heightmap == null) return 0f;
+            float fx = worldX / _worldScaleX;
+            float fy = worldY / _worldScaleZ;
+            int x0 = (int)Math.Clamp(Math.Floor(fx), 0, _terrainWidth - 1);
+            int y0 = (int)Math.Clamp(Math.Floor(fy), 0, _terrainHeight - 1);
+            int x1 = Math.Min(x0 + 1, _terrainWidth - 1);
+            int y1 = Math.Min(y0 + 1, _terrainHeight - 1);
+            float tx = fx - x0;
+            float ty = fy - y0;
+            float h00 = _heightmap[x0, y0];
+            float h10 = _heightmap[x1, y0];
+            float h01 = _heightmap[x0, y1];
+            float h11 = _heightmap[x1, y1];
+            float h0 = h00 * (1 - tx) + h10 * tx;
+            float h1 = h01 * (1 - tx) + h11 * tx;
+            return h0 * (1 - ty) + h1 * ty;
+        }
         public virtual void LoadTerrain(string path)
         {
             Console.WriteLine($"[TerrainScene] Loading terrain from {path}");
@@ -326,7 +374,6 @@ namespace SiegeEngine.Scenes
                 float customScaleX, customScaleZ;
                 _heightmap = TerrainManager.LoadTerrain(path, out _terrainWidth, out _terrainHeight, out _minHeight, out _maxHeight, out isCustomFlat, out customScaleX, out customScaleZ);
                 _terrainGeoRef = GeoTiffParser.ParseGeoReference(path);
-                Console.WriteLine($"[TerrainScene] Heightmap loaded: {_terrainWidth}x{_terrainHeight}, Height range: {_minHeight:F1} to {_maxHeight:F1}");
                 if (isCustomFlat)
                 {
                     _worldScaleX = customScaleX;
@@ -341,41 +388,51 @@ namespace SiegeEngine.Scenes
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
                 float centerY = (_terrainHeight * _worldScaleZ) / 2f;
                 _flyCamera.Position = new Vector3(centerX, centerY + 50f, _maxHeight * 1.5f + 10f);
+                if (_liveState is LiveSceneState live && _heightmap != null)
+                {
+                    live.Heightmap = _heightmap;
+                    live.HeightmapVersion++;
+                    Console.WriteLine($"[TerrainScene] Pushed loaded heightmap ({_terrainWidth}x{_terrainHeight}) to shared LiveSceneState for scene '{SceneName}'");
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[TerrainScene] Failed to load TIFF: {ex.Message}");
             }
         }
-
         public void SetColorTexture(string path)
         {
             _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, path);
             if (_terrainTextureId != 0)
             {
                 _colorGeoRef = GeoTiffParser.ParseGeoReference(path);
-                _hasColorTexture = _colorGeoRef.IsValid;
+                _hasColorTexture = true;   // ← ONLY CHANGE: enable color rendering for PNGs (geo ref is optional)
                 BuildTexturedMesh();
             }
+            if (_liveState is LiveSceneState live && !string.IsNullOrEmpty(path))
+            {
+                string full = path;
+                if (File.Exists(full))
+                {
+                    live.ColorBitmap?.Dispose();
+                    live.ColorBitmap = new Bitmap(full);
+                    live.SyncColorTextureIfNeeded();
+                    Console.WriteLine($"[TerrainScene] Pushed loaded color texture '{path}' to shared LiveSceneState for scene '{SceneName}'");
+                }
+            }
         }
-
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
             _flyCamera.Update(deltaTime, 0f, true);
+            SyncFromLiveState();
         }
-
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime);
             _flyCamera.Update(deltaTime, 0f, cameraMode);
+            SyncFromLiveState();
         }
-
-        /// <summary>
-        /// PROPERLY ORGANIZED BASE-CONTEXT MOUSE-RAY (called by EditorScene).
-        /// Uses the EXACT panel viewport (contentW/contentH) for unproject — no aspect mismatch.
-        /// Matches the TwoDCreatorScene unproject pattern exactly but works for any docked/resized editor panel.
-        /// </summary>
         public bool GetMouseRay(Vector2 normalizedMouse, float viewportWidth, float viewportHeight, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             rayOrigin = Vector3.Zero;
@@ -398,7 +455,6 @@ namespace SiegeEngine.Scenes
             rayDir = Vector3.Normalize(Vector3.Transform(eyeFar, invView) - rayOrigin);
             return true;
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -422,7 +478,6 @@ namespace SiegeEngine.Scenes
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
         }
-
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -434,7 +489,6 @@ namespace SiegeEngine.Scenes
             _terrainShader?.Dispose();
             base.Dispose();
         }
-
         public float[,] GetHeightmap() => _heightmap;
     }
 }

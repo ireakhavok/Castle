@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Rendering.Shaders
+﻿// Folder: SiegeEngine/Core/Rendering/Shaders
 // File: SpriteShader.cs
 namespace SiegeEngine.Core.Rendering.Shaders
 {

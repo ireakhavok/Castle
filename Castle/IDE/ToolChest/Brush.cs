@@ -1,6 +1,7 @@
-﻿using System;
+﻿// Folder: ToolChest
+// File: Brush.cs
+using System;
 using System.Numerics;
-
 namespace ToolChest
 {
     public enum BrushShape
@@ -23,7 +24,6 @@ namespace ToolChest
         Sharpen,
         Paint
     }
-
     public class Brush
     {
         public BrushShape Shape { get; set; } = BrushShape.Circle;
@@ -32,7 +32,7 @@ namespace ToolChest
         public int PaintLayer { get; set; } = 0;
         public float Size { get; set; } = 10f;
         public float Intensity { get; set; } = 1f;
-
+        public string MaterialPath { get; set; } = string.Empty;
         public void Apply(ref float[,] heightmap, Vector2 gridPos, float worldScaleX, float worldScaleZ)
         {
             int width = heightmap.GetLength(0);
@@ -44,15 +44,11 @@ namespace ToolChest
             int maxX = Math.Min(width, centerX + (int)radiusInCells + 1);
             int minZ = Math.Max(0, centerZ - (int)radiusInCells - 1);
             int maxZ = Math.Min(height, centerZ + (int)radiusInCells + 1);
-
             Random rand = new Random();
-
             if (Mode == BrushMode.Paint)
             {
-                Console.WriteLine($"[Brush] Paint mode - delegating to TerrainPaintData");
-                return;
+                return; // painting is now handled directly in TerrainCreatorScene
             }
-
             if (Mode == BrushMode.Flatten || Mode == BrushMode.Smooth || Mode == BrushMode.Sharpen)
             {
                 float avgHeight = 0f;
@@ -105,17 +101,13 @@ namespace ToolChest
                         if (!IsInShape(dx, dz, radiusInCells)) continue;
                         float falloff = GetFalloff(dx, dz, radiusInCells);
                         float delta = Intensity * falloff;
-                        if (Mode == BrushMode.Raise)
-                            heightmap[x, z] += delta;
-                        else if (Mode == BrushMode.Lower)
-                            heightmap[x, z] -= delta;
-                        else if (Mode == BrushMode.Noise)
-                            heightmap[x, z] += (float)(rand.NextDouble() * 2 - 1) * delta;
+                        if (Mode == BrushMode.Raise) heightmap[x, z] += delta;
+                        else if (Mode == BrushMode.Lower) heightmap[x, z] -= delta;
+                        else if (Mode == BrushMode.Noise) heightmap[x, z] += (float)(rand.NextDouble() * 2 - 1) * delta;
                     }
                 }
             }
         }
-
         private bool IsInShape(float dx, float dz, float radius)
         {
             switch (Shape)
@@ -128,7 +120,6 @@ namespace ToolChest
                     return false;
             }
         }
-
         private float GetFalloff(float dx, float dz, float radius)
         {
             float dist = 0f;
@@ -153,7 +144,6 @@ namespace ToolChest
                     return 1f;
             }
         }
-
         private float GetNeighborAverage(float[,] heightmap, int x, int z, int width, int height)
         {
             float sum = 0f;

@@ -6,6 +6,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.Terrain;
 using SiegeEngine.Scenes;
 using System;
@@ -30,18 +31,90 @@ namespace MapRoom
         private const float BrushUpdateInterval = 0.0f;
         private const float BrushMoveThreshold = 0.3f;
         private SceneData _sceneData;
-        //private TerrainPaintData _paintData;
-
-        public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null)
+        private TerrainPaintData _paintData;
+        private string _activeMaterialPath = null;
+        private uint _ghostMaterialTextureId = 0;
+        private ShaderProgram _spriteShader;
+        private Bitmap _colorBitmapCache = null;
+        private const int ColorLayerResolution = 4096;
+        private readonly bool _enableBrush;
+        public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null, bool enableBrush = true)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
             _sceneData = sceneData;
             _isEditorContext = true;
+            _enableBrush = enableBrush;
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
-            //_eventBus.Subscribe<SelectBrushEvent>(OnSelectBrush);
+            if (_enableBrush)
+            {
+                _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrushEvent);
+            }
+            _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
         }
-
-        // NEW PUBLIC API - used by SceneEditorPanel for placement (no reflection)
+        public override void BindLiveState(ISceneStateProvider liveState)
+        {
+            base.BindLiveState(liveState);
+        }
+        public void RefreshFromLiveState(SceneData sd)
+        {
+            _sceneData = sd;
+            SyncFromLiveState();
+            if (sd?.Terrain != null)
+            {
+                if (!string.IsNullOrEmpty(sd.Terrain.HeightmapPath))
+                    LoadTerrain(sd.Terrain.HeightmapPath);
+                if (!string.IsNullOrEmpty(sd.Terrain.ColorTexturePath))
+                {
+                    SetColorTexture(sd.Terrain.ColorTexturePath);
+                }
+                else
+                {
+                    SetColorTexture(null);
+                }
+            }
+            if (sd?.Terrain != null || _heightmap == null)
+            {
+                RebuildTerrainMesh();
+            }
+        }
+        private void OnSelectBrushEvent(SelectBrushEvent e)
+        {
+            if (!_enableBrush) return;
+            if (string.IsNullOrWhiteSpace(e.BrushMode))
+            {
+                _activeBrush = null;
+                _ghostVisible = false;
+                _activeMaterialPath = null;
+                if (_ghostMaterialTextureId != 0)
+                {
+                    _renderContext.DeleteTexture(_ghostMaterialTextureId);
+                    _ghostMaterialTextureId = 0;
+                }
+                return;
+            }
+            if (_activeBrush == null)
+            {
+                _activeBrush = new ToolChest.Brush();
+            }
+            _activeBrush.Mode = (BrushMode)Enum.Parse(typeof(BrushMode), e.BrushMode, true);
+            _activeBrush.Size = e.Size;
+            _activeBrush.Intensity = e.Intensity;
+            _activeBrush.Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.BrushShape, true);
+            _activeBrush.Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.BrushFalloff, true);
+            _activeBrush.PaintLayer = e.PaintLayer;
+            _activeBrush.MaterialPath = e.MaterialPath ?? string.Empty;
+            if (!string.IsNullOrEmpty(e.MaterialPath))
+            {
+                SetActiveMaterial(e.MaterialPath);
+            }
+            if (TryPerformPlacementRaycast(out Vector3 hitPoint))
+            {
+                _ghostPosition = hitPoint;
+                _ghostPosition.Z += 0.1f;
+                _ghostVisible = true;
+            }
+            UpdateGhostMesh();
+        }
         public bool TryPerformPlacementRaycast(out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -49,9 +122,7 @@ namespace MapRoom
             Vector3 rayDir = GetLookDirection();
             return RayTerrainIntersect(rayOrigin, rayDir, out hitPoint);
         }
-
         public Vector3 GetCameraPosition() => _flyCamera.Position;
-
         public Vector3 GetLookDirection()
         {
             float yawRad = _flyCamera.Yaw * (MathF.PI / 180f);
@@ -62,15 +133,11 @@ namespace MapRoom
                 MathF.Sin(pitchRad)
             ));
         }
-
-        // NEW: exposed for EditorScene box-select projection
         public Matrix4x4 GetViewMatrix() => _flyCamera.ViewMatrix;
-
         public bool TryTerrainRaycast(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             return RayTerrainIntersect(origin, dir, out hitPoint);
         }
-
         public bool GetMouseRay(Vector2 normalizedMouse, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             rayOrigin = Vector3.Zero;
@@ -92,18 +159,10 @@ namespace MapRoom
             rayDir = Vector3.Normalize(Vector3.Transform(eyeFar, invView) - rayOrigin);
             return true;
         }
-
-        /// <summary>
-        /// Panel-aware overload for correct NDC unprojection using the EXACT viewport dimensions
-        /// passed from SceneEditorPanel (or any future dockable/resizable panel). This is the
-        /// canonical reusable ray generator living in the base scene context.
-        /// Delegates directly to TerrainScene base implementation to avoid any aspect-ratio skew.
-        /// </summary>
         public bool GetMouseRay(Vector2 normalizedMouse, float viewportWidth, float viewportHeight, out Vector3 rayOrigin, out Vector3 rayDir)
         {
             return base.GetMouseRay(normalizedMouse, viewportWidth, viewportHeight, out rayOrigin, out rayDir);
         }
-
         private string ResolveFullPath(string inputPath)
         {
             if (string.IsNullOrEmpty(inputPath)) return inputPath;
@@ -113,13 +172,12 @@ namespace MapRoom
             string fullPath = Path.Combine(projectPath, inputPath);
             return Path.GetFullPath(fullPath);
         }
-
         public void CreateBlank()
         {
             _terrainWidth = 200;
             _terrainHeight = 200;
             _heightmap = new float[_terrainWidth, _terrainHeight];
-            //_paintData = ProjectSettings.Current.GetOrCreatePaintData("Untitled", _terrainWidth, _terrainHeight);
+            _paintData = ProjectSettings.Current.GetOrCreatePaintData("Untitled", _terrainWidth, _terrainHeight);
             _minHeight = float.MaxValue;
             _maxHeight = float.MinValue;
             for (int x = 0; x < _terrainWidth; x++)
@@ -132,7 +190,6 @@ namespace MapRoom
                     if (h > _maxHeight) _maxHeight = h;
                 }
             }
-            Console.WriteLine($"[TerrainCreatorScene] Created blank 200×200 terrain with height range {_minHeight:F1} to {_maxHeight:F1}");
             _useCustomScale = true;
             RebuildTerrainMesh();
             float centerX = (_terrainWidth * _worldScaleX) / 2f;
@@ -141,7 +198,6 @@ namespace MapRoom
             _flyCamera.Yaw = 0f;
             _flyCamera.Pitch = -MathF.PI / 6f;
         }
-
         public void CreateTerrain(TerrainCreationParams parameters)
         {
             if (parameters == null)
@@ -158,7 +214,6 @@ namespace MapRoom
             _worldScaleZ = cellSize;
             if (!string.IsNullOrEmpty(parameters.ImportPath))
             {
-                Console.WriteLine($"[TerrainCreatorScene] Loading GeoTIFF: {parameters.ImportPath}");
                 LoadTerrain(parameters.ImportPath);
                 if (_sceneData?.Terrain != null)
                 {
@@ -169,7 +224,6 @@ namespace MapRoom
                         {
                             string relative = Path.GetRelativePath(projectPath, parameters.ImportPath);
                             _sceneData.Terrain.HeightmapPath = relative;
-                            Console.WriteLine($"[TerrainCreatorScene] GeoTIFF path stored in SceneData: {relative}");
                         }
                         catch { _sceneData.Terrain.HeightmapPath = parameters.ImportPath; }
                     }
@@ -182,7 +236,7 @@ namespace MapRoom
             else
             {
                 _heightmap = new float[_terrainWidth, _terrainHeight];
-                //_paintData = ProjectSettings.Current.GetOrCreatePaintData(parameters.Name ?? "Untitled", _terrainWidth, _terrainHeight);
+                _paintData = ProjectSettings.Current.GetOrCreatePaintData(parameters.Name ?? "Untitled", _terrainWidth, _terrainHeight);
                 _minHeight = parameters.InitialHeight;
                 _maxHeight = parameters.InitialHeight;
                 for (int x = 0; x < _terrainWidth; x++)
@@ -192,7 +246,6 @@ namespace MapRoom
                         _heightmap[x, y] = parameters.InitialHeight * parameters.VerticalExaggeration;
                     }
                 }
-                Console.WriteLine($"[TerrainCreatorScene] SUCCESS: Created {parameters.Width}m × {parameters.Depth}m terrain");
                 _useCustomScale = true;
                 RebuildTerrainMesh();
                 float centerX = (_terrainWidth * _worldScaleX) / 2f;
@@ -202,12 +255,12 @@ namespace MapRoom
                 _flyCamera.Pitch = -MathF.PI / 6f;
             }
         }
-
         public override void LoadSceneData(SceneData data)
         {
             _sceneData = data;
             string sceneName = data?.Name ?? ProjectSettings.Current.CurrentSceneName;
-            //_paintData = ProjectSettings.Current.GetOrCreatePaintData(sceneName, _terrainWidth > 0 ? _terrainWidth : 200, _terrainHeight > 0 ? _terrainHeight : 200);
+            _paintData = ProjectSettings.Current.GetOrCreatePaintData(sceneName, _terrainWidth > 0 ? _terrainWidth : 200, _terrainHeight > 0 ? _terrainHeight : 200);
+            SyncFromLiveState();
             if (data?.Terrain != null && !string.IsNullOrEmpty(data.Terrain.HeightmapPath))
             {
                 LoadTerrain(data.Terrain.HeightmapPath);
@@ -233,7 +286,6 @@ namespace MapRoom
                 _worldScaleX = data?.Terrain?.WorldScaleX ?? 1.0f;
                 _worldScaleZ = data?.Terrain?.WorldScaleZ ?? 1.0f;
                 _useCustomScale = true;
-                Console.WriteLine($"[TerrainCreatorScene.LoadSceneData] Using PER-SCENE unsaved heightmap for '{sceneName}' ({_terrainWidth}×{_terrainHeight})");
                 RebuildTerrainMesh();
                 return;
             }
@@ -257,13 +309,12 @@ namespace MapRoom
                 _worldScaleX = data?.Terrain?.WorldScaleX ?? 1.0f;
                 _worldScaleZ = data?.Terrain?.WorldScaleZ ?? 1.0f;
                 _useCustomScale = true;
-                Console.WriteLine($"[TerrainCreatorScene.LoadSceneData] Using CENTRAL in-memory heightmap ({_terrainWidth}×{_terrainHeight})");
                 RebuildTerrainMesh();
                 return;
             }
             base.LoadSceneData(data);
+            SyncFromLiveState();
         }
-
         public override void LoadTerrain(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -272,24 +323,90 @@ namespace MapRoom
                 return;
             }
             string fullPath = ResolveFullPath(path);
-            Console.WriteLine($"[TerrainCreatorScene] Loading terrain - relative '{path}' → full '{fullPath}'");
             base.LoadTerrain(fullPath);
             if (_sceneData?.Terrain != null)
             {
                 _sceneData.Terrain.HeightmapPath = path;
             }
             RebuildTerrainMesh();
+            SyncFromLiveState();
         }
-
-        public void SetColorTexture(string path)
+        public new void SetColorTexture(string path)
         {
-            base.SetColorTexture(path);
+            string resolvedPath = ResolveFullPath(path);
+            if (_colorBitmapCache != null)
+            {
+                _colorBitmapCache.Dispose();
+                _colorBitmapCache = null;
+            }
+            if (_terrainTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_terrainTextureId);
+                _terrainTextureId = 0;
+            }
+            _hasColorTexture = false;
+            if (string.IsNullOrEmpty(path))
+            {
+                _colorBitmapCache = new Bitmap(ColorLayerResolution, ColorLayerResolution);
+                using (var g = Graphics.FromImage(_colorBitmapCache))
+                {
+                    g.Clear(System.Drawing.Color.Transparent);
+                }
+                _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, _colorBitmapCache);
+                _hasColorTexture = true;
+                BuildTexturedMesh();
+                return;
+            }
+            base.SetColorTexture(resolvedPath);
+            _colorBitmapCache?.Dispose();
+            _colorBitmapCache = null;
+            if (File.Exists(resolvedPath))
+            {
+                // NON-LOCKING + LockBits-safe load
+                using (var fs = new FileStream(resolvedPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                using (var ms = new MemoryStream())
+                {
+                    fs.CopyTo(ms);
+                    ms.Position = 0;
+                    using (var source = new Bitmap(ms))
+                    {
+                        _colorBitmapCache = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+                        using (var g = Graphics.FromImage(_colorBitmapCache))
+                        {
+                            g.DrawImage(source, 0, 0, source.Width, source.Height);
+                        }
+                    }
+                }
+            }
+            if (_sceneData?.Terrain != null)
+            {
+                _sceneData.Terrain.ColorTexturePath = path;
+            }
+            if (_liveState is LiveSceneState live)
+            {
+                if (_colorBitmapCache != null)
+                {
+                    live.ColorBitmap?.Dispose();
+                    live.ColorBitmap = (Bitmap)_colorBitmapCache.Clone();
+                    live.SyncColorTextureIfNeeded();
+                    Console.WriteLine($"[TerrainCreatorScene] Pushed loaded color texture from cache '{path}' to shared LiveSceneState for preview");
+                }
+                else if (!string.IsNullOrEmpty(path))
+                {
+                    if (File.Exists(resolvedPath))
+                    {
+                        live.ColorBitmap?.Dispose();
+                        live.ColorBitmap = new Bitmap(resolvedPath);
+                        live.SyncColorTextureIfNeeded();
+                        Console.WriteLine($"[TerrainCreatorScene] Pushed loaded color texture '{path}' to shared LiveSceneState for preview");
+                    }
+                }
+            }
         }
-
-        //public void SetSplatMap(string path)
-        //{
-        //    base.SetSplatMap(path);
-        //}
+        public string GetColorTexturePath()
+        {
+            return _sceneData?.Terrain?.ColorTexturePath ?? string.Empty;
+        }
         public void SaveTerrain(string terrainName)
         {
             if (string.IsNullOrEmpty(terrainName))
@@ -311,7 +428,6 @@ namespace MapRoom
                         if (!string.Equals(fullOriginal, targetPath, StringComparison.OrdinalIgnoreCase))
                         {
                             File.Copy(fullOriginal, targetPath, true);
-                            Console.WriteLine($"[TerrainCreatorScene] VERBATIM COPY of real GeoTIFF '{fullOriginal}' → '{targetPath}' (geo tags preserved)");
                         }
                         string relativePath = Path.GetRelativePath(projectPath, targetPath);
                         _sceneData.Terrain.HeightmapPath = relativePath;
@@ -327,25 +443,84 @@ namespace MapRoom
             {
                 string relativePath = Path.GetRelativePath(projectPath, tifPath);
                 _sceneData.Terrain.HeightmapPath = relativePath;
+                if (_colorBitmapCache != null || !string.IsNullOrEmpty(_sceneData.Terrain.ColorTexturePath))
+                {
+                    string colorRelative = Path.GetRelativePath(projectPath, pngPath);
+                    _sceneData.Terrain.ColorTexturePath = colorRelative;
+                }
             }
-            //if (_paintData != null)
-            //{
-            //    _paintData.SaveToDisk(projectPath, terrainName);
-            //}
-            Console.WriteLine($"[TerrainCreatorScene] Saved custom terrain '{terrainName}' → {tifPath}");
+            if (_paintData != null)
+            {
+                _paintData.SaveToDisk(projectPath, terrainName);
+            }
             RebuildTerrainMesh();
+            if (_liveState is LiveSceneState live)
+            {
+                live.Heightmap = _heightmap;
+                live.HeightmapVersion++;
+                if (_colorBitmapCache != null)
+                {
+                    live.ColorBitmap?.Dispose();
+                    live.ColorBitmap = (Bitmap)_colorBitmapCache.Clone();
+                    live.SyncColorTextureIfNeeded();
+                }
+            }
         }
-
-        public void Export2D(string projectAssetsDir)
-        {
-            string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
-            string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
-            TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
-            Console.WriteLine($"[TerrainCreatorScene] Exported 2D tilemap to {fbxPath}");
-        }
-
         private void SaveAsPng(string path)
         {
+            if (_colorBitmapCache != null)
+            {
+                Bitmap saveData = _colorBitmapCache;
+                LiveSceneState liveState = _liveState as LiveSceneState;
+                if (liveState != null && liveState.ColorBitmap != null)
+                    saveData = liveState.ColorBitmap;
+
+                using (var saveClone = (Bitmap)saveData.Clone())
+                {
+                    _colorBitmapCache?.Dispose();
+                    _colorBitmapCache = null;
+                    if (liveState != null)
+                    {
+                        liveState.ColorBitmap?.Dispose();
+                        liveState.ColorBitmap = null;
+                    }
+
+                    string tempPath = path + ".tmp";
+                    saveClone.Save(tempPath, ImageFormat.Png);
+                    if (File.Exists(path))
+                        File.Delete(path);
+                    File.Move(tempPath, path);
+                    Console.WriteLine($"[TerrainCreatorScene] Saved color texture PNG: {path}");
+                }
+
+                // FIXED reload — uses the same LockBits-safe pattern as SetColorTexture
+                if (File.Exists(path))
+                {
+                    using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    using (var ms = new MemoryStream())
+                    {
+                        fs.CopyTo(ms);
+                        ms.Position = 0;
+                        using (var source = new Bitmap(ms))
+                        {
+                            _colorBitmapCache = new Bitmap(source.Width, source.Height, PixelFormat.Format32bppArgb);
+                            using (var g = Graphics.FromImage(_colorBitmapCache))
+                            {
+                                g.DrawImage(source, 0, 0, source.Width, source.Height);
+                            }
+                        }
+                    }
+                }
+
+                LiveSceneState liveReload = _liveState as LiveSceneState;
+                if (liveReload != null && _colorBitmapCache != null)
+                {
+                    liveReload.ColorBitmap?.Dispose();
+                    liveReload.ColorBitmap = (Bitmap)_colorBitmapCache.Clone();
+                    liveReload.SyncColorTextureIfNeeded();
+                }
+                return;
+            }
             int w = _terrainWidth;
             int h = _terrainHeight;
             using var bmp = new Bitmap(w, h);
@@ -361,118 +536,210 @@ namespace MapRoom
                 }
             }
             bmp.Save(path, ImageFormat.Png);
+            Console.WriteLine($"[TerrainCreatorScene] Saved heightmap-as-PNG: {path}");
         }
-
+        public void Export2D(string projectAssetsDir)
+        {
+            string fbxPath = Path.Combine(projectAssetsDir, "terrain2d.fbx");
+            string atlasPath = Path.Combine(projectAssetsDir, "terrain_atlas.png");
+            TilemapExporter.ExportToMesh(_heightmap, 0.3f, 0.7f, fbxPath, atlasPath);
+        }
         public void SetActiveBrush(ToolChest.Brush brush)
         {
             _activeBrush = brush;
+            UpdateGhostMesh();
         }
-
         public ToolChest.Brush GetActiveBrush()
         {
             return _activeBrush;
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
         }
-
         private void UpdateGhostMesh()
         {
-            if (_ghostBuffer == null) return; // || _activeBrush == null) return;
-            var vertices = new List<float>();
-            var indices = new List<uint>();
-            int segments = 48;
-            float r = Math.Max(_activeBrush?.Size ?? 1f, 1f);
-            for (int i = 0; i <= segments; i++)
+            if (_ghostBuffer == null) return;
+            if (_activeBrush != null && _activeBrush.Mode == BrushMode.Paint && !string.IsNullOrEmpty(_activeMaterialPath))
             {
-                float angle = i * MathF.PI * 2f / segments;
-                float x = MathF.Cos(angle) * r;
-                float y = MathF.Sin(angle) * r;
-                vertices.Add(x); vertices.Add(y); vertices.Add(0f);
-                vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(1f);
-                vertices.Add(0f); vertices.Add(0f);
+                float r = _activeBrush != null ? Math.Max(_activeBrush.Size, 1f) : 1f;
+                float aspect = 1f;
+                float w = r * aspect;
+                float h = r;
+                float centerZ = GetInterpolatedHeight(_ghostPosition.X, _ghostPosition.Y);
+                int gridRes = 24;
+                var vertices = new List<float>();
+                var indices = new List<uint>();
+                for (int ix = 0; ix <= gridRes; ix++)
+                {
+                    for (int iy = 0; iy <= gridRes; iy++)
+                    {
+                        float ux = (float)ix / gridRes;
+                        float uy = (float)iy / gridRes;
+                        float localX = (ux * 2f - 1f) * w;
+                        float localY = (uy * 2f - 1f) * h;
+                        float worldX = _ghostPosition.X + localX;
+                        float worldY = _ghostPosition.Y + localY;
+                        float sampleZ = GetInterpolatedHeight(worldX, worldY);
+                        float localZ = sampleZ - centerZ;
+                        float u = ux;
+                        float v = 1f - uy;
+                        vertices.Add(localX);
+                        vertices.Add(localY);
+                        vertices.Add(localZ);
+                        vertices.Add(1f); vertices.Add(1f); vertices.Add(1f); vertices.Add(0.95f);
+                        vertices.Add(u);
+                        vertices.Add(v);
+                    }
+                }
+                for (int ix = 0; ix < gridRes; ix++)
+                {
+                    for (int iy = 0; iy < gridRes; iy++)
+                    {
+                        uint tl = (uint)(ix * (gridRes + 1) + iy);
+                        uint tr = tl + 1;
+                        uint bl = tl + (uint)(gridRes + 1);
+                        uint br = bl + 1;
+                        indices.Add(tl); indices.Add(tr); indices.Add(bl);
+                        indices.Add(tr); indices.Add(br); indices.Add(bl);
+                    }
+                }
+                _ghostBuffer.UpdateCustomWithUV(vertices, indices);
+                return;
             }
-            for (int i = 0; i < segments; i++)
+            var verticesFallback = new List<float>();
+            var indicesFallback = new List<uint>();
+            float rFallback = _activeBrush != null ? Math.Max(_activeBrush.Size, 1f) : 1f;
+            if (_activeBrush != null && _activeBrush.Shape == BrushShape.Square)
             {
-                indices.Add((uint)i);
-                indices.Add((uint)((i + 1) % segments));
+                float half = rFallback;
+                verticesFallback.Add(-half); verticesFallback.Add(-half); verticesFallback.Add(0f);
+                verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                verticesFallback.Add(0f); verticesFallback.Add(0f);
+                verticesFallback.Add(half); verticesFallback.Add(-half); verticesFallback.Add(0f);
+                verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                verticesFallback.Add(0f); verticesFallback.Add(0f);
+                verticesFallback.Add(half); verticesFallback.Add(half); verticesFallback.Add(0f);
+                verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                verticesFallback.Add(0f); verticesFallback.Add(0f);
+                verticesFallback.Add(-half); verticesFallback.Add(half); verticesFallback.Add(0f);
+                verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                verticesFallback.Add(0f); verticesFallback.Add(0f);
+                indicesFallback.Add(0); indicesFallback.Add(1);
+                indicesFallback.Add(1); indicesFallback.Add(2);
+                indicesFallback.Add(2); indicesFallback.Add(3);
+                indicesFallback.Add(3); indicesFallback.Add(0);
             }
-            //float r = Math.Max(_activeBrush.Size, 1f);
-            //float alpha = Math.Clamp(_activeBrush.Intensity * 0.8f, 0.3f, 1.0f);
-            //if (_activeBrush.Shape == BrushShape.Circle)
-            //{
-            //    int segments = 64;
-            //    for (int i = 0; i <= segments; i++)
-            //    {
-            //        float angle = i * MathF.PI * 2f / segments;
-            //        float x = MathF.Cos(angle) * r;
-            //        float y = MathF.Sin(angle) * r;
-            //        vertices.Add(x); vertices.Add(y); vertices.Add(0f);
-            //        vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
-            //        vertices.Add(0f); vertices.Add(0f);
-            //    }
-            //    for (int i = 0; i < segments; i++)
-            //    {
-            //        indices.Add((uint)i);
-            //        indices.Add((uint)((i + 1) % segments));
-            //    }
-            //}
-            //else
-            //{
-            //    float half = r;
-            //    vertices.Add(-half); vertices.Add(-half); vertices.Add(0f);
-            //    vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
-            //    vertices.Add(0f); vertices.Add(0f);
-            //    vertices.Add(half); vertices.Add(-half); vertices.Add(0f);
-            //    vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
-            //    vertices.Add(0f); vertices.Add(0f);
-            //    vertices.Add(half); vertices.Add(half); vertices.Add(0f);
-            //    vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
-            //    vertices.Add(0f); vertices.Add(0f);
-            //    vertices.Add(-half); vertices.Add(half); vertices.Add(0f);
-            //    vertices.Add(0f); vertices.Add(1f); vertices.Add(0f); vertices.Add(alpha);
-            //    vertices.Add(0f); vertices.Add(0f);
-            //    indices.Add(0); indices.Add(1);
-            //    indices.Add(1); indices.Add(2);
-            //    indices.Add(2); indices.Add(3);
-            //    indices.Add(3); indices.Add(0);
-            //}
-            _ghostBuffer.UpdateCustomWithUV(vertices, indices);
+            else
+            {
+                int segments = 48;
+                for (int i = 0; i <= segments; i++)
+                {
+                    float angle = i * MathF.PI * 2f / segments;
+                    float x = MathF.Cos(angle) * rFallback;
+                    float y = MathF.Sin(angle) * rFallback;
+                    verticesFallback.Add(x); verticesFallback.Add(y); verticesFallback.Add(0f);
+                    verticesFallback.Add(0f); verticesFallback.Add(1f); verticesFallback.Add(0f); verticesFallback.Add(1f);
+                    verticesFallback.Add(0f); verticesFallback.Add(0f);
+                }
+                for (int i = 0; i < segments; i++)
+                {
+                    indicesFallback.Add((uint)i);
+                    indicesFallback.Add((uint)((i + 1) % segments));
+                }
+            }
+            _ghostBuffer.UpdateCustomWithUV(verticesFallback, indicesFallback);
         }
-        // removed because of regression issue. 
-        ///// <summary>
-        ///// Applies the current brush locally for immediate preview feedback (called every frame during drag).
-        ///// No event publishing — keeps EventBus clean.
-        ///// </summary>
-        //private void ApplyBrushLocally(Vector3 worldPos)
-        //{
-        //    if (_paintData == null || _heightmap == null || _activeBrush == null)
-        //    {
-        //        var fallbackBrush = new ToolChest.Brush();
-        //        fallbackBrush.Apply(ref _heightmap, new Vector2(worldPos.X, worldPos.Y), _worldScaleX, _worldScaleZ);
-        //        UpdateAffectedVertices(worldPos, _activeBrush?.Size ?? 10f);
-        //        return;
-        //    }
-
-        //    if (_activeBrush.Mode == ToolChest.BrushMode.Paint)
-        //    {
-        //        _paintData.PaintSplat(_activeBrush.PaintLayer, new Vector2(worldPos.X, worldPos.Y),
-        //            _activeBrush.Size, _activeBrush.Intensity, _worldScaleX, _worldScaleZ,
-        //            _activeBrush.Shape == ToolChest.BrushShape.Circle, _activeBrush.Falloff.ToString());
-
-        //        RebuildSplatTexture();
-        //    }
-        //    else
-        //    {
-        //        _activeBrush.Apply(ref _heightmap, new Vector2(worldPos.X, worldPos.Y), _worldScaleX, _worldScaleZ);
-        //    }
-
-        //    UpdateAffectedVertices(worldPos, _activeBrush.Size);
-        //}
-
+        public void SetActiveMaterial(string albedoPath)
+        {
+            if (!_enableBrush) return;
+            _activeMaterialPath = albedoPath;
+            if (_ghostMaterialTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_ghostMaterialTextureId);
+                _ghostMaterialTextureId = 0;
+            }
+            if (!string.IsNullOrEmpty(albedoPath))
+            {
+                _ghostMaterialTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, ResolveFullPath(albedoPath));
+            }
+            UpdateGhostMesh();
+        }
+        private void PaintAlbedo(Vector3 worldPos)
+        {
+            if (_colorBitmapCache == null || string.IsNullOrEmpty(_activeMaterialPath) || _activeBrush == null || _activeBrush.Mode != BrushMode.Paint)
+            {
+                if (_colorBitmapCache == null)
+                {
+                    _colorBitmapCache = new Bitmap(ColorLayerResolution, ColorLayerResolution);
+                    using (var g = Graphics.FromImage(_colorBitmapCache))
+                    {
+                        g.Clear(Color.Transparent);
+                    }
+                    _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, _colorBitmapCache);
+                    _hasColorTexture = _terrainTextureId != 0;
+                }
+            }
+            using var materialBmp = new Bitmap(ResolveFullPath(_activeMaterialPath));
+            float u = Math.Clamp(worldPos.X / (_terrainWidth * _worldScaleX), 0f, 1f);
+            float v = Math.Clamp(worldPos.Y / (_terrainHeight * _worldScaleZ), 0f, 1f);
+            int centerTexX = (int)(u * _colorBitmapCache.Width);
+            int centerTexY = (int)(v * _colorBitmapCache.Height);
+            float worldBrushSize = _activeBrush.Size * 2f;
+            int brushTexW = (int)((worldBrushSize / (_terrainWidth * _worldScaleX)) * _colorBitmapCache.Width);
+            int brushTexH = (int)((worldBrushSize / (_terrainHeight * _worldScaleZ)) * _colorBitmapCache.Height);
+            int destX = Math.Max(0, centerTexX - brushTexW / 2);
+            int destY = Math.Max(0, centerTexY - brushTexH / 2);
+            int destW = Math.Min(brushTexW, _colorBitmapCache.Width - destX);
+            int destH = Math.Min(brushTexH, _colorBitmapCache.Height - destY);
+            if (destW <= 0 || destH <= 0) return;
+            using (var flippedMaterial = materialBmp.Clone(new Rectangle(0, 0, materialBmp.Width, materialBmp.Height), materialBmp.PixelFormat))
+            {
+                flippedMaterial.RotateFlip(RotateFlipType.RotateNoneFlipY);
+                using (var g = Graphics.FromImage(_colorBitmapCache))
+                {
+                    g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(flippedMaterial, new Rectangle(destX, destY, destW, destH));
+                }
+            }
+            if (_liveState is LiveSceneState live)
+            {
+                live.ColorBitmap?.Dispose();
+                live.ColorBitmap = (Bitmap)_colorBitmapCache.Clone();
+                live.SyncColorTextureIfNeeded();
+            }
+            UpdateGPUColorTexture();
+        }
+        private void UpdateGPUColorTexture()
+        {
+            if (_colorBitmapCache == null || _terrainTextureId == 0) return;
+            _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
+            var data = _colorBitmapCache.LockBits(new Rectangle(0, 0, _colorBitmapCache.Width, _colorBitmapCache.Height), ImageLockMode.ReadOnly, _colorBitmapCache.PixelFormat);
+            try
+            {
+                unsafe
+                {
+                    byte* ptr = (byte*)data.Scan0.ToPointer();
+                    _renderContext.TexImage2D(_renderContext.Enums.Texture2D, 0, _renderContext.Enums.InternalRgba, (uint)_colorBitmapCache.Width, (uint)_colorBitmapCache.Height, 0, _renderContext.Enums.PixelBgra, _renderContext.Enums.UnsignedByte, ptr);
+                }
+            }
+            finally
+            {
+                _colorBitmapCache.UnlockBits(data);
+            }
+            _renderContext.GenerateMipmap(_renderContext.Enums.Texture2D);
+            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+        }
+        protected override void SyncColorTextureFromLiveState()
+        {
+            base.SyncColorTextureFromLiveState();
+            if (_liveState is LiveSceneState live && live.ColorBitmap != null)
+            {
+                _colorBitmapCache?.Dispose();
+                _colorBitmapCache = (Bitmap)live.ColorBitmap.Clone();
+            }
+        }
         public override void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode)
         {
             base.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
@@ -498,10 +765,7 @@ namespace MapRoom
             {
                 _isBrushing = true;
                 _lastBrushUpdateTime = (float)_controlContext.GetTime();
-                // removed feature for now. fixing regression issue. 
-                //_lastGhostPosition = _ghostPosition;
-                //// Initial local apply on press
-                //ApplyBrushLocally(_ghostPosition);
+                _lastGhostPosition = _ghostPosition;
             }
             if (mouseDown && _isBrushing && _ghostVisible)
             {
@@ -509,39 +773,27 @@ namespace MapRoom
                 float distanceMoved = Vector3.Distance(_ghostPosition, _lastGhostPosition);
                 if (currentTime - _lastBrushUpdateTime > BrushUpdateInterval || distanceMoved > BrushMoveThreshold)
                 {
-                    var strength = _activeBrush.Intensity * deltaTime;
-                    var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, strength, _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0);
-                    _eventBus.Publish(evt, true);
-                    // removed feature for now. fixing regression issue. the code above was re-added back in place of the code below. 
-                    //// Local apply only — no event spam
-                    //ApplyBrushLocally(_ghostPosition);
+                    if (_activeBrush.Mode == BrushMode.Paint && !string.IsNullOrEmpty(_activeMaterialPath))
+                    {
+                        PaintAlbedo(_ghostPosition);
+                    }
+                    else
+                    {
+                        var evt = new TerrainModifiedEvent(_ghostPosition, _activeBrush.Size, _activeBrush.Intensity * deltaTime,
+                            _activeBrush.Mode.ToString().ToLower(), _activeBrush.Shape.ToString(), _activeBrush.Falloff.ToString(), 0, _activeBrush.PaintLayer);
+                        _eventBus.Publish(evt, true);
+                    }
                     _lastBrushUpdateTime = currentTime;
                     _lastGhostPosition = _ghostPosition;
                 }
             }
             if (mouseReleased)
             {
-                //removed because of regression issue. 
-            //    && _isBrushing)
-            //{
-            //    // Final local apply + SINGLE clean event for the entire stroke
-            //    if (_ghostVisible)
-            //    {
-            //        ApplyBrushLocally(_ghostPosition);
-            //    }
-
-            //    var evt = new TerrainModifiedEvent(
-            //        _ghostPosition,
-            //        _activeBrush.Size,
-            //        _activeBrush.Intensity,  // full intensity (no *deltaTime)
-            //        _activeBrush.Mode.ToString().ToLower(),
-            //        _activeBrush.Shape.ToString(),
-            //        _activeBrush.Falloff.ToString(),
-            //        0,
-            //        _activeBrush.PaintLayer);
-
-            //    _eventBus.Publish(evt, true);
                 _isBrushing = false;
+                if (_activeBrush.Mode == BrushMode.Paint && _ghostVisible && !string.IsNullOrEmpty(_activeMaterialPath))
+                {
+                    PaintAlbedo(_ghostPosition);
+                }
             }
             if (_sceneData?.Name != null)
             {
@@ -552,8 +804,8 @@ namespace MapRoom
             {
                 level.Terrain = _sceneData.Terrain;
             }
+            SyncFromLiveState();
         }
-
         private bool RayTerrainIntersect(Vector3 origin, Vector3 dir, out Vector3 hitPoint)
         {
             hitPoint = Vector3.Zero;
@@ -581,7 +833,6 @@ namespace MapRoom
             }
             return false;
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
@@ -604,38 +855,34 @@ namespace MapRoom
                 _terrainShader.SetUniform("uTexture", 0);
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
-            //if ((_hasColorTexture && _terrainTextureId != 0)  || _hasSplatMap)
-            //{
-            //    _terrainShader.SetUniform("uHasTexture", 1);
-            //    if (_hasSplatMap && _splatTextureId != 0)
-            //    {
-            //        _renderContext.ActiveTexture(0);
-            //        _renderContext.BindTexture(_renderContext.Enums.Texture2D, _splatTextureId);
-            //        _terrainShader.SetUniform("uSplatTexture", 0);
-            //    }
-            //    else if (_hasColorTexture && _terrainTextureId != 0)
-            //    {
-            //        _renderContext.ActiveTexture(0);
-            //        _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
-            //        _terrainShader.SetUniform("uTexture", 0);
-            //    }
-            //    _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            //}
             if (_ghostVisible && _ghostBuffer != null)
             {
                 _renderContext.Enable(_renderContext.Enums.Blend);
                 _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
                 _renderContext.Disable(_renderContext.Enums.DepthTest);
                 Matrix4x4 model = Matrix4x4.CreateTranslation(_ghostPosition);
-                _terrainShader.SetMatrix4("uModel", model);
-                _terrainShader.SetUniform("uHasTexture", 0);
-                _ghostBuffer.Bind();
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                if (_activeBrush != null && _activeBrush.Mode == BrushMode.Paint && _ghostMaterialTextureId != 0)
+                {
+                    _spriteShader.Use();
+                    _spriteShader.SetMatrix4("uModel", model);
+                    _spriteShader.SetMatrix4("uView", view);
+                    _spriteShader.SetMatrix4("uProjection", projection);
+                    _renderContext.ActiveTexture(0);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, _ghostMaterialTextureId);
+                    _ghostBuffer.Bind();
+                    _renderContext.DrawElements(_renderContext.Enums.Triangles, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                }
+                else
+                {
+                    _terrainShader.SetMatrix4("uModel", model);
+                    _terrainShader.SetUniform("uHasTexture", 0);
+                    _ghostBuffer.Bind();
+                    _renderContext.DrawElements(_renderContext.Enums.Lines, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+                }
                 _renderContext.Enable(_renderContext.Enums.DepthTest);
                 _renderContext.Disable(_renderContext.Enums.Blend);
             }
         }
-
         public override void Dispose()
         {
             if (_terrainTextureId != 0)
@@ -643,47 +890,24 @@ namespace MapRoom
                 _renderContext.DeleteTexture(_terrainTextureId);
                 _terrainTextureId = 0;
             }
-            //if (_splatTextureId != 0)
-            //{
-            //    _renderContext.DeleteTexture(_splatTextureId);
-            //    _splatTextureId = 0;
-            //}
+            if (_ghostMaterialTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_ghostMaterialTextureId);
+                _ghostMaterialTextureId = 0;
+            }
+            _colorBitmapCache?.Dispose();
             _terrainBuffer?.Dispose();
             _terrainShader?.Dispose();
             _ghostBuffer?.Dispose();
+            _spriteShader?.Dispose();
             base.Dispose();
         }
-
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             if (_processedModifications.Contains(e.Id)) return;
             ApplyModification(e);
             _processedModifications.Add(e.Id);
         }
-
-        //private void OnSelectBrush(SelectBrushEvent e)
-        //{
-        //    if (string.IsNullOrEmpty(e.BrushMode))
-        //    {
-        //        _activeBrush = null;
-        //        _ghostVisible = false;
-        //        Console.WriteLine("[TerrainCreatorScene] Brush cleared (panel closed)");
-        //        return;
-        //    }
-
-        //    if (_activeBrush == null)
-        //        _activeBrush = new ToolChest.Brush();
-
-        //    _activeBrush.Mode = (ToolChest.BrushMode)Enum.Parse(typeof(ToolChest.BrushMode), e.BrushMode);
-        //    _activeBrush.Shape = (ToolChest.BrushShape)Enum.Parse(typeof(ToolChest.BrushShape), e.BrushShape);
-        //    _activeBrush.Falloff = (ToolChest.BrushFalloff)Enum.Parse(typeof(ToolChest.BrushFalloff), e.BrushFalloff);
-        //    _activeBrush.Size = e.Size;
-        //    _activeBrush.Intensity = e.Intensity;
-        //    _activeBrush.PaintLayer = e.PaintLayer;
-
-        //    Console.WriteLine($"[TerrainCreatorScene] Synced active brush from panel - Mode={_activeBrush.Mode} Layer={_activeBrush.PaintLayer}");
-        //}
-
         private void ApplyModification(TerrainModifiedEvent e)
         {
             var brush = new ToolChest.Brush
@@ -692,24 +916,15 @@ namespace MapRoom
                 Shape = (BrushShape)Enum.Parse(typeof(BrushShape), e.Shape, true),
                 Falloff = (BrushFalloff)Enum.Parse(typeof(BrushFalloff), e.Falloff, true),
                 Size = e.Radius,
-                Intensity = e.Strength
+                Intensity = e.Strength,
+                PaintLayer = e.PaintLayer
             };
-            brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
-            UpdateAffectedVertices(e.WorldPos, e.Radius);
-
-            // removed because of regression issue. 
-            //    // For remote/networked events only — re-apply locally
-            //    ApplyBrushLocally(e.WorldPos);
-            //}
-
-            //private void RebuildSplatTexture()
-            //{
-            //    if (_splatTextureId != 0)
-            //        _renderContext.DeleteTexture(_splatTextureId);
-
-            //    //Console.WriteLine($"[TerrainCreatorScene] Rebuilt splat texture from PaintData after paint operation");
+            if (brush.Mode != BrushMode.Paint)
+            {
+                brush.Apply(ref _heightmap, new Vector2(e.WorldPos.X, e.WorldPos.Y), _worldScaleX, _worldScaleZ);
+                UpdateAffectedVertices(e.WorldPos, e.Radius);
+            }
         }
-
         public new float[,] GetHeightmap() => _heightmap;
     }
 }
