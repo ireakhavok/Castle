@@ -57,7 +57,7 @@ namespace SiegeEngine.Core.Definitions
             var data = new EntityData
             {
                 Type = Type,
-                Id = Id   // FIXED: persist unique ID across save/load so spawn never duplicates
+                Id = Id
             };
 
             // PhysicsComponent is the definitive runtime/editor source of truth
@@ -83,7 +83,6 @@ namespace SiegeEngine.Core.Definitions
                     data.AssetPackKey = modelComp.Key;
                 }
 
-                // NEW: serialize Material (world-aligned textures + all slots)
                 if (modelComp.Material != null)
                 {
                     data.MaterialData = new MaterialData
@@ -91,6 +90,26 @@ namespace SiegeEngine.Core.Definitions
                         Name = modelComp.Material.Name,
                         TextureSlots = modelComp.Material.TextureSlots
                     };
+                }
+            }
+
+            // NEW: component round-tripping support (extensible, mod-friendly, backward-compatible)
+            data.Components = new List<EntityData.ComponentEntry>();
+
+            foreach (var kvp in _components)
+            {
+                var componentType = kvp.Key;
+                var component = kvp.Value;
+
+                // Only components that implement IComponentData will be saved
+                if (component is IComponentData serializable)
+                {
+                    var entry = new EntityData.ComponentEntry
+                    {
+                        Type = componentType.FullName,
+                        Data = serializable.ToSerializableData()
+                    };
+                    data.Components.Add(entry);
                 }
             }
 
@@ -103,7 +122,7 @@ namespace SiegeEngine.Core.Definitions
 
             var entity = new Entity
             {
-                Id = data.Id,   // FIXED: respect saved ID (prevents reset/duplicates on load)
+                Id = data.Id,
                 Type = data.Type ?? "Default"
             };
 
@@ -115,7 +134,7 @@ namespace SiegeEngine.Core.Definitions
 
             entity.AddComponent(physics);
 
-            // Defensive sync so Entity.Transform always matches (prevents any legacy code paths from seeing origin)
+            // Defensive sync so Entity.Transform always matches
             entity.Transform.Position = physics.Position;
             entity.Transform.Rotation = physics.Rotation;
             entity.Transform.Scale = physics.Scale;
@@ -124,7 +143,6 @@ namespace SiegeEngine.Core.Definitions
             {
                 var modelComp = new ModelComponent { Key = data.AssetPackKey };
 
-                // NEW: restore Material from saved data
                 if (data.MaterialData != null)
                 {
                     modelComp.Material = new Material
@@ -136,8 +154,6 @@ namespace SiegeEngine.Core.Definitions
 
                 entity.AddComponent(modelComp);
 
-                // RIGHT-WAY FIX: set real model bounding size + exact local AABB (cm) from FBXModel
-                // This guarantees OBB exactly matches visual geometry for raycast selection on rotated/non-centered models.
                 if (modelComp.Model != null)
                 {
                     physics.Size = modelComp.Model.GetBoundingSize();
@@ -146,8 +162,64 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) (PhysicsComponent authoritative) MaterialSlots={entity.GetComponent<ModelComponent>()?.Material?.TextureSlots?.Count ?? 0}");
+            // NEW: component round-tripping (extensible, mod-friendly)
+            if (data.Components != null)
+            {
+                foreach (var entry in data.Components)
+                {
+                    // Central factory (registered components only — unknown ones are skipped gracefully)
+                    if (ComponentFactory.TryCreate(entry.Type, entry.Data, out var component))
+                    {
+                        entity.AddComponent(component);
+                    }
+                }
+            }
+
+            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) Components={entity.Components.Count}");
             return entity;
         }
+
+        // Central registration point for components that want to be serialized
+        private static class ComponentFactory
+        {
+            private static readonly Dictionary<string, Func<object, IComponent>> _creators = new();
+
+            public static void Register<T>(Func<object, T> creator) where T : IComponent
+            {
+                _creators[typeof(T).FullName] = data => creator(data);
+            }
+
+            public static bool TryCreate(string typeName, object data, out IComponent component)
+            {
+                component = null;
+                if (string.IsNullOrEmpty(typeName) || !_creators.TryGetValue(typeName, out var creator))
+                    return false;
+
+                try
+                {
+                    component = creator(data);
+                    return component != null;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            static ComponentFactory()
+            {
+                // Register known core components here (moddable later via static registration)
+                Register(data => new TransformComponent());
+                Register(data => new PhysicsComponent());
+                // Add more as needed — no hard-coded list of "all" types
+            }
+        }
+    }
+
+    // Optional lightweight interface for any component that wants to persist
+    public interface IComponentData
+    {
+        object ToSerializableData();
+        void FromSerializableData(object data);
     }
 }

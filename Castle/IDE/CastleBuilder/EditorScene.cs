@@ -38,16 +38,11 @@ namespace CastleBuilder
         }
         public ProjectData GetProjectData() => _projectData;
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
-
-        // NEW: Helper for gizmo (future-proof single-entity lookup)
         public Entity GetEntityById(int id)
         {
             return _server.GetEntities().FirstOrDefault(e => e.Id == id);
         }
-
-        // NEW: Helper for active scene access
         public GameScene GetActiveGameScene() => _activeGameScene;
-
         public bool TryGetPlacementPosition(out Vector3 position)
         {
             position = Vector3.Zero;
@@ -158,13 +153,20 @@ namespace CastleBuilder
         {
             var level = ProjectSettings.Current.CurrentLevel;
             if (level == null || _server == null) return;
+
             var clientProxy = _server as ClientGameServerProxy;
             if (clientProxy != null)
             {
-                clientProxy.ClearEntities();
+                // FIXED: merge-style sync instead of clear + full re-add
+                // This prevents the loaded entity from being removed and the new placement from being duplicated
+                var existingIds = new HashSet<int>(clientProxy.GetEntities().Select(e => e.Id));
+
                 foreach (var entity in level.Entities)
                 {
-                    clientProxy.AddEntity(entity);
+                    if (!existingIds.Contains(entity.Id))
+                    {
+                        clientProxy.AddEntity(entity);
+                    }
                 }
             }
         }
@@ -220,7 +222,6 @@ namespace CastleBuilder
                 _activeGameScene = cachedScene;
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
-                // FULL SYNC ON CACHE HIT (exact minimal fix for re-select)
                 if (_activeGameScene is TerrainCreatorScene cachedTcs)
                 {
                     cachedTcs.LoadSceneData(sd);
@@ -232,7 +233,6 @@ namespace CastleBuilder
                     }
                     else
                     {
-                        // clear color if none (prevents stale color from previous scene)
                         cachedTcs.SetColorTexture(null);
                     }
                 }

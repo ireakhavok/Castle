@@ -31,20 +31,25 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("height")]
         public float Height { get; set; }
 
-        // NEW: full material data (world-aligned textures + slots) for save/load
         [JsonPropertyName("material")]
         public MaterialData MaterialData { get; set; }
 
-        // FIXED: persistent unique ID for load/spawn stability (prevents duplicates after reload or PlaceEntity)
         [JsonPropertyName("id")]
         public int Id { get; set; }
 
-        /// <summary>
-        /// Shared, engine-neutral JsonSerializerOptions used for ALL project.json / SceneData / EntityData serialization.
-        /// Guarantees correct deserialization of System.Numerics.Vector3 and Quaternion (PascalCase inner fields).
-        /// PropertyNameCaseInsensitive = true is required for robust binding of the saved JSON format.
-        /// Placed here in core so Level.cs and other engine code never reference Keystone.
-        /// </summary>
+        // NEW: extensible component data list (supports mods, future components, unknown types are gracefully skipped)
+        [JsonPropertyName("components")]
+        public List<ComponentEntry> Components { get; set; } = new List<ComponentEntry>();
+
+        public class ComponentEntry
+        {
+            [JsonPropertyName("type")]
+            public string Type { get; set; }
+
+            [JsonPropertyName("data")]
+            public object Data { get; set; }
+        }
+
         public static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -53,7 +58,6 @@ namespace SiegeEngine.Core.Definitions
         };
     }
 
-    // NEW helper for serializing Material + TextureSlots cleanly
     public class MaterialData
     {
         [JsonPropertyName("name")]
