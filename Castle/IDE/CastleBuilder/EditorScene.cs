@@ -38,6 +38,16 @@ namespace CastleBuilder
         }
         public ProjectData GetProjectData() => _projectData;
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
+
+        // NEW: Helper for gizmo (future-proof single-entity lookup)
+        public Entity GetEntityById(int id)
+        {
+            return _server.GetEntities().FirstOrDefault(e => e.Id == id);
+        }
+
+        // NEW: Helper for active scene access
+        public GameScene GetActiveGameScene() => _activeGameScene;
+
         public bool TryGetPlacementPosition(out Vector3 position)
         {
             position = Vector3.Zero;
