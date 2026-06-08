@@ -530,6 +530,43 @@ Folder: IDE
         - Calls: Id.ToString
       - void Deserialize(byte[] data)
         - Calls: Guid.Parse, ToString, float.Parse, int.Parse, ulong.Parse
+- File: TransformGizmoOverlay.cs
+  - Class: TransformGizmoOverlay (Namespace: ToolChest)
+    - Inherits: ICustomOverlay
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - EventBus _eventBus
+      - int _selectedEntityId
+      - Vector3 _gizmoPosition
+      - Quaternion _gizmoRotation
+      - VertexBuffer _arrowBuffer
+      - VertexBuffer _ringBuffer
+      - bool _isDragging
+      - int _activeAxis
+      - bool _isRotation
+      - Vector3 _dragStartWorld
+      - Vector3 _dragStartMouseRay
+      - int _hoveredAxis
+    - Methods:
+      - void OnEntitySelected( Quaternion rotation,  Vector3 position, int entityId)
+        - Calls: RebuildGizmoGeometry
+      - void ClearSelection()
+      - void RebuildGizmoGeometry()
+        - Calls: BuildArrowGeometry, BuildRingGeometry, VertexBuffer
+      - void BuildArrowGeometry()
+        - Calls: AddArrow, _arrowBuffer.UpdateCustom
+      - void AddArrow( List<uint> indices,  Vector3 direction,  Vector4 color, List<Vertex> vertices)
+        - Calls: Vertex
+      - void BuildRingGeometry()
+        - Calls: AddRing, _ringBuffer.UpdateCustom
+      - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
+        - Calls: Vertex
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+      - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
+      - bool HandleMouseInput( float contentH,  float contentW, Vector2 contentMouse)
 - File: TreeViewPanel.cs
   - Class: TreeViewUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay

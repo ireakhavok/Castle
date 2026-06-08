@@ -1,0 +1,56 @@
+Perfect — "everything in threes" is a clean, elegant design pillar. It keeps the game approachable for a theme-park MMO while still allowing depth. We now have a tight, iconic trinity:
+
+Three base classes: Warrior, Archer, Mage.
+Three subclasses each: Light, Medium, Heavy (9 total specializations).
+Three primary stats that directly raise base damage on weapons: Strength, Dexterity, Intelligence.
+
+This meshes beautifully with the weapon refinement + attribute system we built. Better bases and higher refinements multiply the stat-scaled damage, and the skill-focused attributes reward the playstyle each subclass wants.
+Core Stats & Damage Formula (Simple but Deep)
+
+Strength (STR) — Warrior primary. Raises base melee damage and some absorption/shield values.
+Dexterity (DEX) — Archer primary. Raises base ranged/physical damage, accuracy, and dodge-related bonuses.
+Intelligence (INT) — Mage primary. Raises base magic damage and effect potency (shields, procs, etc.).
+
+Every weapon has a primary stat affinity based on its type (sword = STR, bow = DEX, staff = INT). When you refine a weapon, the +1 multiplier applies to the base damage after your primary stat is factored in.
+A high-STR Warrior with a god-roll +15 STR sword will hit like a truck. A low-STR Archer using that same sword will still do okay damage thanks to refinement, but it will never feel as good as their DEX bow — smart gearing and subclass choice matter.
+Secondary stats (crit, haste, etc.) and weapon attributes are universal but get extra synergy based on your subclass.
+The Nine Specializations (Light / Medium / Heavy)
+Each subclass shifts the fantasy archetype while staying true to the main class fantasy. Light = mobile / skillful / high uptime, Medium = balanced / versatile, Heavy = high impact / tanky / slower but punishing.
+Warrior (STR-focused melee brawler)
+
+Light Warrior (Duelist / Skirmisher): Fast dual-wield or light blade focus. Loves dodge windows and positioning. Attributes shine on “Momentum Burst” or “Precision Strike” for hit-and-run damage.
+Medium Warrior (Classic Fighter): Sword-and-board or versatile greatsword. Balanced damage and defense. Great all-rounder that uses absorption attributes to stay in the fight.
+Heavy Warrior (Juggernaut / Tank): Massive weapons, high health, slower swings. Turns “Absorption Plating” and damage reduction into team-saving walls. Rewards perfect timing on big hits.
+
+Archer (DEX-focused ranged physical)
+
+Light Archer (Trickshot / Scout): Dual crossbows or rapid-fire bows. High mobility, kiting master. Attributes like “Positioning Expert” or reload efficiency feel amazing for constant movement.
+Medium Archer (Ranger / Hunter): Standard bow with traps/pets. Versatile single-target and AoE. Uses timing windows and weakspot attributes to burst.
+Heavy Archer (Sharpshooter / Ballista): Slow, heavy crossbows or siege-style shots. Huge single-hit damage. Rewards perfect aim and “Precision Strike” procs — one well-placed shot can delete a boss phase.
+
+Mage (INT-focused caster)
+
+Light Mage (Spellblade / Elementalist): Fast-casting, mobile magic. Mixes melee-range spells with movement. Loves cooldown refund and “Interrupt Synergy” attributes.
+Medium Mage (Classic Wizard): Balanced nukes, shields, and DoTs. Jack-of-all-trades caster that uses reactive shields and resource-efficient attributes.
+Heavy Mage (Archmage / Warlock): Slow, high-impact spells and big shields. Turns absorption and life-on-hit timing into near-immortal sustain while charging massive nukes.
+
+How Weapon Attributes Feel with Subclasses
+Because attributes are skill-resembling, they naturally amplify each subclass:
+
+A Light Archer with “Momentum Burst” + high refinement feels like a slippery glass cannon that dances around bosses.
+A Heavy Warrior with “Absorption Plating” + high refinement becomes an unkillable wall that still deals massive damage on the counter-swing.
+Refinement multipliers make the difference huge: a +15 god-roll weapon on your “correct” stat/subclass will feel transformative, while off-stat use is still viable for fun but clearly suboptimal.
+
+Quick Balance Notes
+
+All subclasses are viable in PvE and PvP — they just play differently (the theme-park promise).
+Talent trees (unlocked via levels) let you double down: Light subclasses get more mobility talents, Heavy get more defensive ones.
+Group composition loves the trinity: you’ll want one of each main class, but the Light/Medium/Heavy mix adds nice variety without overwhelming new players.
+
+This keeps everything clean, memorable, and synergistic with the refinement gambling and attribute system we already have.
+Want to go deeper on any of these?
+
+Specific talent trees for a subclass?
+Exact weapon examples for each main class?
+How secondary stats or group utility works?
+Or jump to something else (raids, PvP, housing, etc.)?

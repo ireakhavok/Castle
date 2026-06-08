@@ -462,7 +462,7 @@ Found: CastleBuilder.csproj
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
-Read 20659 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
+Read 20983 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
 Found 18 dependencies
 Found: Events
@@ -530,7 +530,7 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
-Read 23428 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
+Read 25973 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
 Found 24 dependencies
 Found: SceneEditorUI.html
@@ -761,6 +761,12 @@ Namespace: ToolChest
 Found 10 dependencies
 Found: SpritePlacementPanelUI.html
 Found: ToolChest.csproj
+Found: TransformGizmoOverlay.cs
+Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
+Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
+Read 9903 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TransformGizmoOverlay.cs
+Namespace: ToolChest
+Found 9 dependencies
 Found: TreeViewPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TreeViewPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\TreeViewPanel.cs

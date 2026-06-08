@@ -406,7 +406,7 @@ namespace SiegeEngine.Scenes
             if (_terrainTextureId != 0)
             {
                 _colorGeoRef = GeoTiffParser.ParseGeoReference(path);
-                _hasColorTexture = true;   // ← ONLY CHANGE: enable color rendering for PNGs (geo ref is optional)
+                _hasColorTexture = true;
                 BuildTexturedMesh();
             }
             if (_liveState is LiveSceneState live && !string.IsNullOrEmpty(path))

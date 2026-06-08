@@ -350,7 +350,7 @@ namespace MapRoom
                 _colorBitmapCache = new Bitmap(ColorLayerResolution, ColorLayerResolution);
                 using (var g = Graphics.FromImage(_colorBitmapCache))
                 {
-                    g.Clear(System.Drawing.Color.Transparent);
+                    g.Clear(Color.Transparent);
                 }
                 _terrainTextureId = TerrainTextureParser.CreateColorTexture(_renderContext, _colorBitmapCache);
                 _hasColorTexture = true;
@@ -362,7 +362,6 @@ namespace MapRoom
             _colorBitmapCache = null;
             if (File.Exists(resolvedPath))
             {
-                // NON-LOCKING + LockBits-safe load
                 using (var fs = new FileStream(resolvedPath, FileMode.Open, FileAccess.Read, FileShare.Read))
                 using (var ms = new MemoryStream())
                 {
@@ -493,7 +492,6 @@ namespace MapRoom
                     Console.WriteLine($"[TerrainCreatorScene] Saved color texture PNG: {path}");
                 }
 
-                // FIXED reload — uses the same LockBits-safe pattern as SetColorTexture
                 if (File.Exists(path))
                 {
                     using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
