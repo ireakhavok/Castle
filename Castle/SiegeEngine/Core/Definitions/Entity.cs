@@ -93,7 +93,7 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            // NEW: component round-tripping support (extensible, mod-friendly, backward-compatible)
+            // Component round-tripping — ONLY the components this specific entity actually has
             data.Components = new List<EntityData.ComponentEntry>();
 
             foreach (var kvp in _components)
@@ -101,7 +101,6 @@ namespace SiegeEngine.Core.Definitions
                 var componentType = kvp.Key;
                 var component = kvp.Value;
 
-                // Only components that implement IComponentData will be saved
                 if (component is IComponentData serializable)
                 {
                     var entry = new EntityData.ComponentEntry
@@ -162,57 +161,38 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            // NEW: component round-tripping (extensible, mod-friendly)
+            // Component round-tripping — ONLY recreate exactly the components that were saved for this entity
+            // No factory, no switch, no hard-coded list. Purely modular using reflection on the saved type name.
             if (data.Components != null)
             {
                 foreach (var entry in data.Components)
                 {
-                    // Central factory (registered components only — unknown ones are skipped gracefully)
-                    if (ComponentFactory.TryCreate(entry.Type, entry.Data, out var component))
+                    if (string.IsNullOrEmpty(entry.Type)) continue;
+
+                    try
                     {
+                        var componentType = System.Type.GetType(entry.Type);
+                        if (componentType == null || !typeof(IComponent).IsAssignableFrom(componentType))
+                            continue;
+
+                        var component = (IComponent)Activator.CreateInstance(componentType);
+
+                        if (component is IComponentData serializable && entry.Data != null)
+                        {
+                            serializable.FromSerializableData(entry.Data);
+                        }
+
                         entity.AddComponent(component);
+                    }
+                    catch
+                    {
+                        Console.WriteLine($"[Entity.FromData] Could not recreate component type: {entry.Type}");
                     }
                 }
             }
 
             Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) Components={entity.Components.Count}");
             return entity;
-        }
-
-        // Central registration point for components that want to be serialized
-        private static class ComponentFactory
-        {
-            private static readonly Dictionary<string, Func<object, IComponent>> _creators = new();
-
-            public static void Register<T>(Func<object, T> creator) where T : IComponent
-            {
-                _creators[typeof(T).FullName] = data => creator(data);
-            }
-
-            public static bool TryCreate(string typeName, object data, out IComponent component)
-            {
-                component = null;
-                if (string.IsNullOrEmpty(typeName) || !_creators.TryGetValue(typeName, out var creator))
-                    return false;
-
-                try
-                {
-                    component = creator(data);
-                    return component != null;
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-
-            static ComponentFactory()
-            {
-                // Register known core components here (moddable later via static registration)
-                Register(data => new TransformComponent());
-                Register(data => new PhysicsComponent());
-                // Add more as needed — no hard-coded list of "all" types
-            }
         }
     }
 

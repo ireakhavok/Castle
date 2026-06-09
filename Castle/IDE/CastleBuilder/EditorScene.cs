@@ -158,6 +158,7 @@ namespace CastleBuilder
             if (clientProxy != null)
             {
                 // FIXED: merge-style sync instead of clear + full re-add
+                // Only add entities that are not already present in the client proxy
                 // This prevents the loaded entity from being removed and the new placement from being duplicated
                 var existingIds = new HashSet<int>(clientProxy.GetEntities().Select(e => e.Id));
 
