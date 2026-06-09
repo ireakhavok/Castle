@@ -1096,7 +1096,7 @@ Folder: SiegeEngine
       - void RemoveEntity(int id)
         - Calls: EntityRemovedEvent, _entities.Remove
       - void ClearEntities()
-        - Calls: _entities.Clear
+        - Calls: EntityRemovedEvent, _entities.Clear
       - IReadOnlyList<Entity> GetEntities()
       - Entity GetEntityById(int id)
       - void AddSystem(GameSystem system)
