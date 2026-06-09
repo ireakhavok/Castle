@@ -10,7 +10,6 @@ using System.Text;
 using System.Text.Json;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Networking;
-
 namespace SiegeEngine.Core.Events
 {
     public interface IEvent
@@ -19,18 +18,15 @@ namespace SiegeEngine.Core.Events
         byte[] Serialize();
         void Deserialize(byte[] data);
     }
-
     public class EventBus
     {
         private readonly Dictionary<Type, List<object>> _subscribers = new Dictionary<Type, List<object>>();
         private readonly SteamEngine _steamEngine;
         private readonly List<string> _eventNamespaces = new List<string> { "SiegeEngine.Events" };
-
         public EventBus(SteamEngine steamEngine = null)
         {
             _steamEngine = steamEngine;
         }
-
         public void RegisterNamespace(string ns)
         {
             if (!_eventNamespaces.Contains(ns))
@@ -38,7 +34,6 @@ namespace SiegeEngine.Core.Events
                 _eventNamespaces.Add(ns);
             }
         }
-
         public void Subscribe<T>(Action<T> handler) where T : class
         {
             Type type = typeof(T);
@@ -49,37 +44,43 @@ namespace SiegeEngine.Core.Events
             _subscribers[type].Add(handler);
             Console.WriteLine($"EventBus: Subscribed to {type.Name}");
         }
-
+        public void Unsubscribe<T>(Action<T> handler) where T : class
+        {
+            Type type = typeof(T);
+            if (_subscribers.ContainsKey(type))
+            {
+                _subscribers[type].Remove(handler);
+                if (_subscribers[type].Count == 0)
+                {
+                    _subscribers.Remove(type);
+                }
+                Console.WriteLine($"EventBus: Unsubscribed from {type.Name}");
+            }
+        }
         public void Publish<T>(T eventData, bool networkSync = false) where T : class
         {
             Type type = typeof(T);
             bool isProtected = type.GetCustomAttribute<ProtectedEventAttribute>() != null;
-
             if (isProtected)
             {
                 StackTrace stackTrace = new StackTrace();
                 bool isInternalCaller = stackTrace.GetFrames()?.Any(frame =>
                     frame.GetMethod()?.DeclaringType?.Namespace?.StartsWith("Citadel") == true) ?? false;
-
                 if (!isInternalCaller)
                 {
                     Console.WriteLine($"EventBus: Rejected publish of protected event {type.Name} from unauthorized caller");
                     return;
                 }
             }
-
             if (_subscribers.ContainsKey(type))
             {
                 var handlersCopy = _subscribers[type].ToList();
-
                 foreach (var handler in handlersCopy)
                 {
                     ((Action<T>)handler)(eventData);
                 }
-
                 Console.WriteLine($"EventBus: Published {type.Name}");
             }
-
             if (networkSync && _steamEngine != null && !isProtected)
             {
                 byte[] data = eventData is IEvent ievent ? ievent.Serialize() : Encoding.UTF8.GetBytes(JsonSerializer.Serialize(eventData));
@@ -87,7 +88,6 @@ namespace SiegeEngine.Core.Events
                 Console.WriteLine($"EventBus: Sent networked event {type.Name}");
             }
         }
-
         public void ProcessNetworkMessage(byte[] data)
         {
             string message = Encoding.UTF8.GetString(data);
@@ -133,7 +133,6 @@ namespace SiegeEngine.Core.Events
                 }
                 return;
             }
-
             try
             {
                 var msg = JsonSerializer.Deserialize<Dictionary<string, object>>(message);
@@ -167,7 +166,6 @@ namespace SiegeEngine.Core.Events
             }
         }
     }
-
     // === NEW GENERIC EVENT (core-neutral) ===
     // Used exclusively for notifying the editor outliner/inspector when the last-active content panel changes.
     // No data, no IDE concepts, no network sync - purely internal notification.
@@ -177,7 +175,6 @@ namespace SiegeEngine.Core.Events
         public byte[] Serialize() => Array.Empty<byte>();
         public void Deserialize(byte[] data) { }
     }
-
     public class LobbyCreatedEvent : IEvent
     {
         public string Type => "LobbyCreated";
@@ -195,7 +192,6 @@ namespace SiegeEngine.Core.Events
             LobbyId = obj.LobbyId;
         }
     }
-
     public class LobbyJoinedEvent : IEvent
     {
         public string Type => "LobbyJoined";
@@ -213,7 +209,6 @@ namespace SiegeEngine.Core.Events
             LobbyId = obj.LobbyId;
         }
     }
-
     public class MouseInputEvent : IEvent
     {
         public string Type => "MouseInput";
@@ -251,7 +246,6 @@ namespace SiegeEngine.Core.Events
             SteamId = ulong.Parse(obj["SteamId"].ToString());
         }
     }
-
     public class KeyInputEvent : IEvent
     {
         public string Type => "KeyInput";
@@ -284,7 +278,6 @@ namespace SiegeEngine.Core.Events
             SteamId = ulong.Parse(obj["SteamId"].ToString());
         }
     }
-
     public class ToggleGridSnapEvent : IEvent
     {
         public string Type => "ToggleGridSnap";
@@ -308,7 +301,6 @@ namespace SiegeEngine.Core.Events
             State = obj.State;
         }
     }
-
     public class GenericEvent : IEvent
     {
         public string Type => "Generic";

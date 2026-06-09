@@ -76,10 +76,9 @@ namespace CastleBuilder
         private Vector2 _boxStart = Vector2.Zero;
         private Vector2 _boxEnd = Vector2.Zero;
         private const float MinDragDistance = 5f;
-
         // Transform gizmo (in ToolChest, no direct reference to CastleBuilder types)
         private TransformGizmoOverlay _transformGizmo;
-
+        private bool _fileSelectedSubscribed = false;
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -90,9 +89,7 @@ namespace CastleBuilder
             BaseHeight = 720f;
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
             _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
-
             CustomOverlays.Add(new SelectionBoxOverlay(this));
-
             // Create gizmo with delegates (avoids any circular dependency)
             _transformGizmo = new TransformGizmoOverlay(
                 renderContext,
@@ -124,7 +121,11 @@ namespace CastleBuilder
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
-            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
+            if (!_fileSelectedSubscribed)
+            {
+                _eventBus.Subscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
+                _fileSelectedSubscribed = true;
+            }
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
         }
         private void OnEntitySelected(EntitySelectedEvent e)
@@ -147,7 +148,6 @@ namespace CastleBuilder
                 OutlinerCoordinator.Instance.NotifySelectionChanged(nodeIds[0]);
             else
                 OutlinerCoordinator.Instance.NotifySelectionChanged("");
-
             // Notify gizmo of selection (single entity for v1)
             if (_selectedEntityIds.Count == 1)
             {
@@ -165,7 +165,6 @@ namespace CastleBuilder
             {
                 _transformGizmo.ClearSelection();
             }
-
             NotifyHierarchyChanged();
         }
         public void RefreshSceneList()
@@ -276,12 +275,10 @@ namespace CastleBuilder
                 var modelComp = new ModelComponent { Key = packId };
                 entity.AddComponent(modelComp);
             }
-
             // FIXED: Only add to the authoritative Level.
             // Do NOT do direct clientProxy.AddEntity here — that was causing the double placement.
             // The normal editor sync (SyncCurrentLevelToRuntimeServer / ActivateScene) will push it once.
             Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos}");
-
             // Trigger a clean sync so the runtime sees the new entity exactly once
             _editorScene.SyncCurrentLevelToRuntimeServer();
         }
@@ -351,7 +348,6 @@ namespace CastleBuilder
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-
             // Gizmo input handling (when not in camera mode)
             if (!_cameraMode && isTopmost)
             {
@@ -361,7 +357,6 @@ namespace CastleBuilder
                 float contentH = Size.Y - headerHeight;
                 _transformGizmo.HandleMouseInput(contentMouse, contentW, contentH);
             }
-
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
             if (_cameraMode)
             {
@@ -453,7 +448,6 @@ namespace CastleBuilder
                     }
                 }
             }
-
             // Render gizmo (world-space 3D after entities)
             if (_transformGizmo != null)
             {
@@ -467,6 +461,11 @@ namespace CastleBuilder
         }
         public override void Dispose()
         {
+            if (_fileSelectedSubscribed)
+            {
+                _eventBus.Unsubscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
+                _fileSelectedSubscribed = false;
+            }
             PanelManager.Current.ReleasePanelCapture();
             _editorScene?.Dispose();
             base.Dispose();

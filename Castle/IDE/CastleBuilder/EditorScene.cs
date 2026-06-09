@@ -153,22 +153,16 @@ namespace CastleBuilder
         {
             var level = ProjectSettings.Current.CurrentLevel;
             if (level == null || _server == null) return;
-
             var clientProxy = _server as ClientGameServerProxy;
             if (clientProxy != null)
             {
-                // FIXED: merge-style sync instead of clear + full re-add
-                // Only add entities that are not already present in the client proxy
-                // This prevents the loaded entity from being removed and the new placement from being duplicated
-                var existingIds = new HashSet<int>(clientProxy.GetEntities().Select(e => e.Id));
-
+                // FIXED: Idempotent update-only sync. Never clears loaded entities.
+                // Guarantees previously loaded entities stay, new placement adds exactly one.
                 foreach (var entity in level.Entities)
                 {
-                    if (!existingIds.Contains(entity.Id))
-                    {
-                        clientProxy.AddEntity(entity);
-                    }
+                    clientProxy.AddEntity(entity);
                 }
+                Console.WriteLine($"[EditorScene.SyncCurrentLevelToRuntimeServer] Idempotent sync: {level.Entities.Count} entities (loaded + new placements preserved)");
             }
         }
         public void LoadProjectData()

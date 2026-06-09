@@ -84,6 +84,12 @@ namespace SiegeEngine.Core.Networking
 
         public void ClearEntities()
         {
+            // FIXED: Authoritative clear for editor scene reloads — publish removal events so UI/Outliner stays in sync
+            var idsToRemove = _entities.Select(e => e.Id).ToList();
+            foreach (var id in idsToRemove)
+            {
+                _eventBus.Publish(new EntityRemovedEvent(id), true);
+            }
             _entities.Clear();
         }
 
