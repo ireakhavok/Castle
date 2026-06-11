@@ -551,20 +551,20 @@ Folder: IDE
       - IRenderContext _renderContext
       - EventBus _eventBus
       - int _selectedEntityId
-      - Vector3 _gizmoPosition
-      - Quaternion _gizmoRotation
       - VertexBuffer _arrowBuffer
       - VertexBuffer _ringBuffer
       - bool _isDragging
       - int _activeAxis
-      - bool _isRotation
-      - Vector3 _dragStartWorld
-      - Vector3 _dragStartMouseRay
-      - int _hoveredAxis
+      - Vector3 _dragAxisWorld
+      - Vector3 _dragAxisPoint
+      - float _dragStartT
+      - Matrix4x4 _lastView
+      - Matrix4x4 _lastProjection
     - Methods:
       - void OnEntitySelected( Quaternion rotation,  Vector3 position, int entityId)
         - Calls: RebuildGizmoGeometry
       - void ClearSelection()
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RebuildGizmoGeometry()
         - Calls: BuildArrowGeometry, BuildRingGeometry, VertexBuffer
       - void BuildArrowGeometry()
@@ -575,10 +575,23 @@ Folder: IDE
         - Calls: AddRing, _ringBuffer.UpdateCustom
       - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
         - Calls: Vertex
-      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
         - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
-      - bool HandleMouseInput( float contentH,  float contentW, Vector2 contentMouse)
+      - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, StartDrag
+      - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: ClosestPointOnLineParameter, Console.WriteLine, GetAxisVector
+      - void PerformDrag( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: ClosestPointOnLineParameter, Console.WriteLine, EntityMovedEvent
+      - float ClosestPointOnLineParameter( Vector3 lineDir,  Vector3 linePoint,  Vector3 rayDir, Vector3 rayOrigin)
+      - void EndDrag()
+        - Calls: Console.WriteLine
+      - int PickAxisScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: Console.WriteLine, DistanceToLineSegment2D
+      - Vector2 WorldToScreen( float viewportH,  float viewportW, Vector3 worldPos)
+      - float DistanceToLineSegment2D( Vector3 a3,  Vector3 b3,  float viewportH,  float viewportW, Vector2 p)
+        - Calls: WorldToScreen
+      - Vector3 GetAxisVector(int axis)
 - File: TreeViewPanel.cs
   - Class: TreeViewUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
