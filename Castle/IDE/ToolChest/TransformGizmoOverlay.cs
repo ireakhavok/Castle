@@ -21,14 +21,20 @@ namespace ToolChest
         private VertexBuffer _ringBuffer;
         private bool _isDragging = false;
         private int _activeAxis = -1;
+        private bool _isRotating = false;
         private Vector3 _dragAxisWorld;
         private Vector2 _lastDragMouse;
         private Vector3 _dragStartClosestPoint;
         private Vector3 _lastClosestPoint;
+        private float _lastRotationAngle = 0f;
         private readonly Func<Vector2, float, float, (Vector3 origin, Vector3 dir, bool success)> _getMouseRay;
         private readonly Func<int, Entity> _getEntityById;
         private Matrix4x4 _lastView = Matrix4x4.Identity;
         private Matrix4x4 _lastProjection = Matrix4x4.Identity;
+
+        // Strict tolerance for arrows — must be practically on the arrow itself (thick visual)
+        private const float ArrowPickTolerance = 25f;
+
         public TransformGizmoOverlay(IRenderContext renderContext, EventBus eventBus,
             Func<Vector2, float, float, (Vector3 origin, Vector3 dir, bool success)> getMouseRay,
             Func<int, Entity> getEntityById)
@@ -47,6 +53,7 @@ namespace ToolChest
         {
             _selectedEntityId = entityId;
             _isDragging = false;
+            _isRotating = false;
             _activeAxis = -1;
             RebuildGizmoGeometry();
         }
@@ -54,6 +61,7 @@ namespace ToolChest
         {
             _selectedEntityId = -1;
             _isDragging = false;
+            _isRotating = false;
             _activeAxis = -1;
         }
         public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight) { }
@@ -208,6 +216,7 @@ namespace ToolChest
             {
                 _dragStartClosestPoint = ClosestPointOnInfiniteAxis(rayOrigin, rayDir, physics.Position, _dragAxisWorld);
                 _lastClosestPoint = _dragStartClosestPoint;
+                _lastRotationAngle = 0f;
             }
             _lastDragMouse = contentMouse;
             Console.WriteLine($"[TransformGizmoOverlay] Drag START - axis {_activeAxis} axisWorld={_dragAxisWorld}");
@@ -227,7 +236,7 @@ namespace ToolChest
             _lastClosestPoint = newClosest;
             _lastDragMouse = contentMouse;
 
-            // SYNC TO CENTRAL BLUEPRINT (Level.Entities) so changes persist on save/project
+            // SYNC TO CENTRAL BLUEPRINT (Level.Entities) — position + rotation
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null)
             {
@@ -238,6 +247,7 @@ namespace ToolChest
                     if (bpPhysics != null)
                     {
                         bpPhysics.Position = physics.Position;
+                        bpPhysics.Rotation = physics.Rotation;
                     }
                 }
             }
@@ -282,12 +292,16 @@ namespace ToolChest
                 Vector3 dir = GetAxisVector(i);
                 dir = Vector3.Transform(dir, Matrix4x4.CreateFromQuaternion(rot));
                 float d = DistanceToLineSegment2D(contentMouse, pos, pos + dir * 1.5f, contentW, contentH);
-                Console.WriteLine($"[TransformGizmoOverlay] PickAxisScreenSpace - axis {i} distance = {d:F3}");
                 if (d < bestDist)
                 {
                     bestDist = d;
                     best = i;
                 }
+            }
+            // Strict tolerance for arrows — must be practically on the arrow itself
+            if (bestDist > ArrowPickTolerance)
+            {
+                return -1;
             }
             if (best != -1)
                 Console.WriteLine($"[TransformGizmoOverlay] *** HOVERED AXIS {best} (screen dist {bestDist:F3}) ***");
