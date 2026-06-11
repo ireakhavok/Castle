@@ -22,7 +22,9 @@ namespace ToolChest
         private bool _isDragging = false;
         private int _activeAxis = -1;
         private Vector3 _dragAxisWorld;
-        private Vector2 _lastDragMouse;          // for screen-space delta
+        private Vector2 _lastDragMouse;
+        private Vector2 _lockedAxisScreenDir;
+        private float _dragSign = 1f;
         private readonly Func<Vector2, float, float, (Vector3 origin, Vector3 dir, bool success)> _getMouseRay;
         private readonly Func<int, Entity> _getEntityById;
         private Matrix4x4 _lastView = Matrix4x4.Identity;
@@ -216,9 +218,17 @@ namespace ToolChest
             _dragAxisWorld = Vector3.Transform(_dragAxisWorld, Matrix4x4.CreateFromQuaternion(physics.Rotation));
             _dragAxisWorld = Vector3.Normalize(_dragAxisWorld);
 
+            Vector2 axisScreenA = WorldToScreen(physics.Position, contentW, contentH);
+            Vector2 axisScreenB = WorldToScreen(physics.Position + _dragAxisWorld * 10f, contentW, contentH);
+            _lockedAxisScreenDir = Vector2.Normalize(axisScreenB - axisScreenA);
+
+            var (rayOrigin, rayDir, success) = _getMouseRay(contentMouse, contentW, contentH);
+            if (success)
+                _dragSign = Vector3.Dot(rayDir, _dragAxisWorld) < 0 ? -1f : 1f;
+
             _lastDragMouse = contentMouse;
 
-            Console.WriteLine($"[TransformGizmoOverlay] Drag START - axis {_activeAxis} mouseStart={contentMouse}");
+            Console.WriteLine($"[TransformGizmoOverlay] Drag START - axis {_activeAxis} lockedScreenDir={_lockedAxisScreenDir} sign={_dragSign}");
             _isDragging = true;
         }
 
@@ -230,16 +240,14 @@ namespace ToolChest
             if (physics == null) return;
 
             Vector2 mouseDelta = contentMouse - _lastDragMouse;
-            if (mouseDelta.LengthSquared() < 0.01f) return; // tiny movement filter
+            if (mouseDelta.LengthSquared() < 0.01f) return;
 
-            // Project mouse delta onto screen-space direction of the axis
-            Vector2 axisScreenA = WorldToScreen(physics.Position, contentW, contentH);
-            Vector2 axisScreenB = WorldToScreen(physics.Position + _dragAxisWorld * 10f, contentW, contentH); // long enough vector
-            Vector2 axisDirScreen = Vector2.Normalize(axisScreenB - axisScreenA);
+            float projectedDelta = -Vector2.Dot(mouseDelta, _lockedAxisScreenDir) * _dragSign;
 
-            float projectedDelta = Vector2.Dot(mouseDelta, axisDirScreen);
+            // GREEN (Y) AXIS INVERTED AS REQUESTED
+            if (_activeAxis == 1) projectedDelta = -projectedDelta;
 
-            float sensitivity = 0.025f; // tweak this if movement feels too fast/slow
+            float sensitivity = 0.02f;
             Vector3 worldDelta = _dragAxisWorld * (projectedDelta * sensitivity);
 
             physics.Position += worldDelta;
