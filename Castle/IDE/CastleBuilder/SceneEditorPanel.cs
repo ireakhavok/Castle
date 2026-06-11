@@ -1,4 +1,4 @@
-﻿// Folder: CastleBuilder
+﻿// Folder: IDE
 // File: SceneEditorPanel.cs
 using Keystone;
 using MapRoom;
@@ -24,7 +24,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using ToolChest;
-
 namespace CastleBuilder
 {
     public class SceneEditorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -341,7 +340,6 @@ namespace CastleBuilder
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-
             // Compute fresh matrices BEFORE gizmo input (using reflection for AspectRatio)
             Matrix4x4 view = Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.Identity;
@@ -364,7 +362,6 @@ namespace CastleBuilder
                 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
             }
             _transformGizmo.UpdateMatrices(view, projection);
-
             // Gizmo input handling
             if (!_cameraMode && isTopmost)
             {

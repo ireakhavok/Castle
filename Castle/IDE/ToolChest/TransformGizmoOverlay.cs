@@ -1,4 +1,4 @@
-﻿// Folder: ToolChest
+﻿// Folder: IDE
 // File: TransformGizmoOverlay.cs
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
@@ -9,7 +9,6 @@ using SiegeEngine.Core.Rendering.Shaders;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-
 namespace ToolChest
 {
     public class TransformGizmoOverlay : ICustomOverlay
@@ -23,13 +22,12 @@ namespace ToolChest
         private int _activeAxis = -1;
         private Vector3 _dragAxisWorld;
         private Vector2 _lastDragMouse;
-        private Vector2 _lockedAxisScreenDir;
-        private float _dragSign = 1f;
+        private Vector3 _dragStartClosestPoint;
+        private Vector3 _lastClosestPoint;
         private readonly Func<Vector2, float, float, (Vector3 origin, Vector3 dir, bool success)> _getMouseRay;
         private readonly Func<int, Entity> _getEntityById;
         private Matrix4x4 _lastView = Matrix4x4.Identity;
         private Matrix4x4 _lastProjection = Matrix4x4.Identity;
-
         public TransformGizmoOverlay(IRenderContext renderContext, EventBus eventBus,
             Func<Vector2, float, float, (Vector3 origin, Vector3 dir, bool success)> getMouseRay,
             Func<int, Entity> getEntityById)
@@ -39,13 +37,11 @@ namespace ToolChest
             _getMouseRay = getMouseRay ?? throw new ArgumentNullException(nameof(getMouseRay));
             _getEntityById = getEntityById ?? throw new ArgumentNullException(nameof(getEntityById));
         }
-
         public void UpdateMatrices(Matrix4x4 view, Matrix4x4 projection)
         {
             _lastView = view;
             _lastProjection = projection;
         }
-
         public void OnEntitySelected(int entityId, Vector3 position, Quaternion rotation)
         {
             _selectedEntityId = entityId;
@@ -53,16 +49,13 @@ namespace ToolChest
             _activeAxis = -1;
             RebuildGizmoGeometry();
         }
-
         public void ClearSelection()
         {
             _selectedEntityId = -1;
             _isDragging = false;
             _activeAxis = -1;
         }
-
         public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight) { }
-
         private unsafe void RebuildGizmoGeometry()
         {
             if (_arrowBuffer == null) _arrowBuffer = new VertexBuffer(_renderContext);
@@ -70,7 +63,6 @@ namespace ToolChest
             BuildArrowGeometry();
             BuildRingGeometry();
         }
-
         private unsafe void BuildArrowGeometry()
         {
             var vertices = new List<Vertex>();
@@ -80,7 +72,6 @@ namespace ToolChest
             AddArrow(vertices, indices, Vector3.UnitZ, new Vector4(0.2f, 0.2f, 1f, 1f));
             _arrowBuffer.UpdateCustom(vertices, indices);
         }
-
         private void AddArrow(List<Vertex> vertices, List<uint> indices, Vector3 direction, Vector4 color)
         {
             uint baseIndex = (uint)vertices.Count;
@@ -119,7 +110,6 @@ namespace ToolChest
                 indices.Add(next);
             }
         }
-
         private unsafe void BuildRingGeometry()
         {
             var vertices = new List<Vertex>();
@@ -129,7 +119,6 @@ namespace ToolChest
             AddRing(vertices, indices, new Vector3(1, 0, 0), new Vector4(1f, 0.2f, 0.2f, 1f));
             _ringBuffer.UpdateCustom(vertices, indices);
         }
-
         private void AddRing(List<Vertex> vertices, List<uint> indices, Vector3 axis, Vector4 color)
         {
             uint baseIndex = (uint)vertices.Count;
@@ -154,7 +143,6 @@ namespace ToolChest
                 indices.Add(next);
             }
         }
-
         public unsafe void RenderWorld(Matrix4x4 view, Matrix4x4 projection)
         {
             _lastView = view;
@@ -180,7 +168,6 @@ namespace ToolChest
             arrowShader.Dispose();
             _renderContext.Enable(_renderContext.Enums.DepthTest);
         }
-
         public bool HandleMouseInput(Vector2 contentMouse, float contentW, float contentH, bool mouseDown, bool mousePressed, bool mouseReleased)
         {
             if (_selectedEntityId == -1) return false;
@@ -206,78 +193,73 @@ namespace ToolChest
             }
             return _activeAxis != -1 || _isDragging;
         }
-
         private void StartDrag(Vector2 contentMouse, float contentW, float contentH)
         {
             var entity = _getEntityById(_selectedEntityId);
             if (entity == null) return;
             var physics = entity.GetComponent<PhysicsComponent>();
             if (physics == null) return;
-
             _dragAxisWorld = GetAxisVector(_activeAxis);
             _dragAxisWorld = Vector3.Transform(_dragAxisWorld, Matrix4x4.CreateFromQuaternion(physics.Rotation));
             _dragAxisWorld = Vector3.Normalize(_dragAxisWorld);
-
-            Vector2 axisScreenA = WorldToScreen(physics.Position, contentW, contentH);
-            Vector2 axisScreenB = WorldToScreen(physics.Position + _dragAxisWorld * 10f, contentW, contentH);
-            _lockedAxisScreenDir = Vector2.Normalize(axisScreenB - axisScreenA);
-
             var (rayOrigin, rayDir, success) = _getMouseRay(contentMouse, contentW, contentH);
             if (success)
-                _dragSign = Vector3.Dot(rayDir, _dragAxisWorld) < 0 ? -1f : 1f;
-
+            {
+                _dragStartClosestPoint = ClosestPointOnInfiniteAxis(rayOrigin, rayDir, physics.Position, _dragAxisWorld);
+                _lastClosestPoint = _dragStartClosestPoint;
+            }
             _lastDragMouse = contentMouse;
-
-            Console.WriteLine($"[TransformGizmoOverlay] Drag START - axis {_activeAxis} lockedScreenDir={_lockedAxisScreenDir} sign={_dragSign}");
+            Console.WriteLine($"[TransformGizmoOverlay] Drag START - axis {_activeAxis} axisWorld={_dragAxisWorld}");
             _isDragging = true;
         }
-
         private void PerformDrag(Vector2 contentMouse, float contentW, float contentH)
         {
             var entity = _getEntityById(_selectedEntityId);
             if (entity == null) return;
             var physics = entity.GetComponent<PhysicsComponent>();
             if (physics == null) return;
-
-            Vector2 mouseDelta = contentMouse - _lastDragMouse;
-            if (mouseDelta.LengthSquared() < 0.01f) return;
-
-            float projectedDelta = -Vector2.Dot(mouseDelta, _lockedAxisScreenDir) * _dragSign;
-
-            // GREEN (Y) AXIS INVERTED AS REQUESTED
-            if (_activeAxis == 1) projectedDelta = -projectedDelta;
-
-            float sensitivity = 0.02f;
-            Vector3 worldDelta = _dragAxisWorld * (projectedDelta * sensitivity);
-
+            var (rayOrigin, rayDir, success) = _getMouseRay(contentMouse, contentW, contentH);
+            if (!success) return;
+            Vector3 newClosest = ClosestPointOnInfiniteAxis(rayOrigin, rayDir, physics.Position, _dragAxisWorld);
+            Vector3 worldDelta = newClosest - _lastClosestPoint;
             physics.Position += worldDelta;
-
+            _lastClosestPoint = newClosest;
             _lastDragMouse = contentMouse;
-
             _eventBus.Publish(new EntityMovedEvent(_selectedEntityId, new Vector2(physics.Position.X, physics.Position.Y), physics.Rotation));
-
-            Console.WriteLine($"[TransformGizmoOverlay] PerformDrag - axis {_activeAxis} mouseDelta={mouseDelta} projected={projectedDelta:F3} worldDelta={worldDelta} newPos={physics.Position}");
+            Console.WriteLine($"[TransformGizmoOverlay] PerformDrag - axis {_activeAxis} worldDelta={worldDelta} newPos={physics.Position}");
         }
-
         private void EndDrag()
         {
             _isDragging = false;
             _activeAxis = -1;
             Console.WriteLine("[TransformGizmoOverlay] Drag END");
         }
-
+        private Vector3 ClosestPointOnInfiniteAxis(Vector3 rayOrigin, Vector3 rayDir, Vector3 linePoint, Vector3 lineDir)
+        {
+            Vector3 w0 = rayOrigin - linePoint;
+            float a = Vector3.Dot(rayDir, rayDir);
+            float b = Vector3.Dot(rayDir, lineDir);
+            float c = Vector3.Dot(lineDir, lineDir);
+            float d = Vector3.Dot(rayDir, w0);
+            float e = Vector3.Dot(lineDir, w0);
+            float denom = a * c - b * b;
+            if (Math.Abs(denom) < 1e-8f)
+            {
+                return linePoint + Vector3.Dot(w0, lineDir) * lineDir;
+            }
+            float sc = (b * e - c * d) / denom;
+            return rayOrigin + sc * rayDir;
+        }
         private int PickAxisScreenSpace(Vector2 contentMouse, float contentW, float contentH)
         {
             var entity = _getEntityById(_selectedEntityId);
             if (entity == null) return -1;
             var physics = entity.GetComponent<PhysicsComponent>();
             if (physics == null) return -1;
-
             float bestDist = float.MaxValue;
             int best = -1;
             Vector3 pos = physics.Position;
             Quaternion rot = physics.Rotation;
-
             for (int i = 0; i < 3; i++)
             {
                 Vector3 dir = GetAxisVector(i);
@@ -294,7 +276,6 @@ namespace ToolChest
                 Console.WriteLine($"[TransformGizmoOverlay] *** HOVERED AXIS {best} (screen dist {bestDist:F3}) ***");
             return best;
         }
-
         private float DistanceToLineSegment2D(Vector2 p, Vector3 a3, Vector3 b3, float viewportW, float viewportH)
         {
             Vector2 a = WorldToScreen(a3, viewportW, viewportH);
@@ -308,7 +289,6 @@ namespace ToolChest
             Vector2 closest = a + ab * t;
             return Vector2.Distance(p, closest);
         }
-
         private Vector2 WorldToScreen(Vector3 worldPos, float viewportW, float viewportH)
         {
             Vector4 clip = Vector4.Transform(new Vector4(worldPos, 1f), _lastView * _lastProjection);
@@ -319,7 +299,6 @@ namespace ToolChest
                 (1f - ndc.Y * 0.5f - 0.5f) * viewportH
             );
         }
-
         private Vector3 GetAxisVector(int axis)
         {
             return axis switch { 0 => Vector3.UnitX, 1 => Vector3.UnitY, 2 => Vector3.UnitZ, _ => Vector3.UnitX };

@@ -556,11 +556,13 @@ Folder: IDE
       - bool _isDragging
       - int _activeAxis
       - Vector3 _dragAxisWorld
-      - Vector3 _dragAxisPoint
-      - float _dragStartT
+      - Vector2 _lastDragMouse
+      - Vector2 _lockedAxisScreenDir
+      - float _dragSign
       - Matrix4x4 _lastView
       - Matrix4x4 _lastProjection
     - Methods:
+      - void UpdateMatrices( Matrix4x4 projection, Matrix4x4 view)
       - void OnEntitySelected( Quaternion rotation,  Vector3 position, int entityId)
         - Calls: RebuildGizmoGeometry
       - void ClearSelection()
@@ -580,17 +582,16 @@ Folder: IDE
       - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
         - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, StartDrag
       - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: ClosestPointOnLineParameter, Console.WriteLine, GetAxisVector
+        - Calls: Console.WriteLine, GetAxisVector, WorldToScreen
       - void PerformDrag( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: ClosestPointOnLineParameter, Console.WriteLine, EntityMovedEvent
-      - float ClosestPointOnLineParameter( Vector3 lineDir,  Vector3 linePoint,  Vector3 rayDir, Vector3 rayOrigin)
+        - Calls: Console.WriteLine, EntityMovedEvent
       - void EndDrag()
         - Calls: Console.WriteLine
       - int PickAxisScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: Console.WriteLine, DistanceToLineSegment2D
-      - Vector2 WorldToScreen( float viewportH,  float viewportW, Vector3 worldPos)
+        - Calls: Console.WriteLine, DistanceToLineSegment2D, GetAxisVector
       - float DistanceToLineSegment2D( Vector3 a3,  Vector3 b3,  float viewportH,  float viewportW, Vector2 p)
         - Calls: WorldToScreen
+      - Vector2 WorldToScreen( float viewportH,  float viewportW, Vector3 worldPos)
       - Vector3 GetAxisVector(int axis)
 - File: TreeViewPanel.cs
   - Class: TreeViewUIOverlay (Namespace: ToolChest)
