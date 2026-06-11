@@ -1,5 +1,6 @@
 ﻿// Folder: IDE
 // File: TransformGizmoOverlay.cs
+using Keystone;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -225,6 +226,22 @@ namespace ToolChest
             physics.Position += worldDelta;
             _lastClosestPoint = newClosest;
             _lastDragMouse = contentMouse;
+
+            // SYNC TO CENTRAL BLUEPRINT (Level.Entities) so changes persist on save/project
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level != null)
+            {
+                var blueprintEntity = level.Entities.Find(e => e.Id == _selectedEntityId);
+                if (blueprintEntity != null)
+                {
+                    var bpPhysics = blueprintEntity.GetComponent<PhysicsComponent>();
+                    if (bpPhysics != null)
+                    {
+                        bpPhysics.Position = physics.Position;
+                    }
+                }
+            }
+
             _eventBus.Publish(new EntityMovedEvent(_selectedEntityId, new Vector2(physics.Position.X, physics.Position.Y), physics.Rotation));
             Console.WriteLine($"[TransformGizmoOverlay] PerformDrag - axis {_activeAxis} worldDelta={worldDelta} newPos={physics.Position}");
         }
@@ -245,7 +262,6 @@ namespace ToolChest
             float denom = a * c - b * b;
             if (Math.Abs(denom) < 1e-8f)
             {
-                // parallel fallback
                 return linePoint + Vector3.Dot(w0, lineDir) * lineDir;
             }
             float tc = (a * e - b * d) / denom;
