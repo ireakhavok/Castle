@@ -23,18 +23,18 @@ namespace ToolChest
         private bool _isDragging = false;
         private int _activeAxis = -1;
         private bool _isRotating = false;
-        private Vector3 _dragAxisWorld;
+        private Vector3 _dragAxisWorld;           // local for rotation, world for translation
         private Vector2 _lastDragMouse;
         private Vector3 _dragStartClosestPoint;
         private Vector3 _lastClosestPoint;
-        private float _lastRotationAngle = 0f;
+        private Vector3 _lastPlanePoint;          // for ring rotation
         private readonly Func<Vector2, float, float, (Vector3 origin, Vector3 dir, bool success)> _getMouseRay;
         private readonly Func<int, Entity> _getEntityById;
         private Matrix4x4 _lastView = Matrix4x4.Identity;
         private Matrix4x4 _lastProjection = Matrix4x4.Identity;
 
         private const float ArrowPickTolerance = 25f;
-        private const float RingPickTolerance = 8f;   // tighter for thin rings
+        private const float RingPickTolerance = 8f;
 
         public TransformGizmoOverlay(IRenderContext renderContext, EventBus eventBus,
             Func<Vector2, float, float, (Vector3 origin, Vector3 dir, bool success)> getMouseRay,
@@ -244,7 +244,7 @@ namespace ToolChest
 
             if (_isRotating)
             {
-                _dragAxisWorld = GetAxisVector(_activeAxis);   // LOCAL axis for rotation
+                _dragAxisWorld = GetAxisVector(_activeAxis);   // local axis for rotation
             }
             else
             {
@@ -262,8 +262,16 @@ namespace ToolChest
                     _lastClosestPoint = _dragStartClosestPoint;
                 }
             }
+            else
+            {
+                // Store initial plane intersection for consistent signed angle
+                var (rayOrigin, rayDir, success) = _getMouseRay(contentMouse, contentW, contentH);
+                if (success)
+                {
+                    _lastPlanePoint = ClosestPointOnRingPlane(rayOrigin, rayDir, physics.Position, _dragAxisWorld);
+                }
+            }
 
-            _lastRotationAngle = 0f;
             _lastDragMouse = contentMouse;
             Console.WriteLine($"[TransformGizmoOverlay] Drag START - axis {_activeAxis} {(_isRotating ? "ROTATION" : "TRANSLATION")} axis={_dragAxisWorld}");
             _isDragging = true;
@@ -281,20 +289,21 @@ namespace ToolChest
 
             if (_isRotating)
             {
-                Vector2 centerScreen = WorldToScreen(physics.Position, contentW, contentH);
-                Vector2 prevVec = _lastDragMouse - centerScreen;
-                Vector2 currVec = contentMouse - centerScreen;
+                Vector3 currentPlanePoint = ClosestPointOnRingPlane(rayOrigin, rayDir, physics.Position, _dragAxisWorld);
 
-                float angleDelta = 0f;
-                if (prevVec.LengthSquared() > 1e-4f && currVec.LengthSquared() > 1e-4f)
-                {
-                    float cross = prevVec.X * currVec.Y - prevVec.Y * currVec.X;
-                    float dotProd = Vector2.Dot(prevVec, currVec);
-                    angleDelta = MathF.Atan2(cross, dotProd);
-                }
+                // Signed angle between previous and current point on the plane
+                Vector3 v1 = _lastPlanePoint - physics.Position;
+                Vector3 v2 = currentPlanePoint - physics.Position;
+                v1 = Vector3.Normalize(v1);
+                v2 = Vector3.Normalize(v2);
 
-                // Negative sign fixes intuitive drag direction
-                Quaternion deltaQuat = Quaternion.CreateFromAxisAngle(_dragAxisWorld, -angleDelta);
+                float dot = Vector3.Dot(v1, v2);
+                dot = Math.Clamp(dot, -1f, 1f);
+                float angleDelta = MathF.Acos(dot);
+                Vector3 cross = Vector3.Cross(v1, v2);
+                if (Vector3.Dot(cross, _dragAxisWorld) < 0) angleDelta = -angleDelta;
+
+                Quaternion deltaQuat = Quaternion.CreateFromAxisAngle(_dragAxisWorld, angleDelta);
                 physics.Rotation = Quaternion.Normalize(physics.Rotation * deltaQuat);
 
                 if (float.IsNaN(physics.Rotation.X) || float.IsNaN(physics.Rotation.Y) ||
@@ -304,7 +313,9 @@ namespace ToolChest
                     Console.WriteLine("[TransformGizmoOverlay] *** NaN quaternion detected - reset to Identity ***");
                 }
 
-                Console.WriteLine($"[TransformGizmoOverlay] Rotation performed: {(-angleDelta) * (180f / MathF.PI):F2} deg around local axis {_dragAxisWorld}");
+                Console.WriteLine($"[TransformGizmoOverlay] Rotation performed: {angleDelta * (180f / MathF.PI):F2} deg around local axis {_dragAxisWorld}");
+
+                _lastPlanePoint = currentPlanePoint;
             }
             else
             {
@@ -357,6 +368,14 @@ namespace ToolChest
             return linePoint + tc * lineDir;
         }
 
+        private Vector3 ClosestPointOnRingPlane(Vector3 rayOrigin, Vector3 rayDir, Vector3 center, Vector3 normal)
+        {
+            float denom = Vector3.Dot(rayDir, normal);
+            if (Math.Abs(denom) < 1e-6f) return center; // parallel
+            float t = Vector3.Dot(center - rayOrigin, normal) / denom;
+            return rayOrigin + t * rayDir;
+        }
+
         private int PickAxisScreenSpace(Vector2 contentMouse, float contentW, float contentH)
         {
             var entity = _getEntityById(_selectedEntityId);
@@ -399,7 +418,6 @@ namespace ToolChest
             for (int ring = 0; ring < 3; ring++)
             {
                 Vector3 localAxis = GetAxisVector(ring);
-                Vector3 worldAxis = Vector3.Transform(localAxis, Matrix4x4.CreateFromQuaternion(rot));
                 int segments = 48;
                 float radius = 0.9f;
                 Vector3 prevPoint = Vector3.Zero;
@@ -410,9 +428,9 @@ namespace ToolChest
                     float x = MathF.Cos(angle) * radius;
                     float y = MathF.Sin(angle) * radius;
                     Vector3 localPoint;
-                    if (ring == 0) localPoint = new Vector3(0, x, y);      // X ring
-                    else if (ring == 1) localPoint = new Vector3(x, 0, y); // Y ring
-                    else localPoint = new Vector3(x, y, 0);               // Z ring
+                    if (ring == 0) localPoint = new Vector3(0, x, y);
+                    else if (ring == 1) localPoint = new Vector3(x, 0, y);
+                    else localPoint = new Vector3(x, y, 0);
 
                     Vector3 worldPoint = Vector3.Transform(localPoint, Matrix4x4.CreateFromQuaternion(rot)) + pos;
                     if (i == 0) prevPoint = worldPoint;
