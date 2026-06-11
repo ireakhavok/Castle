@@ -245,10 +245,11 @@ namespace ToolChest
             float denom = a * c - b * b;
             if (Math.Abs(denom) < 1e-8f)
             {
+                // parallel fallback
                 return linePoint + Vector3.Dot(w0, lineDir) * lineDir;
             }
-            float sc = (b * e - c * d) / denom;
-            return rayOrigin + sc * rayDir;
+            float tc = (a * e - b * d) / denom;
+            return linePoint + tc * lineDir;
         }
         private int PickAxisScreenSpace(Vector2 contentMouse, float contentW, float contentH)
         {
