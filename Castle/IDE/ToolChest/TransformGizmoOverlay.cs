@@ -22,7 +22,7 @@ namespace ToolChest
         private bool _isDragging = false;
         private int _activeAxis = -1;
         private Vector3 _dragAxisWorld;
-        private Vector3 _lastDragPointOnAxis;   // ← renamed + now updated every frame
+        private Vector2 _lastDragMouse;          // for screen-space delta
         private readonly Func<Vector2, float, float, (Vector3 origin, Vector3 dir, bool success)> _getMouseRay;
         private readonly Func<int, Entity> _getEntityById;
         private Matrix4x4 _lastView = Matrix4x4.Identity;
@@ -216,13 +216,9 @@ namespace ToolChest
             _dragAxisWorld = Vector3.Transform(_dragAxisWorld, Matrix4x4.CreateFromQuaternion(physics.Rotation));
             _dragAxisWorld = Vector3.Normalize(_dragAxisWorld);
 
-            var (rayOrigin, rayDir, success) = _getMouseRay(contentMouse, contentW, contentH);
-            Console.WriteLine($"[TransformGizmoOverlay] Drag START - axis {_activeAxis} rayOrigin={rayOrigin} rayDir={rayDir} success={success}");
-            if (!success) return;
+            _lastDragMouse = contentMouse;
 
-            _lastDragPointOnAxis = ClosestPointOnInfiniteAxis(rayOrigin, rayDir, physics.Position, _dragAxisWorld);
-            Console.WriteLine($"[TransformGizmoOverlay] Drag START - axis {_activeAxis} startPoint={_lastDragPointOnAxis}");
-
+            Console.WriteLine($"[TransformGizmoOverlay] Drag START - axis {_activeAxis} mouseStart={contentMouse}");
             _isDragging = true;
         }
 
@@ -233,24 +229,26 @@ namespace ToolChest
             var physics = entity.GetComponent<PhysicsComponent>();
             if (physics == null) return;
 
-            var (rayOrigin, rayDir, success) = _getMouseRay(contentMouse, contentW, contentH);
-            if (!success) return;
+            Vector2 mouseDelta = contentMouse - _lastDragMouse;
+            if (mouseDelta.LengthSquared() < 0.01f) return; // tiny movement filter
 
-            Vector3 currentPoint = ClosestPointOnInfiniteAxis(rayOrigin, rayDir, physics.Position, _dragAxisWorld);
-            Vector3 worldDelta = currentPoint - _lastDragPointOnAxis;   // ← now uses last frame
+            // Project mouse delta onto screen-space direction of the axis
+            Vector2 axisScreenA = WorldToScreen(physics.Position, contentW, contentH);
+            Vector2 axisScreenB = WorldToScreen(physics.Position + _dragAxisWorld * 10f, contentW, contentH); // long enough vector
+            Vector2 axisDirScreen = Vector2.Normalize(axisScreenB - axisScreenA);
 
-            if (float.IsNaN(worldDelta.X) || float.IsNaN(worldDelta.Y) || float.IsNaN(worldDelta.Z))
-            {
-                Console.WriteLine("[TransformGizmoOverlay] WARNING: NaN delta detected - skipping update");
-                return;
-            }
+            float projectedDelta = Vector2.Dot(mouseDelta, axisDirScreen);
+
+            float sensitivity = 0.025f; // tweak this if movement feels too fast/slow
+            Vector3 worldDelta = _dragAxisWorld * (projectedDelta * sensitivity);
 
             physics.Position += worldDelta;
-            _lastDragPointOnAxis = currentPoint;   // ← CRITICAL: update reference for next frame
+
+            _lastDragMouse = contentMouse;
 
             _eventBus.Publish(new EntityMovedEvent(_selectedEntityId, new Vector2(physics.Position.X, physics.Position.Y), physics.Rotation));
 
-            Console.WriteLine($"[TransformGizmoOverlay] PerformDrag - axis {_activeAxis} delta={worldDelta} newPos={physics.Position}");
+            Console.WriteLine($"[TransformGizmoOverlay] PerformDrag - axis {_activeAxis} mouseDelta={mouseDelta} projected={projectedDelta:F3} worldDelta={worldDelta} newPos={physics.Position}");
         }
 
         private void EndDrag()
@@ -258,32 +256,6 @@ namespace ToolChest
             _isDragging = false;
             _activeAxis = -1;
             Console.WriteLine("[TransformGizmoOverlay] Drag END");
-        }
-
-        private Vector3 ClosestPointOnInfiniteAxis(Vector3 rayOrigin, Vector3 rayDir, Vector3 linePoint, Vector3 lineDir)
-        {
-            rayDir = Vector3.Normalize(rayDir);
-            lineDir = Vector3.Normalize(lineDir);
-            Vector3 w0 = rayOrigin - linePoint;
-            float a = Vector3.Dot(rayDir, rayDir);
-            float b = Vector3.Dot(rayDir, lineDir);
-            float c = Vector3.Dot(lineDir, lineDir);
-            float d = Vector3.Dot(rayDir, w0);
-            float e = Vector3.Dot(lineDir, w0);
-            float denom = a * c - b * b;
-            float t;
-            if (Math.Abs(denom) < 1e-6f)
-            {
-                t = Vector3.Dot(w0, lineDir);
-                Console.WriteLine($"[TransformGizmoOverlay] ClosestPointOnInfiniteAxis - PARALLEL fallback t={t}");
-            }
-            else
-            {
-                t = (b * e - c * d) / denom;
-            }
-            Vector3 result = linePoint + t * lineDir;
-            Console.WriteLine($"[TransformGizmoOverlay] ClosestPointOnInfiniteAxis - denom={denom:F6} t={t:F6} result={result}");
-            return result;
         }
 
         private int PickAxisScreenSpace(Vector2 contentMouse, float contentW, float contentH)
