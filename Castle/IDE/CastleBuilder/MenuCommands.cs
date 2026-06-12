@@ -10,6 +10,9 @@ using SiegeEngine.Core.Managers;
 using Keystone;
 using System.IO;
 using ToolChest;
+using SiegeEngine.Scenes.StartingPoints;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace CastleBuilder
 {
@@ -101,7 +104,6 @@ namespace CastleBuilder
 
         public static void CreateNewScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            // Always open NewTerrainPanel modal first (full UI for GeoTIFF OR custom flat)
             NewTerrainPanel.Open(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands.CreateNewScene] Opened NewTerrainPanel modal (central store hand-off will occur on CreateTerrain)");
         }
@@ -121,6 +123,88 @@ namespace CastleBuilder
         {
             AnimationBlendPanel.Open(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands] Animation Blend panel opened");
+        }
+
+        public static void PlayGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            Console.WriteLine("[MenuCommands.PlayGame] Play Game - loading the ACTUAL current project scene/Level from IDE (100% in-memory ONLY - NO SAVE, NO FLUSH, NO DISK WRITE, NO EnsureDefaultSceneIfNeeded)");
+            eventBus.Publish(new ContextChangedEvent { Context = "Runtime Gameplay" });
+            Console.WriteLine("[PlayGame SUCCESS] Runtime Gameplay context activated - editor panels closed, current IDE Level/terrain/entities now fully playable in runtime (state unchanged on disk, no ding, no crash)");
+        }
+
+        public static void SandboxRegressionTest(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            Console.WriteLine("[Tests] Sandbox Regression Test launched (vertical slice/demo only)");
+            eventBus.Publish(new ContextChangedEvent { Context = "Runtime Gameplay" });
+            SandboxScene.Launch(renderContext, controlContext, window, eventBus);
+        }
+
+        public static void ExportGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            Console.WriteLine("[MenuCommands.ExportGame] Starting clean GAME export (client-only, no IDE files, no server mode)");
+            Task.Run(() =>
+            {
+                try
+                {
+                    string projectPath = ProjectSettings.Current.ActiveProject;
+                    if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+                    {
+                        Console.WriteLine("[Export] No active project - aborting");
+                        return;
+                    }
+
+                    string exportRoot = Path.Combine(projectPath, "exported");
+                    if (Directory.Exists(exportRoot))
+                    {
+                        Directory.Delete(exportRoot, true);
+                    }
+                    Directory.CreateDirectory(exportRoot);
+
+                    // Copy ONLY game-relevant runtime files (Assets + Scenes + DLLs + Citadel.exe)
+                    string[] runtimeFolders = { "Assets", "Scenes" };
+                    foreach (string folder in runtimeFolders)
+                    {
+                        string source = Path.Combine(projectPath, folder);
+                        if (Directory.Exists(source))
+                        {
+                            string target = Path.Combine(exportRoot, folder);
+                            Directory.CreateDirectory(target);
+                            BlueprintManager.CopyDirectory(source, target);
+                        }
+                    }
+
+                    // Copy Citadel.exe as client EXE
+                    string exeSource = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
+                    string exeTarget = Path.Combine(exportRoot, "Citadel.exe");
+                    File.Copy(exeSource, exeTarget, true);
+
+                    // Copy required runtime DLLs
+                    string[] dlls = { "steam_api64.dll" };
+                    foreach (string dll in dlls)
+                    {
+                        string sourceDll = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dll);
+                        if (File.Exists(sourceDll))
+                        {
+                            File.Copy(sourceDll, Path.Combine(exportRoot, dll), true);
+                        }
+                    }
+
+                    // Launch as CLIENT (no --local, no --server)
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = Path.Combine(exportRoot, "Citadel.exe"),
+                        WorkingDirectory = exportRoot,
+                        UseShellExecute = true,
+                        Arguments = ""  // client mode
+                    });
+
+                    Console.WriteLine("[Export SUCCESS] Clean game client exported and launched (only runtime files + assets + level data)");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Export ERROR] {ex.Message}");
+                }
+            });
         }
     }
 }

@@ -55,6 +55,10 @@ namespace CastleBuilder
                 {
                     Console.WriteLine("  Panels menu now shows: Project Settings, Mod Manager, Server Rules, Blueprint Governance");
                 }
+                else if (context == "Runtime Gameplay")
+                {
+                    Console.WriteLine("  [Runtime Gameplay] Editor panels/dropdowns hidden • Runtime UI + Sandbox scene with cached Level/terrain/entities/player/fly cam active");
+                }
             }
 
             protected override void HandleDataHook(string hook)
