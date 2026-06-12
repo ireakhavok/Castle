@@ -1,11 +1,12 @@
-﻿using SiegeEngine.Core.AssetParsing;
+﻿// Folder: SiegeEngine.Scenes
+// File: SceneContext.cs
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.Networking;
-using SiegeEngine.Core.Rendering;
 using SiegeEngine.PlayerSystem;
+using System.Numerics;
 
 namespace SiegeEngine.Scenes
 {
@@ -20,6 +21,10 @@ namespace SiegeEngine.Scenes
         public PlayerMovement? PlayerMovement { get; set; }
         public ModelManager? ModelManager { get; set; }
         public SceneData? ProjectSceneData { get; set; }
+
+        // Modular passed params (no ProjectSettings in core)
+        public string LoadLevelName { get; set; } = "Main";
+        public string PlayProjectPath { get; set; }
 
         public static SceneContext CreateCore(
             IRenderContext renderContext,

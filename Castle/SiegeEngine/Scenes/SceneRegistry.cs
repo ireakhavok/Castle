@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Scenes
+// File: SceneRegistry.cs
+using SiegeEngine.Scenes.StartingPoints;
+using System;
 using System.Collections.Generic;
 
 namespace SiegeEngine.Scenes
@@ -22,5 +25,18 @@ namespace SiegeEngine.Scenes
         }
 
         public static bool IsRegistered(string sceneName) => _factories.ContainsKey(sceneName);
+
+        static SceneRegistry()
+        {
+            // Existing registrations
+            Register("Sandbox", ctx => new SandboxScene(ctx.RenderContext, ctx.ControlContext, ctx.Window, ctx.Player, ctx.Server, ctx.PlayerMovement, ctx.EventBus, ctx.ModelManager));
+            // NEW runtime gameplay scene for Play/Export (receives passed params via SceneContext)
+            Register("RuntimeGameplay", ctx =>
+            {
+                var scene = new RuntimeGameplayScene(ctx.RenderContext, ctx.ControlContext, ctx.Window, ctx.Server, ctx.EventBus);
+                scene.LoadLevelData(ctx.LoadLevelName, ctx.PlayProjectPath); // passed variables, no ProjectSettings reference
+                return scene;
+            });
+        }
     }
 }

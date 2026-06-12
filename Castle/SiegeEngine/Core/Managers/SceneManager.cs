@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.AssetParsing;
+﻿// Folder: SiegeEngine.Core.Managers
+// File: SceneManager.cs
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -72,7 +74,7 @@ namespace SiegeEngine.Core.Managers
             _modelManager.LoadModel(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx"));
 
             Vector3 startPos = new Vector3(10, 10, 0);
-            _player = new Player(1, startPos, ((SteamEngine)_steamEngine).GetSteamId(), _modelManager);
+            _player = new Player(1, startPos, ((SteamEngine)_steamEngine).GetSteamId());
             _player.InitializeCamera(_controlContext, _window);
 
             var playerEntity = new Entity { Id = 1, Type = "Player" };
@@ -100,6 +102,24 @@ namespace SiegeEngine.Core.Managers
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
 
             Console.WriteLine($"SceneManager: '{e.SceneName}' initialized successfully via registry.");
+        }
+
+        public void SwitchToRuntimeGameplay(string projectPath, string levelName)
+        {
+            Console.WriteLine($"SceneManager: Loading runtime gameplay with passed project '{projectPath}' level '{levelName}' (modular, no core ProjectSettings reference)");
+            var ctx = new SceneContext
+            {
+                RenderContext = _renderContext,
+                ControlContext = _controlContext,
+                Window = _window,
+                Server = new ClientGameServerProxy(_eventBus),
+                EventBus = _eventBus,
+                LoadLevelName = levelName,
+                PlayProjectPath = projectPath
+            };
+            _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
+            _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
+            Console.WriteLine("[SceneManager] RuntimeGameplayScene active - full playable client loaded from passed parameters");
         }
     }
 }

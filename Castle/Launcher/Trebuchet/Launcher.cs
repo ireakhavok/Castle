@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.ContextManagement;
+﻿// Folder: Trebuchet
+// File: Launcher.cs
+using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
@@ -35,7 +37,7 @@ namespace Trebuchet
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
 
-        public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0, bool discoverP2PHost = false, ulong joinLobbyId = 0)
+        public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0, bool discoverP2PHost = false, ulong joinLobbyId = 0, bool isClientRuntime = false, string playProjectPath = null, string loadLevelName = "Main")
         {
             try
             {
@@ -47,7 +49,14 @@ namespace Trebuchet
                     return;
                 }
 
-                if (!discoverDedicated && connectToServerSteamId == 0 && !discoverP2PHost)
+                if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
+                {
+                    Console.WriteLine($"[Launcher.PureClient] ACTIVATED - level '{loadLevelName}' - NO server spawn, NO IDE panels, NO Steam server, robust 1280x720 window");
+                    _settingsManager = new UISettingsManager();
+                    _settingsManager.UpdateWindowSize(1280, 720);
+                    _settingsManager.LoadSettings();
+                }
+                else if (!discoverDedicated && connectToServerSteamId == 0 && !discoverP2PHost)
                 {
                     _serverProcess = Process.Start("Citadel.exe", "--local");
                     Console.WriteLine("Launcher: Started local authoritative Citadel server (--local) for validation layer.");
@@ -74,7 +83,6 @@ namespace Trebuchet
                         return;
                     }
 
-                    // Lobby / connection logic — supports dedicated, direct connect, P2P host discovery, and --join
                     if (joinLobbyId != 0)
                     {
                         ((SteamEngine)_steamEngine).JoinSpecificLobby(joinLobbyId);
@@ -99,17 +107,17 @@ namespace Trebuchet
                         }
                     }
 
-                    _settingsManager = new UISettingsManager();
+                    _settingsManager = _settingsManager ?? new UISettingsManager();
                     _settingsManager.LoadSettings();
                     if (_settingsManager.WindowWidth == 0 || _settingsManager.WindowHeight == 0)
                     {
-                        _settingsManager.UpdateWindowSize(1920, 1080, false);
+                        _settingsManager.UpdateWindowSize(1280, 720);
                     }
                     if (context == "OpenGL")
                     {
                         _contextManager = new OpenGLContextManager();
                     }
-                    _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, "Citadel Launcher");
+                    _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, isClientRuntime ? "Citadel Runtime Gameplay" : "Citadel Launcher");
                     _window = _contextManager.Window;
                     _renderContext = _contextManager.RenderContext;
                     _controlContext = _contextManager.ControlContext;
@@ -119,14 +127,26 @@ namespace Trebuchet
                     _inputHandler.SetKeyCallback("ui", (key, action) => { });
                     string initialHtmlPath = _modManager.GetMenuConfigPath();
                     Console.WriteLine($"Launcher: Resolved MainMenu.html path: {initialHtmlPath}, Exists: {File.Exists(initialHtmlPath)}");
-                    _menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialHtmlPath);
-                    _menuPanel.DockState = DockState.Tabbed;
-                    _menuPanel.Init();
-                    _eventBus.RegisterNamespace("CastleBuilder.Events");
 
-                    _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuPanel);
-                    _panelManager = new PanelManager(_renderContext, _controlContext, _window, _eventBus);
-                    _panelManager.AddPanel(_menuPanel);
+                    if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
+                    {
+                        _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, null);
+                        _panelManager = new PanelManager(_renderContext, _controlContext, _window, _eventBus);
+                        _sceneManager.SwitchToRuntimeGameplay(playProjectPath, loadLevelName);
+                        Console.WriteLine("[Launcher] Pure client runtime - IDE panels skipped, Gameplay scene loaded from passed Level name");
+                    }
+                    else
+                    {
+                        _menuPanel = new MenuPanel(_renderContext, _controlContext, _window, _eventBus, _modManager, initialHtmlPath);
+                        _menuPanel.DockState = DockState.Tabbed;
+                        _menuPanel.Init();
+                        _eventBus.RegisterNamespace("CastleBuilder.Events");
+
+                        _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuPanel);
+                        _panelManager = new PanelManager(_renderContext, _controlContext, _window, _eventBus);
+                        _panelManager.AddPanel(_menuPanel);
+                    }
+
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
                         _settingsManager.UpdateWindowSize(width, height);
@@ -148,9 +168,9 @@ namespace Trebuchet
                         _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
                         _renderContext.Disable(_renderContext.Enums.DepthTest);
                         _sceneManager.Update(deltaTime);
-                        _panelManager.Update(deltaTime);
+                        _panelManager?.Update(deltaTime);
                         _sceneManager.Render();
-                        _panelManager.Render();
+                        _panelManager?.Render();
                         _renderContext.Enable(_renderContext.Enums.DepthTest);
                         _controlContext.SwapBuffers(_window);
                     }
