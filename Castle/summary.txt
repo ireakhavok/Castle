@@ -340,21 +340,29 @@ Folder: IDE
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Terrain, System, System.Collections.Generic, System.IO
     - Fields:
       - string _projectsRoot
+      - SceneData CurrentSceneData
+      - string CurrentSceneName
+      - Level CurrentLevel
     - Methods:
       - constructor ProjectSettings()
       - void SetCurrentTerrain( string heightmapPath = null,  string sceneName = null, SceneData sceneData, ] heightmap)
-        - Calls: Console.WriteLine, GetOrCreatePaintData, ProjectStateManager
+        - Calls: Console.WriteLine, ProjectStateManager.Current.GetOrCreatePaintData, ProjectStateManager.Current.StoreUnsavedHeightmap
       - void SetCurrentLevel(Level level)
-        - Calls: Console.WriteLine
       - ] GetUnsavedHeightmap(string sceneName)
       - void StoreUnsavedHeightmap(] heightmap, string sceneName)
+      - List<string> GetUnsavedHeightmapKeys()
       - TerrainPaintData GetOrCreatePaintData( int height = 200,  int width = 200, string sceneName)
-        - Calls: TerrainPaintData
       - TerrainPaintData GetPaintData(string sceneName)
       - string GetLayoutTempPath(string projectPath)
 - File: ProjectStateManager.cs
   - Class: ProjectStateManager (Namespace: Keystone)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Collections.Generic
+    - Fields:
+      - SceneData _currentSceneData
+      - string _currentSceneName
+      - Level _currentLevel
+      - SceneData CurrentSceneData
+      - string CurrentSceneName
     - Methods:
       - constructor ProjectStateManager()
         - Calls: Console.WriteLine, LiveSceneState
@@ -367,9 +375,13 @@ Folder: IDE
         - Calls: GetLiveState
       - ] GetUnsavedHeightmap(string sceneName)
         - Calls: GetLiveState
+      - List<string> GetUnsavedHeightmapKeys()
       - TerrainPaintData GetOrCreatePaintData( int height = 200,  int width = 200, string sceneName)
+        - Calls: TerrainPaintData
+      - TerrainPaintData GetPaintData(string sceneName)
       - void SetCurrentTerrain( string sceneName = null, SceneData sceneData, ] heightmap)
         - Calls: Console.WriteLine, GetOrCreateLiveState
+      - void SetCurrentLevel(Level level)
       - void Clear()
         - Calls: state.Dispose
 - File: PropertiesPanel.cs
@@ -486,7 +498,7 @@ Folder: IDE
       - void SaveTerrain(string terrainName)
         - Calls: CustomTerrainParser.SaveFloatTiff, CustomTerrainParser.TryGetCustomScale, Dispose, RebuildTerrainMesh, ResolveFullPath, SaveAsPng, _colorBitmapCache.Clone, _paintData.SaveToDisk, live.SyncColorTextureIfNeeded
       - void SaveAsPng(string path)
-        - Calls: Console.WriteLine, _colorBitmapCache.Clone
+        - Calls: Console.WriteLine, Dispose, _colorBitmapCache.Clone, liveReload.SyncColorTextureIfNeeded, saveData.Clone
       - void Export2D(string projectAssetsDir)
         - Calls: TilemapExporter.ExportToMesh
       - void SetActiveBrush(Brush brush)
@@ -530,6 +542,61 @@ Folder: IDE
         - Calls: Id.ToString
       - void Deserialize(byte[] data)
         - Calls: Guid.Parse, ToString, float.Parse, int.Parse, ulong.Parse
+- File: TransformGizmoOverlay.cs
+  - Class: TransformGizmoOverlay (Namespace: ToolChest)
+    - Inherits: ICustomOverlay
+    
+    - Dependencies: Keystone, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - EventBus _eventBus
+      - int _selectedEntityId
+      - VertexBuffer _arrowBuffer
+      - VertexBuffer _ringBuffer
+      - bool _isDragging
+      - int _activeAxis
+      - bool _isRotating
+      - Vector3 _dragAxisWorld
+      - Vector2 _lastDragMouse
+      - Vector3 _dragStartClosestPoint
+      - Vector3 _lastClosestPoint
+      - float _lastRotationAngle
+      - Matrix4x4 _lastView
+      - Matrix4x4 _lastProjection
+      - float ArrowPickTolerance
+    - Methods:
+      - void UpdateMatrices( Matrix4x4 projection, Matrix4x4 view)
+      - void OnEntitySelected( Quaternion rotation,  Vector3 position, int entityId)
+        - Calls: RebuildGizmoGeometry
+      - void ClearSelection()
+      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
+      - void RebuildGizmoGeometry()
+        - Calls: BuildArrowGeometry, BuildRingGeometry, VertexBuffer
+      - void BuildArrowGeometry()
+        - Calls: AddArrow, _arrowBuffer.UpdateCustom
+      - void AddArrow( List<uint> indices,  Vector3 direction,  Vector4 color, List<Vertex> vertices)
+        - Calls: Vertex
+      - void BuildRingGeometry()
+        - Calls: AddRing, _ringBuffer.UpdateCustom
+      - void AddRing( List<uint> indices,  Vector3 axis,  Vector4 color, List<Vertex> vertices)
+        - Calls: Vertex
+      - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
+        - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
+      - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, StartDrag
+      - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: ClosestPointOnInfiniteAxis, Console.WriteLine, GetAxisVector
+      - void PerformDrag( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: ClosestPointOnInfiniteAxis, Console.WriteLine, EntityMovedEvent
+      - void EndDrag()
+        - Calls: Console.WriteLine
+      - Vector3 ClosestPointOnInfiniteAxis( Vector3 lineDir,  Vector3 linePoint,  Vector3 rayDir, Vector3 rayOrigin)
+      - int PickAxisScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: Console.WriteLine, DistanceToLineSegment2D, GetAxisVector
+      - float DistanceToLineSegment2D( Vector3 a3,  Vector3 b3,  float viewportH,  float viewportW, Vector2 p)
+        - Calls: WorldToScreen
+      - Vector2 WorldToScreen( float viewportH,  float viewportW, Vector3 worldPos)
+      - Vector3 GetAxisVector(int axis)
 - File: TreeViewPanel.cs
   - Class: TreeViewUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -780,9 +847,7 @@ Folder: SiegeEngine
   - Class: AnimationClipEntry (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: System, System.Numerics
 - File: AnimationComponent.cs
-  - Class: AnimationComponent (Namespace: SiegeEngine.Core.Definitions)
-    - Inherits: IComponent
-    
+  - Class: AnimationComponentData (Namespace: SiegeEngine.Core.Definitions)
 - File: AnimationPack.cs
   - Class: AnimationPack (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Numerics
@@ -950,9 +1015,7 @@ Folder: SiegeEngine
         - Calls: Detach
       - void Show()
 - File: BlendedAnimationComponent.cs
-  - Class: BlendedAnimationComponent (Namespace: SiegeEngine.Core.Definitions)
-    - Inherits: IComponent
-    
+  - Class: BlendedAnimationComponentData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Numerics
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
@@ -1047,11 +1110,11 @@ Folder: SiegeEngine
     - Methods:
       - constructor ClientGameServerProxy(EventBus eventBus)
       - void AddEntity(Entity entity)
-        - Calls: EntityAddedEvent
+        - Calls: Console.WriteLine, EntityAddedEvent
       - void RemoveEntity(int id)
         - Calls: EntityRemovedEvent, _entities.Remove
       - void ClearEntities()
-        - Calls: _entities.Clear
+        - Calls: EntityRemovedEvent, _entities.Clear
       - IReadOnlyList<Entity> GetEntities()
       - Entity GetEntityById(int id)
       - void AddSystem(GameSystem system)
@@ -1352,16 +1415,8 @@ Folder: SiegeEngine
       - void Dispose()
         - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteTexture, _renderContext.DeleteVertexArray
 - File: Entity.cs
-  - Class: Entity (Namespace: SiegeEngine.Core.Definitions)
+  - Class: IComponentData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
-    - Methods:
-      - constructor Entity()
-      - void SetParent(Entity parent)
-      - void AddChild(Entity child)
-      - EntityData ToData()
-      - Entity FromData(EntityData data)
-        - Calls: Console.WriteLine, Entity, PhysicsComponent, modelComp.Model.GetBoundingSize
-      - constructor Entity()
 - File: EntityAddedEvent.cs
   - Class: EntityAddedEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -2017,12 +2072,8 @@ Folder: SiegeEngine
         - Calls: GetNodeRowElement, HtmlLayoutUtils.GetNdcQuad
       - void Render( Matrix4x4 parentMatrix,  TextRenderer textRenderer,  UIQuadRenderer quadRenderer,  float viewportHeight,  float viewportWidth, IRenderContext renderContext)
 - File: LightComponent.cs
-  - Class: LightComponent (Namespace: SiegeEngine.Core.Definitions)
-    - Inherits: IComponent
-    
+  - Class: LightComponentData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Numerics
-    - Methods:
-      - constructor LightComponent( Vector3 color,  Vector3 positionOrDirection,  float attLinear = 0f,  float attQuadratic = 0f,  float intensity, LightType type)
 - File: LightType.cs
   - Class: LightType (Namespace: SiegeEngine.Core.Definitions)
 - File: LightingSystem.cs
@@ -2131,10 +2182,8 @@ Folder: SiegeEngine
       - string GetMenuConfigPath()
         - Calls: Console.WriteLine
 - File: ModelComponent.cs
-  - Class: ModelComponent (Namespace: SiegeEngine.Core.Definitions)
-    - Inherits: IComponent
-    
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Numerics
+  - Class: ModelComponentData (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Interfaces, Silk.NET.Maths, System, System.Collections.Generic, System.Numerics
 - File: ModelManager.cs
   - Class: ModelMeshRender (Namespace: SiegeEngine.Core.AssetParsing)
     - Dependencies: SiegeEngine.Core.AssetObjects, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.Json
@@ -2488,23 +2537,8 @@ Folder: SiegeEngine
       - byte[] Serialize()
       - void Deserialize(byte[] data)
 - File: PhysicsComponent.cs
-  - Class: PhysicsComponent (Namespace: SiegeEngine.Core.Definitions)
-    - Inherits: IComponent
-    
+  - Class: PhysicsComponentData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System, System.Numerics
-    - Fields:
-      - float _mass
-      - float _health
-      - TransformComponent _transform
-      - Vector3 WorldPosition
-      - Quaternion WorldRotation
-      - Vector3 WorldScale
-      - Matrix4x4 LocalToWorld
-    - Methods:
-      - constructor PhysicsComponent()
-      - void Break()
-      - bool RayIntersects( Vector3 rayDir,  out Vector3,  out float, Vector3 rayOrigin)
-        - Calls: Console.WriteLine
 - File: Player.cs
   - Class: Player (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: IComponent
@@ -3125,40 +3159,8 @@ Folder: SiegeEngine
       - constructor TrElement()
       - void ComputeLayout( TextRenderer textRenderer,  float forcedHeight = float.NaN,  float forcedWidth = float.NaN,  float parentFs,  float parentHeight,  float parentPositionY,  float parentWidth,  float viewportHeight,  float viewportWidth, float parentPositionX)
 - File: TransformComponent.cs
-  - Class: TransformComponent (Namespace: SiegeEngine.Core.Definitions)
-    - Inherits: IComponent
-    
+  - Class: TransformComponentData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System, System.Collections.Generic, System.Numerics
-    - Fields:
-      - Vector3 _position
-      - Quaternion _rotation
-      - Vector3 _scale
-      - Matrix4x4 _localToWorld
-      - bool _isDirty
-      - Vector3 WorldPosition
-      - Quaternion WorldRotation
-      - Vector3 WorldScale
-    - Methods:
-      - > GetWorldPosition()
-        - Calls: Recalculate
-      - > GetWorldRotation()
-        - Calls: Recalculate
-      - > GetWorldScale()
-        - Calls: Recalculate
-      - void SetParent(TransformComponent newParent)
-        - Calls: .Children.Remove, MarkDirty
-      - void AddChild(TransformComponent child)
-        - Calls: child.SetParent
-      - void RemoveChild(TransformComponent child)
-        - Calls: Children.Remove, child.MarkDirty
-      - Vector3 GetWorldPosition()
-        - Calls: Recalculate
-      - Quaternion GetWorldRotation()
-        - Calls: Recalculate
-      - Vector3 GetWorldScale()
-        - Calls: Recalculate
-      - void MarkDirty()
-      - void Recalculate()
 - File: TwoDSandboxScene.cs
   - Class: TwoDSandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene

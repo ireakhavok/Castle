@@ -12,7 +12,7 @@ namespace SiegeEngine.Core.Definitions
     {
         public string SceneName { get; }
         public float[,] Heightmap { get; set; }
-        public Bitmap ColorBitmap { get; set; }          // ← public set (MapRoom must be able to assign it)
+        public Bitmap ColorBitmap { get; set; }
         public int HeightmapVersion { get; set; } = 0;
         public int ColorVersion { get; private set; } = 0;
 

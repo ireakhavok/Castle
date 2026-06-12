@@ -38,6 +38,11 @@ namespace CastleBuilder
         }
         public ProjectData GetProjectData() => _projectData;
         public IReadOnlyList<Entity> GetEntities() => _server.GetEntities();
+        public Entity GetEntityById(int id)
+        {
+            return _server.GetEntities().FirstOrDefault(e => e.Id == id);
+        }
+        public GameScene GetActiveGameScene() => _activeGameScene;
         public bool TryGetPlacementPosition(out Vector3 position)
         {
             position = Vector3.Zero;
@@ -151,11 +156,13 @@ namespace CastleBuilder
             var clientProxy = _server as ClientGameServerProxy;
             if (clientProxy != null)
             {
-                clientProxy.ClearEntities();
+                // FIXED: Idempotent update-only sync. Never clears loaded entities.
+                // Guarantees previously loaded entities stay, new placement adds exactly one.
                 foreach (var entity in level.Entities)
                 {
                     clientProxy.AddEntity(entity);
                 }
+                Console.WriteLine($"[EditorScene.SyncCurrentLevelToRuntimeServer] Idempotent sync: {level.Entities.Count} entities (loaded + new placements preserved)");
             }
         }
         public void LoadProjectData()
@@ -210,7 +217,6 @@ namespace CastleBuilder
                 _activeGameScene = cachedScene;
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
-                // FULL SYNC ON CACHE HIT (exact minimal fix for re-select)
                 if (_activeGameScene is TerrainCreatorScene cachedTcs)
                 {
                     cachedTcs.LoadSceneData(sd);
@@ -222,7 +228,6 @@ namespace CastleBuilder
                     }
                     else
                     {
-                        // clear color if none (prevents stale color from previous scene)
                         cachedTcs.SetColorTexture(null);
                     }
                 }

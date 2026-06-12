@@ -198,7 +198,6 @@ namespace CastleBuilder
                     sceneData = new SceneData { Name = currentSceneName, SceneType = "TerrainTest" };
                     data.Scenes[currentSceneName] = sceneData;
                 }
-                // ← THIS IS THE FIX: clear before replace to stop duplication
                 sceneData.Entities.Clear();
                 sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                 sceneData.Terrain = level.Terrain ?? new TerrainData();

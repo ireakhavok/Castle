@@ -103,3 +103,24 @@ The terrain vertices are only for alignment — the paint must have a literal 1:
 The preview (ghost) is the source of truth for correct size and location. The painted result must match it exactly in orientation and size.
 
 Now with all this, please provide me a list of files for you to inspect the current state of the terrain painting system, so that we can fix the final visibility issue on the mesh.
+
+
+Multi-paragraph prompt/spec for the quaternion-aware 3D transform gizmo (placement/manipulation widget) in SceneEditorPanel:
+Implement a professional-grade 3D transform gizmo in the SceneEditorPanel's viewport that provides intuitive, axis-constrained manipulation of selected entities' position and rotation, mirroring the UX of Blender, Unity, and Unreal Editor. The gizmo activates exclusively when an entity possessing transform data (PhysicsComponent.Position + Quaternion Rotation) is selected — either via right-click in the hierarchy/outliner (TreeViewPanel / OutlinerCoordinator) or direct viewport raycast selection (EntitySelectedEvent). It renders at the entity's world position and orients to its exact quaternion rotation (local-space axes by default, with the entity's forward direction preserved).
+The gizmo consists of:
+
+Translation handles: three colored orthogonal arrows (Red = X, Green = Y, Blue = Z) extending from the pivot, with clear arrowheads or cone tips for visual clarity.
+Rotation handles: three colored circular arcs/rings lying in the perpendicular planes (XY, XZ, YZ) for axis-specific quaternion rotation.
+Optional center handle or plane indicators for future planar movement.
+
+The gizmo must support constrained interaction: mouse hover highlights the nearest handle; click-and-drag on an arrow moves the entity strictly along that local axis; click-and-drag on a rotation ring rotates the entity around that axis. Live preview updates the entity's PhysicsComponent in real time during drag, with final commit on mouse release. Changes propagate through the EventBus (reusing/extending EntityMovedEvent or a new TransformUpdatedEvent) to keep the server proxy, LiveSceneState, PropertiesPanel, OutlinerCoordinator, and undo system synchronized.
+Technical integration (future-proof and aligned with existing architecture):
+
+New TransformGizmoOverlay class (ICustomOverlay subclass, modeled after PlacementOverlay and SelectionBoxOverlay) that manages its own VertexBuffer for dynamic geometry (colored lines/triangles for arrows/rings, using UpdateCustom/UpdateCustomWithUV patterns).
+Render in world space during TerrainCreatorScene.Render or SceneEditorPanel.RenderInnerContent (after entities, using the same view/projection matrices and ghost-preview style as existing 3D overlays; reuse ShaderProgram with simple unlit colored shader).
+Input/picking in SceneEditorPanel.Update (when not in cameraMode) using existing GetMouseRay + raycast helpers from TerrainCreatorScene/PhysicsComponent.RayIntersects to detect handle hits and constrain drag to the selected axis.
+Quaternion fidelity: gizmo axes are derived from the entity's Rotation quaternion so forward always matches the model.
+Editor-only: hide when no entity selected or cameraMode active; support local space by default (world-space toggle stubbed for future).
+Performance: recreate/update geometry only on selection change or drag; minimal draw calls.
+
+This feature completes the professional scene-editing workflow, making precise FBX/entity placement and orientation as fluid as terrain sculpting while fully leveraging the self-hosting IDE's shared rendering, raycast, EventBus, and component systems. It is modular, moddable, and extensible (add scale handles, snapping, multi-selection later) without breaking any existing behavior (terrain brush, sprite placement, multiplayer validation, save/load, or selection). Start with translation arrows, add rotation in phase 2, and ensure seamless live preview and server reconciliation.

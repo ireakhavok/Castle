@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.Definitions
 {
-    public class TransformComponent : IComponent
+    public class TransformComponent : IComponent, IComponentData
     {
         private Vector3 _position = Vector3.Zero;
         private Quaternion _rotation = Quaternion.Identity;
@@ -117,6 +117,34 @@ namespace SiegeEngine.Core.Definitions
             }
 
             _isDirty = false;
+        }
+
+        // NEW: IComponentData support for round-tripping (keeps TransformComponent values)
+        public object ToSerializableData()
+        {
+            return new TransformComponentData
+            {
+                Position = Position,
+                Rotation = Rotation,
+                Scale = Scale
+            };
+        }
+
+        public void FromSerializableData(object data)
+        {
+            if (data is TransformComponentData t)
+            {
+                Position = t.Position;
+                Rotation = t.Rotation;
+                Scale = t.Scale;
+            }
+        }
+
+        private class TransformComponentData
+        {
+            public Vector3 Position { get; set; }
+            public Quaternion Rotation { get; set; }
+            public Vector3 Scale { get; set; }
         }
     }
 }

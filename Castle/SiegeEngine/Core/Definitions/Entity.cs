@@ -57,7 +57,7 @@ namespace SiegeEngine.Core.Definitions
             var data = new EntityData
             {
                 Type = Type,
-                Id = Id   // FIXED: persist unique ID across save/load so spawn never duplicates
+                Id = Id
             };
 
             // PhysicsComponent is the definitive runtime/editor source of truth
@@ -83,7 +83,6 @@ namespace SiegeEngine.Core.Definitions
                     data.AssetPackKey = modelComp.Key;
                 }
 
-                // NEW: serialize Material (world-aligned textures + all slots)
                 if (modelComp.Material != null)
                 {
                     data.MaterialData = new MaterialData
@@ -91,6 +90,25 @@ namespace SiegeEngine.Core.Definitions
                         Name = modelComp.Material.Name,
                         TextureSlots = modelComp.Material.TextureSlots
                     };
+                }
+            }
+
+            // Component round-tripping — ONLY the components this specific entity actually has
+            data.Components = new List<EntityData.ComponentEntry>();
+
+            foreach (var kvp in _components)
+            {
+                var componentType = kvp.Key;
+                var component = kvp.Value;
+
+                if (component is IComponentData serializable)
+                {
+                    var entry = new EntityData.ComponentEntry
+                    {
+                        Type = componentType.FullName,
+                        Data = serializable.ToSerializableData()
+                    };
+                    data.Components.Add(entry);
                 }
             }
 
@@ -103,7 +121,7 @@ namespace SiegeEngine.Core.Definitions
 
             var entity = new Entity
             {
-                Id = data.Id,   // FIXED: respect saved ID (prevents reset/duplicates on load)
+                Id = data.Id,
                 Type = data.Type ?? "Default"
             };
 
@@ -115,7 +133,7 @@ namespace SiegeEngine.Core.Definitions
 
             entity.AddComponent(physics);
 
-            // Defensive sync so Entity.Transform always matches (prevents any legacy code paths from seeing origin)
+            // Defensive sync so Entity.Transform always matches
             entity.Transform.Position = physics.Position;
             entity.Transform.Rotation = physics.Rotation;
             entity.Transform.Scale = physics.Scale;
@@ -124,7 +142,6 @@ namespace SiegeEngine.Core.Definitions
             {
                 var modelComp = new ModelComponent { Key = data.AssetPackKey };
 
-                // NEW: restore Material from saved data
                 if (data.MaterialData != null)
                 {
                     modelComp.Material = new Material
@@ -136,8 +153,6 @@ namespace SiegeEngine.Core.Definitions
 
                 entity.AddComponent(modelComp);
 
-                // RIGHT-WAY FIX: set real model bounding size + exact local AABB (cm) from FBXModel
-                // This guarantees OBB exactly matches visual geometry for raycast selection on rotated/non-centered models.
                 if (modelComp.Model != null)
                 {
                     physics.Size = modelComp.Model.GetBoundingSize();
@@ -146,8 +161,45 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) (PhysicsComponent authoritative) MaterialSlots={entity.GetComponent<ModelComponent>()?.Material?.TextureSlots?.Count ?? 0}");
+            // Component round-tripping — ONLY recreate exactly the components that were saved for this entity
+            // No factory, no switch, no hard-coded list. Purely modular using reflection on the saved type name.
+            if (data.Components != null)
+            {
+                foreach (var entry in data.Components)
+                {
+                    if (string.IsNullOrEmpty(entry.Type)) continue;
+
+                    try
+                    {
+                        var componentType = System.Type.GetType(entry.Type);
+                        if (componentType == null || !typeof(IComponent).IsAssignableFrom(componentType))
+                            continue;
+
+                        var component = (IComponent)Activator.CreateInstance(componentType);
+
+                        if (component is IComponentData serializable && entry.Data != null)
+                        {
+                            serializable.FromSerializableData(entry.Data);
+                        }
+
+                        entity.AddComponent(component);
+                    }
+                    catch
+                    {
+                        Console.WriteLine($"[Entity.FromData] Could not recreate component type: {entry.Type}");
+                    }
+                }
+            }
+
+            Console.WriteLine($"[Entity.FromData] Rehydrated entity '{entity.Type}' ID={entity.Id} Position={physics.Position} Size={physics.Size} LocalAABB=({physics.LocalBoundsMinCm}..{physics.LocalBoundsMaxCm}) Components={entity.Components.Count}");
             return entity;
         }
+    }
+
+    // Optional lightweight interface for any component that wants to persist
+    public interface IComponentData
+    {
+        object ToSerializableData();
+        void FromSerializableData(object data);
     }
 }

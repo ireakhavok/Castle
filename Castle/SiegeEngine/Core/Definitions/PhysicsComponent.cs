@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.Definitions
 {
-    public class PhysicsComponent : IComponent
+    public class PhysicsComponent : IComponent, IComponentData
     {
         private float _mass = 1.0f;
         private float _health = 100f;
@@ -22,7 +22,6 @@ namespace SiegeEngine.Core.Definitions
             IsVisible = true;
         }
 
-        // === FULL BACKWARD COMPATIBILITY LAYER (zero breaking changes) ===
         public Vector3 Position
         {
             get => _transform.Position;
@@ -75,9 +74,6 @@ namespace SiegeEngine.Core.Definitions
             }
         }
 
-        // NEW: exact local AABB in FBX cm units (populated from FBXModel at entity creation)
-        // Eliminates centering assumption for walls/prefabs with non-zero pivot.
-        // Falls back to symmetric box for legacy/centered models.
         public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
 
@@ -89,22 +85,12 @@ namespace SiegeEngine.Core.Definitions
             }
         }
 
-        /// <summary>
-        /// Professional-grade OBB ray intersection test.
-        /// Transforms the ray into the entity's local space using EXACT render model matrix (scale 0.01f * rot * trans)
-        /// then performs a robust slab AABB test in FBX cm space.
-        /// This is the canonical, reusable hit detection for rotated entities (walls, FBX models, etc.).
-        /// Used by EditorScene (right-click selection) and GameServer.RequestRayTrace (authoritative multiplayer).
-        /// Strict travel-order first-hit semantics are handled by callers.
-        /// </summary>
         public bool RayIntersects(Vector3 rayOrigin, Vector3 rayDir, out float distance, out Vector3 hitPoint)
         {
             distance = 0f;
             hitPoint = Vector3.Zero;
             if (rayDir.LengthSquared() < 1e-8f) return false;
 
-            // EXACT render model matrix as in SceneEditorPanel.RenderInnerContent
-            // (scaleMat 0.01f * rotation * translation) to match FBX cm vertices exactly
             Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
             Matrix4x4 rotMat = Matrix4x4.CreateFromQuaternion(Rotation);
             Matrix4x4 transMat = Matrix4x4.CreateTranslation(Position);
@@ -114,33 +100,24 @@ namespace SiegeEngine.Core.Definitions
 
             Vector3 localOrigin = Vector3.Transform(rayOrigin, worldToLocal);
             Vector3 localDir = Vector3.TransformNormal(rayDir, worldToLocal);
-            localDir = Vector3.Normalize(localDir);  // normalized for slab t-parameter consistency
+            localDir = Vector3.Normalize(localDir);
 
-            // FBX local space is in CENTIMETERS.
-            // Use actual stored local AABB (handles non-centered models like walls) or fallback to symmetric
             Vector3 boxMin;
             Vector3 boxMax;
-            // FIXED: detect valid bounds (Min <= Max on all axes) instead of fragile MaxValue/2 check
-            // This ensures loaded/rotated FBX models (sm_wall_pack etc.) use real AABB and RayIntersects succeeds
-            // from any camera height (including below terrain)
             if (LocalBoundsMinCm.X <= LocalBoundsMaxCm.X &&
                 LocalBoundsMinCm.Y <= LocalBoundsMaxCm.Y &&
                 LocalBoundsMinCm.Z <= LocalBoundsMaxCm.Z)
             {
                 boxMin = LocalBoundsMinCm;
                 boxMax = LocalBoundsMaxCm;
-                Console.WriteLine($"[DEBUG RayIntersects] Entity using REAL FBX AABB min=({boxMin}) max=({boxMax})");
             }
             else
             {
-                // Legacy centered fallback (Size already in meters)
                 Vector3 localHalfExtents = Size * 50f;
                 boxMin = -localHalfExtents;
                 boxMax = localHalfExtents;
-                Console.WriteLine($"[DEBUG RayIntersects] Entity using FALLBACK centered AABB min=({boxMin}) max=({boxMax}) Size={Size}");
             }
 
-            // Robust slab method for ray (tmin starts at 0, no negative t allowed)
             float tmin = 0.0f;
             float tmax = float.MaxValue;
             for (int i = 0; i < 3; i++)
@@ -162,10 +139,58 @@ namespace SiegeEngine.Core.Definitions
                 }
             }
 
-            // Convert local-space tmin (cm scale) back to world distance (meters)
             distance = tmin * 0.01f;
             hitPoint = rayOrigin + rayDir * distance;
             return true;
+        }
+
+        // NEW: IComponentData support for round-tripping
+        public object ToSerializableData()
+        {
+            return new PhysicsComponentData
+            {
+                Position = Position,
+                Rotation = Rotation,
+                Scale = Scale,
+                Size = Size,
+                Mass = Mass,
+                Health = Health,
+                IsBreakable = IsBreakable,
+                IsBroken = IsBroken,
+                LocalBoundsMinCm = LocalBoundsMinCm,
+                LocalBoundsMaxCm = LocalBoundsMaxCm
+            };
+        }
+
+        public void FromSerializableData(object data)
+        {
+            if (data is PhysicsComponentData p)
+            {
+                Position = p.Position;
+                Rotation = p.Rotation;
+                Scale = p.Scale;
+                Size = p.Size;
+                Mass = p.Mass;
+                Health = p.Health;
+                IsBreakable = p.IsBreakable;
+                IsBroken = p.IsBroken;
+                LocalBoundsMinCm = p.LocalBoundsMinCm;
+                LocalBoundsMaxCm = p.LocalBoundsMaxCm;
+            }
+        }
+
+        private class PhysicsComponentData
+        {
+            public Vector3 Position { get; set; }
+            public Quaternion Rotation { get; set; }
+            public Vector3 Scale { get; set; }
+            public Vector3 Size { get; set; }
+            public float Mass { get; set; }
+            public float Health { get; set; }
+            public bool IsBreakable { get; set; }
+            public bool IsBroken { get; set; }
+            public Vector3 LocalBoundsMinCm { get; set; }
+            public Vector3 LocalBoundsMaxCm { get; set; }
         }
     }
 }

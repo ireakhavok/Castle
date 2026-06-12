@@ -1,4 +1,4 @@
-﻿// Folder: CastleBuilder
+﻿// Folder: IDE
 // File: SceneEditorPanel.cs
 using Keystone;
 using MapRoom;
@@ -24,7 +24,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using ToolChest;
-
 namespace CastleBuilder
 {
     public class SceneEditorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider
@@ -44,7 +43,6 @@ namespace CastleBuilder
                 _parent.HandleDataHook(hook);
             }
         }
-
         private class SelectionBoxOverlay : ICustomOverlay
         {
             private readonly SceneEditorPanel _parent;
@@ -67,7 +65,6 @@ namespace CastleBuilder
                 quadRenderer.DrawLine(x + w, y + headerHeight, x + w, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
             }
         }
-
         private EditorScene _editorScene;
         private bool _cameraMode = false;
         private ModelManager _modelManager;
@@ -79,7 +76,8 @@ namespace CastleBuilder
         private Vector2 _boxStart = Vector2.Zero;
         private Vector2 _boxEnd = Vector2.Zero;
         private const float MinDragDistance = 5f;
-
+        private TransformGizmoOverlay _transformGizmo;
+        private bool _fileSelectedSubscribed = false;
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -91,15 +89,27 @@ namespace CastleBuilder
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
             _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
             CustomOverlays.Add(new SelectionBoxOverlay(this));
+            _transformGizmo = new TransformGizmoOverlay(
+                renderContext,
+                eventBus,
+                (contentMouse, contentW, contentH) =>
+                {
+                    var active = _editorScene.GetActiveGameScene() as TerrainCreatorScene;
+                    if (active == null) return (Vector3.Zero, Vector3.Zero, false);
+                    Vector3 origin = Vector3.Zero;
+                    Vector3 dir = Vector3.Zero;
+                    bool success = active.GetMouseRay(contentMouse / new Vector2(contentW, contentH), out origin, out dir);
+                    return (origin, dir, success);
+                },
+                id => _editorScene.GetEntityById(id)
+            );
+            CustomOverlays.Add(_transformGizmo);
         }
-
         public string ContentType => "SceneEditor";
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new SceneEditorUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
@@ -109,10 +119,13 @@ namespace CastleBuilder
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
-            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
+            if (!_fileSelectedSubscribed)
+            {
+                _eventBus.Subscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
+                _fileSelectedSubscribed = true;
+            }
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
         }
-
         private void OnEntitySelected(EntitySelectedEvent e)
         {
             if (e.Additive)
@@ -133,14 +146,28 @@ namespace CastleBuilder
                 OutlinerCoordinator.Instance.NotifySelectionChanged(nodeIds[0]);
             else
                 OutlinerCoordinator.Instance.NotifySelectionChanged("");
+            if (_selectedEntityIds.Count == 1)
+            {
+                var entity = _editorScene.GetEntityById(_selectedEntityIds[0]);
+                if (entity != null)
+                {
+                    var physics = entity.GetComponent<PhysicsComponent>();
+                    if (physics != null)
+                    {
+                        _transformGizmo.OnEntitySelected(_selectedEntityIds[0], physics.Position, physics.Rotation);
+                    }
+                }
+            }
+            else
+            {
+                _transformGizmo.ClearSelection();
+            }
             NotifyHierarchyChanged();
         }
-
         public void RefreshSceneList()
         {
             UpdateSceneSelectorUI();
         }
-
         private void UpdateSceneSelectorUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SceneEditorUI.html");
@@ -165,7 +192,6 @@ namespace CastleBuilder
             string finalHtml = baseHtml.Replace("<!-- Populated dynamically -->", options.ToString());
             _uiOverlay.LoadUI(finalHtml);
         }
-
         private void HandleDataHook(string hook)
         {
             if (hook == "SceneSelected")
@@ -197,11 +223,9 @@ namespace CastleBuilder
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
         }
-
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
-
             string ext = Path.GetExtension(e.Path).ToLowerInvariant();
             string originalKey = Path.GetFileNameWithoutExtension(e.Path).ToLower();
             string packId = originalKey + "_pack";
@@ -216,15 +240,12 @@ namespace CastleBuilder
             {
                 packId = _modelManager.RegisterFBXAsPackInMemory(e.Path);
             }
-
             if (!_editorScene.TryGetPlacementPosition(out var hitPoint))
             {
                 Console.WriteLine("[SceneEditorPanel.OnFileSelectedForPlacement] Raycast failed - no valid placement position (aborting to prevent erroneous default entity)");
                 return;
             }
-
             Vector3 placePos = hitPoint + new Vector3(0, 0, 0.1f);
-
             var level = ProjectSettings.Current.CurrentLevel;
             if (level == null)
             {
@@ -232,10 +253,8 @@ namespace CastleBuilder
                 level = new Level(_eventBus) { Name = sceneName };
                 ProjectSettings.Current.SetCurrentLevel(level);
             }
-
             var entity = level.PlaceEntity(placePos, placeType);
             entity.Type = placeType;
-
             if (_modelManager.TryGetModel(packId, out var fbxModel) || _modelManager.TryGetModel(originalKey, out fbxModel))
             {
                 var modelComp = new ModelComponent { Model = fbxModel, Key = packId };
@@ -253,25 +272,20 @@ namespace CastleBuilder
                 var modelComp = new ModelComponent { Key = packId };
                 entity.AddComponent(modelComp);
             }
-
-            // FIXED: direct add to runtime proxy - prevents duplication on full sync
-            var clientProxy = _editorScene.GetType().GetField("_server", BindingFlags.NonPublic | BindingFlags.Instance)?.GetValue(_editorScene) as ClientGameServerProxy;
-            clientProxy?.AddEntity(entity);
-
             Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos}");
+            _editorScene.SyncCurrentLevelToRuntimeServer();
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
         }
-
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
             if (_cameraMode) PanelManager.Current.CapturePanel(this);
             else PanelManager.Current.ReleasePanelCapture();
+            if (_cameraMode)
+                _transformGizmo.ClearSelection();
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (_pendingSceneSelectorUpdate)
@@ -279,12 +293,10 @@ namespace CastleBuilder
                 _pendingSceneSelectorUpdate = false;
                 UpdateSceneSelectorUI();
             }
-
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             bool ctrlPressed = _controlContext.GetKey(_window, Key.LeftControl) == InputAction.Press ||
                                _controlContext.GetKey(_window, Key.RightControl) == InputAction.Press;
             bool rightPressedThisFrame = _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press;
-
             if (isTopmost && rightPressedThisFrame && !_wasRightPressedLastFrame)
             {
                 float header = HasTitleBar ? HeaderHeight : 0f;
@@ -292,13 +304,11 @@ namespace CastleBuilder
                 _boxStart = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - header);
                 _boxEnd = _boxStart;
             }
-
             if (_isBoxSelecting && _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Press)
             {
                 float header = HasTitleBar ? HeaderHeight : 0f;
                 _boxEnd = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - header);
             }
-
             if (_isBoxSelecting && _controlContext.GetMouseButton(_window, MouseButton.Right) == InputAction.Release)
             {
                 _isBoxSelecting = false;
@@ -329,18 +339,45 @@ namespace CastleBuilder
                     }
                 }
             }
-
             _wasRightPressedLastFrame = rightPressedThisFrame;
-
+            // Compute fresh matrices BEFORE gizmo input (using reflection for AspectRatio)
+            Matrix4x4 view = Matrix4x4.Identity;
+            Matrix4x4 projection = Matrix4x4.Identity;
+            var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
+            var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
+            if (active != null)
+            {
+                var flyField = active.GetType().GetField("_flyCamera", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.FlattenHierarchy);
+                var fly = flyField?.GetValue(active) as FlyCameraController;
+                if (fly != null)
+                {
+                    view = fly.ViewMatrix;
+                }
+                float aspect = 16f / 9f;
+                var aspectField = active.GetType().GetProperty("AspectRatio", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (aspectField != null)
+                {
+                    aspect = (float)aspectField.GetValue(active);
+                }
+                projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
+            }
+            _transformGizmo.UpdateMatrices(view, projection);
+            // Gizmo input handling
+            if (!_cameraMode && isTopmost)
+            {
+                float headerHeight = HasTitleBar ? HeaderHeight : 0f;
+                Vector2 contentMouse = new Vector2(absMousePos.X - Position.X, absMousePos.Y - Position.Y - headerHeight);
+                float contentW = Size.X;
+                float contentH = Size.Y - headerHeight;
+                _transformGizmo.HandleMouseInput(contentMouse, contentW, contentH, mouseDown, mousePressed, mouseReleased);
+            }
             base.Update(deltaTime, absMousePos, mouseDown && !_cameraMode, mousePressed && !_cameraMode, mouseReleased && !_cameraMode, scrollDelta);
-
             if (_cameraMode)
             {
                 Vector2 sceneMouse = absMousePos - Position - new Vector2(0, TitleHeight);
                 _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
             }
         }
-
         private void PerformBoxSelection(bool additive)
         {
             float header = HasTitleBar ? HeaderHeight : 0f;
@@ -358,7 +395,6 @@ namespace CastleBuilder
             var evt = new EntitySelectedEvent { SelectedEntityIds = selected, Additive = additive };
             _eventBus.Publish(evt);
         }
-
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
@@ -378,7 +414,6 @@ namespace CastleBuilder
                 }
             }
             if (entities == null || entities.Count == 0) return;
-
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
             var active = activeField?.GetValue(_editorScene) as TerrainCreatorScene;
             Matrix4x4 view = Matrix4x4.Identity;
@@ -397,7 +432,6 @@ namespace CastleBuilder
                 if (aspectField != null) aspect = (float)aspectField.GetValue(active);
             }
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
-
             foreach (var entity in entities)
             {
                 var modelComp = entity.GetComponent<ModelComponent>();
@@ -428,29 +462,33 @@ namespace CastleBuilder
                     }
                 }
             }
+            if (_transformGizmo != null)
+            {
+                _transformGizmo.RenderWorld(view, projection);
+            }
         }
-
         public override void OnLiveResize(float w, float h)
         {
             _editorScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
-
         public override void Dispose()
         {
+            if (_fileSelectedSubscribed)
+            {
+                _eventBus.Unsubscribe<FileSelectedEvent>(OnFileSelectedForPlacement);
+                _fileSelectedSubscribed = false;
+            }
             PanelManager.Current.ReleasePanelCapture();
             _editorScene?.Dispose();
             base.Dispose();
         }
-
         public string DataKey => "SceneEditorPanel";
-
         public JsonElement SavePanelState()
         {
             var state = new Dictionary<string, string> { ["currentSceneName"] = _editorScene?.CurrentGameScene ?? "Main" };
             return JsonSerializer.SerializeToElement(state);
         }
-
         public void LoadPanelState(JsonElement state)
         {
             if (state.TryGetProperty("currentSceneName", out JsonElement sceneNameElem))
@@ -463,12 +501,10 @@ namespace CastleBuilder
                 }
             }
         }
-
         public override void OnContentFocusGained()
         {
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
         }
-
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
@@ -481,7 +517,6 @@ namespace CastleBuilder
                 Children = { "level-info", "entities" }
             };
             nodes.Add(root);
-
             var levelInfo = new OutlinerNode
             {
                 Id = "level-info",
@@ -490,10 +525,8 @@ namespace CastleBuilder
                 ParentId = "root"
             };
             nodes.Add(levelInfo);
-
             var entitiesParent = new OutlinerNode { Id = "entities", Label = "Entities", Icon = "🧱", ParentId = "root" };
             nodes.Add(entitiesParent);
-
             var entities = _editorScene.GetEntities();
             foreach (var entity in entities)
             {
@@ -508,11 +541,9 @@ namespace CastleBuilder
                 nodes.Add(node);
                 entitiesParent.Children.Add(node.Id);
             }
-
             Console.WriteLine($"[SceneEditorPanel.GetCurrentHierarchy] Returned {nodes.Count} nodes (root + {entities.Count} entities)");
             return nodes;
         }
-
         public object GetObjectForNode(string nodeId)
         {
             if (nodeId.StartsWith("entity-"))
@@ -525,7 +556,6 @@ namespace CastleBuilder
             }
             return null;
         }
-
         public void NotifyHierarchyChanged()
         {
             OutlinerCoordinator.Instance.NotifyHierarchyChanged();
