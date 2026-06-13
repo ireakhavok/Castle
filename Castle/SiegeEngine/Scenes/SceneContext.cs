@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Scenes
+﻿// Folder: SiegeEngine/Scenes
 // File: SceneContext.cs
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
@@ -6,6 +6,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.PlayerSystem;
+using System.Collections.Generic;
 using System.Numerics;
 
 namespace SiegeEngine.Scenes
@@ -26,6 +27,11 @@ namespace SiegeEngine.Scenes
         public string LoadLevelName { get; set; } = "Main";
         public string PlayProjectPath { get; set; }
 
+        // Generic Level snapshot carrier for Play / Export (future-proof data bridge, respects core separation)
+        public Level CurrentLevel { get; set; }
+        public float[,] HeightmapSnapshot { get; set; }
+        public List<Entity> RuntimeEntities { get; set; } = new List<Entity>();
+
         public static SceneContext CreateCore(
             IRenderContext renderContext,
             IControlContext controlContext,
@@ -41,6 +47,16 @@ namespace SiegeEngine.Scenes
                 Server = server,
                 EventBus = eventBus
             };
+        }
+
+        // Factory for pure runtime snapshot (used by Play/Export)
+        public static SceneContext CreateForRuntime(Level level, SceneData sceneData, IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb)
+        {
+            var ctx = CreateCore(rc, cc, w, s, eb);
+            ctx.CurrentLevel = level;
+            ctx.ProjectSceneData = sceneData;
+            ctx.LoadLevelName = level?.Name ?? "Main";
+            return ctx;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: SceneManager.cs
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
@@ -107,16 +107,10 @@ namespace SiegeEngine.Core.Managers
         public void SwitchToRuntimeGameplay(string projectPath, string levelName)
         {
             Console.WriteLine($"SceneManager: Loading runtime gameplay with passed project '{projectPath}' level '{levelName}' (modular, no core ProjectSettings reference)");
-            var ctx = new SceneContext
-            {
-                RenderContext = _renderContext,
-                ControlContext = _controlContext,
-                Window = _window,
-                Server = new ClientGameServerProxy(_eventBus),
-                EventBus = _eventBus,
-                LoadLevelName = levelName,
-                PlayProjectPath = projectPath
-            };
+            var level = new Level { Name = levelName }; // snapshot placeholder (full data passed from editor)
+            var ctx = SceneContext.CreateForRuntime(level, new SceneData { Name = levelName }, _renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
+            ctx.PlayProjectPath = projectPath;
+            ctx.LoadLevelName = levelName;
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine("[SceneManager] RuntimeGameplayScene active - full playable client loaded from passed parameters");

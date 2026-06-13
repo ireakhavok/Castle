@@ -54,7 +54,9 @@ namespace Trebuchet
                     Console.WriteLine($"[Launcher.PureClient] ACTIVATED - level '{loadLevelName}' - NO server spawn, NO IDE panels, NO Steam server, robust 1280x720 window");
                     _settingsManager = new UISettingsManager();
                     _settingsManager.UpdateWindowSize(1280, 720);
-                    _settingsManager.LoadSettings();
+                    _settingsManager.LoadSettings(); // safe call (defaults applied)
+                    _panelManager = null; // strict isolation - no panels
+                    _menuPanel = null;
                 }
                 else if (!discoverDedicated && connectToServerSteamId == 0 && !discoverP2PHost)
                 {
@@ -117,7 +119,7 @@ namespace Trebuchet
                     {
                         _contextManager = new OpenGLContextManager();
                     }
-                    _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, isClientRuntime ? "Citadel Runtime Gameplay" : "Citadel Launcher");
+                    _contextManager.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight, isClientRuntime ? "SiegeEngine Runtime - Main" : "Citadel Launcher");
                     _window = _contextManager.Window;
                     _renderContext = _contextManager.RenderContext;
                     _controlContext = _contextManager.ControlContext;
@@ -131,7 +133,7 @@ namespace Trebuchet
                     if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
                     {
                         _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, null);
-                        _panelManager = new PanelManager(_renderContext, _controlContext, _window, _eventBus);
+                        // panelManager skipped entirely in pure runtime
                         _sceneManager.SwitchToRuntimeGameplay(playProjectPath, loadLevelName);
                         Console.WriteLine("[Launcher] Pure client runtime - IDE panels skipped, Gameplay scene loaded from passed Level name");
                     }
@@ -149,8 +151,11 @@ namespace Trebuchet
 
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
-                        _settingsManager.UpdateWindowSize(width, height);
-                        Console.WriteLine($"Launcher: Window resized to: {width}x{height}");
+                        if (!isClientRuntime) // respect core separation - no spam in pure client
+                        {
+                            _settingsManager.UpdateWindowSize(width, height);
+                            Console.WriteLine($"Launcher: Window resized to: {width}x{height}");
+                        }
                         _sceneManager.Resize(width, height);
                     });
                     _isRunning = true;
@@ -168,9 +173,9 @@ namespace Trebuchet
                         _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
                         _renderContext.Disable(_renderContext.Enums.DepthTest);
                         _sceneManager.Update(deltaTime);
-                        _panelManager?.Update(deltaTime);
+                        if (_panelManager != null) _panelManager?.Update(deltaTime);
                         _sceneManager.Render();
-                        _panelManager?.Render();
+                        if (_panelManager != null) _panelManager?.Render();
                         _renderContext.Enable(_renderContext.Enums.DepthTest);
                         _controlContext.SwapBuffers(_window);
                     }
