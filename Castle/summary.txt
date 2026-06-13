@@ -1753,9 +1753,13 @@ Folder: SiegeEngine
   - Class: GameScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
     - Methods:
       - void LoadSceneData(SceneData data)
+        - Calls: LoadContentFromContext
+      - void LoadContentFromContext(SceneContext ctx)
+      - void SetupPureRuntimeWorld()
+      - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
       - void Dispose()
 - File: GameSystem.cs
   - Class: GameSystem (Namespace: SiegeEngine.Systems)
@@ -2707,8 +2711,34 @@ Folder: SiegeEngine
       - List<string> DetectAvailable()
         - Calls: D3D11CreateDevice, D3D12CreateDevice, IsOpenGLSupported, Marshal.Release, vkCreateInstance, vkDestroyInstance
 - File: RuntimeGameplayScene.cs
-  - Class: value (Namespace: SiegeEngine.Scenes)
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Numerics
+  - Class: RuntimeGameplayScene (Namespace: SiegeEngine.Scenes)
+    - Inherits: GameScene
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - Player _player
+      - FlyCameraController _flyCamera
+      - bool _isPlayMode
+      - ShaderProgram _gridShader
+      - VertexBuffer _gridBuffer
+      - ModelRenderer _modelRenderer
+    - Methods:
+      - void LoadLevelData( string projectPath, string levelName)
+        - Calls: Console.WriteLine, Level, LoadSceneData, SceneActivatedEvent, _player.InitializeCamera
+      - void Initialize( int height, int width)
+        - Calls: Console.WriteLine, SetupGrid, SetupPureRuntimeWorld, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _flyCamera.Update, _player.InitializeCamera, _renderContext.ClearColor, _renderContext.Viewport
+      - void SetupGrid()
+        - Calls: Vertex, _gridBuffer.UpdateCustom
+      - void LoadContentFromContext(SceneContext ctx)
+        - Calls: Console.WriteLine, LoadLevelData, SetupPureRuntimeWorld
+      - void SetupPureRuntimeWorld()
+        - Calls: Console.WriteLine
+      - void Update(float deltaTime)
+      - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: RenderGameplayContent
+      - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: Console.WriteLine, _gridBuffer.Bind, _gridShader.SetMatrix4, _gridShader.Use, _modelRenderer.RenderModel, _renderContext.Disable, _renderContext.DrawArrays, _renderContext.Enable
+      - void Dispose()
 - File: SandBoxScene.cs
   - Class: SandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene
@@ -2783,7 +2813,7 @@ Folder: SiegeEngine
       - void Deserialize(byte[] data)
 - File: SceneContext.cs
   - Class: SceneContext (Namespace: SiegeEngine.Scenes)
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, System.Collections.Generic, System.Numerics
     - Methods:
       - SceneContext CreateCore(
             EventBus eventBus, 
@@ -2791,6 +2821,8 @@ Folder: SiegeEngine
             IGameServer server, 
             IRenderContext renderContext, 
             nint window)
+      - SceneContext CreateForRuntime( EventBus eb,  IControlContext cc,  IGameServer s,  IRenderContext rc,  SceneData sceneData,  nint w, Level level)
+        - Calls: CreateCore
 - File: SceneData.cs
   - Class: EnvironmentSettings (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
@@ -2818,7 +2850,7 @@ Folder: SiegeEngine
       - void OnSwitchScene(SwitchSceneEvent e)
         - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
       - void SwitchToRuntimeGameplay( string levelName, string projectPath)
-        - Calls: ClientGameServerProxy, Console.WriteLine, SceneRegistry.Create, _currentScene.Initialize
+        - Calls: ClientGameServerProxy, Console.WriteLine, SceneContext.CreateForRuntime, SceneRegistry.Create, _currentScene.Initialize
 - File: SceneRegistry.cs
   - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
     - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic
@@ -3331,7 +3363,7 @@ Folder: SiegeEngine
       - void UpdateIconIndices( int> newIndices)
         - Calls: Console.WriteLine, SaveSettings
       - void LoadSettings()
-        - Calls: Console.WriteLine, availObj.ToString, fullscreenObj.ToString, heightObj.ToString, iconIndicesObj.ToString, rendererObj.ToString, widthObj.ToString
+        - Calls: Console.WriteLine, ToString, availObj.ToString, fullscreenObj.ToString, heightObj.ToString, iconIndicesObj.ToString, widthObj.ToString
       - void SaveSettings()
         - Calls: Console.WriteLine, JsonSerializer.Serialize
 - File: UiShader.cs
