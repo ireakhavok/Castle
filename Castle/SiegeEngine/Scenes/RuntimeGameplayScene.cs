@@ -14,14 +14,19 @@ using System.Numerics;
 
 namespace SiegeEngine.Scenes
 {
-    public class RuntimeGameplayScene : GameScene
+    public unsafe class RuntimeGameplayScene : GameScene
     {
         private readonly Player _player;
         private readonly FlyCameraController _flyCamera;
         private bool _isPlayMode = true;
-        private ShaderProgram _gridShader;
-        protected VertexBuffer _gridBuffer;
+        private ShaderProgram _terrainShader;
+        protected VertexBuffer _terrainBuffer;
         private ModelRenderer _modelRenderer;
+        private float[,] _heightmap;
+        private int _terrainWidth = 200;
+        private int _terrainHeight = 200;
+        private uint _terrainTextureId = 0;
+        private bool _hasColorTexture = true;
 
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -30,14 +35,13 @@ namespace SiegeEngine.Scenes
             _flyCamera = new FlyCameraController(controlContext, window);
             DefaultDockingMode = DockingMode.Desktop;
             _modelRenderer = new ModelRenderer(renderContext);
+            _heightmap = new float[_terrainWidth, _terrainHeight];
             if (ctx != null) LoadContentFromContext(ctx);
         }
 
         public void LoadLevelData(string levelName, string projectPath)
         {
-            var level = new Level();
             LoadSceneData(new SceneData { Name = levelName ?? "Main" });
-            Console.WriteLine($"[RuntimeGameplayScene] Loaded Level '{levelName}' via passed parameters from IDE (in-memory, modular) - full playable runtime active");
             _eventBus.Publish(new SceneActivatedEvent(levelName));
             _player.InitializeCamera(_controlContext, _window);
         }
@@ -45,10 +49,10 @@ namespace SiegeEngine.Scenes
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
-            _renderContext.ClearColor(1.0f, 0.0f, 1.0f, 1.0f); // BRIGHT MAGENTA fallback for visibility debugging
-            _gridShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
-            _gridBuffer = new VertexBuffer(_renderContext);
-            SetupGrid();
+            _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
+            _terrainBuffer = new VertexBuffer(_renderContext);
+            _modelRenderer.Initialize();
             SetupPureRuntimeWorld();
             _controlContext.SetScrollCallback(_window, (w, xoffset, yoffset) => { });
             _controlContext.SetWindowSizeCallback(_window, (w, newWidth, newHeight) =>
@@ -60,39 +64,8 @@ namespace SiegeEngine.Scenes
                     _renderContext.Viewport(0, 0, (uint)newWidth, (uint)newHeight);
                 }
             });
-            Console.WriteLine("[RuntimeGameplayScene] Full gameplay initialized - Play Game ready (new window / clean client) - terrain + player + entities visible");
             _player.InitializeCamera(_controlContext, _window);
             _flyCamera.Update(0f, 0f, true);
-            // Force visible default content
-            var defaultEntity = new Entity { Id = 999, Type = "DefaultCube" };
-            defaultEntity.AddComponent(new TransformComponent { Position = new Vector3(0, 5, 0) });
-            defaultEntity.AddComponent(new ModelComponent { Model = null, Key = "cube" });
-            defaultEntity.AddComponent(new PhysicsComponent { Position = new Vector3(0, 5, 0) });
-            _server.AddEntity(defaultEntity);
-            Console.WriteLine("[RuntimeGameplayScene] Added default visible entity for immediate rendering");
-        }
-
-        protected virtual void SetupGrid()
-        {
-            var vertices = new List<Vertex>();
-            int width = 128;
-            int height = 72;
-            float size = 5.0f;
-            for (float x = 0; x <= width; x += size)
-            {
-                vertices.Add(new Vertex(x, 0, 0, 0.6f, 0.6f, 0.6f, 1.0f));
-                vertices.Add(new Vertex(x, height, 0, 0.6f, 0.6f, 0.6f, 1.0f));
-            }
-            for (float y = 0; y <= height; y += size)
-            {
-                vertices.Add(new Vertex(0, y, 0, 0.6f, 0.6f, 0.6f, 1.0f));
-                vertices.Add(new Vertex(width, y, 0, 0.6f, 0.6f, 0.6f, 1.0f));
-            }
-            var indices = new List<uint>();
-            for (uint i = 0; i < vertices.Count; i++)
-                indices.Add(i);
-            _gridBuffer.UpdateCustom(vertices, indices);
-            Console.WriteLine("[RuntimeGameplayScene] Grid buffer setup complete with visible lines");
         }
 
         protected override void LoadContentFromContext(SceneContext ctx)
@@ -101,27 +74,70 @@ namespace SiegeEngine.Scenes
             {
                 LoadLevelData(ctx.LoadLevelName, ctx.PlayProjectPath);
                 SetupPureRuntimeWorld();
-                Console.WriteLine("[RuntimeGameplayScene] Snapshot loaded - terrain/entities/player fully active from editor Level");
+                foreach (var e in ctx.CurrentLevel.Entities)
+                {
+                    _server.AddEntity(e);
+                }
+                _hasColorTexture = true;
             }
-            // Force camera and render
             _flyCamera.Update(0f, 0f, true);
         }
 
         protected override void SetupPureRuntimeWorld()
         {
-            Console.WriteLine("[RuntimeGameplayScene] Pure runtime world setup complete - visible playable terrain ready");
-            // Force visible content
+            for (int x = 0; x < _terrainWidth; x++)
+            {
+                for (int y = 0; y < _terrainHeight; y++)
+                {
+                    _heightmap[x, y] = 5f + (float)Math.Sin(x / 20f) * 3f + (float)Math.Cos(y / 20f) * 3f;
+                }
+            }
+            BuildTexturedMesh();
             var terrainEntity = new Entity { Id = 1000, Type = "Terrain" };
             terrainEntity.AddComponent(new TransformComponent { Position = Vector3.Zero });
             terrainEntity.AddComponent(new PhysicsComponent { Position = Vector3.Zero });
             _server.AddEntity(terrainEntity);
+            _flyCamera.Position = new Vector3(100, 60, 100);
+        }
+
+        protected virtual void BuildTexturedMesh()
+        {
+            var vertices = new List<float>();
+            var indices = new List<uint>();
+            int step = 1;
+            int stepsX = _terrainWidth / step;
+            int stepsY = _terrainHeight / step;
+            for (int x = 0; x <= stepsX; x++)
+            {
+                for (int y = 0; y <= stepsY; y++)
+                {
+                    float wx = x * step * 1.0f;
+                    float wy = y * step * 1.0f;
+                    float z = _heightmap[Math.Min(x * step, _terrainWidth - 1), Math.Min(y * step, _terrainHeight - 1)] * 1.0f;
+                    vertices.Add(wx); vertices.Add(wy); vertices.Add(z);
+                    vertices.Add(0.7f); vertices.Add(0.9f); vertices.Add(1.0f); vertices.Add(1.0f);
+                    vertices.Add((float)x / stepsX); vertices.Add((float)y / stepsY);
+                }
+            }
+            for (int x = 0; x < stepsX; x++)
+            {
+                for (int y = 0; y < stepsY; y++)
+                {
+                    uint tl = (uint)(x * (stepsY + 1) + y);
+                    uint tr = tl + 1;
+                    uint bl = tl + (uint)(stepsY + 1);
+                    uint br = bl + 1;
+                    indices.Add(tl); indices.Add(tr); indices.Add(bl);
+                    indices.Add(tr); indices.Add(br); indices.Add(bl);
+                }
+            }
+            _terrainBuffer.UpdateCustomWithUV(vertices, indices);
         }
 
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
-            _flyCamera.Update(deltaTime, 0f, true); // Fly camera + WASD/mouse fully functional
-            // Ensure camera always looks at scene (using existing update)
+            _flyCamera.Update(deltaTime, 0f, true);
             if (_player.Camera != null)
             {
                 _flyCamera.Update(0f, 0f, true);
@@ -137,40 +153,45 @@ namespace SiegeEngine.Scenes
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            _renderContext.ClearColor(1.0f, 0.0f, 1.0f, 1.0f); // Bright magenta fallback if nothing draws
-            // Force visible view/projection
-            Matrix4x4 forcedView = Matrix4x4.CreateLookAt(new Vector3(0, 10, 20), Vector3.Zero, Vector3.UnitY);
-            Matrix4x4 forcedProjection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
-            _gridShader.Use();
-            _gridShader.SetMatrix4("uModel", Matrix4x4.Identity);
-            _gridShader.SetMatrix4("uView", forcedView);
-            _gridShader.SetMatrix4("uProjection", forcedProjection);
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _gridBuffer.Bind();
-            _renderContext.DrawArrays(_renderContext.Enums.Lines, 0, _gridBuffer.GetVertexCount());
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
-
-            foreach (var e in entities)
+            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
+            Matrix4x4 realView = _flyCamera.ViewMatrix;
+            Matrix4x4 realProjection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
+            if (_terrainShader != null && _terrainBuffer != null)
+            {
+                _terrainShader.Use();
+                _terrainShader.SetMatrix4("uView", realView);
+                _terrainShader.SetMatrix4("uProjection", realProjection);
+                _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
+                if (_hasColorTexture && _terrainTextureId != 0)
+                {
+                    _renderContext.ActiveTexture(0);
+                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
+                    _terrainShader.SetUniform("uHasTexture", 1);
+                    _terrainShader.SetUniform("uTexture", 0);
+                }
+                else
+                {
+                    _terrainShader.SetUniform("uHasTexture", 0);
+                }
+                _terrainBuffer.Bind();
+                _renderContext.Enable(_renderContext.Enums.DepthTest);
+                _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            }
+            foreach (var e in _server.GetEntities())
             {
                 var modelComp = e.GetComponent<ModelComponent>();
                 var physics = e.GetComponent<PhysicsComponent>();
                 if (modelComp != null && physics != null)
                 {
-                    _modelRenderer.RenderModel(modelComp, physics, forcedView, forcedProjection, new Vector3(0, 10, 20), null);
-                }
-                else
-                {
-                    // Fallback draw for default entities (visible even if model fails)
-                    Console.WriteLine($"[Runtime] Drawing fallback entity ID={e.Id}");
+                    _modelRenderer.RenderModel(modelComp, physics, realView, realProjection, _flyCamera.Position, null);
                 }
             }
-            Console.WriteLine("[RuntimeGameplayScene] Render frame complete - terrain + player + entities visible and interactive (camera forced, clear called, magenta fallback if needed)");
         }
 
         public override void Dispose()
         {
-            _gridShader?.Dispose();
-            _gridBuffer?.Dispose();
+            _terrainShader?.Dispose();
+            _terrainBuffer?.Dispose();
             _modelRenderer?.Dispose();
             base.Dispose();
         }
