@@ -15,10 +15,9 @@ namespace SiegeEngine.Scenes
     {
         public SceneData SceneData { get; protected set; }
         public string SceneName { get; protected set; }
+        protected bool _baseLoadCalled = false;
 
-        protected GameScene(IRenderContext renderContext, IControlContext controlContext, nint window,
-                           IGameServer server, EventBus eventBus, SceneData sceneData = null)
-            : base(renderContext, controlContext, window, server, eventBus)
+        protected GameScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null) : base(renderContext, controlContext, window, server, eventBus)
         {
             SceneData = sceneData ?? new SceneData { Name = "Untitled", SceneType = "Gameplay" };
             SceneName = SceneData.Name ?? "Untitled";
@@ -26,25 +25,28 @@ namespace SiegeEngine.Scenes
 
         public virtual void LoadSceneData(SceneData data)
         {
+            if (_baseLoadCalled) return;
+            _baseLoadCalled = true;
             SceneData = data ?? new SceneData { Name = "Untitled", SceneType = "Gameplay" };
             SceneName = SceneData.Name ?? "Untitled";
-            LoadContentFromContext(null); // core hook call (noop safe)
+            LoadContentFromContext(null);
         }
 
-        // Future-proof protected virtual hooks (core only, no IDE impact, allows pure Runtime + reuse)
         protected virtual void LoadContentFromContext(SceneContext ctx)
         {
-            // default noop - overridden in RuntimeGameplayScene for snapshot load
         }
 
         protected virtual void SetupPureRuntimeWorld()
         {
-            // default noop - pure runtime implementation in RuntimeGameplayScene
         }
 
         protected virtual void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            // default empty - overridden for visible draw
+        }
+
+        protected override void RenderContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
+        {
+            RenderGameplayContent(entities, view, projection); // bridge to connect the override
         }
 
         public override void Dispose()
