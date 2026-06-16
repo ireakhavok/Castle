@@ -12,6 +12,7 @@ using SiegeEngine.Systems;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 
 namespace SiegeEngine.Scenes
@@ -40,6 +41,22 @@ namespace SiegeEngine.Scenes
             _modelRenderer = new ModelRenderer(renderContext);
             _heightmap = new float[_terrainWidth, _terrainHeight];
             for (int x = 0; x < _terrainWidth; x++) for (int y = 0; y < _terrainHeight; y++) _heightmap[x, y] = 5f + (float)Math.Sin(x * 0.1f + y * 0.1f) * 3f;
+
+            // FIXED: Parse command line from MenuCommands.PlayGame so project path is NEVER missed
+            string projectPath = "";
+            string levelName = "NewTerrain";
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] == "--play-project") projectPath = args[i + 1].Trim('"');
+                if (args[i] == "--load-level") levelName = args[i + 1].Trim('"');
+            }
+            if (!string.IsNullOrEmpty(projectPath))
+            {
+                Console.WriteLine($"[RuntimeGameplayScene] ✅ MenuCommands command-line parsed → Project: {projectPath} | Level: {levelName}");
+                ctx = ctx ?? new SceneContext { PlayProjectPath = projectPath, LoadLevelName = levelName };
+            }
+
             if (ctx != null) LoadContentFromContext(ctx);
         }
 
@@ -112,15 +129,30 @@ namespace SiegeEngine.Scenes
 
         private void LoadExactSavedTerrain(string projectPath, string levelName)
         {
-            string terrainPath = string.IsNullOrEmpty(projectPath) ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", "NewTerrain.tif") : Path.Combine(projectPath, "Assets", "Terrain", levelName + ".tif");
-            string colorPath = string.IsNullOrEmpty(projectPath) ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", "NewTerrain.png") : Path.Combine(projectPath, "Assets", "Terrain", levelName + ".png");
+            string terrainPath = !string.IsNullOrEmpty(projectPath)
+                ? Path.Combine(projectPath, "Assets", "Terrain", levelName + ".tif")
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", levelName + ".tif");
+
+            string colorPath = !string.IsNullOrEmpty(projectPath)
+                ? Path.Combine(projectPath, "Assets", "Terrain", levelName + ".png")
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", levelName + ".png");
+
+            Console.WriteLine($"[RuntimeGameplayScene] Final resolved from MenuCommands: Terrain={terrainPath} | PNG={colorPath}");
+
             try
             {
                 float minH, maxH, sx, sz;
                 _heightmap = CustomTerrainParser.Load(terrainPath, out _terrainWidth, out _terrainHeight, out minH, out maxH, out sx, out sz);
+                Console.WriteLine($"[RuntimeGameplayScene] ✅ SUCCESS: Loaded real heightmap ({_terrainWidth}x{_terrainHeight})");
+                _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, colorPath);
+                _hasColorTexture = _terrainTextureId != 0;
+                if (_hasColorTexture) Console.WriteLine($"[RuntimeGameplayScene] ✅ SUCCESS: Loaded PNG texture");
+                BuildTexturedMesh();
+                return;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"[RuntimeGameplayScene] ❌ Load failed: {ex.Message} - path was {terrainPath}");
                 _terrainWidth = 205;
                 _terrainHeight = 205;
                 _heightmap = new float[_terrainWidth, _terrainHeight];
