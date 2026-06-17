@@ -49,11 +49,15 @@ namespace CastleBuilder
                 }
                 else if (context == "Scene Editor")
                 {
-                    Console.WriteLine("  Panels menu now shows: Hierarchy, Properties, Asset Browser, Scene List, Load Game Scene");
+                    Console.WriteLine("  Panels menu now shows: Hierarchy, Properties, Asset Browser, Scene List, Load Game Scene, Play Game, Export Game");
                 }
                 else if (context == "Configuration")
                 {
                     Console.WriteLine("  Panels menu now shows: Project Settings, Mod Manager, Server Rules, Blueprint Governance");
+                }
+                else if (context == "Runtime Gameplay")
+                {
+                    Console.WriteLine("  [Runtime Gameplay] Editor panels/dropdowns hidden • Runtime UI + Sandbox scene with cached Level/terrain/entities/player/fly cam active");
                 }
             }
 
@@ -61,6 +65,14 @@ namespace CastleBuilder
             {
                 CloseAllOpenNavDropdowns();
                 RefreshUI();
+                if (hook == "PlayGame")
+                {
+                    MenuCommands.PlayGame(_renderContext, _controlContext, _window, _eventBus);
+                }
+                else if (hook == "ExportGame")
+                {
+                    MenuCommands.ExportGame(_renderContext, _controlContext, _window, _eventBus);
+                }
                 base.HandleDataHook(hook);
             }
 
@@ -140,7 +152,7 @@ namespace CastleBuilder
 
             _uiOverlay.Update(deltaTime, relMousePos, mouseDown, Size.X, Size.Y);
 
-            bool hasOpenDropdownNow = UpdateOpenDropdownHovers(relMousePos);  // use RELATIVE mouse for correct coords
+            bool hasOpenDropdownNow = UpdateOpenDropdownHovers(relMousePos);
 
             if (hasOpenDropdownNow && !_lastFrameHadOpenDropdown)
             {
@@ -166,7 +178,7 @@ namespace CastleBuilder
                 if (dropdownUl != null && dropdownUl.GetEffectiveDisplay() != "none")
                 {
                     anyOpen = true;
-                    dropdownUl.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);  // correct relative coords
+                    dropdownUl.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);
                 }
             }
             return anyOpen;
@@ -196,7 +208,7 @@ namespace CastleBuilder
 
             if (_uiOverlay != null)
             {
-                Vector2 relMousePos = absMousePos - Position;  // CRITICAL: convert to panel-relative for correct dropdown hit test
+                Vector2 relMousePos = absMousePos - Position;
 
                 var navLis = _uiOverlay.FindElementsByTag("li")
                     .Where(e => e is NavLiElement nav && nav.IsNavDropdownParent())
@@ -208,7 +220,7 @@ namespace CastleBuilder
                     {
                         PanelManager.Current?.ForceDrawOverThisFrame(this);
 
-                        bool hit = nav.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);  // use RELATIVE — now triggers auto-close when mouse leaves dropdown area
+                        bool hit = nav.UpdateHover(relMousePos, (int)Size.X, (int)Size.Y);
 
                         if (hit) return true;
                     }

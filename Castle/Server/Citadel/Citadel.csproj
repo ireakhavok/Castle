@@ -16,6 +16,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\Launcher\Trebuchet\Trebuchet.csproj" />
 	  <ProjectReference Include="..\..\SiegeEngine\SiegeEngine.csproj" />
 	</ItemGroup>
 

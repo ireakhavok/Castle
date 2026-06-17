@@ -1,4 +1,5 @@
-﻿// SiegeEngine/Managers/UISettingsManager.cs
+﻿// Folder: SiegeEngine/Core/Managers
+// File: UISettingsManager.cs
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -28,13 +29,13 @@ namespace SiegeEngine.Core.Managers
         }
         public string CurrentRenderer
         {
-            get => _currentRenderer ??= "OpenGL";
+            get => _currentRenderer ?? "OpenGL";
             set => _currentRenderer = value;
         }
         public List<string> AvailableRenderers
         {
-            get => _availableRenderers ??= new List<string> { "OpenGL" };
-            set => _availableRenderers = value;
+            get => _availableRenderers ?? new List<string> { "OpenGL" };
+            set => _availableRenderers = value ?? new List<string> { "OpenGL" };
         }
 
         public UISettingsManager()
@@ -149,11 +150,19 @@ namespace SiegeEngine.Core.Managers
                     }
                     if (settings.TryGetValue("CurrentRenderer", out var rendererObj))
                     {
-                        _currentRenderer = rendererObj.ToString();
+                        _currentRenderer = rendererObj?.ToString() ?? "OpenGL";
+                    }
+                    else
+                    {
+                        _currentRenderer = "OpenGL";
                     }
                     if (settings.TryGetValue("AvailableRenderers", out var availObj))
                     {
-                        _availableRenderers = JsonSerializer.Deserialize<List<string>>(availObj.ToString()) ?? _availableRenderers;
+                        _availableRenderers = JsonSerializer.Deserialize<List<string>>(availObj.ToString()) ?? new List<string> { "OpenGL" };
+                    }
+                    else
+                    {
+                        _availableRenderers = new List<string> { "OpenGL" };
                     }
                     Console.WriteLine($"UISettingsManager: Loaded settings: Window size {_windowWidth}x{_windowHeight}, Fullscreen: {_isFullscreen}, Renderer: {_currentRenderer}");
                 }
@@ -163,6 +172,8 @@ namespace SiegeEngine.Core.Managers
                     _windowWidth = 1280;
                     _windowHeight = 720;
                     _isFullscreen = false;
+                    _currentRenderer = "OpenGL";
+                    _availableRenderers = new List<string> { "OpenGL" };
                 }
             }
             else
@@ -171,6 +182,8 @@ namespace SiegeEngine.Core.Managers
                 _windowWidth = 1280;
                 _windowHeight = 720;
                 _isFullscreen = false;
+                _currentRenderer = "OpenGL";
+                _availableRenderers = new List<string> { "OpenGL" };
             }
         }
 
@@ -184,8 +197,8 @@ namespace SiegeEngine.Core.Managers
                     { "WindowHeight", _windowHeight },
                     { "IsFullscreen", _isFullscreen },
                     { "IconIndices", _iconIndices },
-                    { "CurrentRenderer", _currentRenderer },
-                    { "AvailableRenderers", _availableRenderers }
+                    { "CurrentRenderer", CurrentRenderer },
+                    { "AvailableRenderers", AvailableRenderers }
                 };
                 string json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_settingsPath, json);

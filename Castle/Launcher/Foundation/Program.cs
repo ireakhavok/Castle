@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: Foundation
+// File: Program.cs
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -19,45 +21,39 @@ namespace Foundation
             bool discoverDedicated = args.Contains("--discover-dedicated");
             ulong connectToServerSteamId = 0;
             ulong specificLobbyId = 0;
-
-            // Parse --connect-to-server <steamid>
-            for (int i = 0; i < args.Length - 1; i++)
-            {
-                if (args[i] == "--connect-to-server" && ulong.TryParse(args[i + 1], out ulong id))
-                {
-                    connectToServerSteamId = id;
-                    Console.WriteLine($"Foundation: Connecting directly to dedicated server {connectToServerSteamId}");
-                    break;
-                }
-            }
-
-            // Parse optional --lobby <ID> (still supported)
-            if (discoverDedicated && connectToServerSteamId == 0)
-            {
-                for (int i = 0; i < args.Length - 1; i++)
-                {
-                    if (args[i] == "--lobby" && ulong.TryParse(args[i + 1], out ulong id))
-                    {
-                        specificLobbyId = id;
-                        Console.WriteLine($"Foundation: Using specific lobby ID {specificLobbyId}");
-                        break;
-                    }
-                }
-
-                if (specificLobbyId == 0)
-                {
-                    Console.WriteLine("Foundation: --discover-dedicated mode — will auto-discover or create dedicated lobbies");
-                }
-            }
-
-            // NEW: --host launches P2P authoritative host (Citadel.exe --p2p-host self-contained) + client that discovers P2P host lobbies
             bool isP2PHost = args.Contains("--host");
             bool discoverP2PHost = false;
+            ulong joinLobbyId = 0;
+
+            bool isClientRuntime = args.Contains("--client");
+            string playProjectPath = null;
+            string loadLevelName = "Main";
+
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] == "--play-project")
+                    playProjectPath = args[i + 1];
+                else if (args[i] == "--load-level")
+                    loadLevelName = args[i + 1];
+                else if (args[i] == "--connect-to-server" && ulong.TryParse(args[i + 1], out ulong connectId))
+                    connectToServerSteamId = connectId;
+                else if (args[i] == "--lobby" && ulong.TryParse(args[i + 1], out ulong lobbyId))
+                    specificLobbyId = lobbyId;
+                else if (args[i] == "--join" && ulong.TryParse(args[i + 1], out ulong joinId))
+                    joinLobbyId = joinId;
+            }
+
+            if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
+            {
+                Console.WriteLine($"Foundation: PURE CLIENT RUNTIME MODE - project '{playProjectPath ?? "IDE"}' level '{loadLevelName}' (single process, no server spawn, no recursion)");
+                var launcher = new Launcher();
+                launcher.Start("OpenGL", false, 0, 0, false, 0, true, playProjectPath, loadLevelName);
+                return; // No server, no editor, no recursion
+            }
 
             if (isP2PHost)
             {
-                Console.WriteLine("Foundation: P2P HOST MODE — launching self-contained Citadel.exe --p2p-host (authoritative) + client");
-
+                Console.WriteLine("Foundation: P2P HOST MODE — launching self-contained Citadel.exe --p2p-host");
                 string citadelExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
                 if (File.Exists(citadelExe))
                 {
@@ -69,36 +65,15 @@ namespace Foundation
                         WorkingDirectory = Path.GetDirectoryName(citadelExe)
                     };
                     Process.Start(psi);
-                    Console.WriteLine("Foundation: P2P host authoritative process started. Client will discover and join its lobby.");
                 }
-                discoverP2PHost = true; // client side will request P2P host lobbies
-            }
-
-            // NEW: --join <lobbyId> for direct join to P2P host or dedicated (optional lobby ID)
-            ulong joinLobbyId = 0;
-            for (int i = 0; i < args.Length - 1; i++)
-            {
-                if (args[i] == "--join" && ulong.TryParse(args[i + 1], out ulong id))
-                {
-                    joinLobbyId = id;
-                    Console.WriteLine($"Foundation: Joining lobby {joinLobbyId} (P2P host or dedicated)");
-                    break;
-                }
+                discoverP2PHost = true;
             }
 
             if (args.Contains("--server"))
             {
                 Console.WriteLine("Foundation: Launching dedicated Citadel server...");
-
                 string citadelExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
-
-                if (!File.Exists(citadelExe))
-                {
-                    Console.WriteLine($"ERROR: Citadel dedicated server not found at: {citadelExe}");
-                    return;
-                }
-
-                try
+                if (File.Exists(citadelExe))
                 {
                     var psi = new ProcessStartInfo
                     {
@@ -108,11 +83,6 @@ namespace Foundation
                         WorkingDirectory = Path.GetDirectoryName(citadelExe)
                     };
                     Process.Start(psi);
-                    Console.WriteLine("Foundation: Dedicated server launched successfully.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to launch Citadel server: {ex.Message}");
                 }
                 return;
             }
@@ -120,16 +90,8 @@ namespace Foundation
             if (args.Contains("--local"))
             {
                 Console.WriteLine("Foundation: Launching local authoritative Citadel server (--local)...");
-
                 string citadelExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
-
-                if (!File.Exists(citadelExe))
-                {
-                    Console.WriteLine($"ERROR: Citadel.exe not found at: {citadelExe}");
-                    return;
-                }
-
-                try
+                if (File.Exists(citadelExe))
                 {
                     var psi = new ProcessStartInfo
                     {
@@ -139,11 +101,6 @@ namespace Foundation
                         WorkingDirectory = Path.GetDirectoryName(citadelExe)
                     };
                     Process.Start(psi);
-                    Console.WriteLine("Foundation: Local authoritative server launched successfully.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to launch local Citadel server: {ex.Message}");
                 }
                 return;
             }

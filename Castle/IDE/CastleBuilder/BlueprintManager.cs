@@ -268,18 +268,27 @@ namespace CastleBuilder
             eventBus.Publish(new LoadProjectEvent { Path = dir });
             Console.WriteLine($"[BlueprintManager.SaveProjectAs] Save As complete - new project fully populated and active at {dir}");
         }
-        private static void CopyDirectory(string sourceDir, string targetDir)
+        public static void CopyDirectory(string sourceDir, string targetDir)
         {
             DirectoryInfo diSource = new DirectoryInfo(sourceDir);
             DirectoryInfo diTarget = new DirectoryInfo(targetDir);
             if (!diTarget.Exists) diTarget.Create();
+
             foreach (FileInfo fi in diSource.GetFiles())
             {
                 string targetFile = Path.Combine(diTarget.FullName, fi.Name);
                 fi.CopyTo(targetFile, true);
             }
+
             foreach (DirectoryInfo diSourceSubDir in diSource.GetDirectories())
             {
+                // SKIP the "exported" folder and any IDE-specific folders to keep export clean
+                if (diSourceSubDir.Name.Equals("exported", StringComparison.OrdinalIgnoreCase) ||
+                    diSourceSubDir.Name.Equals("IDE", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"[CopyDirectory] Skipping IDE/export folder: {diSourceSubDir.Name}");
+                    continue;
+                }
                 CopyDirectory(diSourceSubDir.FullName, Path.Combine(diTarget.FullName, diSourceSubDir.Name));
             }
         }

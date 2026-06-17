@@ -171,7 +171,7 @@ Folder: IDE
       - void RefreshMenuForContext(string context)
         - Calls: Console.WriteLine
       - void HandleDataHook(string hook)
-        - Calls: CloseAllOpenNavDropdowns, RefreshUI
+        - Calls: CloseAllOpenNavDropdowns, MenuCommands.ExportGame, MenuCommands.PlayGame, RefreshUI
       - void CloseAllOpenNavDropdowns()
         - Calls: FindElementsByTag, nav.CloseDropdown, nav.IsNavDropdownParent
 - File: IOutlinerProvider.cs
@@ -189,7 +189,7 @@ Folder: IDE
       - void Deserialize(byte[] data)
 - File: MenuCommands.cs
   - Class: MenuCommands (Namespace: CastleBuilder)
-    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, System.IO, ToolChest
+    - Dependencies: CastleBuilder.Events, Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Scenes.StartingPoints, System.Diagnostics, System.IO, System.Threading.Tasks, ToolChest
     - Fields:
       - string DefaultProjectsPath
     - Methods:
@@ -229,6 +229,12 @@ Folder: IDE
         - Calls: AnimationTimelinePanel.Open, Console.WriteLine
       - void OpenAnimationBlend( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: AnimationBlendPanel.Open, Console.WriteLine
+      - void PlayGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine, Process.Start
+      - void SandboxRegressionTest( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine, SandboxScene.Launch
+      - void ExportGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: BlueprintManager.CopyDirectory, Console.WriteLine, Level, Process.Start, Task.Run, level.Serialize
 - File: NewMaterialPanel.cs
   - Class: NewMaterialUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -560,10 +566,11 @@ Folder: IDE
       - Vector2 _lastDragMouse
       - Vector3 _dragStartClosestPoint
       - Vector3 _lastClosestPoint
-      - float _lastRotationAngle
+      - Vector3 _lastPlanePoint
       - Matrix4x4 _lastView
       - Matrix4x4 _lastProjection
       - float ArrowPickTolerance
+      - float RingPickTolerance
     - Methods:
       - void UpdateMatrices( Matrix4x4 projection, Matrix4x4 view)
       - void OnEntitySelected( Quaternion rotation,  Vector3 position, int entityId)
@@ -583,20 +590,22 @@ Folder: IDE
       - void RenderWorld( Matrix4x4 projection, Matrix4x4 view)
         - Calls: ShaderProgram, _arrowBuffer.Bind, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _ringBuffer.Bind, arrowShader.Dispose, arrowShader.SetMatrix4, arrowShader.SetUniform, arrowShader.Use
       - bool HandleMouseInput( bool mouseDown,  bool mousePressed,  bool mouseReleased,  float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, StartDrag
+        - Calls: EndDrag, PerformDrag, PickAxisScreenSpace, PickRingScreenSpace, StartDrag
       - void StartDrag( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: ClosestPointOnInfiniteAxis, Console.WriteLine, GetAxisVector
+        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane, Console.WriteLine
       - void PerformDrag( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: ClosestPointOnInfiniteAxis, Console.WriteLine, EntityMovedEvent
+        - Calls: ClosestPointOnInfiniteAxis, ClosestPointOnRingPlane, Console.WriteLine, EntityMovedEvent
       - void EndDrag()
         - Calls: Console.WriteLine
       - Vector3 ClosestPointOnInfiniteAxis( Vector3 lineDir,  Vector3 linePoint,  Vector3 rayDir, Vector3 rayOrigin)
+      - Vector3 ClosestPointOnRingPlane( Vector3 center,  Vector3 normal,  Vector3 rayDir, Vector3 rayOrigin)
       - int PickAxisScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
-        - Calls: Console.WriteLine, DistanceToLineSegment2D, GetAxisVector
+        - Calls: Console.WriteLine, DistanceToLineSegment2D
+      - int PickRingScreenSpace( float contentH,  float contentW, Vector2 contentMouse)
+        - Calls: Console.WriteLine, DistanceToLineSegment2D
       - float DistanceToLineSegment2D( Vector3 a3,  Vector3 b3,  float viewportH,  float viewportW, Vector2 p)
         - Calls: WorldToScreen
       - Vector2 WorldToScreen( float viewportH,  float viewportW, Vector3 worldPos)
-      - Vector3 GetAxisVector(int axis)
 - File: TreeViewPanel.cs
   - Class: TreeViewUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -675,8 +684,8 @@ Folder: Launcher
       - SceneManager _sceneManager
       - PanelManager _panelManager
     - Methods:
-      - void Start( bool discoverDedicated = false,  bool discoverP2PHost = false,  ulong connectToServerSteamId = 0,  ulong joinLobbyId = 0,  ulong specificLobbyId = 0, string context)
-        - Calls: ConnectToDedicatedServer, Console.WriteLine, CreateLobby, Dispose, EventBus, InputHandler, JoinSpecificLobby, LoadLibrary, ModManager, PanelManager, RequestP2PHostLobbies, SaveSettings, SceneManager, SteamEngine, Terminate, UISettingsManager, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _panelManager.Render, _panelManager.Update, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
+      - void Start( bool discoverDedicated = false,  bool discoverP2PHost = false,  bool isClientRuntime = false,  string loadLevelName = "Main",  string playProjectPath = null,  ulong connectToServerSteamId = 0,  ulong joinLobbyId = 0,  ulong specificLobbyId = 0, string context)
+        - Calls: ConnectToDedicatedServer, Console.WriteLine, CreateLobby, Dispose, EventBus, InputHandler, JoinSpecificLobby, LoadLibrary, ModManager, PanelManager, Render, RequestP2PHostLobbies, SaveSettings, SceneManager, SteamEngine, Terminate, UISettingsManager, Update, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.SwitchToRuntimeGameplay, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
 - File: Program.cs
   - Class: Program (Namespace: Foundation)
     - Dependencies: SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, System, System.Diagnostics, System.IO, System.Runtime.InteropServices, Trebuchet
@@ -782,7 +791,7 @@ Folder: Server
         - Calls: Console.WriteLine, _server.GetEntities
 - File: ServerProgram.cs
   - Class: ServerProgram (Namespace: Citadel)
-    - Dependencies: Citadel.Network, Citadel.Server, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Diagnostics, System.Linq, System.Threading
+    - Dependencies: Citadel.Network, Citadel.Server, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Diagnostics, System.Linq, System.Threading, Trebuchet
     - Fields:
       - SteamEngine _steamEngine
       - GameServer _gameServer
@@ -790,7 +799,7 @@ Folder: Server
       - NetworkManager _networkManager
     - Methods:
       - void Main(string[] args)
-        - Calls: Console.WriteLine, CreateLobby, Dispose, EventBus, GameServer, NetworkManager, SetP2PHostMode, SteamEngine, _gameServer.Update, _networkManager.Start, _steamEngine.Initialize, _steamEngine.InitializeServer, _steamEngine.RunCallbacks
+        - Calls: Console.WriteLine, CreateLobby, Dispose, EventBus, GameServer, NetworkManager, SetP2PHostMode, SteamEngine, Update, _networkManager.Start, _steamEngine.Initialize, _steamEngine.InitializeServer, _steamEngine.RunCallbacks, launcher.Start
 - File: ServerValidationSystem.cs
   - Class: ServerValidationSystem (Namespace: Citadel.Server)
     - Inherits: GameSystem, ISoundValidator
@@ -1744,9 +1753,13 @@ Folder: SiegeEngine
   - Class: GameScene (Namespace: SiegeEngine.Scenes)
     - Inherits: Scene
     
-    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, System, System.Collections.Generic, System.Numerics
     - Methods:
       - void LoadSceneData(SceneData data)
+        - Calls: LoadContentFromContext
+      - void LoadContentFromContext(SceneContext ctx)
+      - void SetupPureRuntimeWorld()
+      - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
       - void Dispose()
 - File: GameSystem.cs
   - Class: GameSystem (Namespace: SiegeEngine.Systems)
@@ -2697,6 +2710,40 @@ Folder: SiegeEngine
         - Calls: D3D11CreateDevice, IsOpenGLSupported, Marshal.Release, vkCreateInstance, vkDestroyInstance
       - List<string> DetectAvailable()
         - Calls: D3D11CreateDevice, D3D12CreateDevice, IsOpenGLSupported, Marshal.Release, vkCreateInstance, vkDestroyInstance
+- File: RuntimeGameplayScene.cs
+  - Class: RuntimeGameplayScene (Namespace: SiegeEngine.Scenes)
+    - Inherits: GameScene
+    
+    - Dependencies: SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Numerics
+    - Fields:
+      - Player _player
+      - FlyCameraController _flyCamera
+      - ShaderProgram _terrainShader
+      - VertexBuffer _terrainBuffer
+      - ModelRenderer _modelRenderer
+      - int _terrainWidth
+      - int _terrainHeight
+      - uint _terrainTextureId
+      - bool _hasColorTexture
+    - Methods:
+      - void LoadLevelData( string projectPath, string levelName)
+        - Calls: LoadSceneData, SceneActivatedEvent, _player.InitializeCamera
+      - void Initialize( int height, int width)
+        - Calls: Console.WriteLine, SetupPureRuntimeWorld, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _flyCamera.Update, _player.InitializeCamera, _renderContext.ClearColor, _renderContext.Viewport
+      - void LoadContentFromContext(SceneContext ctx)
+        - Calls: Console.WriteLine, LoadExactSavedTerrain, LoadLevelData, _flyCamera.Update, _server.AddEntity
+      - void LoadExactSavedTerrain( string levelName, string projectPath)
+        - Calls: BuildTexturedMesh, Console.WriteLine, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture
+      - void SetupPureRuntimeWorld()
+        - Calls: Console.WriteLine, _server.AddEntity
+      - void BuildTexturedMesh()
+        - Calls: Console.WriteLine, _terrainBuffer.UpdateCustomWithUV
+      - void Update(float deltaTime)
+      - void RenderContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: RenderGameplayContent
+      - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
+        - Calls: Console.WriteLine, _modelRenderer.RenderModel, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Clear, _renderContext.ClearColor, _renderContext.DrawElements, _renderContext.Enable, _server.GetEntities, _terrainBuffer.Bind, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use
+      - void Dispose()
 - File: SandBoxScene.cs
   - Class: SandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene
@@ -2771,7 +2818,7 @@ Folder: SiegeEngine
       - void Deserialize(byte[] data)
 - File: SceneContext.cs
   - Class: SceneContext (Namespace: SiegeEngine.Scenes)
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.PlayerSystem
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, System.Collections.Generic, System.Numerics
     - Methods:
       - SceneContext CreateCore(
             EventBus eventBus, 
@@ -2779,6 +2826,8 @@ Folder: SiegeEngine
             IGameServer server, 
             IRenderContext renderContext, 
             nint window)
+      - SceneContext CreateForRuntime( EventBus eb,  IControlContext cc,  IGameServer s,  IRenderContext rc,  SceneData sceneData,  nint w, Level level)
+        - Calls: CreateCore
 - File: SceneData.cs
   - Class: EnvironmentSettings (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
@@ -2805,13 +2854,19 @@ Folder: SiegeEngine
       - void Dispose()
       - void OnSwitchScene(SwitchSceneEvent e)
         - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
+      - void SwitchToRuntimeGameplay( string levelName, string projectPath)
+        - Calls: ClientGameServerProxy, Console.WriteLine, SceneContext.CreateForRuntime, SceneRegistry.Create, _currentScene.Initialize
 - File: SceneRegistry.cs
   - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
-    - Dependencies: System, System.Collections.Generic
+    - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic
     - Methods:
       - void Register( IScene> factory, string sceneName)
       - IScene Create( SceneContext context, string sceneName)
         - Calls: factory
+      - return factory()
+        - Calls: Export, Register, SandboxScene, scene.LoadLevelData
+      - constructor SceneRegistry()
+        - Calls: Export, Register, SandboxScene, scene.LoadLevelData
 - File: SceneShader.cs
   - Class: SceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Dependencies: System
@@ -3313,7 +3368,7 @@ Folder: SiegeEngine
       - void UpdateIconIndices( int> newIndices)
         - Calls: Console.WriteLine, SaveSettings
       - void LoadSettings()
-        - Calls: Console.WriteLine, availObj.ToString, fullscreenObj.ToString, heightObj.ToString, iconIndicesObj.ToString, rendererObj.ToString, widthObj.ToString
+        - Calls: Console.WriteLine, ToString, availObj.ToString, fullscreenObj.ToString, heightObj.ToString, iconIndicesObj.ToString, widthObj.ToString
       - void SaveSettings()
         - Calls: Console.WriteLine, JsonSerializer.Serialize
 - File: UiShader.cs
