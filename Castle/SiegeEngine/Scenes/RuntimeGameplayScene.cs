@@ -1,6 +1,7 @@
 ﻿// Folder: SiegeEngine/Scenes
 // File: RuntimeGameplayScene.cs
 using SiegeEngine.Core.AssetParsing;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -278,13 +279,26 @@ namespace SiegeEngine.Scenes
                 uint idxCount = _terrainBuffer.GetIndexCount();
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, idxCount, _renderContext.Enums.UnsignedInt, null);
             }
+            // EXACT match to SceneEditorPanel.RenderInnerContent (the one that works perfectly in editor)
             foreach (var e in _server.GetEntities())
             {
                 var modelComp = e.GetComponent<ModelComponent>();
                 var physics = e.GetComponent<PhysicsComponent>();
-                if (modelComp != null && physics != null)
+                if (modelComp != null && physics != null && !string.IsNullOrEmpty(modelComp.Key))
                 {
-                    _modelRenderer.RenderModel(modelComp, physics, _flyCamera.ViewMatrix, projection, _flyCamera.Position, _modelManager ?? ModelManager.Instance); // safe manager wiring
+                    FBXModel fbxModel = modelComp.Model;
+                    if (fbxModel == null && _modelManager.TryGetModel(modelComp.Key, out fbxModel))
+                    {
+                        modelComp.Model = fbxModel;
+                    }
+                    if (fbxModel != null && _modelManager.TryGetModelData(modelComp.Key, out var modelData))
+                    {
+                        Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
+                        Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
+                        Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+                        Matrix4x4 modelMatrix = scaleMat * rotation * translation;
+                        _modelRenderer.RenderModel(fbxModel, modelData, view, projection, _flyCamera.Position, modelMatrix); // exact editor call
+                    }
                 }
             }
         }
