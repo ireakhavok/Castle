@@ -279,7 +279,10 @@ namespace SiegeEngine.Scenes
                 uint idxCount = _terrainBuffer.GetIndexCount();
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, idxCount, _renderContext.Enums.UnsignedInt, null);
             }
-            // EXACT match to SceneEditorPanel.RenderInnerContent (the one that works perfectly in editor)
+            // EXACT replication of the working SceneEditorPanel / ModelViewerScene render for models (texture on correct face)
+            _renderContext.Enable(_renderContext.Enums.CullFace);
+            _renderContext.CullFace(_renderContext.Enums.Back);
+            _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
             foreach (var e in _server.GetEntities())
             {
                 var modelComp = e.GetComponent<ModelComponent>();
@@ -301,6 +304,7 @@ namespace SiegeEngine.Scenes
                     }
                 }
             }
+            _renderContext.Disable(_renderContext.Enums.CullFace); // restore for terrain/UI if needed
         }
         public override void Dispose()
         {
