@@ -13,7 +13,6 @@ using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Managers
 {
     public class SceneManager
@@ -32,7 +31,6 @@ namespace SiegeEngine.Core.Managers
         private PlayerMovement _playerMovement;
         private ModelManager _modelManager;
         private IGameServer _server;
-
         public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, nint window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuPanel menuPanel)
         {
             _eventBus = eventBus;
@@ -46,19 +44,10 @@ namespace SiegeEngine.Core.Managers
             _menuPanel = menuPanel;
             _eventBus.Subscribe<SwitchSceneEvent>(OnSwitchScene);
         }
-
         public void Update(float deltaTime) => _currentScene?.Update(deltaTime);
-
         public void Render() => _currentScene?.Render(_server?.GetEntities() ?? Array.Empty<Entity>());
-
         public void Resize(int width, int height) => _currentScene?.Resize(width, height);
-
-        public void Dispose()
-        {
-            _currentScene?.Dispose();
-            _currentScene = null;
-        }
-
+        public void Dispose() { _currentScene?.Dispose(); _currentScene = null; }
         private void OnSwitchScene(SwitchSceneEvent e)
         {
             Console.WriteLine($"SceneManager: Switching to '{e.SceneName}'");
@@ -84,7 +73,6 @@ namespace SiegeEngine.Core.Managers
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine($"SceneManager: '{e.SceneName}' initialized successfully via registry.");
         }
-
         public void SwitchToRuntimeGameplay(string projectPath, string levelName, Level currentLevel = null)
         {
             Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0}");
@@ -93,6 +81,12 @@ namespace SiegeEngine.Core.Managers
             ctx.PlayProjectPath = projectPath;
             ctx.LoadLevelName = levelName;
             ctx.CurrentLevel = level;
+            _modelManager = new ModelManager(_renderContext);
+            ctx.ModelManager = _modelManager;
+            if (!string.IsNullOrEmpty(projectPath))
+            {
+                ModelManager.EnsurePacksLoaded(projectPath, level); // robust scan for ALL *_pack folders
+            }
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot");

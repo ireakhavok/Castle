@@ -7,7 +7,6 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.Shaders;
 using System;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class ModelRenderer // marked unsafe to satisfy any potential fixed blocks in future or from copy-paste
@@ -27,6 +26,7 @@ namespace SiegeEngine.Core.Rendering
         public void RenderModel(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, ModelManager modelManager)
         {
             if (modelComp == null || physics == null) return;
+            modelManager ??= ModelManager.Instance; // safe fallback - future-proof for all call sites
             string modelKey = modelComp.Key?.ToLower() ?? "man_mesh";
             if (!modelManager.TryGetModelData(modelKey, out var modelData)) return;
             Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
@@ -46,7 +46,6 @@ namespace SiegeEngine.Core.Rendering
             shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
-
             // New world-aligned material support
             var mat = modelComp.Material ?? new Material();
             shader.SetUniform("uHasWorldAligned", mat.TextureSlots.Count > 0 ? 1 : 0);
@@ -54,12 +53,11 @@ namespace SiegeEngine.Core.Rendering
             {
                 var slot = mat.TextureSlots[i];
                 shader.SetUniform($"uMappingMode[{i}]", (int)slot.MappingMode);
-                shader.SetUniform($"uTiling[{i}]", slot.Tiling.X, slot.Tiling.Y);   // now supported
-                shader.SetUniform($"uOffset[{i}]", slot.Offset.X, slot.Offset.Y);   // now supported
+                shader.SetUniform($"uTiling[{i}]", slot.Tiling.X, slot.Tiling.Y); // now supported
+                shader.SetUniform($"uOffset[{i}]", slot.Offset.X, slot.Offset.Y); // now supported
                 shader.SetUniform($"uRotation[{i}]", slot.Rotation);
                 shader.SetUniform($"uBlendSharpness[{i}]", slot.BlendSharpness);
             }
-
             if (hasBones)
             {
                 var globals = modelComp.Model.Skeleton.ComputeGlobalTransforms();
@@ -125,16 +123,13 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.BindVertexArray(0);
             }
         }
-
         // New minimal overload for AnimationViewerPanel / ModelViewerScene (viewer context)
         public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix = default, Matrix4x4[] boneMatrices = null, Matrix3x3[] normalMatrices = null)
         {
             if (modelData == null) return;
             if (modelMatrix == default) modelMatrix = Matrix4x4.Identity;
-
             bool hasBones = boneMatrices != null && boneMatrices.Length > 0 && fbxModel != null && fbxModel.HasSkin;
             ShaderProgram shader = hasBones ? _animationShader : _modelShader;
-
             shader.Use();
             shader.SetMatrix4("uModel", modelMatrix);
             shader.SetMatrix4("uView", view);
@@ -146,10 +141,8 @@ namespace SiegeEngine.Core.Rendering
             shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
-
             // World-aligned support (default material for viewer)
             shader.SetUniform("uHasWorldAligned", 0);
-
             if (hasBones)
             {
                 shader.SetUniform("uHasBones", 1);
@@ -161,7 +154,6 @@ namespace SiegeEngine.Core.Rendering
             {
                 shader.SetUniform("uHasBones", 0);
             }
-
             foreach (var mmr in modelData.MeshRenders)
             {
                 try
@@ -199,7 +191,6 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.BindVertexArray(0);
             }
         }
-
         public void Dispose()
         {
             _modelShader?.Dispose();

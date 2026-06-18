@@ -1,5 +1,6 @@
 ﻿// Folder: SiegeEngine/Scenes
 // File: RuntimeGameplayScene.cs
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -14,7 +15,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-
 namespace SiegeEngine.Scenes
 {
     public unsafe class RuntimeGameplayScene : GameScene
@@ -31,7 +31,7 @@ namespace SiegeEngine.Scenes
         private bool _hasColorTexture = true;
         private bool _contentLoaded = false;
         private bool _firstFrame = true;
-
+        private ModelManager _modelManager; // future-proof injection (nullable, defaults to Instance)
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -41,7 +41,6 @@ namespace SiegeEngine.Scenes
             _modelRenderer = new ModelRenderer(renderContext);
             _heightmap = new float[_terrainWidth, _terrainHeight];
             for (int x = 0; x < _terrainWidth; x++) for (int y = 0; y < _terrainHeight; y++) _heightmap[x, y] = 5f + (float)Math.Sin(x * 0.1f + y * 0.1f) * 3f;
-
             // FIXED: Parse command line from MenuCommands.PlayGame so project path is NEVER missed
             string projectPath = "";
             string levelName = "NewTerrain";
@@ -56,17 +55,14 @@ namespace SiegeEngine.Scenes
                 Console.WriteLine($"[RuntimeGameplayScene] ✅ MenuCommands command-line parsed → Project: {projectPath} | Level: {levelName}");
                 ctx = ctx ?? new SceneContext { PlayProjectPath = projectPath, LoadLevelName = levelName };
             }
-
             if (ctx != null) LoadContentFromContext(ctx);
         }
-
         public void LoadLevelData(string levelName, string projectPath)
         {
             LoadSceneData(new SceneData { Name = levelName ?? "Main" });
             _eventBus.Publish(new SceneActivatedEvent(levelName));
             _player.InitializeCamera(_controlContext, _window);
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
@@ -89,7 +85,6 @@ namespace SiegeEngine.Scenes
             ForceVisibleOverheadCamera();
             BuildTexturedMesh();
         }
-
         private void ForceVisibleOverheadCamera()
         {
             float centerX = _terrainWidth * 0.5f;
@@ -100,7 +95,6 @@ namespace SiegeEngine.Scenes
             _flyCamera.Update(0f, 0f, true);
             _flyCamera.RefreshViewMatrix();
         }
-
         protected override void LoadContentFromContext(SceneContext ctx)
         {
             if (_contentLoaded) return;
@@ -109,36 +103,53 @@ namespace SiegeEngine.Scenes
             string levelName = ctx?.LoadLevelName ?? "NewTerrain";
             LoadLevelData(levelName, projectPath);
             LoadExactSavedTerrain(projectPath, levelName);
-            if (ctx?.CurrentLevel != null)
+            _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
+            if (!string.IsNullOrEmpty(projectPath))
             {
-                foreach (var e in ctx.CurrentLevel.Entities)
-                    _server.AddEntity(e);
-            }
-            else
-            {
-                for (int i = 1; i <= 2; i++)
+                ModelManager.EnsurePacksLoaded(projectPath, ctx?.CurrentLevel); // robust scan for ALL *_pack folders
+                if (ctx?.CurrentLevel == null || ctx.CurrentLevel.Entities.Count == 0)
                 {
-                    var dummy = new Entity { Id = i, Type = "FBX" };
-                    dummy.AddComponent(new PhysicsComponent { Position = i == 1 ? new Vector3(56.5f, 51.7f, 0.15f) : new Vector3(59.2f, 45.4f, 0.1f) });
-                    _server.AddEntity(dummy);
+                    // Exact fallback for pure runtime (snapshot empty) - creates the placed FBX entities with correct Key + Model (guarantees visibility)
+                    ctx.CurrentLevel = ctx.CurrentLevel ?? new Level();
+                    for (int i = 1; i <= 2; i++)
+                    {
+                        var fbxe = new Entity { Id = i, Type = "FBX" };
+                        fbxe.AddComponent(new TransformComponent());
+                        fbxe.AddComponent(new PhysicsComponent { Position = i == 1 ? new Vector3(56.5f, 51.7f, 0.15f) : new Vector3(59.2f, 45.4f, 0.1f) });
+                        var mc = new ModelComponent { Key = "man_mesh_pack" };
+                        if (_modelManager.TryGetModel("man_mesh_pack", out var m))
+                            mc.Model = m;
+                        fbxe.AddComponent(mc);
+                        ctx.CurrentLevel.AddEntity(fbxe);
+                        _server.AddEntity(fbxe);
+                        Console.WriteLine($"[RuntimeGameplayScene] Created placed FBX entity {i} with Key='man_mesh_pack' (pack preloaded)");
+                    }
+                }
+                else
+                {
+                    foreach (var e in ctx.CurrentLevel.Entities)
+                    {
+                        var mc = e.GetComponent<ModelComponent>();
+                        if (mc != null && _modelManager.TryGetModel(mc.Key, out var m))
+                        {
+                            mc.Model = m; // rehydrate Model + render data
+                        }
+                        _server.AddEntity(e);
+                    }
                 }
             }
             ForceVisibleOverheadCamera();
             _flyCamera.Update(0f, 0f, true);
         }
-
         private void LoadExactSavedTerrain(string projectPath, string levelName)
         {
             string terrainPath = !string.IsNullOrEmpty(projectPath)
                 ? Path.Combine(projectPath, "Assets", "Terrain", levelName + ".tif")
                 : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", levelName + ".tif");
-
             string colorPath = !string.IsNullOrEmpty(projectPath)
                 ? Path.Combine(projectPath, "Assets", "Terrain", levelName + ".png")
                 : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", levelName + ".png");
-
             Console.WriteLine($"[RuntimeGameplayScene] Final resolved from MenuCommands: Terrain={terrainPath} | PNG={colorPath}");
-
             try
             {
                 float minH, maxH, sx, sz;
@@ -164,7 +175,6 @@ namespace SiegeEngine.Scenes
             _hasColorTexture = _terrainTextureId != 0;
             BuildTexturedMesh();
         }
-
         protected override void SetupPureRuntimeWorld()
         {
             var terrainEntity = new Entity { Id = 1000, Type = "Terrain" };
@@ -172,7 +182,6 @@ namespace SiegeEngine.Scenes
             terrainEntity.AddComponent(new PhysicsComponent { Position = Vector3.Zero });
             _server.AddEntity(terrainEntity);
         }
-
         protected virtual void BuildTexturedMesh()
         {
             if (_heightmap == null)
@@ -219,12 +228,10 @@ namespace SiegeEngine.Scenes
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             RenderContent(entities, _flyCamera.ViewMatrix, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f));
         }
-
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
@@ -236,12 +243,10 @@ namespace SiegeEngine.Scenes
                 ForceVisibleOverheadCamera();
             }
         }
-
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
-
             if (_terrainBuffer != null)
             {
                 _terrainBuffer.Bind();
@@ -253,7 +258,6 @@ namespace SiegeEngine.Scenes
                 _renderContext.EnableVertexAttribArray(2);
                 _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(7 * sizeof(float)));
             }
-
             if (_terrainShader != null && _terrainBuffer != null)
             {
                 _terrainShader.Use();
@@ -274,18 +278,16 @@ namespace SiegeEngine.Scenes
                 uint idxCount = _terrainBuffer.GetIndexCount();
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, idxCount, _renderContext.Enums.UnsignedInt, null);
             }
-
             foreach (var e in _server.GetEntities())
             {
                 var modelComp = e.GetComponent<ModelComponent>();
                 var physics = e.GetComponent<PhysicsComponent>();
                 if (modelComp != null && physics != null)
                 {
-                    _modelRenderer.RenderModel(modelComp, physics, _flyCamera.ViewMatrix, projection, _flyCamera.Position, null);
+                    _modelRenderer.RenderModel(modelComp, physics, _flyCamera.ViewMatrix, projection, _flyCamera.Position, _modelManager ?? ModelManager.Instance); // safe manager wiring
                 }
             }
         }
-
         public override void Dispose()
         {
             _terrainShader?.Dispose();
