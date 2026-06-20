@@ -9,7 +9,7 @@ using System;
 using System.Numerics;
 namespace SiegeEngine.Core.Rendering
 {
-    public unsafe class ModelRenderer // marked unsafe to satisfy any potential fixed blocks in future or from copy-paste
+    public unsafe class ModelRenderer
     {
         private readonly IRenderContext _renderContext;
         private ShaderProgram _modelShader;
@@ -26,7 +26,7 @@ namespace SiegeEngine.Core.Rendering
         public void RenderModel(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, ModelManager modelManager)
         {
             if (modelComp == null || physics == null) return;
-            modelManager ??= ModelManager.Instance; // safe fallback - future-proof for all call sites
+            modelManager ??= ModelManager.Instance;
             string modelKey = modelComp.Key?.ToLower() ?? "man_mesh";
             if (!modelManager.TryGetModelData(modelKey, out var modelData)) return;
             Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
@@ -46,15 +46,14 @@ namespace SiegeEngine.Core.Rendering
             shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
-            // New world-aligned material support
             var mat = modelComp.Material ?? new Material();
             shader.SetUniform("uHasWorldAligned", mat.TextureSlots.Count > 0 ? 1 : 0);
             for (int i = 0; i < Math.Min(mat.TextureSlots.Count, 4); i++)
             {
                 var slot = mat.TextureSlots[i];
                 shader.SetUniform($"uMappingMode[{i}]", (int)slot.MappingMode);
-                shader.SetUniform($"uTiling[{i}]", slot.Tiling.X, slot.Tiling.Y); // now supported
-                shader.SetUniform($"uOffset[{i}]", slot.Offset.X, slot.Offset.Y); // now supported
+                shader.SetUniform($"uTiling[{i}]", slot.Tiling.X, slot.Tiling.Y);
+                shader.SetUniform($"uOffset[{i}]", slot.Offset.X, slot.Offset.Y);
                 shader.SetUniform($"uRotation[{i}]", slot.Rotation);
                 shader.SetUniform($"uBlendSharpness[{i}]", slot.BlendSharpness);
             }
@@ -123,7 +122,6 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.BindVertexArray(0);
             }
         }
-        // New minimal overload for AnimationViewerPanel / ModelViewerScene (viewer context)
         public void RenderModel(FBXModel fbxModel, ModelManager.ModelData modelData, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, Matrix4x4 modelMatrix = default, Matrix4x4[] boneMatrices = null, Matrix3x3[] normalMatrices = null)
         {
             if (modelData == null) return;
@@ -141,7 +139,6 @@ namespace SiegeEngine.Core.Rendering
             shader.SetUniform("uLightDir", -0.707f, -0.707f, 0.707f);
             shader.SetUniform("uLightColor", 1.0f, 1.0f, 1.0f);
             shader.SetUniform("uLightIntensity", 1.0f);
-            // World-aligned support (default material for viewer)
             shader.SetUniform("uHasWorldAligned", 0);
             if (hasBones)
             {
@@ -190,6 +187,49 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                 _renderContext.BindVertexArray(0);
             }
+        }
+        public void RenderSkeletonDebug(VertexBuffer skeletonBuffer, ShaderProgram pointShader, Matrix4x4 view, Matrix4x4 projection)
+        {
+            pointShader.Use();
+            pointShader.SetMatrix4("uModel", Matrix4x4.Identity);
+            pointShader.SetMatrix4("uView", view);
+            pointShader.SetMatrix4("uProjection", projection);
+            _renderContext.BindVertexArray(skeletonBuffer.Vao);
+            _renderContext.DrawElements(_renderContext.Enums.Lines, skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            _renderContext.BindVertexArray(0);
+        }
+        public void RenderTerrain(VertexBuffer buffer, ShaderProgram shader, Matrix4x4 view, Matrix4x4 projection, bool hasTexture, uint textureId)
+        {
+            if (buffer == null) return;
+            buffer.Bind();
+            uint stride = 9 * sizeof(float);
+            _renderContext.EnableVertexAttribArray(0);
+            _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
+            _renderContext.EnableVertexAttribArray(1);
+            _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
+            _renderContext.EnableVertexAttribArray(2);
+            _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(7 * sizeof(float)));
+            shader.Use();
+            shader.SetMatrix4("uView", view);
+            shader.SetMatrix4("uProjection", projection);
+            shader.SetMatrix4("uModel", Matrix4x4.Identity);
+            if (hasTexture && textureId != 0)
+            {
+                _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
+                _renderContext.BindTexture(_renderContext.Enums.Texture2D, textureId);
+                shader.SetUniform("uHasTexture", 1);
+                shader.SetUniform("uTexture", 0);
+            }
+            else
+            {
+                shader.SetUniform("uHasTexture", 0);
+            }
+            uint idxCount = buffer.GetIndexCount();
+            _renderContext.DrawElements(_renderContext.Enums.Triangles, idxCount, _renderContext.Enums.UnsignedInt, null);
+        }
+        public void RenderModelForEntity(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection)
+        {
+            RenderModel(modelComp, physics, view, projection, Vector3.Zero, null);
         }
         public void Dispose()
         {

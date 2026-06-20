@@ -6,6 +6,7 @@ using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.Terrain;
@@ -32,7 +33,8 @@ namespace SiegeEngine.Scenes
         private bool _hasColorTexture = true;
         private bool _contentLoaded = false;
         private bool _firstFrame = true;
-        private ModelManager _modelManager; // future-proof injection (nullable, defaults to Instance)
+        private ModelManager _modelManager;
+
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -42,7 +44,6 @@ namespace SiegeEngine.Scenes
             _modelRenderer = new ModelRenderer(renderContext);
             _heightmap = new float[_terrainWidth, _terrainHeight];
             for (int x = 0; x < _terrainWidth; x++) for (int y = 0; y < _terrainHeight; y++) _heightmap[x, y] = 5f + (float)Math.Sin(x * 0.1f + y * 0.1f) * 3f;
-            // FIXED: Parse command line from MenuCommands.PlayGame so project path is NEVER missed
             string projectPath = "";
             string levelName = "NewTerrain";
             var args = Environment.GetCommandLineArgs();
@@ -67,7 +68,6 @@ namespace SiegeEngine.Scenes
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
-            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
             _terrainBuffer = new VertexBuffer(_renderContext);
             _modelRenderer.Initialize();
@@ -107,10 +107,9 @@ namespace SiegeEngine.Scenes
             _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
             if (!string.IsNullOrEmpty(projectPath))
             {
-                ModelManager.EnsurePacksLoaded(projectPath, ctx?.CurrentLevel); // robust scan for ALL *_pack folders
+                ModelManager.EnsurePacksLoaded(projectPath, ctx?.CurrentLevel);
                 if (ctx?.CurrentLevel == null || ctx.CurrentLevel.Entities.Count == 0)
                 {
-                    // Exact fallback for pure runtime (snapshot empty) - creates the placed FBX entities with correct Key + Model (guarantees visibility)
                     ctx.CurrentLevel = ctx.CurrentLevel ?? new Level();
                     for (int i = 1; i <= 2; i++)
                     {
@@ -133,7 +132,7 @@ namespace SiegeEngine.Scenes
                         var mc = e.GetComponent<ModelComponent>();
                         if (mc != null && _modelManager.TryGetModel(mc.Key, out var m))
                         {
-                            mc.Model = m; // rehydrate Model + render data
+                            mc.Model = m;
                         }
                         _server.AddEntity(e);
                     }
@@ -231,7 +230,7 @@ namespace SiegeEngine.Scenes
         }
         public override void Render(IReadOnlyList<Entity> entities)
         {
-            RenderContent(entities, _flyCamera.ViewMatrix, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f));
+            RenderGameplayContent(entities, _flyCamera.ViewMatrix, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f));
         }
         public override void Update(float deltaTime)
         {
@@ -246,65 +245,17 @@ namespace SiegeEngine.Scenes
         }
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
-            if (_terrainBuffer != null)
-            {
-                _terrainBuffer.Bind();
-                uint stride = 9 * sizeof(float);
-                _renderContext.EnableVertexAttribArray(0);
-                _renderContext.VertexAttribPointer(0, 3, _renderContext.Enums.Float, false, stride, (void*)0);
-                _renderContext.EnableVertexAttribArray(1);
-                _renderContext.VertexAttribPointer(1, 4, _renderContext.Enums.Float, false, stride, (void*)(3 * sizeof(float)));
-                _renderContext.EnableVertexAttribArray(2);
-                _renderContext.VertexAttribPointer(2, 2, _renderContext.Enums.Float, false, stride, (void*)(7 * sizeof(float)));
-            }
-            if (_terrainShader != null && _terrainBuffer != null)
-            {
-                _terrainShader.Use();
-                _terrainShader.SetMatrix4("uView", _flyCamera.ViewMatrix);
-                _terrainShader.SetMatrix4("uProjection", projection);
-                _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
-                if (_hasColorTexture && _terrainTextureId != 0)
-                {
-                    _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
-                    _terrainShader.SetUniform("uHasTexture", 1);
-                    _terrainShader.SetUniform("uTexture", 0);
-                }
-                else
-                {
-                    _terrainShader.SetUniform("uHasTexture", 0);
-                }
-                uint idxCount = _terrainBuffer.GetIndexCount();
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, idxCount, _renderContext.Enums.UnsignedInt, null);
-            }
-            // EXACT replication of the working SceneEditorPanel / ModelViewerScene render for models (texture on correct face)
-            _renderContext.Enable(_renderContext.Enums.CullFace);
-            _renderContext.CullFace(_renderContext.Enums.Back);
-            _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
+            _modelRenderer.RenderTerrain(_terrainBuffer, _terrainShader, _flyCamera.ViewMatrix, projection, _hasColorTexture, _terrainTextureId);
             foreach (var e in _server.GetEntities())
             {
                 var modelComp = e.GetComponent<ModelComponent>();
                 var physics = e.GetComponent<PhysicsComponent>();
                 if (modelComp != null && physics != null && !string.IsNullOrEmpty(modelComp.Key))
                 {
-                    FBXModel fbxModel = modelComp.Model;
-                    if (fbxModel == null && _modelManager.TryGetModel(modelComp.Key, out fbxModel))
-                    {
-                        modelComp.Model = fbxModel;
-                    }
-                    if (fbxModel != null && _modelManager.TryGetModelData(modelComp.Key, out var modelData))
-                    {
-                        Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
-                        Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
-                        Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
-                        Matrix4x4 modelMatrix = scaleMat * rotation * translation;
-                        _modelRenderer.RenderModel(fbxModel, modelData, view, projection, _flyCamera.Position, modelMatrix); // exact editor call
-                    }
+                    _modelRenderer.RenderModelForEntity(modelComp, physics, view, projection);
                 }
             }
-            _renderContext.Disable(_renderContext.Enums.CullFace); // restore for terrain/UI if needed
+            PanelManager.Current?.Render();
         }
         public override void Dispose()
         {
