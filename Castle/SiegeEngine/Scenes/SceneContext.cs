@@ -1,9 +1,9 @@
 ﻿// Folder: SiegeEngine/Scenes
 // File: SceneContext.cs
-using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.PlayerSystem;
 using System.Collections.Generic;

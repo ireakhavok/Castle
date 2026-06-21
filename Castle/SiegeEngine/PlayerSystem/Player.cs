@@ -5,6 +5,7 @@ using System.Numerics;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace SiegeEngine.PlayerSystem

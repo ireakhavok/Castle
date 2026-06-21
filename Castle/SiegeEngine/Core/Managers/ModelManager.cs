@@ -1,6 +1,7 @@
 ﻿// Folder: SiegeEngine/Core/AssetParsing
 // File: ModelManager.cs
 using SiegeEngine.Core.AssetObjects;
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering;
@@ -11,7 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json;
-namespace SiegeEngine.Core.AssetParsing
+namespace SiegeEngine.Core.Managers
 {
     public class ModelManager
     {

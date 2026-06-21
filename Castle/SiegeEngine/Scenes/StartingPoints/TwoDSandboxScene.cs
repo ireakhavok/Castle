@@ -1,6 +1,5 @@
 ﻿// Folder: SiegeEngine/Scenes/StartingPoints
 // File: TwoDSandboxScene.cs
-using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;

@@ -3,7 +3,6 @@
 using CastleBuilder.Events;
 using Keystone;
 using MapRoom;
-using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;

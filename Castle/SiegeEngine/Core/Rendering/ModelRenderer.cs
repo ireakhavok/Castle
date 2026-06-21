@@ -1,8 +1,8 @@
 ﻿// Folder: SiegeEngine/Core/Rendering
 // File: ModelRenderer.cs
-using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
 using System;

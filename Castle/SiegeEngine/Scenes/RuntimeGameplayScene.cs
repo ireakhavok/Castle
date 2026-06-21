@@ -1,6 +1,5 @@
 ﻿// Folder: SiegeEngine/Scenes
 // File: RuntimeGameplayScene.cs
-using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;

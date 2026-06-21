@@ -3,7 +3,6 @@
 using Keystone;
 using MapRoom;
 using ReadingChamber;
-using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
