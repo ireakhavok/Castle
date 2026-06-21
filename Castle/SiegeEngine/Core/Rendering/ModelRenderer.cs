@@ -23,6 +23,29 @@ namespace SiegeEngine.Core.Rendering
             _modelShader = new ShaderProgram(_renderContext, ModelShader.VertexShaderSource, ModelShader.FragmentShaderSource);
             _animationShader = new ShaderProgram(_renderContext, AnimationShader.VertexShaderSource, AnimationShader.FragmentShaderSource);
         }
+        // === SINGLE CANONICAL PATH — all scenes and panels now call this ===
+        public void RenderEntityFully(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos)
+        {
+            if (modelComp == null || physics == null) return;
+            var modelManager = ModelManager.Instance ?? new ModelManager(_renderContext);
+            string modelKey = modelComp.Key?.ToLower() ?? "man_mesh_pack";
+            FBXModel fbxModel = null;
+            ModelManager.ModelData modelData = null;
+            if (modelManager.TryGetModel(modelKey, out fbxModel) && modelManager.TryGetModelData(modelKey, out modelData))
+            {
+                modelComp.Model = fbxModel;
+                Matrix4x4 rotation = Matrix4x4.CreateFromQuaternion(physics.Rotation);
+                Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
+                Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
+                Matrix4x4 modelMatrix = scaleMat * rotation * translation;
+                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix);
+            }
+            else
+            {
+                // fallback for legacy entities (preserves everything)
+                RenderModel(modelComp, physics, view, projection, viewPos, modelManager);
+            }
+        }
         public void RenderModel(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection, Vector3 viewPos, ModelManager modelManager)
         {
             if (modelComp == null || physics == null) return;
@@ -75,7 +98,6 @@ namespace SiegeEngine.Core.Rendering
             {
                 shader.SetUniform("uHasBones", 0);
             }
-            // future-proof: enforce opaque layering sequence matching editor panels (body first, overlays on top) with explicit state reset to prevent bleed-through/culling through layers
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.DepthMask(true);
             _renderContext.Disable(_renderContext.Enums.Blend);
@@ -159,20 +181,7 @@ namespace SiegeEngine.Core.Rendering
         }
         public void RenderModelForEntity(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection)
         {
-            var modelManager = ModelManager.Instance ?? new ModelManager(_renderContext);
-            string modelKey = modelComp?.Key?.ToLower() ?? "man_mesh_pack";
-            FBXModel fbxModel = null;
-            ModelManager.ModelData modelData = null;
-            if (modelManager.TryGetModel(modelKey, out fbxModel) && modelManager.TryGetModelData(modelKey, out modelData))
-            {
-                modelComp.Model = fbxModel;
-                // exact editor replication (ModelViewerScene.Render path) with correct modelMatrix + viewPos from physics/camera to prevent bleed and enforce top-layer occlusion
-                RenderModel(fbxModel, modelData, view, projection, physics.Position, Matrix4x4.CreateScale(0.01f) * Matrix4x4.CreateFromQuaternion(physics.Rotation) * Matrix4x4.CreateTranslation(physics.Position));
-            }
-            else
-            {
-                RenderModel(modelComp, physics, view, projection, physics.Position, modelManager);
-            }
+            RenderEntityFully(modelComp, physics, view, projection, physics.Position);
         }
         public void Dispose()
         {

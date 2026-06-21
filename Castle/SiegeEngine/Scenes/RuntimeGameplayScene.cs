@@ -251,7 +251,7 @@ namespace SiegeEngine.Scenes
                 var physics = e.GetComponent<PhysicsComponent>();
                 if (modelComp != null && physics != null && !string.IsNullOrEmpty(modelComp.Key))
                 {
-                    _modelRenderer.RenderModelForEntity(modelComp, physics, view, projection);
+                    _modelRenderer.RenderEntityFully(modelComp, physics, view, projection, _flyCamera.Position);
                 }
             }
             PanelManager.Current?.Render();
