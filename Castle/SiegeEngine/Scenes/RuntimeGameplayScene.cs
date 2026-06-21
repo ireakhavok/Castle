@@ -34,7 +34,6 @@ namespace SiegeEngine.Scenes
         private bool _contentLoaded = false;
         private bool _firstFrame = true;
         private ModelManager _modelManager;
-
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
