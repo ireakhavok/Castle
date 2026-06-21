@@ -69,13 +69,17 @@ namespace SiegeEngine.Core.Rendering
             {
                 shader.SetUniform("uHasBones", 1);
                 shader.SetMatrix4Array("uBoneMatrices", boneMatrices);
-                if (normalMatrices != null)
-                    shader.SetMatrix3Array("uNormalMatrices", normalMatrices);
+                if (normalMatrices != null) shader.SetMatrix3Array("uNormalMatrices", normalMatrices);
             }
             else
             {
                 shader.SetUniform("uHasBones", 0);
             }
+            // future-proof: enforce opaque layering sequence matching editor panels (body first, overlays on top) with explicit state reset to prevent bleed-through/culling through layers
+            _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.DepthMask(true);
+            _renderContext.Disable(_renderContext.Enums.Blend);
+            _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
             foreach (var mmr in modelData.MeshRenders)
             {
                 try
@@ -112,6 +116,7 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, mmr.IndexCount, _renderContext.Enums.UnsignedInt, null);
                 _renderContext.BindVertexArray(0);
             }
+            _renderContext.Disable(_renderContext.Enums.DepthTest);
         }
         public void RenderSkeletonDebug(VertexBuffer skeletonBuffer, ShaderProgram pointShader, Matrix4x4 view, Matrix4x4 projection)
         {
@@ -154,7 +159,20 @@ namespace SiegeEngine.Core.Rendering
         }
         public void RenderModelForEntity(ModelComponent modelComp, PhysicsComponent physics, Matrix4x4 view, Matrix4x4 projection)
         {
-            RenderModel(modelComp, physics, view, projection, Vector3.Zero, null);
+            var modelManager = ModelManager.Instance ?? new ModelManager(_renderContext);
+            string modelKey = modelComp?.Key?.ToLower() ?? "man_mesh_pack";
+            FBXModel fbxModel = null;
+            ModelManager.ModelData modelData = null;
+            if (modelManager.TryGetModel(modelKey, out fbxModel) && modelManager.TryGetModelData(modelKey, out modelData))
+            {
+                modelComp.Model = fbxModel;
+                // exact editor replication (ModelViewerScene.Render path) with correct modelMatrix + viewPos from physics/camera to prevent bleed and enforce top-layer occlusion
+                RenderModel(fbxModel, modelData, view, projection, physics.Position, Matrix4x4.CreateScale(0.01f) * Matrix4x4.CreateFromQuaternion(physics.Rotation) * Matrix4x4.CreateTranslation(physics.Position));
+            }
+            else
+            {
+                RenderModel(modelComp, physics, view, projection, physics.Position, modelManager);
+            }
         }
         public void Dispose()
         {
