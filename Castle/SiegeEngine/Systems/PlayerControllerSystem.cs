@@ -5,8 +5,8 @@ using System.Numerics;
 using SiegeEngine.Core.Events;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Core.Interfaces;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace SiegeEngine.Systems
 {

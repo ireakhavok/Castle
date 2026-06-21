@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering.ContextManagement;
 namespace SiegeEngine.Core.Rendering
 {
     public unsafe class EditorTextRenderer : IDisposable

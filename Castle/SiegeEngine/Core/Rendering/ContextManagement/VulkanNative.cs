@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace SiegeEngine.Core.ContextManagement
+namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     /// <summary>
     /// Provides P/Invoke wrappers for Vulkan API functions with cross-platform support.

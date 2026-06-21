@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine/ContextManagement
 // File: OpenGLEnums.cs
 using Silk.NET.OpenGL;
-namespace SiegeEngine.Core.ContextManagement
+namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     public class OpenGLEnums : AbstractRenderEnums
     {

@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine.Core.UI.Elements
 // File: NavLiElement.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine/Core/Rendering
 // File: TerrainRenderer.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.Terrain;
 using System;

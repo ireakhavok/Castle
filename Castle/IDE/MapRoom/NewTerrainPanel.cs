@@ -1,6 +1,5 @@
 ﻿// Folder: MapRoom
 // File: NewTerrainPanel.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Networking;
@@ -13,6 +12,7 @@ using System.Numerics;
 using ReadingChamber;
 using SiegeEngine.Core.UI.Elements;
 using Keystone;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace MapRoom
 {

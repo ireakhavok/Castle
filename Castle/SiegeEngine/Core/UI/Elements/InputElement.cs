@@ -1,11 +1,11 @@
 ﻿// Folder: SiegeEngine.Core.UI.Elements
 // File: InputElement.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Definitions; // Needed for Key enum
 using System;
 using System.Numerics;
 using System.Globalization;
+using SiegeEngine.Core.Rendering.ContextManagement;
 namespace SiegeEngine.Core.UI.Elements
 {
     public class InputElement : HtmlElement

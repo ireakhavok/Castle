@@ -1,7 +1,7 @@
 ﻿// Folder: MapRoom
 // File: TerrainCreatorPanel.cs
 using ReadingChamber;
-using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -17,6 +17,7 @@ using System.Text;
 using System.Text.Json;
 using Keystone;
 using ToolChest;
+using SiegeEngine.Core.Rendering.ContextManagement;
 namespace MapRoom
 {
     public class TerrainCreatorPanel : BasePanel, IDataAwarePanel, IOutlinerProvider

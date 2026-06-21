@@ -1,9 +1,9 @@
 ﻿// Folder: SiegeEngine.Core.Managers
 // File: DesktopDockingStrategy.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;

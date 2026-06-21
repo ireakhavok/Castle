@@ -2,9 +2,9 @@
 // File: ModelManager.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing.Model;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System;
 using System.Collections.Generic;
 using System.IO;

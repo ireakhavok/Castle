@@ -3,8 +3,8 @@
 using System;
 using System.Numerics;
 using SiegeEngine.Core.Managers;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace SiegeEngine.PlayerSystem
 {

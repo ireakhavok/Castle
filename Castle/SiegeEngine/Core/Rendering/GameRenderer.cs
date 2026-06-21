@@ -8,9 +8,9 @@ using System.Numerics;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.AssetParsing;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace SiegeEngine.Core.Rendering
 {

@@ -1,10 +1,10 @@
 ﻿// Folder: SiegeEngine.Core.UI.Elements
 // File: RangeElement.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System;
 using System.Numerics;
 using System.Globalization;
+using SiegeEngine.Core.Rendering.ContextManagement;
 namespace SiegeEngine.Core.UI.Elements
 {
     public class RangeElement : InputElement

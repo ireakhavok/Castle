@@ -1,6 +1,6 @@
 ﻿// file: core.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;

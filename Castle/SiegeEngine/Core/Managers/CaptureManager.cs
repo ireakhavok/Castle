@@ -1,8 +1,8 @@
 ﻿// Folder: SiegeEngine.Core.Managers
 // File: CaptureManager.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Managers

@@ -1,6 +1,6 @@
 ﻿// File: SiegeEngine/Core/UI/UIInteractionLayer.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
 using SiegeEngine.Core.UI.JSParser;
 using System;

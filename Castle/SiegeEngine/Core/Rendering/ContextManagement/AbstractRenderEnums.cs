@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine/ContextManagement
 // File: AbstractRenderEnums.cs
 using System;
-namespace SiegeEngine.Core.ContextManagement
+namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     public abstract class AbstractRenderEnums
     {

@@ -5,7 +5,7 @@ using Silk.NET.GLFW;
 using System;
 using System.Collections.Generic;
 
-namespace SiegeEngine.Core.ContextManagement
+namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     public unsafe class GlfwControlContext : IControlContext
     {

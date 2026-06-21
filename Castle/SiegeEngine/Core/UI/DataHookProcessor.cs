@@ -3,10 +3,10 @@
 using System;
 using System.IO;
 using System.Reflection;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI; // for BasePanel
 
 namespace SiegeEngine.Core.UI

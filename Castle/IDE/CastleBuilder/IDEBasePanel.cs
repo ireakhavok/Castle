@@ -1,11 +1,11 @@
 ﻿// Folder: CastleBuilder
 // File: IDEBasePanel.cs
 using CastleBuilder.Events;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
 using System;

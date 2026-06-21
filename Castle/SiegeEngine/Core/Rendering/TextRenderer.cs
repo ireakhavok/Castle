@@ -1,6 +1,6 @@
 ﻿// Folder: SiegeEngine.Rendering
 // File: TextRenderer.cs
-using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;

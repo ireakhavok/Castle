@@ -1,9 +1,9 @@
 ﻿// Folder: SiegeEngine.Core.Managers
 // File: IDockingStrategy.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Managers

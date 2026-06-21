@@ -1,6 +1,6 @@
 ﻿// Folder: SiegeEngine.UI
 // File: ThElement.cs
-using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering;
 using System.Numerics;
 

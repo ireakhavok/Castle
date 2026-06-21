@@ -1,6 +1,5 @@
 ﻿// Folder: ToolChest
 // File: PropertiesPanel.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
@@ -16,6 +15,7 @@ using System.Text.Json;
 using Keystone;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace ToolChest
 {

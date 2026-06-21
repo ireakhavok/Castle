@@ -1,6 +1,6 @@
 ﻿// Folder: SiegeEngine.Rendering
 // File: BackgroundRenderer.cs
-using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
