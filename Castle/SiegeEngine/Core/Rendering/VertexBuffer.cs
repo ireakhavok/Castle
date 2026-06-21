@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine.Core/Rendering
 // File: VertexBuffer.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System;
 using System.Collections.Generic;
 using System.Numerics;

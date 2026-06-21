@@ -1,7 +1,7 @@
 ﻿// Folder: SiegeEngine.UI
 // File: ButtonElement.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System;
 using System.Numerics;
 using System.Reflection;

@@ -4,7 +4,7 @@ using Silk.NET.GLFW;
 using Silk.NET.OpenGL;
 using System;
 
-namespace SiegeEngine.Core.ContextManagement
+namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     public unsafe class OpenGLRenderContext : IRenderContext
     {

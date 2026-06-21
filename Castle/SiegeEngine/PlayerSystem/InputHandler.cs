@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Networking;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace SiegeEngine.PlayerSystem
 {

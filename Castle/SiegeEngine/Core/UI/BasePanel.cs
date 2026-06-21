@@ -1,9 +1,9 @@
-﻿using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System;
 using System.Collections.Generic;
 using System.Numerics;

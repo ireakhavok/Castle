@@ -2,7 +2,7 @@
 // File: Viewport.cs
 using System.Numerics;
 
-namespace SiegeEngine.Core.ContextManagement
+namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     public readonly struct Viewport
     {

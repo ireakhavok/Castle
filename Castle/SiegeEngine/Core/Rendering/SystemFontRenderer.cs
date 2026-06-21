@@ -6,7 +6,7 @@ using System.Drawing.Text;
 using System.Collections.Generic;
 using System.Drawing.Imaging;
 using System.Linq;
-using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace SiegeEngine.Core.Rendering
 {

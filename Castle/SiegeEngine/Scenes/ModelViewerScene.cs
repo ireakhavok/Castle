@@ -3,12 +3,12 @@
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.UI;
 using System;
@@ -413,8 +413,6 @@ namespace SiegeEngine.Scenes
         {
             _blendPreviewStack = stack;
             _blendPreviewParams = currentParams;
-            //_isPlaying = false;
-            //_currentTime = 0f;
             if (stack != null)
             {
                 foreach (var clip in stack.Clips)
@@ -569,43 +567,13 @@ namespace SiegeEngine.Scenes
 
         public override void Render(IReadOnlyList<Entity> entities)
         {
-            _renderContext.ClearColor(0.118f, 0.118f, 0.118f, 1.0f);
-            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
-            _renderContext.DepthFunc(_renderContext.Enums.Less);
-            _renderContext.DepthMask(true);
-            _renderContext.Enable(_renderContext.Enums.CullFace);
-            _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
-            _renderContext.CullFace(_renderContext.Enums.Back);
-            _renderContext.Disable(_renderContext.Enums.Blend);
-            Matrix4x4 modelMatrix = Matrix4x4.Identity;
-            Matrix4x4 view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
-            float currentDist = Vector3.Distance(_cameraPosition, _cameraTarget);
-            float near = Math.Max(0.01f, currentDist - _maxExtent * 2f);
-            float far = currentDist + _maxExtent * 2f;
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, near, far);
-            _modelRenderer.RenderModel(_model, _modelData, view, projection, _cameraPosition, modelMatrix, _boneMatrices, _currentNormalTransforms);
-            _pointShader.Use();
-            _pointShader.SetMatrix4("uModel", modelMatrix);
-            _pointShader.SetMatrix4("uView", view);
-            _pointShader.SetMatrix4("uProjection", projection);
-            if (_showSkeleton)
-            {
-                _renderContext.BindVertexArray(_skeletonBuffer.Vao);
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _skeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-                _renderContext.BindVertexArray(0);
-            }
-            if (_bindSkeletonBuffer != null && _showBindPoseSkeleton)
-            {
-                _renderContext.BindVertexArray(_bindSkeletonBuffer.Vao);
-                _renderContext.DrawElements(_renderContext.Enums.Lines, _bindSkeletonBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-                _renderContext.BindVertexArray(0);
-            }
-            _renderContext.Clear(_renderContext.Enums.DepthBufferBit);
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
-            _renderContext.Disable(_renderContext.Enums.CullFace);
-            _renderContext.Enable(_renderContext.Enums.Blend);
-            _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
+            // Pure high-level orchestration - no low-level GL state here
+            var view = Matrix4x4.CreateLookAt(_cameraPosition, _cameraTarget, _cameraUp);
+            var proj = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f);
+            _modelRenderer.RenderModel(_model, _modelData, view, proj, _cameraPosition, Matrix4x4.Identity, _boneMatrices, _currentNormalTransforms);
+            if (_showSkeleton) _modelRenderer.RenderSkeletonDebug(_skeletonBuffer, _pointShader, view, proj);
+            if (_bindSkeletonBuffer != null && _showBindPoseSkeleton) _modelRenderer.RenderSkeletonDebug(_bindSkeletonBuffer, _pointShader, view, proj);
+            PanelManager.Current?.Render();
         }
 
         public override void Dispose()

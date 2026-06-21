@@ -1,9 +1,9 @@
 ﻿// Folder: SiegeEngine.Core.Rendering
 // File: ShaderProgram.cs
-using SiegeEngine.Core.ContextManagement;
 using System;
 using System.Numerics;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace SiegeEngine.Core.Rendering
 {

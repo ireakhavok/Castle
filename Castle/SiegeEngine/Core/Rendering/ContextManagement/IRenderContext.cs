@@ -2,7 +2,7 @@
 // File: ContextManagement/IRenderContext.cs
 using System;
 
-namespace SiegeEngine.Core.ContextManagement
+namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     public unsafe interface IRenderContext
     {

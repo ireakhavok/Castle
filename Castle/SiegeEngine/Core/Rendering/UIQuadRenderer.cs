@@ -1,6 +1,6 @@
 ﻿// Folder: SiegeEngine/Core/Rendering
 // File: UIQuadRenderer.cs
-using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.UI;
 using System;

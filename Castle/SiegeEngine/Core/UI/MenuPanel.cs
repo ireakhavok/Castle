@@ -1,9 +1,9 @@
 ﻿// Folder: SiegeEngine.Core.UI
 // File: MenuPanel.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System;
 using System.Collections.Generic;
 using System.IO;

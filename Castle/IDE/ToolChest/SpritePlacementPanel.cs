@@ -1,6 +1,5 @@
 ﻿// Folder: ToolChest
 // File: SpritePlacementPanel.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
@@ -9,7 +8,8 @@ using SiegeEngine.Core.UI.Elements;
 using System;
 using System.IO;
 using System.Numerics;
-using ReadingChamber; // restored reference for FileSelectorPanel
+using ReadingChamber;
+using SiegeEngine.Core.Rendering.ContextManagement; // restored reference for FileSelectorPanel
 
 namespace ToolChest
 {

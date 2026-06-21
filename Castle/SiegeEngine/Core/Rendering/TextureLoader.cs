@@ -1,6 +1,6 @@
 ﻿// Folder: SiegeEngine/Core/Rendering
 // File: TextureLoader.cs
-using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using Silk.NET.OpenGL;
 using System;
 using System.Collections.Generic;

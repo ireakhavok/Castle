@@ -1,6 +1,5 @@
 ﻿// Folder: ReadingChamber
 // File: FileSelectorPanel.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
 using System;
@@ -10,6 +9,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using SiegeEngine.Core.UI;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace ReadingChamber
 {

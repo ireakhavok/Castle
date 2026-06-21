@@ -1,16 +1,18 @@
 ﻿// Folder: SiegeEngine/Core/AssetParsing
 // File: ModelManager.cs
+using SiegeEngine.Core.AssetObjects;
+using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
+using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json;
-using SiegeEngine.Core.ContextManagement;
-using SiegeEngine.Core.Rendering;
-using SiegeEngine.Core.AssetObjects;
-namespace SiegeEngine.Core.AssetParsing
+namespace SiegeEngine.Core.Managers
 {
     public class ModelManager
     {
@@ -181,7 +183,6 @@ namespace SiegeEngine.Core.AssetParsing
             string originalFbxDir = Path.GetDirectoryName(fbxPath);
             int copiedTextureCount = CollectAndCopyReferencedTextures(model, originalFbxDir, packFolder);
             Console.WriteLine($"[ModelManager] Collected and copied {copiedTextureCount} external texture files referenced by materials (from parsed FBXModel)");
-
             // Build lightweight manifest
             var pack = new AnimationPack(packId, packId)
             {
@@ -638,6 +639,45 @@ namespace SiegeEngine.Core.AssetParsing
         {
             key = key.ToLower();
             return _modelData.TryGetValue(key, out modelData);
+        }
+
+        // FUTURE-PROOF STATIC HELPER: scan Assets for ALL *_pack folders (robust, no dependency on Level.Entities.Count)
+        public static void EnsurePacksLoaded(string projectPath, Level level = null)
+        {
+            if (string.IsNullOrEmpty(projectPath)) return;
+            string assetsDir = Path.Combine(projectPath, "Assets");
+            if (!Directory.Exists(assetsDir)) return;
+            var packDirs = Directory.GetDirectories(assetsDir, "*_pack");
+            foreach (var packDir in packDirs)
+            {
+                string packJson = Path.Combine(packDir, "assetpack.json");
+                if (File.Exists(packJson))
+                {
+                    Instance?.LoadAnimationPack(packJson);
+                }
+                else
+                {
+                    var fbxFiles = Directory.GetFiles(packDir, "*.fbx");
+                    if (fbxFiles.Length > 0)
+                    {
+                        Instance?.RegisterFBXAsPackInMemory(fbxFiles[0]);
+                    }
+                }
+            }
+            // Optional rehydrate if level provided
+            if (level != null)
+            {
+                foreach (var e in level.Entities)
+                {
+                    var mc = e.GetComponent<ModelComponent>();
+                    if (mc != null && Instance.TryGetModel(mc.Key, out var m))
+                    {
+                        mc.Model = m;
+                        Console.WriteLine($"[ModelManager] Rehydrated ModelComponent.Key='{mc.Key}' in runtime snapshot");
+                    }
+                }
+            }
+            Console.WriteLine($"[ModelManager.EnsurePacksLoaded] Scanned & preloaded {packDirs.Length} asset packs from '{assetsDir}'");
         }
     }
 }

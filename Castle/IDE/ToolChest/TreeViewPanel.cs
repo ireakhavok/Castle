@@ -1,6 +1,5 @@
 ﻿// Folder: ToolChest
 // File: TreeViewPanel.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
@@ -14,6 +13,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using Keystone;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace ToolChest
 {

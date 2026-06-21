@@ -1,7 +1,6 @@
 ﻿// Folder: ToolChest
 // File: BrushPanel.cs
 using Keystone;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -14,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using SiegeEngine.Core.Rendering.ContextManagement;
 namespace ToolChest
 {
     public class BrushPanel : BasePanel

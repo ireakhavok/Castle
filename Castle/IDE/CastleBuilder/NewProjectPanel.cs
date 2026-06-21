@@ -1,6 +1,5 @@
 ﻿// Folder: CastleBuilder
 // File: NewProjectPanel.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
@@ -10,6 +9,7 @@ using SiegeEngine.Core.Managers;
 using System;
 using System.IO;
 using System.Numerics;
+using SiegeEngine.Core.Rendering.ContextManagement;
 
 namespace CastleBuilder
 {

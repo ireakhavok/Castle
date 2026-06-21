@@ -1,11 +1,11 @@
 ﻿// Folder: MapRoom
 // File: TerrainCreatorScene.cs
 using Keystone;
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.Terrain;
 using SiegeEngine.Scenes;
@@ -16,6 +16,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using ToolChest;
+
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -38,6 +39,8 @@ namespace MapRoom
         private Bitmap _colorBitmapCache = null;
         private const int ColorLayerResolution = 4096;
         private readonly bool _enableBrush;
+        private TerrainRenderer _terrainRenderer;
+
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null, bool enableBrush = true)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -50,7 +53,52 @@ namespace MapRoom
                 _eventBus.Subscribe<SelectBrushEvent>(OnSelectBrushEvent);
             }
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
+            _terrainRenderer = new TerrainRenderer(renderContext);
         }
+
+        public override void Initialize(int width, int height)
+        {
+            base.Initialize(width, height);
+            _ghostBuffer = new VertexBuffer(_renderContext);
+            _terrainRenderer.Initialize();
+        }
+
+        public override void Render(IReadOnlyList<Entity> entities)
+        {
+            Matrix4x4 view = _flyCamera.ViewMatrix;
+            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, AspectRatio, 0.1f, 50000f);
+
+            _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap);
+
+            if (_ghostVisible && _ghostBuffer != null)
+            {
+                Matrix4x4 ghostModel = Matrix4x4.CreateTranslation(_ghostPosition);
+                bool isPaint = _activeBrush != null && _activeBrush.Mode == BrushMode.Paint;
+                _terrainRenderer.RenderGhost(_spriteShader, view, projection, ghostModel, _ghostMaterialTextureId, _ghostBuffer, isPaint);
+            }
+        }
+
+        public override void Dispose()
+        {
+            if (_terrainTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_terrainTextureId);
+                _terrainTextureId = 0;
+            }
+            if (_ghostMaterialTextureId != 0)
+            {
+                _renderContext.DeleteTexture(_ghostMaterialTextureId);
+                _ghostMaterialTextureId = 0;
+            }
+            _colorBitmapCache?.Dispose();
+            _terrainBuffer?.Dispose();
+            _terrainShader?.Dispose();
+            _ghostBuffer?.Dispose();
+            _spriteShader?.Dispose();
+            _terrainRenderer?.Dispose();
+            base.Dispose();
+        }
+
         public override void BindLiveState(ISceneStateProvider liveState)
         {
             base.BindLiveState(liveState);
@@ -362,7 +410,6 @@ namespace MapRoom
             _colorBitmapCache = null;
             if (File.Exists(resolvedPath))
             {
-                // NON-LOCKING + LockBits-safe load
                 using (var fs = new FileStream(resolvedPath, FileMode.Open, FileAccess.Read, FileShare.Read))
                 using (var ms = new MemoryStream())
                 {
@@ -474,7 +521,6 @@ namespace MapRoom
                 LiveSceneState liveState = _liveState as LiveSceneState;
                 if (liveState != null && liveState.ColorBitmap != null)
                     saveData = liveState.ColorBitmap;
-
                 using (var saveClone = (Bitmap)saveData.Clone())
                 {
                     _colorBitmapCache?.Dispose();
@@ -484,7 +530,6 @@ namespace MapRoom
                         liveState.ColorBitmap?.Dispose();
                         liveState.ColorBitmap = null;
                     }
-
                     string tempPath = path + ".tmp";
                     saveClone.Save(tempPath, ImageFormat.Png);
                     if (File.Exists(path))
@@ -492,8 +537,6 @@ namespace MapRoom
                     File.Move(tempPath, path);
                     Console.WriteLine($"[TerrainCreatorScene] Saved color texture PNG: {path}");
                 }
-
-                // FIXED reload — uses the same LockBits-safe pattern as SetColorTexture
                 if (File.Exists(path))
                 {
                     using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -511,7 +554,6 @@ namespace MapRoom
                         }
                     }
                 }
-
                 LiveSceneState liveReload = _liveState as LiveSceneState;
                 if (liveReload != null && _colorBitmapCache != null)
                 {
@@ -552,11 +594,6 @@ namespace MapRoom
         public ToolChest.Brush GetActiveBrush()
         {
             return _activeBrush;
-        }
-        public override void Initialize(int width, int height)
-        {
-            base.Initialize(width, height);
-            _ghostBuffer = new VertexBuffer(_renderContext);
         }
         private void UpdateGhostMesh()
         {
@@ -832,75 +869,6 @@ namespace MapRoom
                 }
             }
             return false;
-        }
-        public override void Render(IReadOnlyList<Entity> entities)
-        {
-            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
-            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-            _renderContext.Enable(_renderContext.Enums.DepthTest);
-            Matrix4x4 view = _flyCamera.ViewMatrix;
-            Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, AspectRatio, 0.1f, 50000f);
-            _terrainShader.Use();
-            _terrainShader.SetMatrix4("uView", view);
-            _terrainShader.SetMatrix4("uProjection", projection);
-            _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
-            _terrainBuffer.Bind();
-            _terrainShader.SetUniform("uHasTexture", 0);
-            _renderContext.DrawElements(_renderContext.Enums.Lines, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            if (_hasColorTexture && _terrainTextureId != 0)
-            {
-                _terrainShader.SetUniform("uHasTexture", 1);
-                _renderContext.ActiveTexture(0);
-                _renderContext.BindTexture(_renderContext.Enums.Texture2D, _terrainTextureId);
-                _terrainShader.SetUniform("uTexture", 0);
-                _renderContext.DrawElements(_renderContext.Enums.Triangles, _terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-            }
-            if (_ghostVisible && _ghostBuffer != null)
-            {
-                _renderContext.Enable(_renderContext.Enums.Blend);
-                _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
-                _renderContext.Disable(_renderContext.Enums.DepthTest);
-                Matrix4x4 model = Matrix4x4.CreateTranslation(_ghostPosition);
-                if (_activeBrush != null && _activeBrush.Mode == BrushMode.Paint && _ghostMaterialTextureId != 0)
-                {
-                    _spriteShader.Use();
-                    _spriteShader.SetMatrix4("uModel", model);
-                    _spriteShader.SetMatrix4("uView", view);
-                    _spriteShader.SetMatrix4("uProjection", projection);
-                    _renderContext.ActiveTexture(0);
-                    _renderContext.BindTexture(_renderContext.Enums.Texture2D, _ghostMaterialTextureId);
-                    _ghostBuffer.Bind();
-                    _renderContext.DrawElements(_renderContext.Enums.Triangles, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-                }
-                else
-                {
-                    _terrainShader.SetMatrix4("uModel", model);
-                    _terrainShader.SetUniform("uHasTexture", 0);
-                    _ghostBuffer.Bind();
-                    _renderContext.DrawElements(_renderContext.Enums.Lines, _ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-                }
-                _renderContext.Enable(_renderContext.Enums.DepthTest);
-                _renderContext.Disable(_renderContext.Enums.Blend);
-            }
-        }
-        public override void Dispose()
-        {
-            if (_terrainTextureId != 0)
-            {
-                _renderContext.DeleteTexture(_terrainTextureId);
-                _terrainTextureId = 0;
-            }
-            if (_ghostMaterialTextureId != 0)
-            {
-                _renderContext.DeleteTexture(_ghostMaterialTextureId);
-                _ghostMaterialTextureId = 0;
-            }
-            _colorBitmapCache?.Dispose();
-            _terrainBuffer?.Dispose();
-            _terrainShader?.Dispose();
-            _ghostBuffer?.Dispose();
-            _spriteShader?.Dispose();
-            base.Dispose();
         }
         private void OnTerrainModified(TerrainModifiedEvent e)
         {

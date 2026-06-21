@@ -3,7 +3,7 @@
 using SiegeEngine.Core.Definitions;
 using System;
 
-namespace SiegeEngine.Core.ContextManagement
+namespace SiegeEngine.Core.Rendering.ContextManagement
 {
     public interface IControlContext
     {

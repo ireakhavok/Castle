@@ -1,6 +1,5 @@
 ﻿// Folder: SiegeEngine.Core.Managers
 // File: IDEDockingStrategy.cs
-using SiegeEngine.Core.ContextManagement;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
@@ -13,6 +12,7 @@ using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Linq;
+using SiegeEngine.Core.Rendering.ContextManagement;
 namespace SiegeEngine.Core.Managers
 {
     public class IDEDockingStrategy : IDockingStrategy
