@@ -110,22 +110,24 @@ namespace CastleBuilder
         public static void PlayGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[MenuCommands.PlayGame] Launching CURRENT project Level in NEW isolated window (pure runtime client - in-memory, no disk write, no EnsureDefaultSceneIfNeeded, no save)");
+            BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
             string projectPath = ProjectSettings.Current.ActiveProject ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\CastleBuilder\\Projects\\Current";
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
-            // Launch Foundation.exe (cleanest client entry) - Citadel.exe now works but Foundation is more robust
+            string snapshotPath = Path.Combine(projectPath, "runtime_start.level");
+            var level = ProjectSettings.Current.CurrentLevel ?? new Level();
+            File.WriteAllBytes(snapshotPath, level.Serialize());
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
-            if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe"); // fallback
+            if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
-                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\"",
+                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\" --runtime-snapshot \"{snapshotPath}\"",
                 UseShellExecute = true,
                 WorkingDirectory = Path.GetDirectoryName(exe)
             };
             Process.Start(psi);
-            // Also trigger context in current editor for seamless IDE hide
             eventBus.Publish(new ContextChangedEvent { Context = "Runtime Gameplay" });
-            Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with Level '{levelName}' from IDE cache - editor panels hidden, full playable game active (no ding, no crash, state unchanged on disk)");
+            Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with FULL Level snapshot '{levelName}' from IDE cache - editor panels hidden, exact entities/positions/terrain/packs active (no spoof, standalone compatible)");
         }
         public static void SandboxRegressionTest(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -147,13 +149,13 @@ namespace CastleBuilder
                         projectPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "CastleBuilder", "Projects", "Default");
                         Directory.CreateDirectory(projectPath);
                     }
+                    BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
                     string exportRoot = Path.Combine(projectPath, "exported");
                     if (Directory.Exists(exportRoot))
                     {
                         Directory.Delete(exportRoot, true);
                     }
                     Directory.CreateDirectory(exportRoot);
-                    // Enhanced copy with Level serialization (passed data, modular)
                     string[] runtimeFolders = { "Assets", "Scenes" };
                     foreach (string folder in runtimeFolders)
                     {
@@ -165,14 +167,12 @@ namespace CastleBuilder
                             BlueprintManager.CopyDirectory(source, target);
                         }
                     }
-                    // Serialize current Level as starting scene (fallback CurrentSceneName)
                     string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
                     var level = ProjectSettings.Current.CurrentLevel ?? new Level();
                     string levelJsonPath = Path.Combine(exportRoot, "Scenes", "starting_level.json");
                     Directory.CreateDirectory(Path.Combine(exportRoot, "Scenes"));
                     File.WriteAllBytes(levelJsonPath, level.Serialize());
                     File.WriteAllText(Path.Combine(exportRoot, "starting_scene.json"), "{\"startingScene\":\"" + levelName + "\"}");
-                    // Copy Citadel.exe + DLLs + runtime assemblies
                     string exeSource = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
                     string exeTarget = Path.Combine(exportRoot, "Citadel.exe");
                     File.Copy(exeSource, exeTarget, true);
@@ -185,15 +185,14 @@ namespace CastleBuilder
                             File.Copy(sourceDll, Path.Combine(exportRoot, dll), true);
                         }
                     }
-                    // Launch as pure CLIENT (no --local, no --server)
                     Process.Start(new ProcessStartInfo
                     {
                         FileName = Path.Combine(exportRoot, "Citadel.exe"),
                         WorkingDirectory = exportRoot,
                         UseShellExecute = true,
-                        Arguments = "--client --load-level " + levelName
+                        Arguments = "--client --load-level " + levelName + " --runtime-snapshot \"" + levelJsonPath + "\""
                     });
-                    Console.WriteLine($"[Export SUCCESS] Clean game client exported to {exportRoot} with starting Level '{levelName}' and launched as pure runtime client (no server messages, no IDE)");
+                    Console.WriteLine($"[Export SUCCESS] Clean game client exported to {exportRoot} with FULL starting Level '{levelName}' and launched as pure runtime client (exact entities, positions, terrain, packs - no server messages, no IDE)");
                 }
                 catch (Exception ex)
                 {

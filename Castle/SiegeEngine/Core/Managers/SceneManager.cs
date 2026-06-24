@@ -84,7 +84,7 @@ namespace SiegeEngine.Core.Managers
             ctx.ModelManager = _modelManager;
             if (!string.IsNullOrEmpty(projectPath))
             {
-                ModelManager.EnsurePacksLoaded(projectPath, level); // robust scan for ALL *_pack folders
+                ModelManager.EnsurePacksLoaded(projectPath, level);
             }
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);

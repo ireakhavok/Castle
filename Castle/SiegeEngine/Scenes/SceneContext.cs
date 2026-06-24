@@ -21,30 +21,23 @@ namespace SiegeEngine.Scenes
         public PlayerMovement? PlayerMovement { get; set; }
         public ModelManager? ModelManager { get; set; }
         public SceneData? ProjectSceneData { get; set; }
-        // Modular passed params (no ProjectSettings in core)
         public string LoadLevelName { get; set; } = "Main";
         public string PlayProjectPath { get; set; }
-        // Generic Level snapshot carrier for Play / Export (future-proof data bridge, respects core separation)
         public Level CurrentLevel { get; set; }
         public float[,] HeightmapSnapshot { get; set; }
         public List<Entity> RuntimeEntities { get; set; } = new List<Entity>();
-        public static SceneContext CreateCore(
-            IRenderContext renderContext,
-            IControlContext controlContext,
-            nint window,
-            IGameServer server,
-            EventBus eventBus)
+        public string RuntimeSnapshotPath { get; set; }
+        public static SceneContext CreateCore(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
         {
             return new SceneContext { RenderContext = renderContext, ControlContext = controlContext, Window = window, Server = server, EventBus = eventBus };
         }
-        // Factory for pure runtime snapshot (used by Play/Export)
         public static SceneContext CreateForRuntime(Level level, SceneData sceneData, IRenderContext rc, IControlContext cc, nint w, IGameServer s, EventBus eb)
         {
             var ctx = CreateCore(rc, cc, w, s, eb);
-            ctx.CurrentLevel = level;
+            ctx.CurrentLevel = level ?? new Level();
             ctx.ProjectSceneData = sceneData;
             ctx.LoadLevelName = level?.Name ?? "Main";
-            ctx.ModelManager = ModelManager.Instance ?? new ModelManager(rc); // ensure manager always present
+            ctx.ModelManager = ModelManager.Instance ?? new ModelManager(rc);
             return ctx;
         }
     }
