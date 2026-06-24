@@ -44,16 +44,23 @@ namespace SiegeEngine.Scenes
             for (int x = 0; x < _terrainWidth; x++) for (int y = 0; y < _terrainHeight; y++) _heightmap[x, y] = 5f + (float)Math.Sin(x * 0.1f + y * 0.1f) * 3f;
             string projectPath = "";
             string levelName = "NewTerrain";
+            string snapshotPath = null;
             var args = Environment.GetCommandLineArgs();
             for (int i = 0; i < args.Length - 1; i++)
             {
                 if (args[i] == "--play-project") projectPath = args[i + 1].Trim('"');
                 if (args[i] == "--load-level") levelName = args[i + 1].Trim('"');
+                if (args[i] == "--runtime-snapshot") snapshotPath = args[i + 1].Trim('"');
             }
             if (!string.IsNullOrEmpty(projectPath))
             {
-                Console.WriteLine($"[RuntimeGameplayScene] ✅ MenuCommands command-line parsed → Project: {projectPath} | Level: {levelName}");
+                Console.WriteLine($"[RuntimeGameplayScene] ✅ MenuCommands command-line parsed → Project: {projectPath} | Level: {levelName} | Snapshot: {snapshotPath}");
                 ctx = ctx ?? new SceneContext { PlayProjectPath = projectPath, LoadLevelName = levelName };
+                if (!string.IsNullOrEmpty(snapshotPath) && File.Exists(snapshotPath))
+                {
+                    ctx.CurrentLevel = Level.Deserialize(File.ReadAllBytes(snapshotPath));
+                    Console.WriteLine($"[RuntimeGameplayScene] Loaded full Level snapshot from runtime-snapshot arg ({ctx.CurrentLevel.Entities.Count} entities)");
+                }
             }
             if (ctx != null) LoadContentFromContext(ctx);
         }
@@ -100,41 +107,35 @@ namespace SiegeEngine.Scenes
             _contentLoaded = true;
             string projectPath = ctx?.PlayProjectPath ?? "";
             string levelName = ctx?.LoadLevelName ?? "NewTerrain";
-            LoadLevelData(levelName, projectPath);
-            LoadExactSavedTerrain(projectPath, levelName);
-            _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
-            if (!string.IsNullOrEmpty(projectPath))
+            Level level = ctx?.CurrentLevel;
+            if (level == null)
             {
-                ModelManager.EnsurePacksLoaded(projectPath, ctx?.CurrentLevel);
-                if (ctx?.CurrentLevel == null || ctx.CurrentLevel.Entities.Count == 0)
+                string snapshotCandidate = Path.Combine(projectPath, "Scenes", "starting_level.json");
+                if (File.Exists(snapshotCandidate))
                 {
-                    ctx.CurrentLevel = ctx.CurrentLevel ?? new Level();
-                    for (int i = 1; i <= 2; i++)
-                    {
-                        var fbxe = new Entity { Id = i, Type = "FBX" };
-                        fbxe.AddComponent(new TransformComponent());
-                        fbxe.AddComponent(new PhysicsComponent { Position = i == 1 ? new Vector3(56.5f, 51.7f, 0.15f) : new Vector3(59.2f, 45.4f, 0.1f) });
-                        var mc = new ModelComponent { Key = "man_mesh_pack" };
-                        if (_modelManager.TryGetModel("man_mesh_pack", out var m))
-                            mc.Model = m;
-                        fbxe.AddComponent(mc);
-                        ctx.CurrentLevel.AddEntity(fbxe);
-                        _server.AddEntity(fbxe);
-                        Console.WriteLine($"[RuntimeGameplayScene] Created placed FBX entity {i} with Key='man_mesh_pack' (pack preloaded)");
-                    }
+                    level = Level.Deserialize(File.ReadAllBytes(snapshotCandidate));
+                    Console.WriteLine($"[RuntimeGameplayScene] Deserialized full Level snapshot from exported/Scenes/starting_level.json ({level.Entities.Count} entities, Level authoritative)");
                 }
                 else
                 {
-                    foreach (var e in ctx.CurrentLevel.Entities)
-                    {
-                        var mc = e.GetComponent<ModelComponent>();
-                        if (mc != null && _modelManager.TryGetModel(mc.Key, out var m))
-                        {
-                            mc.Model = m;
-                        }
-                        _server.AddEntity(e);
-                    }
+                    level = new Level();
+                    Console.WriteLine("[RuntimeGameplayScene] No snapshot - created empty Level (editor state will populate via path)");
                 }
+                ctx.CurrentLevel = level;
+            }
+            LoadLevelData(levelName, projectPath);
+            LoadExactSavedTerrain(projectPath, levelName);
+            _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
+            ModelManager.EnsurePacksLoaded(projectPath, level);
+            foreach (var e in level.Entities)
+            {
+                var mc = e.GetComponent<ModelComponent>();
+                if (mc != null && _modelManager.TryGetModel(mc.Key, out var m))
+                {
+                    mc.Model = m;
+                }
+                _server.AddEntity(e);
+                Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
             }
             ForceVisibleOverheadCamera();
             _flyCamera.Update(0f, 0f, true);

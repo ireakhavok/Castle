@@ -429,8 +429,6 @@ Found: pack 1-5.7z
 Found: Tileable Brick Ground Textures - Set 1.zip
 Found: torture_1.zip
 Found: wests_textures.zip
-Found: bin
-Ignoring non-source folder: C:\repos\RealmFoundry\Castle\bin
 Found: Castle.sln
 Found: HeirarchySummary.exe
 Found: IDE
