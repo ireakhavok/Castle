@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Diagnostics;
 namespace SiegeEngine.Core.Managers
 {
     public static class ScriptLoader
@@ -23,6 +24,11 @@ namespace SiegeEngine.Core.Managers
             {
                 Console.WriteLine($"[ScriptLoader] Found custom DLL: {dll}");
                 LoadAndRegister(dll);
+            }
+            string[] csFiles = Directory.GetFiles(scriptsDir, "*.cs");
+            if (csFiles.Length > 0 && Directory.GetFiles(scriptsDir, "*.dll").Length == 0)
+            {
+                BuildProjectScripts(projectPath);
             }
         }
         public static void CopyProjectScripts(string projectPath)
@@ -104,13 +110,121 @@ namespace SiegeEngine.Core.Managers
         {
             Console.WriteLine("[ScriptLoader] Custom systems registered via reflection (Phase 1 complete)");
         }
-        // Phase 2 addition: controller swap hook (called from SceneManager)
         public static void ApplyCustomPlayerControllerIfPresent(Player player, ref PlayerMovement movement)
         {
-            // Placeholder - in full implementation scans loaded assemblies for CustomPlayerControllerAttribute and swaps
-            // For Phase 2 this stub allows compilation and safe no-op fallback
+            Console.WriteLine("[ScriptLoader] Scanning for [CustomPlayerController]...");
+            string runtimeTemp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
+            if (Directory.Exists(runtimeTemp))
+            {
+                foreach (string dll in Directory.GetFiles(runtimeTemp, "*.dll"))
+                {
+                    try
+                    {
+                        Assembly ass = Assembly.LoadFrom(dll);
+                        foreach (Type type in ass.GetTypes())
+                        {
+                            if (type.GetCustomAttributes(typeof(CustomPlayerControllerAttribute), false).Length > 0 &&
+                                typeof(PlayerMovement).IsAssignableFrom(type))
+                            {
+                                try
+                                {
+                                    var custom = Activator.CreateInstance(type) as PlayerMovement;
+                                    if (custom != null)
+                                    {
+                                        movement = custom;
+                                        Console.WriteLine($"[ScriptLoader] SUCCESS: Swapped to custom PlayerController '{type.Name}' - full override active for Play/Export");
+                                        return;
+                                    }
+                                }
+                                catch
+                                {
+                                    Console.WriteLine($"[ScriptLoader] Custom ctor fallback - default retained");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[ScriptLoader] Skipped {dll} reflection: {ex.Message}");
+                    }
+                }
+            }
             Console.WriteLine("[ScriptLoader] Custom PlayerController swap applied (or default retained) - Phase 2 ready");
-            // Example future: if custom found, movement = new CustomPlayerController(...);
+        }
+        public static void BuildProjectScripts(string projectPath)
+        {
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
+            string scriptsDir = Path.Combine(projectPath, "Scripts");
+            Directory.CreateDirectory(scriptsDir);
+            string libsDir = Path.Combine(scriptsDir, "Libs");
+            Directory.CreateDirectory(libsDir);
+            string csprojPath = Path.Combine(scriptsDir, "SiegeScripts.csproj");
+            if (!File.Exists(csprojPath))
+            {
+                string template = @"<Project Sdk=""Microsoft.NET.Sdk"">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <OutputPath>Libs\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include=""SiegeEngine"">
+      <HintPath>..\SiegeEngine.dll</HintPath>
+    </Reference>
+    <Reference Include=""Foundation"">
+      <HintPath>..\Foundation.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include=""**/*.cs"" />
+  </ItemGroup>
+</Project>";
+                File.WriteAllText(csprojPath, template);
+                if (Directory.GetFiles(scriptsDir, "*.cs").Length == 0)
+                {
+                    string exampleSrc = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SiegeEngine", "PlayerSystem", "CustomPlayerController.cs");
+                    if (File.Exists(exampleSrc))
+                    {
+                        File.Copy(exampleSrc, Path.Combine(scriptsDir, "CustomPlayerController.cs"), true);
+                        Console.WriteLine("[ScriptLoader] Copied CustomPlayerController.cs starter template to Scripts/ (ready to edit/override)");
+                    }
+                }
+                Console.WriteLine($"[ScriptLoader] Generated SiegeScripts.csproj at {csprojPath}");
+            }
+            var psi = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"build \"{csprojPath}\" --configuration Release --no-incremental --output \"{libsDir}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = scriptsDir
+            };
+            using (var process = Process.Start(psi))
+            {
+                string output = process.StandardOutput.ReadToEnd();
+                string err = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+                Console.WriteLine($"[ScriptLoader.BuildProjectScripts] dotnet build completed. Exit: {process.ExitCode}\nOutput: {output}");
+                if (process.ExitCode == 0)
+                {
+                    foreach (string dll in Directory.GetFiles(libsDir, "*.dll"))
+                    {
+                        string runtimeTarget = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp", Path.GetFileName(dll));
+                        Directory.CreateDirectory(Path.GetDirectoryName(runtimeTarget));
+                        File.Copy(dll, runtimeTarget, true);
+                        LoadAndRegister(dll);
+                    }
+                    ScanProjectScripts(projectPath);
+                    Console.WriteLine("[ScriptLoader] Build → DLL copy → reflection register COMPLETE. Custom controllers now active for Play/Export.");
+                }
+                else
+                {
+                    Console.WriteLine($"[ScriptLoader] Build warning: {err}");
+                }
+            }
+            CopyProjectScripts(projectPath);
         }
     }
     [AttributeUsage(AttributeTargets.Class)]

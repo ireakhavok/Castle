@@ -116,6 +116,7 @@ namespace CastleBuilder
             string snapshotPath = Path.Combine(projectPath, "runtime_start.level");
             var level = ProjectSettings.Current.CurrentLevel ?? new Level();
             File.WriteAllBytes(snapshotPath, level.Serialize());
+            ScriptLoader.BuildProjectScripts(projectPath); // ensure fresh build before runtime
             ScriptLoader.CopyProjectScripts(projectPath);
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
             if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
@@ -150,6 +151,7 @@ namespace CastleBuilder
                         Directory.CreateDirectory(projectPath);
                     }
                     BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
+                    ScriptLoader.BuildProjectScripts(projectPath); // ensure compiled before export
                     string exportRoot = Path.Combine(projectPath, "exported");
                     if (Directory.Exists(exportRoot))
                     {
@@ -206,8 +208,8 @@ namespace CastleBuilder
         {
             string projectPath = ProjectSettings.Current.ActiveProject ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\CastleBuilder\\Projects\\Current";
             eventBus.Publish(new GenericEvent { Hook = "ScriptsInfrastructure" });
-            ScriptLoader.CopyProjectScripts(projectPath);
-            Console.WriteLine("[MenuCommands.BuildScripts] IDE-only build triggered - csproj/Libs/DLL ready via ScriptLoader");
+            ScriptLoader.BuildProjectScripts(projectPath); // full csproj + dotnet + register
+            Console.WriteLine("[MenuCommands.BuildScripts] Full IDE-only build pipeline executed - .cs compiled to DLL, registered, ready for Play/Export");
         }
         public static void OpenScriptsPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {

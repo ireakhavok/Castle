@@ -505,7 +505,8 @@ namespace CastleBuilder
             Directory.CreateDirectory(scriptsDir);
             string libsDir = Path.Combine(scriptsDir, "Libs");
             Directory.CreateDirectory(libsDir);
-            Console.WriteLine($"[BlueprintManager.EnsureScriptsInfrastructure] Scripts/ + Libs/ setup (IDE-only build handled elsewhere)");
+            ScriptLoader.BuildProjectScripts(projectPath);
+            Console.WriteLine($"[BlueprintManager.EnsureScriptsInfrastructure] Scripts/ + Libs/ + csproj + dotnet build pipeline complete for {projectPath}");
         }
     }
     public static class StringExtensions
