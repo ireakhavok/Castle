@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
+﻿// Folder: SiegeEngine.Core.Managers
 // File: SceneManager.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -71,6 +71,8 @@ namespace SiegeEngine.Core.Managers
             _currentScene.SetPlayer(_player);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine($"SceneManager: '{e.SceneName}' initialized successfully via registry.");
+            // Phase 1 addition: after scene setup, register any custom assemblies
+            ScriptLoader.RegisterCustomSystems(_eventBus, _server);
         }
         public void SwitchToRuntimeGameplay(string projectPath, string levelName, Level currentLevel = null)
         {
@@ -89,6 +91,8 @@ namespace SiegeEngine.Core.Managers
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot");
+            // Phase 1 addition: register custom after runtime scene creation
+            ScriptLoader.RegisterCustomSystems(_eventBus, ctx.Server);
         }
     }
 }

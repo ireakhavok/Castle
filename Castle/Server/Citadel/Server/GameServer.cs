@@ -9,7 +9,7 @@ using Citadel.Network;
 using Citadel.Systems;
 using SiegeEngine.PlayerSystem;
 using SiegeEngine.Systems;
-using SiegeEngine.Core.ContextManagement;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;

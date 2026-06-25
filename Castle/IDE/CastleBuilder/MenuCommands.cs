@@ -116,12 +116,13 @@ namespace CastleBuilder
             string snapshotPath = Path.Combine(projectPath, "runtime_start.level");
             var level = ProjectSettings.Current.CurrentLevel ?? new Level();
             File.WriteAllBytes(snapshotPath, level.Serialize());
+            ScriptLoader.CopyProjectScripts(projectPath);
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
             if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
-                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\" --runtime-snapshot \"{snapshotPath}\"",
+                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\" --runtime-snapshot \"{snapshotPath}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\"",
                 UseShellExecute = true,
                 WorkingDirectory = Path.GetDirectoryName(exe)
             };
@@ -167,6 +168,8 @@ namespace CastleBuilder
                             BlueprintManager.CopyDirectory(source, target);
                         }
                     }
+                    ScriptLoader.CopyProjectScripts(projectPath);
+                    ScriptLoader.CopyScriptsToExport(projectPath, exportRoot);
                     string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
                     var level = ProjectSettings.Current.CurrentLevel ?? new Level();
                     string levelJsonPath = Path.Combine(exportRoot, "Scenes", "starting_level.json");
@@ -190,7 +193,7 @@ namespace CastleBuilder
                         FileName = Path.Combine(exportRoot, "Citadel.exe"),
                         WorkingDirectory = exportRoot,
                         UseShellExecute = true,
-                        Arguments = "--client --load-level " + levelName + " --runtime-snapshot \"" + levelJsonPath + "\""
+                        Arguments = "--client --load-level " + levelName + " --runtime-snapshot \"" + levelJsonPath + "\" --custom-assemblies \"" + ScriptLoader.GetCustomAssemblyList(projectPath) + "\""
                     });
                     Console.WriteLine($"[Export SUCCESS] Clean game client exported to {exportRoot} with FULL starting Level '{levelName}' and launched as pure runtime client (exact entities, positions, terrain, packs - no server messages, no IDE)");
                 }

@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Managers
+﻿// Folder: SiegeEngine.Core.Managers
 // File: ModManager.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Interfaces;
@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-
 namespace SiegeEngine.Core.Managers
 {
     public class ModManager
@@ -55,12 +54,7 @@ namespace SiegeEngine.Core.Managers
             {
                 foreach (var dir in Directory.GetDirectories(assetsPath))
                 {
-                    var modInfo = new ModInfo
-                    {
-                        Name = Path.GetFileName(dir),
-                        Version = "1.0",
-                        Path = dir
-                    };
+                    var modInfo = new ModInfo { Name = Path.GetFileName(dir), Version = "1.0", Path = dir };
                     _loadedMods.Add(modInfo);
                     Console.WriteLine($"ModManager: Added asset pack as mod '{modInfo.Name}' from {dir}");
                 }
@@ -106,43 +100,30 @@ namespace SiegeEngine.Core.Managers
         public string ResolvePath(string relativePath)
         {
             if (string.IsNullOrEmpty(relativePath)) return null;
-            // Normalize path: trim leading backslashes, replace / with \
             relativePath = relativePath.TrimStart('\\', '/').Replace("/", "\\");
             if (Path.IsPathRooted(relativePath)) return File.Exists(relativePath) ? relativePath : null;
-            string[] commonDirs = new[]
-            {
-                Path.Combine("Assets", "Characters", "Adventure_Character", "Textures"),
-                Path.Combine("Assets", "Textures"),
-                Path.Combine("Assets", "Static_Images"),
-                Path.Combine("Assets", "Configs"),
-                "Textures"
-            };
+            string[] commonDirs = new[] { Path.Combine("Assets", "Characters", "Adventure_Character", "Textures"), Path.Combine("Assets", "Textures"), Path.Combine("Assets", "Static_Images"), Path.Combine("Assets", "Configs"), "Textures" };
             foreach (var dir in commonDirs)
             {
                 string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dir, relativePath);
                 Console.WriteLine($"ModManager: Checking common path for {relativePath}: {fullPath}, Exists: {File.Exists(fullPath)}");
-                if (File.Exists(fullPath))
-                    return fullPath;
+                if (File.Exists(fullPath)) return fullPath;
                 string solutionFullPath = Path.Combine(_solutionDirectory, dir, relativePath);
                 Console.WriteLine($"ModManager: Checking solution common path for {relativePath}: {solutionFullPath}, Exists: {File.Exists(solutionFullPath)}");
-                if (File.Exists(solutionFullPath))
-                    return solutionFullPath;
+                if (File.Exists(solutionFullPath)) return solutionFullPath;
             }
             foreach (var mod in _loadedMods)
             {
                 string modPath = Path.Combine(mod.Path, relativePath);
                 Console.WriteLine($"ModManager: Checking mod path for {relativePath}: {modPath}, Exists: {File.Exists(modPath)}");
-                if (File.Exists(modPath))
-                    return modPath;
+                if (File.Exists(modPath)) return modPath;
             }
             string solutionPath = Path.Combine(_solutionDirectory, relativePath);
             Console.WriteLine($"ModManager: Checking solution path for {relativePath}: {solutionPath}, Exists: {File.Exists(solutionPath)}");
-            if (File.Exists(solutionPath))
-                return solutionPath;
+            if (File.Exists(solutionPath)) return solutionPath;
             string outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relativePath);
             Console.WriteLine($"ModManager: Checking output path for {relativePath}: {outputPath}, Exists: {File.Exists(outputPath)}");
-            if (File.Exists(outputPath))
-                return outputPath;
+            if (File.Exists(outputPath)) return outputPath;
             Console.WriteLine($"ModManager: Path not found for {relativePath}");
             return null;
         }
@@ -152,28 +133,16 @@ namespace SiegeEngine.Core.Managers
             {
                 string configPath = Path.Combine(mod.Path, "MainMenu.html");
                 Console.WriteLine($"ModManager: Checking mod config path: {configPath}, Exists: {File.Exists(configPath)}");
-                if (File.Exists(configPath))
-                    return configPath;
+                if (File.Exists(configPath)) return configPath;
             }
             string solutionPath = Path.Combine(_solutionDirectory, "Assets", "Configs", "MainMenu.html");
             Console.WriteLine($"ModManager: Checking solution config path: {solutionPath}, Exists: {File.Exists(solutionPath)}");
-            if (File.Exists(solutionPath))
-                return solutionPath;
+            if (File.Exists(solutionPath)) return solutionPath;
             string outputPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Configs", "MainMenu.html");
             Console.WriteLine($"ModManager: Checking output config path: {outputPath}, Exists: {File.Exists(outputPath)}");
-            if (File.Exists(outputPath))
-                return outputPath;
+            if (File.Exists(outputPath)) return outputPath;
             Console.WriteLine($"ModManager: Menu config path not found");
             return null;
         }
-        //public List<MenuDefinition> GetAllMenuExtensions()
-        //{
-        // var extensions = new List<MenuDefinition>();
-        // foreach (var mod in _loadedMods)
-        // {
-        // extensions.AddRange(mod.Menus);
-        // }
-        // return extensions;
-        //}
     }
 }
