@@ -127,7 +127,6 @@ namespace CastleBuilder
                 WorkingDirectory = Path.GetDirectoryName(exe)
             };
             Process.Start(psi);
-            // Panel closure removed per request - no ContextChangedEvent or ClosePanelEvent triggered here
             Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with FULL Level snapshot '{levelName}' from IDE cache - editor panels remain open, exact entities/positions/terrain/packs active (no spoof, standalone compatible)");
         }
         public static void SandboxRegressionTest(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -157,7 +156,7 @@ namespace CastleBuilder
                         Directory.Delete(exportRoot, true);
                     }
                     Directory.CreateDirectory(exportRoot);
-                    string[] runtimeFolders = { "Assets", "Scenes" };
+                    string[] runtimeFolders = { "Assets", "Scenes", "Scripts" };
                     foreach (string folder in runtimeFolders)
                     {
                         string source = Path.Combine(projectPath, folder);
@@ -202,6 +201,18 @@ namespace CastleBuilder
                     Console.WriteLine($"[Export ERROR] {ex.Message}");
                 }
             });
+        }
+        public static void BuildScripts(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            string projectPath = ProjectSettings.Current.ActiveProject ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\CastleBuilder\\Projects\\Current";
+            eventBus.Publish(new GenericEvent { Hook = "ScriptsInfrastructure" });
+            ScriptLoader.CopyProjectScripts(projectPath);
+            Console.WriteLine("[MenuCommands.BuildScripts] IDE-only build triggered - csproj/Libs/DLL ready via ScriptLoader");
+        }
+        public static void OpenScriptsPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            Console.WriteLine("[MenuCommands] Scripts panel opened - Build, csproj gen, controller selector active");
+            eventBus.Publish(new GenericEvent { Hook = "OpenScriptsPanel" });
         }
     }
 }

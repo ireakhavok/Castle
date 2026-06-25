@@ -83,6 +83,7 @@ namespace CastleBuilder
             Directory.CreateDirectory(Path.Combine(dir, "Scenes"));
             Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             Directory.CreateDirectory(Path.Combine(dir, "Mods"));
+            EnsureScriptsInfrastructure(dir);
             eventBus.Publish(new LoadProjectEvent { Path = dir });
             Console.WriteLine($"[BlueprintManager] New project created: {dir}");
             Load(renderContext, controlContext, window, eventBus);
@@ -220,9 +221,10 @@ namespace CastleBuilder
                 }
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Materialized {uniquePackKeys.Count} asset packs to Assets/ folder");
             }
+            EnsureScriptsInfrastructure(projectPath);
             SaveAllPanelStates(data);
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
-            Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with Level as single source of truth + terrain reference + clean entities + materialized asset packs");
+            Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with Level as single source of truth + terrain reference + clean entities + materialized asset packs + Scripts support");
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Forcing CURRENT blade '{_previousContext}' into memory");
@@ -259,10 +261,9 @@ namespace CastleBuilder
                 Directory.CreateDirectory(Path.Combine(dir, "Scenes"));
                 Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             }
+            EnsureScriptsInfrastructure(dir);
             ProjectSettings.Current.ActiveProject = dir;
-
             EditorScene.Current?.FlushActiveSceneData();
-
             DoProjectSave();
             eventBus.Publish(new LoadProjectEvent { Path = dir });
             Console.WriteLine($"[BlueprintManager.SaveProjectAs] Save As complete - new project fully populated and active at {dir}");
@@ -272,16 +273,13 @@ namespace CastleBuilder
             DirectoryInfo diSource = new DirectoryInfo(sourceDir);
             DirectoryInfo diTarget = new DirectoryInfo(targetDir);
             if (!diTarget.Exists) diTarget.Create();
-
             foreach (FileInfo fi in diSource.GetFiles())
             {
                 string targetFile = Path.Combine(diTarget.FullName, fi.Name);
                 fi.CopyTo(targetFile, true);
             }
-
             foreach (DirectoryInfo diSourceSubDir in diSource.GetDirectories())
             {
-                // SKIP the "exported" folder and any IDE-specific folders to keep export clean
                 if (diSourceSubDir.Name.Equals("exported", StringComparison.OrdinalIgnoreCase) ||
                     diSourceSubDir.Name.Equals("IDE", StringComparison.OrdinalIgnoreCase))
                 {
@@ -306,6 +304,10 @@ namespace CastleBuilder
                 string path = evt.Data.GetValueOrDefault("path", null);
                 _eventBus.Publish(new NewProjectEvent { Name = name, ProjectType = projectType, Mode = mode, AllowMods = allowMods, Path = path });
             }
+            else if (evt.Hook == "ScriptsInfrastructure")
+            {
+                EnsureScriptsInfrastructure(ProjectSettings.Current.ActiveProject);
+            }
         }
         private void OnNewProject(NewProjectEvent evt)
         {
@@ -324,6 +326,7 @@ namespace CastleBuilder
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
             Directory.CreateDirectory(Path.Combine(dir, "Scenes"));
             Directory.CreateDirectory(Path.Combine(dir, "Assets"));
+            EnsureScriptsInfrastructure(dir);
             _eventBus.Publish(new LoadProjectEvent { Path = dir });
         }
         private void OnLoadProject(LoadProjectEvent evt)
@@ -358,6 +361,7 @@ namespace CastleBuilder
                         ProjectSettings.Current.SetCurrentLevel(level);
                         Console.WriteLine($"[BlueprintManager] Loaded Level '{currentScene}' with {level.Entities.Count} entities as single source of truth");
                     }
+                    EnsureScriptsInfrastructure(evt.Path);
                 }
             }
             SaveIDEState();
@@ -402,6 +406,7 @@ namespace CastleBuilder
                     SaveAllPanelStates(data);
                     File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
                 }
+                EnsureScriptsInfrastructure(projectPath);
             }
             _previousContext = newContext;
             Console.WriteLine($"[BlueprintManager.OnContextChanged] Context switch complete → '{newContext}' (memory hotswap, no close/dispose)");
@@ -420,6 +425,7 @@ namespace CastleBuilder
                 Console.WriteLine($"[BlueprintManager.OnFileSelected] LoadProject selected folder: {projectPath}");
                 ProjectSettings.Current.ActiveProject = projectPath;
                 OnLoadProject(new LoadProjectEvent { Path = projectPath });
+                EnsureScriptsInfrastructure(projectPath);
             }
             else
             {
@@ -491,6 +497,15 @@ namespace CastleBuilder
                     }
                 }
             }
+        }
+        public static void EnsureScriptsInfrastructure(string projectPath)
+        {
+            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
+            string scriptsDir = Path.Combine(projectPath, "Scripts");
+            Directory.CreateDirectory(scriptsDir);
+            string libsDir = Path.Combine(scriptsDir, "Libs");
+            Directory.CreateDirectory(libsDir);
+            Console.WriteLine($"[BlueprintManager.EnsureScriptsInfrastructure] Scripts/ + Libs/ setup (IDE-only build handled elsewhere)");
         }
     }
     public static class StringExtensions

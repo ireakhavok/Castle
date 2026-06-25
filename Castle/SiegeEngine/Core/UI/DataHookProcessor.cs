@@ -7,8 +7,7 @@ using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
-using SiegeEngine.Core.UI; // for BasePanel
-
+using SiegeEngine.Core.UI;
 namespace SiegeEngine.Core.UI
 {
     public static class DataHookProcessor
@@ -16,16 +15,13 @@ namespace SiegeEngine.Core.UI
         public static void Process(string hook, IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, UIOverlay overlayForFormData = null, BasePanel callerPanel = null)
         {
             if (string.IsNullOrEmpty(hook)) return;
-
             Console.WriteLine($"[DataHookProcessor] Processing data-hook: {hook}");
-
             var parts = hook.Split('.');
             if (parts.Length > 2)
             {
                 string dllName = parts[0] + ".dll";
                 string typeName = string.Join(".", parts, 0, parts.Length - 1);
                 string methodName = parts[parts.Length - 1];
-
                 string dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, dllName);
                 Assembly ass = null;
                 if (File.Exists(dllPath))
@@ -39,14 +35,12 @@ namespace SiegeEngine.Core.UI
                         Console.WriteLine($"DataHookProcessor: Failed to load {dllPath}: {ex.Message}");
                     }
                 }
-
                 Type type = ass?.GetType(typeName) ?? Type.GetType(typeName);
                 if (type != null)
                 {
                     if (overlayForFormData != null)
                     {
-                        MethodInfo mi5 = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public, null,
-                            new Type[] { typeof(IRenderContext), typeof(IControlContext), typeof(nint), typeof(EventBus), typeof(UIOverlay) }, null);
+                        MethodInfo mi5 = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public, null, new Type[] { typeof(IRenderContext), typeof(IControlContext), typeof(nint), typeof(EventBus), typeof(UIOverlay) }, null);
                         if (mi5 != null)
                         {
                             try
@@ -61,9 +55,7 @@ namespace SiegeEngine.Core.UI
                             }
                         }
                     }
-
-                    MethodInfo mi = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public, null,
-                        new Type[] { typeof(IRenderContext), typeof(IControlContext), typeof(nint), typeof(EventBus) }, null);
+                    MethodInfo mi = type.GetMethod(methodName, BindingFlags.Static | BindingFlags.Public, null, new Type[] { typeof(IRenderContext), typeof(IControlContext), typeof(nint), typeof(EventBus) }, null);
                     if (mi != null)
                     {
                         mi.Invoke(null, new object[] { renderContext, controlContext, window, eventBus });
@@ -80,7 +72,6 @@ namespace SiegeEngine.Core.UI
                     Console.WriteLine($"DataHookProcessor: Failed to find type {typeName}");
                 }
             }
-
             if (eventBus != null)
             {
                 eventBus.Publish(new GenericEvent { Hook = hook });
@@ -90,10 +81,7 @@ namespace SiegeEngine.Core.UI
             {
                 Console.WriteLine($"[DataHookProcessor] WARNING: No EventBus available for hook {hook}");
             }
-
-            // Auto-close only when a callerPanel is provided (MenuPanel passes itself, other panels do not)
-        autoClose:
-            if (callerPanel != null && eventBus != null)
+        autoClose: if (callerPanel != null && eventBus != null)
             {
                 eventBus.Publish(new ClosePanelEvent(callerPanel));
                 Console.WriteLine($"[DataHookProcessor] Auto-closed caller panel after hook: {hook}");
