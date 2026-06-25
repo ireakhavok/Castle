@@ -158,6 +158,19 @@ namespace SiegeEngine.Core.Managers
             Directory.CreateDirectory(scriptsDir);
             string libsDir = Path.Combine(scriptsDir, "Libs");
             Directory.CreateDirectory(libsDir);
+            // Copy core DLLs to Scripts/ for reliable HintPath
+            string binDir = AppDomain.CurrentDomain.BaseDirectory;
+            string[] coreDlls = { "SiegeEngine.dll", "Foundation.dll" };
+            foreach (string dllName in coreDlls)
+            {
+                string source = Path.Combine(binDir, dllName);
+                string target = Path.Combine(scriptsDir, dllName);
+                if (File.Exists(source))
+                {
+                    File.Copy(source, target, true);
+                    Console.WriteLine($"[ScriptLoader] Copied core DLL {dllName} to Scripts/ for build reference");
+                }
+            }
             string csprojPath = Path.Combine(scriptsDir, "SiegeScripts.csproj");
             if (!File.Exists(csprojPath))
             {
@@ -166,13 +179,15 @@ namespace SiegeEngine.Core.Managers
     <TargetFramework>net9.0</TargetFramework>
     <OutputType>Library</OutputType>
     <OutputPath>Libs\</OutputPath>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include=""SiegeEngine"">
-      <HintPath>..\SiegeEngine.dll</HintPath>
+      <HintPath>SiegeEngine.dll</HintPath>
     </Reference>
     <Reference Include=""Foundation"">
-      <HintPath>..\Foundation.dll</HintPath>
+      <HintPath>Foundation.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
