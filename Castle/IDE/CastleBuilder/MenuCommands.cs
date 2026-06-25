@@ -127,8 +127,8 @@ namespace CastleBuilder
                 WorkingDirectory = Path.GetDirectoryName(exe)
             };
             Process.Start(psi);
-            eventBus.Publish(new ContextChangedEvent { Context = "Runtime Gameplay" });
-            Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with FULL Level snapshot '{levelName}' from IDE cache - editor panels hidden, exact entities/positions/terrain/packs active (no spoof, standalone compatible)");
+            // Panel closure removed per request - no ContextChangedEvent or ClosePanelEvent triggered here
+            Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with FULL Level snapshot '{levelName}' from IDE cache - editor panels remain open, exact entities/positions/terrain/packs active (no spoof, standalone compatible)");
         }
         public static void SandboxRegressionTest(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {

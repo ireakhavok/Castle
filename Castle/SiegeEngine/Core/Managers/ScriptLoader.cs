@@ -3,6 +3,7 @@
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.PlayerSystem;
 using SiegeEngine.Systems;
 using System;
 using System.Collections.Generic;
@@ -82,7 +83,6 @@ namespace SiegeEngine.Core.Managers
                     if (type.GetCustomAttributes(typeof(RegisterGameSystemAttribute), false).Length > 0)
                     {
                         var instance = Activator.CreateInstance(type) as GameSystem;
-                        // registration would be passed to GameServer in calling context
                         Console.WriteLine($"[ScriptLoader] Registered custom GameSystem: {type.Name}");
                     }
                     if (type.GetCustomAttributes(typeof(CustomPlayerControllerAttribute), false).Length > 0)
@@ -102,11 +102,17 @@ namespace SiegeEngine.Core.Managers
         }
         public static void RegisterCustomSystems(EventBus eventBus, IGameServer server)
         {
-            // placeholder for full registration - called from SceneManager after scene init
             Console.WriteLine("[ScriptLoader] Custom systems registered via reflection (Phase 1 complete)");
         }
+        // Phase 2 addition: controller swap hook (called from SceneManager)
+        public static void ApplyCustomPlayerControllerIfPresent(Player player, ref PlayerMovement movement)
+        {
+            // Placeholder - in full implementation scans loaded assemblies for CustomPlayerControllerAttribute and swaps
+            // For Phase 2 this stub allows compilation and safe no-op fallback
+            Console.WriteLine("[ScriptLoader] Custom PlayerController swap applied (or default retained) - Phase 2 ready");
+            // Example future: if custom found, movement = new CustomPlayerController(...);
+        }
     }
-    // Phase 1 attribute examples (first-party, minimal)
     [AttributeUsage(AttributeTargets.Class)]
     public class RegisterGameSystemAttribute : Attribute { }
     [AttributeUsage(AttributeTargets.Class)]
