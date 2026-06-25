@@ -171,7 +171,7 @@ Folder: IDE
       - void RefreshMenuForContext(string context)
         - Calls: Console.WriteLine
       - void HandleDataHook(string hook)
-        - Calls: CloseAllOpenNavDropdowns, MenuCommands.ExportGame, MenuCommands.PlayGame, RefreshUI
+        - Calls: CloseAllOpenNavDropdowns, MenuCommands.BuildScripts, MenuCommands.ExportGame, MenuCommands.OpenScriptsPanel, MenuCommands.PlayGame, RefreshUI
       - void CloseAllOpenNavDropdowns()
         - Calls: FindElementsByTag, nav.CloseDropdown, nav.IsNavDropdownParent
 - File: IOutlinerProvider.cs
@@ -235,6 +235,10 @@ Folder: IDE
         - Calls: Console.WriteLine, SandboxScene.Launch
       - void ExportGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: BlueprintManager.CopyDirectory, BlueprintManager.SaveCurrentProject, Console.WriteLine, Level, Process.Start, ScriptLoader.CopyProjectScripts, ScriptLoader.CopyScriptsToExport, ScriptLoader.GetCustomAssemblyList, Task.Run, level.Serialize
+      - void BuildScripts( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine, ScriptLoader.CopyProjectScripts
+      - void OpenScriptsPanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine
 - File: NewMaterialPanel.cs
   - Class: NewMaterialUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
