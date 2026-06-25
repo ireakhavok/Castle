@@ -1,0 +1,25 @@
+Prompt for Implementation (Custom Player Controllers + Custom C# Code + Build/Export Process)
+Task
+Implement first-party-only support (pure .NET reflection/Assembly.LoadFrom, Process.Start for optional csc.exe/dotnet, no NuGet/Roslyn) so users can add arbitrary C# functionality to any exported game without touching or recompiling the SiegeEngine binary. Support full custom player controllers (replacing/extending PlayerMovement/Player), custom GameSystems/Components, and completely custom scenes (including pure-UI/HTML-selection games that may have zero physical entities). The solution must integrate seamlessly with the existing PlayGame / ExportGame flow (MenuCommands), SceneManager.SwitchToRuntimeGameplay, Launcher.Start (with --client flag), Level serialization, and ModManager.
+Things to Consider
+
+Zero impact on CORE/IDE boundary – runtime path must still skip all panels/docking when --client or play-project is present.
+Extreme variability: games can be entity-heavy, entity-light, or entity-less (HTML/selection only). Custom code must be able to register a custom Scene via SceneRegistry, override PlayerMovement entirely, or run a headless GameSystem that only uses EventBus + JSContext + custom data.
+First-party only: use Assembly.LoadFrom / AssemblyLoadContext, Type.GetCustomAttributes, reflection on interfaces ([CustomPlayerController], [RegisterGameSystem], [CustomSceneEntry]), Process.Start("csc.exe") or "dotnet build" only as optional helper (detect SDK, never required).
+Export must remain a clean folder (Assets + Scenes + starting_level.json + Citadel.exe + GameLogic.dll + any user DLLs).
+Play must remain instant in-memory snapshot launch with optional custom assembly arg.
+Backward compatibility + safety: existing projects without Scripts/ continue unchanged; errors in custom DLL must log gracefully without crashing engine.
+ModManager reuse: treat ProjectRoot/Scripts/*.dll exactly like Workshop mods (scan + load).
+Audio/Networking/Validation: custom controllers must still emit standard events so AudioSystem, ServerValidationSystem, ClientPredictionSystem continue working unchanged.
+
+Basic Plan – How It Should Work
+
+MenuCommands.PlayGame + ExportGame detect optional "Scripts" folder in ActiveProject → copy all *.dll (and optional source if user wants csc helper) into export root / runtime temp.
+Launcher.Start parses new arg --custom-assemblies "GameLogic.dll;MyUI.dll" → loads each via isolated AssemblyLoadContext in runtime mode.
+After SceneManager.SwitchToRuntimeGameplay / SceneRegistry.Create, scan loaded assemblies for attributes/interfaces → auto-call GameServer.AddSystem, replace PlayerMovement instance if CustomPlayerController found, or register custom IScene factory in SceneRegistry.
+Provide three thin first-party base classes in SiegeEngine (CustomPlayerController : PlayerMovement, CustomGameSystem : GameSystem, PureUIEntryScene : Scene) that users inherit + override; they auto-register via reflection on load.
+For pure-UI games: custom assembly can register a "PureSelection" scene that sets up only MenuPanel-style HTML + JSContext + custom GameSystem (no entities added to server).
+Build button (optional in BlueprintManager) runs lightweight Process.Start on csc.exe or dotnet build if detected, otherwise just copies pre-built DLLs.
+All communication stays on EventBus; Level.Serialize still captures everything needed for rehydration.
+
+Output only the full modified files (in folder/class labelled C# blocks) when I say "go". Keep changes methodical, future-proof, variable names untouched, and fully compatible with the provided code snapshots. Ready for your "go" command on the exact files to edit first.
