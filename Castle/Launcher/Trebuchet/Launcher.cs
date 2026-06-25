@@ -17,7 +17,6 @@ using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
-
 namespace Trebuchet
 {
     public class Launcher
@@ -36,7 +35,6 @@ namespace Trebuchet
         private Process _serverProcess;
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
-
         public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0, bool discoverP2PHost = false, ulong joinLobbyId = 0, bool isClientRuntime = false, string playProjectPath = null, string loadLevelName = "Main")
         {
             try
@@ -48,14 +46,13 @@ namespace Trebuchet
                     Console.WriteLine($"Failed to load steam_api64.dll. Error code: {Marshal.GetLastWin32Error()}");
                     return;
                 }
-
                 if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
                 {
                     Console.WriteLine($"[Launcher.PureClient] ACTIVATED - level '{loadLevelName}' - NO server spawn, NO IDE panels, NO Steam server, robust 1280x720 window");
                     _settingsManager = new UISettingsManager();
                     _settingsManager.UpdateWindowSize(1280, 720);
-                    _settingsManager.LoadSettings(); // safe call (defaults applied)
-                    _panelManager = null; // strict isolation - no panels
+                    _settingsManager.LoadSettings();
+                    _panelManager = null;
                     _menuPanel = null;
                 }
                 else if (!discoverDedicated && connectToServerSteamId == 0 && !discoverP2PHost)
@@ -75,7 +72,6 @@ namespace Trebuchet
                 {
                     Console.WriteLine("Launcher: P2P HOST DISCOVER MODE — searching for P2P authoritative host lobbies...");
                 }
-
                 using (_steamEngine = new SteamEngine())
                 {
                     _eventBus = new EventBus((SteamEngine)_steamEngine);
@@ -84,7 +80,6 @@ namespace Trebuchet
                         Console.WriteLine("Launcher: SteamEngine initialization failed.");
                         return;
                     }
-
                     if (joinLobbyId != 0)
                     {
                         ((SteamEngine)_steamEngine).JoinSpecificLobby(joinLobbyId);
@@ -108,7 +103,6 @@ namespace Trebuchet
                             ((SteamEngine)_steamEngine).CreateLobby(64);
                         }
                     }
-
                     _settingsManager = _settingsManager ?? new UISettingsManager();
                     _settingsManager.LoadSettings();
                     if (_settingsManager.WindowWidth == 0 || _settingsManager.WindowHeight == 0)
@@ -129,11 +123,10 @@ namespace Trebuchet
                     _inputHandler.SetKeyCallback("ui", (key, action) => { });
                     string initialHtmlPath = _modManager.GetMenuConfigPath();
                     Console.WriteLine($"Launcher: Resolved MainMenu.html path: {initialHtmlPath}, Exists: {File.Exists(initialHtmlPath)}");
-
                     if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
                     {
                         _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, null);
-                        // panelManager skipped entirely in pure runtime
+                        ScriptLoader.LoadCustomAssemblies(playProjectPath); // Phase 1 addition
                         _sceneManager.SwitchToRuntimeGameplay(playProjectPath, loadLevelName);
                         Console.WriteLine("[Launcher] Pure client runtime - IDE panels skipped, Gameplay scene loaded from passed Level name");
                     }
@@ -143,15 +136,13 @@ namespace Trebuchet
                         _menuPanel.DockState = DockState.Tabbed;
                         _menuPanel.Init();
                         _eventBus.RegisterNamespace("CastleBuilder.Events");
-
                         _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, _menuPanel);
                         _panelManager = new PanelManager(_renderContext, _controlContext, _window, _eventBus);
                         _panelManager.AddPanel(_menuPanel);
                     }
-
                     _controlContext.SetWindowSizeCallback(_window, (w, width, height) =>
                     {
-                        if (!isClientRuntime) // respect core separation - no spam in pure client
+                        if (!isClientRuntime)
                         {
                             _settingsManager.UpdateWindowSize(width, height);
                             Console.WriteLine($"Launcher: Window resized to: {width}x{height}");
@@ -167,8 +158,7 @@ namespace Trebuchet
                         lastFrameTime = currentTime;
                         _steamEngine.RunCallbacks();
                         _controlContext.PollEvents();
-                        if (_controlContext.WindowShouldClose(_window))
-                            _isRunning = false;
+                        if (_controlContext.WindowShouldClose(_window)) _isRunning = false;
                         _renderContext.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
                         _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
                         _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -193,7 +183,6 @@ namespace Trebuchet
                 _contextManager?.Terminate();
             }
         }
-
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr LoadLibrary(string lpFileName);
     }

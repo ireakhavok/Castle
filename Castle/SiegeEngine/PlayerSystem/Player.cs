@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/PlayerSystem
+﻿// Folder: SiegeEngine.PlayerSystem
 // File: Player.cs
 using System;
 using System.Numerics;
@@ -7,7 +7,6 @@ using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering.ContextManagement;
-
 namespace SiegeEngine.PlayerSystem
 {
     public class Player : IComponent
@@ -17,10 +16,7 @@ namespace SiegeEngine.PlayerSystem
         private readonly PhysicsComponent _physics;
         public ulong SteamId { get; set; }
         public FBXModel Model { get; private set; }
-
-        // Backward-compatible public API (now delegates to TransformComponent via PhysicsComponent)
         public Vector3 Position => _physics.Position;
-
         public Player(int entityId, Vector3 position, ulong steamId = 0, ModelManager modelLoader = null)
         {
             EntityId = entityId;
@@ -38,16 +34,12 @@ namespace SiegeEngine.PlayerSystem
                 Model = FBXParserBase.CreateDefaultCubeModel();
             }
         }
-
         public CameraController Camera => _camera;
         public PhysicsComponent Physics => _physics;
-
         public void InitializeCamera(IControlContext controlContext, IntPtr window)
         {
-            if (_camera == null)
-                _camera = new CameraController(controlContext, window, this);
+            if (_camera == null) _camera = new CameraController(controlContext, window, this);
         }
-
         public void Update(float deltaTime, IntPtr window, float scrollDelta, PlayerMovement movement, bool isGameActive)
         {
             if (_camera != null)

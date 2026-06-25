@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/PlayerSystem
+﻿// Folder: SiegeEngine.PlayerSystem
 // File: PlayerMovement.cs
 using System;
 using System.Numerics;
@@ -7,12 +7,11 @@ using System.Linq;
 using SiegeEngine.Systems;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
-
 namespace SiegeEngine.PlayerSystem
 {
     public class PlayerMovement
     {
-        private readonly float _speed = 8.0f;   // exactly as requested (was originally 80f)
+        private readonly float _speed = 8.0f;
         private readonly float _gridWidth = 12500.0f;
         private readonly float _gridHeight = 7500.0f;
         private readonly ClientPredictionSystem _predictionSystem;
@@ -22,7 +21,6 @@ namespace SiegeEngine.PlayerSystem
         private readonly HashSet<Key> _activeKeys = new HashSet<Key>();
         private Key? _lastPressedKey;
         private readonly string _callbackId = $"PlayerMovement_{Guid.NewGuid()}";
-
         public PlayerMovement(InputHandler inputHandler, ClientPredictionSystem predictionSystem, EventBus eventBus = null)
         {
             _inputHandler = inputHandler ?? throw new ArgumentNullException(nameof(inputHandler));
@@ -35,7 +33,6 @@ namespace SiegeEngine.PlayerSystem
                 _eventBus.Subscribe<KeyInputEvent>(OnNetworkKeyInput);
             }
         }
-
         private void OnKeyInput(Key key, InputAction action)
         {
             if (action == InputAction.Press || action == InputAction.Repeat)
@@ -52,16 +49,11 @@ namespace SiegeEngine.PlayerSystem
                 }
                 else
                 {
-                    if (_movementInput.Y > 0 && _activeKeys.Contains(Key.W))
-                        _lastPressedKey = Key.W;
-                    else if (_movementInput.Y < 0 && _activeKeys.Contains(Key.S))
-                        _lastPressedKey = Key.S;
-                    else if (_movementInput.X < 0 && _activeKeys.Contains(Key.A))
-                        _lastPressedKey = Key.A;
-                    else if (_movementInput.X > 0 && _activeKeys.Contains(Key.D))
-                        _lastPressedKey = Key.D;
-                    else
-                        _lastPressedKey = _activeKeys.FirstOrDefault();
+                    if (_movementInput.Y > 0 && _activeKeys.Contains(Key.W)) _lastPressedKey = Key.W;
+                    else if (_movementInput.Y < 0 && _activeKeys.Contains(Key.S)) _lastPressedKey = Key.S;
+                    else if (_movementInput.X < 0 && _activeKeys.Contains(Key.A)) _lastPressedKey = Key.A;
+                    else if (_movementInput.X > 0 && _activeKeys.Contains(Key.D)) _lastPressedKey = Key.D;
+                    else _lastPressedKey = _activeKeys.FirstOrDefault();
                 }
             }
             float x = 0f, y = 0f;
@@ -72,7 +64,6 @@ namespace SiegeEngine.PlayerSystem
             _movementInput = new Vector2(x, y);
             Console.WriteLine($"PlayerMovement: Local Key {key}, Action {action}, ActiveKeys=[{string.Join(",", _activeKeys)}], MovementInput={_movementInput}, LastKey={_lastPressedKey}");
         }
-
         private void OnNetworkKeyInput(KeyInputEvent e)
         {
             Console.WriteLine($"PlayerMovement: Networked Key {e.Key}, Action {e.Action}, SteamID={e.SteamId}");
@@ -90,16 +81,11 @@ namespace SiegeEngine.PlayerSystem
                 }
                 else
                 {
-                    if (_movementInput.Y > 0 && _activeKeys.Contains(Key.W))
-                        _lastPressedKey = Key.W;
-                    else if (_movementInput.Y < 0 && _activeKeys.Contains(Key.S))
-                        _lastPressedKey = Key.S;
-                    else if (_movementInput.X < 0 && _activeKeys.Contains(Key.A))
-                        _lastPressedKey = Key.A;
-                    else if (_movementInput.X > 0 && _activeKeys.Contains(Key.D))
-                        _lastPressedKey = Key.D;
-                    else
-                        _lastPressedKey = _activeKeys.FirstOrDefault();
+                    if (_movementInput.Y > 0 && _activeKeys.Contains(Key.W)) _lastPressedKey = Key.W;
+                    else if (_movementInput.Y < 0 && _activeKeys.Contains(Key.S)) _lastPressedKey = Key.S;
+                    else if (_movementInput.X < 0 && _activeKeys.Contains(Key.A)) _lastPressedKey = Key.A;
+                    else if (_movementInput.X > 0 && _activeKeys.Contains(Key.D)) _lastPressedKey = Key.D;
+                    else _lastPressedKey = _activeKeys.FirstOrDefault();
                 }
             }
             float x = 0f, y = 0f;
@@ -110,7 +96,6 @@ namespace SiegeEngine.PlayerSystem
             _movementInput = new Vector2(x, y);
             Console.WriteLine($"PlayerMovement: Networked Key {e.Key}, Action {e.Action}, ActiveKeys=[{string.Join(",", _activeKeys)}], MovementInput={_movementInput}, LastKey={_lastPressedKey}");
         }
-
         public void Update(Player player, float deltaTime, Action<int, Vector2, Quaternion> sendMovementRequest, CameraController camera)
         {
             if (player == null || camera == null) return;
@@ -126,11 +111,8 @@ namespace SiegeEngine.PlayerSystem
                 newPosition = new Vector3(
                     Math.Clamp(newPosition.X, 0, _gridWidth),
                     Math.Clamp(newPosition.Y, 0, _gridHeight),
-                    player.Physics.Position.Z
-                );
-
+                    player.Physics.Position.Z);
                 player.Physics.Position = newPosition;
-
                 Quaternion newRotation = player.Physics.Rotation;
                 float effectiveYawRad = yawRad;
                 float effectiveYawDeg = camera.Yaw;
@@ -165,7 +147,6 @@ namespace SiegeEngine.PlayerSystem
                     effectiveYawDeg = camera.Yaw;
                     Console.WriteLine($"PlayerMovement: {camera.CurrentPerspective} rotation set: Yaw={camera.Yaw}°, Quaternion={newRotation}");
                 }
-
                 player.Physics.Rotation = newRotation;
                 Vector2 requestedPos = new Vector2(newPosition.X, newPosition.Y);
                 _predictionSystem.EnqueueMovementRequest(player.EntityId, requestedPos, newRotation, player.SteamId);
@@ -176,10 +157,8 @@ namespace SiegeEngine.PlayerSystem
             {
                 Quaternion newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -yawRad);
                 player.Physics.Rotation = newRotation;
-                //Console.WriteLine($"PlayerMovement: {camera.CurrentPerspective} rotation updated without movement: Yaw={camera.Yaw}°, Quaternion={newRotation}");
             }
         }
-
         public static void ResetFrame() { }
     }
 }

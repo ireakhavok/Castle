@@ -1,0 +1,62 @@
+Implement support for custom player controllers, custom C# game logic, and the associated build/export process using only first-party Microsoft/.NET mechanisms (Assembly.LoadFrom + AssemblyLoadContext, reflection on attributes/interfaces, optional Process.Start for csc.exe or dotnet build detection if SDK present – never required). Users place pre-compiled DLLs (or source) in ProjectRoot/Scripts/; the engine loads them at Play/Export time, registers custom types automatically, and produces a clean runnable export folder. The solution must fully support extreme variability including entity-less / pure-UI / HTML-selection games.
+Things to Consider
+
+Maintain exact existing CORE/IDE boundary and runtime isolation (Launcher client mode already skips panels – preserve this).
+Reuse proven patterns exactly: DataHookProcessor reflection/Assembly.LoadFrom style, SceneRegistry.Register factories, GameServer.AddSystem, Entity.AddComponent/FromData, ModManager scanning, Level.Serialize as single source of truth.
+No variable name changes, no breaking changes, additive only.
+Backward compatibility: projects without Scripts/ unchanged; errors in custom DLLs log gracefully.
+Export remains a self-contained folder with Citadel.exe + DLLs + snapshot.
+Play remains instant in-memory with optional --custom-assemblies arg.
+Custom code can fully replace PlayerMovement/Player, add/replace GameSystems, register custom IScene, or run headless (zero entities, only EventBus + JSContext + custom GameSystem).
+AudioSystem, networking validation, rendering (matrices/shaders), and terrain paths must continue working unchanged when custom logic is present.
+UI/IDE exposure (optional Scripts panel, data-hooks, Properties dropdown) uses existing DataHookProcessor + MenuCommands style.
+
+Basic Plan – How It Should Work
+
+MenuCommands.PlayGame + ExportGame detect Scripts/ folder → copy *.dll (and optional source) into runtime/export root + add --custom-assemblies "GameLogic.dll" arg.
+Launcher + SceneManager parse the arg → load each DLL via isolated AssemblyLoadContext (mirroring DataHookProcessor).
+Scan for attributes ([CustomPlayerController], [RegisterGameSystem], [CustomSceneEntry]) or interface implementations → auto AddSystem, swap PlayerMovement, register new factory in SceneRegistry, or instantiate pure-UI scene that skips entity loop.
+Provide three minimal base classes in SiegeEngine (CustomPlayerController : PlayerMovement, CustomGameSystem : GameSystem, PureUIEntryScene : Scene) that users inherit; they auto-register via reflection on load.
+Entity-less games simply register a custom scene that never calls server.AddEntity and uses only EventBus + UI/JS.
+Optional "Build Scripts" helper button runs csc.exe or dotnet build if detected (else just copies pre-built DLLs).
+All communication stays on EventBus; Level + SceneContext remain the hand-off points.
+
+This keeps the engine pristine, the workflow one-click immersive, and every existing path (including OpenGL stability and panel skipping) untouched. Ready for implementation.
+
+The custom code loading is the strategic foundation that will cleanly enable (and should replace) hard-coded implementations of default player controllers, asset pack triggers, animation/sound/skybox events, and the entity type catalog. Implementing it first gives us a robust, testable extension point; then we immediately use that same mechanism to fill the gaps (turning "missing features" into "shipped examples" of the new system). This is the most efficient, future-proof, and low-risk way – no duplication, no scattered hacks, and creators can extend everything themselves from day one.
+Recommended Layered Plan (iterative, confirm-at-each-checkpoint)
+Phase 0 – Prep (quick, 1 file)
+
+Extend ProjectData + BlueprintManager to support "customAssemblies" and "Scripts/" folder convention in project.json.
+Checkpoint: Save/load project includes Scripts section, no breakage.
+
+Phase 1 – Core Custom Loading Infrastructure (Do FIRST – highest priority)
+
+ModManager + new lightweight ScriptLoader (mirrors DataHookProcessor reflection + Assembly.LoadFrom exactly).
+MenuCommands.PlayGame + ExportGame: copy Scripts/*.dll + add --custom-assemblies arg.
+Launcher + SceneManager + SceneContext: parse arg, load isolated, register via attributes.
+Verification tests: Play/Export with dummy DLL logs registration, existing behavior identical, OpenGL clean, entity-less scene works, panels skipped.
+
+Phase 2 – Player Controllers + Basic Extensibility (immediately after Phase 1)
+
+Add CustomPlayerController base + registration hook.
+Entity component enhancements + swap logic in Player/PlayerMovement/PlayerControllerSystem.
+Introduce PureUIEntryScene example (zero-entity path).
+Checkpoint: Can override controller, pure-UI game runs with only JS/EventBus, all standard events still fire.
+
+Phase 3 – Fill Remaining Systems Using the New Mechanism (tandem / parallel after Phase 1 confirmed)
+
+Asset packs + triggers (AnimationTriggerComponent + GameSystem registered by pack).
+Sound emitters, skybox/environment, default controllers (ship as simple self-registering examples).
+Entity type catalog (new types register themselves via attributes).
+Verification: All "missing" features now work as custom systems; user can add their own version instantly.
+
+Phase 4 – IDE Polish + Export Polish
+
+Simple Scripts panel / data-hooks / Properties dropdown.
+Export bundles everything cleanly.
+Optional csc/dotnet helper button.
+
+My Opinion on Overall Sequencing
+Do Phase 1 + 2 first (quick wins, confirms Play/Export stability). Then run Phase 3 in tandem – the new system makes the other missing features trivial to add (they become the first "official plugins"). This keeps momentum high, avoids big-bang risk, and turns your todo list into "everything is extensible". We can interleave any high-priority gap (e.g. asset triggers) as a demo in Phase 2 if you want.
+This plan is methodical, testable after every phase, and aligns perfectly with the self-moddable vision.
