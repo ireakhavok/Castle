@@ -230,13 +230,13 @@ Folder: IDE
       - void OpenAnimationBlend( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: AnimationBlendPanel.Open, Console.WriteLine
       - void PlayGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: BlueprintManager.SaveCurrentProject, Console.WriteLine, Level, Process.Start, ScriptLoader.CopyProjectScripts, ScriptLoader.GetCustomAssemblyList, level.Serialize
+        - Calls: BlueprintManager.SaveCurrentProject, Console.WriteLine, Level, Process.Start, ScriptLoader.BuildProjectScripts, ScriptLoader.CopyProjectScripts, ScriptLoader.GetCustomAssemblyList, level.Serialize
       - void SandboxRegressionTest( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: Console.WriteLine, SandboxScene.Launch
       - void ExportGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: BlueprintManager.CopyDirectory, BlueprintManager.SaveCurrentProject, Console.WriteLine, Level, Process.Start, ScriptLoader.CopyProjectScripts, ScriptLoader.CopyScriptsToExport, ScriptLoader.GetCustomAssemblyList, Task.Run, level.Serialize
+        - Calls: BlueprintManager.CopyDirectory, BlueprintManager.SaveCurrentProject, Console.WriteLine, Level, Process.Start, ScriptLoader.BuildProjectScripts, ScriptLoader.CopyProjectScripts, ScriptLoader.CopyScriptsToExport, ScriptLoader.GetCustomAssemblyList, Task.Run, level.Serialize
       - void BuildScripts( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: Console.WriteLine, ScriptLoader.CopyProjectScripts
+        - Calls: Console.WriteLine, ScriptLoader.BuildProjectScripts
       - void OpenScriptsPanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: Console.WriteLine
 - File: NewMaterialPanel.cs
@@ -1259,6 +1259,9 @@ Folder: SiegeEngine
     - Inherits: PlayerMovement
     
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Systems, System, System.Numerics
+    - Methods:
+      - void Update( CameraController camera,  Quaternion> sendMovementRequest,  float deltaTime, Player player)
+        - Calls: Console.WriteLine
 - File: CustomTerrainParser.cs
   - Class: CustomTerrainParser (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: System, System.IO
@@ -2916,7 +2919,7 @@ Folder: SiegeEngine
 - File: ScriptLoader.cs
   - Class: CustomSceneEntryAttribute (Namespace: SiegeEngine.Core.Managers)
     - Inherits: Attribute 
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Reflection
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Reflection
 - File: SelectBrushEvent.cs
   - Class: SelectBrushEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
