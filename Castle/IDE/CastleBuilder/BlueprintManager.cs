@@ -141,6 +141,7 @@ namespace CastleBuilder
                     sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                     sceneData.Terrain = level.Terrain ?? new TerrainData();
                     sceneData.Environment = level.Environment ?? new EnvironmentSettings();
+                    sceneData.Skybox = level.Skybox ?? new SkyboxData();
                     data.Scenes["Main"] = sceneData;
                     data.LastOpenedScene = "Main";
                     File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));

@@ -16,7 +16,6 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
 using ToolChest;
-
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -41,7 +40,6 @@ namespace MapRoom
         private readonly bool _enableBrush;
         private TerrainRenderer _terrainRenderer;
         private SkyboxRenderer _skyboxRenderer;
-
         public TerrainCreatorScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneData sceneData = null, bool enableBrush = true)
             : base(renderContext, controlContext, window, server, eventBus, sceneData)
         {
@@ -56,8 +54,8 @@ namespace MapRoom
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
             _terrainRenderer = new TerrainRenderer(renderContext);
             _skyboxRenderer = new SkyboxRenderer(renderContext);
+            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "OpenAddSkybox") OnSkyboxDataHook("OpenAddSkybox"); });
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
@@ -65,16 +63,12 @@ namespace MapRoom
             _terrainRenderer.Initialize();
             _skyboxRenderer.Initialize();
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             _skyboxRenderer.RenderSkybox(_sceneData?.Skybox, _flyCamera.ViewMatrix, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, AspectRatio, 0.1f, 50000f));
-
             Matrix4x4 view = _flyCamera.ViewMatrix;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, AspectRatio, 0.1f, 50000f);
-
             _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap);
-
             if (_ghostVisible && _ghostBuffer != null)
             {
                 Matrix4x4 ghostModel = Matrix4x4.CreateTranslation(_ghostPosition);
@@ -82,7 +76,6 @@ namespace MapRoom
                 _terrainRenderer.RenderGhost(_spriteShader, view, projection, ghostModel, _ghostMaterialTextureId, _ghostBuffer, isPaint);
             }
         }
-
         public override void Dispose()
         {
             _skyboxRenderer?.Dispose();
@@ -104,7 +97,6 @@ namespace MapRoom
             _terrainRenderer?.Dispose();
             base.Dispose();
         }
-
         public override void BindLiveState(ISceneStateProvider liveState)
         {
             base.BindLiveState(liveState);
@@ -906,7 +898,6 @@ namespace MapRoom
             }
         }
         public new float[,] GetHeightmap() => _heightmap;
-
         public void SetSkybox(SkyboxData skybox)
         {
             if (_sceneData != null)
@@ -920,7 +911,6 @@ namespace MapRoom
             }
             Console.WriteLine($"[TerrainCreatorScene] Skybox applied - Enabled={skybox?.Enabled}");
         }
-
         public void SaveSkybox(string sceneName)
         {
             if (_sceneData?.Skybox == null || !_sceneData.Skybox.Enabled) return;
@@ -950,7 +940,6 @@ namespace MapRoom
                 live.SyncSkyboxIfNeeded();
             }
         }
-
         public void OnSkyboxDataHook(string hook)
         {
             if (hook == "OpenAddSkybox")
