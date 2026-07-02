@@ -207,7 +207,7 @@ namespace CastleBuilder
                 if (level.CustomData != null) sceneData.CustomData = level.CustomData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment + skybox from Level (authoritative) → SceneData");
             }
-            if (level?.Skybox != null && level.Skybox.Enabled)
+            if (level?.Skybox != null)
             {
                 string skyDir = Path.Combine(projectPath, "Assets", "Skyboxes", currentSceneName);
                 Directory.CreateDirectory(skyDir);
@@ -225,7 +225,7 @@ namespace CastleBuilder
                         File.Copy(f, dest, true);
                     }
                 }
-                Console.WriteLine("[BlueprintManager] Skybox assets copied to project/Assets/Skyboxes");
+                Console.WriteLine("[BlueprintManager] Skybox assets copied to project/Assets/Skyboxes (always, regardless of enabled flag for preview consistency)");
             }
             var uniquePackKeys = data.Scenes.Values
                 .SelectMany(s => s.Entities ?? new List<EntityData>())
@@ -329,6 +329,21 @@ namespace CastleBuilder
             else if (evt.Hook == "ScriptsInfrastructure")
             {
                 EnsureScriptsInfrastructure(ProjectSettings.Current.ActiveProject);
+            }
+            else if (evt.Hook == "SkyboxSet")
+            {
+                var level = ProjectSettings.Current.CurrentLevel;
+                if (level != null && evt.Data != null && evt.Data.TryGetValue("skybox", out var skyJson))
+                {
+                    var sky = JsonSerializer.Deserialize<SkyboxData>(skyJson);
+                    level.Skybox = sky;
+                    Console.WriteLine($"[BlueprintManager] SkyboxSet handled - Level.Skybox updated (Enabled={sky?.Enabled})");
+                }
+                DoProjectSave();
+            }
+            else if (evt.Hook == "ProjectSaveRequest")
+            {
+                DoProjectSave();
             }
         }
         private void OnNewProject(NewProjectEvent evt)

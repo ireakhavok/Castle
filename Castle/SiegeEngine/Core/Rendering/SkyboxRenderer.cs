@@ -5,6 +5,7 @@ using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Numerics;
 
 namespace SiegeEngine.Core.Rendering
@@ -23,7 +24,7 @@ namespace SiegeEngine.Core.Rendering
 
         public void Initialize()
         {
-            _skyShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
+            _skyShader = new ShaderProgram(_renderContext, SkyboxShader.VertexShaderSource, SkyboxShader.FragmentShaderSource);
             _cubeBuffer = new VertexBuffer(_renderContext);
             BuildCubeMesh();
         }
@@ -52,7 +53,7 @@ namespace SiegeEngine.Core.Rendering
 
         public void LoadSkybox(SkyboxData skybox)
         {
-            if (skybox == null || !skybox.Enabled) return;
+            if (skybox == null) skybox = new SkyboxData();
             if (_cubemapTexture != 0)
             {
                 _renderContext.DeleteTexture(_cubemapTexture);
@@ -69,7 +70,7 @@ namespace SiegeEngine.Core.Rendering
 
         public void RenderSkybox(SkyboxData skybox, Matrix4x4 view, Matrix4x4 projection)
         {
-            if (skybox == null || !skybox.Enabled || _cubemapTexture == 0) return;
+            if (skybox == null || _cubemapTexture == 0) return;
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
             _skyShader.Use();

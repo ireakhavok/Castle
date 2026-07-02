@@ -439,16 +439,15 @@ Folder: IDE
       - void HandleDataHook(string hook)
         - Calls: BlueprintManager.SaveProjectAs, ClosePanelEvent, FindElementById
 - File: SceneEditorPanel.cs
-  - Class: SelectionBoxOverlay (Namespace: CastleBuilder)
-    - Inherits: ICustomOverlay
+  - Class: SceneEditorUIOverlay (Namespace: CastleBuilder)
+    - Inherits: UIOverlay
         
     - Dependencies: Keystone, MapRoom, ReadingChamber, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Scenes, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json, ToolChest
     - Fields:
       - SceneEditorPanel _parent
     - Methods:
-      - constructor SelectionBoxOverlay(SceneEditorPanel parent)
-      - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
-        - Calls: quadRenderer.DrawLine, quadRenderer.DrawQuad
+      - bool HandleUIClick(HtmlElement elem)
+      - void HandleDataHook(string hook)
 - File: SpritePlacementPanel.cs
   - Class: SpritePlacementUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -2779,6 +2778,7 @@ Folder: SiegeEngine
       - bool _firstFrame
       - ModelManager _modelManager
       - SkyboxRenderer _skyboxRenderer
+      - SkyboxData _skyboxData
     - Methods:
       - void LoadLevelData( string projectPath, string levelName)
         - Calls: LoadSceneData, SceneActivatedEvent, _player.InitializeCamera
@@ -2788,6 +2788,8 @@ Folder: SiegeEngine
         - Calls: _flyCamera.RefreshViewMatrix, _flyCamera.Update
       - void LoadContentFromContext(SceneContext ctx)
         - Calls: Console.WriteLine, ForceVisibleOverheadCamera, Level, Level.Deserialize, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, _flyCamera.Update, _modelManager.TryGetModel, _server.AddEntity, _skyboxRenderer.LoadSkybox
+      - set LoadLevelData()
+        - Calls: Console.WriteLine, Level, _modelManager.TryGetModel, _server.AddEntity
       - void LoadExactSavedTerrain( string levelName, string projectPath)
         - Calls: BuildTexturedMesh, Console.WriteLine, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture
       - void SetupPureRuntimeWorld()
@@ -3053,6 +3055,15 @@ Folder: SiegeEngine
         - Calls: _cubeBuffer.Bind, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _skyShader.SetMatrix4, _skyShader.Use
       - void Dispose()
         - Calls: _renderContext.DeleteTexture
+- File: SkyboxShader.cs
+  - Class: SkyboxShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+    - Dependencies: System
+    - Fields:
+      - string VertexShaderSource
+      - string FragmentShaderSource
+    - Methods:
+      - void main()
+      - void main()
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json

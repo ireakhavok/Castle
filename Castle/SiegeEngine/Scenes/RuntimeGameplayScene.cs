@@ -34,8 +34,7 @@ namespace SiegeEngine.Scenes
         private bool _firstFrame = true;
         private ModelManager _modelManager;
         private SkyboxRenderer _skyboxRenderer;
-        private SkyboxData _skyboxData = new SkyboxData(); // safe field for scope
-
+        private SkyboxData _skyboxData = new SkyboxData();
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -68,7 +67,6 @@ namespace SiegeEngine.Scenes
             }
             if (ctx != null) LoadContentFromContext(ctx);
         }
-
         public void LoadLevelData(string levelName, string projectPath)
         {
             LoadSceneData(new SceneData { Name = levelName ?? "Main" });
@@ -129,7 +127,8 @@ namespace SiegeEngine.Scenes
                 }
                 ctx.CurrentLevel = level;
             }
-            _skyboxData = level.Skybox ?? new SkyboxData(); // safe field set
+            _skyboxData = level.Skybox ?? new SkyboxData();
+            _skyboxRenderer.LoadSkybox(_skyboxData);
             LoadLevelData(levelName, projectPath);
             LoadExactSavedTerrain(projectPath, levelName);
             _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
@@ -143,10 +142,6 @@ namespace SiegeEngine.Scenes
                 }
                 _server.AddEntity(e);
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
-            }
-            if (level.Skybox != null && level.Skybox.Enabled)
-            {
-                _skyboxRenderer.LoadSkybox(level.Skybox);
             }
             ForceVisibleOverheadCamera();
             _flyCamera.Update(0f, 0f, true);
@@ -255,7 +250,8 @@ namespace SiegeEngine.Scenes
         }
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            _skyboxRenderer.RenderSkybox(_skyboxData, view, projection); // safe field
+            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+            _skyboxRenderer.RenderSkybox(_skyboxData, view, projection);
             _modelRenderer.RenderTerrain(_terrainBuffer, _terrainShader, _flyCamera.ViewMatrix, projection, _hasColorTexture, _terrainTextureId);
             foreach (var e in _server.GetEntities())
             {
