@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Segoe UI;
+            background: #1e1e1e;
+            color: #ddd;
+            padding: 20px;
+        }
+
+        .panel {
+            background: #252526;
+            border: 1px solid #383838;
+            padding: 15px;
+        }
+
+        select, input {
+            background: #3c3c3c;
+            color: #ddd;
+            border: 1px solid #555;
+            padding: 6px;
+            margin: 4px;
+        }
+
+        button {
+            background: #7CFFCB;
+            color: #000;
+            padding: 8px 16px;
+            border: none;
+            cursor: pointer;
+        }
+
+            button:hover {
+                background: #a0ffdb;
+            }
+
+        .preview {
+            width: 100%;
+            height: 180px;
+            background: #111;
+            border: 1px dashed #555;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <h3>Add Skybox</h3>
+        <select id="skybox-type">
+            <option value="Cubemap">Single Cubemap File</option>
+            <option value="SixSided">Six Individual Faces</option>
+        </select>
+        <button data-hook="PickCubemap">Pick Cubemap...</button>
+        <input id="cubemap-path" placeholder="cubemap.dds" style="width:300px">
+        <div>OR</div>
+        <button data-hook="PickFace0">Face +X</button> <input id="face0" placeholder="px.png">
+        <button data-hook="PickFace1">Face -X</button> <input id="face1" placeholder="nx.png">
+        <button data-hook="PickFace2">Face +Y</button> <input id="face2" placeholder="py.png">
+        <button data-hook="PickFace3">Face -Y</button> <input id="face3" placeholder="ny.png">
+        <button data-hook="PickFace4">Face +Z</button> <input id="face4" placeholder="pz.png">
+        <button data-hook="PickFace5">Face -Z</button> <input id="face5" placeholder="nz.png">
+        <div class="preview">Live Preview (updates in main viewport instantly)</div>
+        <button data-hook="AddSkyboxConfirm">Apply Skybox + Save Project</button>
+        <button data-hook="CancelSkybox">Cancel</button>
+    </div>
+    <script>
+    // Data-hook simulation - works with existing UIOverlay system
+    function trigger(hook) { window.external.invoke('data-hook:' + hook); }
+    </script>
+</body>
+</html>

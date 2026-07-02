@@ -60,5 +60,13 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         public abstract int Clockwise { get; }
         public abstract int CounterClockwise { get; }
         public abstract int LineSmooth { get; }
+        public abstract int TextureCubeMap { get; }
+        public abstract int TextureCubeMapPositiveX { get; }
+        public abstract int TextureCubeMapNegativeX { get; }
+        public abstract int TextureCubeMapPositiveY { get; }
+        public abstract int TextureCubeMapNegativeY { get; }
+        public abstract int TextureCubeMapPositiveZ { get; }
+        public abstract int TextureCubeMapNegativeZ { get; }
+        public abstract int TextureWrapR { get; }
     }
 }

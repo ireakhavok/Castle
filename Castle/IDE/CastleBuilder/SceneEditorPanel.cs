@@ -1,4 +1,4 @@
-﻿// Folder: IDE
+﻿// Folder: CastleBuilder
 // File: SceneEditorPanel.cs
 using Keystone;
 using MapRoom;

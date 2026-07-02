@@ -16,11 +16,10 @@ namespace SiegeEngine.PlayerSystem
         {
             Console.WriteLine("[CustomPlayerController] Base custom controller initialized - override Update for game-specific logic");
         }
-        // Users override this for custom movement, animation triggers, sound events, etc.
-        // Example: public override void Update(Player player, float deltaTime, Action<int, Vector2, Quaternion> send, CameraController camera)
-        // {
-        //     base.Update(player, deltaTime, send, camera);
-        //     // custom: trigger animation, emit sound event, change skybox on condition
-        // }
+        public override void Update(Player player, float deltaTime, Action<int, Vector2, Quaternion> sendMovementRequest, CameraController camera)
+        {
+            base.Update(player, deltaTime, sendMovementRequest, camera);
+            Console.WriteLine("[CustomPlayerController] Custom movement override active - ready for user code (e.g. double-jump, wall-run, vehicle mount)");
+        }
     }
 }

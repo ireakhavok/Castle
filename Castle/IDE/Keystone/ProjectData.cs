@@ -20,6 +20,9 @@ namespace Keystone
 
         public Dictionary<string, JsonElement> PanelStates { get; set; } = new Dictionary<string, JsonElement>();
 
+        public List<string> CustomAssemblies { get; set; } = new List<string>();
+        public bool ScriptsEnabled { get; set; } = true;
+        public string ScriptsDir { get; set; } = "Scripts";
         public static readonly JsonSerializerOptions ProjectJsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,

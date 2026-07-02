@@ -73,6 +73,14 @@ namespace CastleBuilder
                 {
                     MenuCommands.ExportGame(_renderContext, _controlContext, _window, _eventBus);
                 }
+                else if (hook == "BuildScripts")
+                {
+                    MenuCommands.BuildScripts(_renderContext, _controlContext, _window, _eventBus);
+                }
+                else if (hook == "OpenScriptsPanel")
+                {
+                    MenuCommands.OpenScriptsPanel(_renderContext, _controlContext, _window, _eventBus);
+                }
                 base.HandleDataHook(hook);
             }
 
@@ -128,8 +136,8 @@ namespace CastleBuilder
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))
             {
-                Console.WriteLine($"[IDEBasePanel] ERROR: IDE_UI.html not found at {htmlPath}");
-                return;
+                    Console.WriteLine($"[IDEBasePanel] ERROR: IDE_UI.html not found at {htmlPath}");
+                    return;
             }
             string html = File.ReadAllText(htmlPath);
             _uiOverlay.LoadUI(html);
