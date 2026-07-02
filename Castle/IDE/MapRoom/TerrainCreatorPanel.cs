@@ -89,7 +89,6 @@ namespace MapRoom
             base.Init();
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
-            // Step 4: bind shared live state
             string sceneName = ProjectSettings.Current.CurrentSceneName ?? "Untitled";
             var liveState = ProjectStateManager.Current.GetOrCreateLiveState(sceneName);
             _terrainScene.BindLiveState(liveState);
@@ -237,6 +236,10 @@ namespace MapRoom
             {
                 BrushPanel.Open(_renderContext, _controlContext, _window, _eventBus);
             }
+            else if (hook == "OpenAddSkybox")
+            {
+                AddSkyboxPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+            }
             else if (hook == "Export2D")
             {
                 if (!string.IsNullOrEmpty(ProjectSettings.Current.ActiveProject))
@@ -318,7 +321,6 @@ namespace MapRoom
         {
             var sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
-            // ENSURE painter is bound to correct live state for this scene
             ProjectStateManager.Current.BindSceneToLiveState(sceneData.Name, _terrainScene);
             _terrainScene.LoadSceneData(sceneData);
             if (!string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))

@@ -107,6 +107,11 @@ namespace CastleBuilder
             AnimationBlendPanel.Open(renderContext, controlContext, window, eventBus);
             Console.WriteLine("[MenuCommands] Animation Blend panel opened");
         }
+        public static void OpenAddSkybox(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
+        {
+            AddSkyboxPanel.Open(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] Opened AddSkyboxPanel");
+        }
         public static void PlayGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[MenuCommands.PlayGame] Launching CURRENT project Level in NEW isolated window (pure runtime client - in-memory, no disk write, no EnsureDefaultSceneIfNeeded, no save)");
@@ -116,7 +121,7 @@ namespace CastleBuilder
             string snapshotPath = Path.Combine(projectPath, "runtime_start.level");
             var level = ProjectSettings.Current.CurrentLevel ?? new Level();
             File.WriteAllBytes(snapshotPath, level.Serialize());
-            ScriptLoader.BuildProjectScripts(projectPath); // ensure fresh build before runtime
+            ScriptLoader.BuildProjectScripts(projectPath);
             ScriptLoader.CopyProjectScripts(projectPath);
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
             if (!File.Exists(exe)) exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
@@ -151,7 +156,7 @@ namespace CastleBuilder
                         Directory.CreateDirectory(projectPath);
                     }
                     BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
-                    ScriptLoader.BuildProjectScripts(projectPath); // ensure compiled before export
+                    ScriptLoader.BuildProjectScripts(projectPath);
                     string exportRoot = Path.Combine(projectPath, "exported");
                     if (Directory.Exists(exportRoot))
                     {
@@ -208,7 +213,7 @@ namespace CastleBuilder
         {
             string projectPath = ProjectSettings.Current.ActiveProject ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\CastleBuilder\\Projects\\Current";
             eventBus.Publish(new GenericEvent { Hook = "ScriptsInfrastructure" });
-            ScriptLoader.BuildProjectScripts(projectPath); // full csproj + dotnet + register
+            ScriptLoader.BuildProjectScripts(projectPath);
             Console.WriteLine("[MenuCommands.BuildScripts] Full IDE-only build pipeline executed - .cs compiled to DLL, registered, ready for Play/Export");
         }
         public static void OpenScriptsPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

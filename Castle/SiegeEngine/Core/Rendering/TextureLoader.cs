@@ -113,7 +113,6 @@ namespace SiegeEngine.Core.Rendering
                 using (var stream = File.OpenRead(path))
                 using (var reader = new BinaryReader(stream))
                 {
-                    // ... (header read unchanged) ...
                     byte idLength = reader.ReadByte();
                     byte colorMapType = reader.ReadByte();
                     byte imageType = reader.ReadByte();
@@ -141,14 +140,12 @@ namespace SiegeEngine.Core.Rendering
                     int pixelFormat = pixelDepth == 24 ? renderContext.Enums.PixelBgr : renderContext.Enums.PixelBgra;
                     int bytesPerPixel = pixelDepth / 8;
                     byte[] pixelData = new byte[width * height * bytesPerPixel];
-                    // ... (pixel read code unchanged) ...
                     if (imageType == 2 || imageType == 1 || imageType == 3)
                     {
                         pixelData = reader.ReadBytes(width * height * bytesPerPixel);
                     }
                     else if (imageType == 9 || imageType == 10 || imageType == 11)
                     {
-                        // RLE handling unchanged
                         int pixelIndex = 0;
                         while (pixelIndex < pixelData.Length)
                         {
@@ -188,13 +185,7 @@ namespace SiegeEngine.Core.Rendering
                     renderContext.BindTexture(renderContext.Enums.Texture2D, texture);
                     renderContext.PixelStore(renderContext.Enums.UnpackAlignment, 1);
                     Console.WriteLine($"[TextureLoader] Uploading TGA {width}x{height} to texture {texture}");
-                    unsafe
-                    {
-                        fixed (byte* ptr = pixelData)
-                        {
-                            renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, width, height, 0, pixelFormat, renderContext.Enums.UnsignedByte, ptr);
-                        }
-                    }
+                    renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)width, (uint)height, 0, pixelFormat, renderContext.Enums.UnsignedByte, pixelData);
                     int error = renderContext.GetError();
                     if (error != renderContext.Enums.NoError)
                     {
@@ -221,7 +212,6 @@ namespace SiegeEngine.Core.Rendering
                 return (0, 0);
             }
         }
-        // Made public so TerrainTextureParser.CreateColorTexture can call it directly (no file I/O)
         public static (uint, byte) LoadTextureFromBitmap(IRenderContext renderContext, Bitmap bitmap, int wrapS = (int)GLEnum.Repeat, int wrapT = (int)GLEnum.Repeat, bool crispPaintMode = false)
         {
             Console.WriteLine($"[TextureLoader] LoadTextureFromBitmap START: {bitmap.Width}x{bitmap.Height} {bitmap.PixelFormat} crispPaint={crispPaintMode}");
@@ -259,21 +249,13 @@ namespace SiegeEngine.Core.Rendering
                     byte[] pixelData = new byte[dataSize];
                     System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
                     Console.WriteLine($"[TextureLoader] Copied {dataSize} bytes, Stride={data.Stride}");
-                    unsafe
-                    {
-                        fixed (byte* ptr = pixelData)
-                        {
-                            renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)bitmap.Width, (uint)bitmap.Height, 0, pixelFormat, renderContext.Enums.UnsignedByte, ptr);
-                        }
-                    }
+                    renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)bitmap.Width, (uint)bitmap.Height, 0, pixelFormat, renderContext.Enums.UnsignedByte, pixelData);
                     error = renderContext.GetError();
                     Console.WriteLine($"[TextureLoader] TexImage2D completed - error code: {error}");
                     if (crispPaintMode)
                     {
-                        // Crisp 1:1 paint mode - no blur
                         renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMinFilter, renderContext.Enums.Nearest);
                         renderContext.TexParameter(renderContext.Enums.Texture2D, renderContext.Enums.TextureMagFilter, renderContext.Enums.Nearest);
-                        // No mipmap for paint layer
                     }
                     else
                     {
@@ -302,6 +284,60 @@ namespace SiegeEngine.Core.Rendering
                 Console.WriteLine($"[TextureLoader] Bitmap CRITICAL FAIL: {ex.Message}\n{ex.StackTrace}");
                 return (0, 0);
             }
+        }
+
+        public static uint LoadCubemap(IRenderContext renderContext, string path)
+        {
+            uint tex;
+            renderContext.GenTextures(1, out tex);
+            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, tex);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureMinFilter, renderContext.Enums.Linear);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureMagFilter, renderContext.Enums.Linear);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureWrapS, renderContext.Enums.ClampToEdge);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureWrapT, renderContext.Enums.ClampToEdge);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureWrapR, renderContext.Enums.ClampToEdge);
+            using (var bmp = new Bitmap(path))
+            {
+                var data = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                int dataSize = bmp.Width * bmp.Height * 4;
+                byte[] pixelData = new byte[dataSize];
+                System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
+                bmp.UnlockBits(data);
+                renderContext.TexImage2D(renderContext.Enums.TextureCubeMapPositiveX, 0, renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0, renderContext.Enums.PixelBgra, renderContext.Enums.UnsignedByte, pixelData);
+            }
+            renderContext.GenerateMipmap(renderContext.Enums.TextureCubeMap);
+            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, 0);
+            return tex;
+        }
+
+        public static uint LoadSixFacesCubemap(IRenderContext renderContext, string[] faces)
+        {
+            uint tex;
+            renderContext.GenTextures(1, out tex);
+            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, tex);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureMinFilter, renderContext.Enums.Linear);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureMagFilter, renderContext.Enums.Linear);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureWrapS, renderContext.Enums.ClampToEdge);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureWrapT, renderContext.Enums.ClampToEdge);
+            renderContext.TexParameter(renderContext.Enums.TextureCubeMap, renderContext.Enums.TextureWrapR, renderContext.Enums.ClampToEdge);
+            for (int i = 0; i < 6 && i < faces.Length; i++)
+            {
+                if (File.Exists(faces[i]))
+                {
+                    using (var bmp = new Bitmap(faces[i]))
+                    {
+                        var data = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                        int dataSize = bmp.Width * bmp.Height * 4;
+                        byte[] pixelData = new byte[dataSize];
+                        System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
+                        bmp.UnlockBits(data);
+                        renderContext.TexImage2D((uint)(renderContext.Enums.TextureCubeMapPositiveX + i), 0, renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0, renderContext.Enums.PixelBgra, renderContext.Enums.UnsignedByte, pixelData);
+                    }
+                }
+            }
+            renderContext.GenerateMipmap(renderContext.Enums.TextureCubeMap);
+            renderContext.BindTexture(renderContext.Enums.TextureCubeMap, 0);
+            return tex;
         }
     }
 }

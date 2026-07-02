@@ -60,5 +60,13 @@ namespace SiegeEngine.Core.Rendering.ContextManagement
         public override int CounterClockwise => (int)GLEnum.Ccw;
         public override int Clockwise => (int)GLEnum.CW;
         public override int LineSmooth => (int)GLEnum.LineSmooth;
+        public override int TextureCubeMap => (int)GLEnum.TextureCubeMap;
+        public override int TextureCubeMapPositiveX => (int)GLEnum.TextureCubeMapPositiveX;
+        public override int TextureCubeMapNegativeX => (int)GLEnum.TextureCubeMapNegativeX;
+        public override int TextureCubeMapPositiveY => (int)GLEnum.TextureCubeMapPositiveY;
+        public override int TextureCubeMapNegativeY => (int)GLEnum.TextureCubeMapNegativeY;
+        public override int TextureCubeMapPositiveZ => (int)GLEnum.TextureCubeMapPositiveZ;
+        public override int TextureCubeMapNegativeZ => (int)GLEnum.TextureCubeMapNegativeZ;
+        public override int TextureWrapR => (int)GLEnum.TextureWrapR;
     }
 }

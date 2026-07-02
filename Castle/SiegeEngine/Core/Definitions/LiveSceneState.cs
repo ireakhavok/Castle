@@ -13,8 +13,10 @@ namespace SiegeEngine.Core.Definitions
         public string SceneName { get; }
         public float[,] Heightmap { get; set; }
         public Bitmap ColorBitmap { get; set; }
+        public SkyboxData Skybox { get; set; } = new SkyboxData();
         public int HeightmapVersion { get; set; } = 0;
         public int ColorVersion { get; private set; } = 0;
+        public int SkyboxVersion { get; private set; } = 0;
 
         private readonly GeoTiffParser.GeoReference _terrainGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
         private readonly GeoTiffParser.GeoReference _colorGeoRef = new GeoTiffParser.GeoReference { IsValid = false };
@@ -48,6 +50,11 @@ namespace SiegeEngine.Core.Definitions
         public void SyncColorTextureIfNeeded()
         {
             ColorVersion++;
+        }
+
+        public void SyncSkyboxIfNeeded()
+        {
+            SkyboxVersion++;
         }
 
         public void Dispose()
