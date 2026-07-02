@@ -34,6 +34,7 @@ namespace SiegeEngine.Scenes
         private bool _firstFrame = true;
         private ModelManager _modelManager;
         private SkyboxRenderer _skyboxRenderer;
+        private SkyboxData _skyboxData = new SkyboxData(); // safe field for scope
 
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
@@ -128,6 +129,7 @@ namespace SiegeEngine.Scenes
                 }
                 ctx.CurrentLevel = level;
             }
+            _skyboxData = level.Skybox ?? new SkyboxData(); // safe field set
             LoadLevelData(levelName, projectPath);
             LoadExactSavedTerrain(projectPath, levelName);
             _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
@@ -253,8 +255,8 @@ namespace SiegeEngine.Scenes
         }
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
-            _skyboxRenderer.RenderSkybox(null, view, projection); // skybox from level data
-            _modelRenderer.RenderTerrain(_terrainBuffer, _terrainShader, view, projection, _hasColorTexture, _terrainTextureId);
+            _skyboxRenderer.RenderSkybox(_skyboxData, view, projection); // safe field
+            _modelRenderer.RenderTerrain(_terrainBuffer, _terrainShader, _flyCamera.ViewMatrix, projection, _hasColorTexture, _terrainTextureId);
             foreach (var e in _server.GetEntities())
             {
                 var modelComp = e.GetComponent<ModelComponent>();

@@ -1,4 +1,4 @@
-﻿// Folder: IDE
+﻿// Folder: CastleBuilder
 // File: SceneEditorPanel.cs
 using Keystone;
 using MapRoom;
@@ -42,28 +42,6 @@ namespace CastleBuilder
                 _parent.HandleDataHook(hook);
             }
         }
-        private class SelectionBoxOverlay : ICustomOverlay
-        {
-            private readonly SceneEditorPanel _parent;
-            public SelectionBoxOverlay(SceneEditorPanel parent) { _parent = parent; }
-            public void Draw(UIQuadRenderer quadRenderer, float panelWidth, float panelHeight)
-            {
-                if (!_parent._isBoxSelecting) return;
-                float dragDist = Vector2.Distance(_parent._boxStart, _parent._boxEnd);
-                if (dragDist < SceneEditorPanel.MinDragDistance) return;
-                float headerHeight = _parent.HasTitleBar ? _parent.HeaderHeight : 0f;
-                float x = Math.Min(_parent._boxStart.X, _parent._boxEnd.X);
-                float y = Math.Min(_parent._boxStart.Y, _parent._boxEnd.Y);
-                float w = Math.Abs(_parent._boxEnd.X - _parent._boxStart.X);
-                float h = Math.Abs(_parent._boxEnd.Y - _parent._boxStart.Y);
-                quadRenderer.DrawQuad(x, y + headerHeight, w, h, new Vector4(0.2f, 0.6f, 1f, 0.3f), panelWidth, panelHeight);
-                Vector4 borderColor = new Vector4(0.2f, 0.6f, 1f, 1f);
-                quadRenderer.DrawLine(x, y + headerHeight, x + w, y + headerHeight, 2f, borderColor, panelWidth, panelHeight);
-                quadRenderer.DrawLine(x, y + headerHeight + h, x + w, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
-                quadRenderer.DrawLine(x, y + headerHeight, x, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
-                quadRenderer.DrawLine(x + w, y + headerHeight, x + w, y + headerHeight + h, 2f, borderColor, panelWidth, panelHeight);
-            }
-        }
         private EditorScene _editorScene;
         private bool _cameraMode = false;
         private ModelManager _modelManager;
@@ -87,7 +65,6 @@ namespace CastleBuilder
             BaseHeight = 720f;
             _editorScene = new EditorScene(renderContext, controlContext, window, eventBus);
             _modelManager = ModelManager.Instance ?? new ModelManager(renderContext);
-            CustomOverlays.Add(new SelectionBoxOverlay(this));
             _transformGizmo = new TransformGizmoOverlay(
                 renderContext,
                 eventBus,
@@ -339,7 +316,6 @@ namespace CastleBuilder
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-            // Compute fresh matrices BEFORE gizmo input (using reflection for AspectRatio)
             Matrix4x4 view = Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.Identity;
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -361,7 +337,6 @@ namespace CastleBuilder
                 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
             }
             _transformGizmo.UpdateMatrices(view, projection);
-            // Gizmo input handling
             if (!_cameraMode && isTopmost)
             {
                 float headerHeight = HasTitleBar ? HeaderHeight : 0f;

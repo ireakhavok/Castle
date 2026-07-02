@@ -76,14 +76,14 @@ namespace ToolChest
                 }
             }
         }
+        private EventBus _eventBus;
         public AddSkyboxPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
-            HasTitleBar = true;
-            IsClosable = true;
-            IsModal = true;
-            RenderOrder = 1200;
+            _eventBus = eventBus;
+            HasTitleBar = true; IsClosable = true; IsModal = true; RenderOrder = 1200;
             Scaling = ScalingMode.Fill;
             Size = new Vector2(520, 420);
+            _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
         }
         protected override UIOverlay CreateUIOverlay()
         {
@@ -94,11 +94,26 @@ namespace ToolChest
             base.Init();
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AddSkybox.html");
             if (File.Exists(htmlPath))
-            {
                 _uiOverlay.LoadUI(File.ReadAllText(htmlPath));
-            }
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
+            _uiOverlay.RefreshUI();
+        }
+        private void OnFileSelected(FileSelectedEvent e)
+        {
+            if (e.UserData == null) return;
+            string data = e.UserData.ToString();
+            if (data.StartsWith("SkyFace"))
+            {
+                int idx = int.Parse(data.Substring(7));
+                var input = _uiOverlay.FindElementById("face" + idx) as InputElement;
+                if (input != null) input.Value = e.Path;
+            }
+            else if (data == "SkyCubemap")
+            {
+                var input = _uiOverlay.FindElementById("cubemap-path") as InputElement;
+                if (input != null) input.Value = e.Path;
+            }
             _uiOverlay.RefreshUI();
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

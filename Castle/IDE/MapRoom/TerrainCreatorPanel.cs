@@ -239,6 +239,8 @@ namespace MapRoom
             else if (hook == "OpenAddSkybox")
             {
                 AddSkyboxPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                _terrainScene.RefreshFromLiveState(_currentSceneData);
+                _uiOverlay.RefreshUI();
             }
             else if (hook == "Export2D")
             {
