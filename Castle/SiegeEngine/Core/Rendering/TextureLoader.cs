@@ -185,7 +185,13 @@ namespace SiegeEngine.Core.Rendering
                     renderContext.BindTexture(renderContext.Enums.Texture2D, texture);
                     renderContext.PixelStore(renderContext.Enums.UnpackAlignment, 1);
                     Console.WriteLine($"[TextureLoader] Uploading TGA {width}x{height} to texture {texture}");
-                    renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)width, (uint)height, 0, pixelFormat, renderContext.Enums.UnsignedByte, pixelData);
+                    unsafe
+                    {
+                        fixed (byte* ptr = pixelData)
+                        {
+                            renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)width, (uint)height, 0, pixelFormat, renderContext.Enums.UnsignedByte, ptr);
+                        }
+                    }
                     int error = renderContext.GetError();
                     if (error != renderContext.Enums.NoError)
                     {
@@ -249,7 +255,13 @@ namespace SiegeEngine.Core.Rendering
                     byte[] pixelData = new byte[dataSize];
                     System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
                     Console.WriteLine($"[TextureLoader] Copied {dataSize} bytes, Stride={data.Stride}");
-                    renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)bitmap.Width, (uint)bitmap.Height, 0, pixelFormat, renderContext.Enums.UnsignedByte, pixelData);
+                    unsafe
+                    {
+                        fixed (byte* ptr = pixelData)
+                        {
+                            renderContext.TexImage2D(renderContext.Enums.Texture2D, 0, internalFormat, (uint)bitmap.Width, (uint)bitmap.Height, 0, pixelFormat, renderContext.Enums.UnsignedByte, ptr);
+                        }
+                    }
                     error = renderContext.GetError();
                     Console.WriteLine($"[TextureLoader] TexImage2D completed - error code: {error}");
                     if (crispPaintMode)
@@ -303,7 +315,13 @@ namespace SiegeEngine.Core.Rendering
                 byte[] pixelData = new byte[dataSize];
                 System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
                 bmp.UnlockBits(data);
-                renderContext.TexImage2D(renderContext.Enums.TextureCubeMapPositiveX, 0, renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0, renderContext.Enums.PixelBgra, renderContext.Enums.UnsignedByte, pixelData);
+                unsafe
+                {
+                    fixed (byte* ptr = pixelData)
+                    {
+                        renderContext.TexImage2D(renderContext.Enums.TextureCubeMapPositiveX, 0, renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0, renderContext.Enums.PixelBgra, renderContext.Enums.UnsignedByte, ptr);
+                    }
+                }
             }
             renderContext.GenerateMipmap(renderContext.Enums.TextureCubeMap);
             renderContext.BindTexture(renderContext.Enums.TextureCubeMap, 0);
@@ -331,7 +349,13 @@ namespace SiegeEngine.Core.Rendering
                         byte[] pixelData = new byte[dataSize];
                         System.Runtime.InteropServices.Marshal.Copy(data.Scan0, pixelData, 0, dataSize);
                         bmp.UnlockBits(data);
-                        renderContext.TexImage2D((uint)(renderContext.Enums.TextureCubeMapPositiveX + i), 0, renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0, renderContext.Enums.PixelBgra, renderContext.Enums.UnsignedByte, pixelData);
+                        unsafe
+                        {
+                            fixed (byte* ptr = pixelData)
+                            {
+                                renderContext.TexImage2D((int)(renderContext.Enums.TextureCubeMapPositiveX + i), 0, renderContext.Enums.InternalRgba, (uint)bmp.Width, (uint)bmp.Height, 0, renderContext.Enums.PixelBgra, renderContext.Enums.UnsignedByte, ptr);
+                            }
+                        }
                     }
                 }
             }

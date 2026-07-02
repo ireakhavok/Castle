@@ -9,7 +9,7 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.Rendering
 {
-    public class SkyboxRenderer : IDisposable
+    public unsafe class SkyboxRenderer : IDisposable
     {
         private readonly IRenderContext _renderContext;
         private ShaderProgram _skyShader;
