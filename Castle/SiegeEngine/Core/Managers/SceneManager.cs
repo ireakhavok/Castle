@@ -75,10 +75,24 @@ namespace SiegeEngine.Core.Managers
             // Phase 2: apply custom controller swap if registered
             ScriptLoader.ApplyCustomPlayerControllerIfPresent(_player, ref _playerMovement);
         }
-        public void SwitchToRuntimeGameplay(string projectPath, string levelName, Level currentLevel = null)
+        public void SwitchToRuntimeGameplay(string projectPath, string levelName, string levelDataPayload = null, Level currentLevel = null)
         {
             Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0}");
-            var level = currentLevel ?? new Level { Name = levelName };
+            Level level = currentLevel;
+            if (level == null && !string.IsNullOrEmpty(levelDataPayload))
+            {
+                try
+                {
+                    byte[] data = Convert.FromBase64String(levelDataPayload);
+                    level = Level.Deserialize(data);
+                    Console.WriteLine($"[SceneManager] Reconstructed Level from payload - Entities: {level.Entities.Count}");
+                }
+                catch
+                {
+                    level = new Level { Name = levelName };
+                }
+            }
+            level = level ?? new Level { Name = levelName };
             var ctx = SceneContext.CreateForRuntime(level, new SceneData { Name = levelName }, _renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
             ctx.PlayProjectPath = projectPath;
             ctx.LoadLevelName = levelName;
