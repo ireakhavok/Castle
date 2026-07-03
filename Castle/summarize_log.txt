@@ -501,7 +501,7 @@ Found: IDE_UI.html
 Found: MenuCommands.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
-Read 14527 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
+Read 14136 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
 Namespace: CastleBuilder
 Found 14 dependencies
 Found: NewProjectPanel.cs
@@ -615,7 +615,7 @@ Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
-Read 43866 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
+Read 44315 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 16 dependencies
 Found: TerrainCreatorUI.html
@@ -672,7 +672,7 @@ Found: AddSkybox.html
 Found: AddSkyboxPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AddSkyboxPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AddSkyboxPanel.cs
-Read 6619 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AddSkyboxPanel.cs
+Read 7689 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AddSkyboxPanel.cs
 Namespace: ToolChest
 Found 14 dependencies
 Found: AnimationBlendPanel.cs
@@ -1160,7 +1160,7 @@ Found 3 dependencies
 Found: Level.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Level.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Level.cs
-Read 5067 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Level.cs
+Read 4810 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Level.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 6 dependencies
 Found: LevelData.cs
@@ -1184,7 +1184,7 @@ Found 0 dependencies
 Found: LiveSceneState.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\LiveSceneState.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\LiveSceneState.cs
-Read 2108 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\LiveSceneState.cs
+Read 2115 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\LiveSceneState.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 5 dependencies
 Found: MaterialProperties.cs
@@ -1226,7 +1226,7 @@ Found 1 dependencies
 Found: SceneData.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
-Read 3598 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
+Read 3520 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\SceneData.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 3 dependencies
 Found: SoundSource.cs
@@ -1503,7 +1503,7 @@ Found 2 dependencies
 Found: IDEDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
-Read 47297 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Read 46405 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 13 dependencies
 Found: LevelManager.cs
@@ -1801,7 +1801,7 @@ Found 3 dependencies
 Found: SkyboxRenderer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SkyboxRenderer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SkyboxRenderer.cs
-Read 5104 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SkyboxRenderer.cs
+Read 5123 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SkyboxRenderer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 7 dependencies
 Found: SystemFontRenderer.cs
@@ -2225,13 +2225,13 @@ Found 3 dependencies
 Found: ModelViewerScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
-Read 25682 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
+Read 25752 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\ModelViewerScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: RuntimeGameplayScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
-Read 13775 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
+Read 12909 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
 Namespace: SiegeEngine.Scenes
 Found 16 dependencies
 Found: Scene.cs
