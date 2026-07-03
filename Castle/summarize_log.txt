@@ -796,7 +796,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\Launcher\Foundation\obj
 Found: Program.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Launcher\Foundation\Program.cs
 Reading file: C:\repos\RealmFoundry\Castle\Launcher\Foundation\Program.cs
-Read 5539 chars from: C:\repos\RealmFoundry\Castle\Launcher\Foundation\Program.cs
+Read 5871 chars from: C:\repos\RealmFoundry\Castle\Launcher\Foundation\Program.cs
 Namespace: Foundation
 Found 8 dependencies
 Found: Properties
@@ -821,7 +821,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\Launcher\Trebuchet\bin
 Found: Launcher.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Launcher\Trebuchet\Launcher.cs
 Reading file: C:\repos\RealmFoundry\Castle\Launcher\Trebuchet\Launcher.cs
-Read 9811 chars from: C:\repos\RealmFoundry\Castle\Launcher\Trebuchet\Launcher.cs
+Read 9910 chars from: C:\repos\RealmFoundry\Castle\Launcher\Trebuchet\Launcher.cs
 Namespace: Trebuchet
 Found 17 dependencies
 Found: obj
@@ -1545,9 +1545,9 @@ Found 10 dependencies
 Found: SceneManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
-Read 5696 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
+Read 7441 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
 Namespace: SiegeEngine.Core.Managers
-Found 12 dependencies
+Found 13 dependencies
 Found: ScriptLoader.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ScriptLoader.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ScriptLoader.cs
@@ -2243,9 +2243,9 @@ Found 11 dependencies
 Found: SceneContext.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SceneContext.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SceneContext.cs
-Read 2059 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SceneContext.cs
+Read 2148 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SceneContext.cs
 Namespace: SiegeEngine.Scenes
-Found 8 dependencies
+Found 9 dependencies
 Found: SceneRegistry.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SceneRegistry.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\SceneRegistry.cs

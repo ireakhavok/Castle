@@ -712,7 +712,7 @@ Folder: Launcher
       - SceneManager _sceneManager
       - PanelManager _panelManager
     - Methods:
-      - void Start( bool discoverDedicated = false,  bool discoverP2PHost = false,  bool isClientRuntime = false,  string loadLevelName = "Main",  string playProjectPath = null,  ulong connectToServerSteamId = 0,  ulong joinLobbyId = 0,  ulong specificLobbyId = 0, string context)
+      - void Start( bool discoverDedicated = false,  bool discoverP2PHost = false,  bool isClientRuntime = false,  string levelDataPayload = null,  string loadLevelName = "Main",  string playProjectPath = null,  string sceneDataPayload = null,  ulong connectToServerSteamId = 0,  ulong joinLobbyId = 0,  ulong specificLobbyId = 0, string context)
         - Calls: ConnectToDedicatedServer, Console.WriteLine, CreateLobby, Dispose, EventBus, InputHandler, JoinSpecificLobby, LoadLibrary, ModManager, PanelManager, Render, RequestP2PHostLobbies, SaveSettings, SceneManager, ScriptLoader.LoadCustomAssemblies, SteamEngine, Terminate, UISettingsManager, Update, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.SwitchToRuntimeGameplay, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
 - File: Program.cs
   - Class: Program (Namespace: Foundation)
@@ -2876,7 +2876,7 @@ Folder: SiegeEngine
       - void Deserialize(byte[] data)
 - File: SceneContext.cs
   - Class: SceneContext (Namespace: SiegeEngine.Scenes)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, System.Collections.Generic, System.Linq, System.Numerics
     - Methods:
       - SceneContext CreateCore( EventBus eventBus,  IControlContext controlContext,  IGameServer server,  nint window, IRenderContext renderContext)
       - SceneContext CreateForRuntime( EventBus eb,  IControlContext cc,  IGameServer s,  IRenderContext rc,  SceneData sceneData,  nint w, Level level)
@@ -2886,7 +2886,7 @@ Folder: SiegeEngine
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: SceneManager.cs
   - Class: SceneManager (Namespace: SiegeEngine.Core.Managers)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Text.Json
     - Fields:
       - EventBus _eventBus
       - IRenderContext _renderContext
@@ -2907,8 +2907,8 @@ Folder: SiegeEngine
       - void Dispose()
       - void OnSwitchScene(SwitchSceneEvent e)
         - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
-      - void SwitchToRuntimeGameplay( Level currentLevel = null,  string levelName, string projectPath)
-        - Calls: ClientGameServerProxy, Console.WriteLine, ModelManager, ModelManager.EnsurePacksLoaded, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize
+      - void SwitchToRuntimeGameplay( Level currentLevel = null,  string levelDataPayload = null,  string levelName,  string sceneDataPayload = null, string projectPath)
+        - Calls: ClientGameServerProxy, Console.WriteLine, Entity.FromData, Level, Level.Deserialize, ModelManager, ModelManager.EnsurePacksLoaded, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize, level.AddEntity
 - File: SceneRegistry.cs
   - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
     - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic

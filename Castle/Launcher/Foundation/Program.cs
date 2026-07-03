@@ -29,6 +29,7 @@ namespace Foundation
             string playProjectPath = null;
             string loadLevelName = "Main";
             string levelDataPayload = null;
+            string sceneDataPayload = null;
 
             for (int i = 0; i < args.Length - 1; i++)
             {
@@ -44,13 +45,15 @@ namespace Foundation
                     joinLobbyId = joinId;
                 else if (args[i] == "--level-data")
                     levelDataPayload = args[i + 1];
+                else if (args[i] == "--scene-data")
+                    sceneDataPayload = args[i + 1];
             }
 
             if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
             {
                 Console.WriteLine($"Foundation: PURE CLIENT RUNTIME MODE - project '{playProjectPath ?? "IDE"}' level '{loadLevelName}' (single process, no server spawn, no recursion)");
                 var launcher = new Launcher();
-                launcher.Start("OpenGL", false, 0, 0, false, 0, true, playProjectPath, loadLevelName, levelDataPayload);
+                launcher.Start("OpenGL", false, 0, 0, false, 0, true, playProjectPath, loadLevelName, levelDataPayload, sceneDataPayload);
                 return; // No server, no editor, no recursion
             }
 

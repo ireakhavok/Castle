@@ -12,6 +12,7 @@ using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
 using System.Numerics;
+using System.Text.Json;
 namespace SiegeEngine.Core.Managers
 {
     public class SceneManager
@@ -75,11 +76,35 @@ namespace SiegeEngine.Core.Managers
             // Phase 2: apply custom controller swap if registered
             ScriptLoader.ApplyCustomPlayerControllerIfPresent(_player, ref _playerMovement);
         }
-        public void SwitchToRuntimeGameplay(string projectPath, string levelName, string levelDataPayload = null, Level currentLevel = null)
+        public void SwitchToRuntimeGameplay(string projectPath, string levelName, string levelDataPayload = null, string sceneDataPayload = null, Level currentLevel = null)
         {
             Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0}");
             Level level = currentLevel;
-            if (level == null && !string.IsNullOrEmpty(levelDataPayload))
+            if (level == null && !string.IsNullOrEmpty(sceneDataPayload))
+            {
+                try
+                {
+                    byte[] data = Convert.FromBase64String(sceneDataPayload);
+                    var sceneData = JsonSerializer.Deserialize<SceneData>(data, EntityData.SerializerOptions);
+                    level = new Level();
+                    if (sceneData.Entities != null)
+                    {
+                        foreach (var ed in sceneData.Entities)
+                        {
+                            level.AddEntity(Entity.FromData(ed));
+                        }
+                    }
+                    level.Terrain = sceneData.Terrain;
+                    level.Environment = sceneData.Environment;
+                    level.Skybox = sceneData.Skybox;
+                    Console.WriteLine($"[SceneManager] Reconstructed Level from SceneData payload - Entities: {level.Entities.Count}");
+                }
+                catch
+                {
+                    level = new Level { Name = levelName };
+                }
+            }
+            else if (level == null && !string.IsNullOrEmpty(levelDataPayload))
             {
                 try
                 {

@@ -35,7 +35,7 @@ namespace Trebuchet
         private Process _serverProcess;
         private SceneManager _sceneManager;
         private PanelManager _panelManager;
-        public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0, bool discoverP2PHost = false, ulong joinLobbyId = 0, bool isClientRuntime = false, string playProjectPath = null, string loadLevelName = "Main", string levelDataPayload = null)
+        public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0, bool discoverP2PHost = false, ulong joinLobbyId = 0, bool isClientRuntime = false, string playProjectPath = null, string loadLevelName = "Main", string levelDataPayload = null, string sceneDataPayload = null)
         {
             try
             {
@@ -127,7 +127,7 @@ namespace Trebuchet
                     {
                         _sceneManager = new SceneManager(_eventBus, _renderContext, _controlContext, _window, _modManager, _settingsManager, _steamEngine, _inputHandler, null);
                         ScriptLoader.LoadCustomAssemblies(playProjectPath); // Phase 1 addition
-                        _sceneManager.SwitchToRuntimeGameplay(playProjectPath, loadLevelName, levelDataPayload);
+                        _sceneManager.SwitchToRuntimeGameplay(playProjectPath, loadLevelName, levelDataPayload, sceneDataPayload);
                         Console.WriteLine("[Launcher] Pure client runtime - IDE panels skipped, Gameplay scene loaded from passed Level name");
                     }
                     else
