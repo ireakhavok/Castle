@@ -53,7 +53,7 @@ namespace SiegeEngine.Core.Rendering
 
         public void LoadSkybox(SkyboxData skybox)
         {
-            if (skybox == null) skybox = new SkyboxData();
+            if (skybox == null || !skybox.Enabled) return;
             if (_cubemapTexture != 0)
             {
                 _renderContext.DeleteTexture(_cubemapTexture);
@@ -70,7 +70,7 @@ namespace SiegeEngine.Core.Rendering
 
         public void RenderSkybox(SkyboxData skybox, Matrix4x4 view, Matrix4x4 projection)
         {
-            if (skybox == null || _cubemapTexture == 0) return;
+            if (skybox == null || !skybox.Enabled || _cubemapTexture == 0) return;
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.CullFace);
             _skyShader.Use();

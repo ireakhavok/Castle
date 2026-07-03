@@ -118,9 +118,7 @@ namespace CastleBuilder
             BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
             string projectPath = ProjectSettings.Current.ActiveProject ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\CastleBuilder\\Projects\\Current";
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
-            string snapshotPath = Path.Combine(projectPath, "runtime_start.level");
             var level = ProjectSettings.Current.CurrentLevel ?? new Level();
-            File.WriteAllBytes(snapshotPath, level.Serialize());
             ScriptLoader.BuildProjectScripts(projectPath);
             ScriptLoader.CopyProjectScripts(projectPath);
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
@@ -128,13 +126,12 @@ namespace CastleBuilder
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
-                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\" --runtime-snapshot \"{snapshotPath}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\"",
+                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\"",
                 UseShellExecute = true,
                 WorkingDirectory = Path.GetDirectoryName(exe)
             };
             Process.Start(psi);
-            // Panel closure removed per request - no ContextChangedEvent or ClosePanelEvent triggered here
-            Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with FULL Level snapshot '{levelName}' from IDE cache - editor panels remain open, exact entities/positions/terrain/packs active (no spoof, standalone compatible)");
+            Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with FULL Level from IDE cache (exact entities/positions/terrain/packs active, no spoof, standalone compatible)");
         }
         public static void SandboxRegressionTest(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -200,7 +197,7 @@ namespace CastleBuilder
                         FileName = Path.Combine(exportRoot, "Citadel.exe"),
                         WorkingDirectory = exportRoot,
                         UseShellExecute = true,
-                        Arguments = "--client --load-level " + levelName + " --runtime-snapshot \"" + levelJsonPath + "\" --custom-assemblies \"" + ScriptLoader.GetCustomAssemblyList(projectPath) + "\""
+                        Arguments = "--client --load-level " + levelName + " --custom-assemblies \"" + ScriptLoader.GetCustomAssemblyList(projectPath) + "\""
                     });
                     Console.WriteLine($"[Export SUCCESS] Clean game client exported to {exportRoot} with FULL starting Level '{levelName}' and launched as pure runtime client (exact entities, positions, terrain, packs - no server messages, no IDE)");
                 }

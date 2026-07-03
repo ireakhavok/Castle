@@ -15,7 +15,7 @@ namespace SiegeEngine.Core.Definitions
         public List<Entity> Entities { get; } = new List<Entity>();
         public TerrainData Terrain { get; set; } = new TerrainData();
         public EnvironmentSettings Environment { get; set; } = new EnvironmentSettings();
-        public SkyboxData Skybox { get; set; } = new SkyboxData();
+        public SkyboxData Skybox { get; set; }
         public Dictionary<string, object> CustomData { get; } = new Dictionary<string, object>();
 
         private readonly EventBus _eventBus;
@@ -30,8 +30,6 @@ namespace SiegeEngine.Core.Definitions
         {
             if (entity == null) return;
 
-            // FIXED: always ensure _nextEntityId is one past the highest existing ID
-            // This guarantees new placements after load get truly unique IDs
             if (Entities.Count > 0)
             {
                 int maxId = Entities.Max(e => e.Id);
@@ -66,7 +64,7 @@ namespace SiegeEngine.Core.Definitions
 
         public Entity PlaceEntity(Vector3 position, string type = "Default", Quaternion rotation = default, Vector3 scale = default)
         {
-            var entity = new Entity { Id = 0, Type = type };   // force ID=0 so AddEntity always assigns fresh ID
+            var entity = new Entity { Id = 0, Type = type };
             var physics = new PhysicsComponent();
             physics.Position = position;
             physics.Rotation = rotation;
@@ -109,7 +107,7 @@ namespace SiegeEngine.Core.Definitions
                 Name = dto?.Name ?? "Untitled",
                 Terrain = dto?.Terrain ?? new TerrainData(),
                 Environment = dto?.Environment ?? new EnvironmentSettings(),
-                Skybox = dto?.Skybox ?? new SkyboxData()
+                Skybox = dto?.Skybox
             };
 
             if (dto?.Entities != null)
