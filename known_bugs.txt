@@ -1,11 +1,18 @@
 Floating panels size/position not restored on project load (direct regression from centralized registration fix; highest impact on UX after last change).
 
-AnimationViewerPanel continuous updates (needs animation loop without stealing mouse input from other panels).
+TextRenderer ASCII completeness + system text size vs static/resizing (core rendering bug affecting all UI). - there is no way to output ascii characters or utf-8 whichever has all the emoticons? 
 
-TextRenderer ASCII completeness + system text size vs static/resizing (core rendering bug affecting all UI).
+visual changes occur when moving to a system where the text is rendering at different text sizes - like a 125% zoom is causing the text to be larger on that system. 
 
-On scene switch, TerrainCreatorScene / terrain editor must switch correctly (scene management consistency).
+sound is stubbed, but not implemented. 
 
-File browser adds all to DOM + HTML "document" top space + unstyled title (HtmlParser / UIOverlay parsing bug).
+not all the basic types of entities are there - like a sound generator? IDK. 
 
-Background height, full-screen docking in IDEDockingStrategy, max-height non-flex panels resizing past limits (layout / chrome / docking edge cases).
+don't know how to emphasize a scene is networked, which items are static vs dynamic, networked vs not networked, instanced vs networked scenes, there's just a ton. 
+
+I don't know how much should be in the core engine, vs the IDE, vs in the game itself? 
+
+play game is working, but the build / play is doing weird stuff? I can send logs when we get to that. 
+
+there is a visual bug in the buffer where the ui and or the panel chroma of the sceneeditorpanel get's messed up when I make the selection of a brush texture in paint mode
+

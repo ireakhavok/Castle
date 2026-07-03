@@ -15,6 +15,7 @@ namespace SiegeEngine.Core.Definitions
         public List<Entity> Entities { get; } = new List<Entity>();
         public TerrainData Terrain { get; set; } = new TerrainData();
         public EnvironmentSettings Environment { get; set; } = new EnvironmentSettings();
+        public SkyboxData Skybox { get; set; } = new SkyboxData();
         public Dictionary<string, object> CustomData { get; } = new Dictionary<string, object>();
 
         private readonly EventBus _eventBus;
@@ -91,6 +92,7 @@ namespace SiegeEngine.Core.Definitions
                 Name = Name,
                 Terrain = Terrain,
                 Environment = Environment,
+                Skybox = Skybox,
                 Entities = Entities.ConvertAll(e => e.ToData()),
                 CustomData = CustomData
             };
@@ -106,7 +108,8 @@ namespace SiegeEngine.Core.Definitions
             {
                 Name = dto?.Name ?? "Untitled",
                 Terrain = dto?.Terrain ?? new TerrainData(),
-                Environment = dto?.Environment ?? new EnvironmentSettings()
+                Environment = dto?.Environment ?? new EnvironmentSettings(),
+                Skybox = dto?.Skybox ?? new SkyboxData()
             };
 
             if (dto?.Entities != null)
@@ -133,6 +136,7 @@ namespace SiegeEngine.Core.Definitions
             public string Name { get; set; }
             public TerrainData Terrain { get; set; }
             public EnvironmentSettings Environment { get; set; }
+            public SkyboxData Skybox { get; set; }
             public List<EntityData> Entities { get; set; }
             public Dictionary<string, object> CustomData { get; set; }
         }

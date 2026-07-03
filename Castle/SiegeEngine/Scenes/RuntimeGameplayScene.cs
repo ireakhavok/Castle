@@ -33,6 +33,8 @@ namespace SiegeEngine.Scenes
         private bool _contentLoaded = false;
         private bool _firstFrame = true;
         private ModelManager _modelManager;
+        private SkyboxRenderer _skyboxRenderer;
+        private SkyboxData _skyboxData = new SkyboxData();
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -42,6 +44,7 @@ namespace SiegeEngine.Scenes
             _modelRenderer = new ModelRenderer(renderContext);
             _heightmap = new float[_terrainWidth, _terrainHeight];
             for (int x = 0; x < _terrainWidth; x++) for (int y = 0; y < _terrainHeight; y++) _heightmap[x, y] = 5f + (float)Math.Sin(x * 0.1f + y * 0.1f) * 3f;
+            _skyboxRenderer = new SkyboxRenderer(renderContext);
             string projectPath = "";
             string levelName = "NewTerrain";
             string snapshotPath = null;
@@ -90,6 +93,7 @@ namespace SiegeEngine.Scenes
             _player.InitializeCamera(_controlContext, _window);
             ForceVisibleOverheadCamera();
             BuildTexturedMesh();
+            _skyboxRenderer.Initialize();
         }
         private void ForceVisibleOverheadCamera()
         {
@@ -123,6 +127,8 @@ namespace SiegeEngine.Scenes
                 }
                 ctx.CurrentLevel = level;
             }
+            _skyboxData = level.Skybox ?? new SkyboxData();
+            _skyboxRenderer.LoadSkybox(_skyboxData);
             LoadLevelData(levelName, projectPath);
             LoadExactSavedTerrain(projectPath, levelName);
             _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
@@ -244,6 +250,8 @@ namespace SiegeEngine.Scenes
         }
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
+            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+            _skyboxRenderer.RenderSkybox(_skyboxData, view, projection);
             _modelRenderer.RenderTerrain(_terrainBuffer, _terrainShader, _flyCamera.ViewMatrix, projection, _hasColorTexture, _terrainTextureId);
             foreach (var e in _server.GetEntities())
             {
@@ -258,6 +266,7 @@ namespace SiegeEngine.Scenes
         }
         public override void Dispose()
         {
+            _skyboxRenderer?.Dispose();
             _terrainShader?.Dispose();
             _terrainBuffer?.Dispose();
             _modelRenderer?.Dispose();

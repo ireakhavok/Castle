@@ -21,6 +21,17 @@ Folder: Assets
       - string> BuildGuidMap(string path)
 
 Folder: IDE
+- File: AddSkyboxPanel.cs
+  - Class: AddSkyboxUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: Keystone, ReadingChamber, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Numerics, System.Text.Json
+    - Fields:
+      - AddSkyboxPanel _parent
+      - EventBus _eventBus
+    - Methods:
+      - void HandleDataHook(string hook)
+        - Calls: ClosePanelEvent, FindElementById, JsonSerializer.Serialize, _parent.OpenCubemapSelector, _parent.OpenFaceSelector
 - File: AnimationBlendPanel.cs
   - Class: BlendUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -171,7 +182,7 @@ Folder: IDE
       - void RefreshMenuForContext(string context)
         - Calls: Console.WriteLine
       - void HandleDataHook(string hook)
-        - Calls: CloseAllOpenNavDropdowns, MenuCommands.ExportGame, MenuCommands.PlayGame, RefreshUI
+        - Calls: CloseAllOpenNavDropdowns, MenuCommands.BuildScripts, MenuCommands.ExportGame, MenuCommands.OpenScriptsPanel, MenuCommands.PlayGame, RefreshUI
       - void CloseAllOpenNavDropdowns()
         - Calls: FindElementsByTag, nav.CloseDropdown, nav.IsNavDropdownParent
 - File: IOutlinerProvider.cs
@@ -229,12 +240,18 @@ Folder: IDE
         - Calls: AnimationTimelinePanel.Open, Console.WriteLine
       - void OpenAnimationBlend( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: AnimationBlendPanel.Open, Console.WriteLine
+      - void OpenAddSkybox( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: AddSkyboxPanel.Open, Console.WriteLine
       - void PlayGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: Console.WriteLine, Process.Start
+        - Calls: BlueprintManager.SaveCurrentProject, Console.WriteLine, Level, Process.Start, ScriptLoader.BuildProjectScripts, ScriptLoader.CopyProjectScripts, ScriptLoader.GetCustomAssemblyList, level.Serialize
       - void SandboxRegressionTest( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: Console.WriteLine, SandboxScene.Launch
       - void ExportGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: BlueprintManager.CopyDirectory, Console.WriteLine, Level, Process.Start, Task.Run, level.Serialize
+        - Calls: BlueprintManager.CopyDirectory, BlueprintManager.SaveCurrentProject, Console.WriteLine, Level, Process.Start, ScriptLoader.BuildProjectScripts, ScriptLoader.CopyProjectScripts, ScriptLoader.CopyScriptsToExport, ScriptLoader.GetCustomAssemblyList, Task.Run, level.Serialize
+      - void BuildScripts( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine, ScriptLoader.BuildProjectScripts
+      - void OpenScriptsPanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
+        - Calls: Console.WriteLine
 - File: NewMaterialPanel.cs
   - Class: NewMaterialUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -475,16 +492,17 @@ Folder: IDE
       - int ColorLayerResolution
       - bool _enableBrush
       - TerrainRenderer _terrainRenderer
+      - SkyboxRenderer _skyboxRenderer
     - Methods:
       - void Initialize( int height, int width)
         - Calls: VertexBuffer
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _terrainRenderer.RenderGhost, _terrainRenderer.RenderTerrain
+        - Calls: _skyboxRenderer.RenderSkybox, _terrainRenderer.RenderGhost, _terrainRenderer.RenderTerrain
       - void Dispose()
         - Calls: _renderContext.DeleteTexture
       - void BindLiveState(ISceneStateProvider liveState)
       - void RefreshFromLiveState(SceneData sd)
-        - Calls: LoadTerrain, RebuildTerrainMesh, SetColorTexture, SyncFromLiveState
+        - Calls: LoadTerrain, RebuildTerrainMesh, SetColorTexture, SetSkybox, SyncFromLiveState
       - void OnSelectBrushEvent(SelectBrushEvent e)
         - Calls: Enum.Parse, SetActiveMaterial, TryPerformPlacementRaycast, UpdateGhostMesh, _renderContext.DeleteTexture
       - bool TryPerformPlacementRaycast(out Vector3 hitPoint)
@@ -509,7 +527,7 @@ Folder: IDE
         - Calls: BuildTexturedMesh, Console.WriteLine, Dispose, ResolveFullPath, TerrainTextureParser.CreateColorTexture, _colorBitmapCache.Clone, _colorBitmapCache.Dispose, _renderContext.DeleteTexture, g.Clear, live.SyncColorTextureIfNeeded
       - string GetColorTexturePath()
       - void SaveTerrain(string terrainName)
-        - Calls: CustomTerrainParser.SaveFloatTiff, CustomTerrainParser.TryGetCustomScale, Dispose, RebuildTerrainMesh, ResolveFullPath, SaveAsPng, _colorBitmapCache.Clone, _paintData.SaveToDisk, live.SyncColorTextureIfNeeded
+        - Calls: CustomTerrainParser.SaveFloatTiff, CustomTerrainParser.TryGetCustomScale, Dispose, RebuildTerrainMesh, ResolveFullPath, SaveAsPng, SaveSkybox, _colorBitmapCache.Clone, _paintData.SaveToDisk, live.SyncColorTextureIfNeeded
       - void SaveAsPng(string path)
         - Calls: Console.WriteLine, Dispose, _colorBitmapCache.Clone, liveReload.SyncColorTextureIfNeeded, saveData.Clone
       - void Export2D(string projectAssetsDir)
@@ -535,6 +553,12 @@ Folder: IDE
         - Calls: ApplyModification
       - void ApplyModification(TerrainModifiedEvent e)
         - Calls: Enum.Parse, UpdateAffectedVertices, brush.Apply
+      - void SetSkybox(SkyboxData skybox)
+        - Calls: Console.WriteLine, live.SyncSkyboxIfNeeded
+      - void SaveSkybox(string sceneName)
+        - Calls: live.SyncSkyboxIfNeeded
+      - void OnSkyboxDataHook(string hook)
+        - Calls: AddSkyboxPanel.Open
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
@@ -686,7 +710,7 @@ Folder: Launcher
       - PanelManager _panelManager
     - Methods:
       - void Start( bool discoverDedicated = false,  bool discoverP2PHost = false,  bool isClientRuntime = false,  string loadLevelName = "Main",  string playProjectPath = null,  ulong connectToServerSteamId = 0,  ulong joinLobbyId = 0,  ulong specificLobbyId = 0, string context)
-        - Calls: ConnectToDedicatedServer, Console.WriteLine, CreateLobby, Dispose, EventBus, InputHandler, JoinSpecificLobby, LoadLibrary, ModManager, PanelManager, Render, RequestP2PHostLobbies, SaveSettings, SceneManager, SteamEngine, Terminate, UISettingsManager, Update, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.SwitchToRuntimeGameplay, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
+        - Calls: ConnectToDedicatedServer, Console.WriteLine, CreateLobby, Dispose, EventBus, InputHandler, JoinSpecificLobby, LoadLibrary, ModManager, PanelManager, Render, RequestP2PHostLobbies, SaveSettings, SceneManager, ScriptLoader.LoadCustomAssemblies, SteamEngine, Terminate, UISettingsManager, Update, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.SwitchToRuntimeGameplay, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
 - File: Program.cs
   - Class: Program (Namespace: Foundation)
     - Dependencies: SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, System, System.Diagnostics, System.IO, System.Runtime.InteropServices, Trebuchet
@@ -707,7 +731,7 @@ Folder: Server
   - Class: GameServer (Namespace: Citadel.Server)
     - Inherits: IGameServer
     
-    - Dependencies: Citadel.Network, Citadel.Systems, SiegeEngine.Core.ContextManagement, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
+    - Dependencies: Citadel.Network, Citadel.Systems, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
     - Fields:
       - List<Entity> _entities
       - List<GameSystem> _systems
@@ -1250,6 +1274,11 @@ Folder: SiegeEngine
     - Methods:
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+- File: CustomPlayerController.cs
+  - Class: CustomPlayerController (Namespace: SiegeEngine.PlayerSystem)
+    - Inherits: PlayerMovement
+    
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Managers, SiegeEngine.Systems, System, System.Numerics
 - File: CustomTerrainParser.cs
   - Class: CustomTerrainParser (Namespace: SiegeEngine.Core.Terrain)
     - Dependencies: System, System.IO
@@ -2122,6 +2151,7 @@ Folder: SiegeEngine
       - float GetInterpolatedHeight( float worldY, float worldX)
       - void ApplyBrushModification( float radius,  float strength,  int paintLayer,  string falloff,  string operation,  string shape, Vector3 worldPos)
       - void SyncColorTextureIfNeeded()
+      - void SyncSkyboxIfNeeded()
       - void Dispose()
 - File: LobbyManager.cs
   - Class: LobbyManager (Namespace: SiegeEngine.Core.Managers)
@@ -2745,6 +2775,8 @@ Folder: SiegeEngine
       - bool _contentLoaded
       - bool _firstFrame
       - ModelManager _modelManager
+      - SkyboxRenderer _skyboxRenderer
+      - SkyboxData _skyboxData
     - Methods:
       - void LoadLevelData( string projectPath, string levelName)
         - Calls: LoadSceneData, SceneActivatedEvent, _player.InitializeCamera
@@ -2753,7 +2785,7 @@ Folder: SiegeEngine
       - void ForceVisibleOverheadCamera()
         - Calls: _flyCamera.RefreshViewMatrix, _flyCamera.Update
       - void LoadContentFromContext(SceneContext ctx)
-        - Calls: Console.WriteLine, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, _flyCamera.Update, _modelManager.TryGetModel, _server.AddEntity, ctx.CurrentLevel.AddEntity
+        - Calls: Console.WriteLine, ForceVisibleOverheadCamera, Level, Level.Deserialize, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, _flyCamera.Update, _modelManager.TryGetModel, _server.AddEntity, _skyboxRenderer.LoadSkybox
       - void LoadExactSavedTerrain( string levelName, string projectPath)
         - Calls: BuildTexturedMesh, Console.WriteLine, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture
       - void SetupPureRuntimeWorld()
@@ -2765,7 +2797,7 @@ Folder: SiegeEngine
       - void Update(float deltaTime)
         - Calls: ForceVisibleOverheadCamera
       - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
-        - Calls: Render, _modelRenderer.RenderEntityFully, _modelRenderer.RenderTerrain, _server.GetEntities
+        - Calls: Render, _modelRenderer.RenderEntityFully, _modelRenderer.RenderTerrain, _renderContext.Clear, _server.GetEntities, _skyboxRenderer.RenderSkybox
       - void Dispose()
 - File: SandBoxScene.cs
   - Class: SandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
@@ -2843,16 +2875,11 @@ Folder: SiegeEngine
   - Class: SceneContext (Namespace: SiegeEngine.Scenes)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, System.Collections.Generic, System.Numerics
     - Methods:
-      - SceneContext CreateCore(
-            EventBus eventBus, 
-            IControlContext controlContext, 
-            IGameServer server, 
-            IRenderContext renderContext, 
-            nint window)
+      - SceneContext CreateCore( EventBus eventBus,  IControlContext controlContext,  IGameServer server,  nint window, IRenderContext renderContext)
       - SceneContext CreateForRuntime( EventBus eb,  IControlContext cc,  IGameServer s,  IRenderContext rc,  SceneData sceneData,  nint w, Level level)
-        - Calls: CreateCore, ModelManager
+        - Calls: CreateCore, Level, ModelManager
 - File: SceneData.cs
-  - Class: EnvironmentSettings (Namespace: SiegeEngine.Core.Definitions)
+  - Class: SkyboxData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: SceneManager.cs
   - Class: SceneManager (Namespace: SiegeEngine.Core.Managers)
@@ -2876,9 +2903,9 @@ Folder: SiegeEngine
       - constructor SceneManager( IControlContext controlContext,  IRenderContext renderContext,  ISteamEngine steamEngine,  InputHandler inputHandler,  MenuPanel menuPanel,  ModManager modManager,  UISettingsManager settingsManager,  nint window, EventBus eventBus)
       - void Dispose()
       - void OnSwitchScene(SwitchSceneEvent e)
-        - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
+        - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
       - void SwitchToRuntimeGameplay( Level currentLevel = null,  string levelName, string projectPath)
-        - Calls: ClientGameServerProxy, Console.WriteLine, ModelManager, ModelManager.EnsurePacksLoaded, SceneContext.CreateForRuntime, SceneRegistry.Create, _currentScene.Initialize
+        - Calls: ClientGameServerProxy, Console.WriteLine, ModelManager, ModelManager.EnsurePacksLoaded, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize
 - File: SceneRegistry.cs
   - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
     - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic
@@ -2909,6 +2936,10 @@ Folder: SiegeEngine
     - Methods:
       - byte[] Serialize()
       - void Deserialize(byte[] data)
+- File: ScriptLoader.cs
+  - Class: CustomSceneEntryAttribute (Namespace: SiegeEngine.Core.Managers)
+    - Inherits: Attribute 
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Reflection
 - File: SelectBrushEvent.cs
   - Class: SelectBrushEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -2998,6 +3029,37 @@ Folder: SiegeEngine
         - Calls: FBXParserBase.Log
       - void LogBoneHierarchy( Bone bone,  int level, List<Bone> bones)
         - Calls: FBXParserBase.Log
+- File: SkyboxRenderer.cs
+  - Class: SkyboxRenderer (Namespace: SiegeEngine.Core.Rendering)
+    - Inherits: IDisposable
+    
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, System, System.Collections.Generic, System.IO, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - ShaderProgram _skyShader
+      - VertexBuffer _cubeBuffer
+      - uint _cubemapTexture
+    - Methods:
+      - constructor SkyboxRenderer(IRenderContext renderContext)
+      - void Initialize()
+        - Calls: BuildCubeMesh, ShaderProgram, VertexBuffer
+      - void BuildCubeMesh()
+        - Calls: _cubeBuffer.UpdateCustomWithUV
+      - void LoadSkybox(SkyboxData skybox)
+        - Calls: TextureLoader.LoadCubemap, TextureLoader.LoadSixFacesCubemap, _renderContext.DeleteTexture
+      - void RenderSkybox( Matrix4x4 projection,  Matrix4x4 view, SkyboxData skybox)
+        - Calls: _cubeBuffer.Bind, _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _skyShader.SetMatrix4, _skyShader.Use
+      - void Dispose()
+        - Calls: _renderContext.DeleteTexture
+- File: SkyboxShader.cs
+  - Class: SkyboxShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
+    - Dependencies: System
+    - Fields:
+      - string VertexShaderSource
+      - string FragmentShaderSource
+    - Methods:
+      - void main()
+      - void main()
 - File: SoundEmissionEvent.cs
   - Class: SoundRayTraceResult (Namespace: SiegeEngine.Core.Events)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
@@ -3223,6 +3285,10 @@ Folder: SiegeEngine
     - Methods:
       - return LoadTextureFromBitmap()
         - Calls: Console.WriteLine, renderContext.BindTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.GetError, renderContext.GetFloat, renderContext.IsExtensionPresent, renderContext.TexImage2D, renderContext.TexParameter, renderContext.TexParameterf
+      - uint LoadCubemap( string path, IRenderContext renderContext)
+        - Calls: renderContext.BindTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.TexImage2D, renderContext.TexParameter
+      - uint LoadSixFacesCubemap( string[] faces, IRenderContext renderContext)
+        - Calls: renderContext.BindTexture, renderContext.GenTextures, renderContext.GenerateMipmap, renderContext.TexImage2D, renderContext.TexParameter
 - File: ThElement.cs
   - Class: ThElement (Namespace: SiegeEngine.Core.UI.Elements)
     - Inherits: HtmlElement

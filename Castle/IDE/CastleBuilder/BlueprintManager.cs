@@ -140,6 +140,7 @@ namespace CastleBuilder
                     sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                     sceneData.Terrain = level.Terrain ?? new TerrainData();
                     sceneData.Environment = level.Environment ?? new EnvironmentSettings();
+                    sceneData.Skybox = level.Skybox ?? new SkyboxData();
                     data.Scenes["Main"] = sceneData;
                     data.LastOpenedScene = "Main";
                     File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
@@ -201,8 +202,29 @@ namespace CastleBuilder
                 sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                 sceneData.Terrain = level.Terrain ?? new TerrainData();
                 sceneData.Environment = level.Environment ?? new EnvironmentSettings();
+                sceneData.Skybox = level.Skybox ?? new SkyboxData();
                 if (level.CustomData != null) sceneData.CustomData = level.CustomData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment from Level (authoritative) → SceneData");
+                Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment + skybox from Level (authoritative) → SceneData");
+            }
+            if (level?.Skybox != null)
+            {
+                string skyDir = Path.Combine(projectPath, "Assets", "Skyboxes", currentSceneName);
+                Directory.CreateDirectory(skyDir);
+                if (!string.IsNullOrEmpty(level.Skybox.CubemapPath) && File.Exists(level.Skybox.CubemapPath))
+                {
+                    string dest = Path.Combine(skyDir, Path.GetFileName(level.Skybox.CubemapPath));
+                    File.Copy(level.Skybox.CubemapPath, dest, true);
+                    level.Skybox.CubemapPath = Path.GetRelativePath(projectPath, dest);
+                }
+                foreach (var f in level.Skybox.Faces)
+                {
+                    if (File.Exists(f))
+                    {
+                        string dest = Path.Combine(skyDir, Path.GetFileName(f));
+                        File.Copy(f, dest, true);
+                    }
+                }
+                Console.WriteLine("[BlueprintManager] Skybox assets copied to project/Assets/Skyboxes (always, regardless of enabled flag for preview consistency)");
             }
             var uniquePackKeys = data.Scenes.Values
                 .SelectMany(s => s.Entities ?? new List<EntityData>())
@@ -222,7 +244,7 @@ namespace CastleBuilder
             }
             SaveAllPanelStates(data);
             File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
-            Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with Level as single source of truth + terrain reference + clean entities + materialized asset packs");
+            Console.WriteLine("[BlueprintManager.DoProjectSave] project.json written with Level as single source of truth + terrain + clean entities + materialized asset packs");
             if (!string.IsNullOrEmpty(_previousContext))
             {
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Forcing CURRENT blade '{_previousContext}' into memory");
@@ -260,9 +282,7 @@ namespace CastleBuilder
                 Directory.CreateDirectory(Path.Combine(dir, "Assets"));
             }
             ProjectSettings.Current.ActiveProject = dir;
-
             EditorScene.Current?.FlushActiveSceneData();
-
             DoProjectSave();
             eventBus.Publish(new LoadProjectEvent { Path = dir });
             Console.WriteLine($"[BlueprintManager.SaveProjectAs] Save As complete - new project fully populated and active at {dir}");
@@ -272,16 +292,13 @@ namespace CastleBuilder
             DirectoryInfo diSource = new DirectoryInfo(sourceDir);
             DirectoryInfo diTarget = new DirectoryInfo(targetDir);
             if (!diTarget.Exists) diTarget.Create();
-
             foreach (FileInfo fi in diSource.GetFiles())
             {
                 string targetFile = Path.Combine(diTarget.FullName, fi.Name);
                 fi.CopyTo(targetFile, true);
             }
-
             foreach (DirectoryInfo diSourceSubDir in diSource.GetDirectories())
             {
-                // SKIP the "exported" folder and any IDE-specific folders to keep export clean
                 if (diSourceSubDir.Name.Equals("exported", StringComparison.OrdinalIgnoreCase) ||
                     diSourceSubDir.Name.Equals("IDE", StringComparison.OrdinalIgnoreCase))
                 {
@@ -305,6 +322,21 @@ namespace CastleBuilder
                 bool allowMods = bool.Parse(evt.Data.GetValueOrDefault("allowMods", "false"));
                 string path = evt.Data.GetValueOrDefault("path", null);
                 _eventBus.Publish(new NewProjectEvent { Name = name, ProjectType = projectType, Mode = mode, AllowMods = allowMods, Path = path });
+            }
+            else if (evt.Hook == "SkyboxSet")
+            {
+                var level = ProjectSettings.Current.CurrentLevel;
+                if (level != null && evt.Data != null && evt.Data.TryGetValue("skybox", out var skyJson))
+                {
+                    var sky = JsonSerializer.Deserialize<SkyboxData>(skyJson);
+                    level.Skybox = sky;
+                    Console.WriteLine($"[BlueprintManager] SkyboxSet handled - Level.Skybox updated (Enabled={sky?.Enabled})");
+                }
+                //DoProjectSave();
+            }
+            else if (evt.Hook == "ProjectSaveRequest")
+            {
+                DoProjectSave();
             }
         }
         private void OnNewProject(NewProjectEvent evt)
@@ -355,6 +387,7 @@ namespace CastleBuilder
                         }
                         level.Terrain = sd.Terrain ?? new TerrainData();
                         level.Environment = sd.Environment ?? new EnvironmentSettings();
+                        level.Skybox = sd.Skybox ?? new SkyboxData();
                         ProjectSettings.Current.SetCurrentLevel(level);
                         Console.WriteLine($"[BlueprintManager] Loaded Level '{currentScene}' with {level.Entities.Count} entities as single source of truth");
                     }

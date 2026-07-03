@@ -96,7 +96,7 @@ namespace SiegeEngine.PlayerSystem
             _movementInput = new Vector2(x, y);
             Console.WriteLine($"PlayerMovement: Networked Key {e.Key}, Action {e.Action}, ActiveKeys=[{string.Join(",", _activeKeys)}], MovementInput={_movementInput}, LastKey={_lastPressedKey}");
         }
-        public void Update(Player player, float deltaTime, Action<int, Vector2, Quaternion> sendMovementRequest, CameraController camera)
+        public virtual void Update(Player player, float deltaTime, Action<int, Vector2, Quaternion> sendMovementRequest, CameraController camera)
         {
             if (player == null || camera == null) return;
             float yawRad = camera.Yaw * (float)(Math.PI / 180);

@@ -1,18 +1,18 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: Castle/SiegeEngine/Core/Managers
 // File: IDEDockingStrategy.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Linq;
-using SiegeEngine.Core.Rendering.ContextManagement;
 namespace SiegeEngine.Core.Managers
 {
     public class IDEDockingStrategy : IDockingStrategy
@@ -45,7 +45,6 @@ namespace SiegeEngine.Core.Managers
         private DockState _hoverEdge = DockState.Floating;
         private Vector2 _edgePreviewPos;
         private Vector2 _edgePreviewSize;
-        // Two caches: panel objects (reuse to prevent leak) + full layout json (exact dock state)
         private readonly Dictionary<string, List<IPanel>> _bladePanelCache = new Dictionary<string, List<IPanel>>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, string> _bladeLayoutCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private static string _lastBlade = "Scene Editor";
@@ -80,20 +79,17 @@ namespace SiegeEngine.Core.Managers
         {
             if (newContext == _lastBlade) return;
             Console.WriteLine($"[IDEDockingStrategy] SwitchBlade '{_lastBlade}' → '{newContext}' (no leak + exact dock state)");
-            // 1. Save current panels (reuse objects) and full layout for the blade we are leaving
             if (!_bladePanelCache.ContainsKey(_lastBlade))
                 _bladePanelCache[_lastBlade] = new List<IPanel>();
             _bladePanelCache[_lastBlade].Clear();
             foreach (var p in _floatingPanels) _bladePanelCache[_lastBlade].Add(p);
             if (_root != null) CollectPanelsRecursive(_root, _bladePanelCache[_lastBlade]);
             _bladeLayoutCache[_lastBlade] = SerializeState();
-            // 2. Clear active lists only (no Dispose)
             _floatingPanels.Clear();
             _root = new DockTabbedNode();
             _draggingPanel = null;
             _resizingPanel = null;
             _needsLayout = true;
-            // 3. Restore panels for new blade (reuse same objects)
             if (!_bladePanelCache.ContainsKey(newContext))
                 _bladePanelCache[newContext] = new List<IPanel>();
             var toRestore = _bladePanelCache[newContext];
@@ -101,7 +97,6 @@ namespace SiegeEngine.Core.Managers
             {
                 p.Show();
             }
-            // 4. Apply exact previous dock layout (positions, splits, tabs) without creating new panels
             if (_bladeLayoutCache.TryGetValue(newContext, out var savedLayout) && !string.IsNullOrEmpty(savedLayout))
             {
                 ApplyLayoutToExistingPanels(savedLayout, toRestore);
@@ -116,9 +111,7 @@ namespace SiegeEngine.Core.Managers
             {
                 _floatingPanels.Clear();
                 var state = JsonSerializer.Deserialize<SerializableLayoutState>(json);
-                // Rebuild dock tree using the SAME panel instances
                 _root = RebuildDockTree(state.Root, existingPanels);
-                // Restore floating panel positions/sizes
                 foreach (var fp in state.FloatingPanels)
                 {
                     var panel = existingPanels.FirstOrDefault(p => p.GetType().AssemblyQualifiedName == fp.PanelType);
@@ -868,10 +861,8 @@ namespace SiegeEngine.Core.Managers
         {
             var state = new SerializableLayoutState();
             state.Root = SerializeNode(_root);
-            // SURGICAL FILTER: only serialize panels that are truly floating (not present in the dock tree)
-            // This eliminates all cross-blade contamination / duplicate floating entries in layout.{context}.json
             var dockedPanels = new HashSet<IPanel>();
-            CollectPanelsRecursive(_root, dockedPanels.ToList()); // reuse existing collector
+            CollectPanelsRecursive(_root, dockedPanels.ToList());
             foreach (var panel in _floatingPanels)
             {
                 if (panel is BasePanel bp && (dockedPanels.Count == 0 || !dockedPanels.Contains(panel)))
@@ -969,7 +960,7 @@ namespace SiegeEngine.Core.Managers
                     var panel = (IPanel)Activator.CreateInstance(t, _renderContext, _controlContext, _window, _eventBus);
                     if (panel is BasePanel bp)
                     {
-                        bp.Init();  // ← This was missing — panels need Init to set up UIOverlay
+                        bp.Init();
                     }
                     return panel;
                 }
@@ -1014,7 +1005,7 @@ namespace SiegeEngine.Core.Managers
         {
             if (panel == null) return;
             _floatingPanels.Remove(panel);
-            _floatingPanels.Add(panel); // last = topmost in z-order
+            _floatingPanels.Add(panel);
         }
     }
 }

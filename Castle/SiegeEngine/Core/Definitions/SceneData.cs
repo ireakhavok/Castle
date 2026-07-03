@@ -23,10 +23,12 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("environment")]
         public EnvironmentSettings Environment { get; set; } = new EnvironmentSettings();
 
+        [JsonPropertyName("skybox")]
+        public SkyboxData Skybox { get; set; } = new SkyboxData();
+
         [JsonPropertyName("customData")]
         public Dictionary<string, object> CustomData { get; set; } = new Dictionary<string, object>();
 
-        // NEW for Step 1: optional live state reference (editor-only, JsonIgnore for serialization)
         [JsonIgnore]
         public string LiveStateGuid { get; set; } // used internally by ProjectStateManager
     }
@@ -86,5 +88,26 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("fogDensity")]
         public float FogDensity { get; set; } = 0.01f;
+    }
+
+    public class SkyboxData
+    {
+        [JsonPropertyName("enabled")]
+        public bool Enabled { get; set; } = false;
+
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = "Cubemap"; // Cubemap or SixSided
+
+        [JsonPropertyName("cubemapPath")]
+        public string CubemapPath { get; set; } = "";
+
+        [JsonPropertyName("faces")]
+        public List<string> Faces { get; set; } = new List<string>(); // left, right, front, back, top, bottom. 
+
+        [JsonPropertyName("rotationSpeed")]
+        public float RotationSpeed { get; set; } = 0.05f;
+
+        [JsonPropertyName("intensity")]
+        public float Intensity { get; set; } = 1.0f;
     }
 }
