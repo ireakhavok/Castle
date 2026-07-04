@@ -62,6 +62,7 @@ namespace SiegeEngine.Scenes
                 ctx = ctx ?? new SceneContext { PlayProjectPath = projectPath, LoadLevelName = levelName };
             }
             if (ctx != null) LoadContentFromContext(ctx);
+            Console.WriteLine($"[RuntimeGameplayScene] Ctx loaded - entities in level: {(ctx?.CurrentLevel?.Entities?.Count ?? 0)} - rehydrate will fire");
         }
         public void LoadLevelData(string levelName, string projectPath)
         {
@@ -122,6 +123,7 @@ namespace SiegeEngine.Scenes
             LoadExactSavedTerrain(projectPath, levelName);
             _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
             ModelManager.EnsurePacksLoaded(projectPath, level);
+            Console.WriteLine($"[RuntimeGameplayScene] Payload-driven ctx: level.Entities = {level.Entities.Count} - rehydrate starting");
             foreach (var e in level.Entities)
             {
                 var mc = e.GetComponent<ModelComponent>();

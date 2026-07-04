@@ -37,6 +37,9 @@ namespace Trebuchet
         private PanelManager _panelManager;
         public void Start(string context, bool discoverDedicated = false, ulong specificLobbyId = 0, ulong connectToServerSteamId = 0, bool discoverP2PHost = false, ulong joinLobbyId = 0, bool isClientRuntime = false, string playProjectPath = null, string loadLevelName = "Main", string levelDataPayload = null, string sceneDataPayload = null)
         {
+#if DEBUG
+            System.Diagnostics.Debugger.Launch();
+#endif
             try
             {
                 string dllPath = Path.Combine(Directory.GetCurrentDirectory(), "steam_api64.dll");

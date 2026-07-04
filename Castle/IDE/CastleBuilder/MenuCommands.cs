@@ -12,6 +12,7 @@ using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Scenes.StartingPoints;
 using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 using System.Threading.Tasks;
 using ToolChest;
 namespace CastleBuilder
@@ -119,6 +120,18 @@ namespace CastleBuilder
             string projectPath = ProjectSettings.Current.ActiveProject ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\CastleBuilder\\Projects\\Current";
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
             var level = ProjectSettings.Current.CurrentLevel ?? new Level();
+            var sceneData = new SceneData { Name = levelName };
+            if (level != null)
+            {
+                sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
+                sceneData.Terrain = level.Terrain ?? new TerrainData();
+                sceneData.Environment = level.Environment ?? new EnvironmentSettings();
+                sceneData.Skybox = level.Skybox ?? new SkyboxData();
+            }
+            byte[] sceneBytes = JsonSerializer.SerializeToUtf8Bytes(sceneData, EntityData.SerializerOptions);
+            string scenePayload = Convert.ToBase64String(sceneBytes);
+            byte[] levelBytes = level.Serialize();
+            string levelPayload = Convert.ToBase64String(levelBytes);
             ScriptLoader.BuildProjectScripts(projectPath);
             ScriptLoader.CopyProjectScripts(projectPath);
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
@@ -126,7 +139,7 @@ namespace CastleBuilder
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
-                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\"",
+                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\" --level-data \"{levelPayload}\" --scene-data \"{scenePayload}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\"",
                 UseShellExecute = true,
                 WorkingDirectory = Path.GetDirectoryName(exe)
             };
@@ -176,9 +189,21 @@ namespace CastleBuilder
                     ScriptLoader.CopyScriptsToExport(projectPath, exportRoot);
                     string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
                     var level = ProjectSettings.Current.CurrentLevel ?? new Level();
+                    var sceneData = new SceneData { Name = levelName };
+                    if (level != null)
+                    {
+                        sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
+                        sceneData.Terrain = level.Terrain ?? new TerrainData();
+                        sceneData.Environment = level.Environment ?? new EnvironmentSettings();
+                        sceneData.Skybox = level.Skybox ?? new SkyboxData();
+                    }
+                    byte[] sceneBytes = JsonSerializer.SerializeToUtf8Bytes(sceneData, EntityData.SerializerOptions);
+                    string scenePayload = Convert.ToBase64String(sceneBytes);
+                    byte[] serialized = level.Serialize();
+                    string levelPayload = Convert.ToBase64String(serialized);
                     string levelJsonPath = Path.Combine(exportRoot, "Scenes", "starting_level.json");
                     Directory.CreateDirectory(Path.Combine(exportRoot, "Scenes"));
-                    File.WriteAllBytes(levelJsonPath, level.Serialize());
+                    File.WriteAllBytes(levelJsonPath, serialized);
                     File.WriteAllText(Path.Combine(exportRoot, "starting_scene.json"), "{\"startingScene\":\"" + levelName + "\"}");
                     string exeSource = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Citadel.exe");
                     string exeTarget = Path.Combine(exportRoot, "Citadel.exe");
@@ -197,7 +222,7 @@ namespace CastleBuilder
                         FileName = Path.Combine(exportRoot, "Citadel.exe"),
                         WorkingDirectory = exportRoot,
                         UseShellExecute = true,
-                        Arguments = "--client --load-level " + levelName + " --custom-assemblies \"" + ScriptLoader.GetCustomAssemblyList(projectPath) + "\""
+                        Arguments = $"--client --load-level {levelName} --level-data \"{levelPayload}\" --scene-data \"{scenePayload}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\""
                     });
                     Console.WriteLine($"[Export SUCCESS] Clean game client exported to {exportRoot} with FULL starting Level '{levelName}' and launched as pure runtime client (exact entities, positions, terrain, packs - no server messages, no IDE)");
                 }
