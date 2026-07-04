@@ -30,11 +30,15 @@ namespace SiegeEngine.Scenes
         {
             // Existing registrations
             Register("Sandbox", ctx => new SandboxScene(ctx.RenderContext, ctx.ControlContext, ctx.Window, ctx.Player, ctx.Server, ctx.PlayerMovement, ctx.EventBus, ctx.ModelManager));
-            // NEW runtime gameplay scene for Play/Export (receives passed params via SceneContext)
+            // Runtime gameplay scene for Play/Export (receives full rich ctx from SceneManager with reconstructed Level)
             Register("RuntimeGameplay", ctx =>
             {
-                var scene = new RuntimeGameplayScene(ctx.RenderContext, ctx.ControlContext, ctx.Window, ctx.Server, ctx.EventBus);
-                scene.LoadLevelData(ctx.LoadLevelName, ctx.PlayProjectPath); // passed variables, no ProjectSettings reference
+                var scene = new RuntimeGameplayScene(ctx.RenderContext, ctx.ControlContext, ctx.Window, ctx.Server, ctx.EventBus, ctx);
+                if (ctx.CurrentLevel != null && ctx.CurrentLevel.Entities.Count > 0)
+                {
+                    Console.WriteLine($"[SceneRegistry] RuntimeGameplay factory received rich ctx with {ctx.CurrentLevel.Entities.Count} entities - passing intact");
+                }
+                scene.LoadLevelData(ctx.LoadLevelName, ctx.PlayProjectPath);
                 return scene;
             });
         }

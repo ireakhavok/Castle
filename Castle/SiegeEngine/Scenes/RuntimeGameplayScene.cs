@@ -59,10 +59,18 @@ namespace SiegeEngine.Scenes
             if (!string.IsNullOrEmpty(projectPath))
             {
                 Console.WriteLine($"[RuntimeGameplayScene] ✅ MenuCommands command-line parsed → Project: {projectPath} | Level: {levelName}");
-                ctx = ctx ?? new SceneContext { PlayProjectPath = projectPath, LoadLevelName = levelName };
             }
-            if (ctx != null) LoadContentFromContext(ctx);
-            Console.WriteLine($"[RuntimeGameplayScene] Ctx loaded - entities in level: {(ctx?.CurrentLevel?.Entities?.Count ?? 0)} - rehydrate will fire");
+            // Preserve rich ctx from SceneManager/SceneRegistry (critical for payload rehydrate)
+            if (ctx != null && ctx.CurrentLevel != null && ctx.CurrentLevel.Entities.Count > 0)
+            {
+                Console.WriteLine($"[RuntimeGameplayScene] Rich ctx from registry with {ctx.CurrentLevel.Entities.Count} entities - preserving");
+                LoadContentFromContext(ctx);
+            }
+            else
+            {
+                ctx = ctx ?? new SceneContext { PlayProjectPath = projectPath, LoadLevelName = levelName };
+                LoadContentFromContext(ctx);
+            }
         }
         public void LoadLevelData(string levelName, string projectPath)
         {
@@ -108,9 +116,10 @@ namespace SiegeEngine.Scenes
             string projectPath = ctx?.PlayProjectPath ?? "";
             string levelName = ctx?.LoadLevelName ?? "NewTerrain";
             Level level = ctx?.CurrentLevel;
-            if (level == null)
+            if (level == null || level.Entities.Count == 0)
             {
                 level = new Level();
+                Console.WriteLine("[RuntimeGameplayScene] Fallback empty Level detected - using ctx from registry");
             }
             _skyboxData = level.Skybox;
             if (_skyboxData != null && _skyboxData.Enabled)
