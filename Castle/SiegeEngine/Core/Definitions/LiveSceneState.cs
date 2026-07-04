@@ -13,7 +13,7 @@ namespace SiegeEngine.Core.Definitions
         public string SceneName { get; }
         public float[,] Heightmap { get; set; }
         public Bitmap ColorBitmap { get; set; }
-        public SkyboxData Skybox { get; set; } = new SkyboxData();
+        public SkyboxData Skybox { get; set; }
         public int HeightmapVersion { get; set; } = 0;
         public int ColorVersion { get; private set; } = 0;
         public int SkyboxVersion { get; private set; } = 0;
@@ -30,6 +30,7 @@ namespace SiegeEngine.Core.Definitions
             {
                 g.Clear(System.Drawing.Color.Transparent);
             }
+            Skybox = null;
         }
 
         public float[,] GetHeightmap() => Heightmap;

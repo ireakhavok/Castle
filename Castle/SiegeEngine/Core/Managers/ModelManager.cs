@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine/Core/AssetParsing
+﻿// Folder: SiegeEngine/Core/Managers
 // File: ModelManager.cs
 using SiegeEngine.Core.AssetObjects;
 using SiegeEngine.Core.AssetParsing;
@@ -92,7 +92,6 @@ namespace SiegeEngine.Core.Managers
                     pack.BoneNameToIndex[modelForPack.Skeleton.Bones[i].Name] = i;
                 }
             }
-            // Material is now part of the pack (populated by FBXMeshParser)
             if (modelForPack.Meshes.Count > 0 && modelForPack.Meshes[0].Materials.Count > 0)
             {
                 pack.Material = modelForPack.Meshes[0].Materials[0];
@@ -105,9 +104,8 @@ namespace SiegeEngine.Core.Managers
         {
             if (string.IsNullOrEmpty(packPath) || !File.Exists(packPath))
                 return;
-            // Use the folder name (which is the real packId) as the key, NOT the json filename
             string packFolder = Path.GetDirectoryName(packPath);
-            string key = Path.GetFileName(packFolder).ToLower(); // e.g. "man_mesh_pack"
+            string key = Path.GetFileName(packFolder).ToLower();
             if (_animationPacks.ContainsKey(key))
                 return;
             string json = File.ReadAllText(packPath);
@@ -117,7 +115,6 @@ namespace SiegeEngine.Core.Managers
             if (!string.IsNullOrEmpty(resolvedFBXPath) && File.Exists(resolvedFBXPath))
             {
                 LoadModel(resolvedFBXPath);
-                // === CRITICAL: ensure the model is also registered under the pack key (same as RegisterFBXAsPackInMemory) ===
                 string originalKey = Path.GetFileNameWithoutExtension(resolvedFBXPath).ToLower();
                 if (_models.TryGetValue(originalKey, out var model))
                     _models[key] = model;
@@ -134,17 +131,12 @@ namespace SiegeEngine.Core.Managers
                 Console.WriteLine($"[ModelManager] WARNING: Could not resolve FBX for pack '{key}'. SourceFBXPath='{pack.SourceFBXPath}', resolved='{resolvedFBXPath ?? "null"}'");
             }
         }
-        /// <summary>
-        /// Resolves SourceFBXPath (which may be "./filename.fbx") relative to the directory containing assetpack.json.
-        /// This is the correct, portable design for asset packs.
-        /// </summary>
         private string ResolveSourceFBXPath(string sourcePath, string packJsonPath)
         {
             if (string.IsNullOrEmpty(sourcePath)) return null;
             if (Path.IsPathRooted(sourcePath)) return Path.GetFullPath(sourcePath);
             string packDir = Path.GetDirectoryName(packJsonPath);
             if (string.IsNullOrEmpty(packDir)) return sourcePath;
-            // Strip leading "./", "/", "\"
             string clean = sourcePath.TrimStart('.', '/', '\\').TrimStart('/', '\\');
             string candidate = Path.Combine(packDir, clean);
             return Path.GetFullPath(candidate);
@@ -164,12 +156,10 @@ namespace SiegeEngine.Core.Managers
                 packId = Path.GetFileNameWithoutExtension(fbxPath).ToLower() + "_pack";
             string packFolder = Path.Combine(packsDirectory, packId);
             Directory.CreateDirectory(packFolder);
-            // Copy FBX
             string fbxName = Path.GetFileName(fbxPath);
             string destFBX = Path.Combine(packFolder, fbxName);
             if (!File.Exists(destFBX))
                 File.Copy(fbxPath, destFBX, true);
-            // Copy entire texture folder (.fbm) if it exists (existing behavior preserved)
             string fbmSource = Path.Combine(Path.GetDirectoryName(fbxPath), Path.GetFileNameWithoutExtension(fbxPath) + ".fbm");
             if (Directory.Exists(fbmSource))
             {
@@ -177,13 +167,11 @@ namespace SiegeEngine.Core.Managers
                 CopyDirectory(fbmSource, fbmDest);
                 Console.WriteLine($"[ModelManager] Copied texture folder: {fbmSource} → {fbmDest}");
             }
-            // === Collect and copy ALL external textures referenced in parsed FBX materials ===
             FBXFileForest forest = FBXParser.Load(fbxPath);
             FBXModel model = FBXParser.BuildModelFromForest(forest);
             string originalFbxDir = Path.GetDirectoryName(fbxPath);
             int copiedTextureCount = CollectAndCopyReferencedTextures(model, originalFbxDir, packFolder);
             Console.WriteLine($"[ModelManager] Collected and copied {copiedTextureCount} external texture files referenced by materials (from parsed FBXModel)");
-            // Build lightweight manifest
             var pack = new AnimationPack(packId, packId)
             {
                 SourceFBXPath = "./" + fbxName,
@@ -197,7 +185,6 @@ namespace SiegeEngine.Core.Managers
                     pack.BoneNameToIndex[model.Skeleton.Bones[i].Name] = i;
                 }
             }
-            // Material (with TextureSlots) is now part of the pack manifest
             if (model.Meshes.Count > 0 && model.Meshes[0].Materials.Count > 0)
             {
                 pack.Material = model.Meshes[0].Materials[0];
@@ -207,11 +194,6 @@ namespace SiegeEngine.Core.Managers
             File.WriteAllText(jsonPath, json);
             Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {packFolder} (Id: {packId}) with FBX + textures + manifest + Material (world-aligned slots)");
         }
-        /// <summary>
-        /// Traverses the fully-parsed FBXModel and copies every external texture referenced by any material.
-        /// Preserves the exact relative directory structure from the original FBX folder.
-        /// Returns the number of textures copied.
-        /// </summary>
         private int CollectAndCopyReferencedTextures(FBXModel model, string originalFbxDir, string packFolder)
         {
             if (model == null || string.IsNullOrEmpty(originalFbxDir)) return 0;
@@ -640,8 +622,6 @@ namespace SiegeEngine.Core.Managers
             key = key.ToLower();
             return _modelData.TryGetValue(key, out modelData);
         }
-
-        // FUTURE-PROOF STATIC HELPER: scan Assets for ALL *_pack folders (robust, no dependency on Level.Entities.Count)
         public static void EnsurePacksLoaded(string projectPath, Level level = null)
         {
             if (string.IsNullOrEmpty(projectPath)) return;
@@ -664,7 +644,6 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
-            // Optional rehydrate if level provided
             if (level != null)
             {
                 foreach (var e in level.Entities)
@@ -677,7 +656,7 @@ namespace SiegeEngine.Core.Managers
                     }
                 }
             }
-            Console.WriteLine($"[ModelManager.EnsurePacksLoaded] Scanned & preloaded {packDirs.Length} asset packs from '{assetsDir}'");
+            Console.WriteLine($"[ModelManager.EnsurePacksLoaded] Scanned & preloaded {packDirs.Length} asset packs from '{assetsDir}' - models now bound to runtime entities");
         }
     }
 }

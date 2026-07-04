@@ -7,6 +7,7 @@ using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.PlayerSystem;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 namespace SiegeEngine.Scenes
 {
@@ -38,6 +39,7 @@ namespace SiegeEngine.Scenes
             ctx.ProjectSceneData = sceneData;
             ctx.LoadLevelName = level?.Name ?? "Main";
             ctx.ModelManager = ModelManager.Instance ?? new ModelManager(rc);
+            ctx.RuntimeEntities = ctx.CurrentLevel.Entities.ToList();
             return ctx;
         }
     }

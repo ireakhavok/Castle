@@ -28,26 +28,43 @@ namespace Foundation
             bool isClientRuntime = args.Contains("--client");
             string playProjectPath = null;
             string loadLevelName = "Main";
+            string levelDataPayload = null;
+            string sceneDataPayload = null;
 
-            for (int i = 0; i < args.Length - 1; i++)
+            int i = 0;
+            while (i < args.Length)
             {
-                if (args[i] == "--play-project")
-                    playProjectPath = args[i + 1];
-                else if (args[i] == "--load-level")
-                    loadLevelName = args[i + 1];
-                else if (args[i] == "--connect-to-server" && ulong.TryParse(args[i + 1], out ulong connectId))
+                if (i + 1 < args.Length && args[i] == "--play-project")
+                    playProjectPath = args[++i];
+                else if (i + 1 < args.Length && args[i] == "--load-level")
+                    loadLevelName = args[++i];
+                else if (i + 1 < args.Length && args[i] == "--connect-to-server" && ulong.TryParse(args[i + 1], out ulong connectId))
+                {
                     connectToServerSteamId = connectId;
-                else if (args[i] == "--lobby" && ulong.TryParse(args[i + 1], out ulong lobbyId))
+                    i++;
+                }
+                else if (i + 1 < args.Length && args[i] == "--lobby" && ulong.TryParse(args[i + 1], out ulong lobbyId))
+                {
                     specificLobbyId = lobbyId;
-                else if (args[i] == "--join" && ulong.TryParse(args[i + 1], out ulong joinId))
+                    i++;
+                }
+                else if (i + 1 < args.Length && args[i] == "--join" && ulong.TryParse(args[i + 1], out ulong joinId))
+                {
                     joinLobbyId = joinId;
+                    i++;
+                }
+                else if (i + 1 < args.Length && args[i] == "--level-data")
+                    levelDataPayload = args[++i];
+                else if (i + 1 < args.Length && args[i] == "--scene-data")
+                    sceneDataPayload = args[++i];
+                i++;
             }
 
             if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))
             {
-                Console.WriteLine($"Foundation: PURE CLIENT RUNTIME MODE - project '{playProjectPath ?? "IDE"}' level '{loadLevelName}' (single process, no server spawn, no recursion)");
+                Console.WriteLine($"Foundation: PURE CLIENT RUNTIME MODE - project '{playProjectPath ?? "IDE"}' level '{loadLevelName}' (single process, no server spawn, no recursion) - payloads present: levelData={levelDataPayload != null}, sceneData={sceneDataPayload != null}");
                 var launcher = new Launcher();
-                launcher.Start("OpenGL", false, 0, 0, false, 0, true, playProjectPath, loadLevelName);
+                launcher.Start("OpenGL", false, 0, 0, false, 0, true, playProjectPath, loadLevelName, levelDataPayload, sceneDataPayload);
                 return; // No server, no editor, no recursion
             }
 

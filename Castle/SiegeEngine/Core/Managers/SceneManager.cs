@@ -12,6 +12,7 @@ using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
 using System.Numerics;
+using System.Text.Json;
 namespace SiegeEngine.Core.Managers
 {
     public class SceneManager
@@ -72,26 +73,54 @@ namespace SiegeEngine.Core.Managers
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine($"SceneManager: '{e.SceneName}' initialized successfully via registry.");
             ScriptLoader.RegisterCustomSystems(_eventBus, _server);
-            // Phase 2: apply custom controller swap if registered
             ScriptLoader.ApplyCustomPlayerControllerIfPresent(_player, ref _playerMovement);
         }
-        public void SwitchToRuntimeGameplay(string projectPath, string levelName, Level currentLevel = null)
+        public void SwitchToRuntimeGameplay(string projectPath, string levelName, string levelDataPayload = null, string sceneDataPayload = null, Level currentLevel = null)
         {
-            Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0}");
-            var level = currentLevel ?? new Level { Name = levelName };
+            Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0} - levelPayload present: {levelDataPayload != null}, scenePayload present: {sceneDataPayload != null}");
+            Level level = currentLevel;
+            if (level == null && !string.IsNullOrEmpty(sceneDataPayload))
+            {
+                try
+                {
+                    byte[] data = Convert.FromBase64String(sceneDataPayload);
+                    var sceneData = JsonSerializer.Deserialize<SceneData>(data, EntityData.SerializerOptions);
+                    level = new Level();
+                    if (sceneData.Entities != null)
+                    {
+                        foreach (var ed in sceneData.Entities)
+                        {
+                            level.AddEntity(Entity.FromData(ed));
+                        }
+                    }
+                    level.Terrain = sceneData.Terrain;
+                    level.Environment = sceneData.Environment;
+                    level.Skybox = sceneData.Skybox;
+                    Console.WriteLine($"[SceneManager] Reconstructed Level from SceneData payload - Entities: {level.Entities.Count}");
+                }
+                catch { level = new Level { Name = levelName }; }
+            }
+            else if (level == null && !string.IsNullOrEmpty(levelDataPayload))
+            {
+                try
+                {
+                    byte[] data = Convert.FromBase64String(levelDataPayload);
+                    level = Level.Deserialize(data);
+                    Console.WriteLine($"[SceneManager] Reconstructed Level from Level payload - Entities: {level.Entities.Count}");
+                }
+                catch { level = new Level { Name = levelName }; }
+            }
+            level = level ?? new Level { Name = levelName };
             var ctx = SceneContext.CreateForRuntime(level, new SceneData { Name = levelName }, _renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
             ctx.PlayProjectPath = projectPath;
             ctx.LoadLevelName = levelName;
             ctx.CurrentLevel = level;
             _modelManager = new ModelManager(_renderContext);
             ctx.ModelManager = _modelManager;
-            if (!string.IsNullOrEmpty(projectPath))
-            {
-                ModelManager.EnsurePacksLoaded(projectPath, level);
-            }
+            if (!string.IsNullOrEmpty(projectPath)) { ModelManager.EnsurePacksLoaded(projectPath, level); }
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
-            Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot");
+            Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot - entities rehydrated and added");
             ScriptLoader.RegisterCustomSystems(_eventBus, ctx.Server);
             ScriptLoader.ApplyCustomPlayerControllerIfPresent(_player, ref _playerMovement);
         }

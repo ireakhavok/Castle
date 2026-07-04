@@ -24,7 +24,7 @@ namespace SiegeEngine.Core.Definitions
         public EnvironmentSettings Environment { get; set; } = new EnvironmentSettings();
 
         [JsonPropertyName("skybox")]
-        public SkyboxData Skybox { get; set; } = new SkyboxData();
+        public SkyboxData Skybox { get; set; } = null;
 
         [JsonPropertyName("customData")]
         public Dictionary<string, object> CustomData { get; set; } = new Dictionary<string, object>();
@@ -96,13 +96,13 @@ namespace SiegeEngine.Core.Definitions
         public bool Enabled { get; set; } = false;
 
         [JsonPropertyName("type")]
-        public string Type { get; set; } = "Cubemap"; // Cubemap or SixSided
+        public string Type { get; set; } = "Cubemap";
 
         [JsonPropertyName("cubemapPath")]
         public string CubemapPath { get; set; } = "";
 
         [JsonPropertyName("faces")]
-        public List<string> Faces { get; set; } = new List<string>(); // left, right, front, back, top, bottom. 
+        public List<string> Faces { get; set; } = new List<string>();
 
         [JsonPropertyName("rotationSpeed")]
         public float RotationSpeed { get; set; } = 0.05f;

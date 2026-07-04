@@ -42,9 +42,9 @@ namespace ToolChest
                     SkyboxData sky = new SkyboxData
                     {
                         Enabled = true,
-                        Type = typeSelect?.Value ?? "Cubemap",
-                        CubemapPath = cubemapPath?.Value ?? "",
-                        Faces = new List<string> { face0?.Value ?? "", face1?.Value ?? "", face2?.Value ?? "", face3?.Value ?? "", face4?.Value ?? "", face5?.Value ?? "" }
+                        Type = typeSelect?.Value ?? "",
+                        CubemapPath = ShortenedPath(cubemapPath?.Value),
+                        Faces = new List<string> { ShortenedPath(face0?.Value), ShortenedPath(face1?.Value), ShortenedPath(face2?.Value), ShortenedPath(face3?.Value), ShortenedPath(face4?.Value), ShortenedPath(face5?.Value) }
                     };
                     if (_parent._eventBus != null)
                     {
@@ -68,6 +68,18 @@ namespace ToolChest
                 {
                     _parent.OpenCubemapSelector();
                 }
+            }
+            private string ShortenedPath(string full)
+            {
+                if (string.IsNullOrEmpty(full)) return "";
+                try
+                {
+                    string dir = Path.GetDirectoryName(full) ?? "";
+                    string name = Path.GetFileName(full);
+                    string parent = Path.GetFileName(dir);
+                    return string.IsNullOrEmpty(parent) ? name : ".../" + parent + "/" + name;
+                }
+                catch { return full; }
             }
         }
         private EventBus _eventBus;
@@ -125,14 +137,26 @@ namespace ToolChest
                 int idx = 0;
                 if (data.Length > 7) int.TryParse(data.Substring(7), out idx);
                 var input = _uiOverlay.FindElementById("face" + idx) as InputElement;
-                if (input != null) input.Value = e.Path;
+                if (input != null) input.Value = ShortenedPath(e.Path);
             }
             else if (data == "SkyCubemap")
             {
                 var input = _uiOverlay.FindElementById("cubemap-path") as InputElement;
-                if (input != null) input.Value = e.Path;
+                if (input != null) input.Value = ShortenedPath(e.Path);
             }
             _uiOverlay.RefreshUI();
+        }
+        private string ShortenedPath(string full)
+        {
+            if (string.IsNullOrEmpty(full)) return "";
+            try
+            {
+                string dir = Path.GetDirectoryName(full) ?? "";
+                string name = Path.GetFileName(full);
+                string parent = Path.GetFileName(dir);
+                return string.IsNullOrEmpty(parent) ? name : ".../" + parent + "/" + name;
+            }
+            catch { return full; }
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {

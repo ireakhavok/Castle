@@ -54,19 +54,17 @@ namespace MapRoom
             }
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
             _terrainRenderer = new TerrainRenderer(renderContext);
-            _skyboxRenderer = new SkyboxRenderer(renderContext);
-            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "OpenAddSkybox") OnSkyboxDataHook("OpenAddSkybox"); });
+            _skyboxRenderer = null;
+            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox") OnSkyboxDataHook(e.Hook); });
         }
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
             _terrainRenderer.Initialize();
-            _skyboxRenderer.Initialize();
         }
         public override void Render(IReadOnlyList<Entity> entities)
         {
-            _skyboxRenderer.RenderSkybox(_sceneData?.Skybox, _flyCamera.ViewMatrix, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, AspectRatio, 0.1f, 50000f));
             Matrix4x4 view = _flyCamera.ViewMatrix;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, AspectRatio, 0.1f, 50000f);
 
@@ -125,11 +123,28 @@ namespace MapRoom
             }
             if (sd?.Skybox != null && sd.Skybox.Enabled)
             {
-                SetSkybox(sd.Skybox);
+                ComposeSkybox(sd.Skybox);
             }
             if (sd?.Terrain != null || _heightmap == null)
             {
                 RebuildTerrainMesh();
+            }
+        }
+        private void ComposeSkybox(SkyboxData skybox)
+        {
+            if (_skyboxRenderer == null)
+            {
+                _skyboxRenderer = new SkyboxRenderer(_renderContext);
+                _skyboxRenderer.Initialize();
+            }
+            if (_sceneData != null)
+            {
+                _sceneData.Skybox = skybox;
+            }
+            if (_liveState is LiveSceneState live)
+            {
+                live.Skybox = skybox;
+                live.SyncSkyboxIfNeeded();
             }
         }
         private void OnSelectBrushEvent(SelectBrushEvent e)
@@ -907,14 +922,15 @@ namespace MapRoom
         {
             if (_sceneData != null)
             {
-                _sceneData.Skybox = skybox ?? new SkyboxData();
+                _sceneData.Skybox = skybox;
             }
             if (_liveState is LiveSceneState live)
             {
                 live.Skybox = skybox;
                 live.SyncSkyboxIfNeeded();
             }
-            Console.WriteLine($"[TerrainCreatorScene] Skybox applied - Enabled={skybox?.Enabled}");
+            ComposeSkybox(skybox);
+            Console.WriteLine($"[TerrainCreatorScene] Skybox composed");
         }
         public void SaveSkybox(string sceneName)
         {
@@ -950,6 +966,10 @@ namespace MapRoom
             if (hook == "OpenAddSkybox")
             {
                 AddSkyboxPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+            }
+            else if (hook == "SkyboxSet")
+            {
+                // Event data handled via central state; composition triggered in Refresh
             }
         }
     }
