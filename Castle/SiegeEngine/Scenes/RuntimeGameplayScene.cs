@@ -124,6 +124,8 @@ namespace SiegeEngine.Scenes
             _skyboxData = level.Skybox;
             if (_skyboxData != null && _skyboxData.Enabled)
             {
+                // Resolve relative paths to full absolute using PlayProjectPath (fixes black screen)
+                ResolveSkyboxPaths(_skyboxData, projectPath);
                 _skyboxRenderer = new SkyboxRenderer(_renderContext);
                 _skyboxRenderer.Initialize();
                 _skyboxRenderer.LoadSkybox(_skyboxData);
@@ -145,6 +147,30 @@ namespace SiegeEngine.Scenes
             }
             ForceVisibleOverheadCamera();
             _flyCamera.Update(0f, 0f, true);
+        }
+        /// <summary>
+        /// Resolves SkyboxData relative paths ("Assets/Skyboxes/...") to full absolute paths using PlayProjectPath.
+        /// Called in runtime before LoadSkybox to ensure TextureLoader succeeds (fixes PlayGame black screen).
+        /// Mirrors editor ResolveFullPath pattern exactly.
+        /// </summary>
+        private void ResolveSkyboxPaths(SkyboxData skybox, string projectPath)
+        {
+            if (skybox == null || string.IsNullOrEmpty(projectPath)) return;
+            if (!string.IsNullOrEmpty(skybox.CubemapPath) && !Path.IsPathRooted(skybox.CubemapPath))
+            {
+                skybox.CubemapPath = Path.GetFullPath(Path.Combine(projectPath, skybox.CubemapPath));
+            }
+            if (skybox.Faces != null)
+            {
+                for (int i = 0; i < skybox.Faces.Count; i++)
+                {
+                    string f = skybox.Faces[i];
+                    if (!string.IsNullOrEmpty(f) && !Path.IsPathRooted(f))
+                    {
+                        skybox.Faces[i] = Path.GetFullPath(Path.Combine(projectPath, f));
+                    }
+                }
+            }
         }
         private void LoadExactSavedTerrain(string projectPath, string levelName)
         {
