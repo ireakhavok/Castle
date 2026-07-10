@@ -497,7 +497,7 @@ Folder: IDE
       - void Initialize( int height, int width)
         - Calls: SkyboxRenderer, VertexBuffer
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _skyboxRenderer.RenderSkybox, _terrainRenderer.RenderGhost, _terrainRenderer.RenderTerrain
+        - Calls: _renderContext.Clear, _renderContext.ClearColor, _skyboxRenderer.RenderSkybox, _terrainRenderer.RenderGhost, _terrainRenderer.RenderTerrain
       - void Dispose()
         - Calls: _renderContext.DeleteTexture
       - void BindLiveState(ISceneStateProvider liveState)
@@ -3183,7 +3183,7 @@ Folder: SiegeEngine
       - void Initialize()
         - Calls: ShaderProgram
       - void RenderTerrain( Matrix4x4 projection,  VertexBuffer terrainBuffer,  bool hasColorTexture,  uint terrainTextureId, Matrix4x4 view, ] heightmap = null)
-        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Clear, _renderContext.ClearColor, _renderContext.DrawElements, _renderContext.Enable, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use, terrainBuffer.Bind
+        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.DrawElements, _renderContext.Enable, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use, terrainBuffer.Bind
       - void RenderGhost( Matrix4x4 ghostModel,  Matrix4x4 projection,  Matrix4x4 view,  VertexBuffer ghostBuffer,  bool isPaintMode,  uint ghostTextureId, ShaderProgram spriteShader)
         - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _terrainShader.SetMatrix4, _terrainShader.SetUniform, ghostBuffer.Bind, spriteShader.SetMatrix4, spriteShader.Use
       - void Dispose()
