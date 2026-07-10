@@ -40,11 +40,6 @@ namespace SiegeEngine.Core.Rendering
 
         private void EnsureUIState()
         {
-            // Critical for clean overlay drawing on top of 3D scene content:
-            // - Depth test must be OFF so 3D geometry never bleeds through UI quads/lines
-            // - Blend must be ON with standard alpha compositing
-            // This is the exact fix for the white triangular 3D artifact (e.g. slanted wall)
-            // while keeping all existing selection logic untouched.
             _renderContext.Disable(_renderContext.Enums.DepthTest);
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
