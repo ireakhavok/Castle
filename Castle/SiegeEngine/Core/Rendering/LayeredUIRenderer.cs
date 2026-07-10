@@ -11,12 +11,14 @@ namespace SiegeEngine.Core.Rendering
         private readonly IRenderContext _renderContext;
         private readonly IControlContext _controlContext;
         private readonly UIQuadRenderer _quadRenderer;
+        private readonly ChromeRenderer _chromeRenderer; // dedicated, isolated chrome path
 
         public LayeredUIRenderer(IRenderContext renderContext, IControlContext controlContext, UIQuadRenderer quadRenderer)
         {
             _renderContext = renderContext;
             _controlContext = controlContext;
             _quadRenderer = quadRenderer;
+            _chromeRenderer = new ChromeRenderer(renderContext);
         }
 
         public void RenderPanel(BasePanel panel)
@@ -47,6 +49,7 @@ namespace SiegeEngine.Core.Rendering
                     panelBgColor = rootStyle.BackgroundColor;
                 }
             }
+
             _quadRenderer.DrawQuad(0, 0, panel.Size.X, panel.Size.Y, panelBgColor, panel.Size.X, panel.Size.Y);
 
             if (panel._uiOverlay != null)
@@ -63,11 +66,11 @@ namespace SiegeEngine.Core.Rendering
 
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
-            _renderContext.Disable(_renderContext.Enums.DepthTest);
 
+            // CHROME RENDER IS NOW ISOLATED AND ALWAYS LAST (independent of content, NDC, live-state, or any prior draws)
             if (panel.HasTitleBar && panel.chrome != null)
             {
-                panel.chrome.Render(panel.QuadRenderer, panel.Size.X, panel.Size.Y);
+                _chromeRenderer.RenderPanelChrome(panel, panel.Size.X, panel.Size.Y);
             }
 
             float bw = 2f;
@@ -81,6 +84,11 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);
             _renderContext.Disable(_renderContext.Enums.ScissorTest);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+        }
+
+        public void Dispose()
+        {
+            _chromeRenderer?.Dispose();
         }
     }
 }

@@ -9,7 +9,7 @@ using System.Numerics;
 
 namespace SiegeEngine.Core.Rendering
 {
-    public unsafe class UIQuadRenderer
+    public unsafe class UIQuadRenderer : IDisposable
     {
         private readonly IRenderContext _renderContext;
         private uint _vao, _vbo, _ebo;
@@ -30,6 +30,7 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             _renderContext.GenBuffers(1, out _ebo);
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
+
             uint[] indices = new uint[] { 0, 1, 2, 0, 2, 3 };
             fixed (uint* idxPtr = indices)
             {
@@ -45,9 +46,18 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
         }
 
+        // FUTURE-PROOF: Explicit VAO bind + disable extra attribs (prevents NDC quad leakage into simple DrawQuad/DrawLine)
+        private void ResetVertexState()
+        {
+            _renderContext.BindVertexArray(_vao);
+            _renderContext.DisableVertexAttribArray(1); // critical: NDC draws leave attrib 1 enabled
+            _renderContext.EnableVertexAttribArray(0);
+        }
+
         public void DrawQuad(float posX, float posY, float sizeX, float sizeY, Vector4 color, float viewportWidth, float viewportHeight)
         {
             EnsureUIState();
+            ResetVertexState();
 
             _shader.Use();
             _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
@@ -59,17 +69,17 @@ namespace SiegeEngine.Core.Rendering
 
             float[] vertices = new float[] { left, bottom, right, bottom, right, top, left, top };
 
-            _renderContext.BindVertexArray(_vao);
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             fixed (float* ptr = vertices)
             {
                 _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
             }
-            _renderContext.EnableVertexAttribArray(0);
+
             _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 2 * sizeof(float), (void*)0);
 
             _shader.SetUniform("uColor", color.X, color.Y, color.Z, color.W);
             _shader.SetUniform("uUseTexture", 0.0f);
+            _shader.SetUniform("uUseRounded", 0.0f);
 
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
             _renderContext.DrawElements(_renderContext.Enums.Triangles, 6, _renderContext.Enums.UnsignedInt, (void*)0);
@@ -86,6 +96,7 @@ namespace SiegeEngine.Core.Rendering
         public void DrawNdcQuad(float[] ndc, Vector4 color, Vector4 borderRadius, Vector2 rectSize, float borderWidth = 0f, Vector4 borderColor = new Vector4())
         {
             EnsureUIState();
+            ResetVertexState();
 
             _shader.Use();
             _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
@@ -102,7 +113,6 @@ namespace SiegeEngine.Core.Rendering
             _shader.SetUniform("uBorderWidth", borderWidth);
             _shader.SetUniform("uBorderColor", borderColor.X, borderColor.Y, borderColor.Z, borderColor.W);
 
-            _renderContext.BindVertexArray(_vao);
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
 
             float[] vertices = new float[16];
@@ -145,7 +155,8 @@ namespace SiegeEngine.Core.Rendering
             float rx1 = x1 - px; float ry1 = y1 - py;
             float rx2 = x2 - px; float ry2 = y2 - py;
 
-            float[] vertices = new float[] {
+            float[] vertices = new float[]
+            {
                 2.0f * lx1 / viewportWidth - 1.0f, 1.0f - 2.0f * ly1 / viewportHeight,
                 2.0f * lx2 / viewportWidth - 1.0f, 1.0f - 2.0f * ly2 / viewportHeight,
                 2.0f * rx2 / viewportWidth - 1.0f, 1.0f - 2.0f * ry2 / viewportHeight,
@@ -153,6 +164,7 @@ namespace SiegeEngine.Core.Rendering
             };
 
             EnsureUIState();
+            ResetVertexState();
 
             _shader.Use();
             _shader.SetMatrix4("uTransform", Matrix4x4.Identity);
@@ -160,13 +172,12 @@ namespace SiegeEngine.Core.Rendering
             _shader.SetUniform("uUseTexture", 0.0f);
             _shader.SetUniform("uUseRounded", 0.0f);
 
-            _renderContext.BindVertexArray(_vao);
             _renderContext.BindBuffer(_renderContext.Enums.ArrayBuffer, _vbo);
             fixed (float* ptr = vertices)
             {
                 _renderContext.BufferData(_renderContext.Enums.ArrayBuffer, (uint)(vertices.Length * sizeof(float)), ptr, _renderContext.Enums.DynamicDraw);
             }
-            _renderContext.EnableVertexAttribArray(0);
+
             _renderContext.VertexAttribPointer(0, 2, _renderContext.Enums.Float, false, 2 * sizeof(float), (void*)0);
 
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, _ebo);
@@ -174,6 +185,26 @@ namespace SiegeEngine.Core.Rendering
 
             _renderContext.BindBuffer(_renderContext.Enums.ElementArrayBuffer, 0);
             _renderContext.BindVertexArray(0);
+        }
+
+        public void Dispose()
+        {
+            if (_vao != 0)
+            {
+                _renderContext.DeleteVertexArray(_vao);
+                _vao = 0;
+            }
+            if (_vbo != 0)
+            {
+                _renderContext.DeleteBuffer(_vbo);
+                _vbo = 0;
+            }
+            if (_ebo != 0)
+            {
+                _renderContext.DeleteBuffer(_ebo);
+                _ebo = 0;
+            }
+            _shader?.Dispose();
         }
     }
 }

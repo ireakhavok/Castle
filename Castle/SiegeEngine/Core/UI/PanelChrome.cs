@@ -11,7 +11,7 @@ namespace SiegeEngine.Core.UI
     {
         private readonly BasePanel _owner;
         private readonly float _titleHeight = BasePanel.TitleHeight;
-        public Vector4 close_color = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);//new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
+        public Vector4 close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
 
         public PanelChrome(BasePanel owner)
         {
@@ -20,8 +20,7 @@ namespace SiegeEngine.Core.UI
 
         public bool HandleUpdate(Vector2 absMousePos, bool mousePressed, bool mouseReleased)
         {
-            if (PanelManager.Current?.GetTopmostPanelAt(absMousePos) != _owner)
-                return false;
+            if (PanelManager.Current?.GetTopmostPanelAt(absMousePos) != _owner) return false;
 
             float closeX = _owner.Position.X + _owner.Size.X - 24f;
             bool overClose = absMousePos.X >= closeX && absMousePos.X <= _owner.Position.X + _owner.Size.X &&
@@ -39,6 +38,7 @@ namespace SiegeEngine.Core.UI
                 _owner.StartTitleBarDrag(absMousePos);
                 return true;
             }
+
             return false;
         }
 
@@ -64,6 +64,8 @@ namespace SiegeEngine.Core.UI
             }
         }
 
-        public void Dispose() { }
+        public void Dispose()
+        {
+        }
     }
 }
