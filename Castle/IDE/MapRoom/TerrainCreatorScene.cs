@@ -71,13 +71,13 @@ namespace MapRoom
         {
             Matrix4x4 view = _flyCamera.ViewMatrix;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, AspectRatio, 0.1f, 50000f);
-
+            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
+            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             // Render skybox first (correct order - no translation view, depth disabled)
             if (_skyboxRenderer != null && _sceneData?.Skybox != null && _sceneData.Skybox.Enabled)
             {
                 _skyboxRenderer.RenderSkybox(_sceneData.Skybox, view, projection);
             }
-
             _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap);
             if (_ghostVisible && _ghostBuffer != null)
             {

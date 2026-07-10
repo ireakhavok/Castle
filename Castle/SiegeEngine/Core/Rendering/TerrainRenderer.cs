@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Rendering
-// File: TerrainRenderer.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
 using SiegeEngine.Core.Terrain;
@@ -29,19 +27,14 @@ namespace SiegeEngine.Core.Rendering
 
         public void RenderTerrain(Matrix4x4 view, Matrix4x4 projection, bool hasColorTexture, uint terrainTextureId, VertexBuffer terrainBuffer, float[,] heightmap = null)
         {
-            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
-            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
             _renderContext.Enable(_renderContext.Enums.DepthTest);
-
             _terrainShader.Use();
             _terrainShader.SetMatrix4("uView", view);
             _terrainShader.SetMatrix4("uProjection", projection);
             _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
-
             terrainBuffer.Bind();
             _terrainShader.SetUniform("uHasTexture", 0);
             _renderContext.DrawElements(_renderContext.Enums.Lines, terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
-
             if (hasColorTexture && terrainTextureId != 0)
             {
                 _terrainShader.SetUniform("uHasTexture", 1);
@@ -57,7 +50,6 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
-
             if (isPaintMode && ghostTextureId != 0)
             {
                 spriteShader.Use();
@@ -76,7 +68,6 @@ namespace SiegeEngine.Core.Rendering
                 ghostBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Lines, ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
-
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.Blend);
         }
