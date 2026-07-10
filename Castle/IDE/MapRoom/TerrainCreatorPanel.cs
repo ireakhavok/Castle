@@ -47,8 +47,10 @@ namespace MapRoom
         private bool _cameraMode = false;
         private SceneData _currentSceneData;
         private string _lastActiveSceneName = null;
+
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : this(renderContext, controlContext, window, eventBus, (SceneData)null) { }
+
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, string initialTerrainPath = null)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -62,11 +64,13 @@ namespace MapRoom
             _currentSceneData = null;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
+
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, TerrainCreationParams creationParams)
             : this(renderContext, controlContext, window, eventBus, creationParams?.ImportPath)
         {
             _creationParams = creationParams;
         }
+
         public TerrainCreatorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus, SceneData sceneData)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -79,17 +83,19 @@ namespace MapRoom
             _currentSceneData = sceneData;
             _terrainScene = new TerrainCreatorScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus, sceneData);
         }
+
         public string ContentType => "TerrainCreator";
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new TerrainUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
-            // Step 4: bind shared live state
             string sceneName = ProjectSettings.Current.CurrentSceneName ?? "Untitled";
             var liveState = ProjectStateManager.Current.GetOrCreateLiveState(sceneName);
             _terrainScene.BindLiveState(liveState);
@@ -121,11 +127,25 @@ namespace MapRoom
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _eventBus.Subscribe<SelectBrushEvent>(OnBrushSelected);
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
+            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
             LoadTerrainControlsUI();
         }
+
+        private void OnGenericEvent(GenericEvent e)
+        {
+            if (e.Hook == "SkyboxSet")
+            {
+                if (_currentSceneData != null)
+                {
+                    _terrainScene.RefreshFromLiveState(_currentSceneData);
+                    Console.WriteLine("[TerrainCreatorPanel] SkyboxSet event → forced RefreshFromLiveState on TerrainCreatorScene");
+                }
+            }
+        }
+
         private void TryLoadFromActiveProject()
         {
             string projectPath = ProjectSettings.Current.ActiveProject;
@@ -148,6 +168,7 @@ namespace MapRoom
                 Console.WriteLine($"[TerrainCreatorPanel] Loaded saved scene '{sceneName}' from project.json (Save As path now respected)");
             }
         }
+
         private void LoadTerrainControlsUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "TerrainCreatorUI.html");
@@ -159,6 +180,7 @@ namespace MapRoom
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void OnFileSelected(FileSelectedEvent e)
         {
             string userData = e.UserData as string;
@@ -176,6 +198,7 @@ namespace MapRoom
                 }
             }
         }
+
         private void OnBrushSelected(SelectBrushEvent e)
         {
             if (string.IsNullOrEmpty(e.BrushMode) || e.Size == 0f)
@@ -199,10 +222,12 @@ namespace MapRoom
                 _terrainScene.SetActiveMaterial(e.MaterialPath);
             }
         }
+
         private void OnTerrainModified(TerrainModifiedEvent e)
         {
             NotifyHierarchyChanged();
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -252,17 +277,20 @@ namespace MapRoom
                 }
             }
         }
+
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
             if (_cameraMode) PanelManager.Current.CapturePanel(this);
             else PanelManager.Current.ReleasePanelCapture();
         }
+
         public static void OpenBlank(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new TerrainCreatorPanel(renderContext, controlContext, window, eventBus, (string)null);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
+
         public static void OpenImport(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             _staticRenderContext = renderContext;
@@ -283,6 +311,7 @@ namespace MapRoom
             fileSelector.IsModal = true;
             eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
         }
+
         private static void StaticOnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData as string == "TerrainImport" && !string.IsNullOrEmpty(e.Path) && _staticRenderContext != null)
@@ -291,12 +320,14 @@ namespace MapRoom
                 _staticEventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
             }
         }
+
         private static void StaticOnCreateTerrain(CreateTerrainEvent e)
         {
             if (_staticRenderContext == null) return;
             var panel = new TerrainCreatorPanel(_staticRenderContext, _staticControlContext, _staticWindow, _staticEventBus, e.Params);
             _staticEventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
+
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
@@ -320,11 +351,11 @@ namespace MapRoom
             _terrainScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
             if (_cameraMode) _controlContext.PopViewport();
         }
+
         private void SwitchToNewSceneData()
         {
             var sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
-            // ENSURE painter is bound to correct live state for this scene
             ProjectStateManager.Current.BindSceneToLiveState(sceneData.Name, _terrainScene);
             _terrainScene.LoadSceneData(sceneData);
             if (!string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
@@ -342,25 +373,31 @@ namespace MapRoom
             }
             Console.WriteLine($"[TerrainCreatorPanel] Terrain data switched cleanly for scene '{sceneData.Name}'");
         }
+
         protected override void RenderInnerContent()
         {
             _terrainScene.Render(null);
         }
+
         public override void OnLiveResize(float w, float h)
         {
             _terrainScene.Resize((int)w, (int)h);
         }
+
         public override void Dispose()
         {
             PanelManager.Current.ReleasePanelCapture();
             _terrainScene?.Dispose();
             base.Dispose();
         }
+
         public static void OpenBrushPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             BrushPanel.Open(renderContext, controlContext, window, eventBus);
         }
+
         public string DataKey => "TerrainCreatorPanel";
+
         public JsonElement SavePanelState()
         {
             var state = new Dictionary<string, object>
@@ -370,14 +407,17 @@ namespace MapRoom
             };
             return JsonSerializer.SerializeToElement(state);
         }
+
         public void LoadPanelState(JsonElement state)
         {
         }
+
         public override void OnContentFocusGained()
         {
             Console.WriteLine("[TerrainCreatorPanel] OnContentFocusGained → notifying OutlinerCoordinator");
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
         }
+
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
@@ -387,10 +427,12 @@ namespace MapRoom
             nodes.Add(new OutlinerNode { Id = "settings", Label = "Terrain Settings", Icon = "⚙️", ParentId = "terrain-root" });
             return nodes;
         }
+
         public object GetObjectForNode(string nodeId)
         {
             return null;
         }
+
         public void NotifyHierarchyChanged()
         {
             OutlinerCoordinator.Instance.NotifyHierarchyChanged();

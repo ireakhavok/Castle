@@ -35,6 +35,8 @@ namespace SiegeEngine.Scenes
         private ModelManager _modelManager;
         private SkyboxRenderer _skyboxRenderer;
         private SkyboxData _skyboxData;
+        private TerrainRenderer _terrainRenderer;
+
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -46,6 +48,8 @@ namespace SiegeEngine.Scenes
             for (int x = 0; x < _terrainWidth; x++) for (int y = 0; y < _terrainHeight; y++) _heightmap[x, y] = 5f + (float)Math.Sin(x * 0.1f + y * 0.1f) * 3f;
             _skyboxRenderer = null;
             _skyboxData = null;
+            _terrainRenderer = new TerrainRenderer(renderContext);
+
             string projectPath = "";
             string levelName = "NewTerrain";
             string snapshotPath = null;
@@ -60,7 +64,6 @@ namespace SiegeEngine.Scenes
             {
                 Console.WriteLine($"[RuntimeGameplayScene] ✅ MenuCommands command-line parsed → Project: {projectPath} | Level: {levelName}");
             }
-            // Preserve rich ctx from SceneManager/SceneRegistry (critical for payload rehydrate)
             if (ctx != null && ctx.CurrentLevel != null && ctx.CurrentLevel.Entities.Count > 0)
             {
                 Console.WriteLine($"[RuntimeGameplayScene] Rich ctx from registry with {ctx.CurrentLevel.Entities.Count} entities - preserving");
@@ -72,18 +75,21 @@ namespace SiegeEngine.Scenes
                 LoadContentFromContext(ctx);
             }
         }
+
         public void LoadLevelData(string levelName, string projectPath)
         {
             LoadSceneData(new SceneData { Name = levelName ?? "Main" });
             _eventBus.Publish(new SceneActivatedEvent(levelName));
             _player.InitializeCamera(_controlContext, _window);
         }
+
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
             _terrainBuffer = new VertexBuffer(_renderContext);
             _modelRenderer.Initialize();
+            _terrainRenderer.Initialize();
             SetupPureRuntimeWorld();
             _controlContext.SetScrollCallback(_window, (w, xoffset, yoffset) => { });
             _controlContext.SetWindowSizeCallback(_window, (w, newWidth, newHeight) =>
@@ -99,6 +105,7 @@ namespace SiegeEngine.Scenes
             ForceVisibleOverheadCamera();
             BuildTexturedMesh();
         }
+
         private void ForceVisibleOverheadCamera()
         {
             float centerX = _terrainWidth * 0.5f;
@@ -109,6 +116,7 @@ namespace SiegeEngine.Scenes
             _flyCamera.Update(0f, 0f, true);
             _flyCamera.RefreshViewMatrix();
         }
+
         protected override void LoadContentFromContext(SceneContext ctx)
         {
             if (_contentLoaded) return;
@@ -124,7 +132,6 @@ namespace SiegeEngine.Scenes
             _skyboxData = level.Skybox;
             if (_skyboxData != null && _skyboxData.Enabled)
             {
-                // Resolve relative paths to full absolute using PlayProjectPath (fixes black screen)
                 ResolveSkyboxPaths(_skyboxData, projectPath);
                 _skyboxRenderer = new SkyboxRenderer(_renderContext);
                 _skyboxRenderer.Initialize();
@@ -148,11 +155,7 @@ namespace SiegeEngine.Scenes
             ForceVisibleOverheadCamera();
             _flyCamera.Update(0f, 0f, true);
         }
-        /// <summary>
-        /// Resolves SkyboxData relative paths ("Assets/Skyboxes/...") to full absolute paths using PlayProjectPath.
-        /// Called in runtime before LoadSkybox to ensure TextureLoader succeeds (fixes PlayGame black screen).
-        /// Mirrors editor ResolveFullPath pattern exactly.
-        /// </summary>
+
         private void ResolveSkyboxPaths(SkyboxData skybox, string projectPath)
         {
             if (skybox == null || string.IsNullOrEmpty(projectPath)) return;
@@ -172,6 +175,7 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
+
         private void LoadExactSavedTerrain(string projectPath, string levelName)
         {
             string terrainPath = !string.IsNullOrEmpty(projectPath)
@@ -206,6 +210,7 @@ namespace SiegeEngine.Scenes
             _hasColorTexture = _terrainTextureId != 0;
             BuildTexturedMesh();
         }
+
         protected override void SetupPureRuntimeWorld()
         {
             var terrainEntity = new Entity { Id = 1000, Type = "Terrain" };
@@ -213,6 +218,7 @@ namespace SiegeEngine.Scenes
             terrainEntity.AddComponent(new PhysicsComponent { Position = Vector3.Zero });
             _server.AddEntity(terrainEntity);
         }
+
         protected virtual void BuildTexturedMesh()
         {
             if (_heightmap == null)
@@ -259,10 +265,12 @@ namespace SiegeEngine.Scenes
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
         }
+
         public override void Render(IReadOnlyList<Entity> entities)
         {
             RenderGameplayContent(entities, _flyCamera.ViewMatrix, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f));
         }
+
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
@@ -274,14 +282,18 @@ namespace SiegeEngine.Scenes
                 ForceVisibleOverheadCamera();
             }
         }
+
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+
             if (_skyboxRenderer != null && _skyboxData != null && _skyboxData.Enabled)
             {
                 _skyboxRenderer.RenderSkybox(_skyboxData, view, projection);
             }
-            _modelRenderer.RenderTerrain(_terrainBuffer, _terrainShader, _flyCamera.ViewMatrix, projection, _hasColorTexture, _terrainTextureId);
+
+            _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap, false);
+
             foreach (var e in _server.GetEntities())
             {
                 var modelComp = e.GetComponent<ModelComponent>();
@@ -291,11 +303,14 @@ namespace SiegeEngine.Scenes
                     _modelRenderer.RenderEntityFully(modelComp, physics, view, projection, _flyCamera.Position);
                 }
             }
+
             PanelManager.Current?.Render();
         }
+
         public override void Dispose()
         {
             _skyboxRenderer?.Dispose();
+            _terrainRenderer?.Dispose();
             _terrainShader?.Dispose();
             _terrainBuffer?.Dispose();
             _modelRenderer?.Dispose();
