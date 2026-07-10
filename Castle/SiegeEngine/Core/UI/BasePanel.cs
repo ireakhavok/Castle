@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine/Core/UI
+// File: BasePanel.cs
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
@@ -11,6 +13,7 @@ using System.Numerics;
 namespace SiegeEngine.Core.UI
 {
     public enum ScalingMode { Fill, BestFit }
+
     public abstract class BasePanel : IPanel
     {
         protected readonly IRenderContext _renderContext;
@@ -79,11 +82,13 @@ namespace SiegeEngine.Core.UI
             Size = new Vector2(BaseWidth, BaseHeight);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
+
             if (HasTitleBar)
             {
                 chrome = new PanelChrome(this);
                 HeaderHeight = TitleHeight;
             }
+
             _uiOverlay.ReservedHeaderHeight = HeaderHeight;
             _uiOverlay.RefreshUI();
         }
@@ -98,6 +103,7 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (!Visible) return;
+
             if (HasTitleBar && chrome != null)
             {
                 if (chrome.HandleUpdate(absMousePos, mousePressed, mouseReleased))
@@ -106,6 +112,7 @@ namespace SiegeEngine.Core.UI
                     return;
                 }
             }
+
             if (_isDragging)
             {
                 if (mouseDown)
@@ -118,6 +125,7 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
+
             if (_currentResizeHandle != ResizeHandle.None)
             {
                 if (mouseDown)
@@ -125,6 +133,7 @@ namespace SiegeEngine.Core.UI
                     Vector2 delta = absMousePos - _resizeStartMousePos;
                     Vector2 newPos = _resizeStartPosition;
                     Vector2 newSize = _resizeStartSize;
+
                     switch (_currentResizeHandle)
                     {
                         case ResizeHandle.Left:
@@ -162,12 +171,15 @@ namespace SiegeEngine.Core.UI
                             newSize.Y = _resizeStartSize.Y + delta.Y;
                             break;
                     }
+
                     newSize.X = Math.Max(newSize.X, 200f);
                     newSize.Y = Math.Max(newSize.Y, 150f);
+
                     Position = newPos;
                     Size = newSize;
                     OnLiveResize(Size.X, Size.Y);
                 }
+
                 if (mouseReleased)
                 {
                     _currentResizeHandle = ResizeHandle.None;
@@ -175,12 +187,15 @@ namespace SiegeEngine.Core.UI
                 }
                 return;
             }
+
             bool overPanel = IsMouseOver(absMousePos);
             bool isTopmost = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
+
             if (isTopmost && overPanel && mousePressed)
             {
                 OnContentFocusGained();
             }
+
             if (isTopmost)
             {
                 Vector2 relMousePos = absMousePos - Position;
@@ -206,6 +221,7 @@ namespace SiegeEngine.Core.UI
             float bottom = Position.Y + Size.Y - absMousePos.Y;
             const float grip = 8f;
             float titleH = HasTitleBar ? TitleHeight : 0f;
+
             if (left < grip && top < grip) return ResizeHandle.TopLeft;
             if (right < grip && top < grip) return ResizeHandle.TopRight;
             if (left < grip && bottom < grip) return ResizeHandle.BottomLeft;
@@ -228,6 +244,7 @@ namespace SiegeEngine.Core.UI
         public virtual void Render()
         {
             if (!Visible) return;
+
             if (_lastW != (int)Size.X || _lastH != (int)Size.Y)
             {
                 _lastW = (int)Size.X;
@@ -237,6 +254,7 @@ namespace SiegeEngine.Core.UI
                 _uiOverlay.PanelHeight = Size.Y;
                 _uiOverlay.RefreshUI();
             }
+
             _layeredRenderer.RenderPanel(this);
         }
 
@@ -285,7 +303,6 @@ namespace SiegeEngine.Core.UI
             _dragStartMousePos = mousePos;
             _lastClickTime = _controlContext.GetTime();
 
-            // PROFESSIONAL Z-ORDER GUARANTEE: bring this floating panel to absolute top
             PanelManager.Current?.BringToFront(this);
         }
 
