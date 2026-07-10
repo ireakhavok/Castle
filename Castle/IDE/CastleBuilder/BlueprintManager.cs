@@ -202,29 +202,14 @@ namespace CastleBuilder
                 sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                 sceneData.Terrain = level.Terrain ?? new TerrainData();
                 sceneData.Environment = level.Environment ?? new EnvironmentSettings();
+                // Skybox is normalized here (copy + relative paths) before SceneData assignment
+                if (level.Skybox != null)
+                {
+                    EnsureSkyboxAssetsInProject(level.Skybox, projectPath, currentSceneName);
+                }
                 sceneData.Skybox = level.Skybox ?? new SkyboxData();
                 if (level.CustomData != null) sceneData.CustomData = level.CustomData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment + skybox from Level (authoritative) → SceneData");
-            }
-            if (level?.Skybox != null)
-            {
-                string skyDir = Path.Combine(projectPath, "Assets", "Skyboxes", currentSceneName);
-                Directory.CreateDirectory(skyDir);
-                if (!string.IsNullOrEmpty(level.Skybox.CubemapPath) && File.Exists(level.Skybox.CubemapPath))
-                {
-                    string dest = Path.Combine(skyDir, Path.GetFileName(level.Skybox.CubemapPath));
-                    File.Copy(level.Skybox.CubemapPath, dest, true);
-                    level.Skybox.CubemapPath = Path.GetRelativePath(projectPath, dest);
-                }
-                foreach (var f in level.Skybox.Faces)
-                {
-                    if (File.Exists(f))
-                    {
-                        string dest = Path.Combine(skyDir, Path.GetFileName(f));
-                        File.Copy(f, dest, true);
-                    }
-                }
-                Console.WriteLine("[BlueprintManager] Skybox assets copied to project/Assets/Skyboxes (always, regardless of enabled flag for preview consistency)");
             }
             var uniquePackKeys = data.Scenes.Values
                 .SelectMany(s => s.Entities ?? new List<EntityData>())
@@ -252,6 +237,44 @@ namespace CastleBuilder
             }
             ProjectLayoutManager.FlushAllToDisk();
             Console.WriteLine("[BlueprintManager.DoProjectSave] All blades committed to disk");
+        }
+        /// <summary>
+        /// Future-proof centralized helper: copies all skybox assets (cubemap or faces) to the correct project location,
+        /// then updates SkyboxData to store ONLY project-relative paths ("Assets/Skyboxes/{sceneName}/...").
+        /// Mirrors TerrainTextureParser/CustomTerrainParser patterns exactly.
+        /// Called once in DoProjectSave before serialization to guarantee correct Level/SceneData state.
+        /// Handles both in-project and out-of-project source files without locks.
+        /// </summary>
+        private static void EnsureSkyboxAssetsInProject(SkyboxData skybox, string projectPath, string sceneName)
+        {
+            if (skybox == null) return;
+            string skyDir = Path.Combine(projectPath, "Assets", "Skyboxes", sceneName);
+            Directory.CreateDirectory(skyDir);
+
+            // Cubemap
+            if (!string.IsNullOrEmpty(skybox.CubemapPath) && File.Exists(skybox.CubemapPath))
+            {
+                string dest = Path.Combine(skyDir, Path.GetFileName(skybox.CubemapPath));
+                File.Copy(skybox.CubemapPath, dest, true);
+                skybox.CubemapPath = Path.GetRelativePath(projectPath, dest).Replace("\\", "/");
+            }
+
+            // Faces (6-face cubemap)
+            if (skybox.Faces != null)
+            {
+                for (int i = 0; i < skybox.Faces.Count; i++)
+                {
+                    string facePath = skybox.Faces[i];
+                    if (!string.IsNullOrEmpty(facePath) && File.Exists(facePath))
+                    {
+                        string dest = Path.Combine(skyDir, Path.GetFileName(facePath));
+                        File.Copy(facePath, dest, true);
+                        skybox.Faces[i] = Path.GetRelativePath(projectPath, dest).Replace("\\", "/");
+                    }
+                }
+            }
+
+            Console.WriteLine($"[BlueprintManager.EnsureSkyboxAssetsInProject] Skybox assets materialized to {skyDir} with relative paths stored in Level.Skybox");
         }
         public static void SaveProjectAs(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
