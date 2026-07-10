@@ -11,7 +11,7 @@ namespace SiegeEngine.Core.Rendering
         private readonly IRenderContext _renderContext;
         private readonly IControlContext _controlContext;
         private readonly UIQuadRenderer _quadRenderer;
-        private readonly ChromeRenderer _chromeRenderer; // dedicated, isolated chrome path
+        private readonly ChromeRenderer _chromeRenderer; // dedicated, isolated chrome path (title + close + borders)
 
         public LayeredUIRenderer(IRenderContext renderContext, IControlContext controlContext, UIQuadRenderer quadRenderer)
         {
@@ -67,18 +67,11 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.Scissor(fullX, fullY, fullW, fullH);
             _renderContext.Viewport(fullX, fullY, fullW, fullH);
 
-            // CHROME RENDER IS NOW ISOLATED AND ALWAYS LAST (independent of content, NDC, live-state, or any prior draws)
+            // CHROME + BORDERS ARE NOW ONE ATOMIC, ISOLATED PASS
             if (panel.HasTitleBar && panel.chrome != null)
             {
                 _chromeRenderer.RenderPanelChrome(panel, panel.Size.X, panel.Size.Y);
             }
-
-            float bw = 2f;
-            Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
-            _quadRenderer.DrawQuad(0, 0, bw, panel.Size.Y, bc, panel.Size.X, panel.Size.Y);
-            _quadRenderer.DrawQuad(panel.Size.X - bw, 0, bw, panel.Size.Y, bc, panel.Size.X, panel.Size.Y);
-            _quadRenderer.DrawQuad(0, panel.Size.Y - bw, panel.Size.X, bw, bc, panel.Size.X, panel.Size.Y);
-            _quadRenderer.DrawQuad(0, 0, panel.Size.X, 1.5f, bc, panel.Size.X, panel.Size.Y);
 
             _renderContext.Scissor(0, 0, (uint)winW, (uint)winH);
             _renderContext.Viewport(0, 0, (uint)winW, (uint)winH);

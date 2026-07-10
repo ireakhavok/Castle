@@ -27,7 +27,16 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
 
+            // Title bar + close button
             owner.chrome.Render(_quadRenderer, panelWidth, panelHeight);
+
+            // BORDERS (moved here for atomic isolation - this was the remaining broken part)
+            float bw = 2f;
+            Vector4 bc = new Vector4(0.5f, 0.5f, 0.5f, 1.0f);
+            _quadRenderer.DrawQuad(0, 0, bw, panelHeight, bc, panelWidth, panelHeight);
+            _quadRenderer.DrawQuad(panelWidth - bw, 0, bw, panelHeight, bc, panelWidth, panelHeight);
+            _quadRenderer.DrawQuad(0, panelHeight - bw, panelWidth, bw, bc, panelWidth, panelHeight);
+            _quadRenderer.DrawQuad(0, 0, panelWidth, 1.5f, bc, panelWidth, panelHeight);
 
             // Explicit cleanup for next draw (prevents any vertex attrib / shader / buffer state leakage)
             _renderContext.BindVertexArray(0);
@@ -37,7 +46,6 @@ namespace SiegeEngine.Core.Rendering
 
         public void Dispose()
         {
-            // Safe null check - UIQuadRenderer does not implement IDisposable in current codebase
             (_quadRenderer as IDisposable)?.Dispose();
         }
     }
