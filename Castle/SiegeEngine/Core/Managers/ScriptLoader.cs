@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Diagnostics;
+using System.Threading;
+
 namespace SiegeEngine.Core.Managers
 {
     public static class ScriptLoader
@@ -31,6 +33,7 @@ namespace SiegeEngine.Core.Managers
                 BuildProjectScripts(projectPath);
             }
         }
+
         public static void CopyProjectScripts(string projectPath)
         {
             if (string.IsNullOrEmpty(projectPath)) return;
@@ -45,6 +48,7 @@ namespace SiegeEngine.Core.Managers
                 Console.WriteLine($"[ScriptLoader] Copied custom DLL to runtime temp: {target}");
             }
         }
+
         public static void CopyScriptsToExport(string projectPath, string exportRoot)
         {
             if (string.IsNullOrEmpty(projectPath)) return;
@@ -58,6 +62,7 @@ namespace SiegeEngine.Core.Managers
             }
             Console.WriteLine($"[ScriptLoader] Copied Scripts to export folder");
         }
+
         public static string GetCustomAssemblyList(string projectPath)
         {
             if (string.IsNullOrEmpty(projectPath)) return "";
@@ -66,6 +71,7 @@ namespace SiegeEngine.Core.Managers
             var dlls = Directory.GetFiles(scriptsDir, "*.dll");
             return string.Join(";", Array.ConvertAll(dlls, Path.GetFileName));
         }
+
         public static void LoadCustomAssemblies(string projectPath)
         {
             if (string.IsNullOrEmpty(projectPath)) return;
@@ -78,6 +84,7 @@ namespace SiegeEngine.Core.Managers
                 }
             }
         }
+
         private static void LoadAndRegister(string dllPath)
         {
             try
@@ -106,15 +113,14 @@ namespace SiegeEngine.Core.Managers
                 Console.WriteLine($"[ScriptLoader] Warning loading {dllPath}: {ex.Message}");
             }
         }
+
         public static void RegisterCustomSystems(EventBus eventBus, IGameServer server)
         {
             Console.WriteLine("[ScriptLoader] Custom systems registered via reflection (Phase 1 complete)");
         }
+
         public static void ApplyCustomPlayerControllerIfPresent(Player player, ref PlayerMovement movement)
         {
-            // Placeholder - in full implementation scans loaded assemblies for CustomPlayerControllerAttribute and swaps
-            // For Phase 2 this stub allows compilation and safe no-op fallback
-
             Console.WriteLine("[ScriptLoader] Scanning for [CustomPlayerController]...");
             string runtimeTemp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
             if (Directory.Exists(runtimeTemp))
@@ -154,14 +160,25 @@ namespace SiegeEngine.Core.Managers
             }
             Console.WriteLine("[ScriptLoader] Custom PlayerController swap applied (or default retained) - Phase 2 ready");
         }
-        public static void BuildProjectScripts(string projectPath)
+
+        /// <summary>
+        /// FIXED: Now accepts an optional temp output directory so dotnet build never tries to overwrite
+        /// the locked Scripts\Libs\SiegeScripts.dll that the editor process has loaded.
+        /// </summary>
+        public static void BuildProjectScripts(string projectPath, string customOutputDir = null)
         {
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
+
             string scriptsDir = Path.Combine(projectPath, "Scripts");
             Directory.CreateDirectory(scriptsDir);
+
             string libsDir = Path.Combine(scriptsDir, "Libs");
             Directory.CreateDirectory(libsDir);
-            // Copy core DLLs to Scripts/ for reliable HintPath
+
+            // Use temp folder if supplied (the real fix)
+            string outputPath = customOutputDir ?? libsDir;
+
+            // Copy core DLLs to Scripts/ for reliable HintPath (unchanged)
             string binDir = AppDomain.CurrentDomain.BaseDirectory;
             string[] coreDlls = { "SiegeEngine.dll", "Foundation.dll" };
             foreach (string dllName in coreDlls)
@@ -174,6 +191,7 @@ namespace SiegeEngine.Core.Managers
                     Console.WriteLine($"[ScriptLoader] Copied core DLL {dllName} to Scripts/ for build reference");
                 }
             }
+
             string csprojPath = Path.Combine(scriptsDir, "SiegeScripts.csproj");
             if (!File.Exists(csprojPath))
             {
@@ -198,6 +216,7 @@ namespace SiegeEngine.Core.Managers
   </ItemGroup>
 </Project>";
                 File.WriteAllText(csprojPath, template);
+
                 if (Directory.GetFiles(scriptsDir, "*.cs").Length == 0)
                 {
                     string exampleSrc = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SiegeEngine", "PlayerSystem", "CustomPlayerController.cs");
@@ -209,46 +228,59 @@ namespace SiegeEngine.Core.Managers
                 }
                 Console.WriteLine($"[ScriptLoader] Generated SiegeScripts.csproj at {csprojPath}");
             }
+
+            // Build command — now uses the safe output path
             var psi = new ProcessStartInfo
             {
                 FileName = "dotnet",
-                Arguments = $"build \"{csprojPath}\" --configuration Release --no-incremental --output \"{libsDir}\"",
+                Arguments = $"build \"{csprojPath}\" --configuration Release --no-incremental --output \"{outputPath}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WorkingDirectory = scriptsDir
             };
+
             using (var process = Process.Start(psi))
             {
                 string output = process.StandardOutput.ReadToEnd();
                 string err = process.StandardError.ReadToEnd();
                 process.WaitForExit();
+
                 Console.WriteLine($"[ScriptLoader.BuildProjectScripts] dotnet build completed. Exit: {process.ExitCode}\nOutput: {output}");
+
                 if (process.ExitCode == 0)
                 {
-                    foreach (string dll in Directory.GetFiles(libsDir, "*.dll"))
+                    // Copy the freshly built DLL(s) to RuntimeTemp (what the runtime actually uses)
+                    foreach (string dll in Directory.GetFiles(outputPath, "*.dll"))
                     {
                         string runtimeTarget = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp", Path.GetFileName(dll));
                         Directory.CreateDirectory(Path.GetDirectoryName(runtimeTarget));
                         File.Copy(dll, runtimeTarget, true);
                         LoadAndRegister(dll);
                     }
+
                     ScanProjectScripts(projectPath);
                     Console.WriteLine("[ScriptLoader] Build → DLL copy → reflection register COMPLETE. Custom controllers now active for Play/Export.");
                 }
                 else
                 {
                     Console.WriteLine($"[ScriptLoader] Build warning: {err}");
+                    // Non-fatal — runtime still works from previous cached DLL in RuntimeTemp
                 }
             }
+
+            // Always copy to the project’s Scripts folder for ExportGame / future builds
             CopyProjectScripts(projectPath);
         }
     }
+
     [AttributeUsage(AttributeTargets.Class)]
     public class RegisterGameSystemAttribute : Attribute { }
+
     [AttributeUsage(AttributeTargets.Class)]
     public class CustomPlayerControllerAttribute : Attribute { }
+
     [AttributeUsage(AttributeTargets.Class)]
     public class CustomSceneEntryAttribute : Attribute { }
 }

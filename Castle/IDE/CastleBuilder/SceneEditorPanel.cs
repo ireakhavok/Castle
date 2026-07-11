@@ -124,6 +124,37 @@ namespace CastleBuilder
                 _fileSelectedSubscribed = true;
             }
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
+            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
+        }
+        private void OnGenericEvent(GenericEvent e)
+        {
+            if (e.Hook == "SkyboxSet" && e.Data != null && e.Data.ContainsKey("skybox"))
+            {
+                try
+                {
+                    string json = e.Data["skybox"].ToString();
+                    SkyboxData sky = JsonSerializer.Deserialize<SkyboxData>(json);
+                    if (sky != null)
+                    {
+                        var active = _editorScene.GetActiveGameScene() as TerrainCreatorScene;
+                        if (active != null)
+                        {
+                            active.SetSkybox(sky);
+                            Console.WriteLine("[SceneEditorPanel] SkyboxSet payload applied to active TerrainCreatorScene");
+                        }
+                    }
+                }
+                catch { }
+            }
+            else if (e.Hook == "SkyboxSet")
+            {
+                var active = _editorScene.GetActiveGameScene() as TerrainCreatorScene;
+                if (active != null)
+                {
+                    active.RefreshFromLiveState(ProjectSettings.Current.CurrentSceneData);
+                    Console.WriteLine("[SceneEditorPanel] SkyboxSet event → forced RefreshFromLiveState on active TerrainCreatorScene");
+                }
+            }
         }
         private void OnEntitySelected(EntitySelectedEvent e)
         {
@@ -339,7 +370,6 @@ namespace CastleBuilder
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-            // Compute fresh matrices BEFORE gizmo input (using reflection for AspectRatio)
             Matrix4x4 view = Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.Identity;
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -361,7 +391,6 @@ namespace CastleBuilder
                 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
             }
             _transformGizmo.UpdateMatrices(view, projection);
-            // Gizmo input handling
             if (!_cameraMode && isTopmost)
             {
                 float headerHeight = HasTitleBar ? HeaderHeight : 0f;

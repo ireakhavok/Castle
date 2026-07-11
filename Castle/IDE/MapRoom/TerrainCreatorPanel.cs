@@ -89,7 +89,6 @@ namespace MapRoom
             base.Init();
             _controlContext.SetMainWindow(_window);
             _terrainScene.Initialize((int)Size.Y, (int)Size.X);
-            // Step 4: bind shared live state
             string sceneName = ProjectSettings.Current.CurrentSceneName ?? "Untitled";
             var liveState = ProjectStateManager.Current.GetOrCreateLiveState(sceneName);
             _terrainScene.BindLiveState(liveState);
@@ -118,13 +117,47 @@ namespace MapRoom
                 _terrainScene.CreateBlank();
             }
             _lastActiveSceneName = ProjectSettings.Current.CurrentLevel?.Name;
+            if (_currentSceneData?.Skybox != null)
+            {
+                _terrainScene.SetSkybox(_currentSceneData.Skybox);
+            }
             _eventBus.Subscribe<FileSelectedEvent>(OnFileSelected);
             _eventBus.Subscribe<SelectBrushEvent>(OnBrushSelected);
             _eventBus.Subscribe<TerrainModifiedEvent>(OnTerrainModified);
+            _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
             LoadTerrainControlsUI();
+        }
+        private void OnGenericEvent(GenericEvent e)
+        {
+            if (e.Hook == "SkyboxSet" && e.Data != null && e.Data.ContainsKey("skybox"))
+            {
+                try
+                {
+                    string json = e.Data["skybox"].ToString();
+                    SkyboxData sky = JsonSerializer.Deserialize<SkyboxData>(json);
+                    if (sky != null)
+                    {
+                        _terrainScene.SetSkybox(sky);
+                        if (_currentSceneData != null)
+                        {
+                            _currentSceneData.Skybox = sky;
+                        }
+                        Console.WriteLine("[TerrainCreatorPanel] SkyboxSet payload applied to scene and live state");
+                    }
+                }
+                catch { }
+            }
+            else if (e.Hook == "SkyboxSet")
+            {
+                if (_currentSceneData != null)
+                {
+                    _terrainScene.RefreshFromLiveState(_currentSceneData);
+                    Console.WriteLine("[TerrainCreatorPanel] SkyboxSet event → forced RefreshFromLiveState on TerrainCreatorScene");
+                }
+            }
         }
         private void TryLoadFromActiveProject()
         {
@@ -133,7 +166,7 @@ namespace MapRoom
             string jsonPath = Path.Combine(projectPath, "project.json");
             if (!File.Exists(jsonPath)) return;
             string json = File.ReadAllText(jsonPath);
-            var projectData = JsonSerializer.Deserialize<ProjectData>(json);
+            var projectData = JsonSerializer.Deserialize<ProjectData>(json, EntityData.SerializerOptions);
             if (projectData?.Scenes == null || projectData.Scenes.Count == 0) return;
             string sceneName = projectData.LastOpenedScene ?? projectData.Scenes.Keys.FirstOrDefault() ?? "Main";
             if (projectData.Scenes.TryGetValue(sceneName, out SceneData sceneData))
@@ -144,6 +177,10 @@ namespace MapRoom
                 {
                     _terrainScene.LoadTerrain(sceneData.Terrain.HeightmapPath);
                     Console.WriteLine($"[TerrainCreatorPanel] Loaded saved GeoTIFF for scene '{sceneName}'");
+                }
+                if (sceneData.Skybox != null)
+                {
+                    _terrainScene.SetSkybox(sceneData.Skybox);
                 }
                 Console.WriteLine($"[TerrainCreatorPanel] Loaded saved scene '{sceneName}' from project.json (Save As path now respected)");
             }
@@ -240,8 +277,6 @@ namespace MapRoom
             else if (hook == "OpenAddSkybox")
             {
                 AddSkyboxPanel.Open(_renderContext, _controlContext, _window, _eventBus);
-                _terrainScene.RefreshFromLiveState(_currentSceneData);
-                _uiOverlay.RefreshUI();
             }
             else if (hook == "Export2D")
             {
@@ -324,7 +359,6 @@ namespace MapRoom
         {
             var sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
-            // ENSURE painter is bound to correct live state for this scene
             ProjectStateManager.Current.BindSceneToLiveState(sceneData.Name, _terrainScene);
             _terrainScene.LoadSceneData(sceneData);
             if (!string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath))
@@ -339,6 +373,10 @@ namespace MapRoom
             else
             {
                 _terrainScene.SetColorTexture(null);
+            }
+            if (sceneData.Skybox != null)
+            {
+                _terrainScene.SetSkybox(sceneData.Skybox);
             }
             Console.WriteLine($"[TerrainCreatorPanel] Terrain data switched cleanly for scene '{sceneData.Name}'");
         }

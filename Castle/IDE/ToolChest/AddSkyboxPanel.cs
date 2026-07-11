@@ -39,16 +39,34 @@ namespace ToolChest
                     var face3 = FindElementById("face3") as InputElement;
                     var face4 = FindElementById("face4") as InputElement;
                     var face5 = FindElementById("face5") as InputElement;
+
+                    // Use FULL absolute paths from FileSelector (save layer will handle copy + relative conversion)
                     SkyboxData sky = new SkyboxData
                     {
                         Enabled = true,
                         Type = typeSelect?.Value ?? "",
-                        CubemapPath = ShortenedPath(cubemapPath?.Value),
-                        Faces = new List<string> { ShortenedPath(face0?.Value), ShortenedPath(face1?.Value), ShortenedPath(face2?.Value), ShortenedPath(face3?.Value), ShortenedPath(face4?.Value), ShortenedPath(face5?.Value) }
+                        CubemapPath = cubemapPath?.Value ?? "",
+                        Faces = new List<string>
+                        {
+                            face0?.Value ?? "",
+                            face1?.Value ?? "",
+                            face2?.Value ?? "",
+                            face3?.Value ?? "",
+                            face4?.Value ?? "",
+                            face5?.Value ?? ""
+                        }
                     };
+
                     if (_parent._eventBus != null)
                     {
-                        _parent._eventBus.Publish(new GenericEvent { Hook = "SkyboxSet", Data = new Dictionary<string, string> { { "skybox", JsonSerializer.Serialize(sky) } } });
+                        _parent._eventBus.Publish(new GenericEvent
+                        {
+                            Hook = "SkyboxSet",
+                            Data = new Dictionary<string, string>
+                            {
+                                { "skybox", JsonSerializer.Serialize(sky) }
+                            }
+                        });
                         _parent._eventBus.Publish(new GenericEvent { Hook = "ProjectSaveRequest" });
                         _parent._eventBus.Publish(new ClosePanelEvent(_parent));
                     }
@@ -68,18 +86,6 @@ namespace ToolChest
                 {
                     _parent.OpenCubemapSelector();
                 }
-            }
-            private string ShortenedPath(string full)
-            {
-                if (string.IsNullOrEmpty(full)) return "";
-                try
-                {
-                    string dir = Path.GetDirectoryName(full) ?? "";
-                    string name = Path.GetFileName(full);
-                    string parent = Path.GetFileName(dir);
-                    return string.IsNullOrEmpty(parent) ? name : ".../" + parent + "/" + name;
-                }
-                catch { return full; }
             }
         }
         private EventBus _eventBus;
@@ -137,26 +143,14 @@ namespace ToolChest
                 int idx = 0;
                 if (data.Length > 7) int.TryParse(data.Substring(7), out idx);
                 var input = _uiOverlay.FindElementById("face" + idx) as InputElement;
-                if (input != null) input.Value = ShortenedPath(e.Path);
+                if (input != null) input.Value = e.Path; // full absolute path
             }
             else if (data == "SkyCubemap")
             {
                 var input = _uiOverlay.FindElementById("cubemap-path") as InputElement;
-                if (input != null) input.Value = ShortenedPath(e.Path);
+                if (input != null) input.Value = e.Path; // full absolute path
             }
             _uiOverlay.RefreshUI();
-        }
-        private string ShortenedPath(string full)
-        {
-            if (string.IsNullOrEmpty(full)) return "";
-            try
-            {
-                string dir = Path.GetDirectoryName(full) ?? "";
-                string name = Path.GetFileName(full);
-                string parent = Path.GetFileName(dir);
-                return string.IsNullOrEmpty(parent) ? name : ".../" + parent + "/" + name;
-            }
-            catch { return full; }
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {

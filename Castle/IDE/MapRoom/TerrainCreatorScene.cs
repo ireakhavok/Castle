@@ -15,8 +15,8 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Numerics;
+using System.Text.Json;
 using ToolChest;
-
 namespace MapRoom
 {
     public unsafe class TerrainCreatorScene : TerrainScene
@@ -55,21 +55,35 @@ namespace MapRoom
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
             _terrainRenderer = new TerrainRenderer(renderContext);
             _skyboxRenderer = null;
-            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox") OnSkyboxDataHook(e.Hook); });
+            _eventBus.Subscribe<GenericEvent>(e => { if (e.Hook == "SkyboxSet" || e.Hook == "OpenAddSkybox") OnSkyboxDataHook(e.Hook, e); });
         }
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
             _ghostBuffer = new VertexBuffer(_renderContext);
             _terrainRenderer.Initialize();
+            if (_skyboxRenderer == null)
+            {
+                _skyboxRenderer = new SkyboxRenderer(_renderContext);
+                _skyboxRenderer.Initialize();
+            }
         }
         public override void Render(IReadOnlyList<Entity> entities)
         {
             Matrix4x4 view = _flyCamera.ViewMatrix;
             Matrix4x4 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, AspectRatio, 0.1f, 50000f);
-
-            _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap);
-
+            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
+            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+            if (_skyboxRenderer != null && _sceneData?.Skybox != null && _sceneData.Skybox.Enabled)
+            {
+                if (_liveState is LiveSceneState live && live.Skybox != null && _sceneData.Skybox != live.Skybox)
+                {
+                    _sceneData.Skybox = live.Skybox;
+                    ComposeSkybox(_sceneData.Skybox);
+                }
+                _skyboxRenderer.RenderSkybox(_sceneData.Skybox, view, projection);
+            }
+            _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap, true);
             if (_ghostVisible && _ghostBuffer != null)
             {
                 Matrix4x4 ghostModel = Matrix4x4.CreateTranslation(_ghostPosition);
@@ -77,7 +91,6 @@ namespace MapRoom
                 _terrainRenderer.RenderGhost(_spriteShader, view, projection, ghostModel, _ghostMaterialTextureId, _ghostBuffer, isPaint);
             }
         }
-
         public override void Dispose()
         {
             _skyboxRenderer?.Dispose();
@@ -99,7 +112,6 @@ namespace MapRoom
             _terrainRenderer?.Dispose();
             base.Dispose();
         }
-
         public override void BindLiveState(ISceneStateProvider liveState)
         {
             base.BindLiveState(liveState);
@@ -121,7 +133,7 @@ namespace MapRoom
                     SetColorTexture(null);
                 }
             }
-            if (sd?.Skybox != null && sd.Skybox.Enabled)
+            if (sd?.Skybox != null)
             {
                 ComposeSkybox(sd.Skybox);
             }
@@ -145,6 +157,34 @@ namespace MapRoom
             {
                 live.Skybox = skybox;
                 live.SyncSkyboxIfNeeded();
+            }
+            if (skybox.Enabled)
+            {
+                string projectPath = ProjectSettings.Current.ActiveProject;
+                if (!string.IsNullOrEmpty(projectPath))
+                {
+                    ResolveSkyboxPaths(skybox, projectPath);
+                }
+                _skyboxRenderer.LoadSkybox(skybox);
+            }
+        }
+        private void ResolveSkyboxPaths(SkyboxData skybox, string projectPath)
+        {
+            if (skybox == null || string.IsNullOrEmpty(projectPath)) return;
+            if (!string.IsNullOrEmpty(skybox.CubemapPath) && !Path.IsPathRooted(skybox.CubemapPath))
+            {
+                skybox.CubemapPath = Path.GetFullPath(Path.Combine(projectPath, skybox.CubemapPath));
+            }
+            if (skybox.Faces != null)
+            {
+                for (int i = 0; i < skybox.Faces.Count; i++)
+                {
+                    string f = skybox.Faces[i];
+                    if (!string.IsNullOrEmpty(f) && !Path.IsPathRooted(f))
+                    {
+                        skybox.Faces[i] = Path.GetFullPath(Path.Combine(projectPath, f));
+                    }
+                }
             }
         }
         private void OnSelectBrushEvent(SelectBrushEvent e)
@@ -384,6 +424,10 @@ namespace MapRoom
             }
             base.LoadSceneData(data);
             SyncFromLiveState();
+            if (data?.Skybox != null)
+            {
+                ComposeSkybox(data.Skybox);
+            }
         }
         public override void LoadTerrain(string path)
         {
@@ -934,43 +978,37 @@ namespace MapRoom
         }
         public void SaveSkybox(string sceneName)
         {
-            if (_sceneData?.Skybox == null || !_sceneData.Skybox.Enabled) return;
-            string projectPath = ProjectSettings.Current.ActiveProject;
-            if (string.IsNullOrEmpty(projectPath)) return;
-            string skyDir = Path.Combine(projectPath, "Assets", "Skyboxes", sceneName);
-            Directory.CreateDirectory(skyDir);
-            if (!string.IsNullOrEmpty(_sceneData.Skybox.CubemapPath) && File.Exists(_sceneData.Skybox.CubemapPath))
-            {
-                string dest = Path.Combine(skyDir, Path.GetFileName(_sceneData.Skybox.CubemapPath));
-                File.Copy(_sceneData.Skybox.CubemapPath, dest, true);
-                _sceneData.Skybox.CubemapPath = Path.GetRelativePath(projectPath, dest);
-            }
-            for (int i = 0; i < _sceneData.Skybox.Faces.Count; i++)
-            {
-                string f = _sceneData.Skybox.Faces[i];
-                if (File.Exists(f))
-                {
-                    string dest = Path.Combine(skyDir, $"face{i}.png");
-                    File.Copy(f, dest, true);
-                    _sceneData.Skybox.Faces[i] = Path.GetRelativePath(projectPath, dest);
-                }
-            }
+            if (_sceneData?.Skybox == null) return;
             if (_liveState is LiveSceneState live)
             {
                 live.Skybox = _sceneData.Skybox;
                 live.SyncSkyboxIfNeeded();
             }
         }
-        public void OnSkyboxDataHook(string hook)
+        public void OnSkyboxDataHook(string hook, GenericEvent evt = null)
         {
             if (hook == "OpenAddSkybox")
             {
                 AddSkyboxPanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                return;
             }
-            else if (hook == "SkyboxSet")
+            if (hook == "SkyboxSet" && evt != null && evt.Data != null && evt.Data.ContainsKey("skybox"))
             {
-                // Event data handled via central state; composition triggered in Refresh
+                try
+                {
+                    string json = evt.Data["skybox"].ToString();
+                    SkyboxData sky = JsonSerializer.Deserialize<SkyboxData>(json);
+                    if (sky != null)
+                    {
+                        SetSkybox(sky);
+                        RefreshFromLiveState(_sceneData);
+                        Console.WriteLine("[TerrainCreatorScene] SkyboxSet payload applied and composed");
+                        return;
+                    }
+                }
+                catch { }
             }
+            RefreshFromLiveState(_sceneData);
         }
     }
 }

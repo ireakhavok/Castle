@@ -31,8 +31,7 @@ Folder: IDE
       - EventBus _eventBus
     - Methods:
       - void HandleDataHook(string hook)
-        - Calls: ClosePanelEvent, FindElementById, JsonSerializer.Serialize, ShortenedPath, _parent.OpenCubemapSelector, _parent.OpenFaceSelector
-      - string ShortenedPath(string full)
+        - Calls: ClosePanelEvent, FindElementById, JsonSerializer.Serialize, _parent.OpenCubemapSelector, _parent.OpenFaceSelector
 - File: AnimationBlendPanel.cs
   - Class: BlendUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -496,16 +495,17 @@ Folder: IDE
       - SkyboxRenderer _skyboxRenderer
     - Methods:
       - void Initialize( int height, int width)
-        - Calls: VertexBuffer
+        - Calls: SkyboxRenderer, VertexBuffer
       - void Render(IReadOnlyList<Entity> entities)
-        - Calls: _terrainRenderer.RenderGhost, _terrainRenderer.RenderTerrain
+        - Calls: ComposeSkybox, _renderContext.Clear, _renderContext.ClearColor, _skyboxRenderer.RenderSkybox, _terrainRenderer.RenderGhost, _terrainRenderer.RenderTerrain
       - void Dispose()
         - Calls: _renderContext.DeleteTexture
       - void BindLiveState(ISceneStateProvider liveState)
       - void RefreshFromLiveState(SceneData sd)
         - Calls: ComposeSkybox, LoadTerrain, RebuildTerrainMesh, SetColorTexture, SyncFromLiveState
       - void ComposeSkybox(SkyboxData skybox)
-        - Calls: SkyboxRenderer, _skyboxRenderer.Initialize, live.SyncSkyboxIfNeeded
+        - Calls: ResolveSkyboxPaths, SkyboxRenderer, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox, live.SyncSkyboxIfNeeded
+      - void ResolveSkyboxPaths( string projectPath, SkyboxData skybox)
       - void OnSelectBrushEvent(SelectBrushEvent e)
         - Calls: Enum.Parse, SetActiveMaterial, TryPerformPlacementRaycast, UpdateGhostMesh, _renderContext.DeleteTexture
       - bool TryPerformPlacementRaycast(out Vector3 hitPoint)
@@ -523,7 +523,7 @@ Folder: IDE
       - void CreateTerrain(TerrainCreationParams parameters)
         - Calls: CreateBlank, LoadTerrain, ProjectSettings.Current.GetOrCreatePaintData, RebuildTerrainMesh
       - void LoadSceneData(SceneData data)
-        - Calls: LoadTerrain, ProjectSettings.Current.GetOrCreatePaintData, ProjectSettings.Current.GetUnsavedHeightmap, RebuildTerrainMesh, SyncFromLiveState
+        - Calls: ComposeSkybox, LoadTerrain, ProjectSettings.Current.GetOrCreatePaintData, ProjectSettings.Current.GetUnsavedHeightmap, RebuildTerrainMesh, SyncFromLiveState
       - void LoadTerrain(string path)
         - Calls: RebuildTerrainMesh, ResolveFullPath, SyncFromLiveState
       - void SetColorTexture(string path)
@@ -561,7 +561,7 @@ Folder: IDE
       - void SaveSkybox(string sceneName)
         - Calls: live.SyncSkyboxIfNeeded
       - void OnSkyboxDataHook(string hook)
-        - Calls: AddSkyboxPanel.Open
+        - Calls: AddSkyboxPanel.Open, RefreshFromLiveState
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
@@ -1135,6 +1135,20 @@ Folder: SiegeEngine
       - void ReleaseCapture()
         - Calls: _controlContext.PopViewport, _controlContext.SetInputMode
       - void Update( Vector2 mousePos,  bool mouseDown,  bool mousePressed,  bool mouseReleased,  float scrollDelta, float deltaTime)
+- File: ChromeRenderer.cs
+  - Class: ChromeRenderer (Namespace: SiegeEngine.Core.Rendering)
+    - Inherits: IDisposable
+    
+    - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, System, System.Numerics
+    - Fields:
+      - IRenderContext _renderContext
+      - UIQuadRenderer _quadRenderer
+    - Methods:
+      - constructor ChromeRenderer(IRenderContext renderContext)
+        - Calls: UIQuadRenderer
+      - void RenderPanelChrome( float panelHeight,  float panelWidth, BasePanel owner)
+        - Calls: _quadRenderer.DrawQuad, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DisableVertexAttribArray, _renderContext.Enable, owner.chrome.Render
+      - void Dispose()
 - File: ClientGameServerProxy.cs
   - Class: ClientGameServerProxy (Namespace: SiegeEngine.Core.Networking)
     - Inherits: IGameServer
@@ -2077,10 +2091,13 @@ Folder: SiegeEngine
       - IRenderContext _renderContext
       - IControlContext _controlContext
       - UIQuadRenderer _quadRenderer
+      - ChromeRenderer _chromeRenderer
     - Methods:
       - constructor LayeredUIRenderer( IControlContext controlContext,  UIQuadRenderer quadRenderer, IRenderContext renderContext)
+        - Calls: ChromeRenderer
       - void RenderPanel(BasePanel panel)
-        - Calls: _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, overlay.Draw, panel.RenderContentLayer, panel._uiOverlay.RenderBackgrounds, panel.chrome.Render
+        - Calls: _chromeRenderer.RenderPanelChrome, _controlContext.GetWindowSize, _quadRenderer.DrawQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _renderContext.Scissor, _renderContext.Viewport, overlay.Draw, panel.RenderContentLayer, panel._uiOverlay.RenderBackgrounds
+      - void Dispose()
 - File: Layout.cs
   - Class: HtmlElement (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Text.RegularExpressions
@@ -2780,6 +2797,7 @@ Folder: SiegeEngine
       - ModelManager _modelManager
       - SkyboxRenderer _skyboxRenderer
       - SkyboxData _skyboxData
+      - TerrainRenderer _terrainRenderer
     - Methods:
       - void LoadLevelData( string projectPath, string levelName)
         - Calls: LoadSceneData, SceneActivatedEvent, _player.InitializeCamera
@@ -2788,7 +2806,8 @@ Folder: SiegeEngine
       - void ForceVisibleOverheadCamera()
         - Calls: _flyCamera.RefreshViewMatrix, _flyCamera.Update
       - void LoadContentFromContext(SceneContext ctx)
-        - Calls: Console.WriteLine, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, SkyboxRenderer, _flyCamera.Update, _modelManager.TryGetModel, _server.AddEntity, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox
+        - Calls: Console.WriteLine, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, ResolveSkyboxPaths, SkyboxRenderer, _flyCamera.Update, _modelManager.TryGetModel, _server.AddEntity, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox
+      - void ResolveSkyboxPaths( string projectPath, SkyboxData skybox)
       - void LoadExactSavedTerrain( string levelName, string projectPath)
         - Calls: BuildTexturedMesh, Console.WriteLine, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture
       - void SetupPureRuntimeWorld()
@@ -2800,7 +2819,7 @@ Folder: SiegeEngine
       - void Update(float deltaTime)
         - Calls: ForceVisibleOverheadCamera
       - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
-        - Calls: Render, _modelRenderer.RenderEntityFully, _modelRenderer.RenderTerrain, _renderContext.Clear, _server.GetEntities, _skyboxRenderer.RenderSkybox
+        - Calls: Render, _modelRenderer.RenderEntityFully, _renderContext.Clear, _server.GetEntities, _skyboxRenderer.RenderSkybox, _terrainRenderer.RenderTerrain
       - void Dispose()
 - File: SandBoxScene.cs
   - Class: SandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
@@ -3163,10 +3182,10 @@ Folder: SiegeEngine
       - constructor TerrainRenderer(IRenderContext renderContext)
       - void Initialize()
         - Calls: ShaderProgram
-      - void RenderTerrain( Matrix4x4 projection,  VertexBuffer terrainBuffer,  bool hasColorTexture,  uint terrainTextureId, Matrix4x4 view, ] heightmap = null)
-        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.Clear, _renderContext.ClearColor, _renderContext.DrawElements, _renderContext.Enable, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use, terrainBuffer.Bind
+      - void RenderTerrain( Matrix4x4 projection,  VertexBuffer terrainBuffer,  bool drawWireframe = true,  bool hasColorTexture,  uint terrainTextureId, Matrix4x4 view, ] heightmap = null)
+        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.CullFace, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _renderContext.FrontFace, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use, terrainBuffer.Bind
       - void RenderGhost( Matrix4x4 ghostModel,  Matrix4x4 projection,  Matrix4x4 view,  VertexBuffer ghostBuffer,  bool isPaintMode,  uint ghostTextureId, ShaderProgram spriteShader)
-        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _terrainShader.SetMatrix4, _terrainShader.SetUniform, ghostBuffer.Bind, spriteShader.SetMatrix4, spriteShader.Use
+        - Calls: _renderContext.ActiveTexture, _renderContext.BindTexture, _renderContext.BindVertexArray, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.DrawElements, _renderContext.Enable, _terrainShader.SetMatrix4, _terrainShader.SetUniform, _terrainShader.Use, ghostBuffer.Bind, spriteShader.SetMatrix4, spriteShader.Use
       - void Dispose()
 - File: TerrainScene.cs
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
@@ -3438,6 +3457,8 @@ Folder: SiegeEngine
         - Calls: Console.WriteLine, JSElement, _jsContext.Evaluator.CallFunction
 - File: UIQuadRenderer.cs
   - Class: UIQuadRenderer (Namespace: SiegeEngine.Core.Rendering)
+    - Inherits: IDisposable
+    
     - Dependencies: SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.UI, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
@@ -3449,11 +3470,15 @@ Folder: SiegeEngine
         - Calls: ShaderProgram, _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.GenBuffers, _renderContext.GenVertexArrays
       - void EnsureUIState()
         - Calls: _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable
+      - void ResetVertexState()
+        - Calls: _renderContext.BindVertexArray, _renderContext.DisableVertexAttribArray, _renderContext.EnableVertexAttribArray
       - void DrawQuad( Vector4 color,  float posY,  float sizeX,  float sizeY,  float viewportHeight,  float viewportWidth, float posX)
-        - Calls: EnsureUIState, _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
+        - Calls: EnsureUIState, ResetVertexState, _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
       - void DrawNdcQuad( Vector4 color, float[] ndc)
       - void DrawLine( Vector4 color,  float thickness,  float viewportHeight,  float viewportWidth,  float x2,  float y1,  float y2, float x1)
-        - Calls: EnsureUIState, _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.EnableVertexAttribArray, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
+        - Calls: EnsureUIState, ResetVertexState, _renderContext.BindBuffer, _renderContext.BindVertexArray, _renderContext.BufferData, _renderContext.DrawElements, _renderContext.VertexAttribPointer, _shader.SetMatrix4, _shader.SetUniform, _shader.Use
+      - void Dispose()
+        - Calls: _renderContext.DeleteBuffer, _renderContext.DeleteVertexArray
 - File: UISettingsManager.cs
   - Class: UISettingsManager (Namespace: SiegeEngine.Core.Managers)
     - Dependencies: System, System.Collections.Generic, System.IO, System.Text.Json

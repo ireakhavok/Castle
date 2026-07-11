@@ -18,7 +18,7 @@ namespace SiegeEngine.Core.Rendering
 
         public TerrainRenderer(IRenderContext renderContext)
         {
-            _renderContext = renderContext;
+            _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
         }
 
         public void Initialize()
@@ -27,33 +27,51 @@ namespace SiegeEngine.Core.Rendering
             _spriteShader = new ShaderProgram(_renderContext, SpriteShader.VertexShaderSource, SpriteShader.FragmentShaderSource);
         }
 
-        public void RenderTerrain(Matrix4x4 view, Matrix4x4 projection, bool hasColorTexture, uint terrainTextureId, VertexBuffer terrainBuffer, float[,] heightmap = null)
+        public void RenderTerrain(Matrix4x4 view, Matrix4x4 projection, bool hasColorTexture, uint terrainTextureId, VertexBuffer terrainBuffer, float[,] heightmap = null, bool drawWireframe = true)
         {
-            _renderContext.ClearColor(0.05f, 0.08f, 0.15f, 1.0f);
-            _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+            if (terrainBuffer == null) return;
+
             _renderContext.Enable(_renderContext.Enums.DepthTest);
+            _renderContext.Enable(_renderContext.Enums.CullFace);
+            _renderContext.CullFace(_renderContext.Enums.Back);
+            _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
+
+            terrainBuffer.Bind();
 
             _terrainShader.Use();
             _terrainShader.SetMatrix4("uView", view);
             _terrainShader.SetMatrix4("uProjection", projection);
             _terrainShader.SetMatrix4("uModel", Matrix4x4.Identity);
 
-            terrainBuffer.Bind();
-            _terrainShader.SetUniform("uHasTexture", 0);
-            _renderContext.DrawElements(_renderContext.Enums.Lines, terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            if (drawWireframe)
+            {
+                _terrainShader.SetUniform("uHasTexture", 0);
+                _renderContext.DrawElements(_renderContext.Enums.Lines, terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+            }
 
             if (hasColorTexture && terrainTextureId != 0)
             {
+                _renderContext.Disable(_renderContext.Enums.CullFace);
+
                 _terrainShader.SetUniform("uHasTexture", 1);
-                _renderContext.ActiveTexture(0);
+                _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, terrainTextureId);
                 _terrainShader.SetUniform("uTexture", 0);
+
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, terrainBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
+
+                _renderContext.Enable(_renderContext.Enums.CullFace);
+                _renderContext.CullFace(_renderContext.Enums.Back);
             }
+
+            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            _renderContext.BindVertexArray(0);
         }
 
         public void RenderGhost(ShaderProgram spriteShader, Matrix4x4 view, Matrix4x4 projection, Matrix4x4 ghostModel, uint ghostTextureId, VertexBuffer ghostBuffer, bool isPaintMode)
         {
+            if (ghostBuffer == null) return;
+
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
@@ -64,13 +82,14 @@ namespace SiegeEngine.Core.Rendering
                 spriteShader.SetMatrix4("uModel", ghostModel);
                 spriteShader.SetMatrix4("uView", view);
                 spriteShader.SetMatrix4("uProjection", projection);
-                _renderContext.ActiveTexture(0);
+                _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, ghostTextureId);
                 ghostBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }
             else
             {
+                _terrainShader.Use();
                 _terrainShader.SetMatrix4("uModel", ghostModel);
                 _terrainShader.SetUniform("uHasTexture", 0);
                 ghostBuffer.Bind();
@@ -79,6 +98,8 @@ namespace SiegeEngine.Core.Rendering
 
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.Disable(_renderContext.Enums.Blend);
+            _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
+            _renderContext.BindVertexArray(0);
         }
 
         public void Dispose()
