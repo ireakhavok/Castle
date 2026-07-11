@@ -155,8 +155,6 @@ namespace CastleBuilder
             var clientProxy = _server as ClientGameServerProxy;
             if (clientProxy != null)
             {
-                // FIXED: Idempotent update-only sync. Never clears loaded entities.
-                // Guarantees previously loaded entities stay, new placement adds exactly one.
                 foreach (var entity in level.Entities)
                 {
                     clientProxy.AddEntity(entity);
@@ -229,6 +227,10 @@ namespace CastleBuilder
                     {
                         cachedTcs.SetColorTexture(null);
                     }
+                    if (sd?.Skybox != null)
+                    {
+                        cachedTcs.SetSkybox(sd.Skybox);
+                    }
                 }
                 SyncCurrentLevelToRuntimeServer();
                 return;
@@ -264,6 +266,10 @@ namespace CastleBuilder
                 else
                 {
                     tcs.SetColorTexture(null);
+                }
+                if (sd?.Skybox != null)
+                {
+                    tcs.SetSkybox(sd.Skybox);
                 }
             }
             SyncCurrentLevelToRuntimeServer();

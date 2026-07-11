@@ -77,7 +77,6 @@ namespace CastleBuilder
         private const float MinDragDistance = 5f;
         private TransformGizmoOverlay _transformGizmo;
         private bool _fileSelectedSubscribed = false;
-
         public SceneEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus) : base(renderContext, controlContext, window, eventBus)
         {
             HasTitleBar = true;
@@ -105,14 +104,11 @@ namespace CastleBuilder
             );
             CustomOverlays.Add(_transformGizmo);
         }
-
         public string ContentType => "SceneEditor";
-
         protected override UIOverlay CreateUIOverlay()
         {
             return new SceneEditorUIOverlay(this, _renderContext, _controlContext, _window);
         }
-
         public override void Init()
         {
             base.Init();
@@ -130,10 +126,27 @@ namespace CastleBuilder
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
         }
-
         private void OnGenericEvent(GenericEvent e)
         {
-            if (e.Hook == "SkyboxSet")
+            if (e.Hook == "SkyboxSet" && e.Data != null && e.Data.ContainsKey("skybox"))
+            {
+                try
+                {
+                    string json = e.Data["skybox"].ToString();
+                    SkyboxData sky = JsonSerializer.Deserialize<SkyboxData>(json);
+                    if (sky != null)
+                    {
+                        var active = _editorScene.GetActiveGameScene() as TerrainCreatorScene;
+                        if (active != null)
+                        {
+                            active.SetSkybox(sky);
+                            Console.WriteLine("[SceneEditorPanel] SkyboxSet payload applied to active TerrainCreatorScene");
+                        }
+                    }
+                }
+                catch { }
+            }
+            else if (e.Hook == "SkyboxSet")
             {
                 var active = _editorScene.GetActiveGameScene() as TerrainCreatorScene;
                 if (active != null)
@@ -143,7 +156,6 @@ namespace CastleBuilder
                 }
             }
         }
-
         private void OnEntitySelected(EntitySelectedEvent e)
         {
             if (e.Additive)
@@ -182,12 +194,10 @@ namespace CastleBuilder
             }
             NotifyHierarchyChanged();
         }
-
         public void RefreshSceneList()
         {
             UpdateSceneSelectorUI();
         }
-
         private void UpdateSceneSelectorUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SceneEditorUI.html");
@@ -212,7 +222,6 @@ namespace CastleBuilder
             string finalHtml = baseHtml.Replace("<!-- Populated dynamically -->", options.ToString());
             _uiOverlay.LoadUI(finalHtml);
         }
-
         private void HandleDataHook(string hook)
         {
             if (hook == "SceneSelected")
@@ -244,7 +253,6 @@ namespace CastleBuilder
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
             }
         }
-
         private void OnFileSelectedForPlacement(FileSelectedEvent e)
         {
             if (e.UserData?.ToString() != "PlaceEntity" || string.IsNullOrEmpty(e.Path)) return;
@@ -297,11 +305,9 @@ namespace CastleBuilder
             Console.WriteLine($"[SceneEditorPanel.OnFileSelectedForPlacement] Placed entity ID={entity.Id} AssetPackKey='{packId}' at {placePos}");
             _editorScene.SyncCurrentLevelToRuntimeServer();
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
         }
-
         public override void ToggleCameraMode()
         {
             _cameraMode = !_cameraMode;
@@ -310,7 +316,6 @@ namespace CastleBuilder
             if (_cameraMode)
                 _transformGizmo.ClearSelection();
         }
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             if (_pendingSceneSelectorUpdate)
@@ -365,7 +370,6 @@ namespace CastleBuilder
                 }
             }
             _wasRightPressedLastFrame = rightPressedThisFrame;
-
             Matrix4x4 view = Matrix4x4.Identity;
             Matrix4x4 projection = Matrix4x4.Identity;
             var activeField = _editorScene.GetType().GetField("_activeGameScene", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -387,7 +391,6 @@ namespace CastleBuilder
                 projection = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 180f * 65f, aspect, 0.1f, 50000f);
             }
             _transformGizmo.UpdateMatrices(view, projection);
-
             if (!_cameraMode && isTopmost)
             {
                 float headerHeight = HasTitleBar ? HeaderHeight : 0f;
@@ -403,7 +406,6 @@ namespace CastleBuilder
                 _editorScene.Update(deltaTime, sceneMouse, mouseDown && _cameraMode, mousePressed && _cameraMode, mouseReleased && _cameraMode, _cameraMode);
             }
         }
-
         private void PerformBoxSelection(bool additive)
         {
             float header = HasTitleBar ? HeaderHeight : 0f;
@@ -421,7 +423,6 @@ namespace CastleBuilder
             var evt = new EntitySelectedEvent { SelectedEntityIds = selected, Additive = additive };
             _eventBus.Publish(evt);
         }
-
         protected override void RenderInnerContent()
         {
             _editorScene.Render(null);
@@ -494,13 +495,11 @@ namespace CastleBuilder
                 _transformGizmo.RenderWorld(view, projection);
             }
         }
-
         public override void OnLiveResize(float w, float h)
         {
             _editorScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
-
         public override void Dispose()
         {
             if (_fileSelectedSubscribed)
@@ -512,15 +511,12 @@ namespace CastleBuilder
             _editorScene?.Dispose();
             base.Dispose();
         }
-
         public string DataKey => "SceneEditorPanel";
-
         public JsonElement SavePanelState()
         {
             var state = new Dictionary<string, string> { ["currentSceneName"] = _editorScene?.CurrentGameScene ?? "Main" };
             return JsonSerializer.SerializeToElement(state);
         }
-
         public void LoadPanelState(JsonElement state)
         {
             if (state.TryGetProperty("currentSceneName", out JsonElement sceneNameElem))
@@ -533,12 +529,10 @@ namespace CastleBuilder
                 }
             }
         }
-
         public override void OnContentFocusGained()
         {
             OutlinerCoordinator.Instance.SetAsActiveProvider(this, _eventBus);
         }
-
         public List<OutlinerNode> GetCurrentHierarchy()
         {
             var nodes = new List<OutlinerNode>();
@@ -578,7 +572,6 @@ namespace CastleBuilder
             Console.WriteLine($"[SceneEditorPanel.GetCurrentHierarchy] Returned {nodes.Count} nodes (root + {entities.Count} entities)");
             return nodes;
         }
-
         public object GetObjectForNode(string nodeId)
         {
             if (nodeId.StartsWith("entity-"))
@@ -591,7 +584,6 @@ namespace CastleBuilder
             }
             return null;
         }
-
         public void NotifyHierarchyChanged()
         {
             OutlinerCoordinator.Instance.NotifyHierarchyChanged();
