@@ -472,7 +472,7 @@ Folder: IDE
   - Class: TerrainCreatorScene (Namespace: MapRoom)
     - Inherits: TerrainScene
     
-    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, ToolChest
+    - Dependencies: Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.Scenes, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics, System.Text.Json, ToolChest
     - Fields:
       - Vector3 _ghostPosition
       - bool _ghostVisible
@@ -560,8 +560,8 @@ Folder: IDE
         - Calls: ComposeSkybox, Console.WriteLine, live.SyncSkyboxIfNeeded
       - void SaveSkybox(string sceneName)
         - Calls: live.SyncSkyboxIfNeeded
-      - void OnSkyboxDataHook(string hook)
-        - Calls: AddSkyboxPanel.Open, RefreshFromLiveState
+      - void OnSkyboxDataHook( GenericEvent evt = null, string hook)
+        - Calls: AddSkyboxPanel.Open, Console.WriteLine, RefreshFromLiveState, SetSkybox, ToString
 - File: TerrainModifiedEvent.cs
   - Class: TerrainModifiedEvent (Namespace: MapRoom)
     - Inherits: IEvent
@@ -2961,7 +2961,7 @@ Folder: SiegeEngine
 - File: ScriptLoader.cs
   - Class: CustomSceneEntryAttribute (Namespace: SiegeEngine.Core.Managers)
     - Inherits: Attribute 
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Reflection
+    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Reflection, System.Threading
 - File: SelectBrushEvent.cs
   - Class: SelectBrushEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
