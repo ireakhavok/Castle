@@ -169,6 +169,16 @@ namespace ToolChest
                 {
                     sb.Append("<details open><summary>Skybox</summary>");
                     AppendEditableProperties(sb, skybox, -1);
+                    // Faces list (6 PNGs) - minimal extension to handle List<string>
+                    if (skybox.Faces != null && skybox.Faces.Count > 0)
+                    {
+                        sb.Append("<div class=\"property-row\"><div class=\"property-name\" style=\"font-weight:bold;\">Faces (6 PNGs)</div></div>");
+                        for (int i = 0; i < skybox.Faces.Count; i++)
+                        {
+                            string facePath = skybox.Faces[i] ?? "";
+                            sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Face {i}</div><input type=\"text\" value=\"{facePath}\" data-hook=\"SetSkyboxFace\" data-index=\"{i}\"></div>");
+                        }
+                    }
                     sb.Append("</details>");
                 }
             }
