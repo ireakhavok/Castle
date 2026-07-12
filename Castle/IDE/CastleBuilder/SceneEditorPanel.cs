@@ -582,6 +582,10 @@ namespace CastleBuilder
                     return entities.FirstOrDefault(e => e.Id == id);
                 }
             }
+            if (nodeId == "level-info" || nodeId == "root")
+            {
+                return ProjectSettings.Current.CurrentLevel;
+            }
             return null;
         }
         public void NotifyHierarchyChanged()
