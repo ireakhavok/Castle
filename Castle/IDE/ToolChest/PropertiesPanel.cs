@@ -124,15 +124,45 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\"><div class=\"property-name\">ID</div><input type=\"text\" value=\"{entity.Id}\" readonly></div>");
             }
             sb.Append("</details>");
-            // === ModelComponent special handling (world space textures) ===
+
+            // Recursive dynamic reflection for everything else (removes all hard-coded special cases)
+            sb.Append("<details open><summary>Properties</summary>");
+            BuildObjectHtml(sb, obj, -1);
+            sb.Append("</details>");
+
+            return sb.ToString();
+        }
+
+        // Dynamic recursive helper - walks objects, components, lists, primitives
+        // Keeps your original primitive rendering logic exactly
+        private void BuildObjectHtml(StringBuilder sb, object obj, int entityId)
+        {
+            if (obj == null) return;
+
+            var type = obj.GetType();
+
+            // Special known containers first (SkyboxData, ModelComponent) so we can still give nice UI without top-level if/else bloat
+            if (obj is SkyboxData skybox)
+            {
+                AppendEditableProperties(sb, skybox, entityId);
+                if (skybox.Faces != null && skybox.Faces.Count > 0)
+                {
+                    sb.Append("<div class=\"property-row\"><div class=\"property-name\" style=\"font-weight:bold;\">Faces (6 PNGs)</div></div>");
+                    for (int i = 0; i < skybox.Faces.Count; i++)
+                    {
+                        string facePath = skybox.Faces[i] ?? "";
+                        sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Face {i}</div><input type=\"text\" value=\"{facePath}\" data-hook=\"SetSkyboxFace\" data-index=\"{i}\"></div>");
+                    }
+                }
+                return;
+            }
+
             if (obj is Entity ent && ent.GetComponent<ModelComponent>() is ModelComponent modelComp)
             {
-                sb.Append("<details open><summary>Model / Material</summary>");
                 if (!string.IsNullOrEmpty(modelComp.Key))
                 {
                     sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Asset Key</div><input type=\"text\" value=\"{modelComp.Key}\" readonly></div>");
                 }
-                // World-space / triplanar texture controls per slot
                 if (modelComp.Material?.TextureSlots?.Count > 0)
                 {
                     sb.Append("<div class=\"property-row\"><div class=\"property-name\" style=\"font-weight:bold;\">Texture Slots</div></div>");
@@ -150,7 +180,6 @@ namespace ToolChest
                         }
                         sb.Append("</select>");
                         sb.Append("</div>");
-                        // Tiling / offset as quick numeric inputs (future editable)
                         sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Tiling</div><input type=\"text\" value=\"{slot.Tiling.X}, {slot.Tiling.Y}\" data-hook=\"SetTextureTiling\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\" style=\"width:120px;\"></div>");
                     }
                 }
@@ -158,49 +187,68 @@ namespace ToolChest
                 {
                     sb.Append("<div class=\"property-row\"><i>No texture slots defined</i></div>");
                 }
-                sb.Append("</details>");
+                return;
             }
-            // === Scene-level SkyboxData support (Level or SceneData target from hierarchy click) ===
-            // This makes SkyboxData appear automatically by reflection when the Level node is selected
-            if (obj is Level level || obj is SceneData sceneData)
+
+            // Normal recursive reflection
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
+                .OrderBy(p => p.Name);
+
+            foreach (var prop in properties)
             {
-                var skybox = (obj is Level l) ? l.Skybox : (obj is SceneData sd) ? sd.Skybox : null;
-                if (skybox != null)
+                object value = prop.GetValue(obj);
+                if (value == null) continue;
+
+                var propType = prop.PropertyType;
+
+                // Primitives / simple types - use your exact original rendering
+                if (propType.IsPrimitive || propType == typeof(string) || propType == typeof(Vector2) || propType == typeof(Vector3))
                 {
-                    sb.Append("<details open><summary>Skybox</summary>");
-                    AppendEditableProperties(sb, skybox, -1);
-                    // Faces list (6 PNGs) - minimal extension to handle List<string>
-                    if (skybox.Faces != null && skybox.Faces.Count > 0)
+                    string display = value?.ToString() ?? "";
+                    sb.Append($"<div class=\"property-row\">");
+                    sb.Append($"<div class=\"property-name\">{prop.Name}</div>");
+                    if (propType == typeof(bool))
                     {
-                        sb.Append("<div class=\"property-row\"><div class=\"property-name\" style=\"font-weight:bold;\">Faces (6 PNGs)</div></div>");
-                        for (int i = 0; i < skybox.Faces.Count; i++)
-                        {
-                            string facePath = skybox.Faces[i] ?? "";
-                            sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Face {i}</div><input type=\"text\" value=\"{facePath}\" data-hook=\"SetSkyboxFace\" data-index=\"{i}\"></div>");
-                        }
+                        bool checkedVal = (bool)value;
+                        sb.Append($"<input type=\"checkbox\" {(checkedVal ? "checked" : "")} data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"{type.Name}\" data-property=\"{prop.Name}\">");
                     }
-                    sb.Append("</details>");
+                    else if (propType.IsEnum)
+                    {
+                        sb.Append($"<select data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"{type.Name}\" data-property=\"{prop.Name}\">");
+                        foreach (var enumVal in Enum.GetValues(propType))
+                        {
+                            string selected = enumVal.Equals(value) ? " selected" : "";
+                            sb.Append($"<option value=\"{enumVal}\" {selected}>{enumVal}</option>");
+                        }
+                        sb.Append("</select>");
+                    }
+                    else
+                    {
+                        sb.Append($"<input type=\"text\" value=\"{display}\" data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"{type.Name}\" data-property=\"{prop.Name}\">");
+                    }
+                    sb.Append("</div>");
                 }
-            }
-            // === Generic editable properties (reflection) ===
-            sb.Append("<details open><summary>Components</summary>");
-            // For now we support Entity + its direct components
-            if (obj is Entity e)
-            {
-                foreach (var compKvp in e.Components)
+                // Recurse into nested objects / components
+                else if (!propType.IsPrimitive && !propType.IsEnum && propType != typeof(string))
                 {
-                    string compName = compKvp.Key.Name;
-                    sb.Append($"<div class=\"property-row\" style=\"font-weight:bold;\">{compName}</div>");
-                    AppendEditableProperties(sb, compKvp.Value, e.Id);
+                    sb.Append($"<div class=\"property-row\" style=\"font-weight:bold;\">{prop.Name}</div>");
+                    BuildObjectHtml(sb, value, entityId);
+                }
+                // Simple list handling (e.g. Faces)
+                else if (propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(List<>))
+                {
+                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">{prop.Name}</div></div>");
+                    // For now just show count; can be expanded later for editable lists
+                    var list = value as System.Collections.IList;
+                    if (list != null)
+                    {
+                        sb.Append($"<div class=\"property-row\"><i>Count: {list.Count}</i></div>");
+                    }
                 }
             }
-            else
-            {
-                AppendEditableProperties(sb, obj, -1);
-            }
-            sb.Append("</details>");
-            return sb.ToString();
         }
+
         private void AppendEditableProperties(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
