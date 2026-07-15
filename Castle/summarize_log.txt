@@ -627,7 +627,7 @@ Found 17 dependencies
 Found: TerrainCreatorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
-Read 45914 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
+Read 46859 chars from: C:\repos\RealmFoundry\Castle\IDE\MapRoom\TerrainCreatorScene.cs
 Namespace: MapRoom
 Found 17 dependencies
 Found: TerrainCreatorUI.html
@@ -766,7 +766,7 @@ Found 9 dependencies
 Found: PropertiesPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
-Read 16856 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
+Read 15809 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Namespace: ToolChest
 Found 16 dependencies
 Found: PropertiesPanelUI.html
@@ -2147,13 +2147,13 @@ Found 8 dependencies
 Found: UIInteractionLayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
-Read 14725 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
+Read 15748 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 27349 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 29516 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 12 dependencies
 Found: engine_summary.txt

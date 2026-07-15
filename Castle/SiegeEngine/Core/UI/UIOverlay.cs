@@ -437,7 +437,7 @@ namespace SiegeEngine.Core.UI
                     handled = true;
                 }
                 CloseAllOpenNavDropdowns();
-                CloseContextMenu();
+                CloseContextMenu();   // <-- this is the ONLY place the context menu closes now
             }
             if (valueChanged)
             {
@@ -457,6 +457,7 @@ namespace SiegeEngine.Core.UI
             menu.Style.Position = "absolute";
             menu.Style.LeftStr = mousePos.X.ToString("0.##");
             menu.Style.TopStr = mousePos.Y.ToString("0.##");
+            menu.Style.WidthStr = "220px";
             menu.Style.BackgroundColor = new Vector4(0.176f, 0.176f, 0.176f, 0.98f);
             menu.Style.BorderColor = new Vector4(0.333f, 0.333f, 0.333f, 1f);
             menu.Style.BorderWidthStr = "1px";
@@ -476,7 +477,6 @@ namespace SiegeEngine.Core.UI
             }
             _uiRoot.Children.Add(menu);
             _currentContextMenu = menu;
-            menu.ComputeLayout(mousePos.X, mousePos.Y, 220f, 40f, PanelWidth, PanelHeight, _textRenderer, 14f);
             RefreshUI();
             Console.WriteLine($"[UIOverlay] Context menu (simple div) shown for {context} at mouse {mousePos}");
         }
@@ -487,6 +487,7 @@ namespace SiegeEngine.Core.UI
                 _uiRoot.Children.Remove(_currentContextMenu);
                 _currentContextMenu = null;
                 RefreshUI();
+                Console.WriteLine("[UIOverlay] Context menu closed");
             }
         }
         private void CloseAllOpenNavDropdowns()
@@ -510,13 +511,9 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
             _interactionLayer.Update(deltaTime, relMousePos, currentMouseDown, panelW, panelH);
-            if (!currentMouseDown && _currentContextMenu != null)
-            {
-                if (_interactionLayer._openSelects.Count == 0)
-                {
-                    CloseContextMenu();
-                }
-            }
+            // REMOVED the auto-close on mouse release for context menus.
+            // They now only close when a data-hook item is clicked (see HandleUIClick).
+            // This matches the behavior of nav dropdowns and select menus.
         }
         protected virtual void RenderUI(float w, float h)
         {
@@ -527,6 +524,14 @@ namespace SiegeEngine.Core.UI
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, rootMatrix);
             foreach (var sel in _interactionLayer._openSelects)
                 sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
+            if (_currentContextMenu != null)
+            {
+                // Force fresh layout with non-scrolled matrix so the menu appears exactly where the mouse was.
+                _currentContextMenu.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 14f);
+                _currentContextMenu.UpdateFullTransforms(Matrix4x4.Identity);
+                _currentContextMenu.Render(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
+                Console.WriteLine($"[UIOverlay] Rendered context menu at computed pos {_currentContextMenu.ComputedPosition}");
+            }
             if (_needsVerticalScrollbar)
             {
                 float trackX = w - 12f;
