@@ -38,6 +38,7 @@ namespace SiegeEngine.Core.UI
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
         public UIQuadRenderer QuadRenderer => _quadRenderer;
+        private HtmlElement _currentContextMenu = null;
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
             : this(renderContext, controlContext, window, null)
         {
@@ -180,7 +181,7 @@ namespace SiegeEngine.Core.UI
                  elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") ||
                  elem.Attributes.ContainsKey("onblur") || tagLower == "input" ||
                  (tagLower == "li" && (classes.Contains("nav-dropdown") || elem.Children.Any(c => c.Tag.ToLower() == "ul"))) ||
-                 hasId))
+                 hasId || elem.Attributes.ContainsKey("data-context") || classes.Contains("context-menu") || classes.Contains("context-item")))
             {
                 _uiClickables.Add(elem);
             }
@@ -209,9 +210,6 @@ namespace SiegeEngine.Core.UI
             if (_uiRoot == null) return;
             _uiRoot.MarkIntrinsicDirty();
             _cssParser.ApplyAll(_uiRoot);
-            // GLOBAL FIX: re-apply inline styles AFTER stylesheet rules
-            // This makes runtime SetProperty("display", ...) survive every RefreshUI/layout pass
-            // (exactly how real browsers work — inline style wins)
             _cssParser.ApplyInlineStyles(_uiRoot);
             InheritProperties(_uiRoot, null);
             RecomputeLayout(PanelWidth, PanelHeight);
@@ -439,12 +437,57 @@ namespace SiegeEngine.Core.UI
                     handled = true;
                 }
                 CloseAllOpenNavDropdowns();
+                CloseContextMenu();
             }
             if (valueChanged)
             {
                 TriggerChange(elem);
             }
             return handled;
+        }
+        public void ShowContextMenu(Vector2 mousePos, string context, HtmlElement sourceElement)
+        {
+            if (_currentContextMenu != null)
+            {
+                _uiRoot.Children.Remove(_currentContextMenu);
+                _currentContextMenu = null;
+            }
+            var menu = new HtmlElement();
+            menu.Tag = "div";
+            menu.Style.Position = "absolute";
+            menu.Style.LeftStr = mousePos.X.ToString("0.##");
+            menu.Style.TopStr = mousePos.Y.ToString("0.##");
+            menu.Style.BackgroundColor = new Vector4(0.176f, 0.176f, 0.176f, 0.98f);
+            menu.Style.BorderColor = new Vector4(0.333f, 0.333f, 0.333f, 1f);
+            menu.Style.BorderWidthStr = "1px";
+            menu.Style.BorderRadiusStr = "4px";
+            menu.Style.PaddingStr = "4px 0";
+            menu.Style.Display = "block";
+            if (context.StartsWith("skybox"))
+            {
+                var item = new HtmlElement();
+                item.Tag = "div";
+                item.Style.PaddingStr = "6px 20px";
+                item.Style.Color = "#ffffff";
+                item.Attributes["data-hook"] = "RotateSkybox";
+                var text = new TextElement { Content = "Rotate Skybox", Tag = "span" };
+                item.Children.Add(text);
+                menu.Children.Add(item);
+            }
+            _uiRoot.Children.Add(menu);
+            _currentContextMenu = menu;
+            menu.ComputeLayout(mousePos.X, mousePos.Y, 220f, 40f, PanelWidth, PanelHeight, _textRenderer, 14f);
+            RefreshUI();
+            Console.WriteLine($"[UIOverlay] Context menu (simple div) shown for {context} at mouse {mousePos}");
+        }
+        public void CloseContextMenu()
+        {
+            if (_currentContextMenu != null)
+            {
+                _uiRoot.Children.Remove(_currentContextMenu);
+                _currentContextMenu = null;
+                RefreshUI();
+            }
         }
         private void CloseAllOpenNavDropdowns()
         {
@@ -467,6 +510,13 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
             _interactionLayer.Update(deltaTime, relMousePos, currentMouseDown, panelW, panelH);
+            if (!currentMouseDown && _currentContextMenu != null)
+            {
+                if (_interactionLayer._openSelects.Count == 0)
+                {
+                    CloseContextMenu();
+                }
+            }
         }
         protected virtual void RenderUI(float w, float h)
         {

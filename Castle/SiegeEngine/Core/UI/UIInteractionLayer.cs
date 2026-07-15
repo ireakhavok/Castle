@@ -1,4 +1,5 @@
-﻿// File: SiegeEngine/Core/UI/UIInteractionLayer.cs
+﻿// Folder: SiegeEngine.Core.UI
+// File: UIInteractionLayer.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
@@ -25,6 +26,7 @@ namespace SiegeEngine.Core.UI
         private const double RepeatRate = 0.05;
         private RangeElement _draggingSlider = null;
         private float _sliderOldValue;
+        private bool _prevRightDown = false;
         public UIInteractionLayer(UIOverlay overlay, IControlContext controlContext, nint window)
         {
             _overlay = overlay;
@@ -40,6 +42,10 @@ namespace SiegeEngine.Core.UI
             Vector2 scrolledMousePos = new Vector2(relMousePos.X, relMousePos.Y + _overlay.ScrollOffsetY);
             bool mousePress = !_prevMouseDown && currentMouseDown;
             bool mouseRelease = _prevMouseDown && !currentMouseDown;
+            InputAction rightState = _controlContext.GetMouseButton(_window, MouseButton.Right);
+            bool rightPress = rightState == InputAction.Press && !_prevRightDown;
+            bool rightRelease = _prevRightDown && rightState != InputAction.Press;
+            _prevRightDown = rightState == InputAction.Press;
             float vw = panelW;
             float vh = panelH;
             _openSelects = _overlay.FindElementsByTag("select").Where(s => (s as SelectElement)?.IsOpen ?? false).Cast<SelectElement>().ToList();
@@ -98,6 +104,22 @@ namespace SiegeEngine.Core.UI
                         {
                             _draggingSlider = clickable as RangeElement;
                             _sliderOldValue = _draggingSlider.Value;
+                        }
+                    }
+                }
+            }
+            if (rightPress)
+            {
+                foreach (var clickable in clickablesSnapshot)
+                {
+                    bool over = clickable.IsHover;
+                    if (over && clickable.Attributes.ContainsKey("data-context"))
+                    {
+                        string context = clickable.Attributes["data-context"];
+                        if (context.StartsWith("skybox"))
+                        {
+                            _overlay.ShowContextMenu(relMousePos, context, clickable);
+                            return;
                         }
                     }
                 }

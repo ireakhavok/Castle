@@ -48,7 +48,7 @@ namespace ToolChest
             DockState = DockState.Floating;
             DockingMode = SiegeEngine.Core.Definitions.DockingMode.IDE;
             BaseWidth = 460f;
-            BaseHeight = 620f; // taller for expanded inspector
+            BaseHeight = 620f;
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
         }
@@ -75,16 +75,18 @@ namespace ToolChest
                     RebuildPropertiesUI();
                 }
             }
+            else if (e.Hook == "SkyboxRotatePreview")
+            {
+                Console.WriteLine("[PropertiesPanel] SkyboxRotatePreview event received - forwarding to live preview");
+            }
         }
         private void OnEntitySelected(EntitySelectedEvent e)
         {
-            // Future multi-select support hook - for now we take the first selected
             if (e.SelectedEntityIds.Count > 0)
             {
-                // Could be extended to store list of targets
                 Console.WriteLine($"[PropertiesPanel] EntitySelectedEvent received - {e.SelectedEntityIds.Count} entities");
             }
-            RebuildPropertiesUI(); // will pick up latest from scene editor if needed
+            RebuildPropertiesUI();
         }
         private void LoadPropertiesUI()
         {
@@ -116,61 +118,49 @@ namespace ToolChest
             var sb = new StringBuilder();
             var type = obj.GetType();
             sb.Append("<details open><summary>General</summary>");
-            // Inspected type
-            sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Type</div><input type=\"text\" value=\"{type.Name}\" readonly></div>");
-            // Entity ID (if applicable)
+            sb.Append($"<div class=\"property-row\" data-context=\"object-type\"><div class=\"property-name\">Type</div><input type=\"text\" value=\"{type.Name}\" readonly></div>");
             if (obj is Entity entity)
             {
-                sb.Append($"<div class=\"property-row\"><div class=\"property-name\">ID</div><input type=\"text\" value=\"{entity.Id}\" readonly></div>");
+                sb.Append($"<div class=\"property-row\" data-context=\"entity-id\"><div class=\"property-name\">ID</div><input type=\"text\" value=\"{entity.Id}\" readonly></div>");
             }
             sb.Append("</details>");
-
-            // Recursive dynamic reflection for everything else (removes all hard-coded special cases)
             sb.Append("<details open><summary>Properties</summary>");
             BuildObjectHtml(sb, obj, -1);
             sb.Append("</details>");
-
             return sb.ToString();
         }
-
-        // Dynamic recursive helper - walks objects, components, lists, primitives
-        // Keeps your original primitive rendering logic exactly
         private void BuildObjectHtml(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
-
             var type = obj.GetType();
-
-            // Special known containers first (SkyboxData, ModelComponent) so we can still give nice UI without top-level if/else bloat
             if (obj is SkyboxData skybox)
             {
                 AppendEditableProperties(sb, skybox, entityId);
                 if (skybox.Faces != null && skybox.Faces.Count > 0)
                 {
-                    sb.Append("<div class=\"property-row\"><div class=\"property-name\" style=\"font-weight:bold;\">Faces (6 PNGs)</div></div>");
+                    sb.Append("<div class=\"property-row\" data-context=\"skybox-section\"><div class=\"property-name\" style=\"font-weight:bold;\">Faces (6 PNGs)</div></div>");
                     for (int i = 0; i < skybox.Faces.Count; i++)
                     {
                         string facePath = skybox.Faces[i] ?? "";
-                        sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Face {i}</div><input type=\"text\" value=\"{facePath}\" data-hook=\"SetSkyboxFace\" data-index=\"{i}\"></div>");
+                        sb.Append($"<div class=\"property-row\" data-context=\"skybox-face\" data-index=\"{i}\"><div class=\"property-name\">Face {i}</div><input type=\"text\" value=\"{facePath}\" data-hook=\"SetSkyboxFace\" data-index=\"{i}\"></div>");
                     }
                 }
                 return;
             }
-
             if (obj is Entity ent && ent.GetComponent<ModelComponent>() is ModelComponent modelComp)
             {
                 if (!string.IsNullOrEmpty(modelComp.Key))
                 {
-                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Asset Key</div><input type=\"text\" value=\"{modelComp.Key}\" readonly></div>");
+                    sb.Append($"<div class=\"property-row\" data-context=\"model-key\"><div class=\"property-name\">Asset Key</div><input type=\"text\" value=\"{modelComp.Key}\" readonly></div>");
                 }
                 if (modelComp.Material?.TextureSlots?.Count > 0)
                 {
-                    sb.Append("<div class=\"property-row\"><div class=\"property-name\" style=\"font-weight:bold;\">Texture Slots</div></div>");
+                    sb.Append("<div class=\"property-row\" data-context=\"texture-slots\"><div class=\"property-name\" style=\"font-weight:bold;\">Texture Slots</div></div>");
                     for (int i = 0; i < modelComp.Material.TextureSlots.Count; i++)
                     {
                         var slot = modelComp.Material.TextureSlots[i];
                         string slotName = string.IsNullOrEmpty(slot.SlotName) ? $"Slot {i}" : slot.SlotName;
-                        sb.Append($"<div class=\"property-row\">");
+                        sb.Append($"<div class=\"property-row\" data-context=\"texture-slot\" data-index=\"{i}\">");
                         sb.Append($"<div class=\"property-name\">{slotName}</div>");
                         sb.Append($"<select data-hook=\"SetTextureMapping\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\" onchange=\"this.form.submit()\">");
                         foreach (TextureMappingMode mode in Enum.GetValues(typeof(TextureMappingMode)))
@@ -180,7 +170,7 @@ namespace ToolChest
                         }
                         sb.Append("</select>");
                         sb.Append("</div>");
-                        sb.Append($"<div class=\"property-row\"><div class=\"property-name\">Tiling</div><input type=\"text\" value=\"{slot.Tiling.X}, {slot.Tiling.Y}\" data-hook=\"SetTextureTiling\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\" style=\"width:120px;\"></div>");
+                        sb.Append($"<div class=\"property-row\" data-context=\"texture-tiling\" data-index=\"{i}\"><div class=\"property-name\">Tiling</div><input type=\"text\" value=\"{slot.Tiling.X}, {slot.Tiling.Y}\" data-hook=\"SetTextureTiling\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\" style=\"width:120px;\"></div>");
                     }
                 }
                 else
@@ -189,24 +179,18 @@ namespace ToolChest
                 }
                 return;
             }
-
-            // Normal recursive reflection
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
                 .OrderBy(p => p.Name);
-
             foreach (var prop in properties)
             {
                 object value = prop.GetValue(obj);
                 if (value == null) continue;
-
                 var propType = prop.PropertyType;
-
-                // Primitives / simple types - use your exact original rendering
                 if (propType.IsPrimitive || propType == typeof(string) || propType == typeof(Vector2) || propType == typeof(Vector3))
                 {
                     string display = value?.ToString() ?? "";
-                    sb.Append($"<div class=\"property-row\">");
+                    sb.Append($"<div class=\"property-row\" data-context=\"prop-{prop.Name}\">");
                     sb.Append($"<div class=\"property-name\">{prop.Name}</div>");
                     if (propType == typeof(bool))
                     {
@@ -229,17 +213,14 @@ namespace ToolChest
                     }
                     sb.Append("</div>");
                 }
-                // Recurse into nested objects / components
                 else if (!propType.IsPrimitive && !propType.IsEnum && propType != typeof(string))
                 {
-                    sb.Append($"<div class=\"property-row\" style=\"font-weight:bold;\">{prop.Name}</div>");
+                    sb.Append($"<div class=\"property-row\" data-context=\"nested-{prop.Name}\" style=\"font-weight:bold;\">{prop.Name}</div>");
                     BuildObjectHtml(sb, value, entityId);
                 }
-                // Simple list handling (e.g. Faces)
                 else if (propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(List<>))
                 {
-                    sb.Append($"<div class=\"property-row\"><div class=\"property-name\">{prop.Name}</div></div>");
-                    // For now just show count; can be expanded later for editable lists
+                    sb.Append($"<div class=\"property-row\" data-context=\"list-{prop.Name}\"><div class=\"property-name\">{prop.Name}</div></div>");
                     var list = value as System.Collections.IList;
                     if (list != null)
                     {
@@ -248,12 +229,10 @@ namespace ToolChest
                 }
             }
         }
-
         private void AppendEditableProperties(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
             var type = obj.GetType();
-            // Public properties
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
                 .OrderBy(p => p.Name);
@@ -263,7 +242,7 @@ namespace ToolChest
                 {
                     object value = prop.GetValue(obj);
                     string display = value?.ToString() ?? "";
-                    sb.Append($"<div class=\"property-row\">");
+                    sb.Append($"<div class=\"property-row\" data-context=\"prop-{prop.Name}\">");
                     sb.Append($"<div class=\"property-name\">{prop.Name}</div>");
                     if (prop.PropertyType == typeof(bool))
                     {
@@ -282,7 +261,6 @@ namespace ToolChest
                     }
                     else
                     {
-                        // Numeric or string
                         sb.Append($"<input type=\"text\" value=\"{display}\" data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"{type.Name}\" data-property=\"{prop.Name}\">");
                     }
                     sb.Append("</div>");
@@ -294,27 +272,25 @@ namespace ToolChest
             Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");
             if (hook.StartsWith("SetTextureMapping"))
             {
-                // Example payload would be handled via JS calling with parameters, but for now we use reflection + data attributes
-                // In real usage the JS would send full JSON via a hidden form or direct hook
-                // For this iteration we assume the onchange on select will trigger the hook with data- attributes parsed in UIOverlay
-                // (existing DataHookProcessor can be extended later)
                 Console.WriteLine("[PropertiesPanel] Texture mapping changed - full update coming in next iteration with JS payload");
-                // TODO: parse data-entityid + data-slotindex + selected value and update ModelComponent.Material.TextureSlots
-                RebuildPropertiesUI(); // refresh
+                RebuildPropertiesUI();
                 return;
             }
             if (hook == "SetComponentProperty")
             {
                 Console.WriteLine("[PropertiesPanel] Generic component property update - live editing ready");
-                // Future: parse data attributes and update via reflection + publish EntityPropertyChangedEvent
                 RebuildPropertiesUI();
                 return;
             }
-            // Keep existing hooks functional
+            if (hook == "RotateSkybox")
+            {
+                _eventBus.Publish(new GenericEvent { Hook = "SkyboxRotatePreview" });
+                RebuildPropertiesUI();
+                return;
+            }
         }
         public void HandleUIClick(HtmlElement elem)
         {
-            // Future: could handle clicks on property labels etc.
         }
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
