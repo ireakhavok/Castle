@@ -39,6 +39,8 @@ namespace SiegeEngine.Core.UI
         private UIInteractionLayer _interactionLayer;
         public UIQuadRenderer QuadRenderer => _quadRenderer;
         private HtmlElement _currentContextMenu = null;
+        public HtmlElement CurrentContextMenu => _currentContextMenu;
+
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
             : this(renderContext, controlContext, window, null)
         {
@@ -437,7 +439,7 @@ namespace SiegeEngine.Core.UI
                     handled = true;
                 }
                 CloseAllOpenNavDropdowns();
-                CloseContextMenu();   // <-- this is the ONLY place the context menu closes now
+                CloseContextMenu();
             }
             if (valueChanged)
             {
@@ -454,31 +456,45 @@ namespace SiegeEngine.Core.UI
             }
             var menu = new HtmlElement();
             menu.Tag = "div";
+            menu.Parent = _uiRoot;
+            menu.Attributes["class"] = "context-menu";
             menu.Style.Position = "absolute";
-            menu.Style.LeftStr = mousePos.X.ToString("0.##");
-            menu.Style.TopStr = mousePos.Y.ToString("0.##");
+            menu.Style.LeftStr = mousePos.X.ToString("0.##") + "px";
+            menu.Style.TopStr = mousePos.Y.ToString("0.##") + "px";
             menu.Style.WidthStr = "220px";
+            menu.Style.Display = "block";
             menu.Style.BackgroundColor = new Vector4(0.176f, 0.176f, 0.176f, 0.98f);
             menu.Style.BorderColor = new Vector4(0.333f, 0.333f, 0.333f, 1f);
             menu.Style.BorderWidthStr = "1px";
+            menu.Style.BorderStyle = "solid";
             menu.Style.BorderRadiusStr = "4px";
             menu.Style.PaddingStr = "4px 0";
-            menu.Style.Display = "block";
+            menu.Style.Color = "#ffffff";
+            menu.Style.TextColor = new Vector4(1f, 1f, 1f, 1f);
+            menu.Attributes["style"] = $"position:absolute;left:{mousePos.X.ToString("0.##")}px;top:{mousePos.Y.ToString("0.##")}px;width:220px;background-color:rgba(45,45,45,0.98);border:1px solid #555555;border-radius:4px;padding:4px 0;display:block;color:#ffffff;";
             if (context.StartsWith("skybox"))
             {
                 var item = new HtmlElement();
                 item.Tag = "div";
+                item.Parent = menu;
+                item.Attributes["class"] = "context-item";
+                item.Attributes["data-hook"] = "RotateSkybox";
                 item.Style.PaddingStr = "6px 20px";
                 item.Style.Color = "#ffffff";
-                item.Attributes["data-hook"] = "RotateSkybox";
+                item.Style.TextColor = new Vector4(1f, 1f, 1f, 1f);
+                item.Style.Display = "block";
+                item.Attributes["style"] = "padding:6px 20px;color:#ffffff;display:block;cursor:pointer;";
                 var text = new TextElement { Content = "Rotate Skybox", Tag = "span" };
+                text.Parent = item;
+                text.Style.Color = "#ffffff";
+                text.Style.TextColor = new Vector4(1f, 1f, 1f, 1f);
                 item.Children.Add(text);
                 menu.Children.Add(item);
             }
             _uiRoot.Children.Add(menu);
             _currentContextMenu = menu;
             RefreshUI();
-            Console.WriteLine($"[UIOverlay] Context menu (simple div) shown for {context} at mouse {mousePos}");
+            Console.WriteLine($"[UIOverlay] Context menu shown for {context} at mouse {mousePos}");
         }
         public void CloseContextMenu()
         {
@@ -511,9 +527,6 @@ namespace SiegeEngine.Core.UI
         public virtual void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
             _interactionLayer.Update(deltaTime, relMousePos, currentMouseDown, panelW, panelH);
-            // REMOVED the auto-close on mouse release for context menus.
-            // They now only close when a data-hook item is clicked (see HandleUIClick).
-            // This matches the behavior of nav dropdowns and select menus.
         }
         protected virtual void RenderUI(float w, float h)
         {
@@ -526,11 +539,9 @@ namespace SiegeEngine.Core.UI
                 sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
             if (_currentContextMenu != null)
             {
-                // Force fresh layout with non-scrolled matrix so the menu appears exactly where the mouse was.
                 _currentContextMenu.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 14f);
                 _currentContextMenu.UpdateFullTransforms(Matrix4x4.Identity);
                 _currentContextMenu.Render(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
-                Console.WriteLine($"[UIOverlay] Rendered context menu at computed pos {_currentContextMenu.ComputedPosition}");
             }
             if (_needsVerticalScrollbar)
             {

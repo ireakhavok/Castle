@@ -33,6 +33,11 @@ namespace SiegeEngine.Core.UI
             _controlContext = controlContext;
             _window = window;
         }
+        private bool IsContextMenuElement(HtmlElement elem)
+        {
+            if (elem == null || _overlay.CurrentContextMenu == null) return false;
+            return elem == _overlay.CurrentContextMenu || elem.IsDescendantOf(_overlay.CurrentContextMenu);
+        }
         public void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
             if (_overlay._uiRoot == null) return;
@@ -53,7 +58,8 @@ namespace SiegeEngine.Core.UI
             foreach (var clickable in clickablesSnapshot)
             {
                 bool isDropdownElement = IsDropdownElement(clickable);
-                Vector2 effectiveMouse = isDropdownElement ? relMousePos : scrolledMousePos;
+                bool isContext = IsContextMenuElement(clickable);
+                Vector2 effectiveMouse = (isDropdownElement || isContext) ? relMousePos : scrolledMousePos;
                 clickable.UpdateHover(effectiveMouse, vw, vh);
             }
             bool dropdownPressHandled = false;
