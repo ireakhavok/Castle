@@ -178,6 +178,11 @@ namespace SiegeEngine.Core.Managers
                 panel.IsClosable = true;
                 panel.HeaderHeight = BasePanel.TitleHeight;
                 panel.DockingMode = DockingMode.IDE;
+                panel.AllowDragging = true;
+                if (panel.DockState != DockState.Floating)
+                    panel.DockState = DockState.Tabbed;
+                if (!_originalFloatingSizes.ContainsKey(panel))
+                    _originalFloatingSizes[panel] = panel.Size;
                 _needsLayout = true;
                 return;
             }

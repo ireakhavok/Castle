@@ -1,4 +1,5 @@
-﻿// File: SiegeEngine/Core/UI/UIInteractionLayer.cs
+﻿// Folder: SiegeEngine.Core.UI
+// File: UIInteractionLayer.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
@@ -25,11 +26,17 @@ namespace SiegeEngine.Core.UI
         private const double RepeatRate = 0.05;
         private RangeElement _draggingSlider = null;
         private float _sliderOldValue;
+        private bool _prevRightDown = false;
         public UIInteractionLayer(UIOverlay overlay, IControlContext controlContext, nint window)
         {
             _overlay = overlay;
             _controlContext = controlContext;
             _window = window;
+        }
+        private bool IsContextMenuElement(HtmlElement elem)
+        {
+            if (elem == null || _overlay.CurrentContextMenu == null) return false;
+            return elem == _overlay.CurrentContextMenu || elem.IsDescendantOf(_overlay.CurrentContextMenu);
         }
         public void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
@@ -40,6 +47,10 @@ namespace SiegeEngine.Core.UI
             Vector2 scrolledMousePos = new Vector2(relMousePos.X, relMousePos.Y + _overlay.ScrollOffsetY);
             bool mousePress = !_prevMouseDown && currentMouseDown;
             bool mouseRelease = _prevMouseDown && !currentMouseDown;
+            InputAction rightState = _controlContext.GetMouseButton(_window, MouseButton.Right);
+            bool rightPress = rightState == InputAction.Press && !_prevRightDown;
+            bool rightRelease = _prevRightDown && rightState != InputAction.Press;
+            _prevRightDown = rightState == InputAction.Press;
             float vw = panelW;
             float vh = panelH;
             _openSelects = _overlay.FindElementsByTag("select").Where(s => (s as SelectElement)?.IsOpen ?? false).Cast<SelectElement>().ToList();
@@ -47,7 +58,8 @@ namespace SiegeEngine.Core.UI
             foreach (var clickable in clickablesSnapshot)
             {
                 bool isDropdownElement = IsDropdownElement(clickable);
-                Vector2 effectiveMouse = isDropdownElement ? relMousePos : scrolledMousePos;
+                bool isContext = IsContextMenuElement(clickable);
+                Vector2 effectiveMouse = (isDropdownElement || isContext) ? relMousePos : scrolledMousePos;
                 clickable.UpdateHover(effectiveMouse, vw, vh);
             }
             bool dropdownPressHandled = false;
@@ -99,6 +111,18 @@ namespace SiegeEngine.Core.UI
                             _draggingSlider = clickable as RangeElement;
                             _sliderOldValue = _draggingSlider.Value;
                         }
+                    }
+                }
+            }
+            if (rightPress)
+            {
+                foreach (var clickable in clickablesSnapshot)
+                {
+                    bool over = clickable.IsHover;
+                    if (over && clickable.Attributes.ContainsKey("data-context"))
+                    {
+                        if (_overlay.OnContextMenuRequested(clickable, relMousePos))
+                            return;
                     }
                 }
             }
@@ -201,6 +225,20 @@ namespace SiegeEngine.Core.UI
             {
                 _overlay.CloseAllOpenSelects();
                 _overlay.RefreshUI();
+            }
+            if (mouseRelease && _overlay.CurrentContextMenu != null)
+            {
+                bool clickedInsideMenu = false;
+                foreach (var clickable in clickablesSnapshot)
+                {
+                    if (clickable.IsHover && IsContextMenuElement(clickable))
+                    {
+                        clickedInsideMenu = true;
+                        break;
+                    }
+                }
+                if (!clickedInsideMenu)
+                    _overlay.CloseContextMenu();
             }
             if (!currentMouseDown)
             {

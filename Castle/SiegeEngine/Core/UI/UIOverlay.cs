@@ -14,6 +14,17 @@ using System.Linq;
 using System.Numerics;
 namespace SiegeEngine.Core.UI
 {
+    public readonly struct ContextMenuItem
+    {
+        public string Label { get; }
+        public string DataHook { get; }
+        public ContextMenuItem(string label, string dataHook)
+        {
+            Label = label ?? "";
+            DataHook = dataHook ?? "";
+        }
+    }
+
     public class UIOverlay
     {
         protected readonly IRenderContext _renderContext;
@@ -38,6 +49,8 @@ namespace SiegeEngine.Core.UI
         public bool DidHandleClick { get; set; }
         private UIInteractionLayer _interactionLayer;
         public UIQuadRenderer QuadRenderer => _quadRenderer;
+        private HtmlElement _currentContextMenu = null;
+        public HtmlElement CurrentContextMenu => _currentContextMenu;
         public UIOverlay(IRenderContext renderContext, IControlContext controlContext, nint window)
             : this(renderContext, controlContext, window, null)
         {
@@ -180,7 +193,7 @@ namespace SiegeEngine.Core.UI
                  elem.Attributes.ContainsKey("onmousedown") || elem.Attributes.ContainsKey("onmouseup") || elem.Attributes.ContainsKey("onfocus") ||
                  elem.Attributes.ContainsKey("onblur") || tagLower == "input" ||
                  (tagLower == "li" && (classes.Contains("nav-dropdown") || elem.Children.Any(c => c.Tag.ToLower() == "ul"))) ||
-                 hasId))
+                 hasId || elem.Attributes.ContainsKey("data-context") || classes.Contains("context-menu") || classes.Contains("context-item")))
             {
                 _uiClickables.Add(elem);
             }
@@ -209,9 +222,6 @@ namespace SiegeEngine.Core.UI
             if (_uiRoot == null) return;
             _uiRoot.MarkIntrinsicDirty();
             _cssParser.ApplyAll(_uiRoot);
-            // GLOBAL FIX: re-apply inline styles AFTER stylesheet rules
-            // This makes runtime SetProperty("display", ...) survive every RefreshUI/layout pass
-            // (exactly how real browsers work — inline style wins)
             _cssParser.ApplyInlineStyles(_uiRoot);
             InheritProperties(_uiRoot, null);
             RecomputeLayout(PanelWidth, PanelHeight);
@@ -439,12 +449,81 @@ namespace SiegeEngine.Core.UI
                     handled = true;
                 }
                 CloseAllOpenNavDropdowns();
+                CloseContextMenu();
             }
             if (valueChanged)
             {
                 TriggerChange(elem);
             }
             return handled;
+        }
+        public void ShowContextMenu(Vector2 mousePos, IReadOnlyList<ContextMenuItem> items)
+        {
+            if (_currentContextMenu != null)
+            {
+                _uiRoot.Children.Remove(_currentContextMenu);
+                _currentContextMenu = null;
+            }
+            if (items == null || items.Count == 0)
+            {
+                RefreshUI();
+                return;
+            }
+            var menu = new HtmlElement();
+            menu.Tag = "div";
+            menu.Parent = _uiRoot;
+            menu.Attributes["class"] = "context-menu";
+            menu.Style.Position = "absolute";
+            menu.Style.LeftStr = mousePos.X.ToString("0.##") + "px";
+            menu.Style.TopStr = mousePos.Y.ToString("0.##") + "px";
+            menu.Style.WidthStr = "220px";
+            menu.Style.Display = "block";
+            menu.Style.BackgroundColor = new Vector4(0.176f, 0.176f, 0.176f, 0.98f);
+            menu.Style.BorderColor = new Vector4(0.333f, 0.333f, 0.333f, 1f);
+            menu.Style.BorderWidthStr = "1px";
+            menu.Style.BorderStyle = "solid";
+            menu.Style.BorderRadiusStr = "4px";
+            menu.Style.PaddingStr = "4px 0";
+            menu.Style.Color = "#ffffff";
+            menu.Style.TextColor = new Vector4(1f, 1f, 1f, 1f);
+            menu.Attributes["style"] = $"position:absolute;left:{mousePos.X.ToString("0.##")}px;top:{mousePos.Y.ToString("0.##")}px;width:220px;background-color:rgba(45,45,45,0.98);border:1px solid #555555;border-radius:4px;padding:4px 0;display:block;color:#ffffff;";
+            foreach (var itemDef in items)
+            {
+                var item = new HtmlElement();
+                item.Tag = "div";
+                item.Parent = menu;
+                item.Attributes["class"] = "context-item";
+                item.Attributes["data-hook"] = itemDef.DataHook;
+                item.Style.PaddingStr = "6px 20px";
+                item.Style.Color = "#ffffff";
+                item.Style.TextColor = new Vector4(1f, 1f, 1f, 1f);
+                item.Style.Display = "block";
+                item.Attributes["style"] = "padding:6px 20px;color:#ffffff;display:block;cursor:pointer;";
+                var text = new TextElement { Content = itemDef.Label, Tag = "span" };
+                text.Parent = item;
+                text.Style.Color = "#ffffff";
+                text.Style.TextColor = new Vector4(1f, 1f, 1f, 1f);
+                item.Children.Add(text);
+                menu.Children.Add(item);
+            }
+            _uiRoot.Children.Add(menu);
+            _currentContextMenu = menu;
+            RefreshUI();
+            Console.WriteLine($"[UIOverlay] Context menu shown with {items.Count} item(s) at mouse {mousePos}");
+        }
+        public void CloseContextMenu()
+        {
+            if (_currentContextMenu != null)
+            {
+                _uiRoot.Children.Remove(_currentContextMenu);
+                _currentContextMenu = null;
+                RefreshUI();
+                Console.WriteLine("[UIOverlay] Context menu closed");
+            }
+        }
+        protected internal virtual bool OnContextMenuRequested(HtmlElement sourceElement, Vector2 mousePos)
+        {
+            return false;
         }
         private void CloseAllOpenNavDropdowns()
         {
@@ -477,6 +556,12 @@ namespace SiegeEngine.Core.UI
             _uiRoot.Render(_renderContext, _textRenderer, _quadRenderer, w, h, rootMatrix);
             foreach (var sel in _interactionLayer._openSelects)
                 sel.RenderDropdown(_renderContext, _textRenderer, _quadRenderer, w, h);
+            if (_currentContextMenu != null)
+            {
+                _currentContextMenu.ComputeLayout(0, 0, w, h, w, h, _textRenderer, 14f);
+                _currentContextMenu.UpdateFullTransforms(Matrix4x4.Identity);
+                _currentContextMenu.Render(_renderContext, _textRenderer, _quadRenderer, w, h, Matrix4x4.Identity);
+            }
             if (_needsVerticalScrollbar)
             {
                 float trackX = w - 12f;
