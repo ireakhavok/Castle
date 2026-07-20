@@ -37,6 +37,21 @@ namespace ToolChest
                 _parent.HandleUIClick(elem);
                 return true;
             }
+            protected override bool OnContextMenuRequested(HtmlElement sourceElement, Vector2 mousePos)
+            {
+                if (sourceElement == null) return false;
+                string context = sourceElement.Attributes.GetValueOrDefault("data-context", "");
+                if (context.StartsWith("skybox"))
+                {
+                    var items = new List<ContextMenuItem>
+                    {
+                        new ContextMenuItem("Rotate Skybox", "RotateSkybox")
+                    };
+                    ShowContextMenu(mousePos, items);
+                    return true;
+                }
+                return false;
+            }
         }
         private object _currentTarget;
         public PropertiesPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)

@@ -121,12 +121,8 @@ namespace SiegeEngine.Core.UI
                     bool over = clickable.IsHover;
                     if (over && clickable.Attributes.ContainsKey("data-context"))
                     {
-                        string context = clickable.Attributes["data-context"];
-                        if (context.StartsWith("skybox"))
-                        {
-                            _overlay.ShowContextMenu(relMousePos, context, clickable);
+                        if (_overlay.OnContextMenuRequested(clickable, relMousePos))
                             return;
-                        }
                     }
                 }
             }
@@ -229,6 +225,20 @@ namespace SiegeEngine.Core.UI
             {
                 _overlay.CloseAllOpenSelects();
                 _overlay.RefreshUI();
+            }
+            if (mouseRelease && _overlay.CurrentContextMenu != null)
+            {
+                bool clickedInsideMenu = false;
+                foreach (var clickable in clickablesSnapshot)
+                {
+                    if (clickable.IsHover && IsContextMenuElement(clickable))
+                    {
+                        clickedInsideMenu = true;
+                        break;
+                    }
+                }
+                if (!clickedInsideMenu)
+                    _overlay.CloseContextMenu();
             }
             if (!currentMouseDown)
             {
