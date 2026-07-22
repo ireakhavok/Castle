@@ -465,7 +465,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\bin
 Found: BlueprintManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
-Read 36667 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
+Read 36308 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\BlueprintManager.cs
 Namespace: CastleBuilder
 Found 18 dependencies
 Found: CastleBuilder.csproj
@@ -587,13 +587,13 @@ Found 5 dependencies
 Found: ProjectSettings.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\Keystone\ProjectSettings.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\Keystone\ProjectSettings.cs
-Read 3698 chars from: C:\repos\RealmFoundry\Castle\IDE\Keystone\ProjectSettings.cs
+Read 4215 chars from: C:\repos\RealmFoundry\Castle\IDE\Keystone\ProjectSettings.cs
 Namespace: Keystone
 Found 5 dependencies
 Found: ProjectStateManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\Keystone\ProjectStateManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\Keystone\ProjectStateManager.cs
-Read 5573 chars from: C:\repos\RealmFoundry\Castle\IDE\Keystone\ProjectStateManager.cs
+Read 7501 chars from: C:\repos\RealmFoundry\Castle\IDE\Keystone\ProjectStateManager.cs
 Namespace: Keystone
 Found 5 dependencies
 Found: MapRoom
@@ -766,9 +766,9 @@ Found 9 dependencies
 Found: PropertiesPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
-Read 16478 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
+Read 21947 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\PropertiesPanel.cs
 Namespace: ToolChest
-Found 16 dependencies
+Found 17 dependencies
 Found: PropertiesPanelUI.html
 Found: SpritePlacementPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\SpritePlacementPanel.cs
@@ -2153,13 +2153,13 @@ Found 8 dependencies
 Found: UIInteractionLayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
-Read 16444 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
+Read 18400 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: UIOverlay.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
-Read 31266 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
+Read 33246 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIOverlay.cs
 Namespace: SiegeEngine.Core.UI
 Found 12 dependencies
 Found: engine_summary.txt
