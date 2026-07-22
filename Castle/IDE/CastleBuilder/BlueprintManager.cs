@@ -209,6 +209,16 @@ namespace CastleBuilder
                 }
                 sceneData.Skybox = level.Skybox ?? new SkyboxData();
                 if (level.CustomData != null) sceneData.CustomData = level.CustomData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+                // Transfer-only embedded heightmap fields must never reach project.json.
+                // Explicit Save always clears them so disk storage remains path-only.
+                if (sceneData.Terrain != null)
+                {
+                    sceneData.Terrain.EmbeddedHeightmapData = null;
+                    sceneData.Terrain.EmbeddedHeightmapWidth = 0;
+                    sceneData.Terrain.EmbeddedHeightmapHeight = 0;
+                }
+
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment + skybox from Level (authoritative) → SceneData");
             }
             var uniquePackKeys = data.Scenes.Values

@@ -335,6 +335,12 @@ namespace CastleBuilder
                 }
                 level.Terrain = sceneData.Terrain ?? new TerrainData();
                 level.Environment = sceneData.Environment ?? new EnvironmentSettings();
+                level.Skybox = sceneData.Skybox;
+                if (sceneData.CustomData != null)
+                {
+                    foreach (var kv in sceneData.CustomData)
+                        level.CustomData[kv.Key] = kv.Value;
+                }
                 return level;
             }
             return new Level(_eventBus) { Name = sceneName };
