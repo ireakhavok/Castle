@@ -17,7 +17,7 @@ namespace Keystone
         private float[,] _currentHeightmap;
         private string _currentSceneName;
         private Level _currentLevel;
-        private SceneSettings _currentSceneSettings;
+        private readonly Dictionary<string, SceneSettings> _sceneSettings = new Dictionary<string, SceneSettings>();
         private readonly Dictionary<string, TerrainPaintData> _openPaintData = new Dictionary<string, TerrainPaintData>();
         private readonly Dictionary<string, float[,]> _unsavedHeightmaps = new Dictionary<string, float[,]>();
 
@@ -109,6 +109,12 @@ namespace Keystone
                 state.Heightmap = heightmap;
             }
 
+            // Seed Settings from SceneData when present so scene switches never start empty after load.
+            if (sceneData?.Settings != null && !string.IsNullOrEmpty(sceneName))
+            {
+                _sceneSettings[sceneName] = sceneData.Settings;
+            }
+
             Console.WriteLine($"[ProjectStateManager] SetCurrentTerrain - live state updated for '{sceneName}'");
         }
 
@@ -121,6 +127,10 @@ namespace Keystone
             set
             {
                 _currentLevel = value;
+                if (value != null && !string.IsNullOrEmpty(value.Name))
+                {
+                    _currentSceneName = value.Name;
+                }
                 Console.WriteLine($"[ProjectStateManager] CurrentLevel set to '{value?.Name ?? "null"}'");
             }
         }
@@ -132,13 +142,46 @@ namespace Keystone
 
         public SceneSettings CurrentSceneSettings
         {
-            get => _currentSceneSettings;
-            set => _currentSceneSettings = value;
+            get
+            {
+                if (string.IsNullOrEmpty(_currentSceneName)) return null;
+                _sceneSettings.TryGetValue(_currentSceneName, out var settings);
+                return settings;
+            }
+            set
+            {
+                if (string.IsNullOrEmpty(_currentSceneName)) return;
+                _sceneSettings[_currentSceneName] = value;
+            }
         }
 
         public void SetCurrentSceneSettings(SceneSettings settings)
         {
             CurrentSceneSettings = settings;
+        }
+
+        public SceneSettings GetOrCreateSceneSettings(string sceneName)
+        {
+            if (string.IsNullOrEmpty(sceneName)) return null;
+            if (!_sceneSettings.TryGetValue(sceneName, out var settings) || settings == null)
+            {
+                settings = new SceneSettings();
+                _sceneSettings[sceneName] = settings;
+            }
+            return settings;
+        }
+
+        public SceneSettings GetSceneSettings(string sceneName)
+        {
+            if (string.IsNullOrEmpty(sceneName)) return null;
+            _sceneSettings.TryGetValue(sceneName, out var settings);
+            return settings;
+        }
+
+        public void SetSceneSettings(string sceneName, SceneSettings settings)
+        {
+            if (string.IsNullOrEmpty(sceneName)) return;
+            _sceneSettings[sceneName] = settings;
         }
 
         public void Clear()
@@ -147,11 +190,11 @@ namespace Keystone
             _liveStates.Clear();
             _openPaintData.Clear();
             _unsavedHeightmaps.Clear();
+            _sceneSettings.Clear();
             _currentSceneData = null;
             _currentHeightmap = null;
             _currentSceneName = null;
             _currentLevel = null;
-            _currentSceneSettings = null;
         }
     }
 }

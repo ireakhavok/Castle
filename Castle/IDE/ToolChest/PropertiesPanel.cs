@@ -1,9 +1,14 @@
 ﻿// Folder: ToolChest
 // File: PropertiesPanel.cs
+using Keystone;
+using SiegeEngine.Core.AssetParsing.Model;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI;
+using SiegeEngine.Core.UI.Elements;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,10 +17,6 @@ using System.Numerics;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
-using Keystone;
-using SiegeEngine.Core.AssetParsing.Model;
-using SiegeEngine.Core.Definitions;
-using SiegeEngine.Core.Rendering.ContextManagement;
 namespace ToolChest
 {
     public class PropertiesPanel : BasePanel, IDataAwarePanel
@@ -139,6 +140,24 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\" data-context=\"entity-id\"><div class=\"property-name\">ID</div><input type=\"text\" value=\"{entity.Id}\" readonly></div>");
             }
             sb.Append("</details>");
+
+            // Scene Settings authoring surface when the scene root / level-info node is selected.
+            // Each scene owns its own Settings entry (keyed by scene name) so swaps stay coherent.
+            if (obj is Level level)
+            {
+                string sceneName = level.Name ?? ProjectSettings.Current.CurrentSceneName ?? "Main";
+                var settings = ProjectSettings.Current.GetOrCreateSceneSettings(sceneName);
+                sb.Append("<details open><summary>Scene Settings</summary>");
+                sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-avatar\"><div class=\"property-name\">Avatar Pack Key</div><input type=\"text\" value=\"{settings.AvatarPackKey ?? ""}\" data-hook=\"SetSceneSetting\" data-field=\"avatarPackKey\" data-scenename=\"{sceneName}\"></div>");
+                sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-controller\"><div class=\"property-name\">Controller Type</div><input type=\"text\" value=\"{settings.ControllerTypeName ?? ""}\" data-hook=\"SetSceneSetting\" data-field=\"controllerTypeName\" data-scenename=\"{sceneName}\"></div>");
+                string spawnIds = settings.PreferredSpawnPointIds != null && settings.PreferredSpawnPointIds.Count > 0
+                    ? string.Join(", ", settings.PreferredSpawnPointIds)
+                    : "";
+                sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-spawns\"><div class=\"property-name\">Preferred Spawn IDs</div><input type=\"text\" value=\"{spawnIds}\" data-hook=\"SetSceneSetting\" data-field=\"preferredSpawnPointIds\" data-scenename=\"{sceneName}\"></div>");
+                sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-camera\"><div class=\"property-name\">Camera Mode</div><input type=\"text\" value=\"{settings.CameraMode ?? ""}\" data-hook=\"SetSceneSetting\" data-field=\"cameraMode\" data-scenename=\"{sceneName}\"></div>");
+                sb.Append("</details>");
+            }
+
             sb.Append("<details open><summary>Properties</summary>");
             BuildObjectHtml(sb, obj, -1);
             sb.Append("</details>");
@@ -300,6 +319,56 @@ namespace ToolChest
             if (hook == "RotateSkybox")
             {
                 _eventBus.Publish(new GenericEvent { Hook = "SkyboxRotatePreview" });
+                RebuildPropertiesUI();
+                return;
+            }
+            if (hook == "SetSceneSetting")
+            {
+                // Write-back is driven by the form values attached to the input elements.
+                // The UI framework supplies the changed value via the element; we resolve
+                // the target SceneSettings entry by the data-scenename attribute that was
+                // emitted when the row was built.
+                var focused = _uiOverlay?.FindElementsByTag("input")
+                    ?.FirstOrDefault(e => e.Attributes.GetValueOrDefault("data-hook", "") == "SetSceneSetting"
+                                       && e.Attributes.ContainsKey("data-field"));
+                if (focused != null)
+                {
+                    string field = focused.Attributes.GetValueOrDefault("data-field", "");
+                    string sceneName = focused.Attributes.GetValueOrDefault("data-scenename", "")
+                                       ?? ProjectSettings.Current.CurrentSceneName
+                                       ?? "Main";
+                    string value = focused.Attributes.GetValueOrDefault("value", "")
+                                   ?? (focused as InputElement)?.Value
+                                   ?? "";
+                    var settings = ProjectSettings.Current.GetOrCreateSceneSettings(sceneName);
+                    if (settings != null)
+                    {
+                        switch (field)
+                        {
+                            case "avatarPackKey":
+                                settings.AvatarPackKey = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+                                break;
+                            case "controllerTypeName":
+                                settings.ControllerTypeName = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+                                break;
+                            case "preferredSpawnPointIds":
+                                settings.PreferredSpawnPointIds = new List<int>();
+                                if (!string.IsNullOrWhiteSpace(value))
+                                {
+                                    foreach (var part in value.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+                                    {
+                                        if (int.TryParse(part.Trim(), out int id))
+                                            settings.PreferredSpawnPointIds.Add(id);
+                                    }
+                                }
+                                break;
+                            case "cameraMode":
+                                settings.CameraMode = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+                                break;
+                        }
+                        ProjectSettings.Current.SetSceneSettings(sceneName, settings);
+                    }
+                }
                 RebuildPropertiesUI();
                 return;
             }
