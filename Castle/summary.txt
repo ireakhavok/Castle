@@ -417,6 +417,8 @@ Folder: IDE
     - Methods:
       - void HandleDataHook(string hook)
       - bool HandleUIClick(HtmlElement elem)
+      - bool OnContextMenuRequested( Vector2 mousePos, HtmlElement sourceElement)
+        - Calls: ContextMenuItem, ShowContextMenu
 - File: SaveProjectEvent.cs
   - Class: SaveProjectEvent (Namespace: CastleBuilder.Events)
     - Inherits: IEvent
@@ -3386,8 +3388,10 @@ Folder: SiegeEngine
       - bool _prevRightDown
     - Methods:
       - constructor UIInteractionLayer( IControlContext controlContext,  nint window, UIOverlay overlay)
+      - bool IsContextMenuElement(HtmlElement elem)
+        - Calls: elem.IsDescendantOf
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
-        - Calls: IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetTime, _keyDownTime.Remove, _lastAddTime.Remove, _overlay.CloseAllOpenSelects, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.RefreshUI, _overlay.ShowContextMenu, _overlay.TriggerChange, _overlay._document.InvokeDocumentMousemove, _overlay._document.InvokeDocumentMouseup, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
+        - Calls: IsContextMenuElement, IsDropdownElement, JSElement, _controlContext.GetKey, _controlContext.GetMouseButton, _controlContext.GetTime, _keyDownTime.Remove, _lastAddTime.Remove, _overlay.CloseAllOpenSelects, _overlay.CloseContextMenu, _overlay.FindElementsByTag, _overlay.HandleUIClick, _overlay.InvokeListeners, _overlay.OnContextMenuRequested, _overlay.RefreshUI, _overlay.TriggerChange, _overlay._document.InvokeDocumentMousemove, _overlay._document.InvokeDocumentMouseup, _overlay._jsContext.RunWithThis, clickable.UpdateHover, newValue.ToString
       - bool IsDropdownElement(HtmlElement elem)
 - File: UIOverlay.cs
   - Class: UIOverlay (Namespace: SiegeEngine.Core.UI)
@@ -3410,6 +3414,7 @@ Folder: SiegeEngine
       - UIInteractionLayer _interactionLayer
       - UIQuadRenderer QuadRenderer
       - HtmlElement _currentContextMenu
+      - HtmlElement CurrentContextMenu
       - TextRenderer TextRenderer
     - Methods:
       - constructor UIOverlay( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
@@ -3438,17 +3443,18 @@ Folder: SiegeEngine
       - List<HtmlElement> FindElementsByTag( string tag, HtmlElement root)
       - bool HandleUIClick(HtmlElement elem)
         - Calls: CloseAllOpenNavDropdowns, CloseAllOpenSelects, CloseContextMenu, Console.WriteLine, FindElementById, FindElementsByTag, HandleDataHook, HandleLink, InvokeListeners, JSElement, RefreshUI, TriggerChange, _document.InvokeDocumentListeners, _jsContext.RunWithThis, opt.Attributes.Remove
-      - void ShowContextMenu( HtmlElement sourceElement,  string context, Vector2 mousePos)
-        - Calls: Console.WriteLine, RefreshUI, _uiRoot.Children.Remove, mousePos.X.ToString, mousePos.Y.ToString
+      - void ShowContextMenu( IReadOnlyList<ContextMenuItem> items, Vector2 mousePos)
+        - Calls: Console.WriteLine, RefreshUI, _uiRoot.Children.Remove, mousePos.X.ToString, mousePos.Y.ToString, rgba
       - void CloseContextMenu()
         - Calls: Console.WriteLine, RefreshUI, _uiRoot.Children.Remove
+      - bool OnContextMenuRequested( Vector2 mousePos, HtmlElement sourceElement)
       - void CloseAllOpenNavDropdowns()
         - Calls: FindElementsByTag, nav.CloseDropdown, nav.IsNavDropdownParent
       - void CloseAllOpenSelects()
         - Calls: FindElementsByTag
       - void Update( Vector2 relMousePos,  bool currentMouseDown,  float panelH,  float panelW, float deltaTime)
       - void RenderUI( float h, float w)
-        - Calls: Console.WriteLine, HtmlLayoutUtils.GetNdcQuad, _currentContextMenu.ComputeLayout, _currentContextMenu.Render, _currentContextMenu.UpdateFullTransforms, _quadRenderer.DrawNdcQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _uiRoot.Render, sel.RenderDropdown
+        - Calls: HtmlLayoutUtils.GetNdcQuad, _currentContextMenu.ComputeLayout, _currentContextMenu.Render, _currentContextMenu.UpdateFullTransforms, _quadRenderer.DrawNdcQuad, _renderContext.BlendFunc, _renderContext.Disable, _renderContext.Enable, _uiRoot.Render, sel.RenderDropdown
       - void Render()
         - Calls: RenderUI
       - void RenderBackgrounds( float h, float w)
