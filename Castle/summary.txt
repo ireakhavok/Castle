@@ -243,7 +243,7 @@ Folder: IDE
       - void OpenAddSkybox( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: AddSkyboxPanel.Open, Console.WriteLine
       - void PlayGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: BlueprintManager.SaveCurrentProject, Console.WriteLine, Level, Process.Start, ScriptLoader.BuildProjectScripts, ScriptLoader.CopyProjectScripts, ScriptLoader.GetCustomAssemblyList, e.ToData, level.Serialize
+        - Calls: BlueprintManager.BuildPlayPayloadFile, Console.WriteLine, Process.Start, ScriptLoader.BuildProjectScripts, ScriptLoader.CopyProjectScripts, ScriptLoader.GetCustomAssemblyList
       - void SandboxRegressionTest( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: Console.WriteLine, SandboxScene.Launch
       - void ExportGame( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
@@ -366,11 +366,13 @@ Folder: IDE
       - SceneData CurrentSceneData
       - string CurrentSceneName
       - Level CurrentLevel
+      - SceneSettings CurrentSceneSettings
     - Methods:
       - constructor ProjectSettings()
       - void SetCurrentTerrain( string heightmapPath = null,  string sceneName = null, SceneData sceneData, ] heightmap)
         - Calls: Console.WriteLine, ProjectStateManager.Current.GetOrCreatePaintData, ProjectStateManager.Current.StoreUnsavedHeightmap
       - void SetCurrentLevel(Level level)
+      - void SetCurrentSceneSettings(SceneSettings settings)
       - ] GetUnsavedHeightmap(string sceneName)
       - void StoreUnsavedHeightmap(] heightmap, string sceneName)
       - List<string> GetUnsavedHeightmapKeys()
@@ -384,6 +386,7 @@ Folder: IDE
       - SceneData _currentSceneData
       - string _currentSceneName
       - Level _currentLevel
+      - SceneSettings _currentSceneSettings
       - SceneData CurrentSceneData
       - string CurrentSceneName
     - Methods:
@@ -405,6 +408,7 @@ Folder: IDE
       - void SetCurrentTerrain( string sceneName = null, SceneData sceneData, ] heightmap)
         - Calls: Console.WriteLine, GetOrCreateLiveState
       - void SetCurrentLevel(Level level)
+      - void SetCurrentSceneSettings(SceneSettings settings)
       - void Clear()
         - Calls: state.Dispose
 - File: PropertiesPanel.cs
@@ -721,12 +725,12 @@ Folder: Launcher
         - Calls: ConnectToDedicatedServer, Console.WriteLine, CreateLobby, Dispose, EventBus, InputHandler, JoinSpecificLobby, LoadLibrary, ModManager, PanelManager, Render, RequestP2PHostLobbies, SaveSettings, SceneManager, ScriptLoader.LoadCustomAssemblies, SteamEngine, System.Diagnostics.Debugger.Launch, Terminate, UISettingsManager, Update, _contextManager.Initialize, _controlContext.GetTime, _controlContext.PollEvents, _controlContext.SetWindowSizeCallback, _controlContext.SwapBuffers, _controlContext.WindowShouldClose, _eventBus.RegisterNamespace, _inputHandler.SetKeyCallback, _inputHandler.SetMouseCallback, _menuPanel.Init, _modManager.GetMenuConfigPath, _panelManager.AddPanel, _renderContext.Clear, _renderContext.ClearColor, _renderContext.Disable, _renderContext.Enable, _sceneManager.Render, _sceneManager.Resize, _sceneManager.SwitchToRuntimeGameplay, _sceneManager.Update, _settingsManager.LoadSettings, _settingsManager.UpdateWindowSize, _steamEngine.Initialize, _steamEngine.RunCallbacks
 - File: Program.cs
   - Class: Program (Namespace: Foundation)
-    - Dependencies: SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, System, System.Diagnostics, System.IO, System.Runtime.InteropServices, Trebuchet
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, System, System.Diagnostics, System.IO, System.Runtime.InteropServices, System.Text.Json, Trebuchet
     - Methods:
       - int MessageBox( string caption,  string text,  uint type, nint hWnd)
-        - Calls: Console.WriteLine, Process.Start, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
+        - Calls: Console.WriteLine, JsonDocument.Parse, Process.Start, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
       - void Main(string[] args)
-        - Calls: Console.WriteLine, MessageBox, Process.Start, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
+        - Calls: Console.WriteLine, JsonDocument.Parse, MessageBox, Process.Start, RendererDetector.DetectAvailable, SteamEngine, UISettingsManager, launcher.Start, settings.LoadSettings, settings.SaveSettings, steam.Dispose, steam.Initialize
 
 Folder: Server
 - File: EntityDeltaTracker.cs
@@ -2811,7 +2815,7 @@ Folder: SiegeEngine
       - void ForceVisibleOverheadCamera()
         - Calls: _flyCamera.RefreshViewMatrix, _flyCamera.Update
       - void LoadContentFromContext(SceneContext ctx)
-        - Calls: Console.WriteLine, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, ResolveSkyboxPaths, SkyboxRenderer, _flyCamera.Update, _modelManager.TryGetModel, _server.AddEntity, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox
+        - Calls: BuildTexturedMesh, Console.WriteLine, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, ResolveSkyboxPaths, SkyboxRenderer, TerrainTextureParser.LoadColorTexture, _flyCamera.Update, _modelManager.TryGetModel, _server.AddEntity, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox
       - void ResolveSkyboxPaths( string projectPath, SkyboxData skybox)
       - void LoadExactSavedTerrain( string levelName, string projectPath)
         - Calls: BuildTexturedMesh, Console.WriteLine, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture
@@ -2932,7 +2936,7 @@ Folder: SiegeEngine
       - void OnSwitchScene(SwitchSceneEvent e)
         - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
       - void SwitchToRuntimeGameplay( Level currentLevel = null,  string levelDataPayload = null,  string levelName,  string sceneDataPayload = null, string projectPath)
-        - Calls: ClientGameServerProxy, Console.WriteLine, Entity.FromData, Level, Level.Deserialize, ModelManager, ModelManager.EnsurePacksLoaded, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize, level.AddEntity
+        - Calls: ClientGameServerProxy, Console.WriteLine, Entity.FromData, Level.Deserialize, ModelManager, ModelManager.EnsurePacksLoaded, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize, level.AddEntity
 - File: SceneRegistry.cs
   - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
     - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic
@@ -2944,6 +2948,9 @@ Folder: SiegeEngine
         - Calls: Console.WriteLine, Export, Register, SandboxScene, scene.LoadLevelData
       - constructor SceneRegistry()
         - Calls: Console.WriteLine, Export, Register, SandboxScene, scene.LoadLevelData
+- File: SceneSettings.cs
+  - Class: SceneSettings (Namespace: SiegeEngine.Core.Definitions)
+    - Dependencies: System.Collections.Generic, System.Text.Json.Serialization
 - File: SceneShader.cs
   - Class: SceneShader (Namespace: SiegeEngine.Core.Rendering.Shaders)
     - Dependencies: System
