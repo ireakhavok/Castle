@@ -17,6 +17,7 @@ namespace Keystone
         private float[,] _currentHeightmap;
         private string _currentSceneName;
         private Level _currentLevel;
+        private SceneSettings _currentSceneSettings;
         private readonly Dictionary<string, TerrainPaintData> _openPaintData = new Dictionary<string, TerrainPaintData>();
         private readonly Dictionary<string, float[,]> _unsavedHeightmaps = new Dictionary<string, float[,]>();
 
@@ -129,6 +130,17 @@ namespace Keystone
             CurrentLevel = level;
         }
 
+        public SceneSettings CurrentSceneSettings
+        {
+            get => _currentSceneSettings;
+            set => _currentSceneSettings = value;
+        }
+
+        public void SetCurrentSceneSettings(SceneSettings settings)
+        {
+            CurrentSceneSettings = settings;
+        }
+
         public void Clear()
         {
             foreach (var state in _liveStates.Values) state.Dispose();
@@ -139,6 +151,7 @@ namespace Keystone
             _currentHeightmap = null;
             _currentSceneName = null;
             _currentLevel = null;
+            _currentSceneSettings = null;
         }
     }
 }

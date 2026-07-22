@@ -1,126 +1,53 @@
-Vision & End Goal 
 
-SiegeEngine is a custom C# game engine purpose-built for real-time multiplayer MMORPG-style experiences. It was designed from the ground up with moddability, extensibility, and security as core pillars. The engine supports hundreds of concurrent players through authoritative server validation, client-side prediction, reconciliation, entity delta compression, spatial partitioning, frustum culling of sensitive data, and ray-cast occlusion checks for anti-cheat protection.
+Working brief – Scene / Level / SceneSettings architecture
 
-A defining philosophy is that the entire IDE/editor (Castle) is built directly on top of the game engine itself. This makes the tool self-hosting and self-moddable: every system used to run games is also used to build them. Creators — solo hobbyists, small teams, or large communities — can create, mod, share, and play custom games with minimal friction. Game development itself becomes an engaging “meta-game” where intuitive tools, seamless live previews, and instant testing keep builders fully immersed.
+We are working on the fundamental scene configuration and data-transfer architecture of SiegeEngine. The goal is to give every Scene a clean place for both its world content and its high-level game settings, while remaining fully modular for games that need almost nothing (chess, puzzle games, etc.) and while still allowing unsaved editor changes to reach the engine on Play.
 
-Architecture Overview 
+The feature we are introducing and correcting is the relationship between Scene, Level, SceneSettings, and the payload that is handed to the core engine at Play / Export time. The intended hierarchy is:
 
-The system is cleanly layered into four major concerns that remain strongly separated yet share the same core runtime:
+text
 
-Core Engine: Provides the foundational systems used by both gameplay and the editor. This includes an abstracted rendering pipeline (supporting OpenGL today with clear paths for DirectX/Vulkan), a mature asset pipeline for meshes, skeletons, animations, materials, and textures, a traditional Entity/Component architecture, a central EventBus with strongly-typed networked events, GameSystem classes for per-frame logic, Scene management, a production-grade HTML/CSS/JS-driven UI framework, mod loading, and Steam-based networking.
+Scene                          ← the top-level container the creator opens and loads
+├── SceneSettings              ← optional player/avatar reference, dynamic controller reference,
+│                                game-mode, input bindings, enabled systems, etc.
+└── Level                      ← world content only
+    ├── Entities               ← props, spawn points, lights, triggers…
+    ├── Terrain                ← TerrainData (paths + settings only)
+    ├── Skybox
+    └── Environment
 
-Editor / IDE Layer: Runs the engine in editor mode and exposes a full-featured creative environment. It includes dockable and resizable panels with snapping and live updates, context-aware switching between different editing modes (terrain sculpting, scene editing, animation authoring, 2D sprite placement, etc.), project and scene management, asset browsing, properties inspection, brush-based tools, animation timeline and blending tools, and custom in-panel 3D overlays.
+Heavy binary data (heightmaps, color textures, splat maps) continue to live as external files under Assets/Terrain/…. TerrainData only stores the paths and settings. The playable character is never stored as an ordinary Entity inside the Level; it exists only as a reference inside SceneSettings. At Build / Play time the engine reads that reference, loads the user-supplied controller and avatar pack, and spawns the player at a Spawn Point that does exist as a normal Entity in the Level. Controllers remain completely dynamic — the creator supplies them; the engine never hard-codes controller types.
 
-Server Layer: Implements fully authoritative gameplay logic with server-side validation, spatial grids, occlusion testing, movement/inventory/combat checks, entity delta tracking, and efficient network broadcasting. The same server code can run in dedicated-server, hybrid, or editor-collaboration modes.
+What is currently implemented:
 
-Bootstrap / Launcher Layer: Handles the unified startup sequence, Steam initialization, mod discovery (local + Workshop), context creation, settings management, panel and scene orchestration, and the main game/editor loop.
+Level is the rich live object that holds real Entity instances (with components), Terrain, Skybox, Environment and CustomData.
 
-Key Design Principles
+SceneData is a DTO that is written into project.json. On save, BlueprintManager copies the live Level into SceneData.
 
-Strong separation of concerns between core engine code and editor-specific logic.
+PlayGame / ExportGame currently builds both a Level.Serialize() payload and a SceneData payload and passes both as base64 strings to the runtime.
 
-The EventBus + strongly-typed IEvent system (with serialization) is the single source of truth for all communication — UI ↔ code, client ↔ server, editor ↔ runtime, and mod hooks.
+The runtime prefers the reconstructed Level when it is supplied via SceneContext.
 
-Modding is first-class: mods can override or extend any system through JSON configuration and fully-qualified hooks without conflicts.
+LiveSceneState correctly holds only the temporary working heightmap / ColorBitmap / Skybox for live painting and is never part of the core payload.
 
-The custom UI framework (HTML/CSS parser + JS context + data-hook system) powers both in-game UI and the entire editor and is designed to be production-grade and easily extensible.
+The existing Place-Entity / FileSelector path already mutates the live Level and can sync it to the editor server.
 
-Networking supports pure P2P, hybrid authoritative, and dedicated server modes from the same codebase.
+What is currently wrong or incomplete:
 
-All major systems (rendering, assets, events, UI, scenes) are deliberately shared between runtime and editor so the tool is inherently self-moddable.
+There is still a dual structure (Level vs SceneData vs the private LevelDto inside Level.Serialize) even though the design goal is a single conceptual structure that both the IDE and the core can use.
 
-Core Engine Systems The engine provides complete rendering abstractions, a mature FBX-based asset pipeline (meshes, skeletons, animations, bones, materials, textures), Entity/Component management with parenting and delta tracking, a rich suite of GameSystems (animation, audio with ray-traced occlusion and MP3 support, lighting, physics, client prediction, player control, environment), multiple scene types (including sandbox, terrain, 2D, model viewer, and editor scenes), and a fully-featured UI system with dockable panels, custom overlays, and dynamic JavaScript behavior.
+There is no first-class SceneSettings object, so there is nowhere clean to put avatar references, controller references, game-mode or input bindings.
 
-Editor / IDE Systems The editor runs the same engine in a special editor mode. It offers context switching, project/scene blueprint management, dockable panel system with multiple layout strategies, live 3D canvas tools (terrain brush sculpting with ghost preview, heightmap I/O, wireframe/textured rendering, sprite placement with ortho camera, entity placement with selection overlays, animation timeline and blend-stack preview), asset browser, properties inspector, hierarchy/outliner, console, and a full suite of HTML-driven tool panels. All editor features communicate through the same EventBus and use the engine’s rendering and UI systems, making the entire IDE extensible via the same modding mechanisms used for games.
+Unsaved changes that exist only in the live Level / SceneEditorPanel have no guaranteed serializable in-memory path that is always handed to the engine on Play when the project has never been saved, or when the user has made changes since the last save. This is required: the SceneEditorPanel must be able to send its current (possibly unsaved) state to the engine.
 
-Current State & Priorities Core rendering, asset pipeline, event system, mod loading, server validation, delta compression, and the terrain editor (brush sculpting, ghost preview, heightmap workflow, wireframe/textured modes) are solid and production-ready. The dockable IDE with snapping, live updates, and pop-out panels delivers a professional-grade creative experience.
+Consequently the “Add to scene” button and the Properties panel still lack a clear, correct target for scene-level configuration data.
 
-Ongoing focus areas include further polishing of editor/runtime separation (especially camera and player movement systems), maturing client prediction/reconciliation, enabling real-time multiplayer editor collaboration, and continued incremental improvement of entity replication and new feature development on a rock-solid foundation.
+The main goal of the present work is therefore to introduce SceneSettings under the Scene, keep Level strictly as world content, make the transfer and loading path (including the in-memory unsaved state) reliable so that Play always receives the latest editor state, and keep the entire design composition-based so a scene that needs no player simply leaves the settings null.
 
-You are an expert in game engine architecture, user experience design for creative tools, and modular software development.
+The same compositional principle that is now being applied to the context menu is the foundation required for every subsequent editor feature that must remain cleanly separated from the core. Player spawn state is the next major data surface that will rely on it. A Level (or an associated ProjectSettings object owned exclusively by the IDE) will eventually hold an optional, serialisable description of the initial player state: preferred spawn points, default camera mode, which PlayerController / CameraController implementation the IDE has chosen to inject, which animation packs are attached to the player avatar, and the same information for any computer-controlled AI characters. When that description is present it is materialised into the Level payload that is already handed to RuntimeGameplayScene through the existing base64 command-line path; when it is absent the runtime simply leaves the FlyCameraController and the default PlayerMovement systems untouched. No core class ever inspects ProjectSettings or assumes the existence of a spawn configuration.
 
-This project is a mature C# game engine and self-hosting IDE built for real-time multiplayer MMORPG-style games. The overarching goal is to empower solo hobbyists, small teams, and communities to build, mod, share, and play custom games without steep learning curves, mod conflicts, or inadequate multiplayer support. Game creation itself should feel like a rewarding meta-game, with intuitive tools, seamless live previews, and instant testing that keep creators fully engaged. The entire application functions as a professional-grade game creator tool — modular, extensible, and secure — rather than a prototype lacking proper editor features.
+Because the configuration is pure data, the PropertiesPanel becomes the natural place to edit it. The same generic context-menu infrastructure we are completing today will later let a user right-click an avatar or AI entry and choose “Add Animation Pack”, “Set as Default Spawn”, or “Assign Controller”. The panel itself will request a context menu by supplying a list of labels and data-hooks; the core will remain oblivious to the meaning of those hooks. Parallel work will introduce a lightweight Project Settings form (still an IDE-only panel) that surfaces the same data objects for global defaults, and a Spawner component whose configuration is likewise edited through the PropertiesPanel and serialised into the Level. All of these features share the identical contract: the IDE composes the data, the core only consumes a neutral Level / SceneData payload, and any missing configuration is treated as “use the engine defaults”.
 
-The core rendering, asset pipeline, event system, mod loading, server validation, anti-cheat mechanisms, and terrain editor are fully implemented and production-ready. The dockable, resizable IDE with snapping, live updates, and pop-out panels is complete and highly usable. We are now primarily focused on bug fixing, incremental feature additions, and polishing the remaining systems while maintaining architectural integrity.
+This disciplined separation guarantees that the runtime process stays a clean, isolated replica of a shipped game, while the editor continues to feel like a living meta-game in which creators can attach animation packs, redefine spawn behaviour, or swap camera controllers without ever touching engine source. The generic, data-driven context menu is therefore not an isolated UI convenience; it is the first concrete realisation of the composition pattern that will keep every future PropertiesPanel extension, project-settings surface, and spawner authoring tool safely on the IDE side of the boundary.
 
-SiegeEngine serves as the shared core that powers both gameplay and the editor. It includes abstracted rendering, a mature asset pipeline, Entity/Component system, central EventBus with networked strongly-typed events, GameSystems, multiple scene types, and a production-grade HTML/CSS/JS UI framework. The editor layer builds directly on these same systems, making the entire tool self-moddable. The server layer provides authoritative validation, spatial optimization, delta compression, and secure networking. All layers share the same bootstrap and modding infrastructure.
-
-You must maintain a complete mental model of how the subsystems integrate: the EventBus as the central communication backbone, the modding system (JSON configs + fully-qualified hooks), the shared rendering/UI/asset systems, scene management, project/blueprint workflow, and the clean separation between core engine and editor code.
-
-Collaboration Guidelines: 
-
-	My approach to collaboration is disciplined, methodical, and safety-focused. I will not make changes or proceed with implementation until you explicitly say “go” and provide all necessary files. I maintain a comprehensive repository summary, a living document outlining the project’s structure—folders, key files, dependencies, and component roles (e.g., SandboxScene.cs for gameplay, ModManager.cs for Workshop). This summary is built by synthesizing provided files, logs, and feedback, ensuring a clear understanding of the system’s state. I request specific files (e.g., VertexBuffer.cs, ShaderProgram.cs) upfront to clarify dependencies or behavior, cross-referencing them with logs to avoid assumptions. For example, logs showing GameServer.AddEntity crashes or UI toggle errors guide targeted fixes. Changes are made slowly and iteratively, analyzing logs to identify symptoms (e.g., missing preview updates, recursive entity additions), hypothesizing root causes (e.g., coordinate issues in ScreenToWorld, null references in ActionConfig), and proposing minimal but the most future-proof fixes with debug logs (e.g., Console.WriteLine("EditorScene: Preview updated...")) to verify impact. Each change includes clear verification steps (e.g., checking FBX model rendering, animation playback) to ensure alignment with the codebase. If issues persist, I refine based on new logs, maintaining stability while advancing toward goals like custom FBX integration.
-
-You need to also understand how all the subsystems tie in, how the modding system and scene system works. So right now, what I need you to do is understand the summary of the repository in its entirety and make future-proof changes that are iterative in nature to fix the issues in the game. In order for you to systematically and methodically update the repository to fix these issues, you’ll need to keep the information regarding the repo in its entirety safe. I only want you to provide code when I say go. Right now you need to provide me a list of files to look at, and iteratively add more files to your memory. As you do so you’ll need to handle a large amount of code and adopt good practices to keeping the information safe, and updated as I say we reached a checkpoint. Don’t ask me questions you’ll be able to answer after asking for the files in question, waiting for them, and then proceeding once there are no more questions.
-
-Rules:
-
-the summary file is your life line to succeed and understand the repository from a class - call perspective, so keep that information safe and silently update it accordingly when I confirm something worked. 2) Output the full and entire files you modify and only the files you modify 3) Output the files in-line and in folder/class labelled c-sharp code blocks. 4) Do not nominally log 5) do not add anything extra. do not change the name of variables 6) understand the entire scope of the changes you make 7) Make methodical and FUTURE PROOFED changes. DON'T MAKE BAND-AIDS AND FIX THINGS PROPERLY AND PREFERABLY WITH PROPER ARCHITECTURE 8) when a class or context is un-clear, stop. ask for the files. wait for them. and inspect the files before continuing with the solution 9) do not output snippets of code. 10) Know the solution definitively, but be concise in your explanations unless explicitly told to explain something. 11) Given the complexity, adopt an iterative approach, requesting files in stages to build understanding
-
-You are helping me finish the terrain albedo painting system in SiegeEngine.
-
-Feature we are working on: The real-time albedo (color) painting system inside TerrainCreatorScene for the self-hosting Castle editor. BrushPanel → SelectBrushEvent → ghost preview on terrain surface → PaintAlbedo on mouse drag/release → CPU composite into _colorBitmapCache → GPU upload → visible on the live terrain mesh in Render.
-
-Part of the feature we are currently working on: Fixing the remaining mirror (axis inversion) between the ghost preview image and the painted result on the terrain. Location is already correct. Size is still incorrect (painted texture is half the preview/brush size). Brush.Size is the radius of the circle/square brush.
-
-Current list of issues (do not add to or assume anything beyond what is listed here):
-
-Texture being mirrored along one axis relative to the preview image.
-
-SceneEditor is incorrectly allowing albedo painting (and heightmap edits) — only TerrainCreatorScene + TerrainCreatorPanel should handle paint/height modifications.
-
-TerrainCreatorScene texture/paint data is not being replicated to the SceneEditorPanel (heightmap modifications already are).
-
-SceneEditorPanel sometimes shows visual chroma/glitch (possible buffer or render state issue).
-
-Textures are not being saved/reloaded correctly on SaveTerrain (no reloadable PNG that auto-reloads after save/reload).
-
-Visual stutter during placement (possible extended goal: modification queue for undo/redo later — stub comments only for now).
-
-Plan for rotating textures relative to world (extended idea — stub comments only, don't implement).
-
-No handling for material aspect ratio in PaintAlbedo (ghost uses aspect, paint does not — causes distortion on non-square materials)? - I don't understand this problem, but you suggested it? help me to understand this before we do anything in relation to this issue. 
-
-Constraints we need to work within (from user's perspective — do not violate any of these):
-
-Do not make any assumptions about what I want. If something is unclear, ask for the specific file instead of guessing.
-
-Do not add logging unless I explicitly ask for it.
-
-Do not add band-aids, temporary hacks, or "make it look right" changes — the fix must pass an engineering audit (clean, future-proof, no random constants).
-
-Preserve every non-negotiable feature: full GeoTIFF heightmap + color texture loading with geo-reference correlation and world-scale math, CustomTerrainParser flat-terrain support with scaleX/scaleZ, all existing SaveTerrain / SaveAsPng flow and ProjectSettings unsaved heightmap / paint data caching, Brush system (Brush.cs enums, Apply for sculpt, IsInShape/GetFalloff), EventBus driven SelectBrushEvent / TerrainModifiedEvent (network-aware).
-
-Only output full and entire files when I say "go". Never output snippets or partial code.
-
-When a class or context is unclear, stop and ask for the files.
-
-The brush size is the radius of the circle/square — do not assume otherwise.
-
-The terrain vertices are only for alignment — the paint must have a literal 1:1 relationship with the loaded PNG material (native resolution, no downsampling to terrain grid).
-
-The preview (ghost) is the source of truth for correct size and location. The painted result must match it exactly in orientation and size.
-
-Now with all this, please provide me a list of files for you to inspect the current state of the terrain painting system, so that we can fix the final visibility issue on the mesh.
-
-
-Multi-paragraph prompt/spec for the quaternion-aware 3D transform gizmo (placement/manipulation widget) in SceneEditorPanel:
-Implement a professional-grade 3D transform gizmo in the SceneEditorPanel's viewport that provides intuitive, axis-constrained manipulation of selected entities' position and rotation, mirroring the UX of Blender, Unity, and Unreal Editor. The gizmo activates exclusively when an entity possessing transform data (PhysicsComponent.Position + Quaternion Rotation) is selected — either via right-click in the hierarchy/outliner (TreeViewPanel / OutlinerCoordinator) or direct viewport raycast selection (EntitySelectedEvent). It renders at the entity's world position and orients to its exact quaternion rotation (local-space axes by default, with the entity's forward direction preserved).
-The gizmo consists of:
-
-Translation handles: three colored orthogonal arrows (Red = X, Green = Y, Blue = Z) extending from the pivot, with clear arrowheads or cone tips for visual clarity.
-Rotation handles: three colored circular arcs/rings lying in the perpendicular planes (XY, XZ, YZ) for axis-specific quaternion rotation.
-Optional center handle or plane indicators for future planar movement.
-
-The gizmo must support constrained interaction: mouse hover highlights the nearest handle; click-and-drag on an arrow moves the entity strictly along that local axis; click-and-drag on a rotation ring rotates the entity around that axis. Live preview updates the entity's PhysicsComponent in real time during drag, with final commit on mouse release. Changes propagate through the EventBus (reusing/extending EntityMovedEvent or a new TransformUpdatedEvent) to keep the server proxy, LiveSceneState, PropertiesPanel, OutlinerCoordinator, and undo system synchronized.
-Technical integration (future-proof and aligned with existing architecture):
-
-New TransformGizmoOverlay class (ICustomOverlay subclass, modeled after PlacementOverlay and SelectionBoxOverlay) that manages its own VertexBuffer for dynamic geometry (colored lines/triangles for arrows/rings, using UpdateCustom/UpdateCustomWithUV patterns).
-Render in world space during TerrainCreatorScene.Render or SceneEditorPanel.RenderInnerContent (after entities, using the same view/projection matrices and ghost-preview style as existing 3D overlays; reuse ShaderProgram with simple unlit colored shader).
-Input/picking in SceneEditorPanel.Update (when not in cameraMode) using existing GetMouseRay + raycast helpers from TerrainCreatorScene/PhysicsComponent.RayIntersects to detect handle hits and constrain drag to the selected axis.
-Quaternion fidelity: gizmo axes are derived from the entity's Rotation quaternion so forward always matches the model.
-Editor-only: hide when no entity selected or cameraMode active; support local space by default (world-space toggle stubbed for future).
-Performance: recreate/update geometry only on selection change or drag; minimal draw calls.
-
-This feature completes the professional scene-editing workflow, making precise FBX/entity placement and orientation as fluid as terrain sculpting while fully leveraging the self-hosting IDE's shared rendering, raycast, EventBus, and component systems. It is modular, moddable, and extensible (add scale handles, snapping, multi-selection later) without breaking any existing behavior (terrain brush, sprite placement, multiplayer validation, save/load, or selection). Start with translation arrows, add rotation in phase 2, and ensure seamless live preview and server reconciliation.
+now, provide me with a list of files to inspect so that we can accomplish this tasking with no assumptions. 

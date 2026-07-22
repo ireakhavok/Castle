@@ -32,6 +32,7 @@ namespace Keystone
         public float[,] CurrentHeightmap => ProjectStateManager.Current.CurrentHeightmap;
         public string CurrentSceneName => ProjectStateManager.Current.CurrentSceneName;
         public Level CurrentLevel => ProjectStateManager.Current.CurrentLevel;
+        public SceneSettings CurrentSceneSettings => ProjectStateManager.Current.CurrentSceneSettings;
         public string CurrentHeightmapPath { get; private set; }
 
         public void SetCurrentTerrain(SceneData sceneData, float[,] heightmap, string sceneName = null, string heightmapPath = null)
@@ -54,6 +55,11 @@ namespace Keystone
         public void SetCurrentLevel(Level level)
         {
             ProjectStateManager.Current.SetCurrentLevel(level);
+        }
+
+        public void SetCurrentSceneSettings(SceneSettings settings)
+        {
+            ProjectStateManager.Current.SetCurrentSceneSettings(settings);
         }
 
         public float[,] GetUnsavedHeightmap(string sceneName)

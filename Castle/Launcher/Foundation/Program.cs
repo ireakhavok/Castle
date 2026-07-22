@@ -4,6 +4,8 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Networking;
@@ -30,6 +32,7 @@ namespace Foundation
             string loadLevelName = "Main";
             string levelDataPayload = null;
             string sceneDataPayload = null;
+            string playPayloadFile = null;
 
             int i = 0;
             while (i < args.Length)
@@ -57,7 +60,52 @@ namespace Foundation
                     levelDataPayload = args[++i];
                 else if (i + 1 < args.Length && args[i] == "--scene-data")
                     sceneDataPayload = args[++i];
+                else if (i + 1 < args.Length && args[i] == "--play-payload-file")
+                    playPayloadFile = args[++i];
                 i++;
+            }
+
+            // Prefer temp payload file when present (pure in-memory Play transfer vehicle).
+            // Property names match PascalCase written by BlueprintManager.PlayPayloadTransfer.
+            if (!string.IsNullOrEmpty(playPayloadFile) && File.Exists(playPayloadFile))
+            {
+                try
+                {
+                    string json = File.ReadAllText(playPayloadFile);
+                    Console.WriteLine($"[Program] Loading play payload file ({json.Length} chars): {playPayloadFile}");
+                    using (JsonDocument doc = JsonDocument.Parse(json))
+                    {
+                        JsonElement root = doc.RootElement;
+                        if (root.TryGetProperty("LevelName", out JsonElement nameElem))
+                        {
+                            string name = nameElem.GetString();
+                            if (!string.IsNullOrEmpty(name)) loadLevelName = name;
+                        }
+                        if (root.TryGetProperty("LevelDataBase64", out JsonElement levelElem))
+                        {
+                            string b64 = levelElem.GetString();
+                            if (!string.IsNullOrEmpty(b64)) levelDataPayload = b64;
+                        }
+                        if (root.TryGetProperty("SceneData", out JsonElement sceneElem))
+                        {
+                            // Use raw JSON text of the SceneData object, then base64 it for the existing pipeline.
+                            string sceneJson = sceneElem.GetRawText();
+                            sceneDataPayload = Convert.ToBase64String(
+                                System.Text.Encoding.UTF8.GetBytes(sceneJson));
+                        }
+                    }
+                    Console.WriteLine($"[Program] Play payload loaded - levelData={(levelDataPayload != null)}, sceneData={(sceneDataPayload != null)}, levelName={loadLevelName}");
+                    // Best-effort cleanup of the transfer file.
+                    try { File.Delete(playPayloadFile); } catch { }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Program] Failed to load play payload file '{playPayloadFile}': {ex.Message}");
+                }
+            }
+            else if (!string.IsNullOrEmpty(playPayloadFile))
+            {
+                Console.WriteLine($"[Program] Play payload file not found: {playPayloadFile}");
             }
 
             if (isClientRuntime || !string.IsNullOrEmpty(playProjectPath))

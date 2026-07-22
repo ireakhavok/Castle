@@ -29,6 +29,9 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("customData")]
         public Dictionary<string, object> CustomData { get; set; } = new Dictionary<string, object>();
 
+        [JsonPropertyName("settings")]
+        public SceneSettings Settings { get; set; }
+
         [JsonIgnore]
         public string LiveStateGuid { get; set; } // used internally by ProjectStateManager
     }
@@ -58,6 +61,17 @@ namespace SiegeEngine.Core.Definitions
 
         [JsonPropertyName("verticalExaggeration")]
         public float VerticalExaggeration { get; set; } = 1f;
+
+        // Transfer-only: populated only for pure in-memory Play when heightmap is dirty / never-saved.
+        // Explicit Save always clears these so project.json remains path-only.
+        [JsonPropertyName("embeddedHeightmapWidth")]
+        public int EmbeddedHeightmapWidth { get; set; }
+
+        [JsonPropertyName("embeddedHeightmapHeight")]
+        public int EmbeddedHeightmapHeight { get; set; }
+
+        [JsonPropertyName("embeddedHeightmapData")]
+        public float[] EmbeddedHeightmapData { get; set; }
     }
 
     public class TerrainMaterial
