@@ -38,6 +38,47 @@ namespace SiegeEngine.Core.UI
             if (elem == null || _overlay.CurrentContextMenu == null) return false;
             return elem == _overlay.CurrentContextMenu || elem.IsDescendantOf(_overlay.CurrentContextMenu);
         }
+
+        /// <summary>
+        /// True if the element under the mouse is a text/number input or a label that targets one.
+        /// Used to decide whether an outside-click should blur the current focused field.
+        /// </summary>
+        private bool IsPressOverTextInput(IReadOnlyList<HtmlElement> clickables)
+        {
+            foreach (var clickable in clickables)
+            {
+                if (!clickable.IsHover) continue;
+
+                if (clickable is InputElement inp && (inp.Type == "text" || inp.Type == "number"))
+                    return true;
+
+                if (clickable.Tag == "label")
+                {
+                    string forId = clickable.Attributes.GetValueOrDefault("for", "");
+                    if (!string.IsNullOrEmpty(forId))
+                    {
+                        var target = _overlay.FindElementById(forId) as InputElement;
+                        if (target != null && (target.Type == "text" || target.Type == "number"))
+                            return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Blur the currently focused text input (cursor off, keys no longer routed to it).
+        /// </summary>
+        public void ClearFocus(bool refresh = true)
+        {
+            if (_currentFocused == null) return;
+            if (_currentFocused is InputElement old)
+                old.IsFocused = false;
+            _currentFocused = null;
+            if (refresh)
+                _overlay.RefreshUI();
+        }
+
         public void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
             if (_overlay._uiRoot == null) return;
@@ -62,6 +103,14 @@ namespace SiegeEngine.Core.UI
                 Vector2 effectiveMouse = (isDropdownElement || isContext) ? relMousePos : scrolledMousePos;
                 clickable.UpdateHover(effectiveMouse, vw, vh);
             }
+
+            // Outside-click blur: press not over any text input → clear focus so cursor disappears.
+            // Field→field transfer is handled inside UIOverlay.HandleUIClick when the new input is focused.
+            if (mousePress && _currentFocused != null && !IsPressOverTextInput(clickablesSnapshot))
+            {
+                ClearFocus(refresh: true);
+            }
+
             bool dropdownPressHandled = false;
             foreach (var select in _openSelects)
             {

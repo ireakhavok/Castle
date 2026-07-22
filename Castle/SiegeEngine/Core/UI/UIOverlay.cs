@@ -73,6 +73,11 @@ namespace SiegeEngine.Core.UI
         }
         public void LoadUI(string html, string baseDir = "")
         {
+            // Safety only: if a panel replaces its tree, drop any focused reference that pointed
+            // into the old tree. Does not run every frame — only when content is intentionally replaced.
+            if (_interactionLayer != null)
+                _interactionLayer.ClearFocus(refresh: false);
+
             _currentBaseDir = baseDir;
             HtmlParser parser = new HtmlParser();
             _cssParser.Clear();
@@ -287,6 +292,26 @@ namespace SiegeEngine.Core.UI
             if (elem == null) return false;
             bool handled = false;
             bool valueChanged = false;
+
+            // Blur when the click target is not a text/number input (and not a label for one).
+            // Field→field transfer is handled in the text-input branch below.
+            bool isTextInput = elem is InputElement ie && (ie.Type == "text" || ie.Type == "number");
+            bool isLabelForTextInput = false;
+            if (elem.Tag == "label")
+            {
+                string forId = elem.Attributes.GetValueOrDefault("for", "");
+                if (!string.IsNullOrEmpty(forId))
+                {
+                    var target = FindElementById(forId) as InputElement;
+                    if (target != null && (target.Type == "text" || target.Type == "number"))
+                        isLabelForTextInput = true;
+                }
+            }
+            if (!isTextInput && !isLabelForTextInput && _interactionLayer != null && _interactionLayer._currentFocused != null)
+            {
+                _interactionLayer.ClearFocus(refresh: false);
+            }
+
             if (!string.IsNullOrEmpty(elem.OnClickJS))
             {
                 _jsContext.RunWithThis(elem.OnClickJS, new JSElement(elem, this));
@@ -349,6 +374,11 @@ namespace SiegeEngine.Core.UI
                         {
                             if (!input.IsFocused)
                             {
+                                // Transfer focus: blur previous text input first
+                                if (_interactionLayer != null && _interactionLayer._currentFocused is InputElement prev && prev != input)
+                                {
+                                    prev.IsFocused = false;
+                                }
                                 if (!string.IsNullOrEmpty(input.OnFocusJS))
                                     _jsContext.RunWithThis(input.OnFocusJS, new JSElement(input, this));
                                 InvokeListeners(input, "focus");
@@ -387,6 +417,11 @@ namespace SiegeEngine.Core.UI
                     {
                         if (!input.IsFocused)
                         {
+                            // Transfer focus: blur previous text input first
+                            if (_interactionLayer != null && _interactionLayer._currentFocused is InputElement prev && prev != input)
+                            {
+                                prev.IsFocused = false;
+                            }
                             if (!string.IsNullOrEmpty(input.OnFocusJS))
                                 _jsContext.RunWithThis(input.OnFocusJS, new JSElement(input, this));
                             InvokeListeners(input, "focus");

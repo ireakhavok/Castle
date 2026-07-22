@@ -62,6 +62,21 @@ namespace Keystone
             ProjectStateManager.Current.SetCurrentSceneSettings(settings);
         }
 
+        public SceneSettings GetOrCreateSceneSettings(string sceneName)
+        {
+            return ProjectStateManager.Current.GetOrCreateSceneSettings(sceneName);
+        }
+
+        public SceneSettings GetSceneSettings(string sceneName)
+        {
+            return ProjectStateManager.Current.GetSceneSettings(sceneName);
+        }
+
+        public void SetSceneSettings(string sceneName, SceneSettings settings)
+        {
+            ProjectStateManager.Current.SetSceneSettings(sceneName, settings);
+        }
+
         public float[,] GetUnsavedHeightmap(string sceneName)
         {
             return ProjectStateManager.Current.GetUnsavedHeightmap(sceneName);
