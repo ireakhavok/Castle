@@ -36,7 +36,6 @@ namespace SiegeEngine.Scenes
         private SkyboxRenderer _skyboxRenderer;
         private SkyboxData _skyboxData;
         private TerrainRenderer _terrainRenderer;
-
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -49,7 +48,6 @@ namespace SiegeEngine.Scenes
             _skyboxRenderer = null;
             _skyboxData = null;
             _terrainRenderer = new TerrainRenderer(renderContext);
-
             string projectPath = "";
             string levelName = "NewTerrain";
             string snapshotPath = null;
@@ -75,14 +73,12 @@ namespace SiegeEngine.Scenes
                 LoadContentFromContext(ctx);
             }
         }
-
         public void LoadLevelData(string levelName, string projectPath)
         {
             LoadSceneData(new SceneData { Name = levelName ?? "Main" });
             _eventBus.Publish(new SceneActivatedEvent(levelName));
             _player.InitializeCamera(_controlContext, _window);
         }
-
         public override void Initialize(int width, int height)
         {
             base.Initialize(width, height);
@@ -105,7 +101,6 @@ namespace SiegeEngine.Scenes
             ForceVisibleOverheadCamera();
             BuildTexturedMesh();
         }
-
         private void ForceVisibleOverheadCamera()
         {
             float centerX = _terrainWidth * 0.5f;
@@ -116,7 +111,6 @@ namespace SiegeEngine.Scenes
             _flyCamera.Update(0f, 0f, true);
             _flyCamera.RefreshViewMatrix();
         }
-
         protected override void LoadContentFromContext(SceneContext ctx)
         {
             if (_contentLoaded) return;
@@ -138,7 +132,31 @@ namespace SiegeEngine.Scenes
                 _skyboxRenderer.LoadSkybox(_skyboxData);
             }
             LoadLevelData(levelName, projectPath);
-            LoadExactSavedTerrain(projectPath, levelName);
+
+            // Prefer pure in-memory heightmap snapshot from the Play payload when present.
+            // Fall back to disk path only when no live/unsaved snapshot was transferred.
+            if (ctx?.HeightmapSnapshot != null
+                && ctx.HeightmapSnapshot.GetLength(0) > 0
+                && ctx.HeightmapSnapshot.GetLength(1) > 0)
+            {
+                _heightmap = ctx.HeightmapSnapshot;
+                _terrainWidth = _heightmap.GetLength(0);
+                _terrainHeight = _heightmap.GetLength(1);
+                Console.WriteLine($"[RuntimeGameplayScene] ✅ Using HeightmapSnapshot from pure in-memory Play payload ({_terrainWidth}x{_terrainHeight})");
+
+                // Still try to load color texture from disk when available; heightmap itself stays live.
+                string colorPath = !string.IsNullOrEmpty(projectPath)
+                    ? Path.Combine(projectPath, "Assets", "Terrain", levelName + ".png")
+                    : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", levelName + ".png");
+                _terrainTextureId = TerrainTextureParser.LoadColorTexture(_renderContext, colorPath);
+                _hasColorTexture = _terrainTextureId != 0;
+                BuildTexturedMesh();
+            }
+            else
+            {
+                LoadExactSavedTerrain(projectPath, levelName);
+            }
+
             _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
             ModelManager.EnsurePacksLoaded(projectPath, level);
             Console.WriteLine($"[RuntimeGameplayScene] Payload-driven ctx: level.Entities = {level.Entities.Count} - rehydrate starting");
@@ -155,7 +173,6 @@ namespace SiegeEngine.Scenes
             ForceVisibleOverheadCamera();
             _flyCamera.Update(0f, 0f, true);
         }
-
         private void ResolveSkyboxPaths(SkyboxData skybox, string projectPath)
         {
             if (skybox == null || string.IsNullOrEmpty(projectPath)) return;
@@ -175,7 +192,6 @@ namespace SiegeEngine.Scenes
                 }
             }
         }
-
         private void LoadExactSavedTerrain(string projectPath, string levelName)
         {
             string terrainPath = !string.IsNullOrEmpty(projectPath)
@@ -210,7 +226,6 @@ namespace SiegeEngine.Scenes
             _hasColorTexture = _terrainTextureId != 0;
             BuildTexturedMesh();
         }
-
         protected override void SetupPureRuntimeWorld()
         {
             var terrainEntity = new Entity { Id = 1000, Type = "Terrain" };
@@ -218,7 +233,6 @@ namespace SiegeEngine.Scenes
             terrainEntity.AddComponent(new PhysicsComponent { Position = Vector3.Zero });
             _server.AddEntity(terrainEntity);
         }
-
         protected virtual void BuildTexturedMesh()
         {
             if (_heightmap == null)
@@ -265,12 +279,10 @@ namespace SiegeEngine.Scenes
             }
             _terrainBuffer.UpdateCustomWithUV(vertices, indices);
         }
-
         public override void Render(IReadOnlyList<Entity> entities)
         {
             RenderGameplayContent(entities, _flyCamera.ViewMatrix, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f));
         }
-
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
@@ -282,18 +294,14 @@ namespace SiegeEngine.Scenes
                 ForceVisibleOverheadCamera();
             }
         }
-
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
         {
             _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
-
             if (_skyboxRenderer != null && _skyboxData != null && _skyboxData.Enabled)
             {
                 _skyboxRenderer.RenderSkybox(_skyboxData, view, projection);
             }
-
             _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap, false);
-
             foreach (var e in _server.GetEntities())
             {
                 var modelComp = e.GetComponent<ModelComponent>();
@@ -303,10 +311,8 @@ namespace SiegeEngine.Scenes
                     _modelRenderer.RenderEntityFully(modelComp, physics, view, projection, _flyCamera.Position);
                 }
             }
-
             PanelManager.Current?.Render();
         }
-
         public override void Dispose()
         {
             _skyboxRenderer?.Dispose();

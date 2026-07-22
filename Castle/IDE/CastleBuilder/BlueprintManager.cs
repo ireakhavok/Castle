@@ -219,6 +219,9 @@ namespace CastleBuilder
                     sceneData.Terrain.EmbeddedHeightmapHeight = 0;
                 }
 
+                // SceneSettings is compositional and optional; copy from the live IDE working buffer if present.
+                sceneData.Settings = ProjectSettings.Current.CurrentSceneSettings;
+
                 Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment + skybox from Level (authoritative) → SceneData");
             }
             var uniquePackKeys = data.Scenes.Values
@@ -249,11 +252,102 @@ namespace CastleBuilder
             Console.WriteLine("[BlueprintManager.DoProjectSave] All blades committed to disk");
         }
         /// <summary>
+        /// Pure in-memory Play payload builder.
+        /// Serializes the current live Level + SceneData (with Settings + embedded heightmap when available)
+        /// into a short-lived transfer file under RuntimeTemp. Returns the file path for the command line.
+        /// Never writes project.json or permanent Assets.
+        /// </summary>
+        public static string BuildPlayPayloadFile()
+        {
+            var level = ProjectSettings.Current.CurrentLevel ?? new Level();
+            string levelName = ProjectSettings.Current.CurrentSceneName ?? level.Name ?? "Main";
+
+            var sceneData = new SceneData
+            {
+                Name = levelName,
+                SceneType = "Gameplay",
+                Entities = level.Entities.ConvertAll(e => e.ToData()),
+                Terrain = level.Terrain != null
+                    ? new TerrainData
+                    {
+                        HeightmapPath = level.Terrain.HeightmapPath,
+                        ColorTexturePath = level.Terrain.ColorTexturePath,
+                        NormalTexturePath = level.Terrain.NormalTexturePath,
+                        SplatMapPath = level.Terrain.SplatMapPath,
+                        Materials = level.Terrain.Materials != null
+                            ? new List<TerrainMaterial>(level.Terrain.Materials)
+                            : new List<TerrainMaterial>(),
+                        WorldScaleX = level.Terrain.WorldScaleX,
+                        WorldScaleZ = level.Terrain.WorldScaleZ,
+                        VerticalExaggeration = level.Terrain.VerticalExaggeration
+                    }
+                    : new TerrainData(),
+                Environment = level.Environment ?? new EnvironmentSettings(),
+                Skybox = level.Skybox,
+                CustomData = level.CustomData != null
+                    ? new Dictionary<string, object>(level.CustomData)
+                    : new Dictionary<string, object>(),
+                Settings = ProjectSettings.Current.CurrentSceneSettings
+            };
+
+            // Prefer live working heightmap for pure in-memory Play.
+            float[,] liveHeightmap = ProjectSettings.Current.GetUnsavedHeightmap(levelName)
+                                     ?? ProjectSettings.Current.CurrentHeightmap;
+            if (liveHeightmap != null)
+            {
+                int width = liveHeightmap.GetLength(0);
+                int height = liveHeightmap.GetLength(1);
+                sceneData.Terrain.EmbeddedHeightmapWidth = width;
+                sceneData.Terrain.EmbeddedHeightmapHeight = height;
+                sceneData.Terrain.EmbeddedHeightmapData = LinearizeHeightmap(liveHeightmap);
+            }
+
+            byte[] levelBytes = level.Serialize();
+            string levelDataBase64 = Convert.ToBase64String(levelBytes);
+
+            var transfer = new PlayPayloadTransfer
+            {
+                LevelName = levelName,
+                LevelDataBase64 = levelDataBase64,
+                SceneData = sceneData
+            };
+
+            string tempDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
+            Directory.CreateDirectory(tempDir);
+            string payloadPath = Path.Combine(tempDir, $"play_payload_{Guid.NewGuid():N}.json");
+            File.WriteAllText(payloadPath, JsonSerializer.Serialize(transfer, EntityData.SerializerOptions));
+            return payloadPath;
+        }
+
+        private static float[] LinearizeHeightmap(float[,] map)
+        {
+            if (map == null) return null;
+            int width = map.GetLength(0);
+            int height = map.GetLength(1);
+            var data = new float[width * height];
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    data[x * height + y] = map[x, y];
+                }
+            }
+            return data;
+        }
+
+        private class PlayPayloadTransfer
+        {
+            public string LevelName { get; set; }
+            public string LevelDataBase64 { get; set; }
+            public SceneData SceneData { get; set; }
+        }
+        /// <summary>
         /// Future-proof centralized helper: copies all skybox assets (cubemap or faces) to the correct project location,
         /// then updates SkyboxData to store ONLY project-relative paths ("Assets/Skyboxes/{sceneName}/...").
         /// Mirrors TerrainTextureParser/CustomTerrainParser patterns exactly.
         /// Called once in DoProjectSave before serialization to guarantee correct Level/SceneData state.
-        /// Handles both in-project and out-of-project source files without locks.
+        /// Skips copy when source and destination are the same file (already in project) or when the
+        /// destination is locked by an open texture handle.
         /// </summary>
         private static void EnsureSkyboxAssetsInProject(SkyboxData skybox, string projectPath, string sceneName)
         {
@@ -262,11 +356,29 @@ namespace CastleBuilder
             Directory.CreateDirectory(skyDir);
 
             // Cubemap
-            if (!string.IsNullOrEmpty(skybox.CubemapPath) && File.Exists(skybox.CubemapPath))
+            if (!string.IsNullOrEmpty(skybox.CubemapPath))
             {
-                string dest = Path.Combine(skyDir, Path.GetFileName(skybox.CubemapPath));
-                File.Copy(skybox.CubemapPath, dest, true);
-                skybox.CubemapPath = Path.GetRelativePath(projectPath, dest).Replace("\\", "/");
+                string source = skybox.CubemapPath;
+                if (!Path.IsPathRooted(source))
+                    source = Path.GetFullPath(Path.Combine(projectPath, source));
+                if (File.Exists(source))
+                {
+                    string dest = Path.Combine(skyDir, Path.GetFileName(source));
+                    string fullSource = Path.GetFullPath(source);
+                    string fullDest = Path.GetFullPath(dest);
+                    if (!string.Equals(fullSource, fullDest, StringComparison.OrdinalIgnoreCase))
+                    {
+                        try
+                        {
+                            File.Copy(fullSource, fullDest, true);
+                        }
+                        catch (IOException ex)
+                        {
+                            Console.WriteLine($"[BlueprintManager.EnsureSkyboxAssetsInProject] Cubemap copy skipped (locked or in use): {ex.Message}");
+                        }
+                    }
+                    skybox.CubemapPath = Path.GetRelativePath(projectPath, fullDest).Replace("\\", "/");
+                }
             }
 
             // Faces (6-face cubemap)
@@ -275,12 +387,28 @@ namespace CastleBuilder
                 for (int i = 0; i < skybox.Faces.Count; i++)
                 {
                     string facePath = skybox.Faces[i];
-                    if (!string.IsNullOrEmpty(facePath) && File.Exists(facePath))
+                    if (string.IsNullOrEmpty(facePath)) continue;
+
+                    string source = facePath;
+                    if (!Path.IsPathRooted(source))
+                        source = Path.GetFullPath(Path.Combine(projectPath, source));
+                    if (!File.Exists(source)) continue;
+
+                    string dest = Path.Combine(skyDir, Path.GetFileName(source));
+                    string fullSource = Path.GetFullPath(source);
+                    string fullDest = Path.GetFullPath(dest);
+                    if (!string.Equals(fullSource, fullDest, StringComparison.OrdinalIgnoreCase))
                     {
-                        string dest = Path.Combine(skyDir, Path.GetFileName(facePath));
-                        File.Copy(facePath, dest, true);
-                        skybox.Faces[i] = Path.GetRelativePath(projectPath, dest).Replace("\\", "/");
+                        try
+                        {
+                            File.Copy(fullSource, fullDest, true);
+                        }
+                        catch (IOException ex)
+                        {
+                            Console.WriteLine($"[BlueprintManager.EnsureSkyboxAssetsInProject] Face copy skipped (locked or in use): {ex.Message}");
+                        }
                     }
+                    skybox.Faces[i] = Path.GetRelativePath(projectPath, fullDest).Replace("\\", "/");
                 }
             }
 
@@ -422,6 +550,10 @@ namespace CastleBuilder
                         level.Environment = sd.Environment ?? new EnvironmentSettings();
                         level.Skybox = sd.Skybox ?? new SkyboxData();
                         ProjectSettings.Current.SetCurrentLevel(level);
+                        if (sd.Settings != null)
+                        {
+                            ProjectSettings.Current.SetCurrentSceneSettings(sd.Settings);
+                        }
                         Console.WriteLine($"[BlueprintManager] Loaded Level '{currentScene}' with {level.Entities.Count} entities as single source of truth");
                     }
                 }

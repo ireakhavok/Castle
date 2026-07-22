@@ -79,42 +79,87 @@ namespace SiegeEngine.Core.Managers
         {
             Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0} - levelPayload present: {levelDataPayload != null}, scenePayload present: {sceneDataPayload != null}");
             Level level = currentLevel;
-            if (level == null && !string.IsNullOrEmpty(sceneDataPayload))
-            {
-                try
-                {
-                    byte[] data = Convert.FromBase64String(sceneDataPayload);
-                    var sceneData = JsonSerializer.Deserialize<SceneData>(data, EntityData.SerializerOptions);
-                    level = new Level();
-                    if (sceneData.Entities != null)
-                    {
-                        foreach (var ed in sceneData.Entities)
-                        {
-                            level.AddEntity(Entity.FromData(ed));
-                        }
-                    }
-                    level.Terrain = sceneData.Terrain;
-                    level.Environment = sceneData.Environment;
-                    level.Skybox = sceneData.Skybox;
-                    Console.WriteLine($"[SceneManager] Reconstructed Level from SceneData payload - Entities: {level.Entities.Count}");
-                }
-                catch { level = new Level { Name = levelName }; }
-            }
-            else if (level == null && !string.IsNullOrEmpty(levelDataPayload))
+            SceneData reconstructedSceneData = null;
+
+            // Prefer Level payload when present (dual-preference rule).
+            if (!string.IsNullOrEmpty(levelDataPayload))
             {
                 try
                 {
                     byte[] data = Convert.FromBase64String(levelDataPayload);
                     level = Level.Deserialize(data);
-                    Console.WriteLine($"[SceneManager] Reconstructed Level from Level payload - Entities: {level.Entities.Count}");
+                    Console.WriteLine($"[SceneManager] Reconstructed Level from Level payload - Entities: {level.Entities.Count}, Skybox={(level.Skybox != null)}");
                 }
-                catch { level = new Level { Name = levelName }; }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[SceneManager] Level payload deserialize failed: {ex.Message}");
+                    level = null;
+                }
             }
+
+            // Always try SceneData for world content fill + Settings + embedded heightmap.
+            if (!string.IsNullOrEmpty(sceneDataPayload))
+            {
+                try
+                {
+                    byte[] data = Convert.FromBase64String(sceneDataPayload);
+                    reconstructedSceneData = JsonSerializer.Deserialize<SceneData>(data, EntityData.SerializerOptions);
+                    if (level == null)
+                    {
+                        level = new Level { Name = reconstructedSceneData?.Name ?? levelName };
+                        if (reconstructedSceneData?.Entities != null)
+                        {
+                            foreach (var ed in reconstructedSceneData.Entities)
+                                level.AddEntity(Entity.FromData(ed));
+                        }
+                    }
+                    // Merge world content from SceneData when Level is missing fields (especially Skybox).
+                    if (reconstructedSceneData != null)
+                    {
+                        if (level.Terrain == null) level.Terrain = reconstructedSceneData.Terrain;
+                        if (level.Environment == null) level.Environment = reconstructedSceneData.Environment;
+                        if (level.Skybox == null) level.Skybox = reconstructedSceneData.Skybox;
+                        if (reconstructedSceneData.CustomData != null)
+                        {
+                            foreach (var kv in reconstructedSceneData.CustomData)
+                                level.CustomData[kv.Key] = kv.Value;
+                        }
+                    }
+                    Console.WriteLine($"[SceneManager] SceneData applied - Entities: {level.Entities.Count}, Skybox={(level.Skybox != null)}, Settings={(reconstructedSceneData?.Settings != null)}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[SceneManager] SceneData payload deserialize failed: {ex.Message}");
+                }
+            }
+
             level = level ?? new Level { Name = levelName };
-            var ctx = SceneContext.CreateForRuntime(level, new SceneData { Name = levelName }, _renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
+
+            var ctx = SceneContext.CreateForRuntime(level, reconstructedSceneData ?? new SceneData { Name = levelName }, _renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
             ctx.PlayProjectPath = projectPath;
             ctx.LoadLevelName = levelName;
             ctx.CurrentLevel = level;
+
+            // Populate HeightmapSnapshot from embedded transfer data when present.
+            if (reconstructedSceneData?.Terrain != null
+                && reconstructedSceneData.Terrain.EmbeddedHeightmapData != null
+                && reconstructedSceneData.Terrain.EmbeddedHeightmapWidth > 0
+                && reconstructedSceneData.Terrain.EmbeddedHeightmapHeight > 0)
+            {
+                int w = reconstructedSceneData.Terrain.EmbeddedHeightmapWidth;
+                int h = reconstructedSceneData.Terrain.EmbeddedHeightmapHeight;
+                float[] flat = reconstructedSceneData.Terrain.EmbeddedHeightmapData;
+                if (flat != null && flat.Length >= w * h)
+                {
+                    var map = new float[w, h];
+                    for (int x = 0; x < w; x++)
+                        for (int y = 0; y < h; y++)
+                            map[x, y] = flat[x * h + y];
+                    ctx.HeightmapSnapshot = map;
+                    Console.WriteLine($"[SceneManager] HeightmapSnapshot populated from embedded transfer data ({w}x{h})");
+                }
+            }
+
             _modelManager = new ModelManager(_renderContext);
             ctx.ModelManager = _modelManager;
             if (!string.IsNullOrEmpty(projectPath)) { ModelManager.EnsurePacksLoaded(projectPath, level); }

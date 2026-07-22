@@ -115,23 +115,13 @@ namespace CastleBuilder
         }
         public static void PlayGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[MenuCommands.PlayGame] Launching CURRENT project Level in NEW isolated window (pure runtime client - in-memory, no disk write, no EnsureDefaultSceneIfNeeded, no save)");
-            BlueprintManager.SaveCurrentProject(renderContext, controlContext, window, eventBus);
-            string projectPath = ProjectSettings.Current.ActiveProject ?? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\CastleBuilder\\Projects\\Current";
+            Console.WriteLine("[MenuCommands.PlayGame] Launching CURRENT project Level in NEW isolated window (pure runtime client - pure in-memory payload via temp transfer file, no forced disk write)");
+
+            string projectPath = ProjectSettings.Current.ActiveProject ?? string.Empty;
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
-            var level = ProjectSettings.Current.CurrentLevel ?? new Level();
-            var sceneData = new SceneData { Name = levelName };
-            if (level != null)
-            {
-                sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
-                sceneData.Terrain = level.Terrain ?? new TerrainData();
-                sceneData.Environment = level.Environment ?? new EnvironmentSettings();
-                sceneData.Skybox = level.Skybox ?? new SkyboxData();
-            }
-            byte[] sceneBytes = JsonSerializer.SerializeToUtf8Bytes(sceneData, EntityData.SerializerOptions);
-            string scenePayload = Convert.ToBase64String(sceneBytes);
-            byte[] levelBytes = level.Serialize();
-            string levelPayload = Convert.ToBase64String(levelBytes);
+
+            string payloadFile = BlueprintManager.BuildPlayPayloadFile();
+
             ScriptLoader.BuildProjectScripts(projectPath);
             ScriptLoader.CopyProjectScripts(projectPath);
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
@@ -139,12 +129,12 @@ namespace CastleBuilder
             var psi = new ProcessStartInfo
             {
                 FileName = exe,
-                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\" --level-data \"{levelPayload}\" --scene-data \"{scenePayload}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\"",
+                Arguments = $"--client --play-project \"{projectPath}\" --load-level \"{levelName}\" --play-payload-file \"{payloadFile}\" --custom-assemblies \"{ScriptLoader.GetCustomAssemblyList(projectPath)}\"",
                 UseShellExecute = true,
                 WorkingDirectory = Path.GetDirectoryName(exe)
             };
             Process.Start(psi);
-            Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with FULL Level from IDE cache (exact entities/positions/terrain/packs active, no spoof, standalone compatible)");
+            Console.WriteLine($"[PlayGame SUCCESS] New runtime window launched with pure in-memory Level + SceneData via temp payload file (no forced save, no command-line length limit)");
         }
         public static void SandboxRegressionTest(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
@@ -196,6 +186,7 @@ namespace CastleBuilder
                         sceneData.Terrain = level.Terrain ?? new TerrainData();
                         sceneData.Environment = level.Environment ?? new EnvironmentSettings();
                         sceneData.Skybox = level.Skybox ?? new SkyboxData();
+                        sceneData.Settings = ProjectSettings.Current.CurrentSceneSettings;
                     }
                     byte[] sceneBytes = JsonSerializer.SerializeToUtf8Bytes(sceneData, EntityData.SerializerOptions);
                     string scenePayload = Convert.ToBase64String(sceneBytes);
