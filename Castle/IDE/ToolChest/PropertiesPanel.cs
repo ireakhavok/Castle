@@ -33,15 +33,23 @@ namespace ToolChest
             {
                 _parent.HandleDataHook(hook);
             }
-            // CRITICAL: must call base so InputElement focus is set.
-            // Previous override swallowed the click and never focused any text field,
-            // which is why typing did nothing in this panel (keys reached InputHandler
-            // but _currentFocused was never an InputElement).
+            // Must call base so InputElement focus is set.
             public override bool HandleUIClick(HtmlElement elem)
             {
                 bool handled = base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);
                 return handled;
+            }
+            // Live write-through: every keystroke on an ss-* field commits into the Settings buffer.
+            public override void TriggerChange(HtmlElement elem)
+            {
+                base.TriggerChange(elem);
+                if (elem is InputElement input)
+                {
+                    string id = input.Attributes.GetValueOrDefault("id", "");
+                    if (id.StartsWith("ss-"))
+                        _parent.FlushLiveSettings();
+                }
             }
             protected override bool OnContextMenuRequested(HtmlElement sourceElement, Vector2 mousePos)
             {
@@ -84,11 +92,18 @@ namespace ToolChest
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadPropertiesUI();
         }
+        /// <summary>
+        /// Public entry point used by Save/Play to commit any in-progress Scene Settings typing
+        /// before reading ProjectSettings.CurrentSceneSettings.
+        /// </summary>
+        public void FlushLiveSettings()
+        {
+            FlushSceneSettingsFromUI();
+        }
         private void OnGenericEvent(GenericEvent e)
         {
             if (e.Hook == "OutlinerSelectionChanged")
             {
-                // Flush any in-progress Scene Settings typing before the target changes.
                 FlushSceneSettingsFromUI();
                 string nodeId = e.Data.GetValueOrDefault("nodeId", "");
                 var provider = OutlinerCoordinator.Instance.GetLastActiveProvider();
@@ -102,6 +117,10 @@ namespace ToolChest
             else if (e.Hook == "SkyboxRotatePreview")
             {
                 Console.WriteLine("[PropertiesPanel] SkyboxRotatePreview event received - forwarding to live preview");
+            }
+            else if (e.Hook == "FlushUIStateBeforeSave")
+            {
+                FlushSceneSettingsFromUI();
             }
         }
         private void OnEntitySelected(EntitySelectedEvent e)
@@ -125,7 +144,6 @@ namespace ToolChest
         }
         private void RebuildPropertiesUI()
         {
-            // Always capture live typed values before the HTML (and InputElements) are destroyed.
             FlushSceneSettingsFromUI();
 
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
@@ -141,9 +159,8 @@ namespace ToolChest
             _uiOverlay.RefreshUI();
         }
         /// <summary>
-        /// Reads the live InputElement.Value for the four Scene Settings fields (same pattern as
-        /// NewProjectPanel) and writes them into the per-scene Settings buffer. Safe to call even
-        /// when the inputs are not present.
+        /// Reads live InputElement.Value for the four Scene Settings fields and writes them into
+        /// the per-scene Settings buffer (same pattern as NewProjectPanel form read).
         /// </summary>
         private void FlushSceneSettingsFromUI()
         {
@@ -154,7 +171,6 @@ namespace ToolChest
             var spawnsElem = _uiOverlay.FindElementById("ss-preferredSpawnPointIds") as InputElement;
             var cameraElem = _uiOverlay.FindElementById("ss-cameraMode") as InputElement;
 
-            // Nothing to flush if the Scene Settings section is not currently mounted.
             if (avatarElem == null && controllerElem == null && spawnsElem == null && cameraElem == null)
                 return;
 
@@ -181,6 +197,7 @@ namespace ToolChest
                 settings.CameraMode = string.IsNullOrWhiteSpace(cameraElem.Value) ? null : cameraElem.Value.Trim();
 
             ProjectSettings.Current.SetSceneSettings(_activeSceneSettingsName, settings);
+            Console.WriteLine($"[PropertiesPanel] Flushed Scene Settings for '{_activeSceneSettingsName}': Avatar={settings.AvatarPackKey}, Controller={settings.ControllerTypeName}, Camera={settings.CameraMode}, Spawns=[{string.Join(",", settings.PreferredSpawnPointIds ?? new List<int>())}]");
         }
         private string BuildPropertiesHtml(object obj)
         {
@@ -195,9 +212,6 @@ namespace ToolChest
             }
             sb.Append("</details>");
 
-            // Scene Settings authoring surface when the scene root / level-info node is selected.
-            // Each scene owns its own Settings entry (keyed by scene name) so swaps stay coherent.
-            // Inputs use stable ids so we can read live InputElement.Value exactly like NewProjectPanel.
             if (obj is Level level)
             {
                 string sceneName = level.Name ?? ProjectSettings.Current.CurrentSceneName ?? "Main";
@@ -364,7 +378,6 @@ namespace ToolChest
         public void HandleDataHook(string hook)
         {
             Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");
-            // Capture any in-progress typing before we react to the hook.
             FlushSceneSettingsFromUI();
 
             if (hook.StartsWith("SetTextureMapping"))

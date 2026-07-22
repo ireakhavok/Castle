@@ -163,6 +163,20 @@ namespace CastleBuilder
             }
             DoProjectSave();
         }
+        /// <summary>
+        /// Commit any in-progress PropertiesPanel Scene Settings typing into the live buffer
+        /// before Save/Play reads CurrentSceneSettings.
+        /// </summary>
+        private static void FlushLiveEditorState()
+        {
+            var pm = PanelManager.Current;
+            if (pm == null) return;
+            foreach (var panel in pm.GetAllPanels())
+            {
+                if (panel is PropertiesPanel props)
+                    props.FlushLiveSettings();
+            }
+        }
         private static void DoProjectSave()
         {
             Console.WriteLine("[BlueprintManager.DoProjectSave] === STAGE 1: Level-Centric Save Started ===");
@@ -188,7 +202,10 @@ namespace CastleBuilder
                 Console.WriteLine("[BlueprintManager.DoProjectSave] Creating new project data");
             }
             if (data.Scenes == null) data.Scenes = new Dictionary<string, SceneData>();
+            // Terrain flush first (may call SetCurrentTerrain with stale SceneData from _projectData).
             EditorScene.Current?.FlushActiveSceneData();
+            // Commit typed Scene Settings AFTER terrain flush so SetCurrentTerrain cannot clobber them.
+            FlushLiveEditorState();
             string currentSceneName = ProjectSettings.Current.CurrentSceneName ?? "NewTerrain";
             var level = ProjectSettings.Current.CurrentLevel;
             if (level != null)
@@ -202,27 +219,22 @@ namespace CastleBuilder
                 sceneData.Entities = level.Entities.ConvertAll(e => e.ToData());
                 sceneData.Terrain = level.Terrain ?? new TerrainData();
                 sceneData.Environment = level.Environment ?? new EnvironmentSettings();
-                // Skybox is normalized here (copy + relative paths) before SceneData assignment
                 if (level.Skybox != null)
                 {
                     EnsureSkyboxAssetsInProject(level.Skybox, projectPath, currentSceneName);
                 }
                 sceneData.Skybox = level.Skybox ?? new SkyboxData();
                 if (level.CustomData != null) sceneData.CustomData = level.CustomData.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-                // Transfer-only embedded heightmap fields must never reach project.json.
-                // Explicit Save always clears them so disk storage remains path-only.
                 if (sceneData.Terrain != null)
                 {
                     sceneData.Terrain.EmbeddedHeightmapData = null;
                     sceneData.Terrain.EmbeddedHeightmapWidth = 0;
                     sceneData.Terrain.EmbeddedHeightmapHeight = 0;
                 }
-
-                // SceneSettings is compositional and optional; copy from the live IDE working buffer if present.
-                sceneData.Settings = ProjectSettings.Current.CurrentSceneSettings;
-
-                Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment + skybox from Level (authoritative) → SceneData");
+                // Prefer explicit per-scene lookup so we never assign null when the buffer has an entry.
+                sceneData.Settings = ProjectSettings.Current.GetOrCreateSceneSettings(currentSceneName)
+                                    ?? ProjectSettings.Current.CurrentSceneSettings;
+                Console.WriteLine($"[BlueprintManager.DoProjectSave] Synced {level.Entities.Count} entities + terrain + environment + skybox + Settings from Level (authoritative) → SceneData");
             }
             var uniquePackKeys = data.Scenes.Values
                 .SelectMany(s => s.Entities ?? new List<EntityData>())
@@ -251,17 +263,12 @@ namespace CastleBuilder
             ProjectLayoutManager.FlushAllToDisk();
             Console.WriteLine("[BlueprintManager.DoProjectSave] All blades committed to disk");
         }
-        /// <summary>
-        /// Pure in-memory Play payload builder.
-        /// Serializes the current live Level + SceneData (with Settings + embedded heightmap when available)
-        /// into a short-lived transfer file under RuntimeTemp. Returns the file path for the command line.
-        /// Never writes project.json or permanent Assets.
-        /// </summary>
         public static string BuildPlayPayloadFile()
         {
+            // Commit typed Scene Settings before reading the buffer for the payload.
+            FlushLiveEditorState();
             var level = ProjectSettings.Current.CurrentLevel ?? new Level();
             string levelName = ProjectSettings.Current.CurrentSceneName ?? level.Name ?? "Main";
-
             var sceneData = new SceneData
             {
                 Name = levelName,
@@ -287,10 +294,9 @@ namespace CastleBuilder
                 CustomData = level.CustomData != null
                     ? new Dictionary<string, object>(level.CustomData)
                     : new Dictionary<string, object>(),
-                Settings = ProjectSettings.Current.CurrentSceneSettings
+                Settings = ProjectSettings.Current.GetOrCreateSceneSettings(levelName)
+                           ?? ProjectSettings.Current.CurrentSceneSettings
             };
-
-            // Prefer live working heightmap for pure in-memory Play.
             float[,] liveHeightmap = ProjectSettings.Current.GetUnsavedHeightmap(levelName)
                                      ?? ProjectSettings.Current.CurrentHeightmap;
             if (liveHeightmap != null)
@@ -301,24 +307,20 @@ namespace CastleBuilder
                 sceneData.Terrain.EmbeddedHeightmapHeight = height;
                 sceneData.Terrain.EmbeddedHeightmapData = LinearizeHeightmap(liveHeightmap);
             }
-
             byte[] levelBytes = level.Serialize();
             string levelDataBase64 = Convert.ToBase64String(levelBytes);
-
             var transfer = new PlayPayloadTransfer
             {
                 LevelName = levelName,
                 LevelDataBase64 = levelDataBase64,
                 SceneData = sceneData
             };
-
             string tempDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
             Directory.CreateDirectory(tempDir);
             string payloadPath = Path.Combine(tempDir, $"play_payload_{Guid.NewGuid():N}.json");
             File.WriteAllText(payloadPath, JsonSerializer.Serialize(transfer, EntityData.SerializerOptions));
             return payloadPath;
         }
-
         private static float[] LinearizeHeightmap(float[,] map)
         {
             if (map == null) return null;
@@ -334,28 +336,17 @@ namespace CastleBuilder
             }
             return data;
         }
-
         private class PlayPayloadTransfer
         {
             public string LevelName { get; set; }
             public string LevelDataBase64 { get; set; }
             public SceneData SceneData { get; set; }
         }
-        /// <summary>
-        /// Future-proof centralized helper: copies all skybox assets (cubemap or faces) to the correct project location,
-        /// then updates SkyboxData to store ONLY project-relative paths ("Assets/Skyboxes/{sceneName}/...").
-        /// Mirrors TerrainTextureParser/CustomTerrainParser patterns exactly.
-        /// Called once in DoProjectSave before serialization to guarantee correct Level/SceneData state.
-        /// Skips copy when source and destination are the same file (already in project) or when the
-        /// destination is locked by an open texture handle.
-        /// </summary>
         private static void EnsureSkyboxAssetsInProject(SkyboxData skybox, string projectPath, string sceneName)
         {
             if (skybox == null) return;
             string skyDir = Path.Combine(projectPath, "Assets", "Skyboxes", sceneName);
             Directory.CreateDirectory(skyDir);
-
-            // Cubemap
             if (!string.IsNullOrEmpty(skybox.CubemapPath))
             {
                 string source = skybox.CubemapPath;
@@ -380,20 +371,16 @@ namespace CastleBuilder
                     skybox.CubemapPath = Path.GetRelativePath(projectPath, fullDest).Replace("\\", "/");
                 }
             }
-
-            // Faces (6-face cubemap)
             if (skybox.Faces != null)
             {
                 for (int i = 0; i < skybox.Faces.Count; i++)
                 {
                     string facePath = skybox.Faces[i];
                     if (string.IsNullOrEmpty(facePath)) continue;
-
                     string source = facePath;
                     if (!Path.IsPathRooted(source))
                         source = Path.GetFullPath(Path.Combine(projectPath, source));
                     if (!File.Exists(source)) continue;
-
                     string dest = Path.Combine(skyDir, Path.GetFileName(source));
                     string fullSource = Path.GetFullPath(source);
                     string fullDest = Path.GetFullPath(dest);
@@ -411,7 +398,6 @@ namespace CastleBuilder
                     skybox.Faces[i] = Path.GetRelativePath(projectPath, fullDest).Replace("\\", "/");
                 }
             }
-
             Console.WriteLine($"[BlueprintManager.EnsureSkyboxAssetsInProject] Skybox assets materialized to {skyDir} with relative paths stored in Level.Skybox");
         }
         public static void SaveProjectAs(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -493,7 +479,6 @@ namespace CastleBuilder
                     level.Skybox = sky;
                     Console.WriteLine($"[BlueprintManager] SkyboxSet handled - Level.Skybox updated (Enabled={sky?.Enabled})");
                 }
-                //DoProjectSave();
             }
             else if (evt.Hook == "ProjectSaveRequest")
             {
