@@ -972,9 +972,9 @@ Found: ..
 Found: AnimationPack.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\AnimationPack.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\AnimationPack.cs
-Read 1712 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\AnimationPack.cs
+Read 1894 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\AnimationPack.cs
 Namespace: SiegeEngine.Core.AssetParsing.Model
-Found 4 dependencies
+Found 5 dependencies
 Found: FBXAnimationParser.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXAnimationParser.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\FBXAnimationParser.cs
@@ -1539,7 +1539,7 @@ Found 2 dependencies
 Found: ModelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
-Read 33438 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
+Read 34488 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\ModelManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 12 dependencies
 Found: ModManager.cs
