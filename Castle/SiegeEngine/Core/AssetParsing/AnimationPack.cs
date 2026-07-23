@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Text.Json.Serialization;
 using SiegeEngine.Core.AssetParsing.Model;
 
 namespace SiegeEngine.Core.AssetParsing.Model
@@ -11,7 +12,11 @@ namespace SiegeEngine.Core.AssetParsing.Model
     {
         public string Id { get; set; }
         public string Name { get; set; }
+
+        // Runtime-only. Never persist keyframes — reconstruct from SourceFBXPath / Clip paths via ModelManager cache.
+        [JsonIgnore]
         public List<Animation> Animations { get; set; } = new List<Animation>();
+
         public List<AnimationClipEntry> Clips { get; set; } = new List<AnimationClipEntry>();
         public Dictionary<string, int> BoneNameToIndex { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         public Vector3 DefaultBlendParams { get; set; } = Vector3.Zero;

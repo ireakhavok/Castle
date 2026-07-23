@@ -24,6 +24,8 @@ namespace SiegeEngine.Core.Managers
         private readonly Dictionary<string, string> _fbxDirs = new Dictionary<string, string>();
         private readonly Dictionary<string, (uint, byte)> _textureCache = new Dictionary<string, (uint, byte)>();
         private readonly Dictionary<string, AnimationPack> _animationPacks = new Dictionary<string, AnimationPack>();
+        // Source models from animation FBXs (skeleton/rest-pose). Populated once on first AttachAnimation parse.
+        private readonly Dictionary<string, FBXModel> _animSourceModels = new Dictionary<string, FBXModel>(StringComparer.OrdinalIgnoreCase);
         private readonly IRenderContext _renderContext;
         public static ModelManager Instance { get; private set; }
         public class ModelData
@@ -84,6 +86,7 @@ namespace SiegeEngine.Core.Managers
                 SourceFBXPath = fbxPath,
                 SourceSkeletonPath = fbxPath
             };
+            // In-memory only — [JsonIgnore] on AnimationPack.Animations prevents keyframe dump on serialize
             pack.Animations = modelForPack.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (modelForPack.Skeleton != null)
             {
@@ -177,6 +180,7 @@ namespace SiegeEngine.Core.Managers
                 SourceFBXPath = "./" + fbxName,
                 SourceSkeletonPath = "./" + fbxName
             };
+            // In-memory only — [JsonIgnore] on AnimationPack.Animations prevents keyframe dump on serialize
             pack.Animations = model.Animations.Where(a => a.Keyframes.Count > 0).ToList();
             if (model.Skeleton != null)
             {
@@ -192,7 +196,7 @@ namespace SiegeEngine.Core.Managers
             string json = JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true });
             string jsonPath = Path.Combine(packFolder, "assetpack.json");
             File.WriteAllText(jsonPath, json);
-            Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {packFolder} (Id: {packId}) with FBX + textures + manifest + Material (world-aligned slots)");
+            Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {packFolder} (Id: {packId}) with FBX + textures + manifest + Material — keyframes excluded by [JsonIgnore]");
         }
         private int CollectAndCopyReferencedTextures(FBXModel model, string originalFbxDir, string packFolder)
         {
@@ -267,8 +271,19 @@ namespace SiegeEngine.Core.Managers
                 FBXModel animModel = FBXParser.BuildModelFromForest(forest);
                 anims = animModel.Animations.Where(a => a.Keyframes.Count > 0).ToList();
                 _animations[animKey] = anims;
+                _animSourceModels[animKey] = animModel;
             }
-            _models[targetKey].Animations.AddRange(anims);
+            var existingNames = new HashSet<string>(_models[targetKey].Animations.Select(a => a.Name), StringComparer.OrdinalIgnoreCase);
+            foreach (var a in anims)
+            {
+                if (!existingNames.Contains(a.Name))
+                    _models[targetKey].Animations.Add(a);
+            }
+        }
+        public bool TryGetAnimSourceModel(string animPath, out FBXModel model)
+        {
+            string key = Path.GetFileNameWithoutExtension(animPath).ToLower();
+            return _animSourceModels.TryGetValue(key, out model);
         }
         public void AttachAnimationPack(string targetModelKey, string packId)
         {
