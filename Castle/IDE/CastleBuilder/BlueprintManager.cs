@@ -89,26 +89,32 @@ namespace CastleBuilder
         }
         private void OnCreateTerrain(CreateTerrainEvent evt)
         {
-            string projectPath = ProjectSettings.Current.ActiveProject;
             SceneData sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
-            if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+
+            // Keep the new scene visible in the live EditorScene project data so the scene selector
+            // and cache see it immediately. NEVER write project.json here — disk persistence is
+            // only via explicit Save / Save As / Export / Play payload materialisation.
+            if (EditorScene.Current != null)
             {
-                Console.WriteLine("[BlueprintManager.OnCreateTerrain] No active project - new scene stays in central memory only (Level + cache populated by NewTerrainPanel + EditorScene)");
-                return;
+                var projectData = EditorScene.Current.GetProjectData();
+                if (projectData != null)
+                {
+                    if (projectData.Scenes == null)
+                        projectData.Scenes = new Dictionary<string, SceneData>();
+                    if (!projectData.Scenes.ContainsKey(sceneData.Name))
+                    {
+                        projectData.Scenes[sceneData.Name] = sceneData;
+                        projectData.LastOpenedScene = sceneData.Name;
+                        Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' registered in-memory only (no disk write)");
+                    }
+                }
             }
-            string jsonPath = Path.Combine(projectPath, "project.json");
-            ProjectData data = File.Exists(jsonPath)
-                ? JsonSerializer.Deserialize<ProjectData>(File.ReadAllText(jsonPath), EntityData.SerializerOptions) ?? new ProjectData()
-                : new ProjectData();
-            if (data.Scenes == null) data.Scenes = new Dictionary<string, SceneData>();
-            if (!data.Scenes.ContainsKey(sceneData.Name))
+            else
             {
-                data.Scenes[sceneData.Name] = sceneData;
-                data.LastOpenedScene = sceneData.Name;
-                File.WriteAllText(jsonPath, JsonSerializer.Serialize(data, EntityData.SerializerOptions));
-                Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' added to project.json (in-memory until next full save)");
+                Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' stays in central memory only (Level + cache populated by NewTerrainPanel + EditorScene)");
             }
+
             var panelManager = PanelManager.Current;
             if (panelManager != null)
             {

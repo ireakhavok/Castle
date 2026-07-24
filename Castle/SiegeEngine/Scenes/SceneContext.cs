@@ -21,7 +21,7 @@ namespace SiegeEngine.Scenes
         public Player? Player { get; set; }
         public PlayerMovement? PlayerMovement { get; set; }
         public ModelManager? ModelManager { get; set; }
-        public SceneData? ProjectSceneData { get; set; }
+        public SceneData? SceneData { get; set; }
         public string LoadLevelName { get; set; } = "Main";
         public string PlayProjectPath { get; set; }
         public Level CurrentLevel { get; set; }
@@ -36,7 +36,7 @@ namespace SiegeEngine.Scenes
         {
             var ctx = CreateCore(rc, cc, w, s, eb);
             ctx.CurrentLevel = level ?? new Level();
-            ctx.ProjectSceneData = sceneData;
+            ctx.SceneData = sceneData;
             ctx.LoadLevelName = level?.Name ?? "Main";
             ctx.ModelManager = ModelManager.Instance ?? new ModelManager(rc);
             ctx.RuntimeEntities = ctx.CurrentLevel.Entities.ToList();

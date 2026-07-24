@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.PlayerSystem
+﻿// Folder: SiegeEngine/PlayerSystem
 // File: Player.cs
 using System;
 using System.Numerics;
@@ -36,6 +36,11 @@ namespace SiegeEngine.PlayerSystem
         }
         public CameraController Camera => _camera;
         public PhysicsComponent Physics => _physics;
+        public void SetModel(FBXModel model)
+        {
+            if (model != null)
+                Model = model;
+        }
         public void InitializeCamera(IControlContext controlContext, IntPtr window)
         {
             if (_camera == null) _camera = new CameraController(controlContext, window, this);

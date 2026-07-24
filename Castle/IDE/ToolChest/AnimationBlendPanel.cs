@@ -1,5 +1,5 @@
 ﻿// Folder: ToolChest
-// File: AnimationBlendPanel.cs (full file with only the linkToPlayer fix applied)
+// File: AnimationBlendPanel.cs
 using Keystone;
 using ReadingChamber;
 using SiegeEngine.Core.AssetParsing.Model;
@@ -20,7 +20,6 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Text.Json;
-
 namespace ToolChest
 {
     public class AnimationBlendPanel : BasePanel, IDataAwarePanel
@@ -30,7 +29,6 @@ namespace ToolChest
             var panel = new AnimationBlendPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Replace });
         }
-
         private class BlendUIOverlay : UIOverlay
         {
             private readonly AnimationBlendPanel _parent;
@@ -43,7 +41,6 @@ namespace ToolChest
                 return handled;
             }
         }
-
         internal AnimationBlendStack _currentStack = new AnimationBlendStack();
         internal Vector3 _currentBlendPoint = Vector3.Zero;
         private ModelViewerScene _previewScene;
@@ -54,7 +51,9 @@ namespace ToolChest
         private bool _draggingCurrentPoint = false;
         private bool _greenLocked = false;
         private bool _rightWasDownLastFrame = false;
-
+        private float _pendingAddNormX;
+        private float _pendingAddNormY;
+        private bool _hasPendingAddCoord = false;
         public AnimationBlendPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -65,9 +64,7 @@ namespace ToolChest
             BaseHeight = 720f;
             _previewScene = new ModelViewerScene(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus);
         }
-
         protected override UIOverlay CreateUIOverlay() => new BlendUIOverlay(this, _renderContext, _controlContext, _window, _eventBus);
-
         public override void Init()
         {
             base.Init();
@@ -80,7 +77,6 @@ namespace ToolChest
             UpdateGridMarkers();
             CustomOverlays.Add(new BlendDotOverlay(this));
         }
-
         private void LoadUIFromFile(string filename)
         {
             string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, filename);
@@ -90,45 +86,11 @@ namespace ToolChest
                 _uiOverlay.LoadUI(html);
             }
         }
-
         private void OnGenericEvent(GenericEvent e)
         {
-            if (e.Hook == "BlendPointChanged" || e.Hook == "GridClicked")
-            {
-                if (_greenLocked) return;
-                var xEl = _uiOverlay.FindElementById("blendX") as InputElement;
-                var yEl = _uiOverlay.FindElementById("blendY") as InputElement;
-                var zEl = _uiOverlay.FindElementById("blendZ") as RangeElement;
-                if (xEl != null && yEl != null && zEl != null)
-                {
-                    _currentBlendPoint = new Vector3(
-                        float.Parse(xEl.Value ?? "0"),
-                        float.Parse(yEl.Value ?? "0"),
-                        float.Parse(zEl.Value.ToString() ?? "0"));
-                }
-                if (e.Hook == "GridClicked" && e.Data != null)
-                {
-                    if (e.Data.TryGetValue("x", out string xs) && float.TryParse(xs, out float gx) &&
-                        e.Data.TryGetValue("y", out string ys) && float.TryParse(ys, out float gy))
-                    {
-                        _currentBlendPoint = new Vector3(gx, gy, _currentBlendPoint.Z);
-                        UpdateGridMarkers();
-                        if (e.Data.TryGetValue("button", out string btn) && btn == "right")
-                        {
-                            _previewScene.SetBlendPreview(_currentStack, _currentBlendPoint);
-                        }
-                        else
-                        {
-                            string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
-                            var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
-                            fileSelector.UserData = "AddBlendClipAtCurrentPoint";
-                            fileSelector.IsModal = true;
-                            _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
-                        }
-                    }
-                }
-            }
-            else if (e.Hook == "SelectClipForTimeline")
+            // GridClicked / BlendPointChanged no longer write the green point.
+            // The custom mouse handling in Update is the sole owner of _currentBlendPoint.
+            if (e.Hook == "SelectClipForTimeline")
             {
                 var select = _uiOverlay.FindElementById("clipList") as SelectElement;
                 if (select != null && !string.IsNullOrEmpty(select.Value))
@@ -169,8 +131,20 @@ namespace ToolChest
                 _linkToPlayer = !_linkToPlayer;
                 _uiOverlay.RefreshUI();
             }
+            else if (e.Hook == "AddAnimationAtPoint")
+            {
+                if (_hasPendingAddCoord)
+                {
+                    string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+                    var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
+                    fileSelector.UserData = $"AddBlendClipAt:{_pendingAddNormX},{_pendingAddNormY}";
+                    fileSelector.IsModal = true;
+                    _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
+                    _hasPendingAddCoord = false;
+                }
+                _uiOverlay.CloseContextMenu();
+            }
         }
-
         private void OnFileSelected(FileSelectedEvent e)
         {
             if (e.UserData?.ToString()?.StartsWith("AddBlendClipAt:") == true && !string.IsNullOrEmpty(e.Path))
@@ -200,7 +174,6 @@ namespace ToolChest
                 _uiOverlay.RefreshUI();
             }
         }
-
         public void HandleUIClick(HtmlElement elem)
         {
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
@@ -211,6 +184,19 @@ namespace ToolChest
                 fileSelector.UserData = "AddBlendClipAtCurrentPoint";
                 fileSelector.IsModal = true;
                 _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
+            }
+            else if (hook == "AddAnimationAtPoint")
+            {
+                if (_hasPendingAddCoord)
+                {
+                    string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
+                    var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
+                    fileSelector.UserData = $"AddBlendClipAt:{_pendingAddNormX},{_pendingAddNormY}";
+                    fileSelector.IsModal = true;
+                    _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
+                    _hasPendingAddCoord = false;
+                }
+                _uiOverlay.CloseContextMenu();
             }
             else if (hook == "CreatePack")
             {
@@ -228,11 +214,12 @@ namespace ToolChest
                 UpdateGridMarkers();
             }
         }
-
         private void CreateAnimationPack()
         {
             var pack = new AnimationPack("blend_pack_" + DateTime.Now.Ticks, _currentStack.Name ?? "Blend Pack");
             pack.Clips = _currentStack.Clips;
+            pack.DefaultBlendParams = _currentStack.DefaultBlendParams;
+            pack.BlendConfig = _currentStack.BlendConfig;
             pack.Animations = _previewScene._model?.Animations ?? new List<Animation>();
             string projectPath = ProjectSettings.Current.ActiveProject;
             string packsDir;
@@ -248,10 +235,13 @@ namespace ToolChest
                 Directory.CreateDirectory(packsDir);
             }
             string packPath = Path.Combine(packsDir, pack.Id + ".json");
-            File.WriteAllText(packPath, JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(packPath, JsonSerializer.Serialize(pack, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                IncludeFields = true
+            }));
             Console.WriteLine($"[AnimationBlendPanel] Animation pack saved to {packPath} (self-contained)");
         }
-
         private void CopyReferencedAssets(AnimationPack pack, string packsDir)
         {
             string refDir = Path.Combine(packsDir, "References");
@@ -271,14 +261,11 @@ namespace ToolChest
                 }
             }
         }
-
         private void UpdateGridMarkers()
         {
             _uiOverlay.RefreshUI();
         }
-
         public override bool WantsContinuousUpdate => true;
-
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
@@ -295,19 +282,15 @@ namespace ToolChest
             Vector2 relMouse = absMousePos - Position;
             Vector2 sceneMouse = new Vector2(relMouse.X, relMouse.Y - HeaderHeight);
             _previewScene.Update(deltaTime, sceneMouse, mouseDown, mousePressed, mouseReleased);
-
             if (_linkToPlayer)
             {
                 Vector2 simulatedInput = new Vector2(
                     (float)Math.Sin(_controlContext.GetTime() * 0.8f) * 0.7f,
                     (float)Math.Cos(_controlContext.GetTime() * 0.6f) * 0.9f);
                 _currentBlendPoint = _currentStack.MapPlayerInputToBlendCoord(simulatedInput, 0f);
-
-                // FIXED: Use lightweight update so playback is not killed every frame
                 _previewScene.UpdateBlendPreviewParams(_currentBlendPoint);
                 UpdateGridMarkers();
             }
-
             var gridElem = _uiOverlay.FindElementById("blendGrid");
             if (gridElem != null && gridElem.ComputedWidth > 0 && gridElem.ComputedHeight > 0)
             {
@@ -316,20 +299,73 @@ namespace ToolChest
                 float gw = gridElem.ComputedWidth;
                 float gh = gridElem.ComputedHeight;
                 bool overGrid = relMouse.X >= gx && relMouse.X <= gx + gw && relMouse.Y >= gy && relMouse.Y <= gy + gh;
-                if (overGrid && (mousePressed || rightPressed))
+                // Hit-test green using the CURRENT blend point BEFORE any write
+                float cx = gx + ((_currentBlendPoint.X + 1f) / 2f * gw);
+                float cy = gy + ((_currentBlendPoint.Y + 1f) / 2f * gh);
+                bool hitGreen = overGrid && Math.Abs(relMouse.X - cx) < 14 && Math.Abs(relMouse.Y - cy) < 14;
+                if (_uiOverlay.CurrentContextMenu == null && !_uiOverlay.DidHandleClick)
                 {
-                    float cx = gx + ((_currentBlendPoint.X + 1f) / 2f * gw);
-                    float cy = gy + ((_currentBlendPoint.Y + 1f) / 2f * gh);
-                    bool hitGreen = Math.Abs(relMouse.X - cx) < 14 && Math.Abs(relMouse.Y - cy) < 14;
-                    if (hitGreen && !rightPressed && !rightReleased)
+                    if (overGrid && (mousePressed || rightPressed))
                     {
-                        if (mouseDown)
+                        if (hitGreen && !rightPressed && !rightReleased)
                         {
-                            _draggingCurrentPoint = true;
-                            _greenLocked = true;
+                            if (mouseDown)
+                            {
+                                _draggingCurrentPoint = true;
+                                _greenLocked = true;
+                            }
+                        }
+                        else if (!rightPressed)
+                        {
+                            int hitIndex = -1;
+                            for (int i = 0; i < _currentStack.Clips.Count; i++)
+                            {
+                                var clip = _currentStack.Clips[i];
+                                float px = gx + ((clip.BlendCoordinate.X + 1f) / 2f * gw);
+                                float py = gy + ((clip.BlendCoordinate.Y + 1f) / 2f * gh);
+                                if (Math.Abs(relMouse.X - px) < 14 && Math.Abs(relMouse.Y - py) < 14)
+                                {
+                                    hitIndex = i;
+                                    break;
+                                }
+                            }
+                            if (hitIndex >= 0)
+                            {
+                                if (mouseDown) _draggingClipIndex = hitIndex;
+                            }
+                            else if (mouseDown)
+                            {
+                                // Empty left-click → only move the green preview point
+                                float normX = Math.Clamp((relMouse.X - gx) / gw * 2f - 1f, -1f, 1f);
+                                float normY = Math.Clamp((relMouse.Y - gy) / gh * 2f - 1f, -1f, 1f);
+                                _currentBlendPoint = new Vector3(normX, normY, _currentBlendPoint.Z);
+                                UpdateGridMarkers();
+                            }
                         }
                     }
-                    else
+                    if (_draggingCurrentPoint && !mouseReleased)
+                    {
+                        float normX = Math.Clamp((relMouse.X - gx) / gw * 2f - 1f, -1f, 1f);
+                        float normY = Math.Clamp((relMouse.Y - gy) / gh * 2f - 1f, -1f, 1f);
+                        _currentBlendPoint = new Vector3(normX, normY, _currentBlendPoint.Z);
+                        _previewScene.UpdateBlendPreviewParams(_currentBlendPoint);
+                        UpdateGridMarkers();
+                    }
+                    if (_draggingClipIndex >= 0 && !mouseReleased)
+                    {
+                        float normX = Math.Clamp((relMouse.X - gx) / gw * 2f - 1f, -1f, 1f);
+                        float normY = Math.Clamp((relMouse.Y - gy) / gh * 2f - 1f, -1f, 1f);
+                        var clip = _currentStack.Clips[_draggingClipIndex];
+                        clip.BlendCoordinate = new Vector3(normX, normY, clip.BlendCoordinate.Z);
+                        UpdateGridMarkers();
+                    }
+                    if (mouseReleased)
+                    {
+                        _draggingCurrentPoint = false;
+                        _draggingClipIndex = -1;
+                        _greenLocked = false;
+                    }
+                    if (rightReleased && overGrid)
                     {
                         int hitIndex = -1;
                         for (int i = 0; i < _currentStack.Clips.Count; i++)
@@ -345,119 +381,55 @@ namespace ToolChest
                         }
                         if (hitIndex >= 0)
                         {
-                            if (mouseDown) _draggingClipIndex = hitIndex;
-                            else if (rightReleased)
+                            var clip = _currentStack.Clips[hitIndex];
+                            AnimationTimelinePanel.Open(_renderContext, _controlContext, _window, _eventBus);
+                            _eventBus.Publish(new GenericEvent
                             {
-                                if (_draggingClipIndex == hitIndex || _draggingClipIndex == -1)
-                                {
-                                    var clip = _currentStack.Clips[hitIndex];
-                                    AnimationTimelinePanel.Open(_renderContext, _controlContext, _window, _eventBus);
-                                    _eventBus.Publish(new GenericEvent
-                                    {
-                                        Hook = "OpenTimelineForClip",
-                                        Data = new Dictionary<string, string> { { "path", clip.AnimationPath }, { "index", hitIndex.ToString() } }
-                                    });
-                                    _currentBlendPoint = clip.BlendCoordinate;
-                                    _previewScene.SetBlendPreview(_currentStack, _currentBlendPoint);
-                                }
-                                _draggingClipIndex = -1;
-                            }
+                                Hook = "OpenTimelineForClip",
+                                Data = new Dictionary<string, string> { { "path", clip.AnimationPath }, { "index", hitIndex.ToString() } }
+                            });
+                            _currentBlendPoint = clip.BlendCoordinate;
+                            _previewScene.SetBlendPreview(_currentStack, _currentBlendPoint);
                         }
                         else
                         {
+                            // Right-click on empty grid → context menu (does NOT move the green point)
                             float normX = Math.Clamp((relMouse.X - gx) / gw * 2f - 1f, -1f, 1f);
                             float normY = Math.Clamp((relMouse.Y - gy) / gh * 2f - 1f, -1f, 1f);
-                            _currentBlendPoint = new Vector3(normX, normY, _currentBlendPoint.Z);
-                            UpdateGridMarkers();
-                            if (mouseDown)
+                            _pendingAddNormX = normX;
+                            _pendingAddNormY = normY;
+                            _hasPendingAddCoord = true;
+                            var items = new List<ContextMenuItem>
                             {
-                                string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
-                                var fileSelector = new FileSelectorPanel(_renderContext, _controlContext, _window, _eventBus, initialDir, ".fbx");
-                                fileSelector.UserData = $"AddBlendClipAt:{normX},{normY}";
-                                fileSelector.IsModal = true;
-                                _eventBus.Publish(new OpenPanelEvent(fileSelector) { Mode = OpenMode.Overlay });
-                            }
+                                new ContextMenuItem("Add Animation", "AddAnimationAtPoint")
+                            };
+                            _uiOverlay.ShowContextMenu(relMouse, items);
                         }
-                    }
-                }
-                if (_draggingCurrentPoint && !mouseReleased)
-                {
-                    float normX = Math.Clamp((relMouse.X - gx) / gw * 2f - 1f, -1f, 1f);
-                    float normY = Math.Clamp((relMouse.Y - gy) / gh * 2f - 1f, -1f, 1f);
-                    _currentBlendPoint = new Vector3(normX, normY, _currentBlendPoint.Z);
-                    _previewScene.UpdateBlendPreviewParams(_currentBlendPoint);
-                    UpdateGridMarkers();
-                }
-                if (_draggingClipIndex >= 0 && !mouseReleased)
-                {
-                    float normX = Math.Clamp((relMouse.X - gx) / gw * 2f - 1f, -1f, 1f);
-                    float normY = Math.Clamp((relMouse.Y - gy) / gh * 2f - 1f, -1f, 1f);
-                    var clip = _currentStack.Clips[_draggingClipIndex];
-                    clip.BlendCoordinate = new Vector3(normX, normY, clip.BlendCoordinate.Z);
-                    UpdateGridMarkers();
-                }
-                if (mouseReleased)
-                {
-                    _draggingCurrentPoint = false;
-                    _draggingClipIndex = -1;
-                }
-                if (rightReleased)
-                {
-                    int hitIndex = -1;
-                    for (int i = 0; i < _currentStack.Clips.Count; i++)
-                    {
-                        var clip = _currentStack.Clips[i];
-                        float px = gx + ((clip.BlendCoordinate.X + 1f) / 2f * gw);
-                        float py = gy + ((clip.BlendCoordinate.Y + 1f) / 2f * gh);
-                        if (Math.Abs(relMouse.X - px) < 14 && Math.Abs(relMouse.Y - py) < 14)
-                        {
-                            hitIndex = i;
-                            break;
-                        }
-                    }
-                    if (hitIndex >= 0)
-                    {
-                        var clip = _currentStack.Clips[hitIndex];
-                        AnimationTimelinePanel.Open(_renderContext, _controlContext, _window, _eventBus);
-                        _eventBus.Publish(new GenericEvent
-                        {
-                            Hook = "OpenTimelineForClip",
-                            Data = new Dictionary<string, string> { { "path", clip.AnimationPath }, { "index", hitIndex.ToString() } }
-                        });
-                        _currentBlendPoint = clip.BlendCoordinate;
-                        _previewScene.SetBlendPreview(_currentStack, _currentBlendPoint);
                     }
                 }
             }
         }
-
         protected override void RenderInnerContent()
         {
             _previewScene.Render(null);
         }
-
         public override void Render()
         {
             base.Render();
         }
-
         public override void OnLiveResize(float w, float h)
         {
             _uiOverlay.RecomputeLayout(w, h);
             _previewScene.Resize((int)w, (int)h);
             base.OnLiveResize(w, h);
         }
-
         public string DataKey => "AnimationBlendPanel";
-
         public JsonElement SavePanelState() => JsonSerializer.SerializeToElement(_currentStack);
-
         public void LoadPanelState(JsonElement state)
         {
             if (!state.ValueKind.HasFlag(JsonValueKind.Undefined))
                 _currentStack = JsonSerializer.Deserialize<AnimationBlendStack>(state.GetRawText()) ?? new AnimationBlendStack();
         }
-
         public override void Dispose()
         {
             _previewScene.Dispose();

@@ -10,6 +10,9 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("avatarPackKey")]
         public string AvatarPackKey { get; set; }
 
+        [JsonPropertyName("animationPackKey")]
+        public string AnimationPackKey { get; set; }
+
         [JsonPropertyName("controllerTypeName")]
         public string ControllerTypeName { get; set; }
 

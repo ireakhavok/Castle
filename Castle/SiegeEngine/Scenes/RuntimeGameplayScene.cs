@@ -36,6 +36,8 @@ namespace SiegeEngine.Scenes
         private SkyboxRenderer _skyboxRenderer;
         private SkyboxData _skyboxData;
         private TerrainRenderer _terrainRenderer;
+        // When true the player camera (with applied Perspective) owns the view matrix.
+        private bool _usePlayerCamera = false;
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
@@ -98,7 +100,8 @@ namespace SiegeEngine.Scenes
                 }
             });
             _player.InitializeCamera(_controlContext, _window);
-            ForceVisibleOverheadCamera();
+            if (!_usePlayerCamera)
+                ForceVisibleOverheadCamera();
             BuildTexturedMesh();
         }
         private void ForceVisibleOverheadCamera()
@@ -132,7 +135,6 @@ namespace SiegeEngine.Scenes
                 _skyboxRenderer.LoadSkybox(_skyboxData);
             }
             LoadLevelData(levelName, projectPath);
-
             // Prefer pure in-memory heightmap snapshot from the Play payload when present.
             // Fall back to disk path only when no live/unsaved snapshot was transferred.
             if (ctx?.HeightmapSnapshot != null
@@ -143,7 +145,6 @@ namespace SiegeEngine.Scenes
                 _terrainWidth = _heightmap.GetLength(0);
                 _terrainHeight = _heightmap.GetLength(1);
                 Console.WriteLine($"[RuntimeGameplayScene] ✅ Using HeightmapSnapshot from pure in-memory Play payload ({_terrainWidth}x{_terrainHeight})");
-
                 // Still try to load color texture from disk when available; heightmap itself stays live.
                 string colorPath = !string.IsNullOrEmpty(projectPath)
                     ? Path.Combine(projectPath, "Assets", "Terrain", levelName + ".png")
@@ -156,7 +157,6 @@ namespace SiegeEngine.Scenes
             {
                 LoadExactSavedTerrain(projectPath, levelName);
             }
-
             _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
             ModelManager.EnsurePacksLoaded(projectPath, level);
             Console.WriteLine($"[RuntimeGameplayScene] Payload-driven ctx: level.Entities = {level.Entities.Count} - rehydrate starting");
@@ -170,8 +170,145 @@ namespace SiegeEngine.Scenes
                 _server.AddEntity(e);
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
             }
-            ForceVisibleOverheadCamera();
-            _flyCamera.Update(0f, 0f, true);
+
+            // Apply SceneSettings when present (null-safe, no forced defaults)
+            var settings = ctx?.SceneData?.Settings;
+            if (settings != null)
+            {
+                // PreferredSpawnPointIds – first matching entity ID that has a PhysicsComponent
+                if (settings.PreferredSpawnPointIds != null && settings.PreferredSpawnPointIds.Count > 0)
+                {
+                    foreach (int id in settings.PreferredSpawnPointIds)
+                    {
+                        var spawnEntity = level.Entities.FirstOrDefault(e => e.Id == id);
+                        if (spawnEntity != null)
+                        {
+                            var spawnPhysics = spawnEntity.GetComponent<PhysicsComponent>();
+                            if (spawnPhysics != null)
+                            {
+                                _player.Physics.Position = spawnPhysics.Position;
+                                Console.WriteLine($"[RuntimeGameplayScene] Applied PreferredSpawnPointId {id} → player at {spawnPhysics.Position}");
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // AvatarPackKey – resolve model, bind to player, register player entity so it renders
+                string avatarKey = null;
+                if (!string.IsNullOrWhiteSpace(settings.AvatarPackKey))
+                {
+                    avatarKey = settings.AvatarPackKey.Trim().ToLower();
+                    if (_modelManager.TryGetModel(avatarKey, out var avatarModel))
+                    {
+                        _player.SetModel(avatarModel);
+                        Console.WriteLine($"[RuntimeGameplayScene] AvatarPackKey '{avatarKey}' resolved – model bound to player");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[RuntimeGameplayScene] AvatarPackKey '{avatarKey}' not found in ModelManager");
+                        avatarKey = null;
+                    }
+                }
+
+                // AnimationPackKey – optional; load pack, resolve relative clip paths, attach blend stack to avatar
+                if (!string.IsNullOrWhiteSpace(settings.AnimationPackKey) && avatarKey != null)
+                {
+                    string animKey = settings.AnimationPackKey.Trim();
+                    if (_modelManager.TryLoadPackByKey(animKey, projectPath) &&
+                        _modelManager.TryGetAnimationPack(animKey, out var animPack))
+                    {
+                        // Locate the on-disk json so relative clip paths can be resolved
+                        string packsDir = Path.Combine(projectPath, "Assets", "Packs");
+                        string jsonPath = Path.Combine(packsDir, animKey.ToLowerInvariant() + ".json");
+                        if (!File.Exists(jsonPath))
+                            jsonPath = Path.Combine(packsDir, animKey + ".json");
+                        if (!File.Exists(jsonPath))
+                        {
+                            // also try the folder style
+                            string folderJson = Path.Combine(projectPath, "Assets", animKey.ToLowerInvariant(), "assetpack.json");
+                            if (File.Exists(folderJson)) jsonPath = folderJson;
+                            else
+                            {
+                                folderJson = Path.Combine(projectPath, "Assets", animKey, "assetpack.json");
+                                if (File.Exists(folderJson)) jsonPath = folderJson;
+                            }
+                        }
+                        if (File.Exists(jsonPath))
+                        {
+                            _modelManager.AttachResolvedBlendStack(avatarKey, animPack, jsonPath);
+                            Console.WriteLine($"[RuntimeGameplayScene] AnimationPackKey '{animKey}' attached as blend stack to avatar '{avatarKey}'");
+                        }
+                        else
+                        {
+                            // paths already absolute or pack had no clips – still try a plain attach
+                            var stack = animPack.CreateBlendStack();
+                            _modelManager.AttachBlendStack(avatarKey, stack);
+                            Console.WriteLine($"[RuntimeGameplayScene] AnimationPackKey '{animKey}' attached (no relative-path resolution needed)");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[RuntimeGameplayScene] AnimationPackKey '{animKey}' could not be loaded");
+                    }
+                }
+
+                // Register / update the player entity so ModelRenderer draws the avatar
+                if (avatarKey != null)
+                {
+                    var playerEntity = _server.GetEntityById(_player.EntityId);
+                    if (playerEntity == null)
+                    {
+                        playerEntity = new Entity { Id = _player.EntityId, Type = "Player" };
+                        playerEntity.AddComponent(_player);
+                        playerEntity.AddComponent(_player.Physics);
+                        playerEntity.AddComponent(new ModelComponent { Key = avatarKey, Model = _player.Model });
+                        _server.AddEntity(playerEntity);
+                        Console.WriteLine($"[RuntimeGameplayScene] Player entity {_player.EntityId} registered with ModelComponent Key='{avatarKey}'");
+                    }
+                    else
+                    {
+                        var mc = playerEntity.GetComponent<ModelComponent>();
+                        if (mc == null)
+                        {
+                            playerEntity.AddComponent(new ModelComponent { Key = avatarKey, Model = _player.Model });
+                        }
+                        else
+                        {
+                            mc.Key = avatarKey;
+                            mc.Model = _player.Model;
+                        }
+                        // keep Physics in sync with any spawn-point write
+                        var phys = playerEntity.GetComponent<PhysicsComponent>();
+                        if (phys != null)
+                            phys.Position = _player.Physics.Position;
+                    }
+                }
+
+                // CameraMode
+                if (!string.IsNullOrWhiteSpace(settings.CameraMode) && _player.Camera != null)
+                {
+                    if (Enum.TryParse<Perspective>(settings.CameraMode.Trim(), true, out var perspective))
+                    {
+                        _player.Camera.SetPerspective(perspective);
+                        _usePlayerCamera = true;
+                        Console.WriteLine($"[RuntimeGameplayScene] Applied CameraMode → {perspective}");
+                    }
+                }
+                else if (avatarKey != null)
+                {
+                    // Avatar present but no explicit CameraMode → still prefer the player camera
+                    _usePlayerCamera = true;
+                }
+
+                // ControllerTypeName is applied by SceneManager / ScriptLoader when a PlayerMovement instance is present
+            }
+
+            if (!_usePlayerCamera)
+            {
+                ForceVisibleOverheadCamera();
+                _flyCamera.Update(0f, 0f, true);
+            }
         }
         private void ResolveSkyboxPaths(SkyboxData skybox, string projectPath)
         {
@@ -281,17 +418,27 @@ namespace SiegeEngine.Scenes
         }
         public override void Render(IReadOnlyList<Entity> entities)
         {
-            RenderGameplayContent(entities, _flyCamera.ViewMatrix, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f));
+            Matrix4x4 view = _usePlayerCamera && _player?.Camera != null
+                ? _player.Camera.ViewMatrix
+                : _flyCamera.ViewMatrix;
+            RenderGameplayContent(entities, view, Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4, AspectRatio, 0.1f, 1000f));
         }
         public override void Update(float deltaTime)
         {
             base.Update(deltaTime);
-            _flyCamera.Update(deltaTime, 0f, true);
-            if (_player.Camera != null) _flyCamera.Update(0f, 0f, true);
+            if (_usePlayerCamera && _player?.Camera != null)
+            {
+                _player.Camera.Update(deltaTime, 0f, true);
+            }
+            else
+            {
+                _flyCamera.Update(deltaTime, 0f, true);
+            }
             if (_firstFrame)
             {
                 _firstFrame = false;
-                ForceVisibleOverheadCamera();
+                if (!_usePlayerCamera)
+                    ForceVisibleOverheadCamera();
             }
         }
         protected override void RenderGameplayContent(IReadOnlyList<Entity> entities, Matrix4x4 view, Matrix4x4 projection)
@@ -302,13 +449,16 @@ namespace SiegeEngine.Scenes
                 _skyboxRenderer.RenderSkybox(_skyboxData, view, projection);
             }
             _terrainRenderer.RenderTerrain(view, projection, _hasColorTexture, _terrainTextureId, _terrainBuffer, _heightmap, false);
+            Vector3 camPos = _usePlayerCamera && _player?.Camera != null
+                ? _player.Camera.Position
+                : _flyCamera.Position;
             foreach (var e in _server.GetEntities())
             {
                 var modelComp = e.GetComponent<ModelComponent>();
                 var physics = e.GetComponent<PhysicsComponent>();
                 if (modelComp != null && physics != null && !string.IsNullOrEmpty(modelComp.Key))
                 {
-                    _modelRenderer.RenderEntityFully(modelComp, physics, view, projection, _flyCamera.Position);
+                    _modelRenderer.RenderEntityFully(modelComp, physics, view, projection, camPos);
                 }
             }
             PanelManager.Current?.Render();

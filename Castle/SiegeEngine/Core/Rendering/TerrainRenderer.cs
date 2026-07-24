@@ -75,6 +75,9 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.Enable(_renderContext.Enums.Blend);
             _renderContext.BlendFunc(_renderContext.Enums.SrcAlpha, _renderContext.Enums.OneMinusSrcAlpha);
             _renderContext.Disable(_renderContext.Enums.DepthTest);
+            // Ghost is a camera-facing preview overlay (triangles or lines).
+            // CullFace is left enabled by RenderTerrain; disable it so the textured sticker is never culled.
+            _renderContext.Disable(_renderContext.Enums.CullFace);
 
             if (isPaintMode && ghostTextureId != 0)
             {
@@ -84,6 +87,7 @@ namespace SiegeEngine.Core.Rendering
                 spriteShader.SetMatrix4("uProjection", projection);
                 _renderContext.ActiveTexture(_renderContext.Enums.Texture0);
                 _renderContext.BindTexture(_renderContext.Enums.Texture2D, ghostTextureId);
+                spriteShader.SetUniform("uTexture", 0);
                 ghostBuffer.Bind();
                 _renderContext.DrawElements(_renderContext.Enums.Triangles, ghostBuffer.GetIndexCount(), _renderContext.Enums.UnsignedInt, null);
             }

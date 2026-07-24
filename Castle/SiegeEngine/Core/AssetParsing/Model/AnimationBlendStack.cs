@@ -1,5 +1,8 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core.AssetParsing.Model
+// File: AnimationBlendStack.cs
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Serialization;
@@ -73,7 +76,9 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 var clip = Clips[0];
                 if (string.IsNullOrEmpty(clip.AnimationPath)) return null;
                 if (isPlaying) clip.LocalTime += deltaTime * clip.PlaybackSpeed;
-                var anim = model.Animations.LastOrDefault();
+                string desiredName = Path.GetFileNameWithoutExtension(clip.AnimationPath).ToLowerInvariant();
+                var anim = model.Animations.FirstOrDefault(a => string.Equals(a.Name, desiredName, StringComparison.OrdinalIgnoreCase))
+                           ?? model.Animations.LastOrDefault();
                 if (anim == null || anim.Keyframes.Count == 0) return null;
                 float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
                 float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : animDuration;
@@ -137,7 +142,9 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 var clip = Clips[c];
                 if (string.IsNullOrEmpty(clip.AnimationPath)) continue;
                 if (isPlaying) clip.LocalTime += deltaTime * clip.PlaybackSpeed;
-                var anim = model.Animations.Distinct().ElementAtOrDefault(c) ?? model.Animations.LastOrDefault();
+                // Lookup solely by source filename (never by internal FBX stack name)
+                string desiredName = Path.GetFileNameWithoutExtension(clip.AnimationPath).ToLowerInvariant();
+                var anim = model.Animations.FirstOrDefault(a => string.Equals(a.Name, desiredName, StringComparison.OrdinalIgnoreCase));
                 if (anim == null || anim.Keyframes.Count == 0) continue;
                 float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
                 float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : animDuration;
