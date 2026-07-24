@@ -98,7 +98,6 @@ namespace ToolChest
         {
             // GridClicked / BlendPointChanged no longer write the green point.
             // The custom mouse handling in Update is the sole owner of _currentBlendPoint.
-            // Number-field typing still reaches BlendPointChanged; we ignore it here to stop the fight.
             if (e.Hook == "SelectClipForTimeline")
             {
                 var select = _uiOverlay.FindElementById("clipList") as SelectElement;
@@ -142,7 +141,6 @@ namespace ToolChest
             }
             else if (e.Hook == "AddAnimationAtPoint")
             {
-                // Safety net: DataHookProcessor may publish this as a GenericEvent
                 if (_hasPendingAddCoord)
                 {
                     string initialDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets");
@@ -248,7 +246,11 @@ namespace ToolChest
                 Directory.CreateDirectory(packsDir);
             }
             string packPath = Path.Combine(packsDir, pack.Id + ".json");
-            File.WriteAllText(packPath, JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(packPath, JsonSerializer.Serialize(pack, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                IncludeFields = true
+            }));
             Console.WriteLine($"[AnimationBlendPanel] Animation pack saved to {packPath} (self-contained)");
         }
 
