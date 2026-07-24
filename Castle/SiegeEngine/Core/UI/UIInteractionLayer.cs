@@ -38,7 +38,6 @@ namespace SiegeEngine.Core.UI
             if (elem == null || _overlay.CurrentContextMenu == null) return false;
             return elem == _overlay.CurrentContextMenu || elem.IsDescendantOf(_overlay.CurrentContextMenu);
         }
-
         /// <summary>
         /// True if the element under the mouse is a text/number input or a label that targets one.
         /// Used to decide whether an outside-click should blur the current focused field.
@@ -48,10 +47,8 @@ namespace SiegeEngine.Core.UI
             foreach (var clickable in clickables)
             {
                 if (!clickable.IsHover) continue;
-
                 if (clickable is InputElement inp && (inp.Type == "text" || inp.Type == "number"))
                     return true;
-
                 if (clickable.Tag == "label")
                 {
                     string forId = clickable.Attributes.GetValueOrDefault("for", "");
@@ -65,7 +62,6 @@ namespace SiegeEngine.Core.UI
             }
             return false;
         }
-
         /// <summary>
         /// Blur the currently focused text input (cursor off, keys no longer routed to it).
         /// </summary>
@@ -78,7 +74,6 @@ namespace SiegeEngine.Core.UI
             if (refresh)
                 _overlay.RefreshUI();
         }
-
         public void Update(float deltaTime, Vector2 relMousePos, bool currentMouseDown, float panelW, float panelH)
         {
             if (_overlay._uiRoot == null) return;
@@ -103,14 +98,12 @@ namespace SiegeEngine.Core.UI
                 Vector2 effectiveMouse = (isDropdownElement || isContext) ? relMousePos : scrolledMousePos;
                 clickable.UpdateHover(effectiveMouse, vw, vh);
             }
-
             // Outside-click blur: press not over any text input → clear focus so cursor disappears.
             // Field→field transfer is handled inside UIOverlay.HandleUIClick when the new input is focused.
             if (mousePress && _currentFocused != null && !IsPressOverTextInput(clickablesSnapshot))
             {
                 ClearFocus(refresh: true);
             }
-
             bool dropdownPressHandled = false;
             foreach (var select in _openSelects)
             {
@@ -190,7 +183,9 @@ namespace SiegeEngine.Core.UI
                 bool selectWasActive = select.IsActive;
                 if (selectOver && mouseRelease && selectWasActive)
                 {
-                    _overlay.HandleUIClick(select);
+                    bool handled = _overlay.HandleUIClick(select);
+                    if (handled)
+                        _overlay.DidHandleClick = true;
                     dropdownReleaseHandled = true;
                 }
                 if (mouseRelease)
@@ -212,7 +207,9 @@ namespace SiegeEngine.Core.UI
                     bool wasActive = opt.IsActive;
                     if (over && mouseRelease && wasActive)
                     {
-                        _overlay.HandleUIClick(opt);
+                        bool handled = _overlay.HandleUIClick(opt);
+                        if (handled)
+                            _overlay.DidHandleClick = true;
                         dropdownReleaseHandled = true;
                     }
                     if (mouseRelease)
@@ -238,7 +235,9 @@ namespace SiegeEngine.Core.UI
                     bool wasActive = clickable.IsActive;
                     if (over && mouseRelease && wasActive)
                     {
-                        _overlay.HandleUIClick(clickable);
+                        bool handled = _overlay.HandleUIClick(clickable);
+                        if (handled)
+                            _overlay.DidHandleClick = true;
                     }
                     if (mouseRelease)
                     {
