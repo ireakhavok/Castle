@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.Core.Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: SceneManager.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -47,7 +47,11 @@ namespace SiegeEngine.Core.Managers
         public void Update(float deltaTime) => _currentScene?.Update(deltaTime);
         public void Render() => _currentScene?.Render(_server?.GetEntities() ?? Array.Empty<Entity>());
         public void Resize(int width, int height) => _currentScene?.Resize(width, height);
-        public void Dispose() { _currentScene?.Dispose(); _currentScene = null; }
+        public void Dispose()
+        {
+            _currentScene?.Dispose();
+            _currentScene = null;
+        }
         private void OnSwitchScene(SwitchSceneEvent e)
         {
             Console.WriteLine($"SceneManager: Switching to '{e.SceneName}'");
@@ -67,7 +71,17 @@ namespace SiegeEngine.Core.Managers
             playerEntity.AddComponent(new ModelComponent { Model = _player.Model, Key = "man_mesh" });
             _server.AddEntity(playerEntity);
             _playerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
-            var ctx = new SceneContext { RenderContext = _renderContext, ControlContext = _controlContext, Window = _window, Server = _server, EventBus = _eventBus, Player = _player, PlayerMovement = _playerMovement, ModelManager = _modelManager };
+            var ctx = new SceneContext
+            {
+                RenderContext = _renderContext,
+                ControlContext = _controlContext,
+                Window = _window,
+                Server = _server,
+                EventBus = _eventBus,
+                Player = _player,
+                PlayerMovement = _playerMovement,
+                ModelManager = _modelManager
+            };
             _currentScene = (Scene)SceneRegistry.Create(e.SceneName, ctx);
             _currentScene.SetPlayer(_player);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
@@ -80,7 +94,6 @@ namespace SiegeEngine.Core.Managers
             Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0} - levelPayload present: {levelDataPayload != null}, scenePayload present: {sceneDataPayload != null}");
             Level level = currentLevel;
             SceneData reconstructedSceneData = null;
-
             // Prefer Level payload when present (dual-preference rule).
             if (!string.IsNullOrEmpty(levelDataPayload))
             {
@@ -96,7 +109,6 @@ namespace SiegeEngine.Core.Managers
                     level = null;
                 }
             }
-
             // Always try SceneData for world content fill + Settings + embedded heightmap.
             if (!string.IsNullOrEmpty(sceneDataPayload))
             {
@@ -132,19 +144,13 @@ namespace SiegeEngine.Core.Managers
                     Console.WriteLine($"[SceneManager] SceneData payload deserialize failed: {ex.Message}");
                 }
             }
-
             level = level ?? new Level { Name = levelName };
-
             var ctx = SceneContext.CreateForRuntime(level, reconstructedSceneData ?? new SceneData { Name = levelName }, _renderContext, _controlContext, _window, new ClientGameServerProxy(_eventBus), _eventBus);
             ctx.PlayProjectPath = projectPath;
             ctx.LoadLevelName = levelName;
             ctx.CurrentLevel = level;
-
             // Populate HeightmapSnapshot from embedded transfer data when present.
-            if (reconstructedSceneData?.Terrain != null
-                && reconstructedSceneData.Terrain.EmbeddedHeightmapData != null
-                && reconstructedSceneData.Terrain.EmbeddedHeightmapWidth > 0
-                && reconstructedSceneData.Terrain.EmbeddedHeightmapHeight > 0)
+            if (reconstructedSceneData?.Terrain != null && reconstructedSceneData.Terrain.EmbeddedHeightmapData != null && reconstructedSceneData.Terrain.EmbeddedHeightmapWidth > 0 && reconstructedSceneData.Terrain.EmbeddedHeightmapHeight > 0)
             {
                 int w = reconstructedSceneData.Terrain.EmbeddedHeightmapWidth;
                 int h = reconstructedSceneData.Terrain.EmbeddedHeightmapHeight;
@@ -159,10 +165,24 @@ namespace SiegeEngine.Core.Managers
                     Console.WriteLine($"[SceneManager] HeightmapSnapshot populated from embedded transfer data ({w}x{h})");
                 }
             }
-
             _modelManager = new ModelManager(_renderContext);
             ctx.ModelManager = _modelManager;
-            if (!string.IsNullOrEmpty(projectPath)) { ModelManager.EnsurePacksLoaded(projectPath, level); }
+            if (!string.IsNullOrEmpty(projectPath))
+            {
+                ModelManager.EnsurePacksLoaded(projectPath, level);
+            }
+            // Materialise pure-runtime player + movement (core contract: payload/ctx only)
+            var predictionSystem = new ClientPredictionSystem(ctx.Server, _eventBus);
+            ctx.Server.AddSystem(predictionSystem);
+            ulong steamId = 0;
+            if (_steamEngine is SteamEngine se) steamId = se.GetSteamId();
+            _player = new Player(1, new Vector3(10, 10, 0), steamId);
+            _player.InitializeCamera(_controlContext, _window);
+            _playerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
+            string controllerType = reconstructedSceneData?.Settings?.ControllerTypeName;
+            ScriptLoader.ApplyControllerByTypeName(controllerType, _player, ref _playerMovement);
+            ctx.Player = _player;
+            ctx.PlayerMovement = _playerMovement;
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot - entities rehydrated and added");
