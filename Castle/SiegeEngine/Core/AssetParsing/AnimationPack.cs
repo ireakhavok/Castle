@@ -20,6 +20,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public List<AnimationClipEntry> Clips { get; set; } = new List<AnimationClipEntry>();
         public Dictionary<string, int> BoneNameToIndex { get; set; } = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         public Vector3 DefaultBlendParams { get; set; } = Vector3.Zero;
+        public AnimationBlendStack.MovementBlendConfig BlendConfig { get; set; } = new AnimationBlendStack.MovementBlendConfig();
 
         public string SourceFBXPath { get; set; }
         public string SourceSkeletonPath { get; set; }
@@ -51,6 +52,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
             {
                 stack.Clips.Add(clip);
             }
+            stack.DefaultBlendParams = DefaultBlendParams;
+            stack.BlendConfig = BlendConfig ?? new AnimationBlendStack.MovementBlendConfig();
             return stack;
         }
     }

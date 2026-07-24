@@ -273,11 +273,16 @@ namespace SiegeEngine.Core.Managers
                 _animations[animKey] = anims;
                 _animSourceModels[animKey] = animModel;
             }
+            // Identity is solely the source filename (animKey). Internal FBX stack name is ignored.
             var existingNames = new HashSet<string>(_models[targetKey].Animations.Select(a => a.Name), StringComparer.OrdinalIgnoreCase);
             foreach (var a in anims)
             {
+                a.Name = animKey; // force filename as the sole identity
                 if (!existingNames.Contains(a.Name))
+                {
                     _models[targetKey].Animations.Add(a);
+                    existingNames.Add(a.Name);
+                }
             }
         }
         public bool TryGetAnimSourceModel(string animPath, out FBXModel model)
