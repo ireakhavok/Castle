@@ -167,6 +167,8 @@ namespace SiegeEngine.Core.Managers
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot - entities rehydrated and added");
             ScriptLoader.RegisterCustomSystems(_eventBus, ctx.Server);
+            // ControllerTypeName is resolved inside RuntimeGameplayScene via SceneData.Settings when present.
+            // Attribute-based fallback remains available for the classic OnSwitchScene path.
             ScriptLoader.ApplyCustomPlayerControllerIfPresent(_player, ref _playerMovement);
         }
     }

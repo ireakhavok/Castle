@@ -161,6 +161,57 @@ namespace SiegeEngine.Core.Managers
             Console.WriteLine("[ScriptLoader] Custom PlayerController swap applied (or default retained) - Phase 2 ready");
         }
 
+        public static void ApplyControllerByTypeName(string typeName, Player player, ref PlayerMovement movement)
+        {
+            if (string.IsNullOrWhiteSpace(typeName))
+            {
+                ApplyCustomPlayerControllerIfPresent(player, ref movement);
+                return;
+            }
+
+            string target = typeName.Trim();
+            string runtimeTemp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
+            if (Directory.Exists(runtimeTemp))
+            {
+                foreach (string dll in Directory.GetFiles(runtimeTemp, "*.dll"))
+                {
+                    try
+                    {
+                        Assembly ass = Assembly.LoadFrom(dll);
+                        foreach (Type type in ass.GetTypes())
+                        {
+                            if (typeof(PlayerMovement).IsAssignableFrom(type) &&
+                                (string.Equals(type.Name, target, StringComparison.OrdinalIgnoreCase) ||
+                                 string.Equals(type.FullName, target, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                try
+                                {
+                                    var custom = Activator.CreateInstance(type) as PlayerMovement;
+                                    if (custom != null)
+                                    {
+                                        movement = custom;
+                                        Console.WriteLine($"[ScriptLoader] SUCCESS: Swapped to named PlayerController '{type.Name}' from ControllerTypeName");
+                                        return;
+                                    }
+                                }
+                                catch
+                                {
+                                    Console.WriteLine($"[ScriptLoader] Named controller '{target}' ctor failed - retaining current");
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[ScriptLoader] Skipped {dll} for named controller: {ex.Message}");
+                    }
+                }
+            }
+
+            Console.WriteLine($"[ScriptLoader] ControllerTypeName '{target}' not found - falling back to attribute scan");
+            ApplyCustomPlayerControllerIfPresent(player, ref movement);
+        }
+
         /// <summary>
         /// FIXED: Now accepts an optional temp output directory so dotnet build never tries to overwrite
         /// the locked Scripts\Libs\SiegeScripts.dll that the editor process has loaded.

@@ -58,6 +58,11 @@ namespace SiegeEngine.PlayerSystem
             UpdateCamera();
         }
 
+        public void SetPerspective(Perspective perspective)
+        {
+            _perspective = perspective;
+        }
+
         public void Update(float deltaTime, float scrollDelta, bool isGameActive)
         {
             bool focused = _controlContext.GetWindowAttrib(_window, WindowAttribute.Focused);

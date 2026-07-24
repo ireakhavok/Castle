@@ -690,7 +690,7 @@ Found 14 dependencies
 Found: AnimationBlendPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationBlendPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationBlendPanel.cs
-Read 21623 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationBlendPanel.cs
+Read 22122 chars from: C:\repos\RealmFoundry\Castle\IDE\ToolChest\AnimationBlendPanel.cs
 Namespace: ToolChest
 Found 20 dependencies
 Found: AnimationBlendUI.html
@@ -2153,7 +2153,7 @@ Found 8 dependencies
 Found: UIInteractionLayer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
-Read 18400 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
+Read 18721 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\UI\UIInteractionLayer.cs
 Namespace: SiegeEngine.Core.UI
 Found 9 dependencies
 Found: UIOverlay.cs

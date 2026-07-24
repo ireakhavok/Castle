@@ -132,7 +132,6 @@ namespace SiegeEngine.Scenes
                 _skyboxRenderer.LoadSkybox(_skyboxData);
             }
             LoadLevelData(levelName, projectPath);
-
             // Prefer pure in-memory heightmap snapshot from the Play payload when present.
             // Fall back to disk path only when no live/unsaved snapshot was transferred.
             if (ctx?.HeightmapSnapshot != null
@@ -143,7 +142,6 @@ namespace SiegeEngine.Scenes
                 _terrainWidth = _heightmap.GetLength(0);
                 _terrainHeight = _heightmap.GetLength(1);
                 Console.WriteLine($"[RuntimeGameplayScene] ✅ Using HeightmapSnapshot from pure in-memory Play payload ({_terrainWidth}x{_terrainHeight})");
-
                 // Still try to load color texture from disk when available; heightmap itself stays live.
                 string colorPath = !string.IsNullOrEmpty(projectPath)
                     ? Path.Combine(projectPath, "Assets", "Terrain", levelName + ".png")
@@ -156,7 +154,6 @@ namespace SiegeEngine.Scenes
             {
                 LoadExactSavedTerrain(projectPath, levelName);
             }
-
             _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
             ModelManager.EnsurePacksLoaded(projectPath, level);
             Console.WriteLine($"[RuntimeGameplayScene] Payload-driven ctx: level.Entities = {level.Entities.Count} - rehydrate starting");
@@ -170,6 +167,57 @@ namespace SiegeEngine.Scenes
                 _server.AddEntity(e);
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
             }
+
+            // Apply SceneSettings when present (null-safe, no forced defaults)
+            var settings = ctx?.SceneData?.Settings;
+            if (settings != null)
+            {
+                // PreferredSpawnPointIds – first matching entity ID that has a PhysicsComponent
+                if (settings.PreferredSpawnPointIds != null && settings.PreferredSpawnPointIds.Count > 0)
+                {
+                    foreach (int id in settings.PreferredSpawnPointIds)
+                    {
+                        var spawnEntity = level.Entities.FirstOrDefault(e => e.Id == id);
+                        if (spawnEntity != null)
+                        {
+                            var spawnPhysics = spawnEntity.GetComponent<PhysicsComponent>();
+                            if (spawnPhysics != null)
+                            {
+                                _player.Physics.Position = spawnPhysics.Position;
+                                Console.WriteLine($"[RuntimeGameplayScene] Applied PreferredSpawnPointId {id} → player at {spawnPhysics.Position}");
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // AvatarPackKey – resolve and log (Player.Model is private-set; full binding deferred)
+                if (!string.IsNullOrWhiteSpace(settings.AvatarPackKey))
+                {
+                    string key = settings.AvatarPackKey.Trim().ToLower();
+                    if (_modelManager.TryGetModel(key, out var avatarModel))
+                    {
+                        Console.WriteLine($"[RuntimeGameplayScene] AvatarPackKey '{key}' resolved – model ready");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[RuntimeGameplayScene] AvatarPackKey '{key}' not found in ModelManager");
+                    }
+                }
+
+                // CameraMode
+                if (!string.IsNullOrWhiteSpace(settings.CameraMode) && _player.Camera != null)
+                {
+                    if (Enum.TryParse<Perspective>(settings.CameraMode.Trim(), true, out var perspective))
+                    {
+                        _player.Camera.SetPerspective(perspective);
+                        Console.WriteLine($"[RuntimeGameplayScene] Applied CameraMode → {perspective}");
+                    }
+                }
+
+                // ControllerTypeName is applied by SceneManager / ScriptLoader when a PlayerMovement instance is present
+            }
+
             ForceVisibleOverheadCamera();
             _flyCamera.Update(0f, 0f, true);
         }
