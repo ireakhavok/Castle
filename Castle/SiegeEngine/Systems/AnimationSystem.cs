@@ -11,8 +11,6 @@ namespace SiegeEngine.Systems
 {
     public class AnimationSystem : GameSystem
     {
-        private Vector3 _lastBlendParams = Vector3.Zero;
-
         public AnimationSystem(IGameServer server) : base(server) { }
 
         public override void Update(float deltaTime)
@@ -35,17 +33,10 @@ namespace SiegeEngine.Systems
             // MMO performance: static characters skip blending entirely
             if (blendComp.IsStatic)
             {
-                return; // last pose already stored in modelComp
-            }
-
-            // Cheap early-out: skip expensive blend if params haven't moved meaningfully
-            float paramDelta = Vector3.Distance(blendComp.CurrentBlendParams, _lastBlendParams);
-            if (paramDelta < 0.001f)
-            {
                 return;
             }
-            _lastBlendParams = blendComp.CurrentBlendParams;
 
+            // Always advance while Playing so LocalTime progresses for idle and continuous locomotion
             blendComp.GlobalTime += deltaTime * blendComp.MasterSpeed;
 
             var stack = blendComp.Pack.CreateBlendStack();
@@ -54,16 +45,26 @@ namespace SiegeEngine.Systems
             if (blendedLocals == null) return;
 
             var globals = modelComp.Model.Skeleton.ComputeGlobalTransforms(blendedLocals);
-            modelComp.NormalBoneTransforms = new Matrix3x3[globals.Length];
-            for (int i = 0; i < globals.Length; i++)
+
+            int boneCount = modelComp.Model.Skeleton.Bones.Count;
+            modelComp.BoneMatrices = new Matrix4x4[boneCount];
+            modelComp.NormalBoneTransforms = new Matrix3x3[boneCount];
+
+            // Exact pipeline from ModelViewerScene (BindPose * global)
+            for (int i = 0; i < boneCount; i++)
             {
-                if (Matrix4x4.Invert(globals[i], out Matrix4x4 inv))
+                modelComp.BoneMatrices[i] = modelComp.Model.Skeleton.Bones[i].BindPose * globals[i];
+                if (Matrix4x4.Invert(modelComp.BoneMatrices[i], out Matrix4x4 inv))
                 {
                     Matrix4x4 invT = Matrix4x4.Transpose(inv);
                     modelComp.NormalBoneTransforms[i] = new Matrix3x3(
                         invT.M11, invT.M12, invT.M13,
                         invT.M21, invT.M22, invT.M23,
                         invT.M31, invT.M32, invT.M33);
+                }
+                else
+                {
+                    modelComp.NormalBoneTransforms[i] = Matrix3x3.Identity;
                 }
             }
         }

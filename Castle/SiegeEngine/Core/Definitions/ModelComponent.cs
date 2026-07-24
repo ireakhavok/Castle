@@ -14,6 +14,7 @@ namespace SiegeEngine.Core.Definitions
         public FBXModel Model { get; set; }
         public string Key { get; set; }
 
+        public Matrix4x4[] BoneMatrices { get; set; }
         public Matrix3x3[] NormalBoneTransforms { get; set; }
 
         // Material (with full world-aligned TextureSlot support)

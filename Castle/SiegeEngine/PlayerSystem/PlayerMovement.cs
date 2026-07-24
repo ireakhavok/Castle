@@ -158,10 +158,14 @@ namespace SiegeEngine.PlayerSystem
             }
             player.Physics.Rotation = newRotation;
 
-            Vector2 requestedPos = new Vector2(newPosition.X, newPosition.Y);
-            _predictionSystem.EnqueueMovementRequest(player.EntityId, requestedPos, newRotation, player.SteamId);
-            sendMovementRequest(player.EntityId, requestedPos, newRotation);
-            Console.WriteLine($"PlayerMovement: Requested movement to: X={newPosition.X}, Y={newPosition.Y}, Velocity={currentVel}, Rotation={newRotation}");
+            // Only enqueue / log when there is actual movement or active input
+            if (currentVel.LengthSquared() > 0.001f || _movementInput != Vector2.Zero)
+            {
+                Vector2 requestedPos = new Vector2(newPosition.X, newPosition.Y);
+                _predictionSystem.EnqueueMovementRequest(player.EntityId, requestedPos, newRotation, player.SteamId);
+                sendMovementRequest(player.EntityId, requestedPos, newRotation);
+                Console.WriteLine($"PlayerMovement: Requested movement to: X={newPosition.X}, Y={newPosition.Y}, Velocity={currentVel}, Rotation={newRotation}");
+            }
 
             // Entity-relative blend drive: feed the same local input that produced velocity
             if (player.BlendComponent != null && player.BlendComponent.Pack != null)
