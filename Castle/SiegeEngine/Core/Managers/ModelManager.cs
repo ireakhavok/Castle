@@ -134,6 +134,100 @@ namespace SiegeEngine.Core.Managers
                 Console.WriteLine($"[ModelManager] WARNING: Could not resolve FBX for pack '{key}'. SourceFBXPath='{pack.SourceFBXPath}', resolved='{resolvedFBXPath ?? "null"}'");
             }
         }
+        /// <summary>
+        /// Loads a pack by logical key from either Assets/{key}/assetpack.json (folder style)
+        /// or Assets/Packs/{key}.json (loose AnimationBlendPanel style). Forces the dictionary
+        /// key to the requested packKey so subsequent TryGetAnimationPack / AttachBlendStack
+        /// look-ups succeed regardless of on-disk layout.
+        /// </summary>
+        public bool TryLoadPackByKey(string packKey, string projectPath)
+        {
+            if (string.IsNullOrWhiteSpace(packKey) || string.IsNullOrEmpty(projectPath)) return false;
+            string key = packKey.Trim().ToLowerInvariant();
+            if (_animationPacks.ContainsKey(key)) return true;
+
+            string jsonPath = null;
+
+            // Style 1 – standard folder pack: Assets/{key}/assetpack.json
+            string dirLower = Path.Combine(projectPath, "Assets", key);
+            string dirOrig = Path.Combine(projectPath, "Assets", packKey.Trim());
+            foreach (var d in new[] { dirLower, dirOrig })
+            {
+                string candidate = Path.Combine(d, "assetpack.json");
+                if (File.Exists(candidate))
+                {
+                    jsonPath = candidate;
+                    break;
+                }
+            }
+
+            // Style 2 – loose pack produced by AnimationBlendPanel: Assets/Packs/{key}.json
+            if (jsonPath == null)
+            {
+                string packsDir = Path.Combine(projectPath, "Assets", "Packs");
+                string p1 = Path.Combine(packsDir, key + ".json");
+                string p2 = Path.Combine(packsDir, packKey.Trim() + ".json");
+                if (File.Exists(p1)) jsonPath = p1;
+                else if (File.Exists(p2)) jsonPath = p2;
+            }
+
+            if (jsonPath == null) return false;
+
+            try
+            {
+                string json = File.ReadAllText(jsonPath);
+                var pack = JsonSerializer.Deserialize<AnimationPack>(json);
+                if (pack == null) return false;
+                if (string.IsNullOrEmpty(pack.Id)) pack.Id = key;
+                _animationPacks[key] = pack;
+
+                // Resolve optional SourceFBX the same way LoadAnimationPack does
+                string resolvedFBXPath = ResolveSourceFBXPath(pack.SourceFBXPath, jsonPath);
+                if (!string.IsNullOrEmpty(resolvedFBXPath) && File.Exists(resolvedFBXPath))
+                {
+                    LoadModel(resolvedFBXPath);
+                    string originalKey = Path.GetFileNameWithoutExtension(resolvedFBXPath).ToLower();
+                    if (_models.TryGetValue(originalKey, out var model))
+                        _models[key] = model;
+                    if (_modelData.TryGetValue(originalKey, out var data))
+                        _modelData[key] = data;
+                    if (_forests.TryGetValue(originalKey, out var forest))
+                        _forests[key] = forest;
+                    if (_fbxDirs.TryGetValue(originalKey, out var dir))
+                        _fbxDirs[key] = dir;
+                }
+
+                Console.WriteLine($"[ModelManager] TryLoadPackByKey loaded '{key}' from {jsonPath}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[ModelManager] TryLoadPackByKey failed for '{key}': {ex.Message}");
+                return false;
+            }
+        }
+        /// <summary>
+        /// Creates a blend stack from the pack, resolves every clip path that is still relative
+        /// against the pack JSON directory, then attaches the stack to the target model.
+        /// </summary>
+        public void AttachResolvedBlendStack(string targetModelKey, AnimationPack pack, string packJsonPath)
+        {
+            if (pack == null || string.IsNullOrEmpty(targetModelKey)) return;
+            string baseDir = Path.GetDirectoryName(packJsonPath) ?? "";
+            var stack = pack.CreateBlendStack();
+            foreach (var clip in stack.Clips)
+            {
+                if (!string.IsNullOrEmpty(clip.AnimationPath) && !Path.IsPathRooted(clip.AnimationPath))
+                {
+                    clip.AnimationPath = Path.GetFullPath(Path.Combine(baseDir, clip.AnimationPath));
+                }
+            }
+            if (!string.IsNullOrEmpty(stack.SharedSkeletonPath) && !Path.IsPathRooted(stack.SharedSkeletonPath))
+            {
+                stack.SharedSkeletonPath = Path.GetFullPath(Path.Combine(baseDir, stack.SharedSkeletonPath));
+            }
+            AttachBlendStack(targetModelKey, stack);
+        }
         private string ResolveSourceFBXPath(string sourcePath, string packJsonPath)
         {
             if (string.IsNullOrEmpty(sourcePath)) return null;

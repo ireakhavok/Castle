@@ -145,7 +145,6 @@ namespace ToolChest
         private void RebuildPropertiesUI()
         {
             FlushSceneSettingsFromUI();
-
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
             if (!File.Exists(htmlPath)) return;
             string template = File.ReadAllText(htmlPath);
@@ -159,26 +158,25 @@ namespace ToolChest
             _uiOverlay.RefreshUI();
         }
         /// <summary>
-        /// Reads live InputElement.Value for the four Scene Settings fields and writes them into
+        /// Reads live InputElement.Value for the Scene Settings fields and writes them into
         /// the per-scene Settings buffer (same pattern as NewProjectPanel form read).
         /// </summary>
         private void FlushSceneSettingsFromUI()
         {
             if (_uiOverlay == null || string.IsNullOrEmpty(_activeSceneSettingsName)) return;
-
             var avatarElem = _uiOverlay.FindElementById("ss-avatarPackKey") as InputElement;
+            var animationElem = _uiOverlay.FindElementById("ss-animationPackKey") as InputElement;
             var controllerElem = _uiOverlay.FindElementById("ss-controllerTypeName") as InputElement;
             var spawnsElem = _uiOverlay.FindElementById("ss-preferredSpawnPointIds") as InputElement;
             var cameraElem = _uiOverlay.FindElementById("ss-cameraMode") as InputElement;
-
-            if (avatarElem == null && controllerElem == null && spawnsElem == null && cameraElem == null)
+            if (avatarElem == null && animationElem == null && controllerElem == null && spawnsElem == null && cameraElem == null)
                 return;
-
             var settings = ProjectSettings.Current.GetOrCreateSceneSettings(_activeSceneSettingsName);
             if (settings == null) return;
-
             if (avatarElem != null)
                 settings.AvatarPackKey = string.IsNullOrWhiteSpace(avatarElem.Value) ? null : avatarElem.Value.Trim();
+            if (animationElem != null)
+                settings.AnimationPackKey = string.IsNullOrWhiteSpace(animationElem.Value) ? null : animationElem.Value.Trim();
             if (controllerElem != null)
                 settings.ControllerTypeName = string.IsNullOrWhiteSpace(controllerElem.Value) ? null : controllerElem.Value.Trim();
             if (spawnsElem != null)
@@ -195,9 +193,8 @@ namespace ToolChest
             }
             if (cameraElem != null)
                 settings.CameraMode = string.IsNullOrWhiteSpace(cameraElem.Value) ? null : cameraElem.Value.Trim();
-
             ProjectSettings.Current.SetSceneSettings(_activeSceneSettingsName, settings);
-            Console.WriteLine($"[PropertiesPanel] Flushed Scene Settings for '{_activeSceneSettingsName}': Avatar={settings.AvatarPackKey}, Controller={settings.ControllerTypeName}, Camera={settings.CameraMode}, Spawns=[{string.Join(",", settings.PreferredSpawnPointIds ?? new List<int>())}]");
+            Console.WriteLine($"[PropertiesPanel] Flushed Scene Settings for '{_activeSceneSettingsName}': Avatar={settings.AvatarPackKey}, Animation={settings.AnimationPackKey}, Controller={settings.ControllerTypeName}, Camera={settings.CameraMode}, Spawns=[{string.Join(",", settings.PreferredSpawnPointIds ?? new List<int>())}]");
         }
         private string BuildPropertiesHtml(object obj)
         {
@@ -211,7 +208,6 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\" data-context=\"entity-id\"><div class=\"property-name\">ID</div><input type=\"text\" value=\"{entity.Id}\" readonly></div>");
             }
             sb.Append("</details>");
-
             if (obj is Level level)
             {
                 string sceneName = level.Name ?? ProjectSettings.Current.CurrentSceneName ?? "Main";
@@ -222,6 +218,7 @@ namespace ToolChest
                     : "";
                 sb.Append("<details open><summary>Scene Settings</summary>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-avatar\"><div class=\"property-name\">Avatar Pack Key</div><input type=\"text\" id=\"ss-avatarPackKey\" value=\"{settings.AvatarPackKey ?? ""}\"></div>");
+                sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-animation\"><div class=\"property-name\">Animation Pack Key</div><input type=\"text\" id=\"ss-animationPackKey\" value=\"{settings.AnimationPackKey ?? ""}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-controller\"><div class=\"property-name\">Controller Type</div><input type=\"text\" id=\"ss-controllerTypeName\" value=\"{settings.ControllerTypeName ?? ""}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-spawns\"><div class=\"property-name\">Preferred Spawn IDs</div><input type=\"text\" id=\"ss-preferredSpawnPointIds\" value=\"{spawnIds}\"></div>");
                 sb.Append($"<div class=\"property-row\" data-context=\"scene-settings-camera\"><div class=\"property-name\">Camera Mode</div><input type=\"text\" id=\"ss-cameraMode\" value=\"{settings.CameraMode ?? ""}\"></div>");
@@ -231,7 +228,6 @@ namespace ToolChest
             {
                 _activeSceneSettingsName = null;
             }
-
             sb.Append("<details open><summary>Properties</summary>");
             BuildObjectHtml(sb, obj, -1);
             sb.Append("</details>");
@@ -293,8 +289,10 @@ namespace ToolChest
             foreach (var prop in properties)
             {
                 object value = prop.GetValue(obj);
-                if (value == null) continue;
                 var propType = prop.PropertyType;
+                // Always surface public string properties even when null so newly-added optional fields appear.
+                if (value == null && propType != typeof(string))
+                    continue;
                 if (propType.IsPrimitive || propType == typeof(string) || propType == typeof(Vector2) || propType == typeof(Vector3))
                 {
                     string display = value?.ToString() ?? "";
@@ -346,21 +344,25 @@ namespace ToolChest
                 .OrderBy(p => p.Name);
             foreach (var prop in properties)
             {
-                if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(Vector2) || prop.PropertyType == typeof(Vector3))
+                object value = prop.GetValue(obj);
+                var propType = prop.PropertyType;
+                // Always surface public string properties even when null so newly-added optional fields appear.
+                if (value == null && propType != typeof(string))
+                    continue;
+                if (propType.IsPrimitive || propType == typeof(string) || propType == typeof(Vector2) || propType == typeof(Vector3))
                 {
-                    object value = prop.GetValue(obj);
                     string display = value?.ToString() ?? "";
                     sb.Append($"<div class=\"property-row\" data-context=\"prop-{prop.Name}\">");
                     sb.Append($"<div class=\"property-name\">{prop.Name}</div>");
-                    if (prop.PropertyType == typeof(bool))
+                    if (propType == typeof(bool))
                     {
                         bool checkedVal = (bool)value;
                         sb.Append($"<input type=\"checkbox\" {(checkedVal ? "checked" : "")} data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"{type.Name}\" data-property=\"{prop.Name}\">");
                     }
-                    else if (prop.PropertyType.IsEnum)
+                    else if (propType.IsEnum)
                     {
                         sb.Append($"<select data-hook=\"SetComponentProperty\" data-entityid=\"{entityId}\" data-component=\"{type.Name}\" data-property=\"{prop.Name}\">");
-                        foreach (var enumVal in Enum.GetValues(prop.PropertyType))
+                        foreach (var enumVal in Enum.GetValues(propType))
                         {
                             string selected = enumVal.Equals(value) ? " selected" : "";
                             sb.Append($"<option value=\"{enumVal}\" {selected}>{enumVal}</option>");
@@ -379,7 +381,6 @@ namespace ToolChest
         {
             Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");
             FlushSceneSettingsFromUI();
-
             if (hook.StartsWith("SetTextureMapping"))
             {
                 Console.WriteLine("[PropertiesPanel] Texture mapping changed - full update coming in next iteration with JS payload");
