@@ -7,11 +7,14 @@ using System.Linq;
 using SiegeEngine.Systems;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.AssetParsing.Model;
 namespace SiegeEngine.PlayerSystem
 {
     public class PlayerMovement
     {
-        private readonly float _speed = 8.0f;
+        private readonly float _maxSpeed = 8.0f;
+        private readonly float _acceleration = 40.0f;
+        private readonly float _deceleration = 50.0f;
         private readonly float _gridWidth = 12500.0f;
         private readonly float _gridHeight = 7500.0f;
         private readonly ClientPredictionSystem _predictionSystem;
@@ -103,60 +106,69 @@ namespace SiegeEngine.PlayerSystem
             Vector3 forward = new Vector3((float)Math.Sin(yawRad), (float)Math.Cos(yawRad), 0);
             forward = Vector3.Normalize(forward);
             Vector3 right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitZ));
+
+            Vector3 desiredVelocity = Vector3.Zero;
             if (_movementInput != Vector2.Zero)
             {
                 Vector2 normalizedMovement = Vector2.Normalize(_movementInput);
-                Vector3 moveDirection = (forward * normalizedMovement.Y + right * normalizedMovement.X) * _speed * deltaTime;
-                Vector3 newPosition = player.Physics.Position + moveDirection;
-                newPosition = new Vector3(
-                    Math.Clamp(newPosition.X, 0, _gridWidth),
-                    Math.Clamp(newPosition.Y, 0, _gridHeight),
-                    player.Physics.Position.Z);
-                player.Physics.Position = newPosition;
-                Quaternion newRotation = player.Physics.Rotation;
-                float effectiveYawRad = yawRad;
-                float effectiveYawDeg = camera.Yaw;
-                bool isDiagonal = _movementInput.X != 0 && _movementInput.Y != 0;
-                bool isSingleAxis = _movementInput.X == 0 || _movementInput.Y == 0;
-                if (isDiagonal)
+                Vector3 moveDirection = forward * normalizedMovement.Y + right * normalizedMovement.X;
+                desiredVelocity = moveDirection * _maxSpeed;
+            }
+
+            Vector3 currentVel = player.Physics.Velocity;
+            if (desiredVelocity.LengthSquared() > 0.001f)
+            {
+                Vector3 delta = desiredVelocity - currentVel;
+                float maxDelta = _acceleration * deltaTime;
+                if (delta.LengthSquared() > maxDelta * maxDelta)
+                    delta = Vector3.Normalize(delta) * maxDelta;
+                currentVel += delta;
+            }
+            else
+            {
+                float speed = currentVel.Length();
+                if (speed > 0.001f)
                 {
-                    float moveAngleRad = (float)Math.Atan2(normalizedMovement.X, normalizedMovement.Y);
-                    effectiveYawRad = yawRad + moveAngleRad;
-                    effectiveYawDeg = camera.Yaw + moveAngleRad * (180f / (float)Math.PI);
-                    newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -effectiveYawRad);
-                    Console.WriteLine($"PlayerMovement: Diagonal rotation set: CameraYaw={camera.Yaw}°, MoveAngle={moveAngleRad * (180f / (float)Math.PI)}°, EffectiveYaw={effectiveYawDeg}°, Quaternion={newRotation}, MoveDirection={moveDirection}, Input={_movementInput}");
+                    float newSpeed = Math.Max(0f, speed - _deceleration * deltaTime);
+                    currentVel = (newSpeed > 0.001f) ? Vector3.Normalize(currentVel) * newSpeed : Vector3.Zero;
                 }
-                else if (isSingleAxis && _lastPressedKey.HasValue)
+                else
                 {
-                    float rotationOffset = _lastPressedKey switch
-                    {
-                        Key.W => 0f,
-                        Key.A => -(float)(Math.PI / 2),
-                        Key.S => (float)Math.PI,
-                        Key.D => (float)(Math.PI / 2),
-                        _ => 0f
-                    };
-                    effectiveYawRad = yawRad + rotationOffset;
-                    effectiveYawDeg = camera.Yaw + rotationOffset * (180f / (float)Math.PI);
-                    newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -effectiveYawRad);
-                    Console.WriteLine($"PlayerMovement: Third-person {_lastPressedKey} rotation set: CameraYaw={camera.Yaw}°, Offset={rotationOffset * (180f / (float)Math.PI)}°, EffectiveYaw={effectiveYawDeg}°, Quaternion={newRotation}, MoveDirection={moveDirection}");
+                    currentVel = Vector3.Zero;
                 }
-                else if (camera.CurrentPerspective != Perspective.ThirdPerson)
-                {
-                    newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -yawRad);
-                    effectiveYawDeg = camera.Yaw;
-                    Console.WriteLine($"PlayerMovement: {camera.CurrentPerspective} rotation set: Yaw={camera.Yaw}°, Quaternion={newRotation}");
-                }
-                player.Physics.Rotation = newRotation;
-                Vector2 requestedPos = new Vector2(newPosition.X, newPosition.Y);
-                _predictionSystem.EnqueueMovementRequest(player.EntityId, requestedPos, newRotation, player.SteamId);
-                sendMovementRequest(player.EntityId, requestedPos, newRotation);
-                Console.WriteLine($"PlayerMovement: Requested movement to: X={newPosition.X}, Y={newPosition.Y}, MoveDir={moveDirection}, Rotation={newRotation}");
+            }
+            player.Physics.Velocity = currentVel;
+
+            Vector3 newPosition = player.Physics.Position + currentVel * deltaTime;
+            newPosition = new Vector3(
+                Math.Clamp(newPosition.X, 0, _gridWidth),
+                Math.Clamp(newPosition.Y, 0, _gridHeight),
+                player.Physics.Position.Z);
+            player.Physics.Position = newPosition;
+
+            Quaternion newRotation = player.Physics.Rotation;
+            if (currentVel.LengthSquared() > 0.1f)
+            {
+                float moveYawRad = MathF.Atan2(currentVel.X, currentVel.Y);
+                newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -moveYawRad);
             }
             else if (camera.CurrentPerspective != Perspective.ThirdPerson)
             {
-                Quaternion newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -yawRad);
-                player.Physics.Rotation = newRotation;
+                newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -yawRad);
+            }
+            player.Physics.Rotation = newRotation;
+
+            Vector2 requestedPos = new Vector2(newPosition.X, newPosition.Y);
+            _predictionSystem.EnqueueMovementRequest(player.EntityId, requestedPos, newRotation, player.SteamId);
+            sendMovementRequest(player.EntityId, requestedPos, newRotation);
+            Console.WriteLine($"PlayerMovement: Requested movement to: X={newPosition.X}, Y={newPosition.Y}, Velocity={currentVel}, Rotation={newRotation}");
+
+            // Entity-relative blend drive: feed the same local input that produced velocity
+            if (player.BlendComponent != null && player.BlendComponent.Pack != null)
+            {
+                Vector2 localInputForBlend = (currentVel.LengthSquared() < 0.01f) ? Vector2.Zero : _movementInput;
+                var stack = player.BlendComponent.Pack.CreateBlendStack();
+                player.BlendComponent.CurrentBlendParams = stack.MapPlayerInputToBlendCoord(localInputForBlend);
             }
         }
         public static void ResetFrame() { }

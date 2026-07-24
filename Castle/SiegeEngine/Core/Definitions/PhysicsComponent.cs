@@ -45,6 +45,8 @@ namespace SiegeEngine.Core.Definitions
         public Vector3 WorldScale => _transform.WorldScale;
         public Matrix4x4 LocalToWorld => _transform.LocalToWorld;
 
+        public Vector3 Velocity { get; set; } = Vector3.Zero;
+
         public bool IsVisible { get; set; }
         public float Mass
         {
@@ -144,7 +146,6 @@ namespace SiegeEngine.Core.Definitions
             return true;
         }
 
-        // NEW: IComponentData support for round-tripping
         public object ToSerializableData()
         {
             return new PhysicsComponentData
@@ -158,7 +159,8 @@ namespace SiegeEngine.Core.Definitions
                 IsBreakable = IsBreakable,
                 IsBroken = IsBroken,
                 LocalBoundsMinCm = LocalBoundsMinCm,
-                LocalBoundsMaxCm = LocalBoundsMaxCm
+                LocalBoundsMaxCm = LocalBoundsMaxCm,
+                Velocity = Velocity
             };
         }
 
@@ -176,6 +178,7 @@ namespace SiegeEngine.Core.Definitions
                 IsBroken = p.IsBroken;
                 LocalBoundsMinCm = p.LocalBoundsMinCm;
                 LocalBoundsMaxCm = p.LocalBoundsMaxCm;
+                Velocity = p.Velocity;
             }
         }
 
@@ -191,6 +194,7 @@ namespace SiegeEngine.Core.Definitions
             public bool IsBroken { get; set; }
             public Vector3 LocalBoundsMinCm { get; set; }
             public Vector3 LocalBoundsMaxCm { get; set; }
+            public Vector3 Velocity { get; set; }
         }
     }
 }

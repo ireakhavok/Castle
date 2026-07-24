@@ -16,6 +16,7 @@ namespace SiegeEngine.PlayerSystem
         private readonly PhysicsComponent _physics;
         public ulong SteamId { get; set; }
         public FBXModel Model { get; private set; }
+        public BlendedAnimationComponent BlendComponent { get; set; }
         public Vector3 Position => _physics.Position;
         public Player(int entityId, Vector3 position, ulong steamId = 0, ModelManager modelLoader = null)
         {
@@ -53,7 +54,6 @@ namespace SiegeEngine.PlayerSystem
                 if (isGameActive)
                 {
                     movement.Update(this, deltaTime, (id, pos, rotation) => { }, _camera);
-                    // Position = _physics.Position;  ← removed (now single source of truth via TransformComponent)
                 }
             }
         }
