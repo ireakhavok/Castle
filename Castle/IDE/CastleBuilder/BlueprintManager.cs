@@ -91,7 +91,6 @@ namespace CastleBuilder
         {
             SceneData sceneData = ProjectSettings.Current.CurrentSceneData;
             if (sceneData == null) return;
-
             // Keep the new scene visible in the live EditorScene project data so the scene selector
             // and cache see it immediately. NEVER write project.json here — disk persistence is
             // only via explicit Save / Save As / Export / Play payload materialisation.
@@ -114,7 +113,6 @@ namespace CastleBuilder
             {
                 Console.WriteLine($"[BlueprintManager.OnCreateTerrain] New scene '{sceneData.Name}' stays in central memory only (Level + cache populated by NewTerrainPanel + EditorScene)");
             }
-
             var panelManager = PanelManager.Current;
             if (panelManager != null)
             {
@@ -303,8 +301,14 @@ namespace CastleBuilder
                 Settings = ProjectSettings.Current.GetOrCreateSceneSettings(levelName)
                            ?? ProjectSettings.Current.CurrentSceneSettings
             };
-            float[,] liveHeightmap = ProjectSettings.Current.GetUnsavedHeightmap(levelName)
-                                     ?? ProjectSettings.Current.CurrentHeightmap;
+            // Prefer the real LiveSceneState heightmap (correct dimensions) over any default 200x200 buffer.
+            float[,] liveHeightmap = null;
+            var liveState = ProjectStateManager.Current.GetLiveState(levelName);
+            if (liveState != null && liveState.Heightmap != null)
+                liveHeightmap = liveState.Heightmap;
+            if (liveHeightmap == null)
+                liveHeightmap = ProjectSettings.Current.GetUnsavedHeightmap(levelName)
+                                ?? ProjectSettings.Current.CurrentHeightmap;
             if (liveHeightmap != null)
             {
                 int width = liveHeightmap.GetLength(0);
