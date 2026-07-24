@@ -21,6 +21,7 @@ namespace SiegeEngine.Scenes
     public unsafe class RuntimeGameplayScene : GameScene
     {
         private readonly Player _player;
+        private readonly PlayerMovement _playerMovement;
         private readonly FlyCameraController _flyCamera;
         private ShaderProgram _terrainShader;
         protected VertexBuffer _terrainBuffer;
@@ -41,7 +42,8 @@ namespace SiegeEngine.Scenes
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
-            _player = new Player(1, new Vector3(10, 10, 0), 0);
+            _player = ctx?.Player ?? new Player(1, new Vector3(10, 10, 0), 0);
+            _playerMovement = ctx?.PlayerMovement;
             _flyCamera = new FlyCameraController(controlContext, window);
             DefaultDockingMode = DockingMode.Desktop;
             _modelRenderer = new ModelRenderer(renderContext);
@@ -170,7 +172,17 @@ namespace SiegeEngine.Scenes
                 _server.AddEntity(e);
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
             }
-
+            // Restore authoring-time location from Level entity-1 when present
+            var existingPlayerEntity = level.Entities.FirstOrDefault(e => e.Id == _player.EntityId);
+            if (existingPlayerEntity != null)
+            {
+                var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
+                if (existingPhys != null)
+                {
+                    _player.Physics.Position = existingPhys.Position;
+                    _player.Physics.Rotation = existingPhys.Rotation;
+                }
+            }
             // Apply SceneSettings when present (null-safe, no forced defaults)
             var settings = ctx?.SceneData?.Settings;
             if (settings != null)
@@ -193,7 +205,6 @@ namespace SiegeEngine.Scenes
                         }
                     }
                 }
-
                 // AvatarPackKey – resolve model, bind to player, register player entity so it renders
                 string avatarKey = null;
                 if (!string.IsNullOrWhiteSpace(settings.AvatarPackKey))
@@ -210,7 +221,6 @@ namespace SiegeEngine.Scenes
                         avatarKey = null;
                     }
                 }
-
                 // AnimationPackKey – optional; load pack, resolve relative clip paths, attach blend stack to avatar
                 if (!string.IsNullOrWhiteSpace(settings.AnimationPackKey) && avatarKey != null)
                 {
@@ -252,7 +262,6 @@ namespace SiegeEngine.Scenes
                         Console.WriteLine($"[RuntimeGameplayScene] AnimationPackKey '{animKey}' could not be loaded");
                     }
                 }
-
                 // Register / update the player entity so ModelRenderer draws the avatar
                 if (avatarKey != null)
                 {
@@ -268,6 +277,9 @@ namespace SiegeEngine.Scenes
                     }
                     else
                     {
+                        // Force the exact same component instances so movement writes are visible to both camera and ModelRenderer
+                        playerEntity.AddComponent(_player);
+                        playerEntity.AddComponent(_player.Physics);
                         var mc = playerEntity.GetComponent<ModelComponent>();
                         if (mc == null)
                         {
@@ -278,13 +290,8 @@ namespace SiegeEngine.Scenes
                             mc.Key = avatarKey;
                             mc.Model = _player.Model;
                         }
-                        // keep Physics in sync with any spawn-point write
-                        var phys = playerEntity.GetComponent<PhysicsComponent>();
-                        if (phys != null)
-                            phys.Position = _player.Physics.Position;
                     }
                 }
-
                 // CameraMode
                 if (!string.IsNullOrWhiteSpace(settings.CameraMode) && _player.Camera != null)
                 {
@@ -300,10 +307,8 @@ namespace SiegeEngine.Scenes
                     // Avatar present but no explicit CameraMode → still prefer the player camera
                     _usePlayerCamera = true;
                 }
-
                 // ControllerTypeName is applied by SceneManager / ScriptLoader when a PlayerMovement instance is present
             }
-
             if (!_usePlayerCamera)
             {
                 ForceVisibleOverheadCamera();
@@ -429,6 +434,10 @@ namespace SiegeEngine.Scenes
             if (_usePlayerCamera && _player?.Camera != null)
             {
                 _player.Camera.Update(deltaTime, 0f, true);
+                if (_playerMovement != null)
+                {
+                    _playerMovement.Update(_player, deltaTime, (id, pos, rotation) => { }, _player.Camera);
+                }
             }
             else
             {
