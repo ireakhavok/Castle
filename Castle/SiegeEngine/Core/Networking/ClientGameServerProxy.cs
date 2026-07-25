@@ -15,6 +15,7 @@ namespace SiegeEngine.Core.Networking
     {
         private readonly EventBus _eventBus;
         private readonly List<Entity> _entities = new List<Entity>();
+        private readonly List<GameSystem> _systems = new List<GameSystem>();
         private int _nextEntityId = 1;
 
         public ClientGameServerProxy(EventBus eventBus)
@@ -44,6 +45,7 @@ namespace SiegeEngine.Core.Networking
                     existingPhysics.Size = newPhysics.Size;
                     existingPhysics.LocalBoundsMinCm = newPhysics.LocalBoundsMinCm;
                     existingPhysics.LocalBoundsMaxCm = newPhysics.LocalBoundsMaxCm;
+                    existingPhysics.Velocity = newPhysics.Velocity;
                 }
 
                 var existingModel = existing.GetComponent<ModelComponent>();
@@ -52,6 +54,14 @@ namespace SiegeEngine.Core.Networking
                 {
                     existingModel.Key = newModel.Key;
                     existingModel.Model = newModel.Model;
+                }
+
+                // Preserve BlendedAnimationComponent if the incoming entity carries one
+                var existingBlend = existing.GetComponent<BlendedAnimationComponent>();
+                var newBlend = entity.GetComponent<BlendedAnimationComponent>();
+                if (existingBlend == null && newBlend != null)
+                {
+                    existing.AddComponent(newBlend);
                 }
 
                 Console.WriteLine($"[ClientGameServerProxy] Updated existing entity {entity.Id} (prevented duplicate from editor sync)");
@@ -103,9 +113,17 @@ namespace SiegeEngine.Core.Networking
             return _entities.Find(e => e.Id == id);
         }
 
-        public void AddSystem(GameSystem system) { }
+        public void AddSystem(GameSystem system)
+        {
+            if (system != null && !_systems.Contains(system))
+                _systems.Add(system);
+        }
 
-        public void Update(float deltaTime) { }
+        public void Update(float deltaTime)
+        {
+            foreach (var system in _systems)
+                system.Update(deltaTime);
+        }
 
         public bool ValidateAndUpdateMovement(int entityId, Vector2 requestedPosition, Quaternion requestedRotation, ulong steamId)
         {

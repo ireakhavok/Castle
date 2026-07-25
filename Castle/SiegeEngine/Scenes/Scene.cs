@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine/Scenes
+// File: Scene.cs
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Rendering;
@@ -73,6 +75,8 @@ namespace SiegeEngine.Scenes
                 }
                 system.Update(deltaTime);
             }
+            // Drive systems registered on the IGameServer (AnimationSystem, ClientPredictionSystem, etc.)
+            _server.Update(deltaTime);
         }
 
         public virtual void Render(IReadOnlyList<Entity> entities)

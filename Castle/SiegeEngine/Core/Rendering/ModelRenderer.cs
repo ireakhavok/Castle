@@ -38,7 +38,10 @@ namespace SiegeEngine.Core.Rendering
                 Matrix4x4 translation = Matrix4x4.CreateTranslation(physics.Position);
                 Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
                 Matrix4x4 modelMatrix = scaleMat * rotation * translation;
-                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix);
+                // Pass live skinning matrices when AnimationSystem has produced them
+                Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
+                Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
+                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices);
             }
             else
             {
@@ -66,7 +69,9 @@ namespace SiegeEngine.Core.Rendering
             _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
             if (fbxModel != null && modelData != null)
             {
-                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix);
+                Matrix4x4[] boneMatrices = modelComp.BoneMatrices;
+                Matrix3x3[] normalMatrices = modelComp.NormalBoneTransforms;
+                RenderModel(fbxModel, modelData, view, projection, viewPos, modelMatrix, boneMatrices, normalMatrices);
             }
             _renderContext.Disable(_renderContext.Enums.CullFace);
         }

@@ -60,6 +60,7 @@ namespace SiegeEngine.Core.Managers
             _server = new ClientGameServerProxy(_eventBus);
             var predictionSystem = new ClientPredictionSystem(_server, _eventBus);
             _server.AddSystem(predictionSystem);
+            _server.AddSystem(new AnimationSystem(_server));
             _modelManager = new ModelManager(_renderContext);
             _modelManager.LoadModel(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx"));
             Vector3 startPos = new Vector3(10, 10, 0);
@@ -174,6 +175,7 @@ namespace SiegeEngine.Core.Managers
             // Materialise pure-runtime player + movement (core contract: payload/ctx only)
             var predictionSystem = new ClientPredictionSystem(ctx.Server, _eventBus);
             ctx.Server.AddSystem(predictionSystem);
+            ctx.Server.AddSystem(new AnimationSystem(ctx.Server));
             ulong steamId = 0;
             if (_steamEngine is SteamEngine se) steamId = se.GetSteamId();
             _player = new Player(1, new Vector3(10, 10, 0), steamId);

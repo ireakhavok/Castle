@@ -27,6 +27,14 @@ namespace SiegeEngine.Core.Managers
         // Source models from animation FBXs (skeleton/rest-pose). Populated once on first AttachAnimation parse.
         private readonly Dictionary<string, FBXModel> _animSourceModels = new Dictionary<string, FBXModel>(StringComparer.OrdinalIgnoreCase);
         private readonly IRenderContext _renderContext;
+
+        // Shared options so Vector3 fields (X/Y/Z) on AnimationClipEntry.BlendCoordinate survive round-trip.
+        private static readonly JsonSerializerOptions PackJsonOptions = new JsonSerializerOptions
+        {
+            IncludeFields = true,
+            WriteIndented = true
+        };
+
         public static ModelManager Instance { get; private set; }
         public class ModelData
         {
@@ -112,7 +120,7 @@ namespace SiegeEngine.Core.Managers
             if (_animationPacks.ContainsKey(key))
                 return;
             string json = File.ReadAllText(packPath);
-            var pack = JsonSerializer.Deserialize<AnimationPack>(json);
+            var pack = JsonSerializer.Deserialize<AnimationPack>(json, PackJsonOptions);
             _animationPacks[key] = pack;
             string resolvedFBXPath = ResolveSourceFBXPath(pack.SourceFBXPath, packPath);
             if (!string.IsNullOrEmpty(resolvedFBXPath) && File.Exists(resolvedFBXPath))
@@ -176,7 +184,7 @@ namespace SiegeEngine.Core.Managers
             try
             {
                 string json = File.ReadAllText(jsonPath);
-                var pack = JsonSerializer.Deserialize<AnimationPack>(json);
+                var pack = JsonSerializer.Deserialize<AnimationPack>(json, PackJsonOptions);
                 if (pack == null) return false;
                 if (string.IsNullOrEmpty(pack.Id)) pack.Id = key;
                 _animationPacks[key] = pack;
@@ -287,7 +295,7 @@ namespace SiegeEngine.Core.Managers
             {
                 pack.Material = model.Meshes[0].Materials[0];
             }
-            string json = JsonSerializer.Serialize(pack, new JsonSerializerOptions { WriteIndented = true });
+            string json = JsonSerializer.Serialize(pack, PackJsonOptions);
             string jsonPath = Path.Combine(packFolder, "assetpack.json");
             File.WriteAllText(jsonPath, json);
             Console.WriteLine($"[ModelManager] Created AssetPack on SAVE → {packFolder} (Id: {packId}) with FBX + textures + manifest + Material — keyframes excluded by [JsonIgnore]");

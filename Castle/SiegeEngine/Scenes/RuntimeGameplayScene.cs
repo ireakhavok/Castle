@@ -222,12 +222,14 @@ namespace SiegeEngine.Scenes
                     }
                 }
                 // AnimationPackKey – optional; load pack, resolve relative clip paths, attach blend stack to avatar
+                AnimationPack attachedPack = null;
                 if (!string.IsNullOrWhiteSpace(settings.AnimationPackKey) && avatarKey != null)
                 {
                     string animKey = settings.AnimationPackKey.Trim();
                     if (_modelManager.TryLoadPackByKey(animKey, projectPath) &&
                         _modelManager.TryGetAnimationPack(animKey, out var animPack))
                     {
+                        attachedPack = animPack;
                         // Locate the on-disk json so relative clip paths can be resolved
                         string packsDir = Path.Combine(projectPath, "Assets", "Packs");
                         string jsonPath = Path.Combine(packsDir, animKey.ToLowerInvariant() + ".json");
@@ -290,6 +292,19 @@ namespace SiegeEngine.Scenes
                             mc.Key = avatarKey;
                             mc.Model = _player.Model;
                         }
+                    }
+                    // Attach BlendedAnimationComponent when a pack was resolved so AnimationSystem can drive it
+                    if (attachedPack != null)
+                    {
+                        var blendComp = new BlendedAnimationComponent
+                        {
+                            Pack = attachedPack,
+                            Playing = true,
+                            CurrentBlendParams = Vector3.Zero
+                        };
+                        playerEntity.AddComponent(blendComp);
+                        _player.BlendComponent = blendComp;
+                        Console.WriteLine($"[RuntimeGameplayScene] BlendedAnimationComponent attached to player entity {_player.EntityId}");
                     }
                 }
                 // CameraMode
