@@ -3,7 +3,6 @@
 using SiegeEngine.Core.AssetParsing.Model;
 using System;
 using System.Numerics;
-
 namespace SiegeEngine.Core.Definitions
 {
     public class BlendedAnimationComponent : IComponent, IComponentData
@@ -14,6 +13,11 @@ namespace SiegeEngine.Core.Definitions
         public bool Playing { get; set; } = true;
         public float MasterSpeed { get; set; } = 1.0f;
         public bool IsStatic { get; set; } = false;
+
+        // Long-lived stack owned by the component. Created once from Pack.CreateBlendStack().
+        // LocalTime advances on this instance only; the pack itself remains immutable.
+        [System.Text.Json.Serialization.JsonIgnore]
+        public AnimationBlendStack RuntimeStack { get; set; }
 
         // NEW: IComponentData support for round-tripping
         public object ToSerializableData()
@@ -27,7 +31,6 @@ namespace SiegeEngine.Core.Definitions
                 IsStatic = IsStatic
             };
         }
-
         public void FromSerializableData(object data)
         {
             if (data is BlendedAnimationComponentData b)
@@ -39,7 +42,6 @@ namespace SiegeEngine.Core.Definitions
                 IsStatic = b.IsStatic;
             }
         }
-
         private class BlendedAnimationComponentData
         {
             public Vector3 CurrentBlendParams { get; set; }

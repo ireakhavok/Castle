@@ -34,7 +34,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
         {
             if (moveInput.Length() < BlendConfig.DeadZone) moveInput = Vector2.Zero;
             float x = Math.Clamp(moveInput.X, -1f, 1f) * (moveInput.X >= 0 ? BlendConfig.XMax : -BlendConfig.XMin);
-            float y = Math.Clamp(moveInput.Y, -1f, 1f) * (moveInput.Y >= 0 ? BlendConfig.YMax : -BlendConfig.YMin);
+            // Pack + editor grid convention: top-of-grid = -1 = forward. Positive player forward (W) must therefore produce negative blend Y.
+            float y = Math.Clamp(moveInput.Y, -1f, 1f) * (moveInput.Y >= 0 ? -BlendConfig.YMax : BlendConfig.YMin);
             float z = Math.Clamp(vertical, BlendConfig.ZMin, BlendConfig.ZMax);
             return new Vector3(x, y, z);
         }
@@ -70,16 +71,33 @@ namespace SiegeEngine.Core.AssetParsing.Model
         }
         public Matrix4x4[] ComputeBlendedLocals(Vector3 params3D, float deltaTime, bool isPlaying, FBXModel model)
         {
-            if (Clips.Count == 0 || model == null || model.Skeleton == null) return null;
+            if (model == null || model.Skeleton == null) return null;
+            int boneCount = model.Skeleton.Bones.Count;
+            if (Clips.Count == 0)
+            {
+                var rest = new Matrix4x4[boneCount];
+                for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
+                return rest;
+            }
             if (Clips.Count == 1)
             {
                 var clip = Clips[0];
-                if (string.IsNullOrEmpty(clip.AnimationPath)) return null;
+                if (string.IsNullOrEmpty(clip.AnimationPath))
+                {
+                    var rest = new Matrix4x4[boneCount];
+                    for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
+                    return rest;
+                }
                 if (isPlaying) clip.LocalTime += deltaTime * clip.PlaybackSpeed;
                 string desiredName = Path.GetFileNameWithoutExtension(clip.AnimationPath).ToLowerInvariant();
                 var anim = model.Animations.FirstOrDefault(a => string.Equals(a.Name, desiredName, StringComparison.OrdinalIgnoreCase))
                            ?? model.Animations.LastOrDefault();
-                if (anim == null || anim.Keyframes.Count == 0) return null;
+                if (anim == null || anim.Keyframes.Count == 0)
+                {
+                    var rest = new Matrix4x4[boneCount];
+                    for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
+                    return rest;
+                }
                 float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
                 float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : animDuration;
                 if (clip.Loop && clip.LocalTime > clipDur) clip.LocalTime = 0f;
@@ -97,8 +115,8 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 float frac = (t1 - t0 > 0) ? (lookupTime - t0) / (t1 - t0) : 0f;
                 var l0 = anim.Keyframes[lower].BoneTransforms;
                 var l1 = anim.Keyframes[upper].BoneTransforms;
-                var lerpedLocals = new Matrix4x4[model.Skeleton.Bones.Count];
-                for (int b = 0; b < Math.Min(model.Skeleton.Bones.Count, l0.Count); b++)
+                var lerpedLocals = new Matrix4x4[boneCount];
+                for (int b = 0; b < Math.Min(boneCount, l0.Count); b++)
                 {
                     if (Matrix4x4.Decompose(l0[b], out Vector3 s0, out Quaternion r0, out Vector3 p0) &&
                         Matrix4x4.Decompose(l1[b], out Vector3 s1, out Quaternion r1, out Vector3 p1))
@@ -113,36 +131,44 @@ namespace SiegeEngine.Core.AssetParsing.Model
                         lerpedLocals[b] = l0[b];
                     }
                 }
+                for (int b = Math.Min(boneCount, l0.Count); b < boneCount; b++)
+                    lerpedLocals[b] = model.Skeleton.Bones[b].LocalRest;
                 return lerpedLocals;
             }
+            // Multi-clip inverse-distance weighting
             float totalWeight = 0f;
             var weights = new float[Clips.Count];
             for (int i = 0; i < Clips.Count; i++)
             {
                 float dist = Vector3.Distance(params3D, Clips[i].BlendCoordinate);
                 float vecFactor = 1f;
-                if (Clips[i].BlendCoordinate.LengthSquared() < 0.1f) // idle clip
+                if (Clips[i].BlendCoordinate.LengthSquared() < 0.1f)
                     vecFactor = Math.Clamp(1f - (params3D.Length() * 0.6f), 0.15f, 1f);
                 weights[i] = vecFactor / (dist * dist + 0.0001f);
                 totalWeight += weights[i];
             }
-            for (int i = 0; i < weights.Length; i++) weights[i] /= totalWeight;
-            var finalPos = new Vector3[model.Skeleton.Bones.Count];
-            var finalRot = new Quaternion[model.Skeleton.Bones.Count];
-            var finalScale = new Vector3[model.Skeleton.Bones.Count];
-            for (int b = 0; b < model.Skeleton.Bones.Count; b++)
+            if (totalWeight <= 0f)
             {
-                finalPos[b] = Vector3.Zero;
-                finalRot[b] = new Quaternion(0, 0, 0, 0);
-                finalScale[b] = Vector3.Zero;
+                var rest = new Matrix4x4[boneCount];
+                for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
+                return rest;
             }
-            bool firstClip = true;
+            for (int i = 0; i < weights.Length; i++) weights[i] /= totalWeight;
+
+            // Sample every clip once (advance LocalTime, resolve anim, produce per-bone p/r/s)
+            var samplePos = new Vector3[Clips.Count][];
+            var sampleRot = new Quaternion[Clips.Count][];
+            var sampleScale = new Vector3[Clips.Count][];
+            var sampleValid = new bool[Clips.Count];
             for (int c = 0; c < Clips.Count; c++)
             {
+                samplePos[c] = new Vector3[boneCount];
+                sampleRot[c] = new Quaternion[boneCount];
+                sampleScale[c] = new Vector3[boneCount];
+                sampleValid[c] = false;
                 var clip = Clips[c];
                 if (string.IsNullOrEmpty(clip.AnimationPath)) continue;
                 if (isPlaying) clip.LocalTime += deltaTime * clip.PlaybackSpeed;
-                // Lookup solely by source filename (never by internal FBX stack name)
                 string desiredName = Path.GetFileNameWithoutExtension(clip.AnimationPath).ToLowerInvariant();
                 var anim = model.Animations.FirstOrDefault(a => string.Equals(a.Name, desiredName, StringComparison.OrdinalIgnoreCase));
                 if (anim == null || anim.Keyframes.Count == 0) continue;
@@ -163,38 +189,80 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 float frac = (t1 - t0 > 0) ? (lookupTime - t0) / (t1 - t0) : 0f;
                 var l0 = anim.Keyframes[lower].BoneTransforms;
                 var l1 = anim.Keyframes[upper].BoneTransforms;
-                for (int b = 0; b < Math.Min(model.Skeleton.Bones.Count, l0.Count); b++)
+                int maxB = Math.Min(boneCount, l0.Count);
+                for (int b = 0; b < maxB; b++)
                 {
                     if (Matrix4x4.Decompose(l0[b], out Vector3 s0, out Quaternion r0, out Vector3 p0) &&
                         Matrix4x4.Decompose(l1[b], out Vector3 s1, out Quaternion r1, out Vector3 p1))
                     {
-                        Vector3 p = Vector3.Lerp(p0, p1, frac);
-                        Quaternion r = Quaternion.Normalize(Quaternion.Slerp(r0, r1, frac));
-                        Vector3 s = Vector3.Lerp(s0, s1, frac);
-                        if (firstClip)
-                        {
-                            finalRot[b] = r;
-                            firstClip = false;
-                        }
-                        else
-                        {
-                            if (Quaternion.Dot(finalRot[b], r) < 0f)
-                                r = Quaternion.Negate(r);
-                        }
-                        finalPos[b] += p * weights[c];
-                        finalRot[b].X += r.X * weights[c];
-                        finalRot[b].Y += r.Y * weights[c];
-                        finalRot[b].Z += r.Z * weights[c];
-                        finalRot[b].W += r.W * weights[c];
-                        finalScale[b] += s * weights[c];
+                        samplePos[c][b] = Vector3.Lerp(p0, p1, frac);
+                        sampleRot[c][b] = Quaternion.Normalize(Quaternion.Slerp(r0, r1, frac));
+                        sampleScale[c][b] = Vector3.Lerp(s0, s1, frac);
+                    }
+                    else
+                    {
+                        samplePos[c][b] = Vector3.Zero;
+                        sampleRot[c][b] = Quaternion.Identity;
+                        sampleScale[c][b] = Vector3.One;
                     }
                 }
+                for (int b = maxB; b < boneCount; b++)
+                {
+                    samplePos[c][b] = Vector3.Zero;
+                    sampleRot[c][b] = Quaternion.Identity;
+                    sampleScale[c][b] = Vector3.One;
+                }
+                sampleValid[c] = true;
             }
-            var blendedLocals = new Matrix4x4[model.Skeleton.Bones.Count];
-            for (int b = 0; b < model.Skeleton.Bones.Count; b++)
+
+            // Highest-weight valid clip becomes the rotation base for successive weighted Slerp
+            int baseClip = -1;
+            float maxW = -1f;
+            for (int c = 0; c < Clips.Count; c++)
             {
-                Quaternion blendedR = Quaternion.Normalize(finalRot[b]);
-                blendedLocals[b] = model.Skeleton.Bones[b].ComputeLocal(finalPos[b], blendedR, finalScale[b]);
+                if (sampleValid[c] && weights[c] > maxW)
+                {
+                    maxW = weights[c];
+                    baseClip = c;
+                }
+            }
+            if (baseClip < 0)
+            {
+                var rest = new Matrix4x4[boneCount];
+                for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
+                return rest;
+            }
+
+            var finalPos = new Vector3[boneCount];
+            var finalRot = new Quaternion[boneCount];
+            var finalScale = new Vector3[boneCount];
+            for (int b = 0; b < boneCount; b++)
+            {
+                finalPos[b] = Vector3.Zero;
+                finalScale[b] = Vector3.Zero;
+                // Start rotation from the highest-weight clip for this bone
+                finalRot[b] = sampleRot[baseClip][b];
+                float rotWeightSum = weights[baseClip];
+                for (int c = 0; c < Clips.Count; c++)
+                {
+                    if (!sampleValid[c]) continue;
+                    float w = weights[c];
+                    finalPos[b] += samplePos[c][b] * w;
+                    finalScale[b] += sampleScale[c][b] * w;
+                    if (c == baseClip) continue;
+                    Quaternion r = sampleRot[c][b];
+                    if (Quaternion.Dot(finalRot[b], r) < 0f) r = Quaternion.Negate(r);
+                    float t = w / (rotWeightSum + w);
+                    finalRot[b] = Quaternion.Slerp(finalRot[b], r, t);
+                    rotWeightSum += w;
+                }
+                finalRot[b] = Quaternion.Normalize(finalRot[b]);
+            }
+
+            var blendedLocals = new Matrix4x4[boneCount];
+            for (int b = 0; b < boneCount; b++)
+            {
+                blendedLocals[b] = model.Skeleton.Bones[b].ComputeLocal(finalPos[b], finalRot[b], finalScale[b]);
             }
             return blendedLocals;
         }
