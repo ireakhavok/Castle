@@ -5,7 +5,6 @@ using System.Numerics;
 using SiegeEngine.Core.Managers;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
-
 namespace SiegeEngine.PlayerSystem
 {
     public enum Perspective
@@ -14,7 +13,6 @@ namespace SiegeEngine.PlayerSystem
         ThirdPerson,
         OverTheShoulder
     }
-
     public class CameraController
     {
         protected readonly IControlContext _controlContext;
@@ -41,14 +39,12 @@ namespace SiegeEngine.PlayerSystem
         protected bool _wasShiftPressedLastFrame = false;
         protected bool _wasTabPressedLastFrame = false;
         protected Vector3 _position;
-
         public Vector3 Position => _position;
         public Matrix4x4 ViewMatrix { get; set; }
         public float Yaw => _yaw;
         public Perspective CurrentPerspective => _perspective;
         public float Pitch => _pitch;
         public Vector2 MousePosition { get; private set; }
-
         public CameraController(IControlContext controlContext, IntPtr window, Player player = null)
         {
             _controlContext = controlContext ?? throw new ArgumentNullException(nameof(controlContext));
@@ -57,12 +53,10 @@ namespace SiegeEngine.PlayerSystem
             _position = _player?.Physics.Position + new Vector3(0, 0, _playerHeight) ?? new Vector3(64, 36, 0.05f);
             UpdateCamera();
         }
-
         public void SetPerspective(Perspective perspective)
         {
             _perspective = perspective;
         }
-
         public void Update(float deltaTime, float scrollDelta, bool isGameActive)
         {
             bool focused = _controlContext.GetWindowAttrib(_window, WindowAttribute.Focused);
@@ -143,7 +137,6 @@ namespace SiegeEngine.PlayerSystem
                 UpdateCamera();
             }
         }
-
         private void ChangePerspective()
         {
             _perspective = _perspective switch
@@ -155,7 +148,6 @@ namespace SiegeEngine.PlayerSystem
             };
             Console.WriteLine($"Camera perspective changed to: {_perspective}");
         }
-
         protected void UpdateCamera()
         {
             if (_player != null) // Player mode only
@@ -165,7 +157,6 @@ namespace SiegeEngine.PlayerSystem
                 Vector3 otstarget = _player.Physics.Position + new Vector3(0, 0, _playerHeight);
                 float yawRad = _yaw * (float)(Math.PI / 180);
                 float pitchRad = _pitch * (float)(Math.PI / 180);
-
                 if (_perspective == Perspective.FirstPerson)
                 {
                     _position = fptarget;
@@ -195,17 +186,15 @@ namespace SiegeEngine.PlayerSystem
                         (float)Math.Cos(yawRad) * (float)Math.Cos(pitchRad),
                         (float)Math.Sin(pitchRad)
                     ), Vector3.UnitZ));
-
                     Vector3 horizontalForward = new Vector3(
                         (float)Math.Sin(yawRad),
                         (float)Math.Cos(yawRad),
                         0
                     );
-
-                    // Camera position: behind player + slight left shoulder, at correct height
-                    Vector3 offset = horizontalForward * (_distance * 0.25f);
+                    // Camera position: farther behind the player (moved back ~2 m relative to previous 0.25 * distance)
+                    // Use a larger fraction of the current zoom distance so scroll still works.
+                    Vector3 offset = horizontalForward * (_distance * 0.75f);
                     _position = otstarget - offset + right * shoulderShift;
-
                     // Look direction uses full yaw + free pitch (Gears-of-War style crosshair)
                     Vector3 lookDirection = new Vector3(
                         (float)Math.Cos(pitchRad) * (float)Math.Sin(yawRad),

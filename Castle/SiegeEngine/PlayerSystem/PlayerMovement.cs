@@ -146,14 +146,22 @@ namespace SiegeEngine.PlayerSystem
                 player.Physics.Position.Z);
             player.Physics.Position = newPosition;
 
+            // Rotation rules by perspective:
+            // ThirdPerson  → model faces velocity when moving (classic TP).
+            // OverTheShoulder / FirstPerson → model always faces camera yaw so strafing is pure lateral and the pack’s side clips are used.
             Quaternion newRotation = player.Physics.Rotation;
-            if (currentVel.LengthSquared() > 0.1f)
+            if (camera.CurrentPerspective == Perspective.ThirdPerson)
             {
-                float moveYawRad = MathF.Atan2(currentVel.X, currentVel.Y);
-                newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -moveYawRad);
+                if (currentVel.LengthSquared() > 0.1f)
+                {
+                    float moveYawRad = MathF.Atan2(currentVel.X, currentVel.Y);
+                    newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -moveYawRad);
+                }
+                // stationary: leave rotation as-is
             }
-            else if (camera.CurrentPerspective != Perspective.ThirdPerson)
+            else
             {
+                // OTS / FP: lock facing to camera
                 newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -yawRad);
             }
             player.Physics.Rotation = newRotation;
@@ -167,10 +175,26 @@ namespace SiegeEngine.PlayerSystem
                 Console.WriteLine($"PlayerMovement: Requested movement to: X={newPosition.X}, Y={newPosition.Y}, Velocity={currentVel}, Rotation={newRotation}");
             }
 
-            // Entity-relative blend drive: feed the same local input that produced velocity
+            // Blend drive: model-local for ThirdPerson (model faces velocity → pure forward),
+            // camera-local for OverTheShoulder / FirstPerson (pack was authored for strafing).
             if (player.BlendComponent != null && player.BlendComponent.Pack != null)
             {
-                Vector2 localInputForBlend = (currentVel.LengthSquared() < 0.01f) ? Vector2.Zero : _movementInput;
+                Vector2 localInputForBlend;
+                if (currentVel.LengthSquared() < 0.01f)
+                {
+                    localInputForBlend = Vector2.Zero;
+                }
+                else if (camera.CurrentPerspective == Perspective.ThirdPerson)
+                {
+                    // Model is already rotated to face velocity → always forward in model space
+                    localInputForBlend = new Vector2(0f, 1f);
+                }
+                else
+                {
+                    // OTS / FP: camera-relative input matches the pack’s strafe layout
+                    localInputForBlend = _movementInput;
+                }
+
                 var stack = player.BlendComponent.Pack.CreateBlendStack();
                 player.BlendComponent.CurrentBlendParams = stack.MapPlayerInputToBlendCoord(localInputForBlend);
             }
