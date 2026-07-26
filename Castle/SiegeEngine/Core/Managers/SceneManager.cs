@@ -13,6 +13,7 @@ using SiegeEngine.Systems;
 using System;
 using System.Numerics;
 using System.Text.Json;
+
 namespace SiegeEngine.Core.Managers
 {
     public class SceneManager
@@ -31,6 +32,7 @@ namespace SiegeEngine.Core.Managers
         private PlayerMovement _playerMovement;
         private ModelManager _modelManager;
         private IGameServer _server;
+
         public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, nint window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuPanel menuPanel)
         {
             _eventBus = eventBus;
@@ -44,14 +46,17 @@ namespace SiegeEngine.Core.Managers
             _menuPanel = menuPanel;
             _eventBus.Subscribe<SwitchSceneEvent>(OnSwitchScene);
         }
+
         public void Update(float deltaTime) => _currentScene?.Update(deltaTime);
         public void Render() => _currentScene?.Render(_server?.GetEntities() ?? Array.Empty<Entity>());
         public void Resize(int width, int height) => _currentScene?.Resize(width, height);
+
         public void Dispose()
         {
             _currentScene?.Dispose();
             _currentScene = null;
         }
+
         private void OnSwitchScene(SwitchSceneEvent e)
         {
             Console.WriteLine($"SceneManager: Switching to '{e.SceneName}'");
@@ -83,19 +88,19 @@ namespace SiegeEngine.Core.Managers
                 PlayerMovement = _playerMovement,
                 ModelManager = _modelManager
             };
+            ScriptLoader.ActivateProjectScripts(ctx, _inputHandler, predictionSystem);
+            _playerMovement = ctx.PlayerMovement ?? _playerMovement;
             _currentScene = (Scene)SceneRegistry.Create(e.SceneName, ctx);
             _currentScene.SetPlayer(_player);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine($"SceneManager: '{e.SceneName}' initialized successfully via registry.");
-            ScriptLoader.RegisterCustomSystems(_eventBus, _server);
-            ScriptLoader.ApplyCustomPlayerControllerIfPresent(_player, ref _playerMovement);
         }
+
         public void SwitchToRuntimeGameplay(string projectPath, string levelName, string levelDataPayload = null, string sceneDataPayload = null, Level currentLevel = null)
         {
             Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0} - levelPayload present: {levelDataPayload != null}, scenePayload present: {sceneDataPayload != null}");
             Level level = currentLevel;
             SceneData reconstructedSceneData = null;
-            // Prefer Level payload when present (dual-preference rule).
             if (!string.IsNullOrEmpty(levelDataPayload))
             {
                 try
@@ -110,7 +115,6 @@ namespace SiegeEngine.Core.Managers
                     level = null;
                 }
             }
-            // Always try SceneData for world content fill + Settings + embedded heightmap.
             if (!string.IsNullOrEmpty(sceneDataPayload))
             {
                 try
@@ -126,7 +130,6 @@ namespace SiegeEngine.Core.Managers
                                 level.AddEntity(Entity.FromData(ed));
                         }
                     }
-                    // Merge world content from SceneData when Level is missing fields (especially Skybox).
                     if (reconstructedSceneData != null)
                     {
                         if (level.Terrain == null) level.Terrain = reconstructedSceneData.Terrain;
@@ -150,7 +153,6 @@ namespace SiegeEngine.Core.Managers
             ctx.PlayProjectPath = projectPath;
             ctx.LoadLevelName = levelName;
             ctx.CurrentLevel = level;
-            // Populate HeightmapSnapshot from embedded transfer data when present.
             if (reconstructedSceneData?.Terrain != null && reconstructedSceneData.Terrain.EmbeddedHeightmapData != null && reconstructedSceneData.Terrain.EmbeddedHeightmapWidth > 0 && reconstructedSceneData.Terrain.EmbeddedHeightmapHeight > 0)
             {
                 int w = reconstructedSceneData.Terrain.EmbeddedHeightmapWidth;
@@ -172,7 +174,6 @@ namespace SiegeEngine.Core.Managers
             {
                 ModelManager.EnsurePacksLoaded(projectPath, level);
             }
-            // Materialise pure-runtime player + movement (core contract: payload/ctx only)
             var predictionSystem = new ClientPredictionSystem(ctx.Server, _eventBus);
             ctx.Server.AddSystem(predictionSystem);
             ctx.Server.AddSystem(new AnimationSystem(ctx.Server));
@@ -181,17 +182,13 @@ namespace SiegeEngine.Core.Managers
             _player = new Player(1, new Vector3(10, 10, 0), steamId);
             _player.InitializeCamera(_controlContext, _window);
             _playerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
-            string controllerType = reconstructedSceneData?.Settings?.ControllerTypeName;
-            ScriptLoader.ApplyControllerByTypeName(controllerType, _player, ref _playerMovement);
             ctx.Player = _player;
             ctx.PlayerMovement = _playerMovement;
+            ScriptLoader.ActivateProjectScripts(ctx, _inputHandler, predictionSystem);
+            _playerMovement = ctx.PlayerMovement ?? _playerMovement;
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot - entities rehydrated and added");
-            ScriptLoader.RegisterCustomSystems(_eventBus, ctx.Server);
-            // ControllerTypeName is resolved inside RuntimeGameplayScene via SceneData.Settings when present.
-            // Attribute-based fallback remains available for the classic OnSwitchScene path.
-            ScriptLoader.ApplyCustomPlayerControllerIfPresent(_player, ref _playerMovement);
         }
     }
 }

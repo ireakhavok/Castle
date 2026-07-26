@@ -1,21 +1,27 @@
 ﻿// Folder: SiegeEngine.Core.Managers
 // File: ScriptLoader.cs
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.PlayerSystem;
+using SiegeEngine.Scenes;
 using SiegeEngine.Systems;
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Reflection;
 using System.Diagnostics;
-using System.Threading;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 
 namespace SiegeEngine.Core.Managers
 {
     public static class ScriptLoader
     {
+        private static readonly List<Assembly> _loadedAssemblies = new List<Assembly>();
+        private static readonly object _assemblyLock = new object();
+
         public static void ScanProjectScripts(string projectPath)
         {
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
@@ -90,22 +96,20 @@ namespace SiegeEngine.Core.Managers
             try
             {
                 Assembly ass = Assembly.LoadFrom(dllPath);
+                lock (_assemblyLock)
+                {
+                    if (!_loadedAssemblies.Contains(ass))
+                        _loadedAssemblies.Add(ass);
+                }
                 Console.WriteLine($"[ScriptLoader] Successfully loaded custom assembly: {dllPath}");
                 foreach (Type type in ass.GetTypes())
                 {
                     if (type.GetCustomAttributes(typeof(RegisterGameSystemAttribute), false).Length > 0)
-                    {
-                        var instance = Activator.CreateInstance(type) as GameSystem;
-                        Console.WriteLine($"[ScriptLoader] Registered custom GameSystem: {type.Name}");
-                    }
+                        Console.WriteLine($"[ScriptLoader] Discovered [RegisterGameSystem]: {type.FullName}");
                     if (type.GetCustomAttributes(typeof(CustomPlayerControllerAttribute), false).Length > 0)
-                    {
-                        Console.WriteLine($"[ScriptLoader] Registered custom PlayerController: {type.Name} (swap ready)");
-                    }
+                        Console.WriteLine($"[ScriptLoader] Discovered [CustomPlayerController]: {type.FullName}");
                     if (type.GetCustomAttributes(typeof(CustomSceneEntryAttribute), false).Length > 0)
-                    {
-                        Console.WriteLine($"[ScriptLoader] Registered custom Scene: {type.Name}");
-                    }
+                        Console.WriteLine($"[ScriptLoader] Discovered [CustomSceneEntry]: {type.FullName}");
                 }
             }
             catch (Exception ex)
@@ -114,122 +118,264 @@ namespace SiegeEngine.Core.Managers
             }
         }
 
+        /// <summary>
+        /// Single activation entry point for pure-client and editor runtime.
+        /// Resolves constructors against live services, registers systems, swaps controllers, registers scenes.
+        /// </summary>
+        public static void ActivateProjectScripts(SceneContext ctx, InputHandler inputHandler = null, ClientPredictionSystem predictionSystem = null)
+        {
+            if (ctx == null) return;
+
+            var services = new Dictionary<Type, object>();
+            void AddService(Type t, object instance)
+            {
+                if (t != null && instance != null && !services.ContainsKey(t))
+                    services[t] = instance;
+            }
+
+            AddService(typeof(IGameServer), ctx.Server);
+            AddService(typeof(EventBus), ctx.EventBus);
+            AddService(typeof(IRenderContext), ctx.RenderContext);
+            AddService(typeof(IControlContext), ctx.ControlContext);
+            AddService(typeof(SceneContext), ctx);
+            AddService(typeof(Player), ctx.Player);
+            AddService(typeof(ModelManager), ctx.ModelManager);
+            AddService(typeof(Level), ctx.CurrentLevel);
+            AddService(typeof(InputHandler), inputHandler);
+            AddService(typeof(ClientPredictionSystem), predictionSystem);
+            if (ctx.PlayerMovement != null)
+                AddService(typeof(PlayerMovement), ctx.PlayerMovement);
+
+            // Honour explicit ControllerTypeName first (SceneData.Settings)
+            string controllerTypeName = ctx.SceneData?.Settings?.ControllerTypeName;
+            if (!string.IsNullOrWhiteSpace(controllerTypeName))
+            {
+                Type namedType = FindTypeByName(controllerTypeName);
+                if (namedType != null && typeof(PlayerMovement).IsAssignableFrom(namedType))
+                {
+                    try
+                    {
+                        var custom = ResolveInstance(namedType, services) as PlayerMovement;
+                        if (custom != null)
+                        {
+                            ctx.PlayerMovement = custom;
+                            AddService(typeof(PlayerMovement), custom);
+                            Console.WriteLine($"[ScriptLoader] SUCCESS: Swapped to named PlayerController '{namedType.Name}' from ControllerTypeName");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[ScriptLoader] Named controller '{controllerTypeName}' construction failed: {ex.Message}");
+                    }
+                }
+            }
+
+            lock (_assemblyLock)
+            {
+                foreach (Assembly ass in _loadedAssemblies)
+                {
+                    Type[] types;
+                    try { types = ass.GetTypes(); }
+                    catch { continue; }
+
+                    foreach (Type type in types)
+                    {
+                        if (type.IsAbstract || type.IsInterface) continue;
+
+                        // GameSystems
+                        if (type.GetCustomAttributes(typeof(RegisterGameSystemAttribute), false).Length > 0 &&
+                            typeof(GameSystem).IsAssignableFrom(type))
+                        {
+                            try
+                            {
+                                var system = ResolveInstance(type, services) as GameSystem;
+                                if (system != null && ctx.Server != null)
+                                {
+                                    ctx.Server.AddSystem(system);
+                                    Console.WriteLine($"[ScriptLoader] Registered custom GameSystem: {type.Name}");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[ScriptLoader] Failed to construct GameSystem {type.Name}: {ex.Message}");
+                            }
+                        }
+
+                        // Player controllers (attribute path – only if no ControllerTypeName already applied)
+                        if (string.IsNullOrWhiteSpace(controllerTypeName) &&
+                            type.GetCustomAttributes(typeof(CustomPlayerControllerAttribute), false).Length > 0 &&
+                            typeof(PlayerMovement).IsAssignableFrom(type))
+                        {
+                            try
+                            {
+                                var custom = ResolveInstance(type, services) as PlayerMovement;
+                                if (custom != null)
+                                {
+                                    ctx.PlayerMovement = custom;
+                                    AddService(typeof(PlayerMovement), custom);
+                                    Console.WriteLine($"[ScriptLoader] SUCCESS: Swapped to custom PlayerController '{type.Name}' - full override active for Play/Export");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[ScriptLoader] CustomPlayerController {type.Name} construction failed: {ex.Message}");
+                            }
+                        }
+
+                        // Custom scenes
+                        if (type.GetCustomAttributes(typeof(CustomSceneEntryAttribute), false).Length > 0)
+                        {
+                            try
+                            {
+                                string sceneName = type.Name;
+                                if (!SceneRegistry.IsRegistered(sceneName))
+                                {
+                                    SceneRegistry.Register(sceneName, (SceneContext c) =>
+                                    {
+                                        var localServices = new Dictionary<Type, object>(services);
+                                        if (c != null)
+                                        {
+                                            if (c.Server != null) localServices[typeof(IGameServer)] = c.Server;
+                                            if (c.EventBus != null) localServices[typeof(EventBus)] = c.EventBus;
+                                            if (c.RenderContext != null) localServices[typeof(IRenderContext)] = c.RenderContext;
+                                            if (c.ControlContext != null) localServices[typeof(IControlContext)] = c.ControlContext;
+                                            localServices[typeof(SceneContext)] = c;
+                                            if (c.Player != null) localServices[typeof(Player)] = c.Player;
+                                            if (c.ModelManager != null) localServices[typeof(ModelManager)] = c.ModelManager;
+                                            if (c.CurrentLevel != null) localServices[typeof(Level)] = c.CurrentLevel;
+                                        }
+                                        return ResolveInstance(type, localServices) as IScene
+                                               ?? throw new InvalidOperationException($"Could not construct custom scene {type.Name}");
+                                    });
+                                    Console.WriteLine($"[ScriptLoader] Registered custom Scene: {sceneName}");
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[ScriptLoader] Failed to register custom scene {type.Name}: {ex.Message}");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        private static Type FindTypeByName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            string target = name.Trim();
+            lock (_assemblyLock)
+            {
+                foreach (Assembly ass in _loadedAssemblies)
+                {
+                    try
+                    {
+                        foreach (Type t in ass.GetTypes())
+                        {
+                            if (string.Equals(t.Name, target, StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(t.FullName, target, StringComparison.OrdinalIgnoreCase))
+                                return t;
+                        }
+                    }
+                    catch { }
+                }
+            }
+            return null;
+        }
+
+        private static object ResolveInstance(Type type, IDictionary<Type, object> services)
+        {
+            ConstructorInfo[] ctors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+            if (ctors.Length == 0)
+                throw new InvalidOperationException($"Type {type.FullName} has no public constructors");
+
+            // Prefer the constructor with the largest number of parameters that can be fully satisfied
+            ConstructorInfo best = null;
+            object[] bestArgs = null;
+            int bestScore = -1;
+
+            foreach (ConstructorInfo ctor in ctors.OrderByDescending(c => c.GetParameters().Length))
+            {
+                ParameterInfo[] parms = ctor.GetParameters();
+                object[] args = new object[parms.Length];
+                bool allSatisfied = true;
+                for (int i = 0; i < parms.Length; i++)
+                {
+                    Type pt = parms[i].ParameterType;
+                    object resolved = null;
+                    if (services.TryGetValue(pt, out resolved))
+                    {
+                        args[i] = resolved;
+                        continue;
+                    }
+                    // Allow assignable matches
+                    foreach (var kv in services)
+                    {
+                        if (pt.IsAssignableFrom(kv.Key))
+                        {
+                            args[i] = kv.Value;
+                            resolved = kv.Value;
+                            break;
+                        }
+                    }
+                    if (resolved == null)
+                    {
+                        // Optional parameters with defaults
+                        if (parms[i].HasDefaultValue)
+                        {
+                            args[i] = parms[i].DefaultValue;
+                            continue;
+                        }
+                        allSatisfied = false;
+                        break;
+                    }
+                }
+                if (allSatisfied && parms.Length > bestScore)
+                {
+                    best = ctor;
+                    bestArgs = args;
+                    bestScore = parms.Length;
+                }
+            }
+
+            if (best != null)
+                return best.Invoke(bestArgs);
+
+            // Last resort: parameterless
+            ConstructorInfo parameterless = type.GetConstructor(Type.EmptyTypes);
+            if (parameterless != null)
+                return parameterless.Invoke(null);
+
+            throw new InvalidOperationException($"No satisfiable constructor found for {type.FullName}");
+        }
+
         public static void RegisterCustomSystems(EventBus eventBus, IGameServer server)
         {
-            Console.WriteLine("[ScriptLoader] Custom systems registered via reflection (Phase 1 complete)");
+            // Legacy entry point – full activation now requires SceneContext.
+            // Callers that still use this signature receive a no-op; the real work is done by ActivateProjectScripts.
+            Console.WriteLine("[ScriptLoader] RegisterCustomSystems (legacy) – prefer ActivateProjectScripts(SceneContext)");
         }
 
         public static void ApplyCustomPlayerControllerIfPresent(Player player, ref PlayerMovement movement)
         {
-            Console.WriteLine("[ScriptLoader] Scanning for [CustomPlayerController]...");
-            string runtimeTemp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
-            if (Directory.Exists(runtimeTemp))
-            {
-                foreach (string dll in Directory.GetFiles(runtimeTemp, "*.dll"))
-                {
-                    try
-                    {
-                        Assembly ass = Assembly.LoadFrom(dll);
-                        foreach (Type type in ass.GetTypes())
-                        {
-                            if (type.GetCustomAttributes(typeof(CustomPlayerControllerAttribute), false).Length > 0 &&
-                                typeof(PlayerMovement).IsAssignableFrom(type))
-                            {
-                                try
-                                {
-                                    var custom = Activator.CreateInstance(type) as PlayerMovement;
-                                    if (custom != null)
-                                    {
-                                        movement = custom;
-                                        Console.WriteLine($"[ScriptLoader] SUCCESS: Swapped to custom PlayerController '{type.Name}' - full override active for Play/Export");
-                                        return;
-                                    }
-                                }
-                                catch
-                                {
-                                    Console.WriteLine($"[ScriptLoader] Custom ctor fallback - default retained");
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[ScriptLoader] Skipped {dll} reflection: {ex.Message}");
-                    }
-                }
-            }
-            Console.WriteLine("[ScriptLoader] Custom PlayerController swap applied (or default retained) - Phase 2 ready");
+            // Legacy path kept for binary compatibility. Real swap occurs inside ActivateProjectScripts.
+            Console.WriteLine("[ScriptLoader] ApplyCustomPlayerControllerIfPresent (legacy) – activation deferred to ActivateProjectScripts");
         }
 
         public static void ApplyControllerByTypeName(string typeName, Player player, ref PlayerMovement movement)
         {
-            if (string.IsNullOrWhiteSpace(typeName))
-            {
-                ApplyCustomPlayerControllerIfPresent(player, ref movement);
-                return;
-            }
-
-            string target = typeName.Trim();
-            string runtimeTemp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
-            if (Directory.Exists(runtimeTemp))
-            {
-                foreach (string dll in Directory.GetFiles(runtimeTemp, "*.dll"))
-                {
-                    try
-                    {
-                        Assembly ass = Assembly.LoadFrom(dll);
-                        foreach (Type type in ass.GetTypes())
-                        {
-                            if (typeof(PlayerMovement).IsAssignableFrom(type) &&
-                                (string.Equals(type.Name, target, StringComparison.OrdinalIgnoreCase) ||
-                                 string.Equals(type.FullName, target, StringComparison.OrdinalIgnoreCase)))
-                            {
-                                try
-                                {
-                                    var custom = Activator.CreateInstance(type) as PlayerMovement;
-                                    if (custom != null)
-                                    {
-                                        movement = custom;
-                                        Console.WriteLine($"[ScriptLoader] SUCCESS: Swapped to named PlayerController '{type.Name}' from ControllerTypeName");
-                                        return;
-                                    }
-                                }
-                                catch
-                                {
-                                    Console.WriteLine($"[ScriptLoader] Named controller '{target}' ctor failed - retaining current");
-                                }
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"[ScriptLoader] Skipped {dll} for named controller: {ex.Message}");
-                    }
-                }
-            }
-
-            Console.WriteLine($"[ScriptLoader] ControllerTypeName '{target}' not found - falling back to attribute scan");
-            ApplyCustomPlayerControllerIfPresent(player, ref movement);
+            // Legacy path – ControllerTypeName is now honoured inside ActivateProjectScripts via SceneContext.
+            Console.WriteLine("[ScriptLoader] ApplyControllerByTypeName (legacy) – activation deferred to ActivateProjectScripts");
         }
 
-        /// <summary>
-        /// FIXED: Now accepts an optional temp output directory so dotnet build never tries to overwrite
-        /// the locked Scripts\Libs\SiegeScripts.dll that the editor process has loaded.
-        /// </summary>
         public static void BuildProjectScripts(string projectPath, string customOutputDir = null)
         {
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
-
             string scriptsDir = Path.Combine(projectPath, "Scripts");
             Directory.CreateDirectory(scriptsDir);
-
             string libsDir = Path.Combine(scriptsDir, "Libs");
             Directory.CreateDirectory(libsDir);
-
-            // Use temp folder if supplied (the real fix)
             string outputPath = customOutputDir ?? libsDir;
-
-            // Copy core DLLs to Scripts/ for reliable HintPath (unchanged)
             string binDir = AppDomain.CurrentDomain.BaseDirectory;
             string[] coreDlls = { "SiegeEngine.dll", "Foundation.dll" };
             foreach (string dllName in coreDlls)
@@ -242,7 +388,6 @@ namespace SiegeEngine.Core.Managers
                     Console.WriteLine($"[ScriptLoader] Copied core DLL {dllName} to Scripts/ for build reference");
                 }
             }
-
             string csprojPath = Path.Combine(scriptsDir, "SiegeScripts.csproj");
             if (!File.Exists(csprojPath))
             {
@@ -267,7 +412,6 @@ namespace SiegeEngine.Core.Managers
   </ItemGroup>
 </Project>";
                 File.WriteAllText(csprojPath, template);
-
                 if (Directory.GetFiles(scriptsDir, "*.cs").Length == 0)
                 {
                     string exampleSrc = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "SiegeEngine", "PlayerSystem", "CustomPlayerController.cs");
@@ -279,8 +423,6 @@ namespace SiegeEngine.Core.Managers
                 }
                 Console.WriteLine($"[ScriptLoader] Generated SiegeScripts.csproj at {csprojPath}");
             }
-
-            // Build command — now uses the safe output path
             var psi = new ProcessStartInfo
             {
                 FileName = "dotnet",
@@ -291,18 +433,14 @@ namespace SiegeEngine.Core.Managers
                 CreateNoWindow = true,
                 WorkingDirectory = scriptsDir
             };
-
             using (var process = Process.Start(psi))
             {
                 string output = process.StandardOutput.ReadToEnd();
                 string err = process.StandardError.ReadToEnd();
                 process.WaitForExit();
-
                 Console.WriteLine($"[ScriptLoader.BuildProjectScripts] dotnet build completed. Exit: {process.ExitCode}\nOutput: {output}");
-
                 if (process.ExitCode == 0)
                 {
-                    // Copy the freshly built DLL(s) to RuntimeTemp (what the runtime actually uses)
                     foreach (string dll in Directory.GetFiles(outputPath, "*.dll"))
                     {
                         string runtimeTarget = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp", Path.GetFileName(dll));
@@ -310,18 +448,14 @@ namespace SiegeEngine.Core.Managers
                         File.Copy(dll, runtimeTarget, true);
                         LoadAndRegister(dll);
                     }
-
                     ScanProjectScripts(projectPath);
                     Console.WriteLine("[ScriptLoader] Build → DLL copy → reflection register COMPLETE. Custom controllers now active for Play/Export.");
                 }
                 else
                 {
                     Console.WriteLine($"[ScriptLoader] Build warning: {err}");
-                    // Non-fatal — runtime still works from previous cached DLL in RuntimeTemp
                 }
             }
-
-            // Always copy to the project’s Scripts folder for ExportGame / future builds
             CopyProjectScripts(projectPath);
         }
     }
