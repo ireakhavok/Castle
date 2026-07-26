@@ -22,6 +22,22 @@ namespace SiegeEngine.Core.Managers
         private static readonly List<Assembly> _loadedAssemblies = new List<Assembly>();
         private static readonly object _assemblyLock = new object();
 
+        private static readonly HashSet<string> CoreDllNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "SiegeEngine.dll",
+            "Foundation.dll",
+            "Trebuchet.dll",
+            "Citadel.dll",
+            "Citadel.exe"
+        };
+
+        private static bool IsCoreDll(string pathOrFileName)
+        {
+            if (string.IsNullOrEmpty(pathOrFileName)) return false;
+            string name = Path.GetFileName(pathOrFileName);
+            return CoreDllNames.Contains(name);
+        }
+
         public static void ScanProjectScripts(string projectPath)
         {
             if (string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath)) return;
@@ -30,11 +46,12 @@ namespace SiegeEngine.Core.Managers
             Console.WriteLine($"[ScriptLoader] Scanning project Scripts folder: {scriptsDir}");
             foreach (string dll in Directory.GetFiles(scriptsDir, "*.dll"))
             {
+                if (IsCoreDll(dll)) continue;
                 Console.WriteLine($"[ScriptLoader] Found custom DLL: {dll}");
                 LoadAndRegister(dll);
             }
             string[] csFiles = Directory.GetFiles(scriptsDir, "*.cs");
-            if (csFiles.Length > 0 && Directory.GetFiles(scriptsDir, "*.dll").Length == 0)
+            if (csFiles.Length > 0 && Directory.GetFiles(scriptsDir, "*.dll").All(IsCoreDll))
             {
                 BuildProjectScripts(projectPath);
             }
@@ -49,6 +66,7 @@ namespace SiegeEngine.Core.Managers
             Directory.CreateDirectory(runtimeTemp);
             foreach (string dll in Directory.GetFiles(scriptsDir, "*.dll"))
             {
+                if (IsCoreDll(dll)) continue;
                 string target = Path.Combine(runtimeTemp, Path.GetFileName(dll));
                 File.Copy(dll, target, true);
                 Console.WriteLine($"[ScriptLoader] Copied custom DLL to runtime temp: {target}");
@@ -64,6 +82,7 @@ namespace SiegeEngine.Core.Managers
             Directory.CreateDirectory(targetScripts);
             foreach (string dll in Directory.GetFiles(scriptsDir, "*.dll"))
             {
+                if (IsCoreDll(dll)) continue;
                 File.Copy(dll, Path.Combine(targetScripts, Path.GetFileName(dll)), true);
             }
             Console.WriteLine($"[ScriptLoader] Copied Scripts to export folder");
@@ -74,7 +93,7 @@ namespace SiegeEngine.Core.Managers
             if (string.IsNullOrEmpty(projectPath)) return "";
             string scriptsDir = Path.Combine(projectPath, "Scripts");
             if (!Directory.Exists(scriptsDir)) return "";
-            var dlls = Directory.GetFiles(scriptsDir, "*.dll");
+            var dlls = Directory.GetFiles(scriptsDir, "*.dll").Where(d => !IsCoreDll(d)).ToArray();
             return string.Join(";", Array.ConvertAll(dlls, Path.GetFileName));
         }
 
@@ -86,6 +105,7 @@ namespace SiegeEngine.Core.Managers
             {
                 foreach (string dll in Directory.GetFiles(runtimeTemp, "*.dll"))
                 {
+                    if (IsCoreDll(dll)) continue;
                     LoadAndRegister(dll);
                 }
             }
@@ -93,6 +113,7 @@ namespace SiegeEngine.Core.Managers
 
         private static void LoadAndRegister(string dllPath)
         {
+            if (IsCoreDll(dllPath)) return;
             try
             {
                 Assembly ass = Assembly.LoadFrom(dllPath);
@@ -125,14 +146,12 @@ namespace SiegeEngine.Core.Managers
         public static void ActivateProjectScripts(SceneContext ctx, InputHandler inputHandler = null, ClientPredictionSystem predictionSystem = null)
         {
             if (ctx == null) return;
-
             var services = new Dictionary<Type, object>();
             void AddService(Type t, object instance)
             {
                 if (t != null && instance != null && !services.ContainsKey(t))
                     services[t] = instance;
             }
-
             AddService(typeof(IGameServer), ctx.Server);
             AddService(typeof(EventBus), ctx.EventBus);
             AddService(typeof(IRenderContext), ctx.RenderContext);
@@ -177,7 +196,6 @@ namespace SiegeEngine.Core.Managers
                     Type[] types;
                     try { types = ass.GetTypes(); }
                     catch { continue; }
-
                     foreach (Type type in types)
                     {
                         if (type.IsAbstract || type.IsInterface) continue;
@@ -289,7 +307,6 @@ namespace SiegeEngine.Core.Managers
             if (ctors.Length == 0)
                 throw new InvalidOperationException($"Type {type.FullName} has no public constructors");
 
-            // Prefer the constructor with the largest number of parameters that can be fully satisfied
             ConstructorInfo best = null;
             object[] bestArgs = null;
             int bestScore = -1;
@@ -308,7 +325,6 @@ namespace SiegeEngine.Core.Managers
                         args[i] = resolved;
                         continue;
                     }
-                    // Allow assignable matches
                     foreach (var kv in services)
                     {
                         if (pt.IsAssignableFrom(kv.Key))
@@ -320,7 +336,6 @@ namespace SiegeEngine.Core.Managers
                     }
                     if (resolved == null)
                     {
-                        // Optional parameters with defaults
                         if (parms[i].HasDefaultValue)
                         {
                             args[i] = parms[i].DefaultValue;
@@ -341,7 +356,6 @@ namespace SiegeEngine.Core.Managers
             if (best != null)
                 return best.Invoke(bestArgs);
 
-            // Last resort: parameterless
             ConstructorInfo parameterless = type.GetConstructor(Type.EmptyTypes);
             if (parameterless != null)
                 return parameterless.Invoke(null);
@@ -351,20 +365,16 @@ namespace SiegeEngine.Core.Managers
 
         public static void RegisterCustomSystems(EventBus eventBus, IGameServer server)
         {
-            // Legacy entry point – full activation now requires SceneContext.
-            // Callers that still use this signature receive a no-op; the real work is done by ActivateProjectScripts.
             Console.WriteLine("[ScriptLoader] RegisterCustomSystems (legacy) – prefer ActivateProjectScripts(SceneContext)");
         }
 
         public static void ApplyCustomPlayerControllerIfPresent(Player player, ref PlayerMovement movement)
         {
-            // Legacy path kept for binary compatibility. Real swap occurs inside ActivateProjectScripts.
             Console.WriteLine("[ScriptLoader] ApplyCustomPlayerControllerIfPresent (legacy) – activation deferred to ActivateProjectScripts");
         }
 
         public static void ApplyControllerByTypeName(string typeName, Player player, ref PlayerMovement movement)
         {
-            // Legacy path – ControllerTypeName is now honoured inside ActivateProjectScripts via SceneContext.
             Console.WriteLine("[ScriptLoader] ApplyControllerByTypeName (legacy) – activation deferred to ActivateProjectScripts");
         }
 
@@ -377,6 +387,8 @@ namespace SiegeEngine.Core.Managers
             Directory.CreateDirectory(libsDir);
             string outputPath = customOutputDir ?? libsDir;
             string binDir = AppDomain.CurrentDomain.BaseDirectory;
+
+            // Core DLLs are copied for csproj HintPath only – they are never treated as project assemblies
             string[] coreDlls = { "SiegeEngine.dll", "Foundation.dll" };
             foreach (string dllName in coreDlls)
             {
@@ -388,6 +400,7 @@ namespace SiegeEngine.Core.Managers
                     Console.WriteLine($"[ScriptLoader] Copied core DLL {dllName} to Scripts/ for build reference");
                 }
             }
+
             string csprojPath = Path.Combine(scriptsDir, "SiegeScripts.csproj");
             if (!File.Exists(csprojPath))
             {
@@ -423,6 +436,7 @@ namespace SiegeEngine.Core.Managers
                 }
                 Console.WriteLine($"[ScriptLoader] Generated SiegeScripts.csproj at {csprojPath}");
             }
+
             var psi = new ProcessStartInfo
             {
                 FileName = "dotnet",
@@ -443,6 +457,7 @@ namespace SiegeEngine.Core.Managers
                 {
                     foreach (string dll in Directory.GetFiles(outputPath, "*.dll"))
                     {
+                        if (IsCoreDll(dll)) continue;
                         string runtimeTarget = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp", Path.GetFileName(dll));
                         Directory.CreateDirectory(Path.GetDirectoryName(runtimeTarget));
                         File.Copy(dll, runtimeTarget, true);

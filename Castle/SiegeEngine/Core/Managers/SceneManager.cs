@@ -76,7 +76,7 @@ namespace SiegeEngine.Core.Managers
             playerEntity.AddComponent(_player.Physics);
             playerEntity.AddComponent(new ModelComponent { Model = _player.Model, Key = "man_mesh" });
             _server.AddEntity(playerEntity);
-            _playerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
+
             var ctx = new SceneContext
             {
                 RenderContext = _renderContext,
@@ -85,11 +85,19 @@ namespace SiegeEngine.Core.Managers
                 Server = _server,
                 EventBus = _eventBus,
                 Player = _player,
-                PlayerMovement = _playerMovement,
+                PlayerMovement = null,
                 ModelManager = _modelManager
             };
+
             ScriptLoader.ActivateProjectScripts(ctx, _inputHandler, predictionSystem);
-            _playerMovement = ctx.PlayerMovement ?? _playerMovement;
+
+            // Stock controller is created only as a true fallback after activation
+            if (ctx.PlayerMovement == null)
+            {
+                ctx.PlayerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
+            }
+            _playerMovement = ctx.PlayerMovement;
+
             _currentScene = (Scene)SceneRegistry.Create(e.SceneName, ctx);
             _currentScene.SetPlayer(_player);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
@@ -181,11 +189,18 @@ namespace SiegeEngine.Core.Managers
             if (_steamEngine is SteamEngine se) steamId = se.GetSteamId();
             _player = new Player(1, new Vector3(10, 10, 0), steamId);
             _player.InitializeCamera(_controlContext, _window);
-            _playerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
             ctx.Player = _player;
-            ctx.PlayerMovement = _playerMovement;
+            ctx.PlayerMovement = null;
+
             ScriptLoader.ActivateProjectScripts(ctx, _inputHandler, predictionSystem);
-            _playerMovement = ctx.PlayerMovement ?? _playerMovement;
+
+            // Stock controller is created only as a true fallback after activation
+            if (ctx.PlayerMovement == null)
+            {
+                ctx.PlayerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
+            }
+            _playerMovement = ctx.PlayerMovement;
+
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot - entities rehydrated and added");
