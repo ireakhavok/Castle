@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Folder: SiegeEngine.Core.AssetParsing.Model
+// File: Skeleton.cs
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -9,10 +11,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
     public class Skeleton
     {
         public List<Bone> Bones { get; set; } = new List<Bone>();
-
-        // Folder: SiegeEngine.Core.AssetParsing.V2.Model
-        // File: Skeleton.cs
-        // ADD this NEW method (do NOT modify the existing ComputeGlobalTransforms() or its recursive)
 
         public Matrix4x4[] ComputeGlobalTransforms(Matrix4x4[] localTransforms)
         {
@@ -36,42 +34,41 @@ namespace SiegeEngine.Core.AssetParsing.Model
 
             Matrix4x4 childGlobal;
 
-            if (!Matrix4x4.Decompose(parentGlobal, out Vector3 parentScale, out Quaternion parentRot, out Vector3 parentTrans))
+            bool parentOk = Matrix4x4.Decompose(parentGlobal, out Vector3 parentScale, out Quaternion parentRot, out Vector3 parentTrans);
+            bool localOk = Matrix4x4.Decompose(local, out Vector3 childScale, out Quaternion childRot, out Vector3 childTrans);
+
+            // If either decompose fails we refuse to collapse the hierarchy to Identity for a frame.
+            // Fall back to the simple, always-stable matrix multiply. This removes the rare one-frame hitch
+            // while preserving the full InheritType path for the vast majority of frames.
+            if (!parentOk || !localOk)
             {
-                parentScale = Vector3.One;
-                parentRot = Quaternion.Identity;
-                parentTrans = Vector3.Zero;
+                childGlobal = local * parentGlobal;
             }
-
-            Matrix4x4 parentR = Matrix4x4.CreateFromQuaternion(parentRot);
-            Matrix4x4 parentT = Matrix4x4.CreateTranslation(parentTrans);
-            Matrix4x4 parentS = Matrix4x4.CreateScale(parentScale);
-
-            if (!Matrix4x4.Decompose(local, out Vector3 childScale, out Quaternion childRot, out Vector3 childTrans))
+            else
             {
-                childScale = Vector3.One;
-                childRot = Quaternion.Identity;
-                childTrans = Vector3.Zero;
-            }
+                Matrix4x4 parentR = Matrix4x4.CreateFromQuaternion(parentRot);
+                Matrix4x4 parentT = Matrix4x4.CreateTranslation(parentTrans);
+                Matrix4x4 parentS = Matrix4x4.CreateScale(parentScale);
 
-            Matrix4x4 childR = Matrix4x4.CreateFromQuaternion(childRot);
-            Matrix4x4 childT = Matrix4x4.CreateTranslation(childTrans);
-            Matrix4x4 childS = Matrix4x4.CreateScale(childScale);
+                Matrix4x4 childR = Matrix4x4.CreateFromQuaternion(childRot);
+                Matrix4x4 childT = Matrix4x4.CreateTranslation(childTrans);
+                Matrix4x4 childS = Matrix4x4.CreateScale(childScale);
 
-            switch (bone.InheritType)
-            {
-                case 0: // eInheritRrSs
-                    childGlobal = childS * parentS * childR * childT * parentR * parentT;
-                    break;
-                case 1: // eInheritRSrs
-                    childGlobal = childS * childR * childT * parentS * parentR * parentT;
-                    break;
-                case 2: // eInheritRrs
-                    childGlobal = childS * childR * childT * parentR * parentT;
-                    break;
-                default:
-                    childGlobal = local * parentGlobal;
-                    break;
+                switch (bone.InheritType)
+                {
+                    case 0: // eInheritRrSs
+                        childGlobal = childS * parentS * childR * childT * parentR * parentT;
+                        break;
+                    case 1: // eInheritRSrs
+                        childGlobal = childS * childR * childT * parentS * parentR * parentT;
+                        break;
+                    case 2: // eInheritRrs
+                        childGlobal = childS * childR * childT * parentR * parentT;
+                        break;
+                    default:
+                        childGlobal = local * parentGlobal;
+                        break;
+                }
             }
 
             childGlobal = childGlobal * bone.GeometricTransform;
@@ -83,6 +80,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 ComputeGlobalRecursiveAnimated(childIdx, childGlobal, globals, localTransforms);
             }
         }
+
         public Matrix4x4[] ComputeGlobalTransforms()
         {
             Matrix4x4[] globals = new Matrix4x4[Bones.Count];
@@ -90,63 +88,58 @@ namespace SiegeEngine.Core.AssetParsing.Model
             {
                 ComputeGlobalRecursive(Bones.IndexOf(bone), Matrix4x4.Identity, globals);
             }
-            //if (Bones.Count > 0)
-            //{
-            //    //FBXParserBase.Log("Global Transforms:");
-            //    for (int i = 0; i < Math.Min(3, Bones.Count); i++)
-            //    {
-            //        //FBXParserBase.Log($"Bone {i} ({Bones[i].Name}) Global:");
-            //        //FBXParserUtils.PrintMatrix(globals[i]);
-            //    }
-            //}
             return globals;
         }
+
         private void ComputeGlobalRecursive(int idx, Matrix4x4 parentGlobal, Matrix4x4[] globals)
         {
             var bone = Bones[idx];
             Matrix4x4 local = bone.LocalRest;
             Matrix4x4 childGlobal;
-            if (!Matrix4x4.Decompose(parentGlobal, out Vector3 parentScale, out Quaternion parentRot, out Vector3 parentTrans))
+
+            bool parentOk = Matrix4x4.Decompose(parentGlobal, out Vector3 parentScale, out Quaternion parentRot, out Vector3 parentTrans);
+            bool localOk = Matrix4x4.Decompose(local, out Vector3 childScale, out Quaternion childRot, out Vector3 childTrans);
+
+            if (!parentOk || !localOk)
             {
-                parentScale = Vector3.One;
-                parentRot = Quaternion.Identity;
-                parentTrans = Vector3.Zero;
+                childGlobal = local * parentGlobal;
             }
-            Matrix4x4 parentR = Matrix4x4.CreateFromQuaternion(parentRot);
-            Matrix4x4 parentT = Matrix4x4.CreateTranslation(parentTrans);
-            Matrix4x4 parentS = Matrix4x4.CreateScale(parentScale);
-            if (!Matrix4x4.Decompose(local, out Vector3 childScale, out Quaternion childRot, out Vector3 childTrans))
+            else
             {
-                childScale = Vector3.One;
-                childRot = Quaternion.Identity;
-                childTrans = Vector3.Zero;
+                Matrix4x4 parentR = Matrix4x4.CreateFromQuaternion(parentRot);
+                Matrix4x4 parentT = Matrix4x4.CreateTranslation(parentTrans);
+                Matrix4x4 parentS = Matrix4x4.CreateScale(parentScale);
+                Matrix4x4 childR = Matrix4x4.CreateFromQuaternion(childRot);
+                Matrix4x4 childT = Matrix4x4.CreateTranslation(childTrans);
+                Matrix4x4 childS = Matrix4x4.CreateScale(childScale);
+
+                switch (bone.InheritType)
+                {
+                    case 0: // eInheritRrSs
+                        childGlobal = childS * parentS * childR * childT * parentR * parentT;
+                        break;
+                    case 1: // eInheritRSrs
+                        childGlobal = childS * childR * childT * parentS * parentR * parentT;
+                        break;
+                    case 2: // eInheritRrs
+                        childGlobal = childS * childR * childT * parentR * parentT;
+                        break;
+                    default:
+                        childGlobal = local * parentGlobal;
+                        break;
+                }
             }
-            Matrix4x4 childR = Matrix4x4.CreateFromQuaternion(childRot);
-            Matrix4x4 childT = Matrix4x4.CreateTranslation(childTrans);
-            Matrix4x4 childS = Matrix4x4.CreateScale(childScale);
-            switch (bone.InheritType)
-            {
-                case 0: // eInheritRrSs
-                    childGlobal = childS * parentS * childR * childT * parentR * parentT;
-                    break;
-                case 1: // eInheritRSrs
-                    childGlobal = childS * childR * childT * parentS * parentR * parentT;
-                    break;
-                case 2: // eInheritRrs
-                    childGlobal = childS * childR * childT * parentR * parentT;
-                    break;
-                default:
-                    childGlobal = local * parentGlobal;
-                    break;
-            }
+
             childGlobal = childGlobal * bone.GeometricTransform;
             globals[idx] = childGlobal;
+
             foreach (var child in bone.Children)
             {
                 int childIdx = Bones.IndexOf(child);
                 ComputeGlobalRecursive(childIdx, childGlobal, globals);
             }
         }
+
         public void LogBoneHierarchy()
         {
             FBXParserBase.Log("Bone Hierarchy:");
@@ -155,6 +148,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 LogBoneHierarchy(Bones, bone, 0);
             }
         }
+
         public void LogBoneHierarchy(List<Bone> bones, Bone bone, int level)
         {
             string indent = new string(' ', level * 2);

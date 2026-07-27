@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json.Serialization;
+
 namespace SiegeEngine.Core.AssetParsing.Model
 {
     public class AnimationBlendStack
@@ -19,6 +20,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
         public FBXModel CachedModel { get; set; }
         public MovementBlendConfig BlendConfig { get; set; } = new MovementBlendConfig();
         public bool SnapEnabled { get; set; } = true;
+
         public class MovementBlendConfig
         {
             public float XMin { get; set; } = -1f;
@@ -30,6 +32,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             public float DeadZone { get; set; } = 0.1f;
             public float SnapStep { get; set; } = 0.25f;
         }
+
         public Vector3 MapPlayerInputToBlendCoord(Vector2 moveInput, float vertical = 0f)
         {
             if (moveInput.Length() < BlendConfig.DeadZone) moveInput = Vector2.Zero;
@@ -39,6 +42,7 @@ namespace SiegeEngine.Core.AssetParsing.Model
             float z = Math.Clamp(vertical, BlendConfig.ZMin, BlendConfig.ZMax);
             return new Vector3(x, y, z);
         }
+
         public Vector3 SnapCoordinate(Vector3 coord)
         {
             if (!SnapEnabled || BlendConfig.SnapStep <= 0f) return coord;
@@ -48,15 +52,18 @@ namespace SiegeEngine.Core.AssetParsing.Model
                 (float)Math.Round(coord.Y / step) * step,
                 (float)Math.Round(coord.Z / step) * step);
         }
+
         public void AddClip(string path, Vector3 coord, float start = 0f, float end = -1f, float speed = 1f, bool loop = true)
         {
             Vector3 finalCoord = SnapEnabled ? SnapCoordinate(coord) : coord;
             Clips.Add(new AnimationClipEntry { AnimationPath = path, BlendCoordinate = finalCoord, StartFrame = start, EndFrame = end, PlaybackSpeed = speed, Loop = loop });
         }
+
         public void RemoveClip(int index)
         {
             if (index >= 0 && index < Clips.Count) Clips.RemoveAt(index);
         }
+
         public AnimationClipEntry GetClipAt(Vector3 params3D)
         {
             if (Clips.Count == 0) return null;
@@ -69,16 +76,51 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             return best;
         }
+
+        // Effective playable length of a clip, driven by the actual keyframe range (never larger).
+        private static float GetClipDuration(AnimationClipEntry clip, Animation anim)
+        {
+            if (anim.Keyframes == null || anim.Keyframes.Count == 0) return 0.001f;
+            float first = anim.Keyframes[0].Time;
+            float last = anim.Keyframes[anim.Keyframes.Count - 1].Time;
+            float keyRange = Math.Max(last - first, 0.001f);
+
+            // Honour explicit trim if the author set one, but never exceed the real key range
+            if (clip.EndFrame > 0f)
+            {
+                float trimmed = clip.EndFrame - clip.StartFrame;
+                if (trimmed > 0f) return Math.Min(trimmed, keyRange);
+            }
+            return keyRange;
+        }
+
+        // Guarantees sampleTime is inside [first, last).  If it would be >= last we wrap to first.
+        private static float WrapSampleTime(float sampleTime, float first, float last)
+        {
+            float range = last - first;
+            if (range <= 0f) return first;
+            if (sampleTime < first) sampleTime = first;
+            // Proper modular wrap so we never land on or past the last key
+            float t = (sampleTime - first) % range;
+            if (t < 0f) t += range;
+            return first + t;
+        }
+
         public Matrix4x4[] ComputeBlendedLocals(Vector3 params3D, float deltaTime, bool isPlaying, FBXModel model)
         {
             if (model == null || model.Skeleton == null) return null;
             int boneCount = model.Skeleton.Bones.Count;
+
             if (Clips.Count == 0)
             {
                 var rest = new Matrix4x4[boneCount];
                 for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
                 return rest;
             }
+
+            // ------------------------------------------------------------------
+            // Single-clip path
+            // ------------------------------------------------------------------
             if (Clips.Count == 1)
             {
                 var clip = Clips[0];
@@ -88,31 +130,46 @@ namespace SiegeEngine.Core.AssetParsing.Model
                     for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
                     return rest;
                 }
-                if (isPlaying) clip.LocalTime += deltaTime * clip.PlaybackSpeed;
+
                 string desiredName = Path.GetFileNameWithoutExtension(clip.AnimationPath).ToLowerInvariant();
                 var anim = model.Animations.FirstOrDefault(a => string.Equals(a.Name, desiredName, StringComparison.OrdinalIgnoreCase))
                            ?? model.Animations.LastOrDefault();
-                if (anim == null || anim.Keyframes.Count == 0)
+                if (anim == null || anim.Keyframes == null || anim.Keyframes.Count == 0)
                 {
                     var rest = new Matrix4x4[boneCount];
                     for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
                     return rest;
                 }
-                float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
-                float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : animDuration;
-                if (clip.Loop && clip.LocalTime > clipDur) clip.LocalTime = 0f;
-                float sampleTime = clip.StartFrame + (clip.LocalTime % clipDur);
-                float normalizedT = (sampleTime - clip.StartFrame) / Math.Max(animDuration, 0.001f);
-                normalizedT = Math.Clamp(normalizedT, 0f, 1f);
-                float lookupTime = clip.StartFrame + normalizedT * animDuration;
+
+                float firstTime = anim.Keyframes[0].Time;
+                float lastTime = anim.Keyframes[anim.Keyframes.Count - 1].Time;
+                float clipDur = GetClipDuration(clip, anim);
+
+                if (isPlaying) clip.LocalTime += deltaTime * clip.PlaybackSpeed;
+                if (clip.Loop)
+                {
+                    if (clip.LocalTime >= clipDur) clip.LocalTime %= clipDur;
+                }
+                else if (clip.LocalTime > clipDur)
+                {
+                    clip.LocalTime = clipDur;
+                }
+
+                float sampleTime = clip.StartFrame + clip.LocalTime;
+                sampleTime = WrapSampleTime(sampleTime, firstTime, lastTime);
+
                 int lower = 0, upper = anim.Keyframes.Count - 1;
                 for (int i = 1; i < anim.Keyframes.Count; i++)
                 {
-                    if (anim.Keyframes[i].Time > lookupTime) { upper = i; lower = i - 1; break; }
+                    if (anim.Keyframes[i].Time > sampleTime) { upper = i; lower = i - 1; break; }
                 }
+                // Safety: never let frac exceed 1
+                if (upper == lower) upper = Math.Min(lower + 1, anim.Keyframes.Count - 1);
+
                 float t0 = anim.Keyframes[lower].Time;
                 float t1 = anim.Keyframes[upper].Time;
-                float frac = (t1 - t0 > 0) ? (lookupTime - t0) / (t1 - t0) : 0f;
+                float frac = (t1 > t0) ? Math.Clamp((sampleTime - t0) / (t1 - t0), 0f, 1f) : 0f;
+
                 var l0 = anim.Keyframes[lower].BoneTransforms;
                 var l1 = anim.Keyframes[upper].BoneTransforms;
                 var lerpedLocals = new Matrix4x4[boneCount];
@@ -135,7 +192,58 @@ namespace SiegeEngine.Core.AssetParsing.Model
                     lerpedLocals[b] = model.Skeleton.Bones[b].LocalRest;
                 return lerpedLocals;
             }
+
+            // ------------------------------------------------------------------
             // Multi-clip inverse-distance weighting
+            // ------------------------------------------------------------------
+            float shortestDur = float.MaxValue;
+            var resolvedAnims = new Animation[Clips.Count];
+            var clipDurs = new float[Clips.Count];
+            var sampleValid = new bool[Clips.Count];
+
+            for (int c = 0; c < Clips.Count; c++)
+            {
+                sampleValid[c] = false;
+                var clip = Clips[c];
+                if (string.IsNullOrEmpty(clip.AnimationPath)) continue;
+
+                string desiredName = Path.GetFileNameWithoutExtension(clip.AnimationPath).ToLowerInvariant();
+                var anim = model.Animations.FirstOrDefault(a => string.Equals(a.Name, desiredName, StringComparison.OrdinalIgnoreCase));
+                if (anim == null || anim.Keyframes == null || anim.Keyframes.Count == 0) continue;
+
+                float dur = GetClipDuration(clip, anim);
+                if (dur <= 0f) continue;
+
+                resolvedAnims[c] = anim;
+                clipDurs[c] = dur;
+                sampleValid[c] = true;
+                if (dur < shortestDur) shortestDur = dur;
+            }
+
+            if (shortestDur == float.MaxValue || shortestDur <= 0f)
+            {
+                var rest = new Matrix4x4[boneCount];
+                for (int b = 0; b < boneCount; b++) rest[b] = model.Skeleton.Bones[b].LocalRest;
+                return rest;
+            }
+
+            // Advance every valid clip against the SHARED shortest duration
+            for (int c = 0; c < Clips.Count; c++)
+            {
+                if (!sampleValid[c]) continue;
+                var clip = Clips[c];
+                if (isPlaying) clip.LocalTime += deltaTime * clip.PlaybackSpeed;
+                if (clip.Loop)
+                {
+                    if (clip.LocalTime >= shortestDur) clip.LocalTime %= shortestDur;
+                }
+                else if (clip.LocalTime > shortestDur)
+                {
+                    clip.LocalTime = shortestDur;
+                }
+            }
+
+            // Weight calculation
             float totalWeight = 0f;
             var weights = new float[Clips.Count];
             for (int i = 0; i < Clips.Count; i++)
@@ -155,38 +263,39 @@ namespace SiegeEngine.Core.AssetParsing.Model
             }
             for (int i = 0; i < weights.Length; i++) weights[i] /= totalWeight;
 
-            // Sample every clip once (advance LocalTime, resolve anim, produce per-bone p/r/s)
+            // Sample every valid clip
             var samplePos = new Vector3[Clips.Count][];
             var sampleRot = new Quaternion[Clips.Count][];
             var sampleScale = new Vector3[Clips.Count][];
-            var sampleValid = new bool[Clips.Count];
+
             for (int c = 0; c < Clips.Count; c++)
             {
                 samplePos[c] = new Vector3[boneCount];
                 sampleRot[c] = new Quaternion[boneCount];
                 sampleScale[c] = new Vector3[boneCount];
-                sampleValid[c] = false;
+
+                if (!sampleValid[c]) continue;
+
                 var clip = Clips[c];
-                if (string.IsNullOrEmpty(clip.AnimationPath)) continue;
-                if (isPlaying) clip.LocalTime += deltaTime * clip.PlaybackSpeed;
-                string desiredName = Path.GetFileNameWithoutExtension(clip.AnimationPath).ToLowerInvariant();
-                var anim = model.Animations.FirstOrDefault(a => string.Equals(a.Name, desiredName, StringComparison.OrdinalIgnoreCase));
-                if (anim == null || anim.Keyframes.Count == 0) continue;
-                float animDuration = anim.Duration > 0 ? anim.Duration : (anim.Keyframes.Count > 0 ? anim.Keyframes.Last().Time : 1f);
-                float clipDur = clip.EndFrame > 0 ? clip.EndFrame - clip.StartFrame : animDuration;
-                if (clip.Loop && clip.LocalTime > clipDur) clip.LocalTime = 0f;
-                float sampleTime = clip.StartFrame + (clip.LocalTime % clipDur);
-                float normalizedT = (sampleTime - clip.StartFrame) / Math.Max(animDuration, 0.001f);
-                normalizedT = Math.Clamp(normalizedT, 0f, 1f);
-                float lookupTime = clip.StartFrame + normalizedT * animDuration;
+                var anim = resolvedAnims[c];
+                float firstTime = anim.Keyframes[0].Time;
+                float lastTime = anim.Keyframes[anim.Keyframes.Count - 1].Time;
+
+                float localT = Math.Min(clip.LocalTime, Math.Min(shortestDur, clipDurs[c]));
+                float sampleTime = clip.StartFrame + localT;
+                sampleTime = WrapSampleTime(sampleTime, firstTime, lastTime);
+
                 int lower = 0, upper = anim.Keyframes.Count - 1;
                 for (int i = 1; i < anim.Keyframes.Count; i++)
                 {
-                    if (anim.Keyframes[i].Time > lookupTime) { upper = i; lower = i - 1; break; }
+                    if (anim.Keyframes[i].Time > sampleTime) { upper = i; lower = i - 1; break; }
                 }
+                if (upper == lower) upper = Math.Min(lower + 1, anim.Keyframes.Count - 1);
+
                 float t0 = anim.Keyframes[lower].Time;
                 float t1 = anim.Keyframes[upper].Time;
-                float frac = (t1 - t0 > 0) ? (lookupTime - t0) / (t1 - t0) : 0f;
+                float frac = (t1 > t0) ? Math.Clamp((sampleTime - t0) / (t1 - t0), 0f, 1f) : 0f;
+
                 var l0 = anim.Keyframes[lower].BoneTransforms;
                 var l1 = anim.Keyframes[upper].BoneTransforms;
                 int maxB = Math.Min(boneCount, l0.Count);
@@ -212,10 +321,9 @@ namespace SiegeEngine.Core.AssetParsing.Model
                     sampleRot[c][b] = Quaternion.Identity;
                     sampleScale[c][b] = Vector3.One;
                 }
-                sampleValid[c] = true;
             }
 
-            // Highest-weight valid clip becomes the rotation base for successive weighted Slerp
+            // Highest-weight valid clip becomes the rotation base
             int baseClip = -1;
             float maxW = -1f;
             for (int c = 0; c < Clips.Count; c++)
@@ -240,7 +348,6 @@ namespace SiegeEngine.Core.AssetParsing.Model
             {
                 finalPos[b] = Vector3.Zero;
                 finalScale[b] = Vector3.Zero;
-                // Start rotation from the highest-weight clip for this bone
                 finalRot[b] = sampleRot[baseClip][b];
                 float rotWeightSum = weights[baseClip];
                 for (int c = 0; c < Clips.Count; c++)
