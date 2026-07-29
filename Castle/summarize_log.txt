@@ -302,6 +302,8 @@ Found: Sounds
 Listing folder: C:\repos\RealmFoundry\Castle\Assets\Sounds
 Found: .
 Found: ..
+Found: 2. Untitled.wav
+Found: desktop.ini
 Found: terrain_brush.wav
 Found: Static_Images
 Listing folder: C:\repos\RealmFoundry\Castle\Assets\Static_Images
@@ -1036,7 +1038,7 @@ Found 3 dependencies
 Found: AnimationBlendStack.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
-Read 13861 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
+Read 16897 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\AnimationBlendStack.cs
 Namespace: SiegeEngine.Core.AssetParsing.Model
 Found 6 dependencies
 Found: AnimationClipEntry.cs
@@ -1090,7 +1092,7 @@ Found 3 dependencies
 Found: Skeleton.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Skeleton.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Skeleton.cs
-Read 6944 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Skeleton.cs
+Read 6636 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\AssetParsing\Model\Skeleton.cs
 Namespace: SiegeEngine.Core.AssetParsing.Model
 Found 5 dependencies
 Found: TextureInfo.cs

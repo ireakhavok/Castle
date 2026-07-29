@@ -1,13 +1,13 @@
-﻿// Folder: CastleBuilder
-// File: IDEBasePanel.cs
-using CastleBuilder.Events;
+﻿using CastleBuilder.Events;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
+using SiegeEngine.Systems;
 using System;
 using System.IO;
 using System.Linq;
@@ -136,14 +136,36 @@ namespace CastleBuilder
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))
             {
-                    Console.WriteLine($"[IDEBasePanel] ERROR: IDE_UI.html not found at {htmlPath}");
-                    return;
+                Console.WriteLine($"[IDEBasePanel] ERROR: IDE_UI.html not found at {htmlPath}");
+                return;
             }
             string html = File.ReadAllText(htmlPath);
             _uiOverlay.LoadUI(html);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+
+            // IDE finished opening — start background music (pure IDE trigger)
+            try
+            {
+                var menuServer = new ClientGameServerProxy(_eventBus);
+                var audio = new AudioSystem(menuServer, _eventBus, false);
+                menuServer.AddSystem(audio);
+                string musicPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", "2. Untitled.wav");
+                if (File.Exists(musicPath))
+                {
+                    audio.Play(musicPath, 1f, true, true);
+                    Console.WriteLine($"[IDEBasePanel] Started IDE music from {musicPath}");
+                }
+                else
+                {
+                    Console.WriteLine($"[IDEBasePanel] IDE music file not found at {musicPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[IDEBasePanel] Failed to start music: {ex.Message}");
+            }
         }
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)

@@ -1,6 +1,4 @@
-﻿// Folder: SiegeEngine/Core/Managers
-// File: SceneManager.cs
-using SiegeEngine.Core.Definitions;
+﻿using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Networking;
@@ -50,7 +48,6 @@ namespace SiegeEngine.Core.Managers
         public void Update(float deltaTime) => _currentScene?.Update(deltaTime);
         public void Render() => _currentScene?.Render(_server?.GetEntities() ?? Array.Empty<Entity>());
         public void Resize(int width, int height) => _currentScene?.Resize(width, height);
-
         public void Dispose()
         {
             _currentScene?.Dispose();
@@ -66,6 +63,7 @@ namespace SiegeEngine.Core.Managers
             var predictionSystem = new ClientPredictionSystem(_server, _eventBus);
             _server.AddSystem(predictionSystem);
             _server.AddSystem(new AnimationSystem(_server));
+            _server.AddSystem(new AudioSystem(_server, _eventBus, false));
             _modelManager = new ModelManager(_renderContext);
             _modelManager.LoadModel(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx"));
             Vector3 startPos = new Vector3(10, 10, 0);
@@ -76,7 +74,6 @@ namespace SiegeEngine.Core.Managers
             playerEntity.AddComponent(_player.Physics);
             playerEntity.AddComponent(new ModelComponent { Model = _player.Model, Key = "man_mesh" });
             _server.AddEntity(playerEntity);
-
             var ctx = new SceneContext
             {
                 RenderContext = _renderContext,
@@ -88,16 +85,12 @@ namespace SiegeEngine.Core.Managers
                 PlayerMovement = null,
                 ModelManager = _modelManager
             };
-
             ScriptLoader.ActivateProjectScripts(ctx, _inputHandler, predictionSystem);
-
-            // Stock controller is created only as a true fallback after activation
             if (ctx.PlayerMovement == null)
             {
                 ctx.PlayerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
             }
             _playerMovement = ctx.PlayerMovement;
-
             _currentScene = (Scene)SceneRegistry.Create(e.SceneName, ctx);
             _currentScene.SetPlayer(_player);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
@@ -185,22 +178,19 @@ namespace SiegeEngine.Core.Managers
             var predictionSystem = new ClientPredictionSystem(ctx.Server, _eventBus);
             ctx.Server.AddSystem(predictionSystem);
             ctx.Server.AddSystem(new AnimationSystem(ctx.Server));
+            ctx.Server.AddSystem(new AudioSystem(ctx.Server, _eventBus, false));
             ulong steamId = 0;
             if (_steamEngine is SteamEngine se) steamId = se.GetSteamId();
             _player = new Player(1, new Vector3(10, 10, 0), steamId);
             _player.InitializeCamera(_controlContext, _window);
             ctx.Player = _player;
             ctx.PlayerMovement = null;
-
             ScriptLoader.ActivateProjectScripts(ctx, _inputHandler, predictionSystem);
-
-            // Stock controller is created only as a true fallback after activation
             if (ctx.PlayerMovement == null)
             {
                 ctx.PlayerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
             }
             _playerMovement = ctx.PlayerMovement;
-
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot - entities rehydrated and added");

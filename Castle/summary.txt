@@ -3066,7 +3066,7 @@ Folder: SiegeEngine
         - Calls: ComputeGlobalRecursiveAnimated
       - void ComputeGlobalRecursiveAnimated( Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] localTransforms, int idx)
       - Matrix4x4[] ComputeGlobalTransforms()
-        - Calls: ComputeGlobalRecursive, FBXParserBase.Log, FBXParserUtils.PrintMatrix
+        - Calls: ComputeGlobalRecursive
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)
       - void LogBoneHierarchy()
         - Calls: FBXParserBase.Log
