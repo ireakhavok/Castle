@@ -145,27 +145,8 @@ namespace CastleBuilder
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
 
-            // IDE finished opening — start background music (pure IDE trigger)
-            try
-            {
-                var menuServer = new ClientGameServerProxy(_eventBus);
-                var audio = new AudioSystem(menuServer, _eventBus, false);
-                menuServer.AddSystem(audio);
-                string musicPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", "2. Untitled.wav");
-                if (File.Exists(musicPath))
-                {
-                    audio.Play(musicPath, 1f, true, true);
-                    Console.WriteLine($"[IDEBasePanel] Started IDE music from {musicPath}");
-                }
-                else
-                {
-                    Console.WriteLine($"[IDEBasePanel] IDE music file not found at {musicPath}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[IDEBasePanel] Failed to start music: {ex.Message}");
-            }
+            // IDE finished opening — open the floating MusicPlayerPanel (playlist from Assets/Sounds/IDE/Music)
+            MusicPlayerPanel.Open(_renderContext, _controlContext, _window, _eventBus);
         }
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)

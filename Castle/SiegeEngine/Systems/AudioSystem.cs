@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Media;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -24,6 +25,12 @@ namespace SiegeEngine.Systems
         private int _nextHandle = 1;
         private readonly Dictionary<int, PlaybackInstance> _activePlayers = new Dictionary<int, PlaybackInstance>();
 
+        // Playlist state
+        private readonly List<string> _playlist = new List<string>();
+        private int _playlistIndex = -1;
+        private int _currentPlaylistHandle = -1;
+        private string _currentTitle = "";
+
         private class PlaybackInstance
         {
             public SoundPlayer Player;
@@ -45,6 +52,10 @@ namespace SiegeEngine.Systems
                 _eventBus.Subscribe<SoundEvent>(OnSoundEvent);
             }
         }
+
+        public string CurrentTitle => _currentTitle;
+        public bool HasPlaylist => _playlist.Count > 0;
+        public int PlaylistCount => _playlist.Count;
 
         public void SetListenerPosition(Vector3 position)
         {
@@ -88,6 +99,13 @@ namespace SiegeEngine.Systems
                     Path = path,
                     IsPaused = false
                 };
+
+                if (isMusic)
+                {
+                    _currentPlaylistHandle = handle;
+                    _currentTitle = Path.GetFileNameWithoutExtension(path);
+                }
+
                 return handle;
             }
             catch (Exception ex)
@@ -95,6 +113,75 @@ namespace SiegeEngine.Systems
                 Console.WriteLine($"AudioSystem: Failed to play '{path}': {ex.Message}");
                 return -1;
             }
+        }
+
+        public void PlayFolder(string folderRelativeOrAbsolute, bool shuffle = false, bool loopPlaylist = true)
+        {
+            string folder = folderRelativeOrAbsolute;
+            if (!Path.IsPathRooted(folder))
+            {
+                folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, folder.TrimStart('\\', '/').Replace('/', Path.DirectorySeparatorChar));
+            }
+
+            if (!Directory.Exists(folder))
+            {
+                Console.WriteLine($"AudioSystem: Music folder not found: {folder}");
+                return;
+            }
+
+            var files = Directory.GetFiles(folder, "*.wav", SearchOption.TopDirectoryOnly)
+                .Concat(Directory.GetFiles(folder, "*.mp3", SearchOption.TopDirectoryOnly))
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (files.Count == 0)
+            {
+                Console.WriteLine($"AudioSystem: No .wav/.mp3 files in {folder}");
+                return;
+            }
+
+            _playlist.Clear();
+            _playlist.AddRange(files);
+            if (shuffle)
+            {
+                for (int i = _playlist.Count - 1; i > 0; i--)
+                {
+                    int j = _random.Next(i + 1);
+                    var tmp = _playlist[i];
+                    _playlist[i] = _playlist[j];
+                    _playlist[j] = tmp;
+                }
+            }
+
+            _playlistIndex = 0;
+            PlayCurrentPlaylistTrack(loopPlaylist);
+        }
+
+        public void Next(bool loopPlaylist = true)
+        {
+            if (_playlist.Count == 0) return;
+            _playlistIndex = (_playlistIndex + 1) % _playlist.Count;
+            PlayCurrentPlaylistTrack(loopPlaylist);
+        }
+
+        public void Previous(bool loopPlaylist = true)
+        {
+            if (_playlist.Count == 0) return;
+            _playlistIndex = (_playlistIndex - 1 + _playlist.Count) % _playlist.Count;
+            PlayCurrentPlaylistTrack(loopPlaylist);
+        }
+
+        private void PlayCurrentPlaylistTrack(bool loop)
+        {
+            if (_playlistIndex < 0 || _playlistIndex >= _playlist.Count) return;
+
+            if (_currentPlaylistHandle >= 0)
+                Stop(_currentPlaylistHandle);
+
+            string path = _playlist[_playlistIndex];
+            _currentPlaylistHandle = Play(path, 1f, loop, true);
+            _currentTitle = Path.GetFileNameWithoutExtension(path);
+            Console.WriteLine($"AudioSystem: Playlist now playing '{_currentTitle}' ({_playlistIndex + 1}/{_playlist.Count})");
         }
 
         public void Stop(int handle)
@@ -108,6 +195,10 @@ namespace SiegeEngine.Systems
                 }
                 catch { }
                 _activePlayers.Remove(handle);
+                if (handle == _currentPlaylistHandle)
+                {
+                    _currentPlaylistHandle = -1;
+                }
             }
         }
 
@@ -118,6 +209,10 @@ namespace SiegeEngine.Systems
             {
                 if (musicOnly && !_activePlayers[h].IsMusic) continue;
                 Stop(h);
+            }
+            if (musicOnly)
+            {
+                _currentPlaylistHandle = -1;
             }
         }
 
@@ -134,6 +229,12 @@ namespace SiegeEngine.Systems
             }
         }
 
+        public void PauseCurrent()
+        {
+            if (_currentPlaylistHandle >= 0)
+                Pause(_currentPlaylistHandle);
+        }
+
         public void Resume(int handle)
         {
             if (_activePlayers.TryGetValue(handle, out var inst) && inst.IsPaused)
@@ -148,6 +249,12 @@ namespace SiegeEngine.Systems
                 }
                 catch { }
             }
+        }
+
+        public void ResumeCurrent()
+        {
+            if (_currentPlaylistHandle >= 0)
+                Resume(_currentPlaylistHandle);
         }
 
         public void SetVolume(int handle, float volume)
@@ -172,6 +279,7 @@ namespace SiegeEngine.Systems
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, cleaned),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", cleaned),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", cleaned),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", "IDE", "Music", Path.GetFileName(cleaned)),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", Path.GetFileName(cleaned)),
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", cleaned)
             };
