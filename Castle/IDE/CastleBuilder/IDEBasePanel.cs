@@ -1,13 +1,13 @@
-﻿// Folder: CastleBuilder
-// File: IDEBasePanel.cs
-using CastleBuilder.Events;
+﻿using CastleBuilder.Events;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Networking;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI;
 using SiegeEngine.Core.UI.Elements;
+using SiegeEngine.Systems;
 using System;
 using System.IO;
 using System.Linq;
@@ -136,14 +136,17 @@ namespace CastleBuilder
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "IDE_UI.html");
             if (!File.Exists(htmlPath))
             {
-                    Console.WriteLine($"[IDEBasePanel] ERROR: IDE_UI.html not found at {htmlPath}");
-                    return;
+                Console.WriteLine($"[IDEBasePanel] ERROR: IDE_UI.html not found at {htmlPath}");
+                return;
             }
             string html = File.ReadAllText(htmlPath);
             _uiOverlay.LoadUI(html);
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
+
+            // IDE finished opening — open the floating MusicPlayerPanel (playlist from Assets/Sounds/IDE/Music)
+            MusicPlayerPanel.Open(_renderContext, _controlContext, _window, _eventBus);
         }
 
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)

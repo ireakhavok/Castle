@@ -2943,9 +2943,9 @@ Folder: SiegeEngine
       - constructor SceneManager( IControlContext controlContext,  IRenderContext renderContext,  ISteamEngine steamEngine,  InputHandler inputHandler,  MenuPanel menuPanel,  ModManager modManager,  UISettingsManager settingsManager,  nint window, EventBus eventBus)
       - void Dispose()
       - void OnSwitchScene(SwitchSceneEvent e)
-        - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
+        - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, ScriptLoader.ActivateProjectScripts, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
       - void SwitchToRuntimeGameplay( Level currentLevel = null,  string levelDataPayload = null,  string levelName,  string sceneDataPayload = null, string projectPath)
-        - Calls: ClientGameServerProxy, Console.WriteLine, Entity.FromData, Level.Deserialize, ModelManager, ModelManager.EnsurePacksLoaded, Player, PlayerMovement, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ApplyControllerByTypeName, ScriptLoader.ApplyCustomPlayerControllerIfPresent, ScriptLoader.RegisterCustomSystems, _currentScene.Initialize, _player.InitializeCamera, ctx.Server.AddSystem, level.AddEntity, se.GetSteamId
+        - Calls: ClientGameServerProxy, Console.WriteLine, Entity.FromData, Level.Deserialize, ModelManager, ModelManager.EnsurePacksLoaded, Player, PlayerMovement, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ActivateProjectScripts, _currentScene.Initialize, _player.InitializeCamera, ctx.Server.AddSystem, level.AddEntity, se.GetSteamId
 - File: SceneRegistry.cs
   - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
     - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic
@@ -2982,7 +2982,7 @@ Folder: SiegeEngine
 - File: ScriptLoader.cs
   - Class: CustomSceneEntryAttribute (Namespace: SiegeEngine.Core.Managers)
     - Inherits: Attribute 
-    - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Reflection, System.Threading
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Reflection
 - File: SelectBrushEvent.cs
   - Class: SelectBrushEvent (Namespace: SiegeEngine.Core.Events)
     - Inherits: IEvent
@@ -3066,7 +3066,7 @@ Folder: SiegeEngine
         - Calls: ComputeGlobalRecursiveAnimated
       - void ComputeGlobalRecursiveAnimated( Matrix4x4 parentGlobal,  Matrix4x4[] globals,  Matrix4x4[] localTransforms, int idx)
       - Matrix4x4[] ComputeGlobalTransforms()
-        - Calls: ComputeGlobalRecursive, FBXParserBase.Log, FBXParserUtils.PrintMatrix
+        - Calls: ComputeGlobalRecursive
       - void ComputeGlobalRecursive( Matrix4x4 parentGlobal,  Matrix4x4[] globals, int idx)
       - void LogBoneHierarchy()
         - Calls: FBXParserBase.Log

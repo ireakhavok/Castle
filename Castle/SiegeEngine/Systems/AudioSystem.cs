@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Media;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -15,10 +17,29 @@ namespace SiegeEngine.Systems
         private readonly bool _isServer;
         private readonly ISoundValidator _validationSystem;
         private readonly Random _random = new Random();
-        private const float MaxDistance = 2000f; // 20 units in cm
-        private const float MinIntensity = 0.00001f; // -80 dB
-        private const float ListenerRadius = 10f; // cm
+        private const float MaxDistance = 2000f;
+        private const float MinIntensity = 0.00001f;
+        private const float ListenerRadius = 10f;
         private Vector3 _listenerPosition;
+
+        private int _nextHandle = 1;
+        private readonly Dictionary<int, PlaybackInstance> _activePlayers = new Dictionary<int, PlaybackInstance>();
+
+        // Playlist state
+        private readonly List<string> _playlist = new List<string>();
+        private int _playlistIndex = -1;
+        private int _currentPlaylistHandle = -1;
+        private string _currentTitle = "";
+
+        private class PlaybackInstance
+        {
+            public SoundPlayer Player;
+            public float Volume;
+            public bool Loop;
+            public bool IsMusic;
+            public string Path;
+            public bool IsPaused;
+        }
 
         public AudioSystem(IGameServer server, EventBus eventBus, bool isServer, ISoundValidator validationSystem = null) : base(server)
         {
@@ -32,6 +53,10 @@ namespace SiegeEngine.Systems
             }
         }
 
+        public string CurrentTitle => _currentTitle;
+        public bool HasPlaylist => _playlist.Count > 0;
+        public int PlaylistCount => _playlist.Count;
+
         public void SetListenerPosition(Vector3 position)
         {
             _listenerPosition = position;
@@ -39,6 +64,232 @@ namespace SiegeEngine.Systems
 
         public override void Update(float deltaTime)
         {
+        }
+
+        public int Play(string clipNameOrPath, float volume = 1f, bool loop = false, bool isMusic = false)
+        {
+            if (string.IsNullOrWhiteSpace(clipNameOrPath))
+            {
+                Console.WriteLine("AudioSystem: Play called with empty path.");
+                return -1;
+            }
+
+            string path = ResolveSoundPath(clipNameOrPath);
+            if (path == null || !File.Exists(path))
+            {
+                Console.WriteLine($"AudioSystem: Sound file not found for '{clipNameOrPath}'.");
+                return -1;
+            }
+
+            try
+            {
+                var player = new SoundPlayer(path);
+                if (loop)
+                    player.PlayLooping();
+                else
+                    player.Play();
+
+                int handle = _nextHandle++;
+                _activePlayers[handle] = new PlaybackInstance
+                {
+                    Player = player,
+                    Volume = Math.Clamp(volume, 0f, 1f),
+                    Loop = loop,
+                    IsMusic = isMusic,
+                    Path = path,
+                    IsPaused = false
+                };
+
+                if (isMusic)
+                {
+                    _currentPlaylistHandle = handle;
+                    _currentTitle = Path.GetFileNameWithoutExtension(path);
+                }
+
+                return handle;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"AudioSystem: Failed to play '{path}': {ex.Message}");
+                return -1;
+            }
+        }
+
+        public void PlayFolder(string folderRelativeOrAbsolute, bool shuffle = false, bool loopPlaylist = true)
+        {
+            string folder = folderRelativeOrAbsolute;
+            if (!Path.IsPathRooted(folder))
+            {
+                folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, folder.TrimStart('\\', '/').Replace('/', Path.DirectorySeparatorChar));
+            }
+
+            if (!Directory.Exists(folder))
+            {
+                Console.WriteLine($"AudioSystem: Music folder not found: {folder}");
+                return;
+            }
+
+            var files = Directory.GetFiles(folder, "*.wav", SearchOption.TopDirectoryOnly)
+                .Concat(Directory.GetFiles(folder, "*.mp3", SearchOption.TopDirectoryOnly))
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (files.Count == 0)
+            {
+                Console.WriteLine($"AudioSystem: No .wav/.mp3 files in {folder}");
+                return;
+            }
+
+            _playlist.Clear();
+            _playlist.AddRange(files);
+            if (shuffle)
+            {
+                for (int i = _playlist.Count - 1; i > 0; i--)
+                {
+                    int j = _random.Next(i + 1);
+                    var tmp = _playlist[i];
+                    _playlist[i] = _playlist[j];
+                    _playlist[j] = tmp;
+                }
+            }
+
+            _playlistIndex = 0;
+            PlayCurrentPlaylistTrack(loopPlaylist);
+        }
+
+        public void Next(bool loopPlaylist = true)
+        {
+            if (_playlist.Count == 0) return;
+            _playlistIndex = (_playlistIndex + 1) % _playlist.Count;
+            PlayCurrentPlaylistTrack(loopPlaylist);
+        }
+
+        public void Previous(bool loopPlaylist = true)
+        {
+            if (_playlist.Count == 0) return;
+            _playlistIndex = (_playlistIndex - 1 + _playlist.Count) % _playlist.Count;
+            PlayCurrentPlaylistTrack(loopPlaylist);
+        }
+
+        private void PlayCurrentPlaylistTrack(bool loop)
+        {
+            if (_playlistIndex < 0 || _playlistIndex >= _playlist.Count) return;
+
+            if (_currentPlaylistHandle >= 0)
+                Stop(_currentPlaylistHandle);
+
+            string path = _playlist[_playlistIndex];
+            _currentPlaylistHandle = Play(path, 1f, loop, true);
+            _currentTitle = Path.GetFileNameWithoutExtension(path);
+            Console.WriteLine($"AudioSystem: Playlist now playing '{_currentTitle}' ({_playlistIndex + 1}/{_playlist.Count})");
+        }
+
+        public void Stop(int handle)
+        {
+            if (_activePlayers.TryGetValue(handle, out var inst))
+            {
+                try
+                {
+                    inst.Player?.Stop();
+                    inst.Player?.Dispose();
+                }
+                catch { }
+                _activePlayers.Remove(handle);
+                if (handle == _currentPlaylistHandle)
+                {
+                    _currentPlaylistHandle = -1;
+                }
+            }
+        }
+
+        public void StopAll(bool musicOnly = false)
+        {
+            var keys = new List<int>(_activePlayers.Keys);
+            foreach (var h in keys)
+            {
+                if (musicOnly && !_activePlayers[h].IsMusic) continue;
+                Stop(h);
+            }
+            if (musicOnly)
+            {
+                _currentPlaylistHandle = -1;
+            }
+        }
+
+        public void Pause(int handle)
+        {
+            if (_activePlayers.TryGetValue(handle, out var inst) && !inst.IsPaused)
+            {
+                try
+                {
+                    inst.Player?.Stop();
+                    inst.IsPaused = true;
+                }
+                catch { }
+            }
+        }
+
+        public void PauseCurrent()
+        {
+            if (_currentPlaylistHandle >= 0)
+                Pause(_currentPlaylistHandle);
+        }
+
+        public void Resume(int handle)
+        {
+            if (_activePlayers.TryGetValue(handle, out var inst) && inst.IsPaused)
+            {
+                try
+                {
+                    if (inst.Loop)
+                        inst.Player.PlayLooping();
+                    else
+                        inst.Player.Play();
+                    inst.IsPaused = false;
+                }
+                catch { }
+            }
+        }
+
+        public void ResumeCurrent()
+        {
+            if (_currentPlaylistHandle >= 0)
+                Resume(_currentPlaylistHandle);
+        }
+
+        public void SetVolume(int handle, float volume)
+        {
+            if (_activePlayers.TryGetValue(handle, out var inst))
+            {
+                inst.Volume = Math.Clamp(volume, 0f, 1f);
+            }
+        }
+
+        private string ResolveSoundPath(string clipNameOrPath)
+        {
+            if (string.IsNullOrWhiteSpace(clipNameOrPath)) return null;
+
+            if (Path.IsPathRooted(clipNameOrPath) && File.Exists(clipNameOrPath))
+                return clipNameOrPath;
+
+            string cleaned = clipNameOrPath.TrimStart('\\', '/').Replace('/', Path.DirectorySeparatorChar);
+
+            string[] candidates = new[]
+            {
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, cleaned),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", cleaned),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", cleaned),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", "IDE", "Music", Path.GetFileName(cleaned)),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", Path.GetFileName(cleaned)),
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Sounds", cleaned)
+            };
+
+            foreach (var c in candidates)
+            {
+                if (File.Exists(c)) return c;
+            }
+
+            return null;
         }
 
         private void OnSoundEmission(SoundEmissionEvent e)
@@ -87,7 +338,6 @@ namespace SiegeEngine.Systems
             float totalIntensity = 0f;
             float totalDelay = 0f;
             int validRays = 0;
-
             for (int i = 0; i < numRays; i++)
             {
                 Vector3 direction = RandomDirection();
@@ -95,15 +345,12 @@ namespace SiegeEngine.Systems
                 float distance = 0f;
                 int bounceCount = 0;
                 Vector3 position = source.Position;
-
                 while (bounceCount < maxBounces && intensity > MinIntensity)
                 {
                     var result = _isServer ? _server.RequestRayTrace(position, direction, MaxDistance) : SimulateClientRayTrace(position, direction);
                     distance += result.Distance;
-
                     if (!result.DidHit || distance > MaxDistance)
                         break;
-
                     intensity *= 1.0f / (distance * distance);
                     if (result.Material != null)
                     {
@@ -111,7 +358,6 @@ namespace SiegeEngine.Systems
                         intensity *= (float)Math.Pow(10, -2 * density * result.Distance / 10);
                         intensity *= density > 1.5f ? 0.9f : 0.7f;
                     }
-
                     if (Vector3.Distance(result.HitPoint, _listenerPosition) < ListenerRadius)
                     {
                         totalIntensity += intensity;
@@ -119,11 +365,9 @@ namespace SiegeEngine.Systems
                         validRays++;
                         break;
                     }
-
                     direction = Vector3.Reflect(direction, result.HitNormal);
                     position = result.HitPoint + direction * 0.01f;
                     bounceCount++;
-
                     if (bounceCount < maxBounces)
                     {
                         for (int j = 0; j < 6; j++)
@@ -146,10 +390,8 @@ namespace SiegeEngine.Systems
                     }
                 }
             }
-
             if (validRays == 0)
                 return null;
-
             return new SoundRayTraceResult
             {
                 Intensity = totalIntensity / validRays,
@@ -192,32 +434,34 @@ namespace SiegeEngine.Systems
 
         private void PlaySound(SoundSource source, SoundRayTraceResult result)
         {
-            string wavPath = $"Assets/Sounds/{source.Type.ToLower()}.wav";
-            string mp3Path = $"Assets/Sounds/{source.Type.ToLower()}.mp3";
-            string soundPath = File.Exists(wavPath) ? wavPath : File.Exists(mp3Path) ? mp3Path : null;
-
-            if (soundPath == null)
+            string pathHint = !string.IsNullOrEmpty(source.AudioClip) ? source.AudioClip : source.Type;
+            string resolved = ResolveSoundPath(pathHint);
+            if (resolved == null)
+            {
+                string wavPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", (source.Type ?? "").ToLower() + ".wav");
+                string mp3Path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Sounds", (source.Type ?? "").ToLower() + ".mp3");
+                resolved = File.Exists(wavPath) ? wavPath : File.Exists(mp3Path) ? mp3Path : null;
+            }
+            if (resolved == null)
             {
                 Console.WriteLine($"AudioSystem: Sound file for {source.Type} not found.");
                 return;
             }
 
-            byte[] audioData = File.ReadAllBytes(soundPath);
-            bool isMp3 = soundPath.EndsWith(".mp3");
-
+            byte[] audioData = File.ReadAllBytes(resolved);
+            bool isMp3 = resolved.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase);
             if (isMp3)
             {
                 audioData = ConvertMp3ToWav(audioData);
                 if (audioData == null)
                 {
-                    Console.WriteLine($"AudioSystem: Failed to convert MP3 to WAV for {soundPath}.");
+                    Console.WriteLine($"AudioSystem: Failed to convert MP3 to WAV for {resolved}.");
                     return;
                 }
             }
 
             using MemoryStream ms = new MemoryStream(audioData);
             using BinaryReader reader = new BinaryReader(ms);
-
             string riff = new string(reader.ReadChars(4));
             if (riff != "RIFF")
             {
@@ -231,13 +475,11 @@ namespace SiegeEngine.Systems
                 Console.WriteLine("Invalid WAV file: Not WAVE");
                 return;
             }
-
             short channels = 0;
             int sampleRate = 0;
             short bitsPerSample = 0;
             int dataSize = 0;
             long dataStart = 0;
-
             while (ms.Position < ms.Length)
             {
                 string chunkId = new string(reader.ReadChars(4));
@@ -274,13 +516,11 @@ namespace SiegeEngine.Systems
                     reader.ReadBytes(chunkSize);
                 }
             }
-
             if (channels == 0 || sampleRate == 0 || dataSize == 0)
             {
                 Console.WriteLine("Invalid WAV file: Missing format or data");
                 return;
             }
-
             ms.Position = dataStart;
             int numSamples = dataSize / 2;
             short[] samples = new short[numSamples];
@@ -288,10 +528,8 @@ namespace SiegeEngine.Systems
             {
                 samples[i] = reader.ReadInt16();
             }
-
             float cutoff = result.LowPassCutoff;
             float alpha = (float)Math.Exp(-2 * Math.PI * cutoff / sampleRate);
-
             short[] filteredSamples;
             if (channels == 1)
             {
@@ -320,14 +558,12 @@ namespace SiegeEngine.Systems
                 Console.WriteLine("Unsupported number of channels");
                 return;
             }
-
             float volume = Math.Clamp(result.Intensity, 0f, 1f);
             for (int i = 0; i < filteredSamples.Length; i++)
             {
                 int scaled = (int)(filteredSamples[i] * volume);
                 filteredSamples[i] = (short)Math.Clamp(scaled, short.MinValue, short.MaxValue);
             }
-
             byte[] modifiedWav = (byte[])audioData.Clone();
             using (MemoryStream msMod = new MemoryStream(modifiedWav))
             {
@@ -338,7 +574,6 @@ namespace SiegeEngine.Systems
                     writer.Write(filteredSamples[i]);
                 }
             }
-
             Task.Run(async () =>
             {
                 await Task.Delay((int)(result.Delay * 1000));
@@ -354,7 +589,6 @@ namespace SiegeEngine.Systems
             {
                 using MemoryStream mp3Stream = new MemoryStream(mp3Data);
                 using MemoryStream wavStream = new MemoryStream();
-
                 mp3Stream.Position = 0;
                 byte[] header = new byte[4];
                 mp3Stream.Read(header, 0, 4);
@@ -363,7 +597,6 @@ namespace SiegeEngine.Systems
                     Console.WriteLine("Invalid MP3 header");
                     return null;
                 }
-
                 int sampleRate = GetMp3SampleRate(header);
                 int channels = (header[3] & 0xC0) == 0xC0 ? 1 : 2;
                 if (sampleRate == 0)
@@ -371,14 +604,12 @@ namespace SiegeEngine.Systems
                     Console.WriteLine("Unsupported MP3 format");
                     return null;
                 }
-
                 short[] pcmSamples = DecodeMp3Frames(mp3Stream, channels, sampleRate);
                 if (pcmSamples == null || pcmSamples.Length == 0)
                 {
                     Console.WriteLine("Failed to decode MP3 frames");
                     return null;
                 }
-
                 using BinaryWriter writer = new BinaryWriter(wavStream);
                 writer.Write(new char[] { 'R', 'I', 'F', 'F' });
                 int dataLength = pcmSamples.Length * 2;
@@ -394,12 +625,10 @@ namespace SiegeEngine.Systems
                 writer.Write((short)16);
                 writer.Write(new char[] { 'd', 'a', 't', 'a' });
                 writer.Write(dataLength);
-
                 for (int i = 0; i < pcmSamples.Length; i++)
                 {
                     writer.Write(pcmSamples[i]);
                 }
-
                 return wavStream.ToArray();
             }
             catch (Exception ex)
@@ -415,9 +644,9 @@ namespace SiegeEngine.Systems
             int frequencyIndex = (header[2] & 0x0C) >> 2;
             int[][] sampleRates = new int[][]
             {
-                new int[] { 44100, 48000, 32000, 0 }, // MPEG-1
-                new int[] { 22050, 24000, 16000, 0 }, // MPEG-2
-                new int[] { 11025, 12000, 8000, 0 }   // MPEG-2.5
+                new int[] { 44100, 48000, 32000, 0 },
+                new int[] { 22050, 24000, 16000, 0 },
+                new int[] { 11025, 12000, 8000, 0 }
             };
             int mpegVersion = version == 3 ? 0 : version == 2 ? 1 : 2;
             return sampleRates[mpegVersion][frequencyIndex];
@@ -430,10 +659,8 @@ namespace SiegeEngine.Systems
             short[] pcmSamples = new short[samplesCapacity];
             int sampleCount = 0;
             long initialPosition = mp3Stream.Position;
-
             mp3Stream.Position = initialPosition;
             byte[] buffer = new byte[4];
-
             while (mp3Stream.Position < mp3Stream.Length - 4)
             {
                 mp3Stream.Read(buffer, 0, 4);
@@ -442,14 +669,11 @@ namespace SiegeEngine.Systems
                     mp3Stream.Position -= 3;
                     continue;
                 }
-
                 int frameSize = CalculateFrameSize(buffer, sampleRate);
                 if (frameSize < 4 || mp3Stream.Position + frameSize - 4 > mp3Stream.Length)
                     break;
-
                 byte[] frameData = new byte[frameSize - 4];
                 mp3Stream.Read(frameData, 0, frameSize - 4);
-
                 short[] frameSamples = DecodeMp3Frame(frameData, channels);
                 if (frameSamples != null)
                 {
@@ -461,10 +685,8 @@ namespace SiegeEngine.Systems
                     sampleCount += frameSamples.Length;
                 }
             }
-
             if (sampleCount == 0)
                 return null;
-
             Array.Resize(ref pcmSamples, sampleCount);
             return pcmSamples;
         }
@@ -475,14 +697,13 @@ namespace SiegeEngine.Systems
             int version = (header[1] & 0x18) >> 3;
             int[][] bitrateTable = new int[][]
             {
-                new int[] { 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0 }, // MPEG-1
-                new int[] { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0 }   // MPEG-2, 2.5
+                new int[] { 0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0 },
+                new int[] { 0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160, 0 }
             };
             int mpegVersion = version == 3 ? 0 : 1;
             int bitrate = bitrateTable[mpegVersion][bitrateIndex] * 1000;
             if (bitrate == 0)
                 return 0;
-
             int padding = (header[2] & 0x02) >> 1;
             return 144 * bitrate / sampleRate + padding;
         }
@@ -491,23 +712,17 @@ namespace SiegeEngine.Systems
         {
             const int samplesPerFrame = 1152;
             short[] samples = new short[samplesPerFrame * channels];
-
             using MemoryStream frameStream = new MemoryStream(frameData);
             using BinaryReader reader = new BinaryReader(frameStream);
-
             if (frameStream.Length < 17)
                 return null;
-
             byte[] sideInfo = new byte[channels == 1 ? 17 : 32];
             frameStream.Read(sideInfo, 0, sideInfo.Length);
-
             int mainDataLength = (frameData.Length - sideInfo.Length) * 8;
             if (mainDataLength <= 0)
                 return null;
-
             byte[] mainData = new byte[frameData.Length - sideInfo.Length];
             frameStream.Read(mainData, 0, mainData.Length);
-
             int[] scalefactors = new int[channels * 2];
             int scalefactorIndex = 0;
             for (int ch = 0; ch < channels; ch++)
@@ -517,7 +732,6 @@ namespace SiegeEngine.Systems
                     scalefactors[scalefactorIndex++] = reader.ReadByte() & 0xFF;
                 }
             }
-
             float[][] granules = new float[channels][];
             for (int ch = 0; ch < channels; ch++)
             {
@@ -533,7 +747,6 @@ namespace SiegeEngine.Systems
                     }
                 }
             }
-
             float[] mdctOutput = new float[36];
             float[] polyphaseOutput = new float[samplesPerFrame];
             for (int i = 0; i < samplesPerFrame; i += 36)
@@ -542,7 +755,6 @@ namespace SiegeEngine.Systems
                 {
                     mdctOutput[j] = granules[0][i + j];
                 }
-
                 for (int j = 0; j < 36; j++)
                 {
                     float sum = 0;
@@ -553,7 +765,6 @@ namespace SiegeEngine.Systems
                     polyphaseOutput[i + j] = sum;
                 }
             }
-
             for (int ch = 0; ch < channels; ch++)
             {
                 for (int i = 0; i < samplesPerFrame; i++)
@@ -562,7 +773,6 @@ namespace SiegeEngine.Systems
                     samples[i * channels + ch] = (short)Math.Clamp(sample * 32767, short.MinValue, short.MaxValue);
                 }
             }
-
             return samples;
         }
 
