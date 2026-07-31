@@ -1,4 +1,6 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine/Core/Managers
+// File: SceneManager.cs
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Networking;
@@ -11,7 +13,6 @@ using SiegeEngine.Systems;
 using System;
 using System.Numerics;
 using System.Text.Json;
-
 namespace SiegeEngine.Core.Managers
 {
     public class SceneManager
@@ -30,7 +31,6 @@ namespace SiegeEngine.Core.Managers
         private PlayerMovement _playerMovement;
         private ModelManager _modelManager;
         private IGameServer _server;
-
         public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, nint window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuPanel menuPanel)
         {
             _eventBus = eventBus;
@@ -44,7 +44,6 @@ namespace SiegeEngine.Core.Managers
             _menuPanel = menuPanel;
             _eventBus.Subscribe<SwitchSceneEvent>(OnSwitchScene);
         }
-
         public void Update(float deltaTime) => _currentScene?.Update(deltaTime);
         public void Render() => _currentScene?.Render(_server?.GetEntities() ?? Array.Empty<Entity>());
         public void Resize(int width, int height) => _currentScene?.Resize(width, height);
@@ -53,7 +52,6 @@ namespace SiegeEngine.Core.Managers
             _currentScene?.Dispose();
             _currentScene = null;
         }
-
         private void OnSwitchScene(SwitchSceneEvent e)
         {
             Console.WriteLine($"SceneManager: Switching to '{e.SceneName}'");
@@ -65,15 +63,6 @@ namespace SiegeEngine.Core.Managers
             _server.AddSystem(new AnimationSystem(_server));
             _server.AddSystem(new AudioSystem(_server, _eventBus, false));
             _modelManager = new ModelManager(_renderContext);
-            _modelManager.LoadModel(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Characters", "Man_Mesh.fbx"));
-            Vector3 startPos = new Vector3(10, 10, 0);
-            _player = new Player(1, startPos, ((SteamEngine)_steamEngine).GetSteamId());
-            _player.InitializeCamera(_controlContext, _window);
-            var playerEntity = new Entity { Id = 1, Type = "Player" };
-            playerEntity.AddComponent(_player);
-            playerEntity.AddComponent(_player.Physics);
-            playerEntity.AddComponent(new ModelComponent { Model = _player.Model, Key = "man_mesh" });
-            _server.AddEntity(playerEntity);
             var ctx = new SceneContext
             {
                 RenderContext = _renderContext,
@@ -81,7 +70,7 @@ namespace SiegeEngine.Core.Managers
                 Window = _window,
                 Server = _server,
                 EventBus = _eventBus,
-                Player = _player,
+                Player = null,
                 PlayerMovement = null,
                 ModelManager = _modelManager
             };
@@ -91,12 +80,11 @@ namespace SiegeEngine.Core.Managers
                 ctx.PlayerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
             }
             _playerMovement = ctx.PlayerMovement;
+            _player = ctx.Player;
             _currentScene = (Scene)SceneRegistry.Create(e.SceneName, ctx);
-            _currentScene.SetPlayer(_player);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine($"SceneManager: '{e.SceneName}' initialized successfully via registry.");
         }
-
         public void SwitchToRuntimeGameplay(string projectPath, string levelName, string levelDataPayload = null, string sceneDataPayload = null, Level currentLevel = null)
         {
             Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0} - levelPayload present: {levelDataPayload != null}, scenePayload present: {sceneDataPayload != null}");
@@ -179,11 +167,7 @@ namespace SiegeEngine.Core.Managers
             ctx.Server.AddSystem(predictionSystem);
             ctx.Server.AddSystem(new AnimationSystem(ctx.Server));
             ctx.Server.AddSystem(new AudioSystem(ctx.Server, _eventBus, false));
-            ulong steamId = 0;
-            if (_steamEngine is SteamEngine se) steamId = se.GetSteamId();
-            _player = new Player(1, new Vector3(10, 10, 0), steamId);
-            _player.InitializeCamera(_controlContext, _window);
-            ctx.Player = _player;
+            ctx.Player = null;
             ctx.PlayerMovement = null;
             ScriptLoader.ActivateProjectScripts(ctx, _inputHandler, predictionSystem);
             if (ctx.PlayerMovement == null)
@@ -191,6 +175,7 @@ namespace SiegeEngine.Core.Managers
                 ctx.PlayerMovement = new PlayerMovement(_inputHandler, predictionSystem, _eventBus);
             }
             _playerMovement = ctx.PlayerMovement;
+            _player = ctx.Player;
             _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot - entities rehydrated and added");
