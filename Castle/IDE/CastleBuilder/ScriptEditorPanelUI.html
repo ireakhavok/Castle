@@ -1,0 +1,51 @@
+<!-- Folder: (root next to exe) -->
+<!-- File: ScriptEditorPanelUI.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            color: #cccccc;
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 32px;
+            padding: 0 8px;
+            background: #252526;
+            border-bottom: 1px solid #333;
+        }
+
+            .toolbar button {
+                background: #333;
+                border: 1px solid #555;
+                color: #7CFFCB;
+                padding: 4px 12px;
+                cursor: pointer;
+                font-family: inherit;
+                font-size: 12px;
+            }
+
+                .toolbar button:hover {
+                    background: #444;
+                }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button data-hook="Rebuild">Rebuild</button>
+        <button data-hook="SaveFile">Save</button>
+        <button data-hook="RefreshList">Refresh</button>
+    </div>
+</body>
+</html>

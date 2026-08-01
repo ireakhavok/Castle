@@ -116,12 +116,9 @@ namespace CastleBuilder
         public static void PlayGame(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             Console.WriteLine("[MenuCommands.PlayGame] Launching CURRENT project Level in NEW isolated window (pure runtime client - pure in-memory payload via temp transfer file, no forced disk write)");
-
             string projectPath = ProjectSettings.Current.ActiveProject ?? string.Empty;
             string levelName = ProjectSettings.Current.CurrentSceneName ?? "Main";
-
             string payloadFile = BlueprintManager.BuildPlayPayloadFile();
-
             ScriptLoader.BuildProjectScripts(projectPath);
             ScriptLoader.CopyProjectScripts(projectPath);
             string exe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Foundation.exe");
@@ -232,8 +229,8 @@ namespace CastleBuilder
         }
         public static void OpenScriptsPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
-            Console.WriteLine("[MenuCommands] Scripts panel opened - Build, csproj gen, controller selector active");
-            eventBus.Publish(new GenericEvent { Hook = "OpenScriptsPanel" });
+            ScriptEditorPanel.Open(renderContext, controlContext, window, eventBus);
+            Console.WriteLine("[MenuCommands] Script Editor Panel opened");
         }
     }
 }

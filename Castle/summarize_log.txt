@@ -527,7 +527,7 @@ Found: IDE_UI.html
 Found: MenuCommands.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
-Read 14974 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
+Read 14936 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
 Namespace: CastleBuilder
 Found 15 dependencies
 Found: MusicPlayerPanel.cs
@@ -564,6 +564,13 @@ Read 28360 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEdito
 Namespace: CastleBuilder
 Found 23 dependencies
 Found: SceneEditorUI.html
+Found: ScriptEditorPanel.cs
+Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
+Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
+Read 37391 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
+Namespace: ToolChest
+Found 18 dependencies
+Found: ScriptEditorPanelUI.html
 Found: HeirarchySummary.exe
 Found: Keystone
 Listing folder: C:\repos\RealmFoundry\Castle\IDE\Keystone

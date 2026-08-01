@@ -251,7 +251,7 @@ Folder: IDE
       - void BuildScripts( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: Console.WriteLine, ScriptLoader.BuildProjectScripts
       - void OpenScriptsPanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
-        - Calls: Console.WriteLine
+        - Calls: Console.WriteLine, ScriptEditorPanel.Open
 - File: MusicPlayerPanel.cs
   - Class: value (Namespace: CastleBuilder)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Systems, System, System.IO, System.Numerics
@@ -465,6 +465,15 @@ Folder: IDE
       - constructor SelectionBoxOverlay(SceneEditorPanel parent)
       - void Draw( float panelHeight,  float panelWidth, UIQuadRenderer quadRenderer)
         - Calls: quadRenderer.DrawLine, quadRenderer.DrawQuad
+- File: ScriptEditorPanel.cs
+  - Class: ScriptEditorUIOverlay (Namespace: ToolChest)
+    - Inherits: UIOverlay
+        
+    - Dependencies: CastleBuilder, Keystone, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.Diagnostics, System.IO, System.Linq, System.Numerics, System.Text, System.Text.RegularExpressions
+    - Fields:
+      - ScriptEditorPanel _parent
+    - Methods:
+      - void HandleDataHook(string hook)
 - File: SpritePlacementPanel.cs
   - Class: SpritePlacementUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -3907,6 +3916,7 @@ ToolChest.LogCaptureWriter
 ToolChest.NewMaterialUIOverlay
 ToolChest.PlacementOverlay
 ToolChest.PropertiesUIOverlay
+ToolChest.ScriptEditorUIOverlay
 ToolChest.SpritePlacementUIOverlay
 ToolChest.TimelineUIOverlay
 ToolChest.TransformGizmoOverlay
