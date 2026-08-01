@@ -111,10 +111,10 @@ namespace SiegeEngine.Core.Rendering
             if (string.IsNullOrEmpty(text)) return Vector2.Zero;
             float width = renderer.GetStringWidth(text) * scale;
             float height = 0;
-            foreach (char c in text)
+            foreach (var (glyph, _) in SystemFontRenderer.EnumerateGlyphs(text))
             {
-                if (char.IsWhiteSpace(c)) continue;
-                var data = renderer.GetCharacterData(c);
+                if (string.IsNullOrWhiteSpace(glyph)) continue;
+                var data = renderer.GetCharacterData(glyph);
                 height = Math.Max(height, data.Height * scale);
             }
             return new Vector2(width, height);
@@ -153,23 +153,21 @@ namespace SiegeEngine.Core.Rendering
             float scale = fontSize / renderer.BaseSize;
             run.LineHeight = renderer.LineHeight * scale;
             float currentX = 0f;
-            for (int i = 0; i < text.Length; i++)
+            foreach (var (glyph, _) in SystemFontRenderer.EnumerateGlyphs(text))
             {
-                char c = text[i];
-                if (c == '\n' || c == '\r') continue;
-                var data = renderer.GetCharacterData(c);
+                if (glyph == "\n" || glyph == "\r") continue;
+                var data = renderer.GetCharacterData(glyph);
                 if (data == null) continue;
                 float charWidth = data.Width * scale;
                 float charHeight = data.Height * scale;
                 run.Glyphs.Add(new GlyphInstance
                 {
                     LocalX = currentX,
-                    TextureId = renderer.GetCharacterTexture(c),
+                    TextureId = renderer.GetCharacterTexture(glyph),
                     Width = charWidth,
                     Height = charHeight
                 });
-                // Use pre-computed advance (now O(1) table lookup)
-                float advance = renderer.GetAdvance(c) * scale;
+                float advance = renderer.GetAdvance(glyph) * scale;
                 currentX += advance;
             }
             run.TotalWidth = currentX;

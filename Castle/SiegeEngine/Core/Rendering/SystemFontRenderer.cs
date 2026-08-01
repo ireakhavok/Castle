@@ -12,9 +12,10 @@ namespace SiegeEngine.Core.Rendering
 {
     public class SystemFontRenderer
     {
-        private readonly Dictionary<char, CharacterData> _characterData;
-        private readonly Dictionary<char, uint> _charTextures;
-        private readonly Dictionary<char, float> _advances;
+        // Keyed by the full glyph string (1 char for BMP, 2 chars for surrogate-pair emoji)
+        private readonly Dictionary<string, CharacterData> _characterData;
+        private readonly Dictionary<string, uint> _charTextures;
+        private readonly Dictionary<string, float> _advances;
         private readonly IRenderContext _renderContext;
         private readonly string _fontName;
         private readonly float _baseSize = 100.0f;
@@ -26,9 +27,9 @@ namespace SiegeEngine.Core.Rendering
         {
             _renderContext = renderContext;
             _fontName = fontName;
-            _characterData = new Dictionary<char, CharacterData>();
-            _charTextures = new Dictionary<char, uint>();
-            _advances = new Dictionary<char, float>();
+            _characterData = new Dictionary<string, CharacterData>();
+            _charTextures = new Dictionary<string, uint>();
+            _advances = new Dictionary<string, float>();
             LoadFontData(fontName);
         }
 
@@ -43,29 +44,35 @@ namespace SiegeEngine.Core.Rendering
                     graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
                     LineHeight = font.Height;
 
-                    // Full printable ASCII 32-126 + common single-code-unit IDE / C# / HTML glyphs
-                    var chars = new List<char>();
+                    // Full printable ASCII 32-126
+                    var glyphs = new List<string>();
                     for (int i = 32; i <= 126; i++)
-                        chars.Add((char)i);
+                        glyphs.Add(((char)i).ToString());
 
-                    // Only characters that fit in a single UTF-16 code unit
-                    chars.AddRange(new[]
+                    // Common single-code-unit symbols
+                    glyphs.AddRange(new[]
                     {
-                        '\u2026', // …
-                        '\u2714', // ✔
-                        '\u25CF', // ●
-                        '\u25CB', // ○
-                        '\u25B6', // ▶
-                        '\u25BC', // ▼
-                        '\u25C0', // ◀
-                        '\u25B2', // ▲
-                        '\u2753', // ❓
-                        '\u00A0'  // non-breaking space
+                        "\u2026", // …
+                        "\u2714", // ✔
+                        "\u25CF", // ●
+                        "\u25CB", // ○
+                        "\u25B6", // ▶
+                        "\u25BC", // ▼
+                        "\u25C0", // ◀
+                        "\u25B2", // ▲
+                        "\u2753", // ❓
+                        "\u00A0"  // non-breaking space
                     });
 
-                    foreach (char c in chars.Distinct())
+                    // Real emoji used by FileSelectorPanel / AssetBrowserPanel (surrogate pairs)
+                    glyphs.AddRange(new[]
                     {
-                        RasterizeCharacter(c, font, graphics);
+                        "📁", "📄", "📦", "🖼️", "🎵"
+                    });
+
+                    foreach (string g in glyphs.Distinct())
+                    {
+                        RasterizeGlyph(g, font, graphics);
                     }
                 }
             }
@@ -74,17 +81,16 @@ namespace SiegeEngine.Core.Rendering
             }
         }
 
-        private unsafe void RasterizeCharacter(char c, Font font, Graphics measureGraphics)
+        private unsafe void RasterizeGlyph(string glyph, Font font, Graphics measureGraphics)
         {
-            if (_characterData.ContainsKey(c)) return;
+            if (string.IsNullOrEmpty(glyph) || _characterData.ContainsKey(glyph)) return;
 
-            string text = c.ToString();
             using (StringFormat format = StringFormat.GenericTypographic)
             {
-                if (c == ' ' || c == '\u00A0')
+                if (glyph == " " || glyph == "\u00A0")
                     format.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
 
-                SizeF size = measureGraphics.MeasureString(text, font, 0, format);
+                SizeF size = measureGraphics.MeasureString(glyph, font, 0, format);
                 int width = Math.Max(1, (int)Math.Ceiling(size.Width));
                 int height = Math.Max(1, (int)Math.Ceiling(size.Height));
 
@@ -95,7 +101,7 @@ namespace SiegeEngine.Core.Rendering
                     charGraphics.Clear(Color.Transparent);
                     using (var brush = new SolidBrush(Color.White))
                     {
-                        charGraphics.DrawString(text, font, brush, 0, 0, format);
+                        charGraphics.DrawString(glyph, font, brush, 0, 0, format);
                     }
 
                     var data = charBitmap.LockBits(
@@ -141,21 +147,21 @@ namespace SiegeEngine.Core.Rendering
                     _renderContext.TexParameter(_renderContext.Enums.Texture2D, _renderContext.Enums.TextureWrapT, _renderContext.Enums.ClampToEdge);
                     _renderContext.BindTexture(_renderContext.Enums.Texture2D, 0);
 
-                    _charTextures[c] = texture;
-                    _characterData[c] = new CharacterData
+                    _charTextures[glyph] = texture;
+                    _characterData[glyph] = new CharacterData
                     {
                         Width = width,
                         Height = height,
                         PixelData = pixelData
                     };
-                    _advances[c] = size.Width;
+                    _advances[glyph] = size.Width;
                 }
             }
         }
 
-        public void EnsureCharacter(char c)
+        public void EnsureCharacter(string glyph)
         {
-            if (_characterData.ContainsKey(c)) return;
+            if (string.IsNullOrEmpty(glyph) || _characterData.ContainsKey(glyph)) return;
             try
             {
                 using (var font = new Font(_fontName, _baseSize, FontStyle.Regular))
@@ -163,7 +169,7 @@ namespace SiegeEngine.Core.Rendering
                 using (var graphics = Graphics.FromImage(bitmap))
                 {
                     graphics.TextRenderingHint = TextRenderingHint.AntiAlias;
-                    RasterizeCharacter(c, font, graphics);
+                    RasterizeGlyph(glyph, font, graphics);
                 }
             }
             catch
@@ -171,51 +177,81 @@ namespace SiegeEngine.Core.Rendering
             }
         }
 
+        // Convenience for single BMP char
+        public void EnsureCharacter(char c) => EnsureCharacter(c.ToString());
+
         public float GetStringWidth(string text)
         {
             if (string.IsNullOrEmpty(text)) return 0f;
             float width = 0f;
-            foreach (char c in text)
+            foreach (var (glyph, _) in EnumerateGlyphs(text))
             {
-                if (!_advances.TryGetValue(c, out float adv))
+                if (!_advances.TryGetValue(glyph, out float adv))
                 {
-                    EnsureCharacter(c);
-                    if (!_advances.TryGetValue(c, out adv))
-                        adv = _advances.TryGetValue(' ', out float spaceAdv) ? spaceAdv : 0f;
+                    EnsureCharacter(glyph);
+                    if (!_advances.TryGetValue(glyph, out adv))
+                        adv = _advances.TryGetValue(" ", out float spaceAdv) ? spaceAdv : 0f;
                 }
                 width += adv;
             }
             return width;
         }
 
-        public float GetAdvance(char c)
+        public float GetAdvance(string glyph)
         {
-            if (_advances.TryGetValue(c, out float adv)) return adv;
-            EnsureCharacter(c);
-            if (_advances.TryGetValue(c, out adv)) return adv;
-            return _advances.TryGetValue(' ', out float spaceAdv) ? spaceAdv : 0f;
+            if (_advances.TryGetValue(glyph, out float adv)) return adv;
+            EnsureCharacter(glyph);
+            if (_advances.TryGetValue(glyph, out adv)) return adv;
+            return _advances.TryGetValue(" ", out float spaceAdv) ? spaceAdv : 0f;
         }
 
-        public CharacterData GetCharacterData(char c)
+        public float GetAdvance(char c) => GetAdvance(c.ToString());
+
+        public CharacterData GetCharacterData(string glyph)
         {
-            if (!_characterData.ContainsKey(c))
+            if (!_characterData.ContainsKey(glyph))
             {
-                EnsureCharacter(c);
-                if (!_characterData.ContainsKey(c))
-                    return _characterData[' '];
+                EnsureCharacter(glyph);
+                if (!_characterData.ContainsKey(glyph))
+                    return _characterData[" "];
             }
-            return _characterData[c];
+            return _characterData[glyph];
         }
 
-        public uint GetCharacterTexture(char c)
+        public CharacterData GetCharacterData(char c) => GetCharacterData(c.ToString());
+
+        public uint GetCharacterTexture(string glyph)
         {
-            if (!_charTextures.ContainsKey(c))
+            if (!_charTextures.ContainsKey(glyph))
             {
-                EnsureCharacter(c);
-                if (!_charTextures.ContainsKey(c))
-                    return _charTextures[' '];
+                EnsureCharacter(glyph);
+                if (!_charTextures.ContainsKey(glyph))
+                    return _charTextures[" "];
             }
-            return _charTextures[c];
+            return _charTextures[glyph];
+        }
+
+        public uint GetCharacterTexture(char c) => GetCharacterTexture(c.ToString());
+
+        /// <summary>
+        /// Yields logical glyphs: either a single BMP character or a full surrogate-pair emoji.
+        /// </summary>
+        public static IEnumerable<(string glyph, int length)> EnumerateGlyphs(string text)
+        {
+            if (string.IsNullOrEmpty(text)) yield break;
+            for (int i = 0; i < text.Length;)
+            {
+                if (char.IsHighSurrogate(text[i]) && i + 1 < text.Length && char.IsLowSurrogate(text[i + 1]))
+                {
+                    yield return (text.Substring(i, 2), 2);
+                    i += 2;
+                }
+                else
+                {
+                    yield return (text[i].ToString(), 1);
+                    i++;
+                }
+            }
         }
     }
 
