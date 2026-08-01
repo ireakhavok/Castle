@@ -302,8 +302,20 @@ Found: Sounds
 Listing folder: C:\repos\RealmFoundry\Castle\Assets\Sounds
 Found: .
 Found: ..
-Found: 2. Untitled.wav
 Found: desktop.ini
+Found: IDE
+Listing folder: C:\repos\RealmFoundry\Castle\Assets\Sounds\IDE
+Found: .
+Found: ..
+Found: Music
+Listing folder: C:\repos\RealmFoundry\Castle\Assets\Sounds\IDE\Music
+Found: .
+Found: ..
+Found: 1. F4DED.wav
+Found: 2. Untitled.wav
+Found: 3. Matador.wav
+Found: 4. Signs.wav
+Found: MATADOR wolftalk mix.wav
 Found: terrain_brush.wav
 Found: Static_Images
 Listing folder: C:\repos\RealmFoundry\Castle\Assets\Static_Images
@@ -508,9 +520,9 @@ Found 4 dependencies
 Found: IDEBasePanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\IDEBasePanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\IDEBasePanel.cs
-Read 9191 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\IDEBasePanel.cs
+Read 9399 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\IDEBasePanel.cs
 Namespace: CastleBuilder
-Found 12 dependencies
+Found 14 dependencies
 Found: IDE_UI.html
 Found: MenuCommands.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
@@ -518,6 +530,12 @@ Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
 Read 14974 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MenuCommands.cs
 Namespace: CastleBuilder
 Found 15 dependencies
+Found: MusicPlayerPanel.cs
+Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MusicPlayerPanel.cs
+Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MusicPlayerPanel.cs
+Read 6365 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\MusicPlayerPanel.cs
+Namespace: CastleBuilder
+Found 13 dependencies
 Found: NewProjectPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\NewProjectPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\NewProjectPanel.cs
@@ -1523,7 +1541,7 @@ Found 2 dependencies
 Found: IDEDockingStrategy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
-Read 46692 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
+Read 46901 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\IDEDockingStrategy.cs
 Namespace: SiegeEngine.Core.Managers
 Found 13 dependencies
 Found: LevelManager.cs
@@ -1559,13 +1577,13 @@ Found 7 dependencies
 Found: PanelManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
-Read 11389 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
+Read 11876 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\PanelManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 10 dependencies
 Found: SceneManager.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
-Read 10587 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
+Read 9667 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Managers\SceneManager.cs
 Namespace: SiegeEngine.Core.Managers
 Found 13 dependencies
 Found: ScriptLoader.cs
@@ -2257,7 +2275,7 @@ Found 17 dependencies
 Found: RuntimeGameplayScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
-Read 25649 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
+Read 24488 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
 Namespace: SiegeEngine.Scenes
 Found 16 dependencies
 Found: Scene.cs
@@ -2316,9 +2334,9 @@ Found 6 dependencies
 Found: AudioSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
-Read 22267 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
+Read 30977 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\AudioSystem.cs
 Namespace: SiegeEngine.Systems
-Found 8 dependencies
+Found 10 dependencies
 Found: ClientPredictionSystem.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\ClientPredictionSystem.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Systems\ClientPredictionSystem.cs
