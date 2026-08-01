@@ -1,4 +1,4 @@
-﻿// Folder: Castle/SiegeEngine/Core/Managers
+﻿// Folder: SiegeEngine/Core/Managers
 // File: PanelManager.cs
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
@@ -90,6 +90,10 @@ namespace SiegeEngine.Core.Managers
                 }
                 _desktopStrategy.AddPanel(panel);
             }
+            if (!panel.IsModal && panel.DockState == DockState.Floating)
+            {
+                AutoCenterFloating(panel);
+            }
         }
         private void AutoCenterModal(IPanel panel)
         {
@@ -99,18 +103,25 @@ namespace SiegeEngine.Core.Managers
             panel.Position = new Vector2(Math.Max(40f, x), Math.Max(40f, y));
             panel.OnPanelResize(panel.Size.X, panel.Size.Y);
         }
-        // NEW: Professional bring-to-front (called on title bar drag start)
+        private void AutoCenterFloating(IPanel panel)
+        {
+            if (panel.Size.Y <= 30f) return;
+            _controlContext.GetWindowSize(_window, out int winW, out int winH);
+            const float menuBar = 28f;
+            float x = (winW - panel.Size.X) * 0.5f;
+            float y = (winH - panel.Size.Y) * 0.5f;
+            y = Math.Max(menuBar + 20f, y);
+            x = Math.Max(20f, Math.Min(x, winW - panel.Size.X - 20f));
+            panel.Position = new Vector2(x, y);
+            panel.OnPanelResize(panel.Size.X, panel.Size.Y);
+        }
         public void BringToFront(IPanel panel)
         {
             if (panel == null || !_panels.Contains(panel)) return;
-
             _panels.Remove(panel);
-            _panels.Add(panel); // last in list = highest z-order
-
+            _panels.Add(panel);
             _router.RemovePanel(panel);
             _router.AddPanel(panel);
-
-            // Also bring to front in the correct floating list - FIXED for blade/workspace switching
             if (panel is BasePanel bp && bp.DockState == DockState.Floating)
             {
                 switch (bp.DockingMode)

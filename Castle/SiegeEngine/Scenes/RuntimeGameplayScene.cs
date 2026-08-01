@@ -20,7 +20,7 @@ namespace SiegeEngine.Scenes
 {
     public unsafe class RuntimeGameplayScene : GameScene
     {
-        private readonly Player _player;
+        private Player _player;
         private readonly PlayerMovement _playerMovement;
         private readonly FlyCameraController _flyCamera;
         private ShaderProgram _terrainShader;
@@ -37,12 +37,11 @@ namespace SiegeEngine.Scenes
         private SkyboxRenderer _skyboxRenderer;
         private SkyboxData _skyboxData;
         private TerrainRenderer _terrainRenderer;
-        // When true the player camera (with applied Perspective) owns the view matrix.
         private bool _usePlayerCamera = false;
         public RuntimeGameplayScene(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus, SceneContext ctx = null)
             : base(renderContext, controlContext, window, server, eventBus)
         {
-            _player = ctx?.Player ?? new Player(1, new Vector3(10, 10, 0), 0);
+            _player = ctx?.Player;
             _playerMovement = ctx?.PlayerMovement;
             _flyCamera = new FlyCameraController(controlContext, window);
             DefaultDockingMode = DockingMode.Desktop;
@@ -81,7 +80,7 @@ namespace SiegeEngine.Scenes
         {
             LoadSceneData(new SceneData { Name = levelName ?? "Main" });
             _eventBus.Publish(new SceneActivatedEvent(levelName));
-            _player.InitializeCamera(_controlContext, _window);
+            _player?.InitializeCamera(_controlContext, _window);
         }
         public override void Initialize(int width, int height)
         {
@@ -101,7 +100,7 @@ namespace SiegeEngine.Scenes
                     _renderContext.Viewport(0, 0, (uint)newWidth, (uint)newHeight);
                 }
             });
-            _player.InitializeCamera(_controlContext, _window);
+            _player?.InitializeCamera(_controlContext, _window);
             if (!_usePlayerCamera)
                 ForceVisibleOverheadCamera();
             BuildTexturedMesh();
@@ -137,8 +136,6 @@ namespace SiegeEngine.Scenes
                 _skyboxRenderer.LoadSkybox(_skyboxData);
             }
             LoadLevelData(levelName, projectPath);
-            // Prefer pure in-memory heightmap snapshot from the Play payload when present.
-            // Fall back to disk path only when no live/unsaved snapshot was transferred.
             if (ctx?.HeightmapSnapshot != null
                 && ctx.HeightmapSnapshot.GetLength(0) > 0
                 && ctx.HeightmapSnapshot.GetLength(1) > 0)
@@ -147,7 +144,6 @@ namespace SiegeEngine.Scenes
                 _terrainWidth = _heightmap.GetLength(0);
                 _terrainHeight = _heightmap.GetLength(1);
                 Console.WriteLine($"[RuntimeGameplayScene] ✅ Using HeightmapSnapshot from pure in-memory Play payload ({_terrainWidth}x{_terrainHeight})");
-                // Still try to load color texture from disk when available; heightmap itself stays live.
                 string colorPath = !string.IsNullOrEmpty(projectPath)
                     ? Path.Combine(projectPath, "Assets", "Terrain", levelName + ".png")
                     : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Terrain", levelName + ".png");
@@ -172,10 +168,11 @@ namespace SiegeEngine.Scenes
                 _server.AddEntity(e);
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
             }
-            // Restore authoring-time location from Level entity-1 when present
-            var existingPlayerEntity = level.Entities.FirstOrDefault(e => e.Id == _player.EntityId);
-            if (existingPlayerEntity != null)
+            var existingPlayerEntity = level.Entities.FirstOrDefault(e => e.Id == 1 || (e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase)));
+            if (existingPlayerEntity != null && _player == null)
             {
+                ulong steamId = 0;
+                _player = new Player(existingPlayerEntity.Id, Vector3.Zero, steamId);
                 var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
                 if (existingPhys != null)
                 {
@@ -183,12 +180,10 @@ namespace SiegeEngine.Scenes
                     _player.Physics.Rotation = existingPhys.Rotation;
                 }
             }
-            // Apply SceneSettings when present (null-safe, no forced defaults)
             var settings = ctx?.SceneData?.Settings;
             if (settings != null)
             {
-                // PreferredSpawnPointIds – first matching entity ID that has a PhysicsComponent
-                if (settings.PreferredSpawnPointIds != null && settings.PreferredSpawnPointIds.Count > 0)
+                if (settings.PreferredSpawnPointIds != null && settings.PreferredSpawnPointIds.Count > 0 && _player != null)
                 {
                     foreach (int id in settings.PreferredSpawnPointIds)
                     {
@@ -205,11 +200,15 @@ namespace SiegeEngine.Scenes
                         }
                     }
                 }
-                // AvatarPackKey – resolve model, bind to player, register player entity so it renders
                 string avatarKey = null;
                 if (!string.IsNullOrWhiteSpace(settings.AvatarPackKey))
                 {
                     avatarKey = settings.AvatarPackKey.Trim().ToLower();
+                    if (_player == null)
+                    {
+                        ulong steamId = 0;
+                        _player = new Player(1, new Vector3(10, 10, 0), steamId);
+                    }
                     if (_modelManager.TryGetModel(avatarKey, out var avatarModel))
                     {
                         _player.SetModel(avatarModel);
@@ -221,7 +220,6 @@ namespace SiegeEngine.Scenes
                         avatarKey = null;
                     }
                 }
-                // AnimationPackKey – optional; load pack, resolve relative clip paths, attach blend stack to avatar
                 AnimationPack attachedPack = null;
                 if (!string.IsNullOrWhiteSpace(settings.AnimationPackKey) && avatarKey != null)
                 {
@@ -230,14 +228,12 @@ namespace SiegeEngine.Scenes
                         _modelManager.TryGetAnimationPack(animKey, out var animPack))
                     {
                         attachedPack = animPack;
-                        // Locate the on-disk json so relative clip paths can be resolved
                         string packsDir = Path.Combine(projectPath, "Assets", "Packs");
                         string jsonPath = Path.Combine(packsDir, animKey.ToLowerInvariant() + ".json");
                         if (!File.Exists(jsonPath))
                             jsonPath = Path.Combine(packsDir, animKey + ".json");
                         if (!File.Exists(jsonPath))
                         {
-                            // also try the folder style
                             string folderJson = Path.Combine(projectPath, "Assets", animKey.ToLowerInvariant(), "assetpack.json");
                             if (File.Exists(folderJson)) jsonPath = folderJson;
                             else
@@ -253,7 +249,6 @@ namespace SiegeEngine.Scenes
                         }
                         else
                         {
-                            // paths already absolute or pack had no clips – still try a plain attach
                             var stack = animPack.CreateBlendStack();
                             _modelManager.AttachBlendStack(avatarKey, stack);
                             Console.WriteLine($"[RuntimeGameplayScene] AnimationPackKey '{animKey}' attached (no relative-path resolution needed)");
@@ -264,8 +259,7 @@ namespace SiegeEngine.Scenes
                         Console.WriteLine($"[RuntimeGameplayScene] AnimationPackKey '{animKey}' could not be loaded");
                     }
                 }
-                // Register / update the player entity so ModelRenderer draws the avatar
-                if (avatarKey != null)
+                if (avatarKey != null && _player != null)
                 {
                     var playerEntity = _server.GetEntityById(_player.EntityId);
                     if (playerEntity == null)
@@ -279,7 +273,6 @@ namespace SiegeEngine.Scenes
                     }
                     else
                     {
-                        // Force the exact same component instances so movement writes are visible to both camera and ModelRenderer
                         playerEntity.AddComponent(_player);
                         playerEntity.AddComponent(_player.Physics);
                         var mc = playerEntity.GetComponent<ModelComponent>();
@@ -293,7 +286,6 @@ namespace SiegeEngine.Scenes
                             mc.Model = _player.Model;
                         }
                     }
-                    // Attach BlendedAnimationComponent when a pack was resolved so AnimationSystem can drive it
                     if (attachedPack != null)
                     {
                         var blendComp = new BlendedAnimationComponent
@@ -307,8 +299,7 @@ namespace SiegeEngine.Scenes
                         Console.WriteLine($"[RuntimeGameplayScene] BlendedAnimationComponent attached to player entity {_player.EntityId}");
                     }
                 }
-                // CameraMode
-                if (!string.IsNullOrWhiteSpace(settings.CameraMode) && _player.Camera != null)
+                if (!string.IsNullOrWhiteSpace(settings.CameraMode) && _player?.Camera != null)
                 {
                     if (Enum.TryParse<Perspective>(settings.CameraMode.Trim(), true, out var perspective))
                     {
@@ -319,10 +310,12 @@ namespace SiegeEngine.Scenes
                 }
                 else if (avatarKey != null)
                 {
-                    // Avatar present but no explicit CameraMode → still prefer the player camera
                     _usePlayerCamera = true;
                 }
-                // ControllerTypeName is applied by SceneManager / ScriptLoader when a PlayerMovement instance is present
+            }
+            if (_player != null)
+            {
+                _player.InitializeCamera(_controlContext, _window);
             }
             if (!_usePlayerCamera)
             {

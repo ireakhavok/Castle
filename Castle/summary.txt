@@ -173,7 +173,7 @@ Folder: IDE
   - Class: IDEUIOverlay (Namespace: CastleBuilder)
     - Inherits: UIOverlay
         
-    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.IO, System.Linq, System.Numerics
+    - Dependencies: CastleBuilder.Events, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Systems, System, System.IO, System.Linq, System.Numerics
     - Fields:
       - EventBus _eventBus
     - Methods:
@@ -252,6 +252,9 @@ Folder: IDE
         - Calls: Console.WriteLine, ScriptLoader.BuildProjectScripts
       - void OpenScriptsPanel( EventBus eventBus,  IControlContext controlContext,  nint window, IRenderContext renderContext)
         - Calls: Console.WriteLine
+- File: MusicPlayerPanel.cs
+  - Class: value (Namespace: CastleBuilder)
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, SiegeEngine.Systems, System, System.IO, System.Numerics
 - File: NewMaterialPanel.cs
   - Class: NewMaterialUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
@@ -939,41 +942,15 @@ Folder: SiegeEngine
     - Methods:
       - constructor JSRegex( string flags, string pattern)
 - File: AudioSystem.cs
-  - Class: AudioSystem (Namespace: SiegeEngine.Systems)
-    - Inherits: GameSystem
-    
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.IO, System.Media, System.Numerics, System.Threading.Tasks
+  - Class: PlaybackInstance (Namespace: SiegeEngine.Systems)
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, System, System.Collections.Generic, System.IO, System.Linq, System.Media, System.Numerics, System.Threading.Tasks
     - Fields:
-      - EventBus _eventBus
-      - bool _isServer
-      - ISoundValidator _validationSystem
-      - Random _random
-      - float MaxDistance
-      - float MinIntensity
-      - float ListenerRadius
-      - Vector3 _listenerPosition
-    - Methods:
-      - void SetListenerPosition(Vector3 position)
-      - void Update(float deltaTime)
-      - void OnSoundEmission(SoundEmissionEvent e)
-        - Calls: Console.WriteLine, PlaySound, RayTraceSound, _validationSystem.ValidateSoundSource
-      - void OnSoundEvent(SoundEvent e)
-        - Calls: PlaySound
-      - SoundRayTraceResult RayTraceSound(SoundSource source)
-        - Calls: RandomDirection, RandomScatterDirection, SimulateClientRayTrace, _server.RequestRayTrace
-      - Vector3 RandomDirection()
-      - Vector3 RandomScatterDirection( float coneAngleDeg, Vector3 direction)
-      - RayTraceResult SimulateClientRayTrace( Vector3 direction, Vector3 start)
-      - void PlaySound( SoundRayTraceResult result, SoundSource source)
-        - Calls: ApplyLowPassFilter, Console.WriteLine, ConvertMp3ToWav, Task.Run, audioData.Clone, writer.Write
-      - byte[] ConvertMp3ToWav(byte[] mp3Data)
-        - Calls: Console.WriteLine, DecodeMp3Frames, GetMp3SampleRate, writer.Write
-      - int GetMp3SampleRate(byte[] header)
-      - short[] DecodeMp3Frames( int channels,  int sampleRate, Stream mp3Stream)
-        - Calls: Array.Resize, CalculateFrameSize, DecodeMp3Frame
-      - int CalculateFrameSize( int sampleRate, byte[] header)
-      - short[] DecodeMp3Frame( int channels, byte[] frameData)
-      - short[] ApplyLowPassFilter( float alpha, short[] samples)
+      - SoundPlayer Player
+      - float Volume
+      - bool Loop
+      - bool IsMusic
+      - string Path
+      - bool IsPaused
 - File: BackgroundRenderer.cs
   - Class: BackgroundRenderer (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IDisposable
@@ -2593,8 +2570,10 @@ Folder: SiegeEngine
       - void OnClosePanel(ClosePanelEvent e)
         - Calls: RemovePanel
       - void AddPanel(IPanel panel)
-        - Calls: AutoCenterModal, panel.Init
+        - Calls: AutoCenterFloating, AutoCenterModal, panel.Init
       - void AutoCenterModal(IPanel panel)
+        - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
+      - void AutoCenterFloating(IPanel panel)
         - Calls: _controlContext.GetWindowSize, panel.OnPanelResize
       - void BringToFront(IPanel panel)
         - Calls: _panels.Remove, _router.AddPanel, _router.RemovePanel, desktop.BringFloatingPanelToFront, dynamic.BringFloatingPanelToFront, ide.BringFloatingPanelToFront
@@ -2818,13 +2797,13 @@ Folder: SiegeEngine
       - bool _usePlayerCamera
     - Methods:
       - void LoadLevelData( string projectPath, string levelName)
-        - Calls: LoadSceneData, SceneActivatedEvent, _player.InitializeCamera
+        - Calls: InitializeCamera, LoadSceneData, SceneActivatedEvent
       - void Initialize( int height, int width)
-        - Calls: BuildTexturedMesh, ForceVisibleOverheadCamera, SetupPureRuntimeWorld, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _player.InitializeCamera, _renderContext.Viewport
+        - Calls: BuildTexturedMesh, ForceVisibleOverheadCamera, InitializeCamera, SetupPureRuntimeWorld, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _renderContext.Viewport
       - void ForceVisibleOverheadCamera()
         - Calls: _flyCamera.RefreshViewMatrix, _flyCamera.Update
       - void LoadContentFromContext(SceneContext ctx)
-        - Calls: BuildTexturedMesh, Console.WriteLine, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, ResolveSkyboxPaths, SkyboxRenderer, TerrainTextureParser.LoadColorTexture, _flyCamera.Update, _modelManager.AttachBlendStack, _modelManager.AttachResolvedBlendStack, _modelManager.TryGetAnimationPack, _modelManager.TryGetModel, _modelManager.TryLoadPackByKey, _player.Camera.SetPerspective, _player.SetModel, _server.AddEntity, _server.GetEntityById, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox, animPack.CreateBlendStack
+        - Calls: BuildTexturedMesh, Console.WriteLine, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, Player, ResolveSkyboxPaths, SkyboxRenderer, TerrainTextureParser.LoadColorTexture, _flyCamera.Update, _modelManager.AttachBlendStack, _modelManager.AttachResolvedBlendStack, _modelManager.TryGetAnimationPack, _modelManager.TryGetModel, _modelManager.TryLoadPackByKey, _player.Camera.SetPerspective, _player.InitializeCamera, _player.SetModel, _server.AddEntity, _server.GetEntityById, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox, animPack.CreateBlendStack
       - void ResolveSkyboxPaths( string projectPath, SkyboxData skybox)
       - void LoadExactSavedTerrain( string levelName, string projectPath)
         - Calls: BuildTexturedMesh, Console.WriteLine, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture
@@ -2943,9 +2922,9 @@ Folder: SiegeEngine
       - constructor SceneManager( IControlContext controlContext,  IRenderContext renderContext,  ISteamEngine steamEngine,  InputHandler inputHandler,  MenuPanel menuPanel,  ModManager modManager,  UISettingsManager settingsManager,  nint window, EventBus eventBus)
       - void Dispose()
       - void OnSwitchScene(SwitchSceneEvent e)
-        - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, GetSteamId, ModelManager, Player, PlayerMovement, SceneRegistry.Create, ScriptLoader.ActivateProjectScripts, _currentScene.Initialize, _currentScene.SetPlayer, _modelManager.LoadModel, _player.InitializeCamera, _server.AddEntity, _server.AddSystem
+        - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, ModelManager, PlayerMovement, SceneRegistry.Create, ScriptLoader.ActivateProjectScripts, _currentScene.Initialize, _server.AddSystem
       - void SwitchToRuntimeGameplay( Level currentLevel = null,  string levelDataPayload = null,  string levelName,  string sceneDataPayload = null, string projectPath)
-        - Calls: ClientGameServerProxy, Console.WriteLine, Entity.FromData, Level.Deserialize, ModelManager, ModelManager.EnsurePacksLoaded, Player, PlayerMovement, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ActivateProjectScripts, _currentScene.Initialize, _player.InitializeCamera, ctx.Server.AddSystem, level.AddEntity, se.GetSteamId
+        - Calls: ClientGameServerProxy, Console.WriteLine, Entity.FromData, Level.Deserialize, ModelManager, ModelManager.EnsurePacksLoaded, PlayerMovement, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ActivateProjectScripts, _currentScene.Initialize, ctx.Server.AddSystem, level.AddEntity
 - File: SceneRegistry.cs
   - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
     - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic
@@ -3670,6 +3649,7 @@ CastleBuilder.ProjectSceneCache
 CastleBuilder.SaveUIOverlay
 CastleBuilder.SelectionBoxOverlay
 CastleBuilder.StringExtensions
+CastleBuilder.value
 Citadel.Network.NetworkManager
 Citadel.Server.EntityDeltaTracker
 Citadel.Server.GameServer
@@ -3908,11 +3888,11 @@ SiegeEngine.Scenes.StartingPoints.SandboxScene
 SiegeEngine.Scenes.StartingPoints.TwoDSandboxScene
 SiegeEngine.Scenes.TerrainScene
 SiegeEngine.Systems.AnimationSystem
-SiegeEngine.Systems.AudioSystem
 SiegeEngine.Systems.ClientPredictionSystem
 SiegeEngine.Systems.EnvironmentSystem
 SiegeEngine.Systems.GameSystem
 SiegeEngine.Systems.LightingSystem
+SiegeEngine.Systems.PlaybackInstance
 SiegeEngine.Systems.PlayerControllerSystem
 SwitchSceneEvent
 ToolChest.AddSkyboxUIOverlay
