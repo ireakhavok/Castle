@@ -1,6 +1,7 @@
 ﻿// Folder: SiegeEngine.Core.Rendering
 // File: ShaderProgram.cs
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
@@ -12,6 +13,8 @@ namespace SiegeEngine.Core.Rendering
         private readonly IRenderContext _renderContext;
         private readonly uint _program;
         private bool _disposed;
+        private readonly Dictionary<string, int> _uniformLocations = new Dictionary<string, int>();
+
         public ShaderProgram(IRenderContext renderContext, string vertexShaderSource, string fragmentShaderSource)
         {
             _renderContext = renderContext ?? throw new ArgumentNullException(nameof(renderContext));
@@ -19,6 +22,7 @@ namespace SiegeEngine.Core.Rendering
                 throw new ArgumentNullException(nameof(vertexShaderSource));
             if (string.IsNullOrEmpty(fragmentShaderSource))
                 throw new ArgumentNullException(nameof(fragmentShaderSource));
+
             uint vertexShader = _renderContext.CreateShader(_renderContext.Enums.VertexShader);
             _renderContext.ShaderSource(vertexShader, vertexShaderSource);
             _renderContext.CompileShader(vertexShader);
@@ -29,6 +33,7 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.DeleteShader(vertexShader);
                 throw new Exception($"Vertex shader compilation failed: {infoLog}");
             }
+
             uint fragmentShader = _renderContext.CreateShader(_renderContext.Enums.FragmentShader);
             _renderContext.ShaderSource(fragmentShader, fragmentShaderSource);
             _renderContext.CompileShader(fragmentShader);
@@ -40,6 +45,7 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.DeleteShader(fragmentShader);
                 throw new Exception($"Fragment shader compilation failed: {infoLog}");
             }
+
             _program = _renderContext.CreateProgram();
             _renderContext.AttachShader(_program, vertexShader);
             _renderContext.AttachShader(_program, fragmentShader);
@@ -55,84 +61,80 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.DeleteProgram(_program);
                 throw new Exception($"Shader program linking failed: {infoLog}");
             }
+
             _renderContext.DetachShader(_program, vertexShader);
             _renderContext.DetachShader(_program, fragmentShader);
             _renderContext.DeleteShader(vertexShader);
             _renderContext.DeleteShader(fragmentShader);
         }
+
+        private int GetLocation(string name)
+        {
+            if (_uniformLocations.TryGetValue(name, out int loc))
+                return loc;
+            loc = _renderContext.GetUniformLocation(_program, name);
+            _uniformLocations[name] = loc;
+            return loc;
+        }
+
         public void Use()
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ShaderProgram));
             _renderContext.UseProgram(_program);
         }
+
         public void SetUniform(string name, float value)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-            int location = _renderContext.GetUniformLocation(_program, name);
-            if (location == -1)
-                throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
+            if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+            int location = GetLocation(name);
+            if (location == -1) return;
             _renderContext.Uniform1(location, value);
-        }
-        public void SetUniform(string name, int value)
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-            int location = _renderContext.GetUniformLocation(_program, name);
-            if (location == -1)
-                throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
-            _renderContext.Uniform1(location, value);
-        }
-        public void SetUniform(string name, float x, float y, float z)
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-            int location = _renderContext.GetUniformLocation(_program, name);
-            if (location == -1)
-                throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
-            _renderContext.Uniform3(location, x, y, z);
-        }
-        public void SetUniform(string name, float x, float y, float z, float w)
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-            int location = _renderContext.GetUniformLocation(_program, name);
-            if (location == -1)
-                throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
-            _renderContext.Uniform4(location, x, y, z, w);
         }
 
-        // NEW overload for vec2 (used by Tiling / Offset)
+        public void SetUniform(string name, int value)
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+            int location = GetLocation(name);
+            if (location == -1) return;
+            _renderContext.Uniform1(location, value);
+        }
+
         public void SetUniform(string name, float x, float y)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-            int location = _renderContext.GetUniformLocation(_program, name);
-            if (location == -1)
-                throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
+            if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+            int location = GetLocation(name);
+            if (location == -1) return;
             _renderContext.Uniform2(location, x, y);
+        }
+
+        public void SetUniform(string name, float x, float y, float z)
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+            int location = GetLocation(name);
+            if (location == -1) return;
+            _renderContext.Uniform3(location, x, y, z);
+        }
+
+        public void SetUniform(string name, float x, float y, float z, float w)
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+            int location = GetLocation(name);
+            if (location == -1) return;
+            _renderContext.Uniform4(location, x, y, z, w);
         }
 
         public unsafe void SetMatrix4(string name, Matrix4x4 matrix)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-            int location = _renderContext.GetUniformLocation(_program, name);
-            if (location == -1)
-                throw new ArgumentException($"Uniform '{name}' not found in shader program.", nameof(name));
+            if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+            int location = GetLocation(name);
+            if (location == -1) return;
             float[] matrixArray = new float[16]
             {
                 matrix.M11, matrix.M12, matrix.M13, matrix.M14,
@@ -145,15 +147,13 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.UniformMatrix4(location, 1, false, matrixPtr);
             }
         }
+
         public unsafe void SetMatrix4Array(string name, Matrix4x4[] matrices)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-            int location = _renderContext.GetUniformLocation(_program, name);
-            if (location == -1)
-                return;
+            if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+            int location = GetLocation(name);
+            if (location == -1) return;
             float[] data = new float[matrices.Length * 16];
             for (int i = 0; i < matrices.Length; i++)
             {
@@ -179,15 +179,13 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.UniformMatrix4(location, (uint)matrices.Length, false, ptr);
             }
         }
+
         public unsafe void SetMatrix3Array(string name, Matrix3x3[] matrices)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(ShaderProgram));
-            if (string.IsNullOrEmpty(name))
-                throw new ArgumentNullException(nameof(name));
-            int location = _renderContext.GetUniformLocation(_program, name);
-            if (location == -1)
-                return;
+            if (_disposed) throw new ObjectDisposedException(nameof(ShaderProgram));
+            if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
+            int location = GetLocation(name);
+            if (location == -1) return;
             float[] data = new float[matrices.Length * 9];
             for (int i = 0; i < matrices.Length; i++)
             {
@@ -206,18 +204,13 @@ namespace SiegeEngine.Core.Rendering
                 _renderContext.UniformMatrix3(location, (uint)matrices.Length, false, ptr);
             }
         }
+
         public void Dispose()
         {
             if (!_disposed)
             {
-                try
-                {
-                    _renderContext.DeleteProgram(_program);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error deleting shader program: {ex.Message}");
-                }
+                try { _renderContext.DeleteProgram(_program); }
+                catch (Exception ex) { Console.WriteLine($"Error deleting shader program: {ex.Message}"); }
                 _disposed = true;
             }
             GC.SuppressFinalize(this);
