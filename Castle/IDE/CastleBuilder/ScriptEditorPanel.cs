@@ -21,9 +21,6 @@ using System.Text.RegularExpressions;
 
 namespace ToolChest
 {
-    // -------------------------------------------------------------------------
-    // Syntax highlighting interface + implementations
-    // -------------------------------------------------------------------------
     public struct HighlightedSpan
     {
         public int Start;
@@ -44,7 +41,6 @@ namespace ToolChest
     public sealed class CSharpSyntaxHighlighter : ISyntaxHighlighter
     {
         public string Language => "C#";
-
         static readonly HashSet<string> Keywords = new HashSet<string>(StringComparer.Ordinal)
         {
             "abstract","as","base","bool","break","byte","case","catch","char","checked","class","const",
@@ -58,7 +54,6 @@ namespace ToolChest
             "global","group","into","join","let","nameof","on","orderby","partial","remove","select","set",
             "value","var","when","where","yield","record","init","with","noint","required","file","scoped"
         };
-
         static readonly Vector4 ColKeyword = new Vector4(0.35f, 0.75f, 0.95f, 1f);
         static readonly Vector4 ColType = new Vector4(0.40f, 0.85f, 0.70f, 1f);
         static readonly Vector4 ColString = new Vector4(0.90f, 0.65f, 0.35f, 1f);
@@ -71,29 +66,21 @@ namespace ToolChest
         {
             var spans = new List<HighlightedSpan>();
             if (string.IsNullOrEmpty(line)) return spans;
-
             int i = 0;
             int n = line.Length;
             while (i < n)
             {
-                // whitespace
                 if (char.IsWhiteSpace(line[i])) { i++; continue; }
-
-                // single-line comment
                 if (i + 1 < n && line[i] == '/' && line[i + 1] == '/')
                 {
                     spans.Add(new HighlightedSpan(i, n - i, ColComment));
                     break;
                 }
-
-                // preprocessor
                 if (line[i] == '#')
                 {
                     spans.Add(new HighlightedSpan(i, n - i, ColPreproc));
                     break;
                 }
-
-                // string
                 if (line[i] == '"' || line[i] == '\'')
                 {
                     char q = line[i];
@@ -107,8 +94,6 @@ namespace ToolChest
                     spans.Add(new HighlightedSpan(start, i - start, ColString));
                     continue;
                 }
-
-                // verbatim string
                 if (i + 1 < n && line[i] == '@' && line[i + 1] == '"')
                 {
                     int start = i; i += 2;
@@ -121,8 +106,6 @@ namespace ToolChest
                     spans.Add(new HighlightedSpan(start, i - start, ColString));
                     continue;
                 }
-
-                // number
                 if (char.IsDigit(line[i]) || (line[i] == '.' && i + 1 < n && char.IsDigit(line[i + 1])))
                 {
                     int start = i++;
@@ -134,8 +117,6 @@ namespace ToolChest
                     spans.Add(new HighlightedSpan(start, i - start, ColNumber));
                     continue;
                 }
-
-                // identifier / keyword
                 if (char.IsLetter(line[i]) || line[i] == '_')
                 {
                     int start = i++;
@@ -146,8 +127,6 @@ namespace ToolChest
                     spans.Add(new HighlightedSpan(start, i - start, col));
                     continue;
                 }
-
-                // punctuation / operator – single char
                 spans.Add(new HighlightedSpan(i, 1, ColDefault));
                 i++;
             }
@@ -158,7 +137,6 @@ namespace ToolChest
     public sealed class HtmlSyntaxHighlighter : ISyntaxHighlighter
     {
         public string Language => "HTML";
-
         static readonly Vector4 ColTag = new Vector4(0.35f, 0.75f, 0.95f, 1f);
         static readonly Vector4 ColAttr = new Vector4(0.55f, 0.85f, 0.55f, 1f);
         static readonly Vector4 ColValue = new Vector4(0.90f, 0.65f, 0.35f, 1f);
@@ -169,12 +147,10 @@ namespace ToolChest
         {
             var spans = new List<HighlightedSpan>();
             if (string.IsNullOrEmpty(line)) return spans;
-
             int i = 0;
             int n = line.Length;
             while (i < n)
             {
-                // comment
                 if (i + 3 < n && line[i] == '<' && line[i + 1] == '!' && line[i + 2] == '-' && line[i + 3] == '-')
                 {
                     int start = i; i += 4;
@@ -183,21 +159,15 @@ namespace ToolChest
                     spans.Add(new HighlightedSpan(start, i - start, ColComment));
                     continue;
                 }
-
-                // tag
                 if (line[i] == '<')
                 {
                     int start = i++;
-                    // closing or opening
                     if (i < n && line[i] == '/') i++;
                     while (i < n && (char.IsLetterOrDigit(line[i]) || line[i] == ':' || line[i] == '-')) i++;
                     spans.Add(new HighlightedSpan(start, i - start, ColTag));
-
-                    // attributes inside tag
                     while (i < n && line[i] != '>')
                     {
                         if (char.IsWhiteSpace(line[i])) { i++; continue; }
-                        // attr name
                         if (char.IsLetter(line[i]))
                         {
                             int a0 = i;
@@ -205,9 +175,7 @@ namespace ToolChest
                             spans.Add(new HighlightedSpan(a0, i - a0, ColAttr));
                             continue;
                         }
-                        // = 
                         if (line[i] == '=') { spans.Add(new HighlightedSpan(i, 1, ColDefault)); i++; continue; }
-                        // quoted value
                         if (line[i] == '"' || line[i] == '\'')
                         {
                             char q = line[i];
@@ -227,8 +195,6 @@ namespace ToolChest
                     }
                     continue;
                 }
-
-                // text content
                 int t0 = i;
                 while (i < n && line[i] != '<') i++;
                 if (i > t0) spans.Add(new HighlightedSpan(t0, i - t0, ColDefault));
@@ -237,9 +203,6 @@ namespace ToolChest
         }
     }
 
-    // -------------------------------------------------------------------------
-    // ScriptEditorPanel
-    // -------------------------------------------------------------------------
     public class ScriptEditorPanel : BasePanel
     {
         private class ScriptEditorUIOverlay : UIOverlay
@@ -251,7 +214,6 @@ namespace ToolChest
             public override bool HandleUIClick(HtmlElement elem) => true;
         }
 
-        // ---- state ----
         private readonly List<string> _scriptFiles = new List<string>();
         private string _scriptsRoot;
         private string _selectedPath;
@@ -270,7 +232,10 @@ namespace ToolChest
         private readonly Dictionary<Key, bool> _prevKey = new Dictionary<Key, bool>();
         private ISyntaxHighlighter _highlighter = new CSharpSyntaxHighlighter();
 
-        // layout constants (panel-local)
+        // Width cache – invalidated whenever _displayDirty becomes true
+        private readonly List<float> _lineWidthCache = new List<float>();
+        private bool _widthsDirty = true;
+
         private const float ToolbarH = 34f;
         private const float FileListW = 210f;
         private const float GutterW = 48f;
@@ -282,7 +247,6 @@ namespace ToolChest
         private const float BtnH = 24f;
         private const float BtnPad = 6f;
 
-        // toolbar button rects (panel-local, filled each frame)
         private float _btnRebuildX, _btnSaveX, _btnRefreshX, _btnW;
 
         public ScriptEditorPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
@@ -299,7 +263,6 @@ namespace ToolChest
 
         protected override UIOverlay CreateUIOverlay()
         {
-            // Minimal empty overlay – everything is custom-drawn
             return new ScriptEditorUIOverlay(this, _renderContext, _controlContext, _window);
         }
 
@@ -307,7 +270,6 @@ namespace ToolChest
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
-            // Load a 1-line empty HTML so the overlay exists but never drives layout
             _uiOverlay.LoadUI("<html><body style='margin:0;background:transparent'></body></html>");
             _uiOverlay.PanelWidth = Size.X;
             _uiOverlay.PanelHeight = Size.Y;
@@ -315,9 +277,6 @@ namespace ToolChest
             RefreshFileList();
         }
 
-        // -----------------------------------------------------------------
-        // File discovery (recursive)
-        // -----------------------------------------------------------------
         private string GetScriptsDir()
         {
             string project = ProjectSettings.Current.ActiveProject;
@@ -352,7 +311,6 @@ namespace ToolChest
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
             if (_sourceDirty && !string.IsNullOrEmpty(_selectedPath))
                 SaveCurrentFile();
-
             _selectedPath = path;
             try { _sourceBuffer = File.ReadAllText(path); }
             catch (Exception ex)
@@ -366,6 +324,7 @@ namespace ToolChest
             _cursorCol = 0;
             _scrollY = 0f;
             _displayDirty = true;
+            _widthsDirty = true;
             UpdateHighlighter();
         }
 
@@ -405,16 +364,13 @@ namespace ToolChest
                 _statusColor = new Vector4(1f, 0.4f, 0.4f, 1f);
                 return;
             }
-
             _statusText = "Building…";
             _statusColor = new Vector4(0.9f, 0.85f, 0.3f, 1f);
-
             string scriptsDir = Path.Combine(project, "Scripts");
             Directory.CreateDirectory(scriptsDir);
             string csproj = Path.Combine(scriptsDir, "SiegeScripts.csproj");
             if (!File.Exists(csproj))
                 ScriptLoader.BuildProjectScripts(project);
-
             var psi = new ProcessStartInfo
             {
                 FileName = "dotnet",
@@ -425,7 +381,6 @@ namespace ToolChest
                 CreateNoWindow = true,
                 WorkingDirectory = scriptsDir
             };
-
             try
             {
                 using (var p = Process.Start(psi))
@@ -434,7 +389,6 @@ namespace ToolChest
                     string stderr = p.StandardError.ReadToEnd();
                     p.WaitForExit();
                     ScriptLoader.BuildProjectScripts(project);
-
                     if (p.ExitCode == 0)
                     {
                         _statusText = "Build succeeded";
@@ -457,21 +411,15 @@ namespace ToolChest
             RefreshFileList();
         }
 
-        // -----------------------------------------------------------------
-        // Input
-        // -----------------------------------------------------------------
         public override void Update(float deltaTime, Vector2 absMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, float scrollDelta = 0f)
         {
             base.Update(deltaTime, absMousePos, mouseDown, mousePressed, mouseReleased, scrollDelta);
-
             bool isTop = PanelManager.Current?.GetTopmostPanelAt(absMousePos) == this;
             if (!isTop) { _hasFocus = false; return; }
-
             float titleH = HasTitleBar ? TitleHeight : 0f;
             float listTop = titleH + ToolbarH;
             Vector2 local = absMousePos - Position;
 
-            // ---- Toolbar button hit-test ----
             if (mousePressed && local.Y >= titleH && local.Y < titleH + ToolbarH)
             {
                 if (HitBtn(local.X, _btnRebuildX)) { RebuildScripts(); return; }
@@ -479,7 +427,6 @@ namespace ToolChest
                 if (HitBtn(local.X, _btnRefreshX)) { RefreshFileList(); return; }
             }
 
-            // ---- File list hit-test ----
             if (mousePressed && local.X >= 0 && local.X < FileListW && local.Y >= listTop && local.Y < Size.Y)
             {
                 int row = (int)((local.Y - listTop) / FileRowH);
@@ -488,24 +435,20 @@ namespace ToolChest
                 return;
             }
 
-            // ---- Editor area ----
             float editorLeft = FileListW + GutterW;
             float editorTop = listTop;
             float editorW = Size.X - editorLeft;
             float editorH = Size.Y - listTop;
             bool overEditor = local.X >= editorLeft && local.X <= Size.X &&
                                local.Y >= editorTop && local.Y <= Size.Y;
-
             if (mousePressed && overEditor)
             {
                 _hasFocus = true;
-                // Click-to-caret
                 EnsureLines();
                 float lineH = _uiOverlay.TextRenderer.GetLineHeight(FontSize, FontFamily) + LinePad;
                 float relY = local.Y - editorTop + _scrollY;
                 int lineIdx = Math.Clamp((int)(relY / lineH), 0, Math.Max(0, _displayLines.Count - 1));
                 _cursorLine = lineIdx;
-
                 string line = _displayLines[lineIdx];
                 float relX = local.X - editorLeft - EditorPad;
                 _cursorCol = MeasureColumn(line, relX);
@@ -520,7 +463,6 @@ namespace ToolChest
 
             if (!_hasFocus) return;
 
-            // cursor blink
             double now = _controlContext.GetTime();
             if (now - _lastCursorBlink > 0.5)
             {
@@ -530,7 +472,6 @@ namespace ToolChest
 
             bool shift = _controlContext.GetKey(_window, Key.LeftShift) == InputAction.Press ||
                          _controlContext.GetKey(_window, Key.RightShift) == InputAction.Press;
-
             ProcessKey(Key.Backspace, () => Backspace());
             ProcessKey(Key.Enter, () => InsertNewLine());
             ProcessKey(Key.Left, () => MoveCursor(-1, 0));
@@ -543,7 +484,6 @@ namespace ToolChest
                 if (_cursorLine < _displayLines.Count)
                     _cursorCol = _displayLines[_cursorLine].Length;
             });
-
             for (Key k = Key.A; k <= Key.Z; k++)
             {
                 if (WasPressed(k))
@@ -583,11 +523,17 @@ namespace ToolChest
             float acc = 0f;
             for (int i = 0; i < line.Length; i++)
             {
-                float w = _uiOverlay.TextRenderer.GetTextSize(line.Substring(i, 1), FontSize, FontFamily).X;
+                float w = GetCachedCharWidth(line[i]);
                 if (acc + w * 0.5f >= pixelX) return i;
                 acc += w;
             }
             return line.Length;
+        }
+
+        private float GetCachedCharWidth(char c)
+        {
+            // Single-character width via the now-cheap GetTextSize path
+            return _uiOverlay.TextRenderer.GetTextSize(c.ToString(), FontSize, FontFamily).X;
         }
 
         private bool WasPressed(Key k)
@@ -597,12 +543,10 @@ namespace ToolChest
             _prevKey[k] = now;
             return now && !was;
         }
+
         private void ProcessKey(Key k, Action a) { if (WasPressed(k)) a(); }
         private void TryInsert(Key k, char c) { if (WasPressed(k)) InsertChar(c); }
 
-        // -----------------------------------------------------------------
-        // Text buffer ops
-        // -----------------------------------------------------------------
         private void EnsureLines()
         {
             if (!_displayDirty) return;
@@ -620,6 +564,26 @@ namespace ToolChest
                     _displayLines.Add("");
             }
             _displayDirty = false;
+            _widthsDirty = true;
+        }
+
+        private void EnsureLineWidths()
+        {
+            if (!_widthsDirty) return;
+            _lineWidthCache.Clear();
+            for (int i = 0; i < _displayLines.Count; i++)
+            {
+                string line = _displayLines[i] ?? "";
+                _lineWidthCache.Add(_uiOverlay.TextRenderer.GetTextSize(line, FontSize, FontFamily).X);
+            }
+            _widthsDirty = false;
+        }
+
+        private float GetLineWidth(int lineIndex)
+        {
+            EnsureLineWidths();
+            if (lineIndex < 0 || lineIndex >= _lineWidthCache.Count) return 0f;
+            return _lineWidthCache[lineIndex];
         }
 
         private void InsertChar(char c)
@@ -632,6 +596,7 @@ namespace ToolChest
             _cursorCol++;
             RebuildBufferFromLines();
             _sourceDirty = true;
+            _widthsDirty = true;
         }
 
         private void InsertNewLine()
@@ -648,6 +613,7 @@ namespace ToolChest
             _cursorCol = 0;
             RebuildBufferFromLines();
             _sourceDirty = true;
+            _widthsDirty = true;
         }
 
         private void Backspace()
@@ -670,6 +636,7 @@ namespace ToolChest
             }
             RebuildBufferFromLines();
             _sourceDirty = true;
+            _widthsDirty = true;
         }
 
         private void MoveCursor(int dx, int dy)
@@ -698,38 +665,30 @@ namespace ToolChest
             _sourceBuffer = sb.ToString();
         }
 
-        // -----------------------------------------------------------------
-        // Rendering
-        // -----------------------------------------------------------------
         protected override void RenderContentLayer()
         {
             float titleH = HasTitleBar ? TitleHeight : 0f;
             float listTop = titleH + ToolbarH;
             float listH = Size.Y - listTop;
 
-            // ===== Toolbar background =====
             float[] tbBg = HtmlLayoutUtils.GetNdcQuad(0, titleH, Size.X, ToolbarH, Matrix4x4.Identity, Size.X, Size.Y);
             QuadRenderer.DrawNdcQuad(tbBg, new Vector4(0.16f, 0.16f, 0.17f, 1f));
 
-            // Toolbar buttons
             _btnW = 78f;
             float bx = 10f;
             _btnRebuildX = bx; DrawButton(bx, titleH + 5f, "Rebuild"); bx += _btnW + BtnPad;
             _btnSaveX = bx; DrawButton(bx, titleH + 5f, "Save"); bx += _btnW + BtnPad;
             _btnRefreshX = bx; DrawButton(bx, titleH + 5f, "Refresh");
 
-            // Status text on toolbar
             _uiOverlay.TextRenderer.RenderText(
                 _statusText,
                 bx + _btnW + 16f,
                 titleH + 9f,
                 Size.X, Size.Y, 12f, _statusColor, FontFamily);
 
-            // ===== File list =====
             float[] listBg = HtmlLayoutUtils.GetNdcQuad(0, listTop, FileListW, listH, Matrix4x4.Identity, Size.X, Size.Y);
             QuadRenderer.DrawNdcQuad(listBg, new Vector4(0.11f, 0.11f, 0.12f, 1f));
 
-            // vertical divider
             float[] div = HtmlLayoutUtils.GetNdcQuad(FileListW, listTop, 1f, listH, Matrix4x4.Identity, Size.X, Size.Y);
             QuadRenderer.DrawNdcQuad(div, new Vector4(0.25f, 0.25f, 0.27f, 1f));
 
@@ -743,7 +702,6 @@ namespace ToolChest
                     QuadRenderer.DrawNdcQuad(rowBg, new Vector4(0.18f, 0.28f, 0.20f, 1f));
                 }
                 string name = DisplayName(_scriptFiles[i]);
-                // Clip long names: measure and truncate with ellipsis
                 name = ClipText(name, FileListW - 16f);
                 _uiOverlay.TextRenderer.RenderText(
                     name, 8f, rowY + 4f, Size.X, Size.Y, FontSize,
@@ -753,18 +711,18 @@ namespace ToolChest
                 if (rowY > Size.Y) break;
             }
 
-            // ===== Gutter + Code =====
             float editorLeft = FileListW + GutterW;
             float editorTop = listTop;
             float editorW = Size.X - editorLeft;
             float editorH = listH;
             if (editorW < 40f || editorH < 20f) return;
 
-            // Gutter background
             float[] gutBg = HtmlLayoutUtils.GetNdcQuad(FileListW, listTop, GutterW, listH, Matrix4x4.Identity, Size.X, Size.Y);
             QuadRenderer.DrawNdcQuad(gutBg, new Vector4(0.13f, 0.13f, 0.14f, 1f));
 
             EnsureLines();
+            EnsureLineWidths();
+
             float lineH = _uiOverlay.TextRenderer.GetLineHeight(FontSize, FontFamily) + LinePad;
             float totalH = _displayLines.Count * lineH;
             float maxScroll = Math.Max(0f, totalH - editorH + 20f);
@@ -776,7 +734,6 @@ namespace ToolChest
                 if (y + lineH < editorTop) { y += lineH; continue; }
                 if (y > editorTop + editorH) break;
 
-                // line number
                 string num = (i + 1).ToString();
                 float numW = _uiOverlay.TextRenderer.GetTextSize(num, FontSize, FontFamily).X;
                 _uiOverlay.TextRenderer.RenderText(
@@ -787,11 +744,9 @@ namespace ToolChest
                     new Vector4(0.45f, 0.45f, 0.48f, 1f),
                     FontFamily);
 
-                // highlighted code
                 string text = _displayLines[i] ?? "";
                 DrawHighlightedLine(text, editorLeft + EditorPad, y);
 
-                // cursor
                 if (_hasFocus && _cursorVisible && i == _cursorLine)
                 {
                     string prefix = text.Length >= _cursorCol ? text.Substring(0, _cursorCol) : text;
@@ -837,7 +792,6 @@ namespace ToolChest
             int cursor = 0;
             foreach (var sp in spans)
             {
-                // any gap before this span
                 if (sp.Start > cursor)
                 {
                     string gap = line.Substring(cursor, sp.Start - cursor);
@@ -862,12 +816,16 @@ namespace ToolChest
         {
             base.OnPanelResize(w, h);
             _displayDirty = true;
+            _widthsDirty = true;
         }
+
         public override void OnLiveResize(float w, float h)
         {
             base.OnLiveResize(w, h);
             _displayDirty = true;
+            _widthsDirty = true;
         }
+
         public override void Dispose()
         {
             if (_sourceDirty) SaveCurrentFile();

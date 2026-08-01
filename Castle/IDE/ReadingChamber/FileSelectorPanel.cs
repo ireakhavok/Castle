@@ -18,7 +18,8 @@ namespace ReadingChamber
         private class FileSelectorUIOverlay : UIOverlay
         {
             private readonly FileSelectorPanel _parent;
-            public FileSelectorUIOverlay(FileSelectorPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window) : base(renderContext, controlContext, window)
+            public FileSelectorUIOverlay(FileSelectorPanel parent, IRenderContext renderContext, IControlContext controlContext, nint window)
+                : base(renderContext, controlContext, window)
             {
                 _parent = parent;
             }
@@ -109,15 +110,21 @@ namespace ReadingChamber
             }
             if (_sortBy == "name")
             {
-                items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
+                items = _sortAscending
+                    ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList()
+                    : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
             }
             else if (_sortBy == "size")
             {
-                items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Size).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Size).ToList();
+                items = _sortAscending
+                    ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Size).ToList()
+                    : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Size).ToList();
             }
             else if (_sortBy == "date")
             {
-                items = _sortAscending ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Modified).ToList() : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Modified).ToList();
+                items = _sortAscending
+                    ? items.OrderBy(i => i.IsDir ? 0 : 1).ThenBy(i => i.Modified).ToList()
+                    : items.OrderByDescending(i => i.IsDir ? 0 : 1).ThenByDescending(i => i.Modified).ToList();
             }
             if (items.Count == 0)
             {
@@ -127,7 +134,9 @@ namespace ReadingChamber
             {
                 foreach (var item in items)
                 {
-                    string hook = item.IsDir ? $"EnterDir:{item.Path.Replace("\\", "\\\\")}" : $"SelectFile:{item.Path.Replace("\\", "\\\\")}";
+                    // Escape only for the HTML attribute; we will unescape when reading the hook
+                    string escapedPath = item.Path.Replace("\\", "\\\\");
+                    string hook = item.IsDir ? $"EnterDir:{escapedPath}" : $"SelectFile:{escapedPath}";
                     string cls = item.IsDir ? "dir" : GetFileClass(item.Name);
                     string icon = GetIcon(cls);
                     string sizeStr = item.IsDir ? "" : FormatSize(item.Size);
@@ -170,12 +179,13 @@ namespace ReadingChamber
             string hook = elem.Attributes.GetValueOrDefault("data-hook", "");
             if (hook.StartsWith("EnterDir:"))
             {
-                string path = hook.Substring(9);
+                // Un-escape the doubled backslashes that were written for the HTML attribute
+                string path = hook.Substring(9).Replace("\\\\", "\\");
                 NavigateTo(path);
             }
             else if (hook.StartsWith("SelectFile:"))
             {
-                string path = hook.Substring(11);
+                string path = hook.Substring(11).Replace("\\\\", "\\");
                 _eventBus.Publish(new FileSelectedEvent(path) { UserData = this.UserData });
                 _eventBus.Publish(new ClosePanelEvent(this));
             }
