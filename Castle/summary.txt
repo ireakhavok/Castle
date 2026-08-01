@@ -3013,7 +3013,7 @@ Folder: SiegeEngine
   - Class: ShaderProgram (Namespace: SiegeEngine.Core.Rendering)
     - Inherits: IDisposable
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Rendering.ContextManagement, System, System.Collections.Generic, System.Numerics
     - Fields:
       - IRenderContext _renderContext
       - uint _program
@@ -3021,24 +3021,26 @@ Folder: SiegeEngine
     - Methods:
       - constructor ShaderProgram( string fragmentShaderSource,  string vertexShaderSource, IRenderContext renderContext)
         - Calls: _renderContext.AttachShader, _renderContext.CompileShader, _renderContext.CreateProgram, _renderContext.CreateShader, _renderContext.DeleteProgram, _renderContext.DeleteShader, _renderContext.DetachShader, _renderContext.GetProgram, _renderContext.GetProgramInfoLog, _renderContext.GetShader, _renderContext.GetShaderInfoLog, _renderContext.LinkProgram, _renderContext.ShaderSource
+      - int GetLocation(string name)
+        - Calls: _renderContext.GetUniformLocation
       - void Use()
         - Calls: _renderContext.UseProgram
       - void SetUniform( float value, string name)
-        - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform1
+        - Calls: GetLocation, _renderContext.Uniform1
       - void SetUniform( int value, string name)
-        - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform1
-      - void SetUniform( float x,  float y,  float z, string name)
-        - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform3
-      - void SetUniform( float w,  float x,  float y,  float z, string name)
-        - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform4
+        - Calls: GetLocation, _renderContext.Uniform1
       - void SetUniform( float x,  float y, string name)
-        - Calls: _renderContext.GetUniformLocation, _renderContext.Uniform2
+        - Calls: GetLocation, _renderContext.Uniform2
+      - void SetUniform( float x,  float y,  float z, string name)
+        - Calls: GetLocation, _renderContext.Uniform3
+      - void SetUniform( float w,  float x,  float y,  float z, string name)
+        - Calls: GetLocation, _renderContext.Uniform4
       - void SetMatrix4( Matrix4x4 matrix, string name)
-        - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
+        - Calls: GetLocation, _renderContext.UniformMatrix4
       - void SetMatrix4Array( Matrix4x4[] matrices, string name)
-        - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix4
+        - Calls: GetLocation, _renderContext.UniformMatrix4
       - void SetMatrix3Array( Matrix3x3[] matrices, string name)
-        - Calls: _renderContext.GetUniformLocation, _renderContext.UniformMatrix3
+        - Calls: GetLocation, _renderContext.UniformMatrix3
       - void Dispose()
         - Calls: Console.WriteLine, _renderContext.DeleteProgram
 - File: ShaderSetup.cs

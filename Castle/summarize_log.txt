@@ -567,7 +567,7 @@ Found: SceneEditorUI.html
 Found: ScriptEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
-Read 37391 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
+Read 36020 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\ScriptEditorPanel.cs
 Namespace: ToolChest
 Found 18 dependencies
 Found: ScriptEditorPanelUI.html
@@ -693,7 +693,7 @@ Ignoring non-source folder: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\bin
 Found: FileSelectorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\FileSelectorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\FileSelectorPanel.cs
-Read 10253 chars from: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\FileSelectorPanel.cs
+Read 10659 chars from: C:\repos\RealmFoundry\Castle\IDE\ReadingChamber\FileSelectorPanel.cs
 Namespace: ReadingChamber
 Found 10 dependencies
 Found: FileSelectorTemplate.html
@@ -1770,9 +1770,9 @@ Found 3 dependencies
 Found: ShaderProgram.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderProgram.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderProgram.cs
-Read 10686 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderProgram.cs
+Read 9816 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ShaderProgram.cs
 Namespace: SiegeEngine.Core.Rendering
-Found 4 dependencies
+Found 5 dependencies
 Found: Shaders
 Listing folder: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\Shaders
 Found: .
@@ -1858,7 +1858,7 @@ Found 7 dependencies
 Found: SystemFontRenderer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SystemFontRenderer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SystemFontRenderer.cs
-Read 8835 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SystemFontRenderer.cs
+Read 12432 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\SystemFontRenderer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 7 dependencies
 Found: TerrainRenderer.cs
@@ -1870,7 +1870,7 @@ Found 7 dependencies
 Found: TextRenderer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
-Read 11260 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
+Read 20554 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\TextRenderer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 5 dependencies
 Found: TextureLoader.cs
