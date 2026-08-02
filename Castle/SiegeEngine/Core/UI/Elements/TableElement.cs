@@ -21,24 +21,33 @@ namespace SiegeEngine.Core.UI.Elements
         {
             base.ComputeLayout(parentPositionX, parentPositionY, parentWidth, parentHeight, viewportWidth, viewportHeight, textRenderer, parentFs, forcedWidth, forcedHeight);
 
-            // Find rows
-            var rows = Children.Where(c => c.Tag.ToLower() == "tr" || c.Tag.ToLower() == "thead" || c.Tag.ToLower() == "tbody" || c.Tag.ToLower() == "tfoot").ToList();
-            var allRows = new List<HtmlElement>();
-            foreach (var rowGroup in rows)
+            // Find rows (and keep the wrappers so we can correct their heights)
+            var rowGroups = Children.Where(c =>
             {
-                if (rowGroup.Tag.ToLower() != "tr")
+                string t = c.Tag.ToLower();
+                return t == "tr" || t == "thead" || t == "tbody" || t == "tfoot";
+            }).ToList();
+
+            var allRows = new List<HtmlElement>();
+            var wrapperToRows = new Dictionary<HtmlElement, List<HtmlElement>>();
+
+            foreach (var group in rowGroups)
+            {
+                if (group.Tag.ToLower() == "tr")
                 {
-                    allRows.AddRange(rowGroup.Children.Where(c => c.Tag.ToLower() == "tr"));
+                    allRows.Add(group);
                 }
                 else
                 {
-                    allRows.Add(rowGroup);
+                    var groupRows = group.Children.Where(c => c.Tag.ToLower() == "tr").ToList();
+                    allRows.AddRange(groupRows);
+                    wrapperToRows[group] = groupRows;
                 }
             }
 
             if (allRows.Count == 0) return;
 
-            // Determine column count
+            // Column count
             int colCount = 0;
             foreach (var row in allRows)
             {
@@ -47,7 +56,7 @@ namespace SiegeEngine.Core.UI.Elements
             }
             if (colCount == 0) return;
 
-            // Compute intrinsic widths for each column
+            // Intrinsic column widths
             var colWidths = new float[colCount];
             foreach (var row in allRows)
             {
@@ -61,26 +70,24 @@ namespace SiegeEngine.Core.UI.Elements
                 }
             }
 
-            // If border-collapse, adjust for borders
             bool collapse = Style.BorderCollapse == "collapse";
             float tableBorderW = collapse ? 0 : BorderWidth.W + BorderWidth.Y;
 
-            // Total width – distribute extra across the usable content width of the table
             float totalW = colWidths.Sum() + tableBorderW;
             if (!float.IsNaN(ComputedContentWidth) && ComputedContentWidth > totalW)
             {
                 float extra = ComputedContentWidth - totalW;
                 float perCol = extra / colCount;
                 for (int i = 0; i < colCount; i++)
-                {
                     colWidths[i] += perCol;
-                }
             }
 
             float finalRowWidth = colWidths.Sum();
 
-            // Layout rows
+            // Layout every row
             float currentY = ComputedContentY;
+            var rowHeights = new Dictionary<HtmlElement, float>();
+
             foreach (var row in allRows)
             {
                 row.Style.Display = "table-row";
@@ -88,15 +95,13 @@ namespace SiegeEngine.Core.UI.Elements
                 var cells = row.Children.Where(c => c.Tag.ToLower() == "td" || c.Tag.ToLower() == "th").ToList();
                 float currentX = ComputedContentX;
 
-                // First pass: force column widths (required for full-width borders) and measure height
+                // Pass 1 – force widths, measure height
                 for (int i = 0; i < colCount; i++)
                 {
-                    HtmlElement cell = i < cells.Count ? cells[i] : null;
-                    if (cell != null)
+                    if (i < cells.Count)
                     {
+                        var cell = cells[i];
                         cell.Style.Display = "table-cell";
-                        // forcedWidth is required because table-cell is not treated as
-                        // block/flex/grid/table inside HtmlElement.ComputeLayout
                         cell.ComputeLayout(currentX, currentY, colWidths[i], float.NaN,
                             viewportWidth, viewportHeight, textRenderer, Style.FontSize,
                             forcedWidth: colWidths[i], forcedHeight: float.NaN);
@@ -105,13 +110,13 @@ namespace SiegeEngine.Core.UI.Elements
                     currentX += colWidths[i];
                 }
 
-                // Second pass: force uniform row height
+                // Pass 2 – force uniform height
                 currentX = ComputedContentX;
                 for (int i = 0; i < colCount; i++)
                 {
-                    HtmlElement cell = i < cells.Count ? cells[i] : null;
-                    if (cell != null)
+                    if (i < cells.Count)
                     {
+                        var cell = cells[i];
                         cell.ComputeLayout(currentX, currentY, colWidths[i], rowH,
                             viewportWidth, viewportHeight, textRenderer, Style.FontSize,
                             forcedWidth: colWidths[i], forcedHeight: rowH);
@@ -119,7 +124,7 @@ namespace SiegeEngine.Core.UI.Elements
                     currentX += colWidths[i];
                 }
 
-                // Full-width row geometry so tr:hover covers the entire row
+                // Full-width row geometry
                 row.ComputedWidth = finalRowWidth;
                 row.ComputedBackgroundWidth = finalRowWidth;
                 row.ComputedContentWidth = finalRowWidth;
@@ -132,11 +137,29 @@ namespace SiegeEngine.Core.UI.Elements
                 row.ComputedContentX = ComputedContentX;
                 row.ComputedContentY = currentY;
 
+                rowHeights[row] = rowH;
                 currentY += rowH;
             }
 
-            // Update the table’s own content height so the root does not think
-            // there is more content than there is (eliminates the spurious scrollbar)
+            // Correct thead / tbody / tfoot heights so the root content-height
+            // calculation (and therefore the scrollbar decision) is accurate
+            foreach (var kv in wrapperToRows)
+            {
+                var wrapper = kv.Key;
+                float wrapperH = 0f;
+                foreach (var r in kv.Value)
+                    wrapperH += rowHeights.TryGetValue(r, out float h) ? h : 0f;
+
+                wrapper.ComputedHeight = wrapperH;
+                wrapper.ComputedBackgroundHeight = wrapperH;
+                wrapper.ComputedContentHeight = wrapperH;
+                // Keep the wrapper’s X geometry full-width as well
+                wrapper.ComputedWidth = finalRowWidth;
+                wrapper.ComputedBackgroundWidth = finalRowWidth;
+                wrapper.ComputedContentWidth = finalRowWidth;
+            }
+
+            // Update the table’s own content height
             float contentH = currentY - ComputedContentY;
             ComputedContentHeight = contentH;
             Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
@@ -148,19 +171,31 @@ namespace SiegeEngine.Core.UI.Elements
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
         {
             var rows = Children.Where(c => c.Tag.ToLower() == "tr").ToList();
-            if (rows.Count == 0) return base.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
+            if (rows.Count == 0)
+            {
+                rows = Children
+                    .Where(c =>
+                    {
+                        string t = c.Tag.ToLower();
+                        return t == "thead" || t == "tbody" || t == "tfoot";
+                    })
+                    .SelectMany(g => g.Children.Where(c => c.Tag.ToLower() == "tr"))
+                    .ToList();
+            }
+            if (rows.Count == 0)
+                return base.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
 
-            float maxW = 0;
-            float h = 0;
             int colCount = rows.Max(r => r.Children.Count(c => c.Tag.ToLower() == "td" || c.Tag.ToLower() == "th"));
+            if (colCount == 0)
+                return base.ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
 
             var colMinW = new float[colCount];
-
+            float h = 0f;
             foreach (var row in rows)
             {
-                float rowH = 0;
+                float rowH = 0f;
                 var cells = row.Children.Where(c => c.Tag.ToLower() == "td" || c.Tag.ToLower() == "th").ToList();
-                for (int i = 0; i < cells.Count; i++)
+                for (int i = 0; i < cells.Count && i < colCount; i++)
                 {
                     var cellSize = cells[i].ComputeIntrinsicSize(viewportWidth, viewportHeight, textRenderer, fs);
                     colMinW[i] = Math.Max(colMinW[i], cellSize.X);
@@ -168,9 +203,7 @@ namespace SiegeEngine.Core.UI.Elements
                 }
                 h += rowH;
             }
-            maxW = colMinW.Sum();
-
-            return new Vector2(maxW, h);
+            return new Vector2(colMinW.Sum(), h);
         }
 
         public override void Render(IRenderContext renderContext, TextRenderer textRenderer, UIQuadRenderer quadRenderer, float viewportWidth, float viewportHeight, Matrix4x4 parentMatrix)
