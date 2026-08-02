@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.UI
+﻿// Folder: SiegeEngine.Core.UI.Elements
 // File: TableElement.cs
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
@@ -45,6 +45,7 @@ namespace SiegeEngine.Core.UI.Elements
                 int rowCols = row.Children.Count(c => c.Tag.ToLower() == "td" || c.Tag.ToLower() == "th");
                 colCount = Math.Max(colCount, rowCols);
             }
+            if (colCount == 0) return;
 
             // Compute intrinsic widths for each column
             var colWidths = new float[colCount];
@@ -64,11 +65,10 @@ namespace SiegeEngine.Core.UI.Elements
             bool collapse = Style.BorderCollapse == "collapse";
             float tableBorderW = collapse ? 0 : BorderWidth.W + BorderWidth.Y;
 
-            // Total width
+            // Total width – distribute extra across the usable content width of the table
             float totalW = colWidths.Sum() + tableBorderW;
             if (!float.IsNaN(ComputedContentWidth) && ComputedContentWidth > totalW)
             {
-                // Distribute extra width
                 float extra = ComputedContentWidth - totalW;
                 float perCol = extra / colCount;
                 for (int i = 0; i < colCount; i++)
@@ -76,6 +76,8 @@ namespace SiegeEngine.Core.UI.Elements
                     colWidths[i] += perCol;
                 }
             }
+
+            float finalRowWidth = colWidths.Sum();
 
             // Layout rows
             float currentY = ComputedContentY;
@@ -85,24 +87,62 @@ namespace SiegeEngine.Core.UI.Elements
                 float rowH = 0;
                 var cells = row.Children.Where(c => c.Tag.ToLower() == "td" || c.Tag.ToLower() == "th").ToList();
                 float currentX = ComputedContentX;
+
+                // First pass: force column widths (required for full-width borders) and measure height
                 for (int i = 0; i < colCount; i++)
                 {
                     HtmlElement cell = i < cells.Count ? cells[i] : null;
                     if (cell != null)
                     {
-                        cell.ComputeLayout(currentX, currentY, colWidths[i], float.NaN, viewportWidth, viewportHeight, textRenderer, Style.FontSize);
+                        cell.Style.Display = "table-cell";
+                        // forcedWidth is required because table-cell is not treated as
+                        // block/flex/grid/table inside HtmlElement.ComputeLayout
+                        cell.ComputeLayout(currentX, currentY, colWidths[i], float.NaN,
+                            viewportWidth, viewportHeight, textRenderer, Style.FontSize,
+                            forcedWidth: colWidths[i], forcedHeight: float.NaN);
                         rowH = Math.Max(rowH, cell.ComputedHeight);
                     }
                     currentX += colWidths[i];
                 }
-                // Set row height and adjust cells
-                row.ComputedHeight = rowH;
-                foreach (var cell in cells)
+
+                // Second pass: force uniform row height
+                currentX = ComputedContentX;
+                for (int i = 0; i < colCount; i++)
                 {
-                    cell.ComputedHeight = rowH;
+                    HtmlElement cell = i < cells.Count ? cells[i] : null;
+                    if (cell != null)
+                    {
+                        cell.ComputeLayout(currentX, currentY, colWidths[i], rowH,
+                            viewportWidth, viewportHeight, textRenderer, Style.FontSize,
+                            forcedWidth: colWidths[i], forcedHeight: rowH);
+                    }
+                    currentX += colWidths[i];
                 }
+
+                // Full-width row geometry so tr:hover covers the entire row
+                row.ComputedWidth = finalRowWidth;
+                row.ComputedBackgroundWidth = finalRowWidth;
+                row.ComputedContentWidth = finalRowWidth;
+                row.ComputedHeight = rowH;
+                row.ComputedBackgroundHeight = rowH;
+                row.ComputedContentHeight = rowH;
+                row.ComputedPosition = new Vector2(ComputedContentX, currentY);
+                row.ComputedBackgroundX = ComputedContentX;
+                row.ComputedBackgroundY = currentY;
+                row.ComputedContentX = ComputedContentX;
+                row.ComputedContentY = currentY;
+
                 currentY += rowH;
             }
+
+            // Update the table’s own content height so the root does not think
+            // there is more content than there is (eliminates the spurious scrollbar)
+            float contentH = currentY - ComputedContentY;
+            ComputedContentHeight = contentH;
+            Vector4 pad = HtmlLayoutUtils.ParsePaddings(Style, 0, viewportWidth, viewportHeight);
+            Vector4 borderW = BorderWidth;
+            ComputedHeight = contentH + pad.X + pad.Z + borderW.X + borderW.Z;
+            ComputedBackgroundHeight = ComputedHeight;
         }
 
         public override Vector2 ComputeIntrinsicSize(float viewportWidth, float viewportHeight, TextRenderer textRenderer, float fs)
