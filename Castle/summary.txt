@@ -2936,7 +2936,9 @@ Folder: SiegeEngine
         - Calls: ClientGameServerProxy, Console.WriteLine, Entity.FromData, Level.Deserialize, ModelManager, ModelManager.EnsurePacksLoaded, PlayerMovement, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ActivateProjectScripts, _currentScene.Initialize, ctx.Server.AddSystem, level.AddEntity
 - File: SceneRegistry.cs
   - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
-    - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic
+    - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic, System.Linq
+    - Fields:
+      - HashSet<string> CoreNames
     - Methods:
       - void Register( IScene> factory, string sceneName)
       - IScene Create( SceneContext context, string sceneName)

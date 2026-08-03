@@ -170,7 +170,6 @@ namespace CastleBuilder
             // Always re-scan when a project is (re)loaded so a switch between projects
             // picks up the correct Scripts/Libs assemblies.
             _scriptsActivatedForProject = false;
-
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
             {
@@ -183,11 +182,9 @@ namespace CastleBuilder
             }
             if (_projectData == null) _projectData = new ProjectData();
             if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
-
             // Ensure pure-client [CustomSceneEntry] factories and [RegisterGameSystem] hooks
             // are registered before any ActivateScene call. Safe to call repeatedly.
             EnsureProjectScriptsActivated(projectPath);
-
             string levelName = ProjectSettings.Current.CurrentLevel?.Name;
             if (!string.IsNullOrEmpty(levelName) && levelName != "Main")
             {
@@ -238,7 +235,7 @@ namespace CastleBuilder
         }
         string ResolveHostedSceneName(string sceneName, SceneData sd)
         {
-            // 1. Explicit first-class declaration on SceneData
+            // 1. Explicit first-class declaration on SceneData (project owns the type name)
             if (!string.IsNullOrWhiteSpace(sd?.CustomSceneClass) && SceneRegistry.IsRegistered(sd.CustomSceneClass.Trim()))
                 return sd.CustomSceneClass.Trim();
 
@@ -263,9 +260,22 @@ namespace CastleBuilder
             if (!string.IsNullOrEmpty(sceneName) && SceneRegistry.IsRegistered(sceneName))
                 return sceneName;
 
-            // 4. Known pure-client example (covers existing chess projects without project.json edit)
-            if (SceneRegistry.IsRegistered("ChessScene"))
-                return "ChessScene";
+            // 4. Common convention: FooMain → FooScene (no hard-coded game names)
+            if (!string.IsNullOrEmpty(sceneName) && sceneName.EndsWith("Main", StringComparison.OrdinalIgnoreCase))
+            {
+                string candidate = sceneName.Substring(0, sceneName.Length - 4) + "Scene";
+                if (SceneRegistry.IsRegistered(candidate))
+                    return candidate;
+            }
+
+            // 5. Exactly one non-core custom factory registered by this project → use it
+            var customs = SceneRegistry.GetCustomRegisteredNames();
+            if (customs.Count == 1)
+                return customs[0];
+            if (customs.Count > 1)
+            {
+                Console.WriteLine($"[EditorScene] Multiple custom scenes registered ({string.Join(", ", customs)}); set CustomSceneClass on the scene to choose one.");
+            }
 
             return null;
         }
@@ -322,15 +332,12 @@ namespace CastleBuilder
                 _pendingDisposeHosted = _hostedCustomScene;
                 _hostedCustomScene = null;
             }
-
             bool isTerrainScene = _projectData.Scenes.TryGetValue(sceneName, out var sceneData) &&
                                   (sceneData.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath) || sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase));
-
             if (!isTerrainScene)
             {
                 // Ensure registry is warm even if LoadProjectData was not the entry point
                 EnsureProjectScriptsActivated(ProjectSettings.Current.ActiveProject);
-
                 string hostedName = ResolveHostedSceneName(sceneName, sd ?? sceneData);
                 if (!string.IsNullOrEmpty(hostedName) && SceneRegistry.IsRegistered(hostedName))
                 {
@@ -367,7 +374,6 @@ namespace CastleBuilder
                     }
                 }
             }
-
             _activeGameScene = isTerrainScene
                 ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sd, enableBrush: false)
                 : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd);
