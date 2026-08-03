@@ -28,6 +28,15 @@ namespace SiegeEngine.Scenes
         public float[,] HeightmapSnapshot { get; set; }
         public List<Entity> RuntimeEntities { get; set; } = new List<Entity>();
         public string RuntimeSnapshotPath { get; set; }
+
+        /// <summary>
+        /// When true the scene is being hosted by the Scene Editor as a view-only preview.
+        /// Pure-client scenes must skip window-callback installation and all interactive
+        /// game logic (AI, clicks, input) while still emitting geometry.
+        /// Default false so Play / Export behaviour is unchanged.
+        /// </summary>
+        public bool IsHostedPreview { get; set; } = false;
+
         public static SceneContext CreateCore(IRenderContext renderContext, IControlContext controlContext, nint window, IGameServer server, EventBus eventBus)
         {
             return new SceneContext { RenderContext = renderContext, ControlContext = controlContext, Window = window, Server = server, EventBus = eventBus };

@@ -14,6 +14,16 @@ namespace SiegeEngine.Core.Definitions
         [JsonPropertyName("sceneType")]
         public string SceneType { get; set; } = "Gameplay";
 
+        /// <summary>
+        /// Optional fully-qualified or simple name of the pure-client Scene class
+        /// that implements this scene (e.g. "ChessScene"). When present and
+        /// registered via [CustomSceneEntry], the Scene Editor hosts it as a
+        /// view-only preview. Play/Export continue to use the existing
+        /// RuntimeGameplay rebind path for compatibility.
+        /// </summary>
+        [JsonPropertyName("customSceneClass")]
+        public string CustomSceneClass { get; set; }
+
         [JsonPropertyName("terrain")]
         public TerrainData Terrain { get; set; } = new TerrainData();
 
