@@ -554,6 +554,14 @@ namespace CastleBuilder
                 }
             }
             SaveIDEState();
+
+            // Force the live Scene Editor viewport to rebind to the newly loaded project
+            // so pure-client hosted previews (and terrain) activate for the current ActiveProject.
+            if (EditorScene.Current != null)
+            {
+                Console.WriteLine("[BlueprintManager.OnLoadProject] Forcing EditorScene.LoadProjectData for newly loaded project");
+                EditorScene.Current.LoadProjectData();
+            }
         }
         private void OnSaveProject(SaveProjectEvent evt)
         {

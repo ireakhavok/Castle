@@ -44,14 +44,31 @@ namespace SiegeEngine.Core.Managers
             string scriptsDir = Path.Combine(projectPath, "Scripts");
             if (!Directory.Exists(scriptsDir)) return;
             Console.WriteLine($"[ScriptLoader] Scanning project Scripts folder: {scriptsDir}");
+
+            // Top-level Scripts/*.dll
             foreach (string dll in Directory.GetFiles(scriptsDir, "*.dll"))
             {
                 if (IsCoreDll(dll)) continue;
                 Console.WriteLine($"[ScriptLoader] Found custom DLL: {dll}");
                 LoadAndRegister(dll);
             }
+
+            // Built output lives in Scripts/Libs (BuildProjectScripts --output Libs\)
+            string libsDir = Path.Combine(scriptsDir, "Libs");
+            if (Directory.Exists(libsDir))
+            {
+                foreach (string dll in Directory.GetFiles(libsDir, "*.dll"))
+                {
+                    if (IsCoreDll(dll)) continue;
+                    Console.WriteLine($"[ScriptLoader] Found custom DLL (Libs): {dll}");
+                    LoadAndRegister(dll);
+                }
+            }
+
             string[] csFiles = Directory.GetFiles(scriptsDir, "*.cs");
-            if (csFiles.Length > 0 && Directory.GetFiles(scriptsDir, "*.dll").All(IsCoreDll))
+            bool hasTopLevelDll = Directory.GetFiles(scriptsDir, "*.dll").Any(d => !IsCoreDll(d));
+            bool hasLibsDll = Directory.Exists(libsDir) && Directory.GetFiles(libsDir, "*.dll").Any(d => !IsCoreDll(d));
+            if (csFiles.Length > 0 && !hasTopLevelDll && !hasLibsDll)
             {
                 BuildProjectScripts(projectPath);
             }
@@ -64,12 +81,25 @@ namespace SiegeEngine.Core.Managers
             if (!Directory.Exists(scriptsDir)) return;
             string runtimeTemp = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "RuntimeTemp");
             Directory.CreateDirectory(runtimeTemp);
+
             foreach (string dll in Directory.GetFiles(scriptsDir, "*.dll"))
             {
                 if (IsCoreDll(dll)) continue;
                 string target = Path.Combine(runtimeTemp, Path.GetFileName(dll));
                 File.Copy(dll, target, true);
                 Console.WriteLine($"[ScriptLoader] Copied custom DLL to runtime temp: {target}");
+            }
+
+            string libsDir = Path.Combine(scriptsDir, "Libs");
+            if (Directory.Exists(libsDir))
+            {
+                foreach (string dll in Directory.GetFiles(libsDir, "*.dll"))
+                {
+                    if (IsCoreDll(dll)) continue;
+                    string target = Path.Combine(runtimeTemp, Path.GetFileName(dll));
+                    File.Copy(dll, target, true);
+                    Console.WriteLine($"[ScriptLoader] Copied custom DLL (Libs) to runtime temp: {target}");
+                }
             }
         }
 
@@ -80,10 +110,23 @@ namespace SiegeEngine.Core.Managers
             if (!Directory.Exists(scriptsDir)) return;
             string targetScripts = Path.Combine(exportRoot, "Scripts");
             Directory.CreateDirectory(targetScripts);
+
             foreach (string dll in Directory.GetFiles(scriptsDir, "*.dll"))
             {
                 if (IsCoreDll(dll)) continue;
                 File.Copy(dll, Path.Combine(targetScripts, Path.GetFileName(dll)), true);
+            }
+
+            string libsDir = Path.Combine(scriptsDir, "Libs");
+            if (Directory.Exists(libsDir))
+            {
+                string targetLibs = Path.Combine(targetScripts, "Libs");
+                Directory.CreateDirectory(targetLibs);
+                foreach (string dll in Directory.GetFiles(libsDir, "*.dll"))
+                {
+                    if (IsCoreDll(dll)) continue;
+                    File.Copy(dll, Path.Combine(targetLibs, Path.GetFileName(dll)), true);
+                }
             }
             Console.WriteLine($"[ScriptLoader] Copied Scripts to export folder");
         }
@@ -93,8 +136,14 @@ namespace SiegeEngine.Core.Managers
             if (string.IsNullOrEmpty(projectPath)) return "";
             string scriptsDir = Path.Combine(projectPath, "Scripts");
             if (!Directory.Exists(scriptsDir)) return "";
-            var dlls = Directory.GetFiles(scriptsDir, "*.dll").Where(d => !IsCoreDll(d)).ToArray();
-            return string.Join(";", Array.ConvertAll(dlls, Path.GetFileName));
+
+            var dlls = new List<string>();
+            dlls.AddRange(Directory.GetFiles(scriptsDir, "*.dll").Where(d => !IsCoreDll(d)));
+            string libsDir = Path.Combine(scriptsDir, "Libs");
+            if (Directory.Exists(libsDir))
+                dlls.AddRange(Directory.GetFiles(libsDir, "*.dll").Where(d => !IsCoreDll(d)));
+
+            return string.Join(";", dlls.ConvertAll(Path.GetFileName));
         }
 
         public static void LoadCustomAssemblies(string projectPath)

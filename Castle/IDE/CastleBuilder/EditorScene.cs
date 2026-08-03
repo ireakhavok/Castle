@@ -24,8 +24,11 @@ namespace CastleBuilder
         private ProjectData _projectData;
         private string _currentGameSceneName = string.Empty;
         private GameScene _activeGameScene;
+        private Scene _hostedCustomScene;
         private readonly ProjectSceneCache _sceneCache = new ProjectSceneCache();
         private GameScene _pendingDisposeScene;
+        private Scene _pendingDisposeHosted;
+        private bool _scriptsActivatedForProject;
         public static EditorScene Current { get; private set; }
         public EditorScene(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, new ClientGameServerProxy(eventBus), eventBus) { }
@@ -164,6 +167,10 @@ namespace CastleBuilder
         }
         public void LoadProjectData()
         {
+            // Always re-scan when a project is (re)loaded so a switch between projects
+            // picks up the correct Scripts/Libs assemblies.
+            _scriptsActivatedForProject = false;
+
             string projectPath = ProjectSettings.Current.ActiveProject;
             if (!string.IsNullOrEmpty(projectPath) && Directory.Exists(projectPath))
             {
@@ -176,6 +183,11 @@ namespace CastleBuilder
             }
             if (_projectData == null) _projectData = new ProjectData();
             if (_projectData.Scenes == null) _projectData.Scenes = new Dictionary<string, SceneData>();
+
+            // Ensure pure-client [CustomSceneEntry] factories and [RegisterGameSystem] hooks
+            // are registered before any ActivateScene call. Safe to call repeatedly.
+            EnsureProjectScriptsActivated(projectPath);
+
             string levelName = ProjectSettings.Current.CurrentLevel?.Name;
             if (!string.IsNullOrEmpty(levelName) && levelName != "Main")
             {
@@ -194,7 +206,68 @@ namespace CastleBuilder
             _sceneCache.Clear();
             _pendingDisposeScene?.Dispose();
             _pendingDisposeScene = null;
+            _pendingDisposeHosted?.Dispose();
+            _pendingDisposeHosted = null;
+            _hostedCustomScene = null;
             ActivateScene(_currentGameSceneName);
+        }
+        void EnsureProjectScriptsActivated(string projectPath)
+        {
+            if (_scriptsActivatedForProject || string.IsNullOrEmpty(projectPath) || !Directory.Exists(projectPath))
+                return;
+            try
+            {
+                ScriptLoader.ScanProjectScripts(projectPath);
+                var regCtx = new SceneContext
+                {
+                    RenderContext = _renderContext,
+                    ControlContext = _controlContext,
+                    Window = _window,
+                    Server = _server,
+                    EventBus = _eventBus,
+                    IsHostedPreview = true
+                };
+                ScriptLoader.ActivateProjectScripts(regCtx);
+                _scriptsActivatedForProject = true;
+                Console.WriteLine("[EditorScene] Project scripts scanned and activated for registry (CustomSceneEntry / RegisterGameSystem)");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[EditorScene] Script activation warning: {ex.Message}");
+            }
+        }
+        string ResolveHostedSceneName(string sceneName, SceneData sd)
+        {
+            // 1. Explicit first-class declaration on SceneData
+            if (!string.IsNullOrWhiteSpace(sd?.CustomSceneClass) && SceneRegistry.IsRegistered(sd.CustomSceneClass.Trim()))
+                return sd.CustomSceneClass.Trim();
+
+            // 2. customData bag (zero-schema-churn path)
+            if (sd?.CustomData != null)
+            {
+                if (sd.CustomData.TryGetValue("customSceneClass", out var v) && v != null)
+                {
+                    string name = v.ToString().Trim();
+                    if (!string.IsNullOrEmpty(name) && SceneRegistry.IsRegistered(name))
+                        return name;
+                }
+                if (sd.CustomData.TryGetValue("implementingType", out var v2) && v2 != null)
+                {
+                    string name = v2.ToString().Trim();
+                    if (!string.IsNullOrEmpty(name) && SceneRegistry.IsRegistered(name))
+                        return name;
+                }
+            }
+
+            // 3. Scene name itself registered via [CustomSceneEntry]
+            if (!string.IsNullOrEmpty(sceneName) && SceneRegistry.IsRegistered(sceneName))
+                return sceneName;
+
+            // 4. Known pure-client example (covers existing chess projects without project.json edit)
+            if (SceneRegistry.IsRegistered("ChessScene"))
+                return "ChessScene";
+
+            return null;
         }
         private void ActivateScene(string sceneName)
         {
@@ -211,6 +284,11 @@ namespace CastleBuilder
             {
                 if (_activeGameScene != null && _activeGameScene != cachedScene)
                     _pendingDisposeScene = _activeGameScene;
+                if (_hostedCustomScene != null)
+                {
+                    _pendingDisposeHosted = _hostedCustomScene;
+                    _hostedCustomScene = null;
+                }
                 _activeGameScene = cachedScene;
                 _currentGameSceneName = sceneName;
                 if (_projectData != null) _projectData.LastOpenedScene = sceneName;
@@ -239,8 +317,57 @@ namespace CastleBuilder
             if (_projectData != null) _projectData.LastOpenedScene = sceneName;
             if (_activeGameScene != null)
                 _pendingDisposeScene = _activeGameScene;
+            if (_hostedCustomScene != null)
+            {
+                _pendingDisposeHosted = _hostedCustomScene;
+                _hostedCustomScene = null;
+            }
+
             bool isTerrainScene = _projectData.Scenes.TryGetValue(sceneName, out var sceneData) &&
                                   (sceneData.SceneType == "TerrainTest" || !string.IsNullOrEmpty(sceneData.Terrain?.HeightmapPath) || sceneName.Contains("Terrain", StringComparison.OrdinalIgnoreCase));
+
+            if (!isTerrainScene)
+            {
+                // Ensure registry is warm even if LoadProjectData was not the entry point
+                EnsureProjectScriptsActivated(ProjectSettings.Current.ActiveProject);
+
+                string hostedName = ResolveHostedSceneName(sceneName, sd ?? sceneData);
+                if (!string.IsNullOrEmpty(hostedName) && SceneRegistry.IsRegistered(hostedName))
+                {
+                    var hostedCtx = new SceneContext
+                    {
+                        RenderContext = _renderContext,
+                        ControlContext = _controlContext,
+                        Window = _window,
+                        Server = _server,
+                        EventBus = _eventBus,
+                        IsHostedPreview = true,
+                        SceneData = sd ?? sceneData,
+                        CurrentLevel = level,
+                        LoadLevelName = sceneName,
+                        PlayProjectPath = ProjectSettings.Current.ActiveProject
+                    };
+                    try
+                    {
+                        _hostedCustomScene = (Scene)SceneRegistry.Create(hostedName, hostedCtx);
+                        _hostedCustomScene.Initialize(_width, _height);
+                        // Keep a lightweight BasicGameScene so existing GameScene-typed paths stay valid
+                        _activeGameScene = new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd ?? sceneData);
+                        _activeGameScene.Initialize(_width, _height);
+                        Console.WriteLine($"[EditorScene] Hosted pure-client scene '{hostedName}' as view-only preview");
+                        SyncCurrentLevelToRuntimeServer();
+                        _sceneCache.Store(sceneName, _activeGameScene, level);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[EditorScene] Failed to host custom scene '{hostedName}': {ex.Message}");
+                        _hostedCustomScene?.Dispose();
+                        _hostedCustomScene = null;
+                    }
+                }
+            }
+
             _activeGameScene = isTerrainScene
                 ? new TerrainCreatorScene(_renderContext, _controlContext, _window, _server, _eventBus, sd, enableBrush: false)
                 : new BasicGameScene(_renderContext, _controlContext, _window, _server, _eventBus, sd);
@@ -386,7 +513,13 @@ namespace CastleBuilder
                 _pendingDisposeScene.Dispose();
                 _pendingDisposeScene = null;
             }
+            if (_pendingDisposeHosted != null)
+            {
+                _pendingDisposeHosted.Dispose();
+                _pendingDisposeHosted = null;
+            }
             _activeGameScene?.Update(deltaTime);
+            _hostedCustomScene?.Update(deltaTime);
         }
         public void Update(float deltaTime, Vector2 relMousePos, bool mouseDown, bool mousePressed, bool mouseReleased, bool cameraMode = true)
         {
@@ -394,9 +527,17 @@ namespace CastleBuilder
                 terrainScene.Update(deltaTime, relMousePos, mouseDown, mousePressed, mouseReleased, cameraMode);
             else if (_activeGameScene != null)
                 _activeGameScene.Update(deltaTime);
+            _hostedCustomScene?.Update(deltaTime);
         }
         public override void Render(IReadOnlyList<Entity> entities)
         {
+            if (_hostedCustomScene != null)
+            {
+                _renderContext.ClearColor(0.12f, 0.12f, 0.18f, 1f);
+                _renderContext.Clear(_renderContext.Enums.ColorBufferBit | _renderContext.Enums.DepthBufferBit);
+                _hostedCustomScene.Render(entities ?? GetEntities());
+                return;
+            }
             if (!(_activeGameScene is TerrainCreatorScene))
             {
                 _renderContext.ClearColor(0.12f, 0.12f, 0.18f, 1f);
@@ -408,6 +549,7 @@ namespace CastleBuilder
         {
             base.Resize(width, height);
             _activeGameScene?.Resize(width, height);
+            _hostedCustomScene?.Resize(width, height);
         }
         public List<string> GetAvailableScenes()
         {
@@ -421,7 +563,9 @@ namespace CastleBuilder
         {
             Current = null;
             _pendingDisposeScene?.Dispose();
+            _pendingDisposeHosted?.Dispose();
             _activeGameScene?.Dispose();
+            _hostedCustomScene?.Dispose();
             _sceneCache.Clear();
             base.Dispose();
         }
