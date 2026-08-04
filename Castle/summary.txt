@@ -2910,41 +2910,12 @@ Folder: SiegeEngine
   - Class: SkyboxData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Numerics, System.Text.Json.Serialization
 - File: SceneManager.cs
-  - Class: SceneManager (Namespace: SiegeEngine.Core.Managers)
+  - Class: resolution (Namespace: SiegeEngine.Core.Managers)
+    - Inherits: pure
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Networking, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.PlayerSystem, SiegeEngine.Scenes, SiegeEngine.Systems, System, System.Numerics, System.Text.Json
-    - Fields:
-      - EventBus _eventBus
-      - IRenderContext _renderContext
-      - IControlContext _controlContext
-      - nint _window
-      - ModManager _modManager
-      - UISettingsManager _settingsManager
-      - ISteamEngine _steamEngine
-      - InputHandler _inputHandler
-      - MenuPanel _menuPanel
-      - Scene _currentScene
-      - Player _player
-      - PlayerMovement _playerMovement
-      - ModelManager _modelManager
-      - IGameServer _server
-    - Methods:
-      - constructor SceneManager( IControlContext controlContext,  IRenderContext renderContext,  ISteamEngine steamEngine,  InputHandler inputHandler,  MenuPanel menuPanel,  ModManager modManager,  UISettingsManager settingsManager,  nint window, EventBus eventBus)
-      - void Dispose()
-      - void OnSwitchScene(SwitchSceneEvent e)
-        - Calls: ClientGameServerProxy, Console.WriteLine, Dispose, ModelManager, PlayerMovement, SceneRegistry.Create, ScriptLoader.ActivateProjectScripts, _currentScene.Initialize, _server.AddSystem
-      - void SwitchToRuntimeGameplay( Level currentLevel = null,  string levelDataPayload = null,  string levelName,  string sceneDataPayload = null, string projectPath)
-        - Calls: ClientGameServerProxy, Console.WriteLine, Entity.FromData, Level.Deserialize, ModelManager, ModelManager.EnsurePacksLoaded, PlayerMovement, SceneContext.CreateForRuntime, SceneRegistry.Create, ScriptLoader.ActivateProjectScripts, _currentScene.Initialize, ctx.Server.AddSystem, level.AddEntity
 - File: SceneRegistry.cs
-  - Class: SceneRegistry (Namespace: SiegeEngine.Scenes)
-    - Dependencies: SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic
-    - Methods:
-      - void Register( IScene> factory, string sceneName)
-      - IScene Create( SceneContext context, string sceneName)
-        - Calls: factory
-      - return factory()
-        - Calls: Console.WriteLine, Export, Register, SandboxScene, scene.LoadLevelData
-      - constructor SceneRegistry()
-        - Calls: Console.WriteLine, Export, Register, SandboxScene, scene.LoadLevelData
+  - Class: declaration (Namespace: SiegeEngine.Scenes)
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Scenes.StartingPoints, System, System.Collections.Generic, System.Linq
 - File: SceneSettings.cs
   - Class: SceneSettings (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System.Collections.Generic, System.Text.Json.Serialization
@@ -3783,10 +3754,10 @@ SiegeEngine.Core.Managers.ModManager
 SiegeEngine.Core.Managers.ModelMeshRender
 SiegeEngine.Core.Managers.PanelInputRouter
 SiegeEngine.Core.Managers.PanelManager
-SiegeEngine.Core.Managers.SceneManager
 SiegeEngine.Core.Managers.SerializableFloatingPanel
 SiegeEngine.Core.Managers.UISettingsManager
 SiegeEngine.Core.Managers.acquired
+SiegeEngine.Core.Managers.resolution
 SiegeEngine.Core.Networking.ClientGameServerProxy
 SiegeEngine.Core.Networking.MovementRequest
 SiegeEngine.Core.Networking.SteamUGCRequestUGCDetailsResult_t
@@ -3894,10 +3865,10 @@ SiegeEngine.Scenes.IScene
 SiegeEngine.Scenes.ModelViewerScene
 SiegeEngine.Scenes.RuntimeGameplayScene
 SiegeEngine.Scenes.SceneContext
-SiegeEngine.Scenes.SceneRegistry
 SiegeEngine.Scenes.StartingPoints.SandboxScene
 SiegeEngine.Scenes.StartingPoints.TwoDSandboxScene
 SiegeEngine.Scenes.TerrainScene
+SiegeEngine.Scenes.declaration
 SiegeEngine.Systems.AnimationSystem
 SiegeEngine.Systems.ClientPredictionSystem
 SiegeEngine.Systems.EnvironmentSystem

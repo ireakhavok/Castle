@@ -13,6 +13,7 @@ using SiegeEngine.Systems;
 using System;
 using System.Numerics;
 using System.Text.Json;
+
 namespace SiegeEngine.Core.Managers
 {
     public class SceneManager
@@ -31,6 +32,7 @@ namespace SiegeEngine.Core.Managers
         private PlayerMovement _playerMovement;
         private ModelManager _modelManager;
         private IGameServer _server;
+
         public SceneManager(EventBus eventBus, IRenderContext renderContext, IControlContext controlContext, nint window, ModManager modManager, UISettingsManager settingsManager, ISteamEngine steamEngine, InputHandler inputHandler, MenuPanel menuPanel)
         {
             _eventBus = eventBus;
@@ -44,14 +46,17 @@ namespace SiegeEngine.Core.Managers
             _menuPanel = menuPanel;
             _eventBus.Subscribe<SwitchSceneEvent>(OnSwitchScene);
         }
+
         public void Update(float deltaTime) => _currentScene?.Update(deltaTime);
         public void Render() => _currentScene?.Render(_server?.GetEntities() ?? Array.Empty<Entity>());
         public void Resize(int width, int height) => _currentScene?.Resize(width, height);
+
         public void Dispose()
         {
             _currentScene?.Dispose();
             _currentScene = null;
         }
+
         private void OnSwitchScene(SwitchSceneEvent e)
         {
             Console.WriteLine($"SceneManager: Switching to '{e.SceneName}'");
@@ -85,6 +90,7 @@ namespace SiegeEngine.Core.Managers
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
             Console.WriteLine($"SceneManager: '{e.SceneName}' initialized successfully via registry.");
         }
+
         public void SwitchToRuntimeGameplay(string projectPath, string levelName, string levelDataPayload = null, string sceneDataPayload = null, Level currentLevel = null)
         {
             Console.WriteLine($"SceneManager: Loading runtime gameplay with FULL snapshot - project '{projectPath}' level '{levelName}' Entities={currentLevel?.Entities?.Count ?? 0} - levelPayload present: {levelDataPayload != null}, scenePayload present: {sceneDataPayload != null}");
@@ -169,6 +175,7 @@ namespace SiegeEngine.Core.Managers
             ctx.Server.AddSystem(new AudioSystem(ctx.Server, _eventBus, false));
             ctx.Player = null;
             ctx.PlayerMovement = null;
+            // Activate first so [CustomSceneEntry] factories are registered before resolution.
             ScriptLoader.ActivateProjectScripts(ctx, _inputHandler, predictionSystem);
             if (ctx.PlayerMovement == null)
             {
@@ -176,9 +183,15 @@ namespace SiegeEngine.Core.Managers
             }
             _playerMovement = ctx.PlayerMovement;
             _player = ctx.Player;
-            _currentScene = (Scene)SceneRegistry.Create("RuntimeGameplay", ctx);
+
+            // First-class resolution: pure-client [CustomSceneEntry] or classic RuntimeGameplay.
+            string preferred = SceneRegistry.ResolvePreferredSceneName(levelName, reconstructedSceneData ?? ctx.SceneData);
+            if (!SceneRegistry.IsRegistered(preferred))
+                preferred = "RuntimeGameplay";
+            Console.WriteLine($"[SceneManager] Resolved preferred scene '{preferred}' (level='{levelName}', CustomSceneClass='{reconstructedSceneData?.CustomSceneClass}')");
+            _currentScene = (Scene)SceneRegistry.Create(preferred, ctx);
             _currentScene.Initialize(_settingsManager.WindowWidth, _settingsManager.WindowHeight);
-            Console.WriteLine("[SceneManager] RuntimeGameplayScene active with FULL editor snapshot - entities rehydrated and added");
+            Console.WriteLine($"[SceneManager] '{preferred}' active with FULL editor snapshot - entities rehydrated and added");
         }
     }
 }
