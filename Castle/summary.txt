@@ -841,10 +841,13 @@ Folder: Server
   - Class: PhysicsSystem (Namespace: Citadel.Systems)
     - Inherits: GameSystem
     
-    - Dependencies: Citadel.Server, SiegeEngine.Core.Definitions, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Dependencies: Citadel.Server, SiegeEngine.Core.Definitions, SiegeEngine.Core.Physics, SiegeEngine.Systems, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - PhysicsWorld _world
+      - PhysicsWorld World
     - Methods:
       - void Update(float deltaTime)
-        - Calls: Console.WriteLine, _server.GetEntities
+        - Calls: Console.WriteLine, _server.GetEntities, _world.RegisterBody, _world.Step
 - File: ServerProgram.cs
   - Class: ServerProgram (Namespace: Citadel)
     - Dependencies: Citadel.Network, Citadel.Server, SiegeEngine.Core.Events, SiegeEngine.Core.Networking, System, System.Diagnostics, System.Linq, System.Threading, Trebuchet
@@ -1051,6 +1054,8 @@ Folder: SiegeEngine
 - File: BlendedAnimationComponent.cs
   - Class: BlendedAnimationComponentData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Numerics
+- File: BodyType.cs
+  - Class: BodyType (Namespace: SiegeEngine.Core.Physics)
 - File: Bone.cs
   - Class: Bone (Namespace: SiegeEngine.Core.AssetParsing.Model)
     - Dependencies: SiegeEngine.Core.AssetObjects, System, System.Collections.Generic, System.Numerics
@@ -1929,6 +1934,9 @@ Folder: SiegeEngine
 - File: IGameServer.cs
   - Class: IGameServer (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
+- File: IHeightProvider.cs
+  - Class: IHeightProvider (Namespace: SiegeEngine.Core.Physics)
+    - Dependencies: System
 - File: IPanel.cs
   - Class: IDataAwarePanel (Namespace: SiegeEngine.Core.Interfaces)
     - Dependencies: SiegeEngine.Core.Definitions, System.Numerics, System.Text.Json
@@ -2161,9 +2169,12 @@ Folder: SiegeEngine
       - void Update(float deltaTime)
 - File: LiveSceneState.cs
   - Class: LiveSceneState (Namespace: SiegeEngine.Core.Definitions)
-    - Inherits: IDisposable, ISceneStateProvider
+    - Inherits: IDisposable, ISceneStateProvider, IHeightProvider
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Terrain, System, System.Drawing, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Physics, SiegeEngine.Core.Terrain, System, System.Drawing, System.Numerics
+    - Fields:
+      - int Width
+      - int Height
     - Methods:
       - constructor LiveSceneState( int height = 200,  int width = 200, string sceneName)
         - Calls: g.Clear
@@ -2619,7 +2630,27 @@ Folder: SiegeEngine
       - void Deserialize(byte[] data)
 - File: PhysicsComponent.cs
   - Class: PhysicsComponentData (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: System, System.Numerics
+    - Dependencies: SiegeEngine.Core.Physics, System, System.Numerics
+- File: PhysicsWorld.cs
+  - Class: PhysicsWorld (Namespace: SiegeEngine.Core.Physics)
+    - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Numerics
+    - Fields:
+      - List<PhysicsComponent> _bodies
+      - IHeightProvider _heightProvider
+      - float _accumulator
+      - Vector3 _gravity
+      - IHeightProvider HeightProvider
+    - Methods:
+      - void SetHeightProvider(IHeightProvider provider)
+      - void RegisterBody(PhysicsComponent body)
+      - void UnregisterBody(PhysicsComponent body)
+        - Calls: _bodies.Remove
+      - void ClearBodies()
+        - Calls: _bodies.Clear
+      - void Step(float deltaTime)
+        - Calls: Integrate
+      - void Integrate(float dt)
+        - Calls: _heightProvider.GetInterpolatedHeight
 - File: Player.cs
   - Class: Player (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: IComponent
@@ -3690,11 +3721,11 @@ SiegeEngine.Core.Definitions.DockingMode
 SiegeEngine.Core.Definitions.GameMode
 SiegeEngine.Core.Definitions.IComponentData
 SiegeEngine.Core.Definitions.ISceneStateProvider
+  SiegeEngine.Core.Definitions.LiveSceneState
 SiegeEngine.Core.Definitions.LevelData
 SiegeEngine.Core.Definitions.LevelDto
 SiegeEngine.Core.Definitions.LightComponentData
 SiegeEngine.Core.Definitions.LightType
-SiegeEngine.Core.Definitions.LiveSceneState
 SiegeEngine.Core.Definitions.MaterialData
 SiegeEngine.Core.Definitions.MaterialProperties
 SiegeEngine.Core.Definitions.Matrix3x3
@@ -3761,6 +3792,9 @@ SiegeEngine.Core.Managers.resolution
 SiegeEngine.Core.Networking.ClientGameServerProxy
 SiegeEngine.Core.Networking.MovementRequest
 SiegeEngine.Core.Networking.SteamUGCRequestUGCDetailsResult_t
+SiegeEngine.Core.Physics.BodyType
+SiegeEngine.Core.Physics.IHeightProvider
+SiegeEngine.Core.Physics.PhysicsWorld
 SiegeEngine.Core.Rendering.BackgroundRenderer
 SiegeEngine.Core.Rendering.CachedGlyphRun
 SiegeEngine.Core.Rendering.CharacterData
