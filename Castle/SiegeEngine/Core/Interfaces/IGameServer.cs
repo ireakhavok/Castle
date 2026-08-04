@@ -1,5 +1,8 @@
-﻿using SiegeEngine.Core.Definitions;
+﻿// Folder: SiegeEngine/Core/Interfaces
+// File: IGameServer.cs
+using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Systems;
 using System.Collections.Generic;
 using System.Numerics;
@@ -19,5 +22,6 @@ namespace SiegeEngine.Core.Interfaces
         void Publish<T>(T eventData, bool networkSync = false) where T : class;
         RayTraceResult RequestRayTrace(Vector3 start, Vector3 direction, float maxDistance);
         void QueueNetworkEvent(IEvent e);
+        void SetHeightProvider(IHeightProvider provider);
     }
 }

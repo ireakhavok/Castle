@@ -13,6 +13,7 @@ using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Definitions;
+using SiegeEngine.Core.Physics;
 
 namespace Citadel.Server
 {
@@ -31,6 +32,7 @@ namespace Citadel.Server
         private readonly Queue<IEvent> _networkEventQueue = new Queue<IEvent>();
         private readonly bool _isEditor;
         private int _nextEntityId = 1;  // FIXED: track next ID server-side for authoritative placement
+        private readonly PhysicsSystem _physicsSystem;
 
         public GameServer(EventBus eventBus, NetworkManager networkManager = null, bool isEditor = false)
         {
@@ -38,7 +40,8 @@ namespace Citadel.Server
             _networkManager = networkManager;
             _validationSystem = new ServerValidationSystem(this);
             _isEditor = isEditor;
-            AddSystem(new PhysicsSystem(this));
+            _physicsSystem = new PhysicsSystem(this);
+            AddSystem(_physicsSystem);
             AddSystem(_validationSystem);
             AddSystem(new AudioSystem(this, _eventBus, true, _validationSystem));
             _eventBus.Subscribe<ExitEditorEvent>(OnExitEditor);
@@ -61,6 +64,11 @@ namespace Citadel.Server
                     subscribeMethod.Invoke(_eventBus, new[] { typedHandler });
                 }
             }
+        }
+
+        public void SetHeightProvider(IHeightProvider provider)
+        {
+            _physicsSystem.World.SetHeightProvider(provider);
         }
 
         public void AddEntity(Entity entity)
