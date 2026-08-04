@@ -53,10 +53,10 @@ namespace SiegeEngine.Core.Physics
         }
 
         /// <summary>
-        /// Upward-only ground snap. Safe to call after kinematic movement writes.
-        /// For Kinematic bodies Position is the feet contact point.
-        /// For Dynamic bodies Position is the AABB centre (halfHeight used).
-        /// Never pulls a body downward.
+        /// Ground projection. Safe to call after kinematic movement writes.
+        /// Kinematic  → Position is the feet contact point; always project to groundZ.
+        /// Dynamic    → Position is the AABB centre; lift by halfHeight when penetrating.
+        /// Static     → never touched.
         /// </summary>
         public void SnapToGround(PhysicsComponent body)
         {
@@ -109,32 +109,32 @@ namespace SiegeEngine.Core.Physics
                 }
                 else if (body.BodyType == BodyType.Kinematic)
                 {
-                    // Kinematic bodies are driven by external code (PlayerMovement etc.).
-                    // Only correct penetration so they never fall through the heightfield.
+                    // Driven by external code (PlayerMovement). Project feet to surface
+                    // so the character follows terrain contours both up and down.
                     ApplyGroundClamp(body);
                 }
+                // Static: intentionally ignored
             }
         }
 
         private void ApplyGroundClamp(PhysicsComponent body)
         {
             if (body == null || _heightProvider == null) return;
+            if (body.BodyType == BodyType.Static) return;
 
             float groundZ = _heightProvider.GetInterpolatedHeight(body.Position.X, body.Position.Y);
 
             if (body.BodyType == BodyType.Kinematic)
             {
-                // Position is the middle of the feet / contact point — snap directly to surface.
-                if (body.Position.Z < groundZ)
-                {
-                    body.Position = new Vector3(body.Position.X, body.Position.Y, groundZ);
-                    if (body.Velocity.Z < 0f)
-                        body.Velocity = new Vector3(body.Velocity.X, body.Velocity.Y, 0f);
-                }
+                // Position is the middle of the feet / contact point.
+                // Always project onto the surface so the character follows contours.
+                body.Position = new Vector3(body.Position.X, body.Position.Y, groundZ);
+                if (body.Velocity.Z != 0f)
+                    body.Velocity = new Vector3(body.Velocity.X, body.Velocity.Y, 0f);
             }
-            else
+            else // Dynamic
             {
-                // Dynamic (and Static) — Position is the AABB centre.
+                // Position is the AABB centre.
                 float halfHeight = body.Size.Z * 0.5f;
                 float bottom = body.Position.Z - halfHeight;
                 if (bottom < groundZ)

@@ -174,9 +174,18 @@ namespace SiegeEngine.Scenes
                     mc.Model = m;
                 }
                 var phys = e.GetComponent<PhysicsComponent>();
-                if (phys != null && e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase))
+                if (phys != null)
                 {
-                    phys.BodyType = BodyType.Kinematic;
+                    bool isPlayer = e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase);
+                    if (isPlayer)
+                    {
+                        phys.BodyType = BodyType.Kinematic;
+                    }
+                    else if (mc != null)
+                    {
+                        // Scenery / props with a model are static until explicitly marked Dynamic.
+                        phys.BodyType = BodyType.Static;
+                    }
                 }
                 _server.AddEntity(e);
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
