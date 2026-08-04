@@ -30,6 +30,11 @@ namespace SiegeEngine.Core.Networking
             _physicsWorld.SetHeightProvider(provider);
         }
 
+        public void SnapToGround(PhysicsComponent body)
+        {
+            _physicsWorld.SnapToGround(body);
+        }
+
         public void AddEntity(Entity entity)
         {
             if (entity == null) return;

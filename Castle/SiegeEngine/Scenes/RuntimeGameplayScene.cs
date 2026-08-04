@@ -463,6 +463,10 @@ namespace SiegeEngine.Scenes
                 {
                     _playerMovement.Update(_player, deltaTime, (id, pos, rotation) => { }, _player.Camera);
                 }
+                if (_player?.Physics != null)
+                {
+                    _server.SnapToGround(_player.Physics);
+                }
             }
             else
             {

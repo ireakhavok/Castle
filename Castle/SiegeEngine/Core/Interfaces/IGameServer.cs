@@ -23,5 +23,6 @@ namespace SiegeEngine.Core.Interfaces
         RayTraceResult RequestRayTrace(Vector3 start, Vector3 direction, float maxDistance);
         void QueueNetworkEvent(IEvent e);
         void SetHeightProvider(IHeightProvider provider);
+        void SnapToGround(PhysicsComponent body);
     }
 }

@@ -71,6 +71,11 @@ namespace Citadel.Server
             _physicsSystem.World.SetHeightProvider(provider);
         }
 
+        public void SnapToGround(PhysicsComponent body)
+        {
+            _physicsSystem.World.SnapToGround(body);
+        }
+
         public void AddEntity(Entity entity)
         {
             if (entity == null) return;
