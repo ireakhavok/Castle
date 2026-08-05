@@ -21,7 +21,9 @@ namespace SiegeEngine.Core.Definitions
             Mass = 1.0f;
             Health = 100f;
             IsVisible = true;
-            BodyType = BodyType.Dynamic;
+            // Static is the safe default: entities stay exactly where the designer placed them
+            // (including mid-air). Designer must explicitly set Dynamic to enable gravity/clamp.
+            BodyType = BodyType.Static;
             AngularVelocity = Vector3.Zero;
             LinearDamping = 0.05f;
             AngularDamping = 0.05f;
@@ -91,7 +93,7 @@ namespace SiegeEngine.Core.Definitions
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
 
         // ===== Phase 1 additive fields (safe defaults, zero breakage) =====
-        public BodyType BodyType { get; set; } = BodyType.Dynamic;
+        public BodyType BodyType { get; set; } = BodyType.Static;
         public Vector3 AngularVelocity { get; set; } = Vector3.Zero;
         public float LinearDamping { get; set; } = 0.05f;
         public float AngularDamping { get; set; } = 0.05f;

@@ -173,19 +173,12 @@ namespace SiegeEngine.Scenes
                 {
                     mc.Model = m;
                 }
+                // Only force Kinematic on the player. Every other entity keeps whatever
+                // BodyType was serialized (default is now Static — mid-air placement is valid).
                 var phys = e.GetComponent<PhysicsComponent>();
-                if (phys != null)
+                if (phys != null && e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase))
                 {
-                    bool isPlayer = e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase);
-                    if (isPlayer)
-                    {
-                        phys.BodyType = BodyType.Kinematic;
-                    }
-                    else if (mc != null)
-                    {
-                        // Scenery / props with a model are static until explicitly marked Dynamic.
-                        phys.BodyType = BodyType.Static;
-                    }
+                    phys.BodyType = BodyType.Kinematic;
                 }
                 _server.AddEntity(e);
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");

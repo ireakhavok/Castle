@@ -9,8 +9,9 @@ namespace SiegeEngine.Core.Physics
 {
     /// <summary>
     /// Core simulation world. Owns the timestep accumulator, body list and (later)
-    /// broadphase / contacts / islands. Phase 1 only performs kinematic integration
-    /// for Dynamic bodies and writes results back to PhysicsComponent.
+    /// broadphase / contacts / islands. Phase 1 performs simple gravity integration
+    /// for Dynamic bodies and ground projection for Kinematic (player) bodies.
+    /// Position is treated as the contact / feet point — no half-height offset.
     /// </summary>
     public class PhysicsWorld
     {
@@ -54,9 +55,10 @@ namespace SiegeEngine.Core.Physics
 
         /// <summary>
         /// Ground projection. Safe to call after kinematic movement writes.
-        /// Kinematic  → Position is the feet contact point; always project to groundZ.
-        /// Dynamic    → Position is the AABB centre; lift by halfHeight when penetrating.
+        /// Kinematic  → always project Position.Z to groundZ (player contour follow).
+        /// Dynamic    → only lift when below the surface (stop falling through).
         /// Static     → never touched.
+        /// Position is the contact / feet point — no half-height offset is applied.
         /// </summary>
         public void SnapToGround(PhysicsComponent body)
         {
@@ -109,11 +111,11 @@ namespace SiegeEngine.Core.Physics
                 }
                 else if (body.BodyType == BodyType.Kinematic)
                 {
-                    // Driven by external code (PlayerMovement). Project feet to surface
-                    // so the character follows terrain contours both up and down.
+                    // Driven by external code (PlayerMovement). Project contact point
+                    // to the surface so the character follows terrain contours.
                     ApplyGroundClamp(body);
                 }
-                // Static: intentionally ignored
+                // Static: intentionally ignored — stays exactly where placed
             }
         }
 
@@ -126,20 +128,19 @@ namespace SiegeEngine.Core.Physics
 
             if (body.BodyType == BodyType.Kinematic)
             {
-                // Position is the middle of the feet / contact point.
-                // Always project onto the surface so the character follows contours.
+                // Player / character: Position is the feet contact point.
+                // Always project onto the surface (follows contours both up and down).
                 body.Position = new Vector3(body.Position.X, body.Position.Y, groundZ);
                 if (body.Velocity.Z != 0f)
                     body.Velocity = new Vector3(body.Velocity.X, body.Velocity.Y, 0f);
             }
             else // Dynamic
             {
-                // Position is the AABB centre.
-                float halfHeight = body.Size.Z * 0.5f;
-                float bottom = body.Position.Z - halfHeight;
-                if (bottom < groundZ)
+                // Only stop falling through the heightfield. No half-height offset.
+                // Position is treated as the contact point for Phase 1.
+                if (body.Position.Z < groundZ)
                 {
-                    body.Position = new Vector3(body.Position.X, body.Position.Y, groundZ + halfHeight);
+                    body.Position = new Vector3(body.Position.X, body.Position.Y, groundZ);
                     if (body.Velocity.Z < 0f)
                         body.Velocity = new Vector3(body.Velocity.X, body.Velocity.Y, 0f);
                 }
