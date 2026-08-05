@@ -17,6 +17,8 @@ using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.UI.Elements;
+using SiegeEngine.Core.Physics;
+
 namespace ToolChest
 {
     public class PropertiesPanel : BasePanel, IDataAwarePanel
@@ -33,14 +35,12 @@ namespace ToolChest
             {
                 _parent.HandleDataHook(hook);
             }
-            // Must call base so InputElement focus is set.
             public override bool HandleUIClick(HtmlElement elem)
             {
                 bool handled = base.HandleUIClick(elem);
                 _parent.HandleUIClick(elem);
                 return handled;
             }
-            // Live write-through: every keystroke on an ss-* field commits into the Settings buffer.
             public override void TriggerChange(HtmlElement elem)
             {
                 base.TriggerChange(elem);
@@ -67,8 +67,10 @@ namespace ToolChest
                 return false;
             }
         }
+
         private object _currentTarget;
         private string _activeSceneSettingsName;
+
         public PropertiesPanel(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
             : base(renderContext, controlContext, window, eventBus)
         {
@@ -82,24 +84,24 @@ namespace ToolChest
             _eventBus.Subscribe<GenericEvent>(OnGenericEvent);
             _eventBus.Subscribe<EntitySelectedEvent>(OnEntitySelected);
         }
+
         protected override UIOverlay CreateUIOverlay()
         {
             return new PropertiesUIOverlay(this, _renderContext, _controlContext, _window);
         }
+
         public override void Init()
         {
             base.Init();
             chrome.close_color = new Vector4(0.486f, 1.0f, 0.796f, 1.0f);
             LoadPropertiesUI();
         }
-        /// <summary>
-        /// Public entry point used by Save/Play to commit any in-progress Scene Settings typing
-        /// before reading ProjectSettings.CurrentSceneSettings.
-        /// </summary>
+
         public void FlushLiveSettings()
         {
             FlushSceneSettingsFromUI();
         }
+
         private void OnGenericEvent(GenericEvent e)
         {
             if (e.Hook == "OutlinerSelectionChanged")
@@ -123,6 +125,7 @@ namespace ToolChest
                 FlushSceneSettingsFromUI();
             }
         }
+
         private void OnEntitySelected(EntitySelectedEvent e)
         {
             if (e.SelectedEntityIds.Count > 0)
@@ -132,6 +135,7 @@ namespace ToolChest
             FlushSceneSettingsFromUI();
             RebuildPropertiesUI();
         }
+
         private void LoadPropertiesUI()
         {
             string htmlPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PropertiesPanelUI.html");
@@ -142,6 +146,7 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
+
         private void RebuildPropertiesUI()
         {
             FlushSceneSettingsFromUI();
@@ -157,10 +162,7 @@ namespace ToolChest
             _uiOverlay.PanelHeight = Size.Y;
             _uiOverlay.RefreshUI();
         }
-        /// <summary>
-        /// Reads live InputElement.Value for the Scene Settings fields and writes them into
-        /// the per-scene Settings buffer (same pattern as NewProjectPanel form read).
-        /// </summary>
+
         private void FlushSceneSettingsFromUI()
         {
             if (_uiOverlay == null || string.IsNullOrEmpty(_activeSceneSettingsName)) return;
@@ -196,11 +198,13 @@ namespace ToolChest
             ProjectSettings.Current.SetSceneSettings(_activeSceneSettingsName, settings);
             Console.WriteLine($"[PropertiesPanel] Flushed Scene Settings for '{_activeSceneSettingsName}': Avatar={settings.AvatarPackKey}, Animation={settings.AnimationPackKey}, Controller={settings.ControllerTypeName}, Camera={settings.CameraMode}, Spawns=[{string.Join(",", settings.PreferredSpawnPointIds ?? new List<int>())}]");
         }
+
         private string BuildPropertiesHtml(object obj)
         {
             if (obj == null) return "";
             var sb = new StringBuilder();
             var type = obj.GetType();
+
             sb.Append("<details open><summary>General</summary>");
             sb.Append($"<div class=\"property-row\" data-context=\"object-type\"><div class=\"property-name\">Type</div><input type=\"text\" value=\"{type.Name}\" readonly></div>");
             if (obj is Entity entity)
@@ -208,6 +212,7 @@ namespace ToolChest
                 sb.Append($"<div class=\"property-row\" data-context=\"entity-id\"><div class=\"property-name\">ID</div><input type=\"text\" value=\"{entity.Id}\" readonly></div>");
             }
             sb.Append("</details>");
+
             if (obj is Level level)
             {
                 string sceneName = level.Name ?? ProjectSettings.Current.CurrentSceneName ?? "Main";
@@ -228,11 +233,63 @@ namespace ToolChest
             {
                 _activeSceneSettingsName = null;
             }
+
+            // === Entity: explicit sections only. Never recurse Components / Transform. ===
+            if (obj is Entity ent)
+            {
+                var physics = ent.GetComponent<PhysicsComponent>();
+                if (physics != null)
+                {
+                    sb.Append("<details open><summary>Physics</summary>");
+                    AppendEditableProperties(sb, physics, ent.Id);
+                    sb.Append("</details>");
+                }
+
+                var modelComp = ent.GetComponent<ModelComponent>();
+                if (modelComp != null)
+                {
+                    sb.Append("<details open><summary>Model</summary>");
+                    if (!string.IsNullOrEmpty(modelComp.Key))
+                    {
+                        sb.Append($"<div class=\"property-row\" data-context=\"model-key\"><div class=\"property-name\">Asset Key</div><input type=\"text\" value=\"{modelComp.Key}\" readonly></div>");
+                    }
+                    if (modelComp.Material?.TextureSlots?.Count > 0)
+                    {
+                        sb.Append("<div class=\"property-row\" data-context=\"texture-slots\"><div class=\"property-name\" style=\"font-weight:bold;\">TextureSlots</div></div>");
+                        for (int i = 0; i < modelComp.Material.TextureSlots.Count; i++)
+                        {
+                            var slot = modelComp.Material.TextureSlots[i];
+                            string slotName = string.IsNullOrEmpty(slot.SlotName) ? $"Slot {i}" : slot.SlotName;
+                            sb.Append($"<div class=\"property-row\" data-context=\"texture-slot\" data-index=\"{i}\">");
+                            sb.Append($"<div class=\"property-name\">{slotName}</div>");
+                            sb.Append($"<select data-hook=\"SetTextureMapping\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\">");
+                            foreach (TextureMappingMode mode in Enum.GetValues(typeof(TextureMappingMode)))
+                            {
+                                string selected = (mode == slot.MappingMode) ? " selected" : "";
+                                sb.Append($"<option value=\"{(int)mode}\"{selected}>{mode}</option>");
+                            }
+                            sb.Append("</select>");
+                            sb.Append("</div>");
+                            sb.Append($"<div class=\"property-row\" data-context=\"texture-tiling\" data-index=\"{i}\"><div class=\"property-name\">Tiling</div><input type=\"text\" value=\"{slot.Tiling.X}, {slot.Tiling.Y}\" data-hook=\"SetTextureTiling\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\" style=\"width:120px;\"></div>");
+                        }
+                    }
+                    else
+                    {
+                        sb.Append("<div class=\"property-row\"><i>No texture slots defined</i></div>");
+                    }
+                    sb.Append("</details>");
+                }
+
+                return sb.ToString();
+            }
+
+            // Non-entity objects: generic reflection
             sb.Append("<details open><summary>Properties</summary>");
             BuildObjectHtml(sb, obj, -1);
             sb.Append("</details>");
             return sb.ToString();
         }
+
         private void BuildObjectHtml(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
@@ -251,38 +308,6 @@ namespace ToolChest
                 }
                 return;
             }
-            if (obj is Entity ent && ent.GetComponent<ModelComponent>() is ModelComponent modelComp)
-            {
-                if (!string.IsNullOrEmpty(modelComp.Key))
-                {
-                    sb.Append($"<div class=\"property-row\" data-context=\"model-key\"><div class=\"property-name\">Asset Key</div><input type=\"text\" value=\"{modelComp.Key}\" readonly></div>");
-                }
-                if (modelComp.Material?.TextureSlots?.Count > 0)
-                {
-                    sb.Append("<div class=\"property-row\" data-context=\"texture-slots\"><div class=\"property-name\" style=\"font-weight:bold;\">TextureSlots</div></div>");
-                    for (int i = 0; i < modelComp.Material.TextureSlots.Count; i++)
-                    {
-                        var slot = modelComp.Material.TextureSlots[i];
-                        string slotName = string.IsNullOrEmpty(slot.SlotName) ? $"Slot {i}" : slot.SlotName;
-                        sb.Append($"<div class=\"property-row\" data-context=\"texture-slot\" data-index=\"{i}\">");
-                        sb.Append($"<div class=\"property-name\">{slotName}</div>");
-                        sb.Append($"<select data-hook=\"SetTextureMapping\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\" onchange=\"this.form.submit()\">");
-                        foreach (TextureMappingMode mode in Enum.GetValues(typeof(TextureMappingMode)))
-                        {
-                            string selected = (mode == slot.MappingMode) ? " selected" : "";
-                            sb.Append($"<option value=\"{(int)mode}\"{selected}>{mode}</option>");
-                        }
-                        sb.Append("</select>");
-                        sb.Append("</div>");
-                        sb.Append($"<div class=\"property-row\" data-context=\"texture-tiling\" data-index=\"{i}\"><div class=\"property-name\">Tiling</div><input type=\"text\" value=\"{slot.Tiling.X}, {slot.Tiling.Y}\" data-hook=\"SetTextureTiling\" data-entityid=\"{ent.Id}\" data-slotindex=\"{i}\" style=\"width:120px;\"></div>");
-                    }
-                }
-                else
-                {
-                    sb.Append("<div class=\"property-row\"><i>No texture slots defined</i></div>");
-                }
-                return;
-            }
             var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
                 .OrderBy(p => p.Name);
@@ -290,10 +315,9 @@ namespace ToolChest
             {
                 object value = prop.GetValue(obj);
                 var propType = prop.PropertyType;
-                // Always surface public string properties even when null so newly-added optional fields appear.
                 if (value == null && propType != typeof(string))
                     continue;
-                if (propType.IsPrimitive || propType == typeof(string) || propType == typeof(Vector2) || propType == typeof(Vector3))
+                if (propType.IsPrimitive || propType == typeof(string) || propType == typeof(Vector2) || propType == typeof(Vector3) || propType.IsEnum)
                 {
                     string display = value?.ToString() ?? "";
                     sb.Append($"<div class=\"property-row\" data-context=\"prop-{prop.Name}\">");
@@ -309,7 +333,7 @@ namespace ToolChest
                         foreach (var enumVal in Enum.GetValues(propType))
                         {
                             string selected = enumVal.Equals(value) ? " selected" : "";
-                            sb.Append($"<option value=\"{enumVal}\" {selected}>{enumVal}</option>");
+                            sb.Append($"<option value=\"{enumVal}\"{selected}>{enumVal}</option>");
                         }
                         sb.Append("</select>");
                     }
@@ -324,17 +348,9 @@ namespace ToolChest
                     sb.Append($"<div class=\"property-row\" data-context=\"nested-{prop.Name}\" style=\"font-weight:bold;\">{prop.Name}</div>");
                     BuildObjectHtml(sb, value, entityId);
                 }
-                else if (propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(List<>))
-                {
-                    sb.Append($"<div class=\"property-row\" data-context=\"list-{prop.Name}\"><div class=\"property-name\">{prop.Name}</div></div>");
-                    var list = value as System.Collections.IList;
-                    if (list != null)
-                    {
-                        sb.Append($"<div class=\"property-row\"><i>Count: {list.Count}</i></div>");
-                    }
-                }
             }
         }
+
         private void AppendEditableProperties(StringBuilder sb, object obj, int entityId)
         {
             if (obj == null) return;
@@ -346,10 +362,9 @@ namespace ToolChest
             {
                 object value = prop.GetValue(obj);
                 var propType = prop.PropertyType;
-                // Always surface public string properties even when null so newly-added optional fields appear.
                 if (value == null && propType != typeof(string))
                     continue;
-                if (propType.IsPrimitive || propType == typeof(string) || propType == typeof(Vector2) || propType == typeof(Vector3))
+                if (propType.IsPrimitive || propType == typeof(string) || propType == typeof(Vector2) || propType == typeof(Vector3) || propType.IsEnum)
                 {
                     string display = value?.ToString() ?? "";
                     sb.Append($"<div class=\"property-row\" data-context=\"prop-{prop.Name}\">");
@@ -365,7 +380,7 @@ namespace ToolChest
                         foreach (var enumVal in Enum.GetValues(propType))
                         {
                             string selected = enumVal.Equals(value) ? " selected" : "";
-                            sb.Append($"<option value=\"{enumVal}\" {selected}>{enumVal}</option>");
+                            sb.Append($"<option value=\"{enumVal}\"{selected}>{enumVal}</option>");
                         }
                         sb.Append("</select>");
                     }
@@ -377,20 +392,131 @@ namespace ToolChest
                 }
             }
         }
+
+        private void ApplyComponentPropertyChange(HtmlElement elem)
+        {
+            if (elem == null) return;
+
+            SelectElement select = elem as SelectElement;
+            if (select == null && elem.Tag == "option")
+                select = elem.Parent as SelectElement;
+            if (select == null) return;
+
+            string entityIdStr = select.Attributes.GetValueOrDefault("data-entityid", "-1");
+            if (!int.TryParse(entityIdStr, out int entityId) || entityId <= 0) return;
+
+            string componentName = select.Attributes.GetValueOrDefault("data-component", "");
+            string propertyName = select.Attributes.GetValueOrDefault("data-property", "");
+            if (string.IsNullOrEmpty(componentName) || string.IsNullOrEmpty(propertyName)) return;
+
+            string newValue = select.Value;
+            if (string.IsNullOrEmpty(newValue)) return;
+
+            var level = ProjectSettings.Current.CurrentLevel;
+            if (level == null) return;
+
+            var entity = level.Entities.FirstOrDefault(e => e.Id == entityId);
+            if (entity == null) return;
+
+            object target = null;
+            if (componentName == "PhysicsComponent" || componentName == "Physics")
+            {
+                target = entity.GetComponent<PhysicsComponent>();
+            }
+            else
+            {
+                foreach (var kvp in entity.Components)
+                {
+                    if (kvp.Key.Name == componentName || kvp.Key.FullName == componentName)
+                    {
+                        target = kvp.Value;
+                        break;
+                    }
+                }
+            }
+            if (target == null) return;
+
+            var prop = target.GetType().GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            if (prop == null || !prop.CanWrite) return;
+
+            try
+            {
+                object converted = ConvertPropertyValue(prop.PropertyType, newValue);
+                if (converted != null || prop.PropertyType == typeof(string))
+                {
+                    prop.SetValue(target, converted);
+                    Console.WriteLine($"[PropertiesPanel] Applied {componentName}.{propertyName} = {newValue} on entity {entityId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[PropertiesPanel] Failed to set {componentName}.{propertyName}: {ex.Message}");
+            }
+        }
+
+        private static object ConvertPropertyValue(Type targetType, string raw)
+        {
+            if (targetType == typeof(string)) return raw;
+            if (targetType == typeof(bool))
+            {
+                if (bool.TryParse(raw, out bool b)) return b;
+                return raw == "on" || raw == "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            }
+            if (targetType.IsEnum)
+            {
+                if (Enum.TryParse(targetType, raw, true, out object enumVal)) return enumVal;
+                if (int.TryParse(raw, out int enumInt)) return Enum.ToObject(targetType, enumInt);
+                return null;
+            }
+            if (targetType == typeof(int))
+            {
+                if (int.TryParse(raw, out int i)) return i;
+                return null;
+            }
+            if (targetType == typeof(float))
+            {
+                if (float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float f)) return f;
+                return null;
+            }
+            if (targetType == typeof(double))
+            {
+                if (double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double d)) return d;
+                return null;
+            }
+            if (targetType == typeof(Vector2))
+            {
+                var parts = raw.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 2
+                    && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x)
+                    && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y))
+                    return new Vector2(x, y);
+                return null;
+            }
+            if (targetType == typeof(Vector3))
+            {
+                var parts = raw.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length >= 3
+                    && float.TryParse(parts[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float x)
+                    && float.TryParse(parts[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float y)
+                    && float.TryParse(parts[2], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float z))
+                    return new Vector3(x, y, z);
+                return null;
+            }
+            return null;
+        }
+
         public void HandleDataHook(string hook)
         {
             Console.WriteLine($"[PropertiesPanel] HandleDataHook: {hook}");
             FlushSceneSettingsFromUI();
             if (hook.StartsWith("SetTextureMapping"))
             {
-                Console.WriteLine("[PropertiesPanel] Texture mapping changed - full update coming in next iteration with JS payload");
                 RebuildPropertiesUI();
                 return;
             }
+            // Do not rebuild on SetComponentProperty — option apply path handles it.
             if (hook == "SetComponentProperty")
             {
-                Console.WriteLine("[PropertiesPanel] Generic component property update - live editing ready");
-                RebuildPropertiesUI();
                 return;
             }
             if (hook == "RotateSkybox")
@@ -400,14 +526,27 @@ namespace ToolChest
                 return;
             }
         }
+
         public void HandleUIClick(HtmlElement elem)
         {
+            if (elem == null) return;
+            // Only commit when an option was chosen. Select open/close is left alone.
+            if (elem.Tag != "option") return;
+
+            var select = elem.Parent as SelectElement;
+            if (select != null && select.Attributes.GetValueOrDefault("data-hook", "") == "SetComponentProperty")
+            {
+                ApplyComponentPropertyChange(select);
+                RebuildPropertiesUI();
+            }
         }
+
         public static void Open(IRenderContext renderContext, IControlContext controlContext, nint window, EventBus eventBus)
         {
             var panel = new PropertiesPanel(renderContext, controlContext, window, eventBus);
             eventBus.Publish(new OpenPanelEvent(panel) { Mode = OpenMode.Overlay });
         }
+
         public string DataKey => "PropertiesPanel";
         public JsonElement SavePanelState()
         {

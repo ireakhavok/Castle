@@ -19,6 +19,12 @@ namespace SiegeEngine.Core.Definitions
 
         public TransformComponent Transform { get; } = new TransformComponent();
 
+        /// <summary>
+        /// Public accessor so the Properties panel recursive reflection can discover
+        /// BodyType and all other Phase-1 physics fields.
+        /// </summary>
+        public PhysicsComponent Physics => GetComponent<PhysicsComponent>();
+
         public IReadOnlyDictionary<Type, IComponent> Components => _components;
 
         public Entity()
@@ -165,9 +171,20 @@ namespace SiegeEngine.Core.Definitions
             // No factory, no switch, no hard-coded list. Purely modular using reflection on the saved type name.
             if (data.Components != null)
             {
+                string physicsFullName = typeof(PhysicsComponent).FullName;
+
                 foreach (var entry in data.Components)
                 {
                     if (string.IsNullOrEmpty(entry.Type)) continue;
+
+                    // PhysicsComponent is already the live source of truth. Apply its data
+                    // onto the existing instance (exact FullName match written by ToData).
+                    if (entry.Type == physicsFullName)
+                    {
+                        if (entry.Data != null)
+                            physics.FromSerializableData(entry.Data);
+                        continue;
+                    }
 
                     try
                     {
