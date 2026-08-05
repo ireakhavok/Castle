@@ -101,6 +101,9 @@ namespace Citadel.Server
             var entity = _entities.Find(e => e.Id == id);
             if (entity != null)
             {
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null)
+                    _physicsSystem.World.UnregisterBody(physics);
                 _entities.Remove(entity);
                 RemoveFromSpatialGrid(entity);
                 Console.WriteLine($"GameServer: Removed entity {id}");
@@ -285,11 +288,6 @@ namespace Citadel.Server
         private void OnEntityPlaced(EntityPlacedEvent e)
         {
             var entity = new Entity { Id = e.EntityId, Type = e.EntityType };
-            var transform = entity.GetComponent<TransformComponent>();
-            transform.Position = e.Position with { Z = 0f };
-            transform.Rotation = e.Rotation;
-            transform.Scale = new Vector3(e.Width > 0 ? e.Width : 2f, e.Height > 0 ? e.Height : 2f, 1f);
-
             var physics = new PhysicsComponent();
             physics.Position = e.Position;
             entity.AddComponent(physics);

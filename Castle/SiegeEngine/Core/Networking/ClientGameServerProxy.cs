@@ -51,6 +51,7 @@ namespace SiegeEngine.Core.Networking
                 var newPhysics = entity.GetComponent<PhysicsComponent>();
                 if (existingPhysics != null && newPhysics != null)
                 {
+                    // Full Phase-1 field transfer so BodyType and all designer settings survive
                     existingPhysics.Position = newPhysics.Position;
                     existingPhysics.Rotation = newPhysics.Rotation;
                     existingPhysics.Scale = newPhysics.Scale;
@@ -58,6 +59,20 @@ namespace SiegeEngine.Core.Networking
                     existingPhysics.LocalBoundsMinCm = newPhysics.LocalBoundsMinCm;
                     existingPhysics.LocalBoundsMaxCm = newPhysics.LocalBoundsMaxCm;
                     existingPhysics.Velocity = newPhysics.Velocity;
+                    existingPhysics.BodyType = newPhysics.BodyType;
+                    existingPhysics.AngularVelocity = newPhysics.AngularVelocity;
+                    existingPhysics.LinearDamping = newPhysics.LinearDamping;
+                    existingPhysics.AngularDamping = newPhysics.AngularDamping;
+                    existingPhysics.Friction = newPhysics.Friction;
+                    existingPhysics.Restitution = newPhysics.Restitution;
+                    existingPhysics.IsSleeping = newPhysics.IsSleeping;
+                    existingPhysics.IslandId = newPhysics.IslandId;
+                    existingPhysics.SleepThreshold = newPhysics.SleepThreshold;
+                    existingPhysics.SleepTimer = newPhysics.SleepTimer;
+                    existingPhysics.Mass = newPhysics.Mass;
+                    existingPhysics.Health = newPhysics.Health;
+                    existingPhysics.IsBreakable = newPhysics.IsBreakable;
+                    existingPhysics.IsVisible = newPhysics.IsVisible;
                 }
 
                 var existingModel = existing.GetComponent<ModelComponent>();
@@ -99,6 +114,9 @@ namespace SiegeEngine.Core.Networking
             var entity = _entities.Find(e => e.Id == id);
             if (entity != null)
             {
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null)
+                    _physicsWorld.UnregisterBody(physics);
                 _entities.Remove(entity);
                 _eventBus.Publish(new EntityRemovedEvent(id), true);
             }
@@ -112,6 +130,7 @@ namespace SiegeEngine.Core.Networking
             {
                 _eventBus.Publish(new EntityRemovedEvent(id), true);
             }
+            _physicsWorld.ClearBodies();
             _entities.Clear();
         }
 

@@ -17,11 +17,11 @@ namespace SiegeEngine.Core.Definitions
         public int Id { get; set; }
         public string Type { get; set; } = "Default";
 
-        public TransformComponent Transform { get; } = new TransformComponent();
-
         /// <summary>
         /// Public accessor so the Properties panel recursive reflection can discover
         /// BodyType and all other Phase-1 physics fields.
+        /// PhysicsComponent is the single authoritative spatial owner for any entity
+        /// that carries physics. Entity no longer owns a TransformComponent.
         /// </summary>
         public PhysicsComponent Physics => GetComponent<PhysicsComponent>();
 
@@ -29,7 +29,9 @@ namespace SiegeEngine.Core.Definitions
 
         public Entity()
         {
-            AddComponent(Transform);
+            // No auto-added TransformComponent. PhysicsComponent is the sole
+            // authoritative spatial owner when present. TransformComponent remains
+            // available as an optional IComponent for pure hierarchy objects.
         }
 
         public void AddComponent<T>(T component) where T : IComponent
@@ -46,16 +48,6 @@ namespace SiegeEngine.Core.Definitions
         public bool RemoveComponent<T>() where T : IComponent
         {
             return _components.Remove(typeof(T));
-        }
-
-        public void SetParent(Entity parent)
-        {
-            Transform.SetParent(parent?.Transform);
-        }
-
-        public void AddChild(Entity child)
-        {
-            Transform.AddChild(child?.Transform);
         }
 
         public EntityData ToData()
@@ -76,9 +68,9 @@ namespace SiegeEngine.Core.Definitions
             }
             else
             {
-                data.Position = Transform.Position;
-                data.Rotation = Transform.Rotation;
-                data.Scale = Transform.Scale;
+                data.Position = Vector3.Zero;
+                data.Rotation = Quaternion.Identity;
+                data.Scale = Vector3.One;
             }
 
             var modelComp = GetComponent<ModelComponent>();
@@ -138,11 +130,6 @@ namespace SiegeEngine.Core.Definitions
             physics.Scale = data.Scale != default ? data.Scale : Vector3.One;
 
             entity.AddComponent(physics);
-
-            // Defensive sync so Entity.Transform always matches
-            entity.Transform.Position = physics.Position;
-            entity.Transform.Rotation = physics.Rotation;
-            entity.Transform.Scale = physics.Scale;
 
             if (!string.IsNullOrEmpty(data.AssetPackKey))
             {
