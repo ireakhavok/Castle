@@ -3,6 +3,7 @@
 using System;
 using System.Numerics;
 using System.Text.Json;
+using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Physics;
 
 namespace SiegeEngine.Core.Definitions
@@ -22,8 +23,6 @@ namespace SiegeEngine.Core.Definitions
             Mass = 1.0f;
             Health = 100f;
             IsVisible = true;
-            // Static is the safe default: entities stay exactly where the designer placed them
-            // (including mid-air). Designer must explicitly set Dynamic/Kinematic to enable gravity.
             BodyType = BodyType.Static;
             AngularVelocity = Vector3.Zero;
             LinearDamping = 0.05f;
@@ -34,6 +33,7 @@ namespace SiegeEngine.Core.Definitions
             IslandId = -1;
             SleepThreshold = 0.05f;
             SleepTimer = 0f;
+            CollisionEnabled = true;
         }
 
         public Vector3 Position
@@ -93,7 +93,6 @@ namespace SiegeEngine.Core.Definitions
         public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
 
-        // ===== Phase 1 additive fields (safe defaults, zero breakage) =====
         public BodyType BodyType { get; set; } = BodyType.Static;
         public Vector3 AngularVelocity { get; set; } = Vector3.Zero;
         public float LinearDamping { get; set; } = 0.05f;
@@ -104,6 +103,56 @@ namespace SiegeEngine.Core.Definitions
         public int IslandId { get; set; } = -1;
         public float SleepThreshold { get; set; } = 0.05f;
         public float SleepTimer { get; set; } = 0f;
+        public bool CollisionEnabled { get; set; } = true;
+
+        public ColliderShape Shape { get; private set; }
+
+        public void RebuildShape(FBXModel model = null)
+        {
+            switch (BodyType)
+            {
+                case BodyType.Kinematic:
+                    {
+                        const float radius = 0.4f;
+                        const float height = 1.8f;
+                        Shape = new CapsuleShape(radius, height);
+                        break;
+                    }
+                case BodyType.Dynamic:
+                    {
+                        Vector3 half;
+                        if (LocalBoundsMinCm.X <= LocalBoundsMaxCm.X)
+                        {
+                            Vector3 sizeM = (LocalBoundsMaxCm - LocalBoundsMinCm) * 0.01f;
+                            half = sizeM * 0.5f;
+                        }
+                        else
+                        {
+                            half = Size * 0.5f;
+                        }
+                        Shape = new ObbShape(half);
+                        break;
+                    }
+                case BodyType.Static:
+                default:
+                    {
+                        if (model != null && model.Meshes != null && model.Meshes.Count > 0)
+                        {
+                            Shape = new TriangleMeshShape(model);
+                        }
+                        else if (LocalBoundsMinCm.X <= LocalBoundsMaxCm.X)
+                        {
+                            Vector3 sizeM = (LocalBoundsMaxCm - LocalBoundsMinCm) * 0.01f;
+                            Shape = new ObbShape(sizeM * 0.5f);
+                        }
+                        else
+                        {
+                            Shape = new ObbShape(Size * 0.5f);
+                        }
+                        break;
+                    }
+            }
+        }
 
         public void Break()
         {
@@ -118,6 +167,16 @@ namespace SiegeEngine.Core.Definitions
             distance = 0f;
             hitPoint = Vector3.Zero;
             if (rayDir.LengthSquared() < 1e-8f) return false;
+
+            if (Shape != null)
+            {
+                if (Shape.Raycast(Position, Rotation, rayOrigin, rayDir, float.MaxValue, out distance, out _))
+                {
+                    hitPoint = rayOrigin + rayDir * distance;
+                    return true;
+                }
+                return false;
+            }
 
             Matrix4x4 scaleMat = Matrix4x4.CreateScale(0.01f);
             Matrix4x4 rotMat = Matrix4x4.CreateFromQuaternion(Rotation);
@@ -195,7 +254,8 @@ namespace SiegeEngine.Core.Definitions
                 Restitution = Restitution,
                 IsSleeping = IsSleeping,
                 IslandId = IslandId,
-                SleepThreshold = SleepThreshold
+                SleepThreshold = SleepThreshold,
+                CollisionEnabled = CollisionEnabled
             };
         }
 
@@ -203,7 +263,6 @@ namespace SiegeEngine.Core.Definitions
         {
             if (data == null) return;
 
-            // In-memory path (no JSON crossing): typed PhysicsComponentData
             if (data is PhysicsComponentData p)
             {
                 ApplyData(
@@ -212,18 +271,16 @@ namespace SiegeEngine.Core.Definitions
                     p.LocalBoundsMinCm, p.LocalBoundsMaxCm, p.Velocity,
                     p.BodyType, p.AngularVelocity,
                     p.LinearDamping, p.AngularDamping, p.Friction, p.Restitution,
-                    p.IsSleeping, p.IslandId, p.SleepThreshold);
+                    p.IsSleeping, p.IslandId, p.SleepThreshold, p.CollisionEnabled);
                 return;
             }
 
-            // JSON round-trip path: System.Text.Json deserializes object → JsonElement
             if (data is JsonElement je && je.ValueKind == JsonValueKind.Object)
             {
                 ApplyFromJsonElement(je);
                 return;
             }
 
-            // Fallback: some serializers leave a boxed JsonDocument or string
             if (data is string jsonStr)
             {
                 using var doc = JsonDocument.Parse(jsonStr);
@@ -254,6 +311,7 @@ namespace SiegeEngine.Core.Definitions
             bool isSleeping = ReadBool(je, "IsSleeping", IsSleeping);
             int islandId = ReadInt(je, "IslandId", IslandId);
             float sleepThreshold = ReadFloat(je, "SleepThreshold", SleepThreshold);
+            bool collisionEnabled = ReadBool(je, "CollisionEnabled", CollisionEnabled);
 
             ApplyData(
                 position, rotation, scale, size,
@@ -261,7 +319,7 @@ namespace SiegeEngine.Core.Definitions
                 localMin, localMax, velocity,
                 bodyType, angularVelocity,
                 linearDamping, angularDamping, friction, restitution,
-                isSleeping, islandId, sleepThreshold);
+                isSleeping, islandId, sleepThreshold, collisionEnabled);
         }
 
         private void ApplyData(
@@ -270,17 +328,16 @@ namespace SiegeEngine.Core.Definitions
             Vector3 localMin, Vector3 localMax, Vector3 velocity,
             int bodyType, Vector3 angularVelocity,
             float linearDamping, float angularDamping, float friction, float restitution,
-            bool isSleeping, int islandId, float sleepThreshold)
+            bool isSleeping, int islandId, float sleepThreshold, bool collisionEnabled)
         {
             Position = position;
             Rotation = rotation;
             Scale = scale;
             Size = size;
-            // Mass/Health setters throw on invalid values — clamp defensively
             if (mass > 0f) Mass = mass;
             if (health >= 0f) Health = health;
             IsBreakable = isBreakable;
-            if (isBroken) Health = 0f; // drives IsBroken via setter when breakable
+            if (isBroken) Health = 0f;
             LocalBoundsMinCm = localMin;
             LocalBoundsMaxCm = localMax;
             Velocity = velocity;
@@ -293,6 +350,8 @@ namespace SiegeEngine.Core.Definitions
             IsSleeping = isSleeping;
             IslandId = islandId;
             SleepThreshold = sleepThreshold;
+            CollisionEnabled = collisionEnabled;
+            Shape = null;
         }
 
         private static Vector3 ReadVector3(JsonElement parent, string name, Vector3 fallback)
@@ -365,6 +424,7 @@ namespace SiegeEngine.Core.Definitions
             public bool IsSleeping { get; set; }
             public int IslandId { get; set; }
             public float SleepThreshold { get; set; }
+            public bool CollisionEnabled { get; set; }
         }
     }
 }

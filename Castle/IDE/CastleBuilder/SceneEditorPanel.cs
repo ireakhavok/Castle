@@ -295,6 +295,7 @@ namespace CastleBuilder
                     physics.Size = modelComp.Model.GetBoundingSize();
                     physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                     physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
+                    physics.RebuildShape(modelComp.Model);
                 }
             }
             else if (ext == ".json")
@@ -477,6 +478,7 @@ namespace CastleBuilder
                                 physics.Size = modelComp.Model.GetBoundingSize();
                                 physics.LocalBoundsMinCm = modelComp.Model.LocalBoundsMinCm;
                                 physics.LocalBoundsMaxCm = modelComp.Model.LocalBoundsMaxCm;
+                                physics.RebuildShape(modelComp.Model);
                             }
                         }
                     }
