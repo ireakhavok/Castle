@@ -103,9 +103,13 @@ namespace SiegeEngine.Core.Rendering
             {
                 shader.SetUniform("uHasBones", 0);
             }
+            // Own complete GL state so result is independent of prior TerrainRenderer / skybox / UI state.
+            // TerrainRenderer.RenderTerrain leaves CullFace enabled; without this disable the pure-client
+            // wall front-face is culled while the editor path remains visible.
             _renderContext.Enable(_renderContext.Enums.DepthTest);
             _renderContext.DepthMask(true);
             _renderContext.Disable(_renderContext.Enums.Blend);
+            _renderContext.Disable(_renderContext.Enums.CullFace);
             _renderContext.FrontFace(_renderContext.Enums.CounterClockwise);
             foreach (var mmr in modelData.MeshRenders)
             {
