@@ -1921,6 +1921,25 @@ Folder: SiegeEngine
       - MouseButton MapEngineMouseButton(MouseButton engineButton)
       - KeyModifiers MapGlfwMods(KeyModifiers glfwMods)
       - InputAction MapGlfwInputAction(InputAction glfwAction)
+- File: HeightfieldShape.cs
+  - Class: HeightfieldShape (Namespace: SiegeEngine.Core.Physics)
+    - Inherits: ColliderShape
+    
+    - Dependencies: System, System.Numerics
+    - Fields:
+      - IHeightProvider _provider
+      - IHeightProvider Provider
+    - Methods:
+      - constructor HeightfieldShape(IHeightProvider provider)
+      - void GetAabb( in Quaternion,  out Vector3, in Vector3)
+      - bool Raycast(
+            in Vector3, 
+            out float,  float maxDistance,  in Quaternion,  in Vector3,  out Vector3, in Vector3)
+        - Calls: SampleNormal, _provider.GetInterpolatedHeight
+      - Vector3 SampleNormal( float worldY, float worldX)
+        - Calls: _provider.GetInterpolatedHeight
+      - float SampleHeight( float worldY, float worldX)
+        - Calls: _provider.GetInterpolatedHeight
 - File: HeightmapAdapter.cs
   - Class: HeightmapAdapter (Namespace: SiegeEngine.Core.Physics)
     - Inherits: IHeightProvider
@@ -2702,12 +2721,17 @@ Folder: SiegeEngine
     - Fields:
       - List<PhysicsComponent> _bodies
       - IHeightProvider _heightProvider
+      - HeightfieldShape _heightfieldShape
       - float _accumulator
       - Vector3 _gravity
       - List<ContactManifold> _manifolds
+      - List<Vector3> _triA
+      - List<Vector3> _triB
+      - List<Vector3> _triC
       - IHeightProvider HeightProvider
     - Methods:
       - void SetHeightProvider(IHeightProvider provider)
+        - Calls: HeightfieldShape
       - void RegisterBody(PhysicsComponent body)
         - Calls: _bodies.Add
       - void UnregisterBody(PhysicsComponent body)
@@ -2715,26 +2739,28 @@ Folder: SiegeEngine
       - void ClearBodies()
         - Calls: _bodies.Clear
       - void SnapToGround(PhysicsComponent body)
-        - Calls: ApplyGroundClamp
       - void Step(float deltaTime)
         - Calls: DetectAndResolveContacts, Integrate
       - void Integrate(float dt)
-        - Calls: ApplyGroundClamp
-      - void ApplyGroundClamp(PhysicsComponent body)
-        - Calls: _heightProvider.GetInterpolatedHeight
       - void DetectAndResolveContacts(float dt)
-        - Calls: GenerateManifold, ResolveManifold, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape
+        - Calls: CapsuleVsHeightfield, GenerateManifold, ObbVsHeightfield, ResolveManifold, _manifolds.Add, _manifolds.Clear, a.RebuildShape, b.RebuildShape, body.RebuildShape
       - ContactManifold GenerateManifold( PhysicsComponent b, PhysicsComponent a)
-        - Calls: CapsuleVsCapsule, CapsuleVsMeshAabb, CapsuleVsObb, ObbVsMeshAabb, ObbVsObb
+        - Calls: CapsuleVsCapsule, CapsuleVsObb, CapsuleVsTriangleMesh, ObbVsMeshAabb, ObbVsObb
       - void CapsuleVsCapsule(
             CapsuleShape b,  ContactManifold manifold,  PhysicsComponent bodyA,  PhysicsComponent bodyB, CapsuleShape a)
         - Calls: manifold.Add
       - void CapsuleVsObb(
             ObbShape obb,  ContactManifold manifold,  PhysicsComponent capBody,  PhysicsComponent obbBody, CapsuleShape cap)
         - Calls: ClosestPointOnObb, manifold.Add
-      - void CapsuleVsMeshAabb(
+      - void CapsuleVsTriangleMesh(
             TriangleMeshShape mesh,  ContactManifold manifold,  PhysicsComponent capBody,  PhysicsComponent meshBody, CapsuleShape cap)
-        - Calls: ClosestPointOnAabb, manifold.Add, mesh.GetAabb
+        - Calls: ClosestPointOnTriangle, _triA.Clear, _triB.Clear, _triC.Clear, manifold.Add, mesh.GetAabb, mesh.QueryWorldTriangles
+      - void CapsuleVsHeightfield(
+            HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, CapsuleShape cap)
+        - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
+      - void ObbVsHeightfield(
+            HeightfieldShape field,  ContactManifold manifold,  PhysicsComponent body, ObbShape obb)
+        - Calls: field.SampleHeight, field.SampleNormal, manifold.Add
       - void ObbVsObb(
             ObbShape b,  ContactManifold manifold,  PhysicsComponent bodyA,  PhysicsComponent bodyB, ObbShape a)
         - Calls: manifold.Add
@@ -2744,6 +2770,7 @@ Folder: SiegeEngine
       - void ResolveManifold( float dt, ContactManifold m)
       - Vector3 ClosestPointOnObb( ObbShape obb,  Quaternion rotation,  Vector3 position, Vector3 point)
       - Vector3 ClosestPointOnAabb( Vector3 centre,  Vector3 halfExtents, Vector3 point)
+      - Vector3 ClosestPointOnTriangle( Vector3 a,  Vector3 b,  Vector3 c, Vector3 p)
 - File: Player.cs
   - Class: Player (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: IComponent
@@ -3459,28 +3486,13 @@ Folder: SiegeEngine
   - Class: TransformComponentData (Namespace: SiegeEngine.Core.Definitions)
     - Dependencies: System, System.Collections.Generic, System.Numerics
 - File: TriangleMeshShape.cs
-  - Class: TriangleMeshShape (Namespace: SiegeEngine.Core.Physics)
-    - Inherits: ColliderShape
-    
+  - Class: Node (Namespace: SiegeEngine.Core.Physics)
     - Dependencies: SiegeEngine.Core.AssetParsing.Model, System, System.Collections.Generic, System.Numerics
     - Fields:
-      - List<Vector3> _localVerticesM
-      - List<int> _indices
-      - Vector3 _localMin
-      - Vector3 _localMax
-    - Methods:
-      - constructor TriangleMeshShape(FBXModel model)
-        - Calls: _indices.Add, _localVerticesM.Add
-      - void GetAabb( in Quaternion,  out Vector3, in Vector3)
-      - bool Raycast(
-            in Vector3, 
-            out float,  float maxDistance,  in Quaternion,  in Vector3,  out Vector3, in Vector3)
-        - Calls: RayTriangle
-      - void GetWorldTriangles(
-            List<Vector3> outA,  List<Vector3> outB,  List<Vector3> outC,  in Quaternion, in Vector3)
-        - Calls: outA.Add, outB.Add, outC.Add
-      - bool RayTriangle(
-            Vector3 a,  Vector3 b,  Vector3 c,  Vector3 dir,  out Vector3,  out float, Vector3 origin)
+      - int Left
+      - int Right
+      - int TriStart
+      - int TriCount
 - File: TwoDSandboxScene.cs
   - Class: TwoDSandboxScene (Namespace: SiegeEngine.Scenes.StartingPoints)
     - Inherits: Scene
@@ -3922,11 +3934,12 @@ SiegeEngine.Core.Physics.BodyType
 SiegeEngine.Core.Physics.CapsuleShape
 SiegeEngine.Core.Physics.ColliderShape
 SiegeEngine.Core.Physics.ContactManifold
+SiegeEngine.Core.Physics.HeightfieldShape
 SiegeEngine.Core.Physics.HeightmapAdapter
 SiegeEngine.Core.Physics.IHeightProvider
+SiegeEngine.Core.Physics.Node
 SiegeEngine.Core.Physics.ObbShape
 SiegeEngine.Core.Physics.PhysicsWorld
-SiegeEngine.Core.Physics.TriangleMeshShape
 SiegeEngine.Core.Rendering.BackgroundRenderer
 SiegeEngine.Core.Rendering.CachedGlyphRun
 SiegeEngine.Core.Rendering.CharacterData

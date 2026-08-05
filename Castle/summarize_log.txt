@@ -1661,6 +1661,12 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ContactManif
 Read 751 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ContactManifold.cs
 Namespace: SiegeEngine.Core.Physics
 Found 2 dependencies
+Found: HeightfieldShape.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\HeightfieldShape.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\HeightfieldShape.cs
+Read 3119 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\HeightfieldShape.cs
+Namespace: SiegeEngine.Core.Physics
+Found 2 dependencies
 Found: HeightmapAdapter.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\HeightmapAdapter.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\HeightmapAdapter.cs
@@ -1682,13 +1688,13 @@ Found 2 dependencies
 Found: PhysicsWorld.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
-Read 15567 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
+Read 21615 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
 Namespace: SiegeEngine.Core.Physics
 Found 5 dependencies
 Found: TriangleMeshShape.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\TriangleMeshShape.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\TriangleMeshShape.cs
-Read 6233 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\TriangleMeshShape.cs
+Read 13292 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\TriangleMeshShape.cs
 Namespace: SiegeEngine.Core.Physics
 Found 4 dependencies
 Found: Rendering
@@ -1798,7 +1804,7 @@ Found 3 dependencies
 Found: ModelRenderer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ModelRenderer.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ModelRenderer.cs
-Read 10722 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ModelRenderer.cs
+Read 11084 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Rendering\ModelRenderer.cs
 Namespace: SiegeEngine.Core.Rendering
 Found 7 dependencies
 Found: OrthoProjection.cs
