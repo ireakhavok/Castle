@@ -9,43 +9,46 @@ namespace SiegeEngine.Core.Physics
 {
     /// <summary>
     /// Static triangle mesh built from an FBXModel.
-    /// Vertices are stored in local centimetres and converted to metres on the fly
-    /// so the same mesh can be shared by many instances without re-baking.
+    /// Vertices stored in metres. Includes a lightweight binary AABB tree so
+    /// narrow-phase only tests a small subset of triangles.
     /// </summary>
     public sealed class TriangleMeshShape : ColliderShape
     {
-        private readonly List<Vector3> _localVerticesM = new List<Vector3>(); // already in metres
+        private readonly List<Vector3> _localVerticesM = new List<Vector3>();
         private readonly List<int> _indices = new List<int>();
         private Vector3 _localMin;
         private Vector3 _localMax;
 
+        // AABB tree (binary, built once at construction).
+        private struct Node
+        {
+            public Vector3 Min, Max;
+            public int Left;   // child index or -1
+            public int Right;
+            public int TriStart; // first triangle index into the flat triangle list
+            public int TriCount;
+        }
+        private Node[] _nodes;
+        private int[] _triOrder; // permutation of triangle indices for leaf packing
+
         public TriangleMeshShape(FBXModel model)
         {
             if (model == null || model.Meshes == null) return;
-
             foreach (var mesh in model.Meshes)
             {
                 if (mesh.Vertices == null || mesh.Indices == null) continue;
-
                 int baseIndex = _localVerticesM.Count;
                 foreach (var v in mesh.Vertices)
-                {
-                    // FBX is centimetres → metres
                     _localVerticesM.Add(v.Position * 0.01f);
-                }
                 foreach (uint idx in mesh.Indices)
-                {
                     _indices.Add(baseIndex + (int)idx);
-                }
             }
-
             if (_localVerticesM.Count == 0)
             {
                 _localMin = Vector3.Zero;
                 _localMax = Vector3.Zero;
                 return;
             }
-
             _localMin = new Vector3(float.MaxValue);
             _localMax = new Vector3(float.MinValue);
             foreach (var p in _localVerticesM)
@@ -53,11 +56,11 @@ namespace SiegeEngine.Core.Physics
                 _localMin = Vector3.Min(_localMin, p);
                 _localMax = Vector3.Max(_localMax, p);
             }
+            BuildAabbTree();
         }
 
         public override void GetAabb(in Vector3 position, in Quaternion rotation, out Vector3 min, out Vector3 max)
         {
-            // Transform local AABB corners
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
             Vector3[] corners = new Vector3[8];
             corners[0] = new Vector3(_localMin.X, _localMin.Y, _localMin.Z);
@@ -68,7 +71,6 @@ namespace SiegeEngine.Core.Physics
             corners[5] = new Vector3(_localMax.X, _localMin.Y, _localMax.Z);
             corners[6] = new Vector3(_localMin.X, _localMax.Y, _localMax.Z);
             corners[7] = new Vector3(_localMax.X, _localMax.Y, _localMax.Z);
-
             min = new Vector3(float.MaxValue);
             max = new Vector3(float.MinValue);
             for (int i = 0; i < 8; i++)
@@ -86,18 +88,15 @@ namespace SiegeEngine.Core.Physics
             distance = maxDistance;
             normal = Vector3.Zero;
             bool hit = false;
-
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
             Matrix4x4.Invert(rot, out Matrix4x4 invRot);
             Vector3 localOrigin = Vector3.Transform(origin - position, invRot);
             Vector3 localDir = Vector3.TransformNormal(direction, invRot);
-
             for (int i = 0; i + 2 < _indices.Count; i += 3)
             {
                 Vector3 a = _localVerticesM[_indices[i]];
                 Vector3 b = _localVerticesM[_indices[i + 1]];
                 Vector3 c = _localVerticesM[_indices[i + 2]];
-
                 if (RayTriangle(localOrigin, localDir, a, b, c, out float t, out Vector3 n) && t < distance)
                 {
                     distance = t;
@@ -109,8 +108,44 @@ namespace SiegeEngine.Core.Physics
         }
 
         /// <summary>
-        /// Returns the world-space triangles for narrow-phase contact generation.
-        /// Caller supplies the body transform.
+        /// Query the AABB tree for triangles that may overlap the world-space query box.
+        /// Results are written as world-space vertices into the supplied lists.
+        /// </summary>
+        public void QueryWorldTriangles(in Vector3 position, in Quaternion rotation,
+            in Vector3 queryMin, in Vector3 queryMax,
+            List<Vector3> outA, List<Vector3> outB, List<Vector3> outC)
+        {
+            if (_nodes == null || _nodes.Length == 0)
+            {
+                // Fallback for empty mesh
+                return;
+            }
+            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
+            // Transform query box into local space (conservative AABB of the 8 corners).
+            Matrix4x4.Invert(rot, out Matrix4x4 invRot);
+            Vector3[] qCorners = new Vector3[8];
+            qCorners[0] = new Vector3(queryMin.X, queryMin.Y, queryMin.Z);
+            qCorners[1] = new Vector3(queryMax.X, queryMin.Y, queryMin.Z);
+            qCorners[2] = new Vector3(queryMin.X, queryMax.Y, queryMin.Z);
+            qCorners[3] = new Vector3(queryMax.X, queryMax.Y, queryMin.Z);
+            qCorners[4] = new Vector3(queryMin.X, queryMin.Y, queryMax.Z);
+            qCorners[5] = new Vector3(queryMax.X, queryMin.Y, queryMax.Z);
+            qCorners[6] = new Vector3(queryMin.X, queryMax.Y, queryMax.Z);
+            qCorners[7] = new Vector3(queryMax.X, queryMax.Y, queryMax.Z);
+            Vector3 localMin = new Vector3(float.MaxValue);
+            Vector3 localMax = new Vector3(float.MinValue);
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 l = Vector3.Transform(qCorners[i] - position, invRot);
+                localMin = Vector3.Min(localMin, l);
+                localMax = Vector3.Max(localMax, l);
+            }
+            QueryNode(0, localMin, localMax, position, rot, outA, outB, outC);
+        }
+
+        /// <summary>
+        /// Legacy full dump kept for callers that still need every triangle.
+        /// Prefer QueryWorldTriangles for contact generation.
         /// </summary>
         public void GetWorldTriangles(in Vector3 position, in Quaternion rotation,
             List<Vector3> outA, List<Vector3> outB, List<Vector3> outC)
@@ -118,17 +153,140 @@ namespace SiegeEngine.Core.Physics
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
             for (int i = 0; i + 2 < _indices.Count; i += 3)
             {
-                Vector3 a = Vector3.Transform(_localVerticesM[_indices[i]], rot) + position;
-                Vector3 b = Vector3.Transform(_localVerticesM[_indices[i + 1]], rot) + position;
-                Vector3 c = Vector3.Transform(_localVerticesM[_indices[i + 2]], rot) + position;
-                outA.Add(a);
-                outB.Add(b);
-                outC.Add(c);
+                outA.Add(Vector3.Transform(_localVerticesM[_indices[i]], rot) + position);
+                outB.Add(Vector3.Transform(_localVerticesM[_indices[i + 1]], rot) + position);
+                outC.Add(Vector3.Transform(_localVerticesM[_indices[i + 2]], rot) + position);
             }
         }
 
-        private static bool RayTriangle(Vector3 origin, Vector3 dir,
-            Vector3 a, Vector3 b, Vector3 c, out float t, out Vector3 normal)
+        private void BuildAabbTree()
+        {
+            int triCount = _indices.Count / 3;
+            if (triCount == 0) return;
+            _triOrder = new int[triCount];
+            for (int i = 0; i < triCount; i++) _triOrder[i] = i;
+
+            // Compute per-triangle AABBs and centroids for splitting.
+            var triMin = new Vector3[triCount];
+            var triMax = new Vector3[triCount];
+            var centroid = new Vector3[triCount];
+            for (int t = 0; t < triCount; t++)
+            {
+                Vector3 a = _localVerticesM[_indices[t * 3]];
+                Vector3 b = _localVerticesM[_indices[t * 3 + 1]];
+                Vector3 c = _localVerticesM[_indices[t * 3 + 2]];
+                triMin[t] = Vector3.Min(a, Vector3.Min(b, c));
+                triMax[t] = Vector3.Max(a, Vector3.Max(b, c));
+                centroid[t] = (a + b + c) * (1f / 3f);
+            }
+
+            var nodes = new List<Node>(triCount * 2);
+            BuildRecursive(0, triCount, triMin, triMax, centroid, nodes);
+            _nodes = nodes.ToArray();
+        }
+
+        private int BuildRecursive(int start, int count, Vector3[] triMin, Vector3[] triMax, Vector3[] centroid, List<Node> nodes)
+        {
+            int nodeIdx = nodes.Count;
+            nodes.Add(default); // placeholder
+
+            Vector3 bMin = new Vector3(float.MaxValue);
+            Vector3 bMax = new Vector3(float.MinValue);
+            for (int i = 0; i < count; i++)
+            {
+                int t = _triOrder[start + i];
+                bMin = Vector3.Min(bMin, triMin[t]);
+                bMax = Vector3.Max(bMax, triMax[t]);
+            }
+
+            const int leafThreshold = 4;
+            if (count <= leafThreshold)
+            {
+                nodes[nodeIdx] = new Node
+                {
+                    Min = bMin,
+                    Max = bMax,
+                    Left = -1,
+                    Right = -1,
+                    TriStart = start,
+                    TriCount = count
+                };
+                return nodeIdx;
+            }
+
+            // Split on longest axis of the centroid AABB.
+            Vector3 cMin = new Vector3(float.MaxValue);
+            Vector3 cMax = new Vector3(float.MinValue);
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 c = centroid[_triOrder[start + i]];
+                cMin = Vector3.Min(cMin, c);
+                cMax = Vector3.Max(cMax, c);
+            }
+            Vector3 extent = cMax - cMin;
+            int axis = 0;
+            if (extent.Y > extent.X) axis = 1;
+            if (extent.Z > extent[axis]) axis = 2;
+            float mid = (cMin[axis] + cMax[axis]) * 0.5f;
+
+            int left = 0;
+            for (int i = 0; i < count; i++)
+            {
+                int t = _triOrder[start + i];
+                if (centroid[t][axis] < mid)
+                {
+                    int tmp = _triOrder[start + left];
+                    _triOrder[start + left] = t;
+                    _triOrder[start + i] = tmp;
+                    left++;
+                }
+            }
+            if (left == 0 || left == count) left = count / 2; // force progress
+
+            int leftChild = BuildRecursive(start, left, triMin, triMax, centroid, nodes);
+            int rightChild = BuildRecursive(start + left, count - left, triMin, triMax, centroid, nodes);
+            nodes[nodeIdx] = new Node
+            {
+                Min = bMin,
+                Max = bMax,
+                Left = leftChild,
+                Right = rightChild,
+                TriStart = 0,
+                TriCount = 0
+            };
+            return nodeIdx;
+        }
+
+        private void QueryNode(int nodeIdx, Vector3 localMin, Vector3 localMax,
+            Vector3 position, Matrix4x4 rot,
+            List<Vector3> outA, List<Vector3> outB, List<Vector3> outC)
+        {
+            ref Node n = ref _nodes[nodeIdx];
+            if (localMax.X < n.Min.X || localMin.X > n.Max.X ||
+                localMax.Y < n.Min.Y || localMin.Y > n.Max.Y ||
+                localMax.Z < n.Min.Z || localMin.Z > n.Max.Z)
+                return;
+
+            if (n.Left < 0) // leaf
+            {
+                for (int i = 0; i < n.TriCount; i++)
+                {
+                    int t = _triOrder[n.TriStart + i];
+                    Vector3 a = Vector3.Transform(_localVerticesM[_indices[t * 3]], rot) + position;
+                    Vector3 b = Vector3.Transform(_localVerticesM[_indices[t * 3 + 1]], rot) + position;
+                    Vector3 c = Vector3.Transform(_localVerticesM[_indices[t * 3 + 2]], rot) + position;
+                    outA.Add(a);
+                    outB.Add(b);
+                    outC.Add(c);
+                }
+                return;
+            }
+            QueryNode(n.Left, localMin, localMax, position, rot, outA, outB, outC);
+            QueryNode(n.Right, localMin, localMax, position, rot, outA, outB, outC);
+        }
+
+        private static bool RayTriangle(Vector3 origin, Vector3 dir, Vector3 a, Vector3 b, Vector3 c,
+            out float t, out Vector3 normal)
         {
             t = 0f;
             normal = Vector3.Zero;
