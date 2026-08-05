@@ -1,4 +1,4 @@
-﻿// Folder: SiegeEngine.PlayerSystem
+﻿// Folder: SiegeEngine/PlayerSystem
 // File: PlayerMovement.cs
 using System;
 using System.Numerics;
@@ -107,42 +107,47 @@ namespace SiegeEngine.PlayerSystem
             forward = Vector3.Normalize(forward);
             Vector3 right = Vector3.Normalize(Vector3.Cross(forward, Vector3.UnitZ));
 
-            Vector3 desiredVelocity = Vector3.Zero;
+            // Horizontal ownership only — Physics owns Velocity.Z / Position.Z
+            Vector2 desiredVelocityXY = Vector2.Zero;
             if (_movementInput != Vector2.Zero)
             {
                 Vector2 normalizedMovement = Vector2.Normalize(_movementInput);
                 Vector3 moveDirection = forward * normalizedMovement.Y + right * normalizedMovement.X;
-                desiredVelocity = moveDirection * _maxSpeed;
+                desiredVelocityXY = new Vector2(moveDirection.X, moveDirection.Y) * _maxSpeed;
             }
 
             Vector3 currentVel = player.Physics.Velocity;
-            if (desiredVelocity.LengthSquared() > 0.001f)
+            Vector2 currentVelXY = new Vector2(currentVel.X, currentVel.Y);
+
+            if (desiredVelocityXY.LengthSquared() > 0.001f)
             {
-                Vector3 delta = desiredVelocity - currentVel;
+                Vector2 delta = desiredVelocityXY - currentVelXY;
                 float maxDelta = _acceleration * deltaTime;
                 if (delta.LengthSquared() > maxDelta * maxDelta)
-                    delta = Vector3.Normalize(delta) * maxDelta;
-                currentVel += delta;
+                    delta = Vector2.Normalize(delta) * maxDelta;
+                currentVelXY += delta;
             }
             else
             {
-                float speed = currentVel.Length();
+                float speed = currentVelXY.Length();
                 if (speed > 0.001f)
                 {
                     float newSpeed = Math.Max(0f, speed - _deceleration * deltaTime);
-                    currentVel = (newSpeed > 0.001f) ? Vector3.Normalize(currentVel) * newSpeed : Vector3.Zero;
+                    currentVelXY = (newSpeed > 0.001f) ? Vector2.Normalize(currentVelXY) * newSpeed : Vector2.Zero;
                 }
                 else
                 {
-                    currentVel = Vector3.Zero;
+                    currentVelXY = Vector2.Zero;
                 }
             }
-            player.Physics.Velocity = currentVel;
 
-            Vector3 newPosition = player.Physics.Position + currentVel * deltaTime;
-            newPosition = new Vector3(
-                Math.Clamp(newPosition.X, 0, _gridWidth),
-                Math.Clamp(newPosition.Y, 0, _gridHeight),
+            // Preserve Velocity.Z exactly — Physics owns vertical motion
+            player.Physics.Velocity = new Vector3(currentVelXY.X, currentVelXY.Y, currentVel.Z);
+
+            // Advance only X/Y; leave Position.Z exactly as Physics left it
+            Vector3 newPosition = new Vector3(
+                Math.Clamp(player.Physics.Position.X + currentVelXY.X * deltaTime, 0, _gridWidth),
+                Math.Clamp(player.Physics.Position.Y + currentVelXY.Y * deltaTime, 0, _gridHeight),
                 player.Physics.Position.Z);
             player.Physics.Position = newPosition;
 
@@ -152,9 +157,9 @@ namespace SiegeEngine.PlayerSystem
             Quaternion newRotation = player.Physics.Rotation;
             if (camera.CurrentPerspective == Perspective.ThirdPerson)
             {
-                if (currentVel.LengthSquared() > 0.1f)
+                if (currentVelXY.LengthSquared() > 0.1f)
                 {
-                    float moveYawRad = MathF.Atan2(currentVel.X, currentVel.Y);
+                    float moveYawRad = MathF.Atan2(currentVelXY.X, currentVelXY.Y);
                     newRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, -moveYawRad);
                 }
                 // stationary: leave rotation as-is
@@ -167,12 +172,12 @@ namespace SiegeEngine.PlayerSystem
             player.Physics.Rotation = newRotation;
 
             // Only enqueue / log when there is actual movement or active input
-            if (currentVel.LengthSquared() > 0.001f || _movementInput != Vector2.Zero)
+            if (currentVelXY.LengthSquared() > 0.001f || _movementInput != Vector2.Zero)
             {
                 Vector2 requestedPos = new Vector2(newPosition.X, newPosition.Y);
                 _predictionSystem.EnqueueMovementRequest(player.EntityId, requestedPos, newRotation, player.SteamId);
                 sendMovementRequest(player.EntityId, requestedPos, newRotation);
-                Console.WriteLine($"PlayerMovement: Requested movement to: X={newPosition.X}, Y={newPosition.Y}, Velocity={currentVel}, Rotation={newRotation}");
+                Console.WriteLine($"PlayerMovement: Requested movement to: X={newPosition.X}, Y={newPosition.Y}, Velocity={player.Physics.Velocity}, Rotation={newRotation}");
             }
 
             // Blend drive: model-local for ThirdPerson (model faces velocity → pure forward),
@@ -180,7 +185,7 @@ namespace SiegeEngine.PlayerSystem
             if (player.BlendComponent != null && player.BlendComponent.Pack != null)
             {
                 Vector2 localInputForBlend;
-                if (currentVel.LengthSquared() < 0.01f)
+                if (currentVelXY.LengthSquared() < 0.01f)
                 {
                     localInputForBlend = Vector2.Zero;
                 }

@@ -55,9 +55,8 @@ namespace SiegeEngine.Core.Physics
 
         /// <summary>
         /// Ground projection. Safe to call after kinematic movement writes.
-        /// Kinematic  → always project Position.Z to groundZ (player contour follow).
-        /// Dynamic    → only lift when below the surface (stop falling through).
-        /// Static     → never touched.
+        /// Kinematic / Dynamic → only lift when below the surface (stop falling through).
+        /// Static             → never touched.
         /// Position is the contact / feet point — no half-height offset is applied.
         /// </summary>
         public void SnapToGround(PhysicsComponent body)
@@ -111,8 +110,15 @@ namespace SiegeEngine.Core.Physics
                 }
                 else if (body.BodyType == BodyType.Kinematic)
                 {
-                    // Driven by external code (PlayerMovement). Project contact point
-                    // to the surface so the character follows terrain contours.
+                    // Physics owns vertical motion. Horizontal is owned by PlayerMovement.
+                    // Apply gravity, integrate only Z, then conditional ground response.
+                    body.Velocity += _gravity * dt;
+
+                    body.Position = new Vector3(
+                        body.Position.X,
+                        body.Position.Y,
+                        body.Position.Z + body.Velocity.Z * dt);
+
                     ApplyGroundClamp(body);
                 }
                 // Static: intentionally ignored — stays exactly where placed
@@ -126,24 +132,13 @@ namespace SiegeEngine.Core.Physics
 
             float groundZ = _heightProvider.GetInterpolatedHeight(body.Position.X, body.Position.Y);
 
-            if (body.BodyType == BodyType.Kinematic)
+            // Both Kinematic and Dynamic: only prevent penetration. Never weld to the surface.
+            // Position is the contact / feet point for Phase 1.
+            if (body.Position.Z < groundZ)
             {
-                // Player / character: Position is the feet contact point.
-                // Always project onto the surface (follows contours both up and down).
                 body.Position = new Vector3(body.Position.X, body.Position.Y, groundZ);
-                if (body.Velocity.Z != 0f)
+                if (body.Velocity.Z < 0f)
                     body.Velocity = new Vector3(body.Velocity.X, body.Velocity.Y, 0f);
-            }
-            else // Dynamic
-            {
-                // Only stop falling through the heightfield. No half-height offset.
-                // Position is treated as the contact point for Phase 1.
-                if (body.Position.Z < groundZ)
-                {
-                    body.Position = new Vector3(body.Position.X, body.Position.Y, groundZ);
-                    if (body.Velocity.Z < 0f)
-                        body.Velocity = new Vector3(body.Velocity.X, body.Velocity.Y, 0f);
-                }
             }
         }
     }
