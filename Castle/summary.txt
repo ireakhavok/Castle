@@ -785,7 +785,7 @@ Folder: Server
       - void AddEntity(Entity entity)
         - Calls: Console.WriteLine, UpdateSpatialGrid
       - void RemoveEntity(int id)
-        - Calls: Console.WriteLine, RemoveFromSpatialGrid, _entities.Remove
+        - Calls: Console.WriteLine, RemoveFromSpatialGrid, _entities.Remove, _physicsSystem.World.UnregisterBody
       - void AddSystem(GameSystem system)
         - Calls: Console.WriteLine
       - void Update(float deltaTime)
@@ -1173,9 +1173,9 @@ Folder: SiegeEngine
       - void AddEntity(Entity entity)
         - Calls: Console.WriteLine, EntityAddedEvent
       - void RemoveEntity(int id)
-        - Calls: EntityRemovedEvent, _entities.Remove
+        - Calls: EntityRemovedEvent, _entities.Remove, _physicsWorld.UnregisterBody
       - void ClearEntities()
-        - Calls: EntityRemovedEvent, _entities.Clear
+        - Calls: EntityRemovedEvent, _entities.Clear, _physicsWorld.ClearBodies
       - IReadOnlyList<Entity> GetEntities()
       - Entity GetEntityById(int id)
       - void AddSystem(GameSystem system)

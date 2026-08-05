@@ -926,7 +926,7 @@ Found 4 dependencies
 Found: GameServer.cs
 Parsing file: C:\repos\RealmFoundry\Castle\Server\Citadel\Server\GameServer.cs
 Reading file: C:\repos\RealmFoundry\Castle\Server\Citadel\Server\GameServer.cs
-Read 20439 chars from: C:\repos\RealmFoundry\Castle\Server\Citadel\Server\GameServer.cs
+Read 20330 chars from: C:\repos\RealmFoundry\Castle\Server\Citadel\Server\GameServer.cs
 Namespace: Citadel.Server
 Found 14 dependencies
 Found: ServerValidationSystem.cs
@@ -1163,7 +1163,7 @@ Found 0 dependencies
 Found: Entity.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
-Read 7886 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
+Read 7697 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\Entity.cs
 Namespace: SiegeEngine.Core.Definitions
 Found 6 dependencies
 Found: EntityData.cs
@@ -1618,7 +1618,7 @@ Found: ..
 Found: ClientGameServerProxy.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
-Read 6171 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
+Read 7486 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Networking\ClientGameServerProxy.cs
 Namespace: SiegeEngine.Core.Networking
 Found 9 dependencies
 Found: MovementRequest.cs
