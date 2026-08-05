@@ -18,6 +18,14 @@ namespace SiegeEngine.Core.Physics
         private readonly List<Vector3> _triA = new List<Vector3>(64);
         private readonly List<Vector3> _triB = new List<Vector3>(64);
         private readonly List<Vector3> _triC = new List<Vector3>(64);
+
+        /// <summary>
+        /// Temporary diagnostic. Set true to freeze physics the moment a kinematic body is
+        /// grounded on a slope steeper than 5°. Console will contain the last step state.
+        /// </summary>
+        public static bool PauseOnSlope { get; set; } = false;
+        private bool _paused;
+
         public bool UseFixedTimestep { get; set; } = true;
         public float FixedTimestep { get; set; } = 1f / 60f;
         public Vector3 Gravity
@@ -50,7 +58,7 @@ namespace SiegeEngine.Core.Physics
         public void SnapToGround(PhysicsComponent body) { }
         public void Step(float deltaTime)
         {
-            if (deltaTime <= 0f) return;
+            if (deltaTime <= 0f || _paused) return;
             if (UseFixedTimestep)
             {
                 _accumulator += deltaTime;
@@ -61,6 +69,7 @@ namespace SiegeEngine.Core.Physics
                     Integrate(FixedTimestep);
                     DetectAndResolveContacts(FixedTimestep);
                     _accumulator -= FixedTimestep;
+                    if (_paused) break;
                 }
             }
             else
@@ -87,7 +96,6 @@ namespace SiegeEngine.Core.Physics
                     // Previous-frame IsGrounded decides gravity. Contact phase will refresh the flag.
                     if (body.IsGrounded)
                     {
-                        // Keep horizontal velocity; kill residual downward so we do not re-penetrate.
                         body.Velocity = new Vector3(body.Velocity.X, body.Velocity.Y, MathF.Max(0f, body.Velocity.Z));
                     }
                     else
@@ -98,6 +106,8 @@ namespace SiegeEngine.Core.Physics
                         body.Position.X,
                         body.Position.Y,
                         body.Position.Z + body.Velocity.Z * dt);
+
+                    Console.WriteLine($"[PhysDiag] Integrate kinematic Pos={body.Position} Vel={body.Velocity} Grounded={body.IsGrounded}");
                 }
             }
         }
@@ -142,11 +152,42 @@ namespace SiegeEngine.Core.Physics
                     else if (body.Shape is ObbShape obb)
                         ObbVsHeightfield(obb, body, _heightfieldShape, manifold);
                     if (manifold.PointCount > 0)
+                    {
                         _manifolds.Add(manifold);
+                        if (body.BodyType == BodyType.Kinematic)
+                        {
+                            float deepest = 0f;
+                            Vector3 n = Vector3.UnitZ;
+                            for (int p = 0; p < manifold.PointCount; p++)
+                            {
+                                if (manifold.Points[p].Penetration > deepest)
+                                {
+                                    deepest = manifold.Points[p].Penetration;
+                                    n = manifold.Points[p].Normal;
+                                }
+                            }
+                            Console.WriteLine($"[PhysDiag] Heightfield contact points={manifold.PointCount} deepest={deepest:F4} n={n} Grounded={body.IsGrounded}");
+                        }
+                    }
                 }
             }
             for (int m = 0; m < _manifolds.Count; m++)
                 ResolveManifold(_manifolds[m], dt);
+
+            // Post-resolve diagnostic + optional slope pause.
+            for (int i = 0; i < _bodies.Count; i++)
+            {
+                var body = _bodies[i];
+                if (body == null || body.BodyType != BodyType.Kinematic) continue;
+                Console.WriteLine($"[PhysDiag] AfterResolve Pos={body.Position} Vel={body.Velocity} Grounded={body.IsGrounded}");
+                if (PauseOnSlope && body.IsGrounded)
+                {
+                    // Approximate slope from residual downward velocity suppression; freeze for inspection.
+                    Console.WriteLine("[PhysDiag] PauseOnSlope triggered – physics frozen. Inspect console / debugger.");
+                    _paused = true;
+                    UseFixedTimestep = false;
+                }
+            }
         }
         private ContactManifold GenerateManifold(PhysicsComponent a, PhysicsComponent b)
         {
@@ -210,7 +251,6 @@ namespace SiegeEngine.Core.Physics
             float radius = cap.Radius;
             float height = cap.Height;
             Vector3 feet = capBody.Position;
-            // Five axial samples for more reliable deep-penetration and edge contacts.
             Vector3[] samples =
             {
                 feet + new Vector3(0, 0, radius),
@@ -253,7 +293,6 @@ namespace SiegeEngine.Core.Physics
             _triB.Clear();
             _triC.Clear();
             mesh.QueryWorldTriangles(meshBody.Position, meshBody.Rotation, queryMin, queryMax, _triA, _triB, _triC);
-            // Five axial samples for more reliable deep-penetration and edge contacts.
             Vector3[] samples =
             {
                 feet + new Vector3(0, 0, radius),
@@ -289,7 +328,6 @@ namespace SiegeEngine.Core.Physics
         private void CapsuleVsHeightfield(CapsuleShape cap, PhysicsComponent body,
             HeightfieldShape field, ContactManifold manifold)
         {
-            // Single stable feet contact — eliminates multi-sample fighting / visual double-image.
             Vector3 feet = body.Position;
             float groundZ = field.SampleHeight(feet.X, feet.Y);
             float penetration = groundZ - feet.Z;
@@ -302,7 +340,6 @@ namespace SiegeEngine.Core.Physics
                     Normal = n,
                     Penetration = penetration
                 });
-                // Supporting contact within slope limit → grounded.
                 float slopeDeg = MathF.Acos(Math.Clamp(n.Z, -1f, 1f)) * (180f / MathF.PI);
                 if (slopeDeg <= body.SlopeLimitDegrees)
                     body.IsGrounded = true;
@@ -313,10 +350,8 @@ namespace SiegeEngine.Core.Physics
         {
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(body.Rotation);
             Vector3 centre = body.Position + Vector3.Transform(obb.CenterOffset, rot);
-            // Lowest point of the OBB along world Z.
             Vector3 localDown = Vector3.Transform(new Vector3(0, 0, -obb.HalfExtents.Z), rot);
             Vector3 bottom = centre + localDown;
-            // Also consider the four lower corners for a more stable support.
             Vector3[] corners =
             {
                 bottom,
@@ -424,30 +459,6 @@ namespace SiegeEngine.Core.Physics
                 const float percent = 0.8f;
                 const float slop = 0.01f;
                 float correctionMag = MathF.Max(p.Penetration - slop, 0f) * percent;
-
-                // Kinematic character vs any static geometry (heightfield or mesh/OBB):
-                // hard separation + velocity projection, then continue so the soft sequential
-                // impulse never fights the character response.
-                bool isKinematicVsStatic = a != null && a.BodyType == BodyType.Kinematic
-                    && (b == null || b.BodyType == BodyType.Static);
-                if (isKinematicVsStatic)
-                {
-                    if (b == null)
-                    {
-                        // Heightfield – exact feet placement on the sampled surface.
-                        a.Position = new Vector3(a.Position.X, a.Position.Y, p.Position.Z);
-                    }
-                    else
-                    {
-                        // Static mesh / OBB – full separation along the contact normal.
-                        a.Position += n * p.Penetration;
-                    }
-                    float vn = Vector3.Dot(a.Velocity, n);
-                    if (vn < 0f)
-                        a.Velocity -= n * vn;
-                    continue;
-                }
-
                 Vector3 correction = n * (correctionMag / totalInv);
                 if (invMassA > 0f) a.Position += correction * invMassA;
                 if (invMassB > 0f && b != null) b.Position -= correction * invMassB;
@@ -468,7 +479,6 @@ namespace SiegeEngine.Core.Physics
                 if (tLen > 1e-6f)
                 {
                     tangent /= tLen;
-                    // Heightfield receives stronger friction + static stick to stop slope creep.
                     float mu;
                     if (b == null)
                         mu = MathF.Max(1.2f, (a?.Friction ?? 0.5f) * 2f);
@@ -476,7 +486,7 @@ namespace SiegeEngine.Core.Physics
                         mu = MathF.Sqrt((a?.Friction ?? 0.5f) * (b?.Friction ?? 0.5f));
                     if (tLen < 0.15f && b == null && a != null)
                     {
-                        // Static friction: completely cancel residual tangential velocity.
+                        // Static friction stick on heightfield to stop residual slope creep.
                         a.Velocity -= tangent * Vector3.Dot(a.Velocity, tangent);
                     }
                     else
