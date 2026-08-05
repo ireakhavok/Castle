@@ -486,7 +486,7 @@ Found: CastleBuilder.csproj
 Found: EditorScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
-Read 26662 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
+Read 26182 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\EditorScene.cs
 Namespace: CastleBuilder
 Found 17 dependencies
 Found: Events
@@ -560,7 +560,7 @@ Found 12 dependencies
 Found: SceneEditorPanel.cs
 Parsing file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Reading file: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
-Read 28360 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
+Read 28490 chars from: C:\repos\RealmFoundry\Castle\IDE\CastleBuilder\SceneEditorPanel.cs
 Namespace: CastleBuilder
 Found 23 dependencies
 Found: SceneEditorUI.html
@@ -1253,9 +1253,9 @@ Found 6 dependencies
 Found: PhysicsComponent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
-Read 15075 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
+Read 17826 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PhysicsComponent.cs
 Namespace: SiegeEngine.Core.Definitions
-Found 4 dependencies
+Found 5 dependencies
 Found: PreviewComponent.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PreviewComponent.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Definitions\PreviewComponent.cs
@@ -1643,6 +1643,24 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\BodyType.cs
 Read 198 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\BodyType.cs
 Namespace: SiegeEngine.Core.Physics
 Found 0 dependencies
+Found: CapsuleShape.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\CapsuleShape.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\CapsuleShape.cs
+Read 3291 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\CapsuleShape.cs
+Namespace: SiegeEngine.Core.Physics
+Found 2 dependencies
+Found: ColliderShape.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ColliderShape.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ColliderShape.cs
+Read 824 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ColliderShape.cs
+Namespace: SiegeEngine.Core.Physics
+Found 1 dependencies
+Found: ContactManifold.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ContactManifold.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ContactManifold.cs
+Read 751 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ContactManifold.cs
+Namespace: SiegeEngine.Core.Physics
+Found 2 dependencies
 Found: HeightmapAdapter.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\HeightmapAdapter.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\HeightmapAdapter.cs
@@ -1655,10 +1673,22 @@ Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\IHeightProvi
 Read 545 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\IHeightProvider.cs
 Namespace: SiegeEngine.Core.Physics
 Found 1 dependencies
+Found: ObbShape.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ObbShape.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ObbShape.cs
+Read 4162 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\ObbShape.cs
+Namespace: SiegeEngine.Core.Physics
+Found 2 dependencies
 Found: PhysicsWorld.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
-Read 5028 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
+Read 15567 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\PhysicsWorld.cs
+Namespace: SiegeEngine.Core.Physics
+Found 5 dependencies
+Found: TriangleMeshShape.cs
+Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\TriangleMeshShape.cs
+Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\TriangleMeshShape.cs
+Read 6233 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Core\Physics\TriangleMeshShape.cs
 Namespace: SiegeEngine.Core.Physics
 Found 4 dependencies
 Found: Rendering
@@ -2310,7 +2340,7 @@ Found 17 dependencies
 Found: RuntimeGameplayScene.cs
 Parsing file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
 Reading file: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
-Read 25700 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
+Read 26083 chars from: C:\repos\RealmFoundry\Castle\SiegeEngine\Scenes\RuntimeGameplayScene.cs
 Namespace: SiegeEngine.Scenes
 Found 17 dependencies
 Found: Scene.cs
