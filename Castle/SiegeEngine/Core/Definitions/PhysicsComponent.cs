@@ -2,6 +2,7 @@
 // File: PhysicsComponent.cs
 using System;
 using System.Numerics;
+using System.Text.Json;
 using SiegeEngine.Core.Physics;
 
 namespace SiegeEngine.Core.Definitions
@@ -22,7 +23,7 @@ namespace SiegeEngine.Core.Definitions
             Health = 100f;
             IsVisible = true;
             // Static is the safe default: entities stay exactly where the designer placed them
-            // (including mid-air). Designer must explicitly set Dynamic to enable gravity/clamp.
+            // (including mid-air). Designer must explicitly set Dynamic/Kinematic to enable gravity.
             BodyType = BodyType.Static;
             AngularVelocity = Vector3.Zero;
             LinearDamping = 0.05f;
@@ -200,29 +201,146 @@ namespace SiegeEngine.Core.Definitions
 
         public void FromSerializableData(object data)
         {
+            if (data == null) return;
+
+            // In-memory path (no JSON crossing): typed PhysicsComponentData
             if (data is PhysicsComponentData p)
             {
-                Position = p.Position;
-                Rotation = p.Rotation;
-                Scale = p.Scale;
-                Size = p.Size;
-                Mass = p.Mass;
-                Health = p.Health;
-                IsBreakable = p.IsBreakable;
-                IsBroken = p.IsBroken;
-                LocalBoundsMinCm = p.LocalBoundsMinCm;
-                LocalBoundsMaxCm = p.LocalBoundsMaxCm;
-                Velocity = p.Velocity;
-                BodyType = (BodyType)p.BodyType;
-                AngularVelocity = p.AngularVelocity;
-                LinearDamping = p.LinearDamping;
-                AngularDamping = p.AngularDamping;
-                Friction = p.Friction;
-                Restitution = p.Restitution;
-                IsSleeping = p.IsSleeping;
-                IslandId = p.IslandId;
-                SleepThreshold = p.SleepThreshold;
+                ApplyData(
+                    p.Position, p.Rotation, p.Scale, p.Size,
+                    p.Mass, p.Health, p.IsBreakable, p.IsBroken,
+                    p.LocalBoundsMinCm, p.LocalBoundsMaxCm, p.Velocity,
+                    p.BodyType, p.AngularVelocity,
+                    p.LinearDamping, p.AngularDamping, p.Friction, p.Restitution,
+                    p.IsSleeping, p.IslandId, p.SleepThreshold);
+                return;
             }
+
+            // JSON round-trip path: System.Text.Json deserializes object → JsonElement
+            if (data is JsonElement je && je.ValueKind == JsonValueKind.Object)
+            {
+                ApplyFromJsonElement(je);
+                return;
+            }
+
+            // Fallback: some serializers leave a boxed JsonDocument or string
+            if (data is string jsonStr)
+            {
+                using var doc = JsonDocument.Parse(jsonStr);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object)
+                    ApplyFromJsonElement(doc.RootElement);
+            }
+        }
+
+        private void ApplyFromJsonElement(JsonElement je)
+        {
+            Vector3 position = ReadVector3(je, "Position", Position);
+            Quaternion rotation = ReadQuaternion(je, "Rotation", Rotation);
+            Vector3 scale = ReadVector3(je, "Scale", Scale);
+            Vector3 size = ReadVector3(je, "Size", Size);
+            float mass = ReadFloat(je, "Mass", Mass);
+            float health = ReadFloat(je, "Health", Health);
+            bool isBreakable = ReadBool(je, "IsBreakable", IsBreakable);
+            bool isBroken = ReadBool(je, "IsBroken", IsBroken);
+            Vector3 localMin = ReadVector3(je, "LocalBoundsMinCm", LocalBoundsMinCm);
+            Vector3 localMax = ReadVector3(je, "LocalBoundsMaxCm", LocalBoundsMaxCm);
+            Vector3 velocity = ReadVector3(je, "Velocity", Velocity);
+            int bodyType = ReadInt(je, "BodyType", (int)BodyType);
+            Vector3 angularVelocity = ReadVector3(je, "AngularVelocity", AngularVelocity);
+            float linearDamping = ReadFloat(je, "LinearDamping", LinearDamping);
+            float angularDamping = ReadFloat(je, "AngularDamping", AngularDamping);
+            float friction = ReadFloat(je, "Friction", Friction);
+            float restitution = ReadFloat(je, "Restitution", Restitution);
+            bool isSleeping = ReadBool(je, "IsSleeping", IsSleeping);
+            int islandId = ReadInt(je, "IslandId", IslandId);
+            float sleepThreshold = ReadFloat(je, "SleepThreshold", SleepThreshold);
+
+            ApplyData(
+                position, rotation, scale, size,
+                mass, health, isBreakable, isBroken,
+                localMin, localMax, velocity,
+                bodyType, angularVelocity,
+                linearDamping, angularDamping, friction, restitution,
+                isSleeping, islandId, sleepThreshold);
+        }
+
+        private void ApplyData(
+            Vector3 position, Quaternion rotation, Vector3 scale, Vector3 size,
+            float mass, float health, bool isBreakable, bool isBroken,
+            Vector3 localMin, Vector3 localMax, Vector3 velocity,
+            int bodyType, Vector3 angularVelocity,
+            float linearDamping, float angularDamping, float friction, float restitution,
+            bool isSleeping, int islandId, float sleepThreshold)
+        {
+            Position = position;
+            Rotation = rotation;
+            Scale = scale;
+            Size = size;
+            // Mass/Health setters throw on invalid values — clamp defensively
+            if (mass > 0f) Mass = mass;
+            if (health >= 0f) Health = health;
+            IsBreakable = isBreakable;
+            if (isBroken) Health = 0f; // drives IsBroken via setter when breakable
+            LocalBoundsMinCm = localMin;
+            LocalBoundsMaxCm = localMax;
+            Velocity = velocity;
+            BodyType = (BodyType)bodyType;
+            AngularVelocity = angularVelocity;
+            LinearDamping = linearDamping;
+            AngularDamping = angularDamping;
+            Friction = friction;
+            Restitution = restitution;
+            IsSleeping = isSleeping;
+            IslandId = islandId;
+            SleepThreshold = sleepThreshold;
+        }
+
+        private static Vector3 ReadVector3(JsonElement parent, string name, Vector3 fallback)
+        {
+            if (!parent.TryGetProperty(name, out JsonElement el) || el.ValueKind != JsonValueKind.Object)
+                return fallback;
+            float x = el.TryGetProperty("X", out var xe) && xe.TryGetSingle(out float xv) ? xv : fallback.X;
+            float y = el.TryGetProperty("Y", out var ye) && ye.TryGetSingle(out float yv) ? yv : fallback.Y;
+            float z = el.TryGetProperty("Z", out var ze) && ze.TryGetSingle(out float zv) ? zv : fallback.Z;
+            return new Vector3(x, y, z);
+        }
+
+        private static Quaternion ReadQuaternion(JsonElement parent, string name, Quaternion fallback)
+        {
+            if (!parent.TryGetProperty(name, out JsonElement el) || el.ValueKind != JsonValueKind.Object)
+                return fallback;
+            float x = el.TryGetProperty("X", out var xe) && xe.TryGetSingle(out float xv) ? xv : fallback.X;
+            float y = el.TryGetProperty("Y", out var ye) && ye.TryGetSingle(out float yv) ? yv : fallback.Y;
+            float z = el.TryGetProperty("Z", out var ze) && ze.TryGetSingle(out float zv) ? zv : fallback.Z;
+            float w = el.TryGetProperty("W", out var we) && we.TryGetSingle(out float wv) ? wv : fallback.W;
+            return new Quaternion(x, y, z, w);
+        }
+
+        private static float ReadFloat(JsonElement parent, string name, float fallback)
+        {
+            if (!parent.TryGetProperty(name, out JsonElement el)) return fallback;
+            if (el.TryGetSingle(out float v)) return v;
+            if (el.TryGetDouble(out double d)) return (float)d;
+            return fallback;
+        }
+
+        private static int ReadInt(JsonElement parent, string name, int fallback)
+        {
+            if (!parent.TryGetProperty(name, out JsonElement el)) return fallback;
+            if (el.TryGetInt32(out int v)) return v;
+            if (el.TryGetDouble(out double d)) return (int)d;
+            return fallback;
+        }
+
+        private static bool ReadBool(JsonElement parent, string name, bool fallback)
+        {
+            if (!parent.TryGetProperty(name, out JsonElement el)) return fallback;
+            return el.ValueKind switch
+            {
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => fallback
+            };
         }
 
         private class PhysicsComponentData
