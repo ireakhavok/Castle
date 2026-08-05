@@ -423,7 +423,7 @@ Folder: IDE
   - Class: PropertiesUIOverlay (Namespace: ToolChest)
     - Inherits: UIOverlay
         
-    - Dependencies: Keystone, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
+    - Dependencies: Keystone, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.UI, SiegeEngine.Core.UI.Elements, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics, System.Reflection, System.Text, System.Text.Json
     - Fields:
       - PropertiesPanel _parent
     - Methods:
@@ -2648,7 +2648,7 @@ Folder: SiegeEngine
       - void Deserialize(byte[] data)
 - File: PhysicsComponent.cs
   - Class: PhysicsComponentData (Namespace: SiegeEngine.Core.Definitions)
-    - Dependencies: SiegeEngine.Core.Physics, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.Physics, System, System.Numerics, System.Text.Json
 - File: PhysicsWorld.cs
   - Class: PhysicsWorld (Namespace: SiegeEngine.Core.Physics)
     - Dependencies: SiegeEngine.Core.Definitions, System, System.Collections.Generic, System.Numerics
