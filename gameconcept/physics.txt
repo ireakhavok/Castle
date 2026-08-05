@@ -1,0 +1,66 @@
+SiegeEngine Physics — Current Work Prompt
+SiegeEngine requires a production-grade, real-time physics system that eliminates all clipping between characters, static meshes, dynamic rigid bodies, projectiles, and terrain while remaining fully compatible with the engine’s existing multiplayer architecture (authoritative, P2P, and listen-server modes). The system must be configurable for different networking topologies, must never break the current Entity/Component, EventBus, or scene pipelines, and must scale from hundreds of active dynamic bodies to thousands through aggressive sleeping, island management, and efficient broad-phase culling.
+The physics simulation runs on a fixed or variable timestep that is completely independent of the rendering frame rate. A command queue or scheduler drives the physics step so that the rest of the engine can continue to render and process input at its own rate. Both fixed-timestep and variable-timestep modes must be supported and selectable at runtime or via project settings.
+Determinism is a hard requirement: the simulation must produce identical results down to the last representable unit on different CPU architectures. Because true cross-platform bit-identical IEEE-754 floating-point behaviour is not achievable in practice, the core physics solver will use a deterministic numeric representation (fixed-point or an equivalent software-controlled format) for all critical state (positions, velocities, orientations, constraint impulses, etc.). Conversion layers to and from the engine’s existing single-precision floating-point systems will be provided so that rendering, animation, and gameplay code continue to work unchanged.
+Collision coverage for the first deliverable includes:
+
+Kinematic hybrid character controllers (capsule shape, grounded checks, slope limit, step height) versus terrain and static meshes.
+Dynamic rigid bodies (crates, debris, props, etc.) versus all other geometry.
+Projectiles as full dynamic bodies with continuous collision detection (CCD). Classic raycasts remain available as a separate query API for lasers, line-of-sight, sound occlusion, and other non-physical traces.
+
+Terrain collision is generated directly from the existing heightmap data as a heightfield collider. No requirement exists for a separate triangle-mesh representation of terrain in the first version.
+Joints and constraints (hinges, springs, fixed joints, and basic motors) are required. They may be delivered in a later phase after the core contact, friction, character controller, and sleeping systems are stable. The solver must be designed from the start so that constraints can be added without rewriting the contact pipeline.
+Authority is fully configurable. The same physics world can run under a dedicated server, a P2P host, or a listen-server. Clients always predict their own character controller; prediction of other dynamic bodies is optional and can be toggled. Reconciliation follows the same snapshot / delta patterns already used by the rest of the engine.
+Sleeping and island management are mandatory. Bodies that fall below configurable energy and velocity thresholds are deactivated; islands of connected bodies sleep and wake together. A new Physics View panel inside the IDE will visualise active bodies, sleeping bodies, islands, contact points, and constraint forces so that designers and programmers can see exactly what the simulation is doing.
+The existing PhysicsComponent (and any related data classes) may be evolved or replaced, provided that every current call site continues to function and no public gameplay or editor API is broken. All new physics events (contacts, wakes, sleeps, joint breaks, etc.) travel through the central EventBus exactly like every other system in SiegeEngine.
+Implementation is phased:
+
+Phase 1 – Core contact, friction, heightfield terrain, kinematic character controller, basic dynamic rigid bodies, sleeping, and the Physics View panel.
+Phase 2 – Joints/constraints, continuous collision detection for fast bodies, and any remaining authority/prediction edge cases.
+Phase 3 – Ragdoll mode for characters and further performance hardening for thousands of bodies.
+
+
+Where we are right now (Phase 1 — heightfield + kinematic character)
+We are implementing the heightfield terrain collider and the kinematic hybrid character controller for the local player. The player’s PhysicsComponent is BodyType.Kinematic and its Position is the contact point at the middle of the feet. Horizontal movement remains owned by PlayerMovement. Physics owns vertical motion.
+How this slice is supposed to work
+Gravity is applied to the player every physics step. The character falls when airborne. The heightfield only prevents penetration: if, after gravity and integration, the feet would go below the interpolated terrain surface, the controller snaps the contact point up to the surface and zeroes downward vertical velocity. The player is never glued to the terrain and never left floating—gravity always pulls them down until the ground stops them. This is the foundation for later grounded checks, jump, slope limit, and step height. Scenery defaults to BodyType.Static and is never moved by the simulation (mid-air and buried placement remain valid). Only bodies explicitly marked Dynamic receive full rigid-body gravity and response. BodyType is the per-entity setting, is already serialized on PhysicsComponent, and must be respected at load time.
+What is implemented and working
+
+IHeightProvider / HeightmapAdapter bilinear height queries from the runtime heightmap snapshot.
+PhysicsWorld fixed-timestep step, body registration, gravity on Dynamic bodies.
+Pure-client (ClientGameServerProxy) and authoritative (GameServer / PhysicsSystem) paths both expose SetHeightProvider and SnapToGround.
+RuntimeGameplayScene wires the height provider from the play payload and forces only the player to Kinematic.
+Player movement and camera remain functional.
+Half-height offset removed; Position is the contact point.
+BodyType defaults to Static so unmarked entities stay where the designer placed them.
+
+What is currently incorrect
+The kinematic path always projects Position.Z onto the heightmap every frame. That welds the player to the surface, cancels airborne motion, and prevents gravity from doing any work on the character. Gravity is not applied to the player. The correct behaviour is: apply gravity → integrate vertical velocity → if feet are below the heightfield, snap up and clear downward velocity; otherwise the character continues falling under gravity until the ground stops them.
+Also still missing in Phase 1: entity–entity collision (walls do not block the player), capsule shape, grounded flag, slope limit, step height, friction, sleeping, islands, contact events on the EventBus, Physics View panel, and inspector exposure of BodyType so designers can toggle the already-serialized setting.
+Immediate next increments
+
+Fix the kinematic character ground response so gravity is applied every step and the heightfield only blocks downward penetration (no permanent surface weld).
+Expose BodyType in the Properties panel.
+Discrete AABB collision so Static/Dynamic geometry stops the character.
+
+
+Physics System Vision & Implementation Prompt for SiegeEngine
+SiegeEngine requires a production-grade, real-time physics system that eliminates all clipping between characters, static meshes, dynamic rigid bodies, projectiles, and terrain while remaining fully compatible with the engine’s existing multiplayer architecture (authoritative, P2P, and listen-server modes). The system must be configurable for different networking topologies, must never break the current Entity/Component, EventBus, or scene pipelines, and must scale from hundreds of active dynamic bodies to thousands through aggressive sleeping, island management, and efficient broad-phase culling.
+The physics simulation runs on a fixed or variable timestep that is completely independent of the rendering frame rate. A command queue or scheduler drives the physics step so that the rest of the engine can continue to render and process input at its own rate. Both fixed-timestep and variable-timestep modes must be supported and selectable at runtime or via project settings.
+Determinism is a hard requirement: the simulation must produce identical results down to the last representable unit on different CPU architectures. Because true cross-platform bit-identical IEEE-754 floating-point behaviour is not achievable in practice, the core physics solver will use a deterministic numeric representation (fixed-point or an equivalent software-controlled format) for all critical state (positions, velocities, orientations, constraint impulses, etc.). Conversion layers to and from the engine’s existing single-precision floating-point systems will be provided so that rendering, animation, and gameplay code continue to work unchanged.
+Collision coverage for the first deliverable includes:
+
+Kinematic hybrid character controllers (capsule shape, grounded checks, slope limit, step height) versus terrain and static meshes.
+Dynamic rigid bodies (crates, debris, props, etc.) versus all other geometry.
+Projectiles as full dynamic bodies with continuous collision detection (CCD). Classic raycasts remain available as a separate query API for lasers, line-of-sight, sound occlusion, and other non-physical traces.
+
+Terrain collision is generated directly from the existing heightmap data as a heightfield collider. No requirement exists for a separate triangle-mesh representation of terrain in the first version.
+Joints and constraints (hinges, springs, fixed joints, and basic motors) are required. They may be delivered in a later phase after the core contact, friction, character controller, and sleeping systems are stable. The solver must be designed from the start so that constraints can be added without rewriting the contact pipeline.
+Authority is fully configurable. The same physics world can run under a dedicated server, a P2P host, or a listen-server. Clients always predict their own character controller; prediction of other dynamic bodies is optional and can be toggled. Reconciliation follows the same snapshot / delta patterns already used by the rest of the engine.
+Sleeping and island management are mandatory. Bodies that fall below configurable energy and velocity thresholds are deactivated; islands of connected bodies sleep and wake together. A new Physics View panel inside the IDE will visualise active bodies, sleeping bodies, islands, contact points, and constraint forces so that designers and programmers can see exactly what the simulation is doing.
+The existing PhysicsComponent (and any related data classes) may be evolved or replaced, provided that every current call site continues to function and no public gameplay or editor API is broken. All new physics events (contacts, wakes, sleeps, joint breaks, etc.) travel through the central EventBus exactly like every other system in SiegeEngine.
+Implementation will be phased:
+Phase 1 – Core contact, friction, heightfield terrain, kinematic character controller, basic dynamic rigid bodies, sleeping, and the Physics View panel. Phase 2 – Joints/constraints, continuous collision detection for fast bodies, and any remaining authority/prediction edge cases. Phase 3 – Ragdoll mode for characters and further performance hardening for thousands of bodies.
+
+you need to, make a multi-paragraph prompt detailing what we are working on, what part of the feature we are currently working on, how that feature is supposed to work, what is implemented, and what is currently not correct.
+and additionally you removed all the details about the overall physics plan and all that. you need to stop removing context.

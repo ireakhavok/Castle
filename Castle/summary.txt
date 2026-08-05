@@ -762,7 +762,7 @@ Folder: Server
   - Class: GameServer (Namespace: Citadel.Server)
     - Inherits: IGameServer
     
-    - Dependencies: Citadel.Network, Citadel.Systems, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
+    - Dependencies: Citadel.Network, Citadel.Systems, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics, System.Text.Json
     - Fields:
       - List<Entity> _entities
       - List<GameSystem> _systems
@@ -776,9 +776,12 @@ Folder: Server
       - Queue<IEvent> _networkEventQueue
       - bool _isEditor
       - int _nextEntityId
+      - PhysicsSystem _physicsSystem
     - Methods:
       - constructor GameServer( NetworkManager networkManager = null,  bool isEditor = false, EventBus eventBus)
         - Calls: AddSystem, subscribeMethod.Invoke
+      - void SetHeightProvider(IHeightProvider provider)
+      - void SnapToGround(PhysicsComponent body)
       - void AddEntity(Entity entity)
         - Calls: Console.WriteLine, UpdateSpatialGrid
       - void RemoveEntity(int id)
@@ -1156,14 +1159,17 @@ Folder: SiegeEngine
   - Class: ClientGameServerProxy (Namespace: SiegeEngine.Core.Networking)
     - Inherits: IGameServer
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Systems, System, System.Collections.Generic, System.Linq, System.Numerics
     - Fields:
       - EventBus _eventBus
       - List<Entity> _entities
       - List<GameSystem> _systems
+      - PhysicsWorld _physicsWorld
       - int _nextEntityId
     - Methods:
       - constructor ClientGameServerProxy(EventBus eventBus)
+      - void SetHeightProvider(IHeightProvider provider)
+      - void SnapToGround(PhysicsComponent body)
       - void AddEntity(Entity entity)
         - Calls: Console.WriteLine, EntityAddedEvent
       - void RemoveEntity(int id)
@@ -1174,6 +1180,7 @@ Folder: SiegeEngine
       - Entity GetEntityById(int id)
       - void AddSystem(GameSystem system)
       - void Update(float deltaTime)
+        - Calls: _physicsWorld.RegisterBody, _physicsWorld.Step
       - bool ValidateAndUpdateMovement( Quaternion requestedRotation,  Vector2 requestedPosition,  ulong steamId, int entityId)
         - Calls: MovementRequestEvent
       - bool ValidateInventory( object data,  string action, int entityId)
@@ -1883,6 +1890,17 @@ Folder: SiegeEngine
       - MouseButton MapEngineMouseButton(MouseButton engineButton)
       - KeyModifiers MapGlfwMods(KeyModifiers glfwMods)
       - InputAction MapGlfwInputAction(InputAction glfwAction)
+- File: HeightmapAdapter.cs
+  - Class: HeightmapAdapter (Namespace: SiegeEngine.Core.Physics)
+    - Inherits: IHeightProvider
+    
+    - Dependencies: System
+    - Fields:
+      - int Width
+      - int Height
+    - Methods:
+      - constructor HeightmapAdapter( float worldScaleX = 1.0f,  float worldScaleZ = 1.0f, ] heightmap)
+      - float GetInterpolatedHeight( float worldY, float worldX)
 - File: HtmlLayoutUtils.cs
   - Class: HtmlLayoutUtils (Namespace: SiegeEngine.Core.UI)
     - Dependencies: SiegeEngine.Core.Rendering, System, System.Linq, System.Numerics, System.Text.RegularExpressions
@@ -1933,7 +1951,7 @@ Folder: SiegeEngine
     - Dependencies: SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, System.Numerics
 - File: IGameServer.cs
   - Class: IGameServer (Namespace: SiegeEngine.Core.Interfaces)
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Physics, SiegeEngine.Systems, System.Collections.Generic, System.Numerics
 - File: IHeightProvider.cs
   - Class: IHeightProvider (Namespace: SiegeEngine.Core.Physics)
     - Dependencies: System
@@ -2647,15 +2665,19 @@ Folder: SiegeEngine
         - Calls: _bodies.Remove
       - void ClearBodies()
         - Calls: _bodies.Clear
+      - void SnapToGround(PhysicsComponent body)
+        - Calls: ApplyGroundClamp
       - void Step(float deltaTime)
         - Calls: Integrate
       - void Integrate(float dt)
+        - Calls: ApplyGroundClamp
+      - void ApplyGroundClamp(PhysicsComponent body)
         - Calls: _heightProvider.GetInterpolatedHeight
 - File: Player.cs
   - Class: Player (Namespace: SiegeEngine.PlayerSystem)
     - Inherits: IComponent
     
-    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering.ContextManagement, System, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing, SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Managers, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering.ContextManagement, System, System.Numerics
     - Fields:
       - CameraController _camera
       - PhysicsComponent _physics
@@ -2816,7 +2838,7 @@ Folder: SiegeEngine
   - Class: RuntimeGameplayScene (Namespace: SiegeEngine.Scenes)
     - Inherits: GameScene
     
-    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
+    - Dependencies: SiegeEngine.Core.AssetParsing.Model, SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Managers, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, SiegeEngine.Systems, System, System.Collections.Generic, System.IO, System.Linq, System.Numerics
     - Fields:
       - Player _player
       - PlayerMovement _playerMovement
@@ -2839,11 +2861,13 @@ Folder: SiegeEngine
       - void LoadLevelData( string projectPath, string levelName)
         - Calls: InitializeCamera, LoadSceneData, SceneActivatedEvent
       - void Initialize( int height, int width)
-        - Calls: BuildTexturedMesh, ForceVisibleOverheadCamera, InitializeCamera, SetupPureRuntimeWorld, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _renderContext.Viewport
+        - Calls: BuildTexturedMesh, EnsureHeightProvider, ForceVisibleOverheadCamera, InitializeCamera, SetupPureRuntimeWorld, ShaderProgram, VertexBuffer, _controlContext.SetScrollCallback, _controlContext.SetWindowSizeCallback, _renderContext.Viewport
       - void ForceVisibleOverheadCamera()
         - Calls: _flyCamera.RefreshViewMatrix, _flyCamera.Update
+      - void EnsureHeightProvider()
+        - Calls: HeightmapAdapter, _server.SetHeightProvider
       - void LoadContentFromContext(SceneContext ctx)
-        - Calls: BuildTexturedMesh, Console.WriteLine, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, Player, ResolveSkyboxPaths, SkyboxRenderer, TerrainTextureParser.LoadColorTexture, _flyCamera.Update, _modelManager.AttachBlendStack, _modelManager.AttachResolvedBlendStack, _modelManager.TryGetAnimationPack, _modelManager.TryGetModel, _modelManager.TryLoadPackByKey, _player.Camera.SetPerspective, _player.InitializeCamera, _player.SetModel, _server.AddEntity, _server.GetEntityById, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox, animPack.CreateBlendStack
+        - Calls: BuildTexturedMesh, Console.WriteLine, EnsureHeightProvider, ForceVisibleOverheadCamera, Level, LoadExactSavedTerrain, LoadLevelData, ModelManager, ModelManager.EnsurePacksLoaded, Player, ResolveSkyboxPaths, SkyboxRenderer, TerrainTextureParser.LoadColorTexture, _flyCamera.Update, _modelManager.AttachBlendStack, _modelManager.AttachResolvedBlendStack, _modelManager.TryGetAnimationPack, _modelManager.TryGetModel, _modelManager.TryLoadPackByKey, _player.Camera.SetPerspective, _player.InitializeCamera, _player.SetModel, _server.AddEntity, _server.GetEntityById, _skyboxRenderer.Initialize, _skyboxRenderer.LoadSkybox, animPack.CreateBlendStack
       - void ResolveSkyboxPaths( string projectPath, SkyboxData skybox)
       - void LoadExactSavedTerrain( string levelName, string projectPath)
         - Calls: BuildTexturedMesh, Console.WriteLine, CustomTerrainParser.Load, TerrainTextureParser.LoadColorTexture
@@ -2854,7 +2878,7 @@ Folder: SiegeEngine
       - void Render(IReadOnlyList<Entity> entities)
         - Calls: RenderGameplayContent
       - void Update(float deltaTime)
-        - Calls: ForceVisibleOverheadCamera
+        - Calls: ForceVisibleOverheadCamera, _server.SnapToGround
       - void RenderGameplayContent( Matrix4x4 projection,  Matrix4x4 view, IReadOnlyList<Entity> entities)
         - Calls: Render, _modelRenderer.RenderEntityFully, _renderContext.Clear, _server.GetEntities, _skyboxRenderer.RenderSkybox, _terrainRenderer.RenderTerrain
       - void Dispose()
@@ -3204,7 +3228,7 @@ Folder: SiegeEngine
   - Class: TerrainScene (Namespace: SiegeEngine.Scenes)
     - Inherits: GameScene
     
-    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
+    - Dependencies: SiegeEngine.Core.Definitions, SiegeEngine.Core.Events, SiegeEngine.Core.Interfaces, SiegeEngine.Core.Physics, SiegeEngine.Core.Rendering, SiegeEngine.Core.Rendering.ContextManagement, SiegeEngine.Core.Rendering.Shaders, SiegeEngine.Core.Terrain, SiegeEngine.PlayerSystem, System, System.Collections.Generic, System.Drawing, System.Drawing.Imaging, System.IO, System.Numerics
     - Fields:
       - FlyCameraController _flyCamera
       - int _terrainWidth
@@ -3231,16 +3255,19 @@ Folder: SiegeEngine
       - TerrainRenderer _terrainRenderer
     - Methods:
       - void BindLiveState(ISceneStateProvider liveState)
+        - Calls: EnsureHeightProvider
+      - void EnsureHeightProvider()
+        - Calls: HeightmapAdapter, _server.SetHeightProvider
       - void SyncFromLiveState()
-        - Calls: SyncColorTextureFromLiveState, _liveState.GetColorVersion, _liveState.GetHeightmap
+        - Calls: EnsureHeightProvider, SyncColorTextureFromLiveState, _liveState.GetColorVersion, _liveState.GetHeightmap
       - void SyncColorTextureFromLiveState()
         - Calls: BuildTexturedMesh, TerrainTextureParser.CreateColorTexture, _renderContext.BindTexture, _renderContext.GenerateMipmap, _renderContext.TexImage2D
       - void LoadSceneData(SceneData data)
-        - Calls: InitializeBlankTerrain, LoadTerrain, SetColorTexture
+        - Calls: EnsureHeightProvider, InitializeBlankTerrain, LoadTerrain, SetColorTexture
       - void InitializeBlankTerrain()
-        - Calls: BuildWireframeMesh
+        - Calls: BuildWireframeMesh, EnsureHeightProvider
       - void Initialize( int height, int width)
-        - Calls: ShaderProgram, VertexBuffer
+        - Calls: EnsureHeightProvider, ShaderProgram, VertexBuffer
       - void BuildWireframeMesh(float step)
         - Calls: ComputeWorldScale, GetHeight, _terrainBuffer.UpdateCustomWithUV, _terrainIndices.Clear, _terrainVertices.Clear
       - void RebuildTerrainMesh()
@@ -3253,7 +3280,7 @@ Folder: SiegeEngine
       - float GetHeight( float y, float x)
       - float GetInterpolatedHeight( float worldY, float worldX)
       - void LoadTerrain(string path)
-        - Calls: BuildWireframeMesh, ComputeWorldScale, Console.WriteLine, GeoTiffParser.ParseGeoReference
+        - Calls: BuildWireframeMesh, ComputeWorldScale, Console.WriteLine, EnsureHeightProvider, GeoTiffParser.ParseGeoReference
       - void SetColorTexture(string path)
         - Calls: BuildTexturedMesh, Console.WriteLine, Dispose, GeoTiffParser.ParseGeoReference, TerrainTextureParser.LoadColorTexture, live.SyncColorTextureIfNeeded
       - void Update(float deltaTime)
@@ -3793,6 +3820,7 @@ SiegeEngine.Core.Networking.ClientGameServerProxy
 SiegeEngine.Core.Networking.MovementRequest
 SiegeEngine.Core.Networking.SteamUGCRequestUGCDetailsResult_t
 SiegeEngine.Core.Physics.BodyType
+SiegeEngine.Core.Physics.HeightmapAdapter
 SiegeEngine.Core.Physics.IHeightProvider
 SiegeEngine.Core.Physics.PhysicsWorld
 SiegeEngine.Core.Rendering.BackgroundRenderer
