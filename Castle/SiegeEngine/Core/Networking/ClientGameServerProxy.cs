@@ -3,6 +3,7 @@
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Systems;
 using System;
 using System.Collections.Generic;
@@ -16,11 +17,22 @@ namespace SiegeEngine.Core.Networking
         private readonly EventBus _eventBus;
         private readonly List<Entity> _entities = new List<Entity>();
         private readonly List<GameSystem> _systems = new List<GameSystem>();
+        private readonly PhysicsWorld _physicsWorld = new PhysicsWorld();
         private int _nextEntityId = 1;
 
         public ClientGameServerProxy(EventBus eventBus)
         {
             _eventBus = eventBus;
+        }
+
+        public void SetHeightProvider(IHeightProvider provider)
+        {
+            _physicsWorld.SetHeightProvider(provider);
+        }
+
+        public void SnapToGround(PhysicsComponent body)
+        {
+            _physicsWorld.SnapToGround(body);
         }
 
         public void AddEntity(Entity entity)
@@ -121,6 +133,14 @@ namespace SiegeEngine.Core.Networking
 
         public void Update(float deltaTime)
         {
+            foreach (var entity in _entities)
+            {
+                var physics = entity.GetComponent<PhysicsComponent>();
+                if (physics != null)
+                    _physicsWorld.RegisterBody(physics);
+            }
+            _physicsWorld.Step(deltaTime);
+
             foreach (var system in _systems)
                 system.Update(deltaTime);
         }

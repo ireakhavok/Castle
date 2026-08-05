@@ -5,6 +5,7 @@ using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
@@ -104,6 +105,7 @@ namespace SiegeEngine.Scenes
             if (!_usePlayerCamera)
                 ForceVisibleOverheadCamera();
             BuildTexturedMesh();
+            EnsureHeightProvider();
         }
         private void ForceVisibleOverheadCamera()
         {
@@ -114,6 +116,11 @@ namespace SiegeEngine.Scenes
             _flyCamera.Pitch = -89f;
             _flyCamera.Update(0f, 0f, true);
             _flyCamera.RefreshViewMatrix();
+        }
+        private void EnsureHeightProvider()
+        {
+            if (_heightmap == null || _server == null) return;
+            _server.SetHeightProvider(new HeightmapAdapter(_heightmap, 1.0f, 1.0f));
         }
         protected override void LoadContentFromContext(SceneContext ctx)
         {
@@ -155,6 +162,7 @@ namespace SiegeEngine.Scenes
             {
                 LoadExactSavedTerrain(projectPath, levelName);
             }
+            EnsureHeightProvider();
             _modelManager = ctx?.ModelManager ?? ModelManager.Instance ?? new ModelManager(_renderContext);
             ModelManager.EnsurePacksLoaded(projectPath, level);
             Console.WriteLine($"[RuntimeGameplayScene] Payload-driven ctx: level.Entities = {level.Entities.Count} - rehydrate starting");
@@ -164,6 +172,13 @@ namespace SiegeEngine.Scenes
                 if (mc != null && _modelManager.TryGetModel(mc.Key, out var m))
                 {
                     mc.Model = m;
+                }
+                // Only force Kinematic on the player. Every other entity keeps whatever
+                // BodyType was serialized (default is now Static — mid-air placement is valid).
+                var phys = e.GetComponent<PhysicsComponent>();
+                if (phys != null && e.Type != null && e.Type.Equals("Player", StringComparison.OrdinalIgnoreCase))
+                {
+                    phys.BodyType = BodyType.Kinematic;
                 }
                 _server.AddEntity(e);
                 Console.WriteLine($"[RuntimeGameplayScene] Rehydrated + added saved entity {e.Id} Type='{e.Type}' Position from Level (exact match, no spoof)");
@@ -176,6 +191,7 @@ namespace SiegeEngine.Scenes
                 var existingPhys = existingPlayerEntity.GetComponent<PhysicsComponent>();
                 if (existingPhys != null)
                 {
+                    existingPhys.BodyType = BodyType.Kinematic;
                     _player.Physics.Position = existingPhys.Position;
                     _player.Physics.Rotation = existingPhys.Rotation;
                 }
@@ -266,6 +282,7 @@ namespace SiegeEngine.Scenes
                     {
                         playerEntity = new Entity { Id = _player.EntityId, Type = "Player" };
                         playerEntity.AddComponent(_player);
+                        _player.Physics.BodyType = BodyType.Kinematic;
                         playerEntity.AddComponent(_player.Physics);
                         playerEntity.AddComponent(new ModelComponent { Key = avatarKey, Model = _player.Model });
                         _server.AddEntity(playerEntity);
@@ -274,6 +291,7 @@ namespace SiegeEngine.Scenes
                     else
                     {
                         playerEntity.AddComponent(_player);
+                        _player.Physics.BodyType = BodyType.Kinematic;
                         playerEntity.AddComponent(_player.Physics);
                         var mc = playerEntity.GetComponent<ModelComponent>();
                         if (mc == null)
@@ -315,6 +333,7 @@ namespace SiegeEngine.Scenes
             }
             if (_player != null)
             {
+                _player.Physics.BodyType = BodyType.Kinematic;
                 _player.InitializeCamera(_controlContext, _window);
             }
             if (!_usePlayerCamera)
@@ -380,7 +399,7 @@ namespace SiegeEngine.Scenes
         {
             var terrainEntity = new Entity { Id = 1000, Type = "Terrain" };
             terrainEntity.AddComponent(new TransformComponent { Position = Vector3.Zero });
-            terrainEntity.AddComponent(new PhysicsComponent { Position = Vector3.Zero });
+            terrainEntity.AddComponent(new PhysicsComponent { Position = Vector3.Zero, BodyType = BodyType.Static });
             _server.AddEntity(terrainEntity);
         }
         protected virtual void BuildTexturedMesh()
@@ -445,6 +464,10 @@ namespace SiegeEngine.Scenes
                 if (_playerMovement != null)
                 {
                     _playerMovement.Update(_player, deltaTime, (id, pos, rotation) => { }, _player.Camera);
+                }
+                if (_player?.Physics != null)
+                {
+                    _server.SnapToGround(_player.Physics);
                 }
             }
             else

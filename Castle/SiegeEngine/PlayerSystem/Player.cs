@@ -6,7 +6,9 @@ using SiegeEngine.Core.AssetParsing;
 using SiegeEngine.Core.AssetParsing.Model;
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Managers;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering.ContextManagement;
+
 namespace SiegeEngine.PlayerSystem
 {
     public class Player : IComponent
@@ -24,6 +26,7 @@ namespace SiegeEngine.PlayerSystem
             _physics = new PhysicsComponent();
             _physics.Position = position;
             _physics.Size = new Vector3(10f, 10f, 10f);
+            _physics.BodyType = BodyType.Kinematic;
             SteamId = steamId;
             if (modelLoader != null && modelLoader.TryGetModel("man_mesh", out var model))
             {

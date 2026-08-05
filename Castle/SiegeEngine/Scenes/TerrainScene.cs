@@ -3,6 +3,7 @@
 using SiegeEngine.Core.Definitions;
 using SiegeEngine.Core.Events;
 using SiegeEngine.Core.Interfaces;
+using SiegeEngine.Core.Physics;
 using SiegeEngine.Core.Rendering;
 using SiegeEngine.Core.Rendering.ContextManagement;
 using SiegeEngine.Core.Rendering.Shaders;
@@ -59,6 +60,23 @@ namespace SiegeEngine.Scenes
         {
             _liveState = liveState;
             _lastColorVersion = -1;
+            EnsureHeightProvider();
+        }
+
+        protected virtual void EnsureHeightProvider()
+        {
+            if (_server == null) return;
+
+            if (_liveState is IHeightProvider liveProvider)
+            {
+                _server.SetHeightProvider(liveProvider);
+                return;
+            }
+
+            if (_heightmap != null)
+            {
+                _server.SetHeightProvider(new HeightmapAdapter(_heightmap, _worldScaleX, _worldScaleZ));
+            }
         }
 
         protected virtual void SyncFromLiveState()
@@ -76,6 +94,7 @@ namespace SiegeEngine.Scenes
                 SyncColorTextureFromLiveState();
                 _lastColorVersion = _liveState.GetColorVersion();
             }
+            EnsureHeightProvider();
         }
 
         protected virtual void SyncColorTextureFromLiveState()
@@ -141,6 +160,7 @@ namespace SiegeEngine.Scenes
             {
                 InitializeBlankTerrain();
             }
+            EnsureHeightProvider();
         }
 
         private void InitializeBlankTerrain()
@@ -155,6 +175,7 @@ namespace SiegeEngine.Scenes
                     _heightmap[x, y] = 0f;
             _useCustomScale = true;
             BuildWireframeMesh(1);
+            EnsureHeightProvider();
         }
 
         public override void Initialize(int width, int height)
@@ -163,6 +184,7 @@ namespace SiegeEngine.Scenes
             _terrainBuffer = new VertexBuffer(_renderContext);
             _terrainShader = new ShaderProgram(_renderContext, SceneShader.VertexShaderSource, SceneShader.FragmentShaderSource);
             _terrainRenderer.Initialize();
+            EnsureHeightProvider();
         }
 
         protected virtual void BuildWireframeMesh(float step)
@@ -413,6 +435,7 @@ namespace SiegeEngine.Scenes
                     live.HeightmapVersion++;
                     Console.WriteLine($"[TerrainScene] Pushed loaded heightmap ({_terrainWidth}x{_terrainHeight}) to shared LiveSceneState for scene '{SceneName}'");
                 }
+                EnsureHeightProvider();
             }
             catch (Exception ex)
             {

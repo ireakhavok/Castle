@@ -2,6 +2,7 @@
 // File: PhysicsComponent.cs
 using System;
 using System.Numerics;
+using SiegeEngine.Core.Physics;
 
 namespace SiegeEngine.Core.Definitions
 {
@@ -20,6 +21,18 @@ namespace SiegeEngine.Core.Definitions
             Mass = 1.0f;
             Health = 100f;
             IsVisible = true;
+            // Static is the safe default: entities stay exactly where the designer placed them
+            // (including mid-air). Designer must explicitly set Dynamic to enable gravity/clamp.
+            BodyType = BodyType.Static;
+            AngularVelocity = Vector3.Zero;
+            LinearDamping = 0.05f;
+            AngularDamping = 0.05f;
+            Friction = 0.5f;
+            Restitution = 0.0f;
+            IsSleeping = false;
+            IslandId = -1;
+            SleepThreshold = 0.05f;
+            SleepTimer = 0f;
         }
 
         public Vector3 Position
@@ -78,6 +91,18 @@ namespace SiegeEngine.Core.Definitions
 
         public Vector3 LocalBoundsMinCm { get; set; } = new Vector3(float.MaxValue);
         public Vector3 LocalBoundsMaxCm { get; set; } = new Vector3(float.MinValue);
+
+        // ===== Phase 1 additive fields (safe defaults, zero breakage) =====
+        public BodyType BodyType { get; set; } = BodyType.Static;
+        public Vector3 AngularVelocity { get; set; } = Vector3.Zero;
+        public float LinearDamping { get; set; } = 0.05f;
+        public float AngularDamping { get; set; } = 0.05f;
+        public float Friction { get; set; } = 0.5f;
+        public float Restitution { get; set; } = 0.0f;
+        public bool IsSleeping { get; set; } = false;
+        public int IslandId { get; set; } = -1;
+        public float SleepThreshold { get; set; } = 0.05f;
+        public float SleepTimer { get; set; } = 0f;
 
         public void Break()
         {
@@ -160,7 +185,16 @@ namespace SiegeEngine.Core.Definitions
                 IsBroken = IsBroken,
                 LocalBoundsMinCm = LocalBoundsMinCm,
                 LocalBoundsMaxCm = LocalBoundsMaxCm,
-                Velocity = Velocity
+                Velocity = Velocity,
+                BodyType = (int)BodyType,
+                AngularVelocity = AngularVelocity,
+                LinearDamping = LinearDamping,
+                AngularDamping = AngularDamping,
+                Friction = Friction,
+                Restitution = Restitution,
+                IsSleeping = IsSleeping,
+                IslandId = IslandId,
+                SleepThreshold = SleepThreshold
             };
         }
 
@@ -179,6 +213,15 @@ namespace SiegeEngine.Core.Definitions
                 LocalBoundsMinCm = p.LocalBoundsMinCm;
                 LocalBoundsMaxCm = p.LocalBoundsMaxCm;
                 Velocity = p.Velocity;
+                BodyType = (BodyType)p.BodyType;
+                AngularVelocity = p.AngularVelocity;
+                LinearDamping = p.LinearDamping;
+                AngularDamping = p.AngularDamping;
+                Friction = p.Friction;
+                Restitution = p.Restitution;
+                IsSleeping = p.IsSleeping;
+                IslandId = p.IslandId;
+                SleepThreshold = p.SleepThreshold;
             }
         }
 
@@ -195,6 +238,15 @@ namespace SiegeEngine.Core.Definitions
             public Vector3 LocalBoundsMinCm { get; set; }
             public Vector3 LocalBoundsMaxCm { get; set; }
             public Vector3 Velocity { get; set; }
+            public int BodyType { get; set; }
+            public Vector3 AngularVelocity { get; set; }
+            public float LinearDamping { get; set; }
+            public float AngularDamping { get; set; }
+            public float Friction { get; set; }
+            public float Restitution { get; set; }
+            public bool IsSleeping { get; set; }
+            public int IslandId { get; set; }
+            public float SleepThreshold { get; set; }
         }
     }
 }
