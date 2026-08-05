@@ -107,30 +107,36 @@ namespace SiegeEngine.Core.Definitions
 
         public ColliderShape Shape { get; private set; }
 
+        /// <summary>
+        /// Clears the cached collider so the next RebuildShape / physics step
+        /// rebuilds from the current Size / LocalBounds / BodyType.
+        /// </summary>
+        public void InvalidateShape()
+        {
+            Shape = null;
+        }
+
         public void RebuildShape(FBXModel model = null)
         {
             switch (BodyType)
             {
                 case BodyType.Kinematic:
                     {
-                        const float radius = 0.4f;
-                        const float height = 1.8f;
-                        Shape = new CapsuleShape(radius, height);
+                        // Player path calls RebuildShape(null) with no authored bounds → fixed capsule.
+                        // Kinematic props (walls, platforms) have LocalBounds from the FBX → OBB of actual size.
+                        if (model != null || HasValidLocalBounds())
+                        {
+                            BuildObbFromActualBounds();
+                        }
+                        else
+                        {
+                            Shape = new CapsuleShape(0.4f, 1.8f);
+                        }
                         break;
                     }
                 case BodyType.Dynamic:
                     {
-                        Vector3 half;
-                        if (LocalBoundsMinCm.X <= LocalBoundsMaxCm.X)
-                        {
-                            Vector3 sizeM = (LocalBoundsMaxCm - LocalBoundsMinCm) * 0.01f;
-                            half = sizeM * 0.5f;
-                        }
-                        else
-                        {
-                            half = Size * 0.5f;
-                        }
-                        Shape = new ObbShape(half);
+                        BuildObbFromActualBounds();
                         break;
                     }
                 case BodyType.Static:
@@ -140,18 +146,41 @@ namespace SiegeEngine.Core.Definitions
                         {
                             Shape = new TriangleMeshShape(model);
                         }
-                        else if (LocalBoundsMinCm.X <= LocalBoundsMaxCm.X)
-                        {
-                            Vector3 sizeM = (LocalBoundsMaxCm - LocalBoundsMinCm) * 0.01f;
-                            Shape = new ObbShape(sizeM * 0.5f);
-                        }
                         else
                         {
-                            Shape = new ObbShape(Size * 0.5f);
+                            BuildObbFromActualBounds();
                         }
                         break;
                     }
             }
+        }
+
+        private bool HasValidLocalBounds()
+        {
+            return LocalBoundsMinCm.X <= LocalBoundsMaxCm.X
+                && LocalBoundsMinCm.Y <= LocalBoundsMaxCm.Y
+                && LocalBoundsMinCm.Z <= LocalBoundsMaxCm.Z;
+        }
+
+        private void BuildObbFromActualBounds()
+        {
+            Vector3 half;
+            Vector3 centerOffset = Vector3.Zero;
+
+            if (HasValidLocalBounds())
+            {
+                // LocalBounds are centimetres. Convert to metres.
+                Vector3 sizeM = (LocalBoundsMaxCm - LocalBoundsMinCm) * 0.01f;
+                half = sizeM * 0.5f;
+                // Geometric centre of the authored AABB relative to the mesh origin (metres).
+                centerOffset = (LocalBoundsMinCm + LocalBoundsMaxCm) * 0.005f;
+            }
+            else
+            {
+                half = Size * 0.5f;
+            }
+
+            Shape = new ObbShape(half, centerOffset);
         }
 
         public void Break()
@@ -191,9 +220,7 @@ namespace SiegeEngine.Core.Definitions
 
             Vector3 boxMin;
             Vector3 boxMax;
-            if (LocalBoundsMinCm.X <= LocalBoundsMaxCm.X &&
-                LocalBoundsMinCm.Y <= LocalBoundsMaxCm.Y &&
-                LocalBoundsMinCm.Z <= LocalBoundsMaxCm.Z)
+            if (HasValidLocalBounds())
             {
                 boxMin = LocalBoundsMinCm;
                 boxMax = LocalBoundsMaxCm;

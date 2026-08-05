@@ -230,7 +230,7 @@ namespace SiegeEngine.Core.Physics
 
             for (int s = 0; s < samples.Length; s++)
             {
-                Vector3 closest = ClosestPointOnObb(samples[s], obbBody.Position, obbBody.Rotation, obb.HalfExtents);
+                Vector3 closest = ClosestPointOnObb(samples[s], obbBody.Position, obbBody.Rotation, obb);
                 Vector3 delta = samples[s] - closest;
                 float dist = delta.Length();
                 if (dist < radius && dist > 1e-6f)
@@ -247,11 +247,6 @@ namespace SiegeEngine.Core.Physics
             }
         }
 
-        /// <summary>
-        /// Phase-1: treat TriangleMeshShape as its world AABB for discrete contacts.
-        /// Full triangle tests are deferred until a BVH / broad-phase exists.
-        /// Raycasts still use the real triangles.
-        /// </summary>
         private void CapsuleVsMeshAabb(CapsuleShape cap, PhysicsComponent capBody,
             TriangleMeshShape mesh, PhysicsComponent meshBody, ContactManifold manifold)
         {
@@ -292,8 +287,10 @@ namespace SiegeEngine.Core.Physics
         private void ObbVsObb(ObbShape a, PhysicsComponent bodyA,
             ObbShape b, PhysicsComponent bodyB, ContactManifold manifold)
         {
-            Vector3 ca = bodyA.Position;
-            Vector3 cb = bodyB.Position;
+            Matrix4x4 rotA = Matrix4x4.CreateFromQuaternion(bodyA.Rotation);
+            Matrix4x4 rotB = Matrix4x4.CreateFromQuaternion(bodyB.Rotation);
+            Vector3 ca = bodyA.Position + Vector3.Transform(a.CenterOffset, rotA);
+            Vector3 cb = bodyB.Position + Vector3.Transform(b.CenterOffset, rotB);
             Vector3 delta = ca - cb;
             float dist = delta.Length();
             float ra = a.HalfExtents.Length();
@@ -317,8 +314,11 @@ namespace SiegeEngine.Core.Physics
             Vector3 half = (aabbMax - aabbMin) * 0.5f;
             Vector3 centre = (aabbMin + aabbMax) * 0.5f;
 
-            Vector3 closest = ClosestPointOnAabb(obbBody.Position, centre, half);
-            Vector3 delta = obbBody.Position - closest;
+            Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(obbBody.Rotation);
+            Vector3 obbCentre = obbBody.Position + Vector3.Transform(obb.CenterOffset, rot);
+
+            Vector3 closest = ClosestPointOnAabb(obbCentre, centre, half);
+            Vector3 delta = obbCentre - closest;
             float dist = delta.Length();
             float radius = obb.HalfExtents.Length();
             if (dist < radius && dist > 1e-6f)
@@ -392,13 +392,14 @@ namespace SiegeEngine.Core.Physics
             }
         }
 
-        private static Vector3 ClosestPointOnObb(Vector3 point, Vector3 centre, Quaternion rotation, Vector3 halfExtents)
+        private static Vector3 ClosestPointOnObb(Vector3 point, Vector3 position, Quaternion rotation, ObbShape obb)
         {
             Matrix4x4 rot = Matrix4x4.CreateFromQuaternion(rotation);
+            Vector3 worldCentre = position + Vector3.Transform(obb.CenterOffset, rot);
             Matrix4x4.Invert(rot, out Matrix4x4 inv);
-            Vector3 local = Vector3.Transform(point - centre, inv);
-            local = Vector3.Clamp(local, -halfExtents, halfExtents);
-            return Vector3.Transform(local, rot) + centre;
+            Vector3 local = Vector3.Transform(point - worldCentre, inv);
+            local = Vector3.Clamp(local, -obb.HalfExtents, obb.HalfExtents);
+            return Vector3.Transform(local, rot) + worldCentre;
         }
 
         private static Vector3 ClosestPointOnAabb(Vector3 point, Vector3 centre, Vector3 halfExtents)
