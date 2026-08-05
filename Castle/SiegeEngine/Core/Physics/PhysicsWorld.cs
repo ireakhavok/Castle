@@ -424,18 +424,34 @@ namespace SiegeEngine.Core.Physics
                 const float percent = 0.8f;
                 const float slop = 0.01f;
                 float correctionMag = MathF.Max(p.Penetration - slop, 0f) * percent;
-                // Heightfield + kinematic: vertical-only position correction.
-                // Prevents the tilted normal from injecting lateral displacement that fights PlayerMovement.
-                if (b == null && a != null && a.BodyType == BodyType.Kinematic)
+
+                // Kinematic character vs any static geometry (heightfield or mesh/OBB):
+                // hard separation + velocity projection, then continue so the soft sequential
+                // impulse never fights the character response.
+                bool isKinematicVsStatic = a != null && a.BodyType == BodyType.Kinematic
+                    && (b == null || b.BodyType == BodyType.Static);
+                if (isKinematicVsStatic)
                 {
-                    a.Position = new Vector3(a.Position.X, a.Position.Y, a.Position.Z + correctionMag);
+                    if (b == null)
+                    {
+                        // Heightfield – exact feet placement on the sampled surface.
+                        a.Position = new Vector3(a.Position.X, a.Position.Y, p.Position.Z);
+                    }
+                    else
+                    {
+                        // Static mesh / OBB – full separation along the contact normal.
+                        a.Position += n * p.Penetration;
+                    }
+                    float vn = Vector3.Dot(a.Velocity, n);
+                    if (vn < 0f)
+                        a.Velocity -= n * vn;
+                    continue;
                 }
-                else
-                {
-                    Vector3 correction = n * (correctionMag / totalInv);
-                    if (invMassA > 0f) a.Position += correction * invMassA;
-                    if (invMassB > 0f && b != null) b.Position -= correction * invMassB;
-                }
+
+                Vector3 correction = n * (correctionMag / totalInv);
+                if (invMassA > 0f) a.Position += correction * invMassA;
+                if (invMassB > 0f && b != null) b.Position -= correction * invMassB;
+
                 Vector3 velA = a != null ? a.Velocity : Vector3.Zero;
                 Vector3 velB = b != null ? b.Velocity : Vector3.Zero;
                 Vector3 relVel = velA - velB;
